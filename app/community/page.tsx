@@ -63,9 +63,10 @@ export default function CommunityPage() {
     if (prayedIds.has(id)) return;
     const supabase = createClient();
     await supabase.from("prayer_items").update({ prayer_count: count + 1 }).eq("id", id);
-    const newSet = new Set([...prayedIds, id]);
-    setPrayedIds(newSet);
-    if (userId) localStorage.setItem(`comm_prayed_${userId}`, JSON.stringify([...newSet]));
+    const newArr = Array.from(prayedIds).concat(id);
+const newSet = new Set(newArr);
+setPrayedIds(newSet);
+if (userId) localStorage.setItem(`comm_prayed_${userId}`, JSON.stringify(newArr));
     loadData();
   }
 
