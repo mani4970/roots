@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
 import { createClient } from "@/lib/supabase";
-import { ChevronRight, LogOut, Loader2 } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -51,7 +52,9 @@ export default function HomePage() {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
     const newVal = !todayDone.decision;
-    await supabase.from("daily_checkins").update({ completed_mission: newVal }).eq("user_id", user.id).eq("date", today);
+    await supabase.from("daily_checkins")
+      .update({ completed_mission: newVal })
+      .eq("user_id", user.id).eq("date", today);
     setTodayDone(p => ({ ...p, decision: newVal }));
   }
 
@@ -61,17 +64,31 @@ export default function HomePage() {
     router.push("/login");
   }
 
+  // 로딩 화면 — tree3.png 새싹
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <div style={{ fontSize: 48 }}>🌱</div>
-      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+      <div style={{ position: "relative", width: 160, height: 160 }}>
+        <Image src="/tree3.png" alt="로딩 중" fill style={{ objectFit: "contain" }} />
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif", marginBottom: 6 }}>Roots</h1>
+        <p style={{ fontSize: 13, color: "var(--text3)" }}>말씀에 뿌리내리고, 함께 자라다</p>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--sage)", opacity: 0.4, animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+        ))}
+      </div>
+      <style>{`@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
     </div>
   );
 
   const streak = profile?.streak_days ?? 0;
+  const lastCheckin = profile?.last_checkin ?? null;
 
   return (
     <div className="page fade-in">
+      {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div className="header-greeting">Good morning,</div>
@@ -82,7 +99,8 @@ export default function HomePage() {
         </button>
       </div>
 
-      <TreeGrowth days={streak} />
+      {/* 나무 이미지 */}
+      <TreeGrowth days={streak} lastCheckin={lastCheckin} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>
@@ -90,8 +108,12 @@ export default function HomePage() {
         <div className="card-sage">
           {todayVerse?.verse ? (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 8 }}>{todayVerse.reference}</div>
-              <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>"{todayVerse.verse}"</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 8 }}>
+                {todayVerse.reference}
+              </div>
+              <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
+                "{todayVerse.verse}"
+              </div>
               {todayVerse.message && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(122,158,118,0.25)", fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
                   {todayVerse.message}
@@ -100,7 +122,9 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 12 }}>오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요 🌿</div>
+              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 12 }}>
+                오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요 🌿
+              </div>
               <Link href="/checkin">
                 <button className="btn-sage">오늘의 말씀 받기 <ChevronRight size={16} /></button>
               </Link>

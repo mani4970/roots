@@ -3,20 +3,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { Plus, Heart, CheckCircle, Loader2 } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send } from "lucide-react";
 
 export default function PrayerPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"my"|"community">("my");
   const [prayers, setPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
-  const [isAnon, setIsAnon] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState<string|null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => { loadPrayers(); }, [tab]);
+  useEffect(() => { loadPrayers(); }, []);
 
   async function loadPrayers() {
     setLoading(true);
@@ -24,9 +22,8 @@ export default function PrayerPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
-    let q = supabase.from("prayer_items").select("*").order("created_at", { ascending: false });
-    if (tab === "my") q = q.eq("user_id", user.id);
-    const { data } = await q;
+    const { data } = await supabase.from("prayer_items")
+      .select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     if (data) setPrayers(data);
     setLoading(false);
   }
@@ -35,13 +32,17 @@ export default function PrayerPage() {
     if (!newPrayer.trim() || !userId) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("prayer_items").insert({ user_id: userId, content: newPrayer.trim(), is_anonymous: isAnon, visibility: "all" });
-    setNewPrayer(""); setIsAnon(false); setShowForm(false); setSaving(false); loadPrayers();
+    await supabase.from("prayer_items").insert({
+      user_id: userId, content: newPrayer.trim(),
+      is_anonymous: false, visibility: "private"
+    });
+    setNewPrayer(""); setShowForm(false); setSaving(false);
+    loadPrayers();
   }
 
-  async function pray(id: string, count: number) {
+  async function requestIntercession(id: string) {
     const supabase = createClient();
-    await supabase.from("prayer_items").update({ prayer_count: count + 1 }).eq("id", id);
+    await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
     loadPrayers();
   }
 
@@ -49,76 +50,84 @@ export default function PrayerPage() {
     const testimony = prompt("기도 응답 간증을 나눠주세요 🙏");
     if (!testimony) return;
     const supabase = createClient();
-    await supabase.from("prayer_items").update({ is_answered: true, testimony, answered_at: new Date().toISOString() }).eq("id", id);
+    await supabase.from("prayer_items").update({
+      is_answered: true, testimony, answered_at: new Date().toISOString()
+    }).eq("id", id);
     loadPrayers();
   }
 
   return (
     <div className="page">
-      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>기도</h1>
-        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>함께 기도하고 응답을 나눠요</p>
-      </div>
-
-      <div style={{ padding: "12px 16px", display: "flex", gap: 8, borderBottom: "1px solid var(--border)" }}>
-        {(["my", "community"] as const).map(k => (
-          <button key={k} onClick={() => setTab(k)} style={{ padding: "7px 16px", borderRadius: 20, fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer", background: tab === k ? "var(--text)" : "var(--white)", color: tab === k ? "white" : "var(--text3)", outline: tab === k ? "none" : "1px solid var(--border)" }}>
-            {k === "my" ? "내 기도" : "커뮤니티"}
-          </button>
-        ))}
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>나의 기도제목을 기록해요</p>
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>
+          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+            <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+          </div>
         ) : prayers.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 0" }}>
             <p style={{ fontSize: 32, marginBottom: 12 }}>🙏</p>
             <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 기도 제목이 없어요</p>
+            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>+ 버튼으로 기도 제목을 적어보세요</p>
           </div>
-        ) : prayers.map(p => (
-          <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`}>
-            {p.is_answered && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <CheckCircle size={14} style={{ color: "var(--terra)" }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra)" }}>기도 응답!</span>
-              </div>
-            )}
-            <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, color: "var(--text)" }}>
-              {p.is_anonymous ? "익명 · " : ""}{p.content}
-            </p>
-            {p.testimony && <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 10, fontStyle: "italic" }}>"{p.testimony}"</p>}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => pray(p.id, p.prayer_count)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 500, padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", background: p.is_answered ? "var(--terra-light)" : "var(--bg2)", color: p.is_answered ? "var(--terra-dark)" : "var(--text2)" }}>
-                  <Heart size={12} fill={p.is_answered ? "currentColor" : "none"} />
-                  {p.is_answered ? `할렐루야 ${p.prayer_count}` : `함께 기도 ${p.prayer_count}`}
-                </button>
-                {!p.is_answered && p.user_id === userId && (
-                  <button onClick={() => markAnswered(p.id)} style={{ fontSize: 10, color: "var(--terra)", border: "1px solid rgba(196,149,106,0.4)", padding: "6px 10px", borderRadius: 20, background: "none", cursor: "pointer" }}>
-                    응답됐어요
-                  </button>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {prayers.map(p => (
+              <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`}>
+                {p.is_answered && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <CheckCircle size={14} style={{ color: "var(--terra)" }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra)" }}>기도 응답!</span>
+                  </div>
                 )}
+                {p.visibility === "all" && !p.is_answered && (
+                  <div style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "2px 8px", borderRadius: 20 }}>
+                      중보기도 요청 중 · {p.prayer_count}명이 함께 기도 중
+                    </span>
+                  </div>
+                )}
+                <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, color: "var(--text)" }}>{p.content}</p>
+                {p.testimony && (
+                  <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 10, fontStyle: "italic" }}>"{p.testimony}"</p>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {!p.is_answered && (
+                      <button onClick={() => markAnswered(p.id)} style={{ fontSize: 10, color: "var(--terra)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer" }}>
+                        응답됐어요 🙌
+                      </button>
+                    )}
+                    {!p.is_answered && p.visibility !== "all" && (
+                      <button onClick={() => requestIntercession(p.id)} style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid #C5DEC3", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                        <Send size={10} /> 중보기도 요청하기
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                    {new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
               </div>
-              <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(44,43,40,0.5)", zIndex: 40, display: "flex", alignItems: "flex-end" }}>
           <div style={{ background: "var(--white)", width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: 24 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif", marginBottom: 14 }}>기도 제목 나누기</h2>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif", marginBottom: 6 }}>기도 제목 적기</h2>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>기본적으로 나만 볼 수 있어요. 나중에 중보기도 요청도 할 수 있어요.</p>
             <textarea className="textarea-field" rows={4} placeholder="기도 제목을 적어주세요..." value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
-              <input type="checkbox" checked={isAnon} onChange={e => setIsAnon(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--terra)" }} />
-              <span style={{ fontSize: 13, color: "var(--text3)" }}>익명으로 올리기</span>
-            </label>
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>취소</button>
               <button className="btn-sage" onClick={submit} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
-                {saving ? <Loader2 size={16} className="spin" /> : "올리기"}
+                {saving ? <Loader2 size={16} className="spin" /> : "저장하기"}
               </button>
             </div>
           </div>
