@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
 import { Plus, CheckCircle, Loader2, Send } from "lucide-react";
 
@@ -13,7 +14,7 @@ export default function PrayerPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [prayedIds, setPrayedIds] = useState<Set<string>>(new Set());
+  const [celebration, setCelebration] = useState(false);
 
   useEffect(() => { loadPrayers(); }, []);
 
@@ -25,9 +26,6 @@ export default function PrayerPage() {
     setUserId(user.id);
     const { data } = await supabase.from("prayer_items").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     if (data) setPrayers(data);
-    // 이미 기도한 항목 로컬에서 불러오기
-    const saved = localStorage.getItem(`prayed_${user.id}`);
-    if (saved) setPrayedIds(new Set(JSON.parse(saved)));
     setLoading(false);
   }
 
@@ -35,8 +33,12 @@ export default function PrayerPage() {
     if (!newPrayer.trim() || !userId) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("prayer_items").insert({ user_id: userId, content: newPrayer.trim(), is_anonymous: false, visibility: "private" });
+    await supabase.from("prayer_items").insert({
+      user_id: userId, content: newPrayer.trim(), is_anonymous: false, visibility: "private"
+    });
     setNewPrayer(""); setShowForm(false); setSaving(false);
+    // 첫 기도 제목 저장 시 축하!
+    if (prayers.length === 0) setCelebration(true);
     loadPrayers();
   }
 
@@ -56,6 +58,12 @@ export default function PrayerPage() {
 
   return (
     <div className="page">
+      <Celebration
+        show={celebration}
+        message="기도 제목 저장 완료!"
+        onClose={() => setCelebration(false)}
+      />
+
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>기도</h1>
         <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>나의 기도제목을 기록해요</p>

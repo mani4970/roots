@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
+import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
 import { ChevronRight, LogOut, Check } from "lucide-react";
 
@@ -20,9 +20,10 @@ export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [todayVerse, setTodayVerse] = useState<any>(null);
-  const [myDecisions, setMyDecisions] = useState<{text: string; done: boolean}[]>([]);
+  const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
   const [loading, setLoading] = useState(true);
+  const [celebration, setCelebration] = useState({ show: false, message: "" });
 
   useEffect(() => { load(); }, []);
 
@@ -37,30 +38,19 @@ export default function HomePage() {
       .select("verse,mission,completed_mission,reference,message")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) setTodayVerse(ci);
-
-    // 오늘 큐티에서 결단 불러오기
     const { data: tqt } = await supabase.from("qt_records")
       .select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
-
-    // 기도 제목 저장 여부 (오늘 기도 제목 있으면 완료)
     const { data: tp } = await supabase.from("prayer_items").select("id")
       .eq("user_id", user.id)
       .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`)
       .maybeSingle();
-
-    // 결단 파싱
     if (tqt?.decision) {
       const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
       const saved = localStorage.getItem(`decisions_${today}`);
       const doneList: boolean[] = saved ? JSON.parse(saved) : decisions.map(() => false);
       setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
     }
-
-    setTodayDone({
-      qt: !!tqt,
-      prayer: !!tp,
-      decision: ci?.completed_mission ?? false,
-    });
+    setTodayDone({ qt: !!tqt, prayer: !!tp, decision: ci?.completed_mission ?? false });
     setLoading(false);
   }
 
@@ -73,6 +63,7 @@ export default function HomePage() {
     const newVal = !todayDone.decision;
     await supabase.from("daily_checkins").update({ completed_mission: newVal }).eq("user_id", user.id).eq("date", today);
     setTodayDone(p => ({ ...p, decision: newVal }));
+    if (newVal) setCelebration({ show: true, message: "결단 실천 완료!" });
   }
 
   function toggleMyDecision(i: number) {
@@ -80,6 +71,10 @@ export default function HomePage() {
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
     setMyDecisions(updated);
     localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
+    // 모든 결단 완료 시 축하
+    if (updated.every(d => d.done)) {
+      setCelebration({ show: true, message: "모든 결단 완료!" });
+    }
   }
 
   async function logout() {
@@ -112,6 +107,13 @@ export default function HomePage() {
 
   return (
     <div className="page fade-in">
+      {/* 축하 오버레이 */}
+      <Celebration
+        show={celebration.show}
+        message={celebration.message}
+        onClose={() => setCelebration({ show: false, message: "" })}
+      />
+
       {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
@@ -123,6 +125,7 @@ export default function HomePage() {
         </button>
       </div>
 
+      {/* 나무 + roots-man */}
       <TreeGrowth days={streak} lastCheckin={profile?.last_checkin ?? null} />
 
       {/* 오늘의 말씀 */}
@@ -148,7 +151,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 추천 결단 */}
+      {/* 오늘의 추천 결단 */}
       {todayVerse?.mission && (
         <div style={{ padding: "0 16px 14px" }}>
           <div className="sec-label">오늘의 추천 결단</div>
@@ -166,7 +169,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 나의 결단 (큐티에서 작성한 것) */}
+      {/* 나의 결단 (큐티에서 작성) */}
       {myDecisions.length > 0 && (
         <div style={{ padding: "0 16px 14px" }}>
           <div className="sec-label">오늘 나의 결단</div>
@@ -192,13 +195,14 @@ export default function HomePage() {
         <div className="sec-label">오늘의 루틴</div>
         <div style={{ display: "flex", gap: 8 }}>
           {[
-            { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖" },
-            { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏" },
+            { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖", onClick: null },
+            { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏", onClick: null },
             { label: "결단", href: null, done: todayDone.decision || myDecisions.some(d => d.done), icon: "✊", onClick: toggleAiDecision },
           ].map(({ label, href, done, icon, onClick }: any) => {
-            const bg = done ? "var(--sage-light)" : "var(--bg2)";
-            const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
-            const color = done ? "var(--sage-dark)" : "var(--text)";
+            const isTerra = label === "결단";
+            const bg = done ? (isTerra ? "var(--terra-light)" : "var(--sage-light)") : "var(--bg2)";
+            const border = done ? (isTerra ? "rgba(196,149,106,0.3)" : "rgba(122,157,122,0.3)") : "var(--border)";
+            const color = done ? (isTerra ? "var(--terra-dark)" : "var(--sage-dark)") : "var(--text)";
             const inner = <>
               <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
