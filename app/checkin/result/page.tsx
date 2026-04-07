@@ -1,8 +1,7 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 function ResultContent() {
@@ -13,7 +12,11 @@ function ResultContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/verse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emotions }) })
+    fetch("/api/verse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emotions }),
+    })
       .then(r => r.json())
       .then(async data => {
         setResult(data);
@@ -22,16 +25,22 @@ function ResultContent() {
         if (user) {
           const today = new Date().toISOString().split("T")[0];
           await supabase.from("daily_checkins").upsert({
-            user_id: user.id, date: today,
-            emotions, verse: data.verse, mission: data.mission
+            user_id: user.id,
+            date: today,
+            emotions,
+            verse: data.verse,
+            reference: data.reference,
+            message: data.message,
+            mission: data.mission,
+            completed_mission: false,
           }, { onConflict: "user_id,date" });
         }
       })
       .catch(() => setResult({
         verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
         reference: "마태복음 11:28",
-        message: "지치고 힘든 마음을 주님께 내려놓는 하루가 되길 바랍니다.",
-        mission: "오늘 5분만 조용한 곳에서 눈 감고 주님께 솔직하게 털어놓아 보세요.",
+        message: "지치고 힘든 마음을 주님께 내려놓는 하루가 되길 바랍니다. 혼자 짊어지지 않아도 됩니다.",
+        mission: "오늘 5분만 조용한 곳에서 눈 감고 주님께 솔직하게 마음을 털어놓아 보세요.",
       }))
       .finally(() => setLoading(false));
   }, []);
@@ -54,25 +63,34 @@ function ResultContent() {
       </div>
 
       <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* 말씀 카드 */}
         <div className="card-sage">
-          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>{result?.reference}</p>
-          <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>"{result?.verse}"</p>
-          <div style={{ borderTop: "1px solid rgba(122,158,118,0.2)", marginTop: 14, paddingTop: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
+            {result?.reference}
+          </p>
+          <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
+            "{result?.verse}"
+          </p>
+          <div style={{ borderTop: "1px solid rgba(122,158,118,0.25)", marginTop: 14, paddingTop: 12 }}>
             <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{result?.message}</p>
           </div>
         </div>
 
+        {/* 결단 카드 */}
         <div className="card-terra">
-          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>오늘의 결단 미션</p>
+          <p style={{ fontSize: 9, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
+            오늘의 결단 미션
+          </p>
           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>{result?.mission}</p>
         </div>
 
-        <Link href="/qt">
-          <button className="btn-primary" style={{ marginTop: 4 }}>
-            큐티 시작하기 <ChevronRight size={18} />
-          </button>
-        </Link>
-        <button onClick={() => router.push("/")} className="btn-outline">홈으로 돌아가기</button>
+        {/* 홈으로만 */}
+        <button onClick={() => router.push("/")} className="btn-primary" style={{ marginTop: 4 }}>
+          홈에서 확인하기 →
+        </button>
+        <p style={{ textAlign: "center", fontSize: 11, color: "var(--text3)" }}>
+          홈에 말씀과 결단이 저장돼요
+        </p>
       </div>
     </div>
   );
@@ -80,7 +98,11 @@ function ResultContent() {
 
 export default function ResultPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
+      </div>
+    }>
       <ResultContent />
     </Suspense>
   );
