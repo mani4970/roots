@@ -2,27 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Heart, BookOpen, BookMarked, User } from "lucide-react";
 
 const NAV = [
-  { href: "/", icon: Home, label: "홈" },
-  { href: "/prayer", icon: Heart, label: "기도" },
-  { href: "/qt", icon: BookOpen, label: "큐티" },
-  { href: "/journal", icon: BookMarked, label: "기록" },
-  { href: "/profile", icon: User, label: "프로필" },
+  {
+    href: "/", label: "홈",
+    icon: <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+  },
+  {
+    href: "/prayer", label: "기도",
+    icon: <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+  },
+  {
+    href: "/qt", label: "큐티",
+    icon: <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+  },
+  {
+    href: "/journal", label: "기록",
+    icon: <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+  },
+  {
+    href: "/profile", label: "프로필",
+    icon: <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  },
 ];
 
 export default function BottomNav() {
   const path = usePathname();
   return (
     <nav className="bottom-nav">
-      {NAV.map(({ href, icon: Icon, label }) => {
-        const active = path === href;
+      {NAV.map(({ href, icon, label }) => {
+        const active = path === href || (href !== "/" && path.startsWith(href));
         return (
           <Link key={href} href={href} className={`nav-item ${active ? "active" : ""}`}>
-            <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+            {icon}
             <span>{label}</span>
-            {active && <span className="nav-dot" />}
           </Link>
         );
       })}

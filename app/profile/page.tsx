@@ -19,9 +19,9 @@ export default function ProfilePage() {
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (data) setProfile(data);
       const today = new Date(), dow = today.getDay(), monday = new Date(today);
-      monday.setDate(today.getDate() - ((dow+6)%7));
-      const week = await Promise.all(Array.from({length:7}, async (_,i) => {
-        const d = new Date(monday); d.setDate(monday.getDate()+i);
+      monday.setDate(today.getDate() - ((dow + 6) % 7));
+      const week = await Promise.all(Array.from({ length: 7 }, async (_, i) => {
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
         const { data: qt } = await supabase.from("qt_records").select("id").eq("user_id", user.id).eq("date", d.toISOString().split("T")[0]).maybeSingle();
         return !!qt;
       }));
@@ -37,59 +37,55 @@ export default function ProfilePage() {
     router.push("/login");
   }
 
-  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--gold)" }} className="spin" /></div>;
+  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
 
-  const WEEK = ["월","화","수","목","금","토","일"];
-  const todayIdx = ((new Date().getDay()+6)%7);
+  const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+  const todayIdx = ((new Date().getDay() + 6) % 7);
 
   return (
     <div className="page">
-      <div style={{ background: "var(--dark)", padding: "56px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 600, color: "var(--dark)" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--terra-light)", border: "2px solid var(--terra)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "var(--terra-dark)", fontFamily: "'Fraunces', serif" }}>
             {profile?.name?.[0] ?? "?"}
           </div>
           <div>
-            <h1 style={{ color: "white", fontSize: 17, fontWeight: 600 }}>{profile?.name}</h1>
-            <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>Roots 멤버</p>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>{profile?.name}</h1>
+            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>Roots 멤버</p>
           </div>
         </div>
-        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--muted)" }}><LogOut size={18} /></button>
+        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><LogOut size={18} /></button>
       </div>
 
-      <div style={{ background: "var(--dark)", padding: "0 16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+      <div style={{ padding: "16px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
         {[
-          { label: "연속 기록", value: `${profile?.streak_days??0}일`, color: "var(--gold)" },
-          { label: "총 큐티", value: `${profile?.total_days??0}회`, color: "white" },
-          { label: "100일까지", value: `${Math.max(0,100-(profile?.streak_days??0))}일`, color: "white" },
+          { label: "연속 기록", value: `${profile?.streak_days ?? 0}일`, color: "var(--terra)" },
+          { label: "총 큐티", value: `${profile?.total_days ?? 0}회`, color: "var(--text)" },
+          { label: "100일까지", value: `${Math.max(0, 100 - (profile?.streak_days ?? 0))}일`, color: "var(--text)" },
         ].map(s => (
-          <div key={s.label} style={{ background: "var(--dark-card)", borderRadius: 12, padding: 12, textAlign: "center", border: "1px solid var(--dark-border)" }}>
-            <p style={{ fontSize: 20, fontWeight: 600, color: s.color }}>{s.value}</p>
-            <p style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>{s.label}</p>
+          <div key={s.label} style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 10px", textAlign: "center" }}>
+            <p style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: "'Fraunces', serif" }}>{s.value}</p>
+            <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>{s.label}</p>
           </div>
         ))}
       </div>
 
-      <div style={{ padding: "20px 16px 0" }}>
-        <p className="section-label">이번 주</p>
-        <div className="card-white">
+      <div style={{ padding: "0 16px" }}>
+        <div className="sec-label">이번 주</div>
+        <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             {WEEK.map((day, i) => (
               <div key={day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500,
-                  background: i===todayIdx ? "transparent" : weekDone[i] ? "var(--gold)" : "var(--stone)",
-                  color: i===todayIdx ? "var(--gold)" : weekDone[i] ? "var(--dark)" : "var(--muted)",
-                  border: i===todayIdx ? "2px solid var(--gold)" : "none"
-                }}>
-                  {weekDone[i] && i!==todayIdx ? "✓" : day}
+                <div style={{ width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, background: i === todayIdx ? "transparent" : weekDone[i] ? "var(--sage)" : "var(--bg2)", color: i === todayIdx ? "var(--sage)" : weekDone[i] ? "white" : "var(--text3)", border: i === todayIdx ? "2px solid var(--sage)" : "none" }}>
+                  {weekDone[i] && i !== todayIdx ? "✓" : day}
                 </div>
-                <span style={{ fontSize: 9, color: "var(--muted)" }}>{day}</span>
+                <span style={{ fontSize: 9, color: "var(--text3)" }}>{day}</span>
               </div>
             ))}
           </div>
-          <div style={{ borderTop: "1px solid var(--stone)", marginTop: 14, paddingTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
-            <Flame size={14} style={{ color: "var(--gold)" }} />
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--dark)" }}>{profile?.streak_days??0}일 연속 기록 중</span>
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: 14, paddingTop: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            <Flame size={14} style={{ color: "var(--terra)" }} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{profile?.streak_days ?? 0}일 연속 기록 중</span>
           </div>
         </div>
       </div>

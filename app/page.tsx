@@ -5,12 +5,13 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
 import { createClient } from "@/lib/supabase";
-import { Flame, ChevronRight, LogOut, Loader2 } from "lucide-react";
+import { ChevronRight, LogOut, Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [lastQT, setLastQT] = useState<any>(null);
+  const [todayVerse, setTodayVerse] = useState<any>(null);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
 
@@ -19,15 +20,14 @@ export default function HomePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
-
       const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (p) setProfile(p);
-
       const { data: qt } = await supabase.from("qt_records").select("bible_ref,key_verse,created_at")
         .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (qt) setLastQT(qt);
-
       const today = new Date().toISOString().split("T")[0];
+      const { data: ci } = await supabase.from("daily_checkins").select("verse,mission").eq("user_id", user.id).eq("date", today).maybeSingle();
+      if (ci) setTodayVerse(ci);
       const { data: tqt } = await supabase.from("qt_records").select("id").eq("user_id", user.id).eq("date", today).maybeSingle();
       const { data: tc } = await supabase.from("daily_checkins").select("id").eq("user_id", user.id).eq("date", today).maybeSingle();
       setTodayDone({ qt: !!tqt, prayer: !!tc });
@@ -43,85 +43,99 @@ export default function HomePage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--dark)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <div style={{ fontSize: 40 }}>🌱</div>
-      <Loader2 size={24} style={{ color: "var(--gold)" }} className="spin" />
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div style={{ fontSize: 48 }}>🌱</div>
+      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
     </div>
   );
 
   const streak = profile?.streak_days ?? 0;
 
   return (
-    <div className="page">
+    <div className="page fade-in">
       {/* 헤더 */}
-      <div style={{ background: "var(--dark)", padding: "56px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <p style={{ color: "var(--muted)", fontSize: 12, marginBottom: 4 }}>좋은 아침이에요</p>
-          <h1 style={{ color: "white", fontSize: 20, fontWeight: 600 }}>{profile?.name ?? "성도"}님의 정원</h1>
+          <div className="header-greeting">Good morning,</div>
+          <div className="header-title">{profile?.name ?? "성도"}님의<br /><em>정원</em></div>
         </div>
-        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--muted)", marginTop: 4 }}>
+        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8 }}>
           <LogOut size={18} />
         </button>
       </div>
 
       {/* 나무 */}
-      <div style={{ background: "var(--dark)" }}>
-        <TreeGrowth days={streak} />
-      </div>
+      <TreeGrowth days={streak} />
 
-      {/* 연속 기록 */}
-      <div style={{ background: "var(--dark)", padding: "0 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Flame size={14} style={{ color: "var(--gold)" }} />
-          <span style={{ color: "var(--gold)", fontSize: 12, fontWeight: 500 }}>{streak}일 연속 기록 중</span>
+      {/* 오늘의 말씀 */}
+      <div style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">오늘의 말씀</div>
+        <div className="card-sage">
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--sage)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
+            {todayVerse?.verse ? "오늘 받은 말씀" : "아직 말씀을 받지 않았어요"}
+          </div>
+          {todayVerse?.verse ? (
+            <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
+              "{todayVerse.verse}"
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>
+              오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요
+            </div>
+          )}
+          <Link href="/checkin">
+            <button className="btn-sage" style={{ marginTop: 12 }}>
+              {todayVerse ? "말씀 다시 보기" : "오늘의 말씀 받기"} <ChevronRight size={16} />
+            </button>
+          </Link>
         </div>
-        <span style={{ color: "var(--muted)", fontSize: 12 }}>100일까지 {Math.max(0, 100-streak)}일 남았어요</span>
       </div>
 
-      {/* CTA */}
-      <div style={{ padding: "20px 16px 0" }}>
-        <Link href="/checkin">
-          <button className="btn-gold">
-            오늘의 말씀 받기 <ChevronRight size={18} />
-          </button>
-        </Link>
-      </div>
-
-      {/* 최근 큐티 */}
-      {lastQT && (
-        <div style={{ padding: "20px 16px 0" }}>
-          <p className="section-label">최근 큐티</p>
-          <div className="card-dark">
-            <p style={{ color: "var(--gold)", fontSize: 11, fontWeight: 500, marginBottom: 8 }}>{lastQT.bible_ref}</p>
-            <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>"{lastQT.key_verse}"</p>
+      {/* 오늘의 결단 */}
+      {todayVerse?.mission && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <div className="sec-label">오늘의 결단</div>
+          <div className="card-terra">
+            <div style={{ fontSize: 9, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>AI 추천 결단</div>
+            <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>{todayVerse.mission}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", background: "rgba(255,255,255,0.6)", borderRadius: 10 }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, border: "1.5px solid var(--terra)", flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: "var(--text2)" }}>오늘 이 결단을 실천할게요</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* 오늘의 루틴 */}
-      <div style={{ padding: "20px 16px 0" }}>
-        <p className="section-label">오늘의 루틴</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">오늘의 루틴</div>
+        <div style={{ display: "flex", gap: 8 }}>
           {[
             { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖" },
             { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏" },
+            { label: "결단", href: "/checkin", done: !!todayVerse?.mission, icon: "✊" },
           ].map(({ label, href, done, icon }) => (
-            <Link key={href} href={href}>
-              <div style={{
-                background: done ? "var(--dark)" : "white",
-                border: `1px solid ${done ? "var(--dark-border)" : "var(--stone)"}`,
-                borderRadius: 12, padding: 16
-              }}>
-                <span style={{ fontSize: 22, display: "block", marginBottom: 8 }}>{icon}</span>
-                <p style={{ fontSize: 13, fontWeight: 500, color: done ? "var(--muted)" : "var(--dark)", textDecoration: done ? "line-through" : "none" }}>{label}</p>
-                <p style={{ fontSize: 10, color: done ? "var(--gold)" : "var(--muted)", marginTop: 2 }}>
-                  {done ? "완료 ✓" : "아직 안 했어요"}
-                </p>
+            <Link key={href} href={href} style={{ flex: 1 }}>
+              <div style={{ background: done ? "var(--sage-light)" : "var(--white)", border: `1px solid ${done ? "#C5DEC3" : "var(--border)"}`, borderRadius: 16, padding: "14px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: done ? "var(--sage)" : "var(--text)" }}>{label}</div>
+                <div style={{ fontSize: 9, color: done ? "var(--sage)" : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
               </div>
             </Link>
           ))}
         </div>
       </div>
+
+      {/* 최근 큐티 */}
+      {lastQT && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <div className="sec-label">최근 큐티</div>
+          <div className="card">
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--terra)", marginBottom: 6 }}>{lastQT.bible_ref}</div>
+            <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{lastQT.key_verse}"</div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>

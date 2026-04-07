@@ -44,29 +44,27 @@ export default function CheckinPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--warm)", paddingBottom: 140 }}>
-      <div style={{ background: "var(--dark)", padding: "56px 20px 24px" }}>
-        <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--muted)", marginBottom: 16 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 120 }}>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
+        <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
         </button>
-        <h1 style={{ color: "white", fontSize: 20, fontWeight: 600 }}>오늘 마음이 어때요?</h1>
-        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>여러 개 선택해도 좋아요</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif", lineHeight: 1.2 }}>오늘 마음이<br />어때요?</h1>
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>여러 개 선택해도 좋아요</p>
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
         {EMOTIONS.map(group => (
-          <div key={group.category} style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
-              {group.category}
-            </p>
-            <div className="emotion-grid">
+          <div key={group.category} style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>{group.category}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 7 }}>
               {group.items.map(item => {
                 const on = selected.includes(item.id);
                 return (
-                  <button key={item.id} onClick={() => toggle(item.id)} className={`emotion-btn ${on ? "selected" : ""}`}>
-                    <span className="emotion-icon">{item.icon}</span>
-                    <span className="emotion-name">{item.label}</span>
-                    <span className="emotion-sub">{item.sub}</span>
+                  <button key={item.id} onClick={() => toggle(item.id)} style={{ background: on ? "var(--text)" : "var(--white)", border: `1px solid ${on ? "var(--text)" : "var(--border)"}`, borderRadius: 14, padding: "10px 6px 9px", textAlign: "center", cursor: "pointer", transition: "all 0.12s" }}>
+                    <span style={{ fontSize: 20, display: "block", marginBottom: 4 }}>{item.icon}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, display: "block", color: on ? "var(--terra)" : "var(--text)" }}>{item.label}</span>
+                    <span style={{ fontSize: 8, color: "var(--text3)", display: "block", marginTop: 2 }}>{item.sub}</span>
                   </button>
                 );
               })}
@@ -76,19 +74,19 @@ export default function CheckinPage() {
       </div>
 
       {selected.length > 0 && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid var(--stone)", padding: 16, zIndex: 50 }}>
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "var(--white)", borderTop: "1px solid var(--border)", padding: 16, zIndex: 50 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
             {selected.map(id => {
               const item = EMOTIONS.flatMap(g => g.items).find(e => e.id === id);
               return item ? (
-                <span key={id} style={{ background: "var(--dark)", color: "var(--gold)", fontSize: 11, fontWeight: 500, padding: "4px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 }}>
+                <span key={id} style={{ background: "var(--text)", color: "var(--terra)", fontSize: 11, fontWeight: 500, padding: "4px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 }}>
                   {item.icon} {item.label}
                 </span>
               ) : null;
             })}
           </div>
-          <button className="btn-gold" onClick={() => router.push(`/checkin/result?emotions=${selected.join(",")}`)}>
-            말씀 받기
+          <button className="btn-sage" onClick={() => router.push(`/checkin/result?emotions=${selected.join(",")}`)}>
+            말씀 받기 →
           </button>
         </div>
       )}
