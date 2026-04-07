@@ -83,7 +83,7 @@ export default function CommunityPage() {
               {prayers.map(p => (
                 <div key={p.id} className="prayer-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ display: "flex", align: "center", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--terra-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "var(--terra-dark)", flexShrink: 0 }}>
                         {p.is_anonymous ? "익" : (p.profiles?.name?.[0] ?? "?")}
                       </div>
