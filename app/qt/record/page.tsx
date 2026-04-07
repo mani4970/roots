@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { ChevronLeft, Loader2, Share2, Check } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy } from "lucide-react";
 
 const LABELS: Record<string, string> = {
   opening_prayer: "들어가는 기도",
@@ -24,16 +24,14 @@ function RecordContent() {
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
       if (!id) return;
       const supabase = createClient();
       const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
-      if (data) {
-        setRecord(data);
-        setShared(data.visibility === "all");
-      }
+      if (data) { setRecord(data); setShared(data.visibility === "all"); }
       setLoading(false);
     }
     load();
@@ -42,35 +40,49 @@ function RecordContent() {
   async function shareToComm() {
     setSharing(true);
     const supabase = createClient();
-    const newVisibility = shared ? "private" : "all";
-    await supabase.from("qt_records").update({ visibility: newVisibility }).eq("id", id);
+    await supabase.from("qt_records").update({ visibility: shared ? "private" : "all" }).eq("id", id);
     setShared(!shared);
     setSharing(false);
   }
 
-  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>기록을 찾을 수 없어요</p></div>;
+  function copyAll() {
+    if (!record) return;
+    const lines = [
+      `📖 ${record.bible_ref}`,
+      record.passage ? `\n${record.passage}` : "",
+      record.key_verse ? `\n🌿 붙잡은 말씀\n${record.key_verse}` : "",
+      record.meditation ? `\n💭 묵상\n${record.meditation}` : "",
+      record.decision ? `\n✊ 결단\n${record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i+1}. ${d}`).join("\n")}` : "",
+      "\n\n— Roots 앱",
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>기록을 찾을 수 없어요</p></div>;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>돌아가기</span>
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
           {new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra)" }}>{record.bible_ref}</h1>
-        {record.bible_version && (
-          <span style={{ fontSize: 10, color: "var(--text3)", marginTop: 2, display: "block" }}>{record.bible_version}</span>
-        )}
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{record.bible_ref}</h1>
       </div>
 
-      {/* 커뮤니티 나누기 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={shareToComm} disabled={sharing} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 14, border: `1px solid ${shared ? "var(--sage)" : "var(--border)"}`, background: shared ? "var(--sage-light)" : "var(--white)", cursor: "pointer", fontSize: 13, fontWeight: 500, color: shared ? "var(--sage-dark)" : "var(--text2)", width: "100%" }}>
-          {sharing ? <Loader2 size={16} className="spin" /> : shared ? <Check size={16} style={{ color: "var(--sage)" }} /> : <Share2 size={16} />}
-          {shared ? "커뮤니티에 공유 중 (취소하려면 클릭)" : "커뮤니티에 나누기"}
+      {/* 액션 버튼들 */}
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
+        <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
+          <Copy size={14} /> {copied ? "복사됨!" : "전체 복사"}
+        </button>
+        <button onClick={shareToComm} disabled={sharing} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: `1px solid ${shared ? "var(--sage)" : "var(--border)"}`, background: shared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: shared ? "var(--sage-dark)" : "var(--text2)" }}>
+          {sharing ? <Loader2 size={14} className="spin" /> : shared ? <Check size={14} /> : <Share2 size={14} />}
+          {shared ? "공유 중" : "커뮤니티 나누기"}
         </button>
       </div>
 
@@ -79,10 +91,22 @@ function RecordContent() {
           const value = record[key];
           if (!value) return null;
           const isVerse = key === "key_verse" || key === "passage";
+          const isDecision = key === "decision";
+
           return (
             <div key={key} className="card">
               <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{label}</p>
-              <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: isVerse ? "italic" : "normal" }}>{value}</p>
+              {isDecision ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
+                    <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}.</span> {d}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: isVerse ? "italic" : "normal" }}>{value}</p>
+              )}
             </div>
           );
         })}
@@ -93,7 +117,7 @@ function RecordContent() {
 
 export default function RecordPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <RecordContent />
     </Suspense>
   );

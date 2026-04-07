@@ -34,13 +34,18 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <div style={{ fontSize: 60, marginBottom: 16 }}>🌱</div>
-        <h1 style={{ fontSize: 32, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif", marginBottom: 6 }}>Roots</h1>
+        <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
+          <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M40 65 Q25 55 22 40 Q35 42 40 55" fill="#7A9D7A" opacity="0.85"/>
+          <path d="M40 58 Q55 48 58 33 Q45 35 40 48" fill="#5C8A58" opacity="0.85"/>
+          <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
+        </svg>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
         <p style={{ color: "var(--text3)", fontSize: 13 }}>말씀에 뿌리내리고, 함께 자라다</p>
       </div>
 
       <div style={{ width: "100%", maxWidth: 360 }}>
-        <button onClick={handleGoogle} disabled={gLoading} style={{ width: "100%", background: "var(--white)", color: "var(--text)", fontSize: 14, fontWeight: 500, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, cursor: "pointer" }}>
+        <button onClick={handleGoogle} disabled={gLoading} style={{ width: "100%", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 500, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, cursor: "pointer" }}>
           {gLoading ? <Loader2 size={18} className="spin" /> : (
             <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -60,11 +65,12 @@ export default function LoginPage() {
 
         <div style={{ marginBottom: 10 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>이메일</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-field" />
+          {/* font-size: 16px로 모바일 줌 방지 */}
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-field" style={{ fontSize: 16 }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>비밀번호</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
         </div>
 
         {error && <p style={{ color: "#E05050", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{error}</p>}
@@ -75,7 +81,7 @@ export default function LoginPage() {
 
         <p style={{ textAlign: "center", marginTop: 20, color: "var(--text3)", fontSize: 14 }}>
           계정이 없으신가요?{" "}
-          <Link href="/signup" style={{ color: "var(--terra)", fontWeight: 600 }}>회원가입</Link>
+          <Link href="/signup" style={{ color: "var(--sage-dark)", fontWeight: 600 }}>회원가입</Link>
         </p>
       </div>
     </div>
