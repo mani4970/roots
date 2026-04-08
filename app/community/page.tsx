@@ -29,6 +29,7 @@ export default function CommunityPage() {
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
   const [savingGroup, setSavingGroup] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
@@ -61,7 +62,12 @@ export default function CommunityPage() {
       }
     } else {
       const savedGroups = localStorage.getItem("community_groups");
-      if (savedGroups) setGroups(JSON.parse(savedGroups));
+      if (savedGroups) {
+        const all = JSON.parse(savedGroups);
+        // 공개 그룹 + 내가 만든/참여한 비공개 그룹
+        const visible = all.filter((g: any) => g.isPublic || g.members.includes(user.id));
+        setGroups(visible);
+      }
     }
     setLoading(false);
   }
@@ -102,6 +108,7 @@ export default function CommunityPage() {
       id: Date.now().toString(),
       name: groupName.trim(),
       desc: groupDesc.trim(),
+      isPublic,
       createdBy: userId,
       members: [userId],
       createdAt: new Date().toISOString(),
@@ -109,7 +116,7 @@ export default function CommunityPage() {
     const updated = [...groups, newGroup];
     setGroups(updated);
     localStorage.setItem("community_groups", JSON.stringify(updated));
-    setGroupName(""); setGroupDesc(""); setShowGroupForm(false); setSavingGroup(false);
+    setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
   }
 
   function joinGroup(groupId: string) {
@@ -135,7 +142,7 @@ export default function CommunityPage() {
     const link = `${APP_URL}/join?group=${group.id}`;
     const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇`;
     if (navigator.share) {
-      navigator.share({ title: `Roots - ${group.name}`, text, url: link });
+      navigator.share({ title: `Roots - ${group.name}`, text });
     } else {
       copyInviteLink(group.id);
     }
@@ -145,7 +152,7 @@ export default function CommunityPage() {
   function shareApp() {
     const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
     if (navigator.share) {
-      navigator.share({ title: "Roots 앱 초대", text, url: APP_URL });
+      navigator.share({ title: "Roots 앱 초대", text });
     } else {
       navigator.clipboard.writeText(text);
     }
@@ -290,7 +297,12 @@ export default function CommunityPage() {
                   <div key={g.id} className="card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{g.name}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{g.name}</p>
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.isPublic ? "var(--sage-light)" : "var(--bg3)", color: g.isPublic ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.isPublic ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
+                            {g.isPublic ? "공개" : "비공개"}
+                          </span>
+                        </div>
                         {g.desc && <p style={{ fontSize: 12, color: "var(--text3)" }}>{g.desc}</p>}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
@@ -348,6 +360,22 @@ export default function CommunityPage() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>소개 (선택)</label>
                 <textarea className="textarea-field" rows={2} placeholder="그룹을 소개해주세요..." value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
+              </div>
+              {/* 공개/비공개 선택 */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>공개 설정</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setIsPublic(true)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${isPublic ? "var(--sage)" : "var(--border)"}`, background: isPublic ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
+                    <div style={{ fontSize: 16, marginBottom: 3 }}>🌍</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: isPublic ? "var(--sage-dark)" : "var(--text)" }}>공개</div>
+                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>누구나 볼 수 있어요</div>
+                  </button>
+                  <button onClick={() => setIsPublic(false)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${!isPublic ? "var(--sage)" : "var(--border)"}`, background: !isPublic ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
+                    <div style={{ fontSize: 16, marginBottom: 3 }}>🔒</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: !isPublic ? "var(--sage-dark)" : "var(--text)" }}>비공개</div>
+                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>초대링크로만 참여</div>
+                  </button>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button className="btn-outline" onClick={() => setShowGroupForm(false)} style={{ flex: 1 }}>취소</button>

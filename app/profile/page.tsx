@@ -203,7 +203,7 @@ export default function ProfilePage() {
           onClick={() => {
             const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://roots-puce.vercel.app`;
             if (navigator.share) {
-              navigator.share({ title: "Roots 앱 초대", text, url: "https://roots-puce.vercel.app" });
+              navigator.share({ title: "Roots 앱 초대", text });
             } else {
               navigator.clipboard.writeText(text);
             }
