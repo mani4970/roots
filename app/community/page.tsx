@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Search, UserPlus, UserCheck } from "lucide-react";
 
 const REACTIONS = [
   { id: "bless", label: "축복해요", icon: "🙏" },
@@ -13,21 +13,20 @@ const REACTIONS = [
 
 const APP_URL = "https://roots-puce.vercel.app";
 
-
-function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number }) {
+function Avatar({ url, name, size = 28, emoji = "🙏" }: { url?: string; name?: string; size?: number; emoji?: string }) {
   if (url) return (
     <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
   );
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontSize: size * 0.4 }}>🙏</span>
+      <span style={{ fontSize: size * 0.4 }}>{emoji}</span>
     </div>
   );
 }
 
 export default function CommunityPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"prayer" | "qt" | "group">("prayer");
+  const [tab, setTab] = useState<"prayer" | "qt" | "group" | "people">("prayer");
   const [prayers, setPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
@@ -37,6 +36,8 @@ export default function CommunityPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
   const [myReactions, setMyReactions] = useState<Record<string, string>>({});
+
+  // 그룹
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
@@ -46,6 +47,21 @@ export default function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
+  // 그룹 초대 (팔로잉)
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [followings, setFollowings] = useState<any[]>([]);
+  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+
+  // 사람 찾기
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [myFollowings, setMyFollowings] = useState<any[]>([]); // 팔로잉 목록
+  const [myFollowers, setMyFollowers] = useState<any[]>([]); // 팔로워 목록
+  const [peopleTab, setPeopleTab] = useState<"search" | "following" | "followers">("search");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadData(); }, [tab]);
 
@@ -61,6 +77,12 @@ export default function CommunityPage() {
     const myRx = localStorage.getItem(`comm_reactions_${user.id}`);
     if (myRx) setMyReactions(JSON.parse(myRx));
 
+    // 내 팔로잉 IDs 항상 로드
+    const { data: fRows } = await supabase.from("follows")
+      .select("following_id").eq("follower_id", user.id);
+    const fIds = new Set((fRows ?? []).map((r: any) => r.following_id));
+    setFollowingIds(fIds);
+
     if (tab === "prayer") {
       const { data } = await supabase.from("prayer_items")
         .select("*, profiles(name, avatar_url)").eq("visibility", "all").eq("is_answered", false)
@@ -68,10 +90,11 @@ export default function CommunityPage() {
       if (data) setPrayers(data);
 
     } else if (tab === "qt") {
+      const myGroupIds = Array.from(fIds).map(id => `group_${id}`);
       const { data: memberRows } = await supabase.from("group_members")
         .select("group_id").eq("user_id", user.id);
-      const myGroupIds = (memberRows ?? []).map((r: any) => `group_${r.group_id}`);
-      const visibilities = ["all", ...myGroupIds];
+      const myGIds = (memberRows ?? []).map((r: any) => `group_${r.group_id}`);
+      const visibilities = ["all", ...myGIds];
 
       const { data } = await supabase.from("qt_records")
         .select("*, profiles(name, avatar_url)").in("visibility", visibilities)
@@ -83,17 +106,14 @@ export default function CommunityPage() {
         setReactions(rxMap);
       }
 
-    } else {
-      // 내가 속한 그룹 ID
+    } else if (tab === "group") {
       const { data: memberRows } = await supabase.from("group_members")
         .select("group_id").eq("user_id", user.id);
       const myGroupIds = (memberRows ?? []).map((r: any) => r.group_id);
 
-      // 공개 그룹
       const { data: publicGroups } = await supabase.from("groups")
         .select("*").eq("is_public", true).order("created_at", { ascending: false });
 
-      // 내가 속한 비공개 그룹
       let myPrivateGroups: any[] = [];
       if (myGroupIds.length > 0) {
         const { data } = await supabase.from("groups")
@@ -103,16 +123,57 @@ export default function CommunityPage() {
 
       const all = [...(publicGroups ?? []), ...myPrivateGroups];
       const unique = all.filter((g, i, arr) => arr.findIndex(x => x.id === g.id) === i);
-
-      // 멤버 수 + 내 참여 여부
       const withMeta = await Promise.all(unique.map(async (g) => {
         const { count } = await supabase.from("group_members")
           .select("*", { count: "exact", head: true }).eq("group_id", g.id);
         return { ...g, member_count: count ?? 0, isMember: myGroupIds.includes(g.id) };
       }));
       setGroups(withMeta);
+
+    } else if (tab === "people") {
+      // 팔로잉/팔로워 목록
+      const { data: followingData } = await supabase.from("follows")
+        .select("following_id, profiles!follows_following_id_fkey(id, name, avatar_url)")
+        .eq("follower_id", user.id);
+      setMyFollowings((followingData ?? []).map((r: any) => r.profiles).filter(Boolean));
+
+      const { data: followerData } = await supabase.from("follows")
+        .select("follower_id, profiles!follows_follower_id_fkey(id, name, avatar_url)")
+        .eq("following_id", user.id);
+      setMyFollowers((followerData ?? []).map((r: any) => r.profiles).filter(Boolean));
     }
     setLoading(false);
+  }
+
+  async function searchUsers(query: string) {
+    if (!query.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    const supabase = createClient();
+    const { data } = await supabase.from("profiles")
+      .select("id, name, avatar_url")
+      .ilike("name", `%${query}%`)
+      .neq("id", userId)
+      .limit(20);
+    setSearchResults(data ?? []);
+    setSearching(false);
+  }
+
+  async function toggleFollow(targetId: string) {
+    const supabase = createClient();
+    if (followingIds.has(targetId)) {
+      // 언팔로우
+      await supabase.from("follows").delete()
+        .eq("follower_id", userId).eq("following_id", targetId);
+      setFollowingIds(prev => { const s = new Set(prev); s.delete(targetId); return s; });
+      setMyFollowings(prev => prev.filter(p => p.id !== targetId));
+    } else {
+      // 팔로우
+      await supabase.from("follows").insert({ follower_id: userId, following_id: targetId });
+      setFollowingIds(prev => new Set([...prev, targetId]));
+      // 팔로잉 목록에 추가
+      const target = searchResults.find(r => r.id === targetId) ?? myFollowers.find(r => r.id === targetId);
+      if (target) setMyFollowings(prev => [...prev, target]);
+    }
   }
 
   async function loadGroupDetail(group: any) {
@@ -125,6 +186,34 @@ export default function CommunityPage() {
       .order("created_at", { ascending: false }).limit(20);
     setGroupQts(data ?? []);
     setLoadingGroupQts(false);
+  }
+
+  async function openInviteModal(group: any) {
+    setShowInviteModal(true);
+    // 팔로잉 목록 로드 + 이미 멤버인지 확인
+    const supabase = createClient();
+    const { data: followingData } = await supabase.from("follows")
+      .select("following_id, profiles!follows_following_id_fkey(id, name, avatar_url)")
+      .eq("follower_id", userId);
+    const fList = (followingData ?? []).map((r: any) => r.profiles).filter(Boolean);
+
+    // 이미 멤버인 사람 확인
+    const { data: memberRows } = await supabase.from("group_members")
+      .select("user_id").eq("group_id", group.id);
+    const memberIds = new Set((memberRows ?? []).map((r: any) => r.user_id));
+    setInvitedIds(memberIds);
+    setFollowings(fList);
+  }
+
+  async function inviteToGroup(groupId: string, targetUserId: string) {
+    setInvitingId(targetUserId);
+    const supabase = createClient();
+    await supabase.from("group_members").upsert(
+      { group_id: groupId, user_id: targetUserId },
+      { onConflict: "group_id,user_id" }
+    );
+    setInvitedIds(prev => new Set([...prev, targetUserId]));
+    setInvitingId(null);
   }
 
   async function prayTogether(id: string) {
@@ -169,12 +258,7 @@ export default function CommunityPage() {
       created_by: userId,
     }).select().single();
 
-    if (error || !newGroup) {
-      console.error("그룹 생성 실패:", error);
-      setSavingGroup(false);
-      return;
-    }
-
+    if (error || !newGroup) { console.error("그룹 생성 실패:", error); setSavingGroup(false); return; }
     await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
     loadData();
@@ -198,16 +282,8 @@ export default function CommunityPage() {
   function copyInviteLink(groupId: string) {
     const link = `${APP_URL}/join?group=${groupId}`;
     navigator.clipboard.writeText(link).then(() => {
-      setCopiedId(groupId);
-      setTimeout(() => setCopiedId(null), 2000);
+      setCopiedId(groupId); setTimeout(() => setCopiedId(null), 2000);
     });
-  }
-
-  function shareInvite(group: any) {
-    const link = `${APP_URL}/join?group=${group.id}`;
-    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${link}`;
-    if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
-    else copyInviteLink(group.id);
   }
 
   function shareApp() {
@@ -220,8 +296,10 @@ export default function CommunityPage() {
     { id: "prayer", label: "중보기도" },
     { id: "qt", label: "큐티 나눔" },
     { id: "group", label: "그룹" },
+    { id: "people", label: "사람 찾기" },
   ];
 
+  // 그룹 상세
   if (selectedGroup) {
     return (
       <div className="page">
@@ -236,7 +314,7 @@ export default function CommunityPage() {
             </span>
           </div>
           {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
-          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>👥 나 포함 {selectedGroup.member_count}명</p>
+          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>👥 {selectedGroup.member_count}명 참여 중</p>
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -250,17 +328,15 @@ export default function CommunityPage() {
               {copiedId === selectedGroup.id ? <Check size={13} /> : <Copy size={13} />}
               {copiedId === selectedGroup.id ? "복사됨!" : "링크 복사"}
             </button>
-            <button onClick={() => shareInvite(selectedGroup)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
-              <Share2 size={13} />초대
+            <button onClick={() => openInviteModal(selectedGroup)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
+              <UserPlus size={13} />팔로잉 초대
             </button>
           </div>
 
           <div style={{ marginTop: 8 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>그룹 큐티 나눔</p>
             {loadingGroupQts ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
-                <Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" />
-              </div>
+              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
             ) : groupQts.length === 0 ? (
               <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
                 <p style={{ fontSize: 24, marginBottom: 8 }}>📖</p>
@@ -273,7 +349,7 @@ export default function CommunityPage() {
                   <div key={r.id} className="card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={28} />
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "익명"}</span>
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
@@ -286,6 +362,45 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
+
+        {/* 팔로잉 초대 모달 */}
+        {showInviteModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "70vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>팔로잉에서 초대</h2>
+                <button onClick={() => setShowInviteModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              {followings.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "32px 0" }}>
+                  <p style={{ fontSize: 13, color: "var(--text3)" }}>팔로잉 목록이 없어요</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>사람 찾기 탭에서 먼저 팔로우해보세요!</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {followings.map(person => {
+                    const isAlready = invitedIds.has(person.id);
+                    const isInviting = invitingId === person.id;
+                    return (
+                      <div key={person.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                        <Avatar url={person.avatar_url} name={person.name} size={40} emoji="🌱" />
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{person.name}</span>
+                        {isAlready ? (
+                          <span style={{ fontSize: 11, color: "var(--text3)", background: "var(--bg3)", padding: "6px 12px", borderRadius: 20 }}>이미 멤버</span>
+                        ) : (
+                          <button onClick={() => inviteToGroup(selectedGroup.id, person.id)} disabled={isInviting} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 20, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
+                            {isInviting ? <Loader2 size={12} className="spin" /> : <UserPlus size={12} />}
+                            초대
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         <BottomNav />
       </div>
     );
@@ -304,9 +419,9 @@ export default function CommunityPage() {
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--sage-dark)" }}>앱 초대</span>
           </button>
         </div>
-        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginTop: 12, overflowX: "auto" }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", borderBottom: tab === t.id ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, color: tab === t.id ? "var(--sage-dark)" : "var(--text3)" }}>
+            <button key={t.id} onClick={() => setTab(t.id as any)} style={{ flexShrink: 0, padding: "10px 14px", background: "none", border: "none", borderBottom: tab === t.id ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, color: tab === t.id ? "var(--sage-dark)" : "var(--text3)", whiteSpace: "nowrap" }}>
               {t.label}
             </button>
           ))}
@@ -318,6 +433,83 @@ export default function CommunityPage() {
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
             <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
           </div>
+
+        ) : tab === "people" ? (
+          // ─── 사람 찾기 탭 ───
+          <div>
+            {/* 검색창 */}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text3)" }} />
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="이름으로 검색..."
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); searchUsers(e.target.value); }}
+                style={{ width: "100%", padding: "11px 12px 11px 36px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", fontSize: 14, boxSizing: "border-box" }}
+              />
+              {searching && <Loader2 size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--sage)" }} className="spin" />}
+            </div>
+
+            {/* 탭: 검색결과 / 팔로잉 / 팔로워 */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              {[
+                { id: "search", label: "검색 결과" },
+                { id: "following", label: `팔로잉 ${myFollowings.length}` },
+                { id: "followers", label: `팔로워 ${myFollowers.length}` },
+              ].map(t => (
+                <button key={t.id} onClick={() => setPeopleTab(t.id as any)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${peopleTab === t.id ? "var(--sage)" : "var(--border)"}`, background: peopleTab === t.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, fontWeight: peopleTab === t.id ? 700 : 400, color: peopleTab === t.id ? "var(--sage-dark)" : "var(--text3)" }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 리스트 */}
+            {(() => {
+              const list = peopleTab === "search" ? searchResults
+                : peopleTab === "following" ? myFollowings
+                : myFollowers;
+
+              if (peopleTab === "search" && !searchQuery) return (
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <p style={{ fontSize: 32, marginBottom: 10 }}>🔍</p>
+                  <p style={{ fontSize: 14, color: "var(--text3)" }}>이름으로 검색해보세요</p>
+                </div>
+              );
+              if (list.length === 0) return (
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <p style={{ fontSize: 32, marginBottom: 10 }}>👤</p>
+                  <p style={{ fontSize: 14, color: "var(--text3)" }}>
+                    {peopleTab === "search" ? "검색 결과가 없어요"
+                      : peopleTab === "following" ? "아직 팔로잉이 없어요"
+                      : "아직 팔로워가 없어요"}
+                  </p>
+                </div>
+              );
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {list.map((person: any) => {
+                    const isFollowing = followingIds.has(person.id);
+                    return (
+                      <div key={person.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--border)" }}>
+                        <Avatar url={person.avatar_url} name={person.name} size={44} emoji="🌱" />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{person.name}</p>
+                          {isFollowing && <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>팔로잉 중</p>}
+                        </div>
+                        <button onClick={() => toggleFollow(person.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 20, border: `1px solid ${isFollowing ? "var(--border)" : "var(--sage)"}`, background: isFollowing ? "var(--bg3)" : "var(--sage-light)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: isFollowing ? "var(--text3)" : "var(--sage-dark)", flexShrink: 0 }}>
+                          {isFollowing ? <UserCheck size={13} /> : <UserPlus size={13} />}
+                          {isFollowing ? "팔로잉" : "팔로우"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
         ) : tab === "prayer" ? (
           prayers.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px 0" }}>
@@ -336,22 +528,17 @@ export default function CommunityPage() {
                     <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                   </div>
                   <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12 }}>{p.content}</p>
-                  <button
-                    onClick={() => prayTogether(p.id)}
-                    disabled={prayedIds.has(p.id)}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.has(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.has(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.has(p.id) ? "default" : "pointer" }}
-                  >
+                  <button onClick={() => prayTogether(p.id)} disabled={prayedIds.has(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.has(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.has(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.has(p.id) ? "default" : "pointer" }}>
                     <span style={{ fontSize: 14 }}>{prayedIds.has(p.id) ? "✅" : "🙏"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.has(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
-                      {prayedIds.has(p.id)
-                        ? `기도했어요 · ${p.prayer_count ?? 0}명`
-                        : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
+                      {prayedIds.has(p.id) ? `기도했어요 · ${p.prayer_count ?? 0}명` : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
                     </span>
                   </button>
                 </div>
               ))}
             </div>
           )
+
         ) : tab === "qt" ? (
           qtShares.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px 0" }}>
@@ -367,7 +554,7 @@ export default function CommunityPage() {
                   <div key={r.id} className="card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={28} />
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "익명"}</span>
                         {r.visibility !== "all" && <span style={{ fontSize: 9, color: "var(--text3)", background: "var(--bg3)", padding: "2px 6px", borderRadius: 8 }}>그룹</span>}
                       </div>
@@ -399,7 +586,9 @@ export default function CommunityPage() {
               })}
             </div>
           )
+
         ) : (
+          // ─── 그룹 탭 ───
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button onClick={() => setShowGroupForm(true)} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={16} /> 새 그룹 만들기
@@ -435,6 +624,7 @@ export default function CommunityPage() {
         )}
       </div>
 
+      {/* 그룹 만들기 모달 */}
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
