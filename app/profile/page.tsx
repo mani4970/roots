@@ -82,9 +82,16 @@ export default function ProfilePage() {
       return;
     }
     const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-    // DB에는 원본 URL 저장, state에도 타임스탬프 붙여서 캐시 방지
     const urlWithTs = `${publicUrl}?t=${Date.now()}`;
-    await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
+    // DB 저장 - 에러 체크 포함
+    const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
+    if (dbError) {
+      console.error("프로필 사진 DB 저장 실패:", dbError);
+      setPhotoError("사진 저장 실패: " + dbError.message);
+      setUploadingPhoto(false);
+      return;
+    }
+    console.log("프로필 사진 저장 성공:", urlWithTs);
     setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
     setUploadingPhoto(false);
   }

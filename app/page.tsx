@@ -36,11 +36,7 @@ export default function HomePage() {
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
-  // 초기값을 바로 localStorage에서 읽어서 깜빡임 없애기
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !localStorage.getItem("onboarding_done");
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
   const celebrationShownRef = useRef(false);
 
@@ -82,6 +78,7 @@ export default function HomePage() {
       celebrationShownRef.current = true;
     }
 
+    if (!localStorage.getItem("onboarding_done")) { setShowOnboarding(true); }
     setLoading(false);
   }
 
@@ -124,8 +121,9 @@ export default function HomePage() {
   }
 
   function toggleMyDecision(i: number) {
+    if (myDecisions[i].done) return;
     const today = new Date().toISOString().split("T")[0];
-    const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
+    const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
     setMyDecisions(updated);
     localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
     if (!myDecisions[i].done && !celebrationShownRef.current) {
