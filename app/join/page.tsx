@@ -19,15 +19,44 @@ function JoinContent() {
     async function load() {
       if (!groupId) { setError("잘못된 초대 링크예요"); setLoading(false); return; }
       const supabase = createClient();
-      // Supabase에서 그룹 정보 가져오기
-      const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).single();
-      if (error || !data) {
-        setError("그룹을 찾을 수 없어요");
-        setLoading(false);
-        return;
+
+      // 로그인 여부 확인
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 비공개 그룹도 초대링크로 접근할 수 있게:
+      // 1. 공개 그룹이면 바로 조회
+      // 2. 비공개 그룹이면 로그인 후 group_members를 통해 조회하거나, 직접 id로 조회
+      // RLS 정책: created_by = auth.uid() OR id IN (group_members) OR is_public = true
+      // 초대링크로 오는 경우 로그인 전이면 그룹 이름을 보여줘야 하므로
+      // → group_id를 알고 있으면 RLS bypass 없이도 group 기본 정보는 공개로 설정
+
+      const { data, error: fetchError } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("id", groupId)
+        .maybeSingle();
+
+      if (fetchError || !data) {
+        // RLS 때문에 못 읽는 경우 - group_members에 직접 insert 시도 후 그룹 읽기
+        // 일단 그룹이 존재하는지 확인 (로그인된 경우)
+        if (user) {
+          // 로그인된 경우: 임시로 멤버 추가 후 재조회 (참여 의도가 있으므로)
+          const { data: grp } = await supabase.rpc("get_group_by_invite", { p_group_id: groupId });
+          if (grp) {
+            setGroup(grp);
+          } else {
+            // fallback: 그룹 이름 없이 참여만 가능하게
+            setGroup({ id: groupId, name: "초대된 그룹", description: "", is_public: false });
+          }
+        } else {
+          // 비로그인: 로그인 후 처리
+          setGroup({ id: groupId, name: "초대된 그룹", description: "", is_public: false });
+        }
+      } else {
+        setGroup(data);
       }
-      setGroup(data);
-      // 멤버 수
+
+      // 멤버 수 조회
       const { count } = await supabase.from("group_members")
         .select("*", { count: "exact", head: true }).eq("group_id", groupId);
       setMemberCount(count ?? 0);
@@ -44,7 +73,6 @@ function JoinContent() {
       router.push(`/login?redirect=/join?group=${groupId}`);
       return;
     }
-    // 이미 멤버인지 확인
     const { data: existing } = await supabase.from("group_members")
       .select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
     if (!existing) {
@@ -81,7 +109,9 @@ function JoinContent() {
           </div>
         ) : (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>그룹 초대</p>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>
+              {group?.is_public ? "공개 그룹 초대" : "🔒 비공개 그룹 초대"}
+            </p>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{group?.name}</h2>
             {group?.description && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{group.description}</p>}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 20 }}>
