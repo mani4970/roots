@@ -382,8 +382,8 @@ function QTWriteContent() {
               </p>
             </div>
           )}
+          <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, padding: "2px 0 4px" }}>{step.hint}</p>
           <textarea className="textarea-field" rows={9} placeholder={step.placeholder} value={answers[step.id] ?? ""} onChange={e => set(step.id, e.target.value)} />
-          <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{step.hint}</p>
         </div>
       )}
 
