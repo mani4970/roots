@@ -135,11 +135,18 @@ export default function HomePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("daily_checkins").upsert({
-        user_id: user.id,
-        date: today,
-        decisions_done: JSON.stringify(updated.map(d => d.done)),
-      }, { onConflict: "user_id,date" });
+      // update 우선 시도, row 없으면 insert
+      const { error } = await supabase.from("daily_checkins")
+        .update({ decisions_done: JSON.stringify(updated.map(d => d.done)) })
+        .eq("user_id", user.id).eq("date", today);
+      if (error) {
+        // row가 없는 경우 insert
+        await supabase.from("daily_checkins").insert({
+          user_id: user.id,
+          date: today,
+          decisions_done: JSON.stringify(updated.map(d => d.done)),
+        });
+      }
     }
     if (!myDecisions[i].done && !celebrationShownRef.current) {
       if (!localStorage.getItem(`celebrated_${today}`)) {

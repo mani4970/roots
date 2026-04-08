@@ -86,21 +86,33 @@ export default function CommunityPage() {
 
     if (tab === "prayer") {
       const { data } = await supabase.from("prayer_items")
-        .select("*, profiles(name, avatar_url)")
+        .select("*")
         .eq("visibility", "all").eq("is_answered", false)
         .order("created_at", { ascending: false });
-      if (data) setPrayers(data);
+      if (data) {
+        // 프로필 별도 fetch
+        const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
+        const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
+        const profMap: Record<string, any> = {};
+        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+        setPrayers(data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+      }
 
     } else if (tab === "qt") {
       // 전체 커뮤니티 공유만 (visibility에 "all" 포함)
       const { data } = await supabase.from("qt_records")
-        .select("*, profiles(name, avatar_url)")
+        .select("*")
         .ilike("visibility", "%all%")
         .order("created_at", { ascending: false }).limit(30);
       if (data) {
-        setQtShares(data);
+        const uids2 = Array.from(new Set(data.map((r: any) => r.user_id)));
+        const { data: profs2 } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids2);
+        const profMap2: Record<string, any> = {};
+        (profs2 ?? []).forEach((p: any) => { profMap2[p.id] = p; });
+        const withProfs = data.map((r: any) => ({ ...r, profiles: profMap2[r.user_id] ?? null }));
+        setQtShares(withProfs);
         const rxMap: Record<string, Record<string, number>> = {};
-        data.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
+        withProfs.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
         setReactions(rxMap);
       }
 
@@ -136,13 +148,18 @@ export default function CommunityPage() {
     setLoadingGroupQts(true);
     const supabase = createClient();
     const { data } = await supabase.from("qt_records")
-      .select("*, profiles(name, avatar_url)")
+      .select("*")
       .ilike("visibility", `%group_${group.id}%`)
       .order("created_at", { ascending: false }).limit(30);
     if (data) {
-      setGroupQts(data);
+      const uids3 = Array.from(new Set(data.map((r: any) => r.user_id)));
+      const { data: profs3 } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids3);
+      const profMap3: Record<string, any> = {};
+      (profs3 ?? []).forEach((p: any) => { profMap3[p.id] = p; });
+      const withProfs3 = data.map((r: any) => ({ ...r, profiles: profMap3[r.user_id] ?? null }));
+      setGroupQts(withProfs3);
       const rxMap: Record<string, Record<string, number>> = {};
-      data.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
+      withProfs3.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
       setGroupReactions(rxMap);
     }
     setLoadingGroupQts(false);
