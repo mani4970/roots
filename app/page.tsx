@@ -37,30 +37,62 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const celebratedToday = useRef(false); // 오늘 이미 축하했는지 추적
   const [showRootsMan, setShowRootsMan] = useState(false);
+  const celebrationShownRef = useRef(false);
 
-  // 결단 완료 여부: 추천 결단 OR 나의 결단 중 하나라도 완료
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
   const allDone = todayDone.qt && todayDone.prayer && decisionDone;
 
   useEffect(() => { load(); }, []);
 
-  // 온보딩 — 모든 유저, localStorage에 done 없으면 표시
-  useEffect(() => {
-    if (!loading) {
-      const done = localStorage.getItem("onboarding_done");
-      if (!done) setShowOnboarding(true);
-    }
-  }, [loading]);
+  async function load() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.push("/login"); return; }
 
-  // allDone 되면 축하 — 오늘 한 번만
+    const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    if (p) setProfile(p);
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data: ci } = await supabase.from("daily_checkins")
+      .select("verse,mission,completed_mission,reference,message")
+      .eq("user_id", user.id).eq("date", today).maybeSingle();
+    if (ci) setTodayVerse(ci);
+
+    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
+    const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
+      .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
+
+    if (tqt?.decision) {
+      const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
+      const saved = localStorage.getItem(`decisions_${today}`);
+      const doneList: boolean[] = saved ? JSON.parse(saved) : decisions.map(() => false);
+      setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
+    }
+
+    const decisionVal = ci?.completed_mission ?? false;
+    setTodayDone({ qt: !!tqt, prayer: !!tp, decision: decisionVal });
+
+    // 오늘 이미 축하했으면 ref 세팅
+    if (localStorage.getItem(`celebrated_${today}`)) {
+      celebrationShownRef.current = true;
+    }
+
+    // 온보딩 — done 없으면 표시 (loading 완료 후 바로)
+    const onboardingDone = localStorage.getItem("onboarding_done");
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+
+    setLoading(false);
+  }
+
+  // allDone 감지 — 이미 축하했으면 스킵
   useEffect(() => {
-    if (allDone && !loading && !celebratedToday.current) {
+    if (!loading && allDone && !celebrationShownRef.current) {
       const today = new Date().toISOString().split("T")[0];
-      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
-      if (!alreadyCelebrated) {
-        celebratedToday.current = true;
+      if (!localStorage.getItem(`celebrated_${today}`)) {
+        celebrationShownRef.current = true;
         localStorage.setItem(`celebrated_${today}`, "true");
         const streak = profile?.streak_days ?? 0;
         setCelebration({
@@ -72,52 +104,21 @@ export default function HomePage() {
     }
   }, [allDone, loading]);
 
-  async function load() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
-    const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (p) setProfile(p);
-    const today = new Date().toISOString().split("T")[0];
-    const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,mission,completed_mission,reference,message")
-      .eq("user_id", user.id).eq("date", today).maybeSingle();
-    if (ci) setTodayVerse(ci);
-    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
-    const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
-      .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
-    if (tqt?.decision) {
-      const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
-      const saved = localStorage.getItem(`decisions_${today}`);
-      const doneList: boolean[] = saved ? JSON.parse(saved) : decisions.map(() => false);
-      setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
-    }
-    setTodayDone({ qt: !!tqt, prayer: !!tp, decision: ci?.completed_mission ?? false });
-    // 오늘 이미 모두 완료했으면 ref 세팅 (재방문 시 중복 방지)
-    const today2 = new Date().toISOString().split("T")[0];
-    if (localStorage.getItem(`celebrated_${today2}`)) {
-      celebratedToday.current = true;
-    }
-    setLoading(false);
-  }
-
   async function toggleAiDecision() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
     const newVal = !todayDone.decision;
-    // upsert: row가 없어도 생성됨
     await supabase.from("daily_checkins").upsert({
       user_id: user.id,
       date: today,
       completed_mission: newVal,
     }, { onConflict: "user_id,date" });
     setTodayDone(p => ({ ...p, decision: newVal }));
-    // 결단 완료 시 개별 축하
-    if (newVal && !celebratedToday.current) {
-      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
-      if (!alreadyCelebrated) {
+    if (newVal && !celebrationShownRef.current) {
+      const today2 = new Date().toISOString().split("T")[0];
+      if (!localStorage.getItem(`celebrated_${today2}`)) {
         setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
       }
     }
@@ -128,10 +129,8 @@ export default function HomePage() {
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
     setMyDecisions(updated);
     localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
-    // 결단 완료 시 개별 축하
-    if (!myDecisions[i].done && !celebratedToday.current) {
-      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
-      if (!alreadyCelebrated) {
+    if (!myDecisions[i].done && !celebrationShownRef.current) {
+      if (!localStorage.getItem(`celebrated_${today}`)) {
         setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
       }
     }
@@ -170,7 +169,10 @@ export default function HomePage() {
         show={celebration.show}
         message={celebration.message}
         subMessage={celebration.subMessage}
-        onClose={() => { setCelebration({ show: false, message: "", subMessage: "" }); if (celebration.message.includes("루틴")) setShowRootsMan(true); }}
+        onClose={() => {
+          setCelebration({ show: false, message: "", subMessage: "" });
+          if (celebration.message.includes("루틴")) setShowRootsMan(true);
+        }}
       />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -212,7 +214,7 @@ export default function HomePage() {
           <div className="sec-label">오늘의 추천 결단</div>
           <div className="card-terra">
             <div style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.65, marginBottom: 12 }}>{todayVerse.mission}</div>
-            <button onClick={toggleAiDecision} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.decision ? "var(--terra)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.decision ? "var(--terra)" : "rgba(196,149,106,0.3)"}`, cursor: "pointer", width: "100%" }}>
+            <button onClick={toggleAiDecision} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.decision ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.decision ? "var(--sage)" : "rgba(196,149,106,0.3)"}`, cursor: "pointer", width: "100%" }}>
               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${todayDone.decision ? "white" : "var(--terra)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {todayDone.decision && <Check size={12} style={{ color: "white" }} />}
               </div>

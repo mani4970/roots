@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [qtRecords, setQtRecords] = useState<any[]>([]);
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -25,20 +26,16 @@ export default function ProfilePage() {
     if (!user) { router.push("/login"); return; }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) { setProfile(p); setNewName(p.name ?? ""); }
-
-    // 이번 달 큐티 기록
     const now = new Date();
     const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
     const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).gte("date", firstDay);
     if (qt) setQtRecords(qt);
-
-    // 기도 통계
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     if (prayers) {
       setPrayerStats({
         total: prayers.length,
-        answered: prayers.filter(p => p.is_answered).length,
-        shared: prayers.filter(p => p.visibility === "all").length,
+        answered: prayers.filter((p: any) => p.is_answered).length,
+        shared: prayers.filter((p: any) => p.visibility === "all").length,
       });
     }
     setLoading(false);
@@ -59,24 +56,41 @@ export default function ProfilePage() {
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoError("");
+    // 5MB 제한
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("5MB 이하 이미지만 가능해요");
+      return;
+    }
     setUploadingPhoto(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const ext = file.name.split(".").pop();
-    const path = `avatars/${user.id}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-
-    if (!error) {
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
-      setProfile((p: any) => ({ ...p, avatar_url: publicUrl }));
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${user.id}/avatar.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) {
+      setPhotoError("업로드 실패: " + error.message);
+      setUploadingPhoto(false);
+      return;
     }
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+    // 캐시 방지용 타임스탬프
+    const urlWithTs = `${publicUrl}?t=${Date.now()}`;
+    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+    setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
     setUploadingPhoto(false);
   }
 
-  // 이번 달 캘린더
+  function shareApp() {
+    const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://roots-puce.vercel.app`;
+    if (navigator.share) {
+      navigator.share({ title: "Roots 앱 초대", text });
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+  }
+
   function renderCalendar() {
     const now = new Date();
     const year = now.getFullYear();
@@ -108,55 +122,56 @@ export default function ProfilePage() {
   return (
     <div className="page" style={{ paddingBottom: 80 }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
-        {/* 프로필 사진 + 이름 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* 사진 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* 프로필 사진 */}
           <div style={{ position: "relative", flexShrink: 0 }}>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="프로필" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <span style={{ fontSize: 28 }}>🌱</span>
+                <span style={{ fontSize: 26 }}>🌱</span>
               )}
             </div>
             <button
-              onClick={() => fileRef.current?.click()}
+              onClick={() => { setPhotoError(""); fileRef.current?.click(); }}
               disabled={uploadingPhoto}
-              style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              {uploadingPhoto ? <Loader2 size={10} style={{ color: "white" }} className="spin" /> : <Camera size={10} style={{ color: "white" }} />}
+              {uploadingPhoto ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>
 
-          {/* 이름 */}
-          <div style={{ flex: 1 }}>
+          {/* 이름 — overflow 방지 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
             {editingName ? (
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input
                   type="text"
                   value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--sage)", borderRadius: 10, padding: "6px 10px", color: "var(--text)", fontSize: 16, outline: "none" }}
+                  onChange={e => setNewName(e.target.value.slice(0, 20))}
+                  maxLength={20}
+                  style={{ flex: 1, minWidth: 0, background: "var(--bg2)", border: "1px solid var(--sage)", borderRadius: 10, padding: "7px 10px", color: "var(--text)", fontSize: 15, outline: "none" }}
                   autoFocus
                   onKeyDown={e => e.key === "Enter" && saveName()}
                 />
-                <button onClick={saveName} disabled={savingName} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--sage)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                  {savingName ? <Loader2 size={14} style={{ color: "white" }} className="spin" /> : <Check size={14} style={{ color: "white" }} />}
+                <button onClick={saveName} disabled={savingName} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: "50%", background: "var(--sage)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  {savingName ? <Loader2 size={12} style={{ color: "white" }} className="spin" /> : <Check size={12} style={{ color: "white" }} />}
                 </button>
-                <button onClick={() => { setEditingName(false); setNewName(profile?.name ?? ""); }} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                  <X size={14} style={{ color: "var(--text3)" }} />
+                <button onClick={() => { setEditingName(false); setNewName(profile?.name ?? ""); }} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <X size={12} style={{ color: "var(--text3)" }} />
                 </button>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{profile?.name ?? "성도"}</h1>
-                <button onClick={() => setEditingName(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)" }}>
-                  <Pencil size={14} />
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.name ?? "성도"}</h1>
+                <button onClick={() => setEditingName(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", flexShrink: 0 }}>
+                  <Pencil size={13} />
                 </button>
               </div>
             )}
-            <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>{profile?.streak_days ?? 0}일 연속 기록 중 🔥</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0}일 연속 기록 중 🔥</p>
+            {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
       </div>
@@ -197,19 +212,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 앱 초대하기 */}
+      {/* 친구 초대 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <button
-          onClick={() => {
-            const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://roots-puce.vercel.app`;
-            if (navigator.share) {
-              navigator.share({ title: "Roots 앱 초대", text });
-            } else {
-              navigator.clipboard.writeText(text);
-            }
-          }}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}
-        >
+        <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
           <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>친구 초대하기</span>
         </button>

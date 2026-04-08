@@ -36,7 +36,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
     if (trigger && !hasRun.current) {
       hasRun.current = true;
       // confetti 끝나고 1초 후 등장
-      setTimeout(() => startAnimation(), 1000);
+      setTimeout(() => startAnimation(), 1200);
     }
     if (!trigger) {
       hasRun.current = false;
@@ -69,7 +69,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
         // 2. 물주기 시작
         setTimeout(() => startWatering(), 200);
       }
-    }, 80);
+    }, 120);
   }
 
   function startWatering() {
@@ -82,11 +82,11 @@ export default function RootsMan({ trigger }: RootsManProps) {
       wf = (wf + 1) % WATER_FRAMES.length;
       count++;
       setFrame(WATER_FRAMES[wf]);
-      if (count >= 10) { // 5번 반복
+      if (count >= 20) { // 10번 반복
         clearInv();
-        setTimeout(() => startExit(), 300);
+        setTimeout(() => startExit(), 800);
       }
-    }, 200);
+    }, 280);
   }
 
   function startExit() {
@@ -97,7 +97,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
     let wf = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
-      x = Math.min(115, x + 3.5);
+      x = Math.min(115, x + 2.2);
       wf = (wf + 1) % WALK_FRAMES.length;
       setPosX(x);
       setFrame(WALK_FRAMES[wf]);
@@ -106,7 +106,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
         setPhase("done");
         hasRun.current = false; // 다음에 다시 쓸 수 있도록
       }
-    }, 80);
+    }, 120);
   }
 
   if (phase === "idle" || phase === "done") return null;

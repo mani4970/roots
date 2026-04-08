@@ -114,12 +114,12 @@ export default function QTPage() {
 
                 {/* 해당 연도 기록 목록 */}
                 {expandedYear === year && (
-                  <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 14px 14px", overflow: "hidden" }}>
+                  <div style={{ borderRadius: "0 0 14px 14px", overflow: "hidden" }}>
                     {byYear[year].map((r: any, idx: number) => (
                       <button
                         key={r.id}
                         onClick={() => router.push(`/qt/record?id=${r.id}`)}
-                        style={{ width: "100%", textAlign: "left", cursor: "pointer", padding: "12px 14px", background: "var(--bg)", borderBottom: idx < byYear[year].length - 1 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 10 }}
+                        style={{ width: "100%", textAlign: "left", cursor: "pointer", padding: "12px 14px", background: "var(--bg)", borderTop: idx > 0 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 10 }}
                       >
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 3 }}>
