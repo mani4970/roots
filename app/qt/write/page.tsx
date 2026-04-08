@@ -336,19 +336,26 @@ function QTWriteContent() {
               </p>
             </div>
           )}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>적용</label>
-            <textarea className="textarea-field" rows={3} placeholder="오늘 이 말씀을 삶에서 어떻게 적용할 건가요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+          {/* 설명 먼저 */}
+          <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
+              <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
+              <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 하나님의 능력이 드러나게 하는 것입니다.
+            </p>
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>결단</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
+            <textarea className="textarea-field" rows={3} placeholder="이 말씀 앞에서 어떤 마음을 품기로 결심했나요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <input type="text" className="input-field" placeholder={`결단 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                  <input type="text" className="input-field" placeholder={`행동 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && (
                     <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", flexShrink: 0 }}>
                       <Trash2 size={16} />
@@ -358,10 +365,9 @@ function QTWriteContent() {
               ))}
             </div>
             <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-              <Plus size={14} /> 결단 추가하기
+              <Plus size={14} /> 행동 추가하기
             </button>
           </div>
-          <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{step.hint}</p>
         </div>
 
       ) : (
