@@ -24,7 +24,7 @@ export default function HomePage() {
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
   const [loading, setLoading] = useState(true);
-  const [celebration, setCelebration] = useState({ show: false, message: "" });
+  const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // 3개 모두 완료 여부
@@ -42,10 +42,20 @@ export default function HomePage() {
     }
   }, [loading, profile]);
 
-  // allDone 되면 축하
+  // allDone 되면 단계별 메시지
   useEffect(() => {
     if (allDone && !loading) {
-      setCelebration({ show: true, message: "오늘 루틴 완료!" });
+      const streak = profile?.streak_days ?? 0;
+      let subMsg = "";
+      if (streak <= 1) subMsg = "씨앗이 땅속에서 뿌리를 내리기 시작했어요!";
+      else if (streak <= 14) subMsg = "씨앗이 조금씩 움트고 있어요!";
+      else if (streak <= 29) subMsg = "새싹이 햇빛을 향해 자라고 있어요!";
+      else if (streak <= 59) subMsg = "묘목이 점점 단단해지고 있어요!";
+      else if (streak <= 79) subMsg = "나무가 무럭무럭 자라고 있어요!";
+      else if (streak <= 99) subMsg = "나무가 점점 더 자라고 있어요!";
+      else if (streak <= 114) subMsg = "열매를 맺은 나무처럼 풍성해지고 있어요!";
+      else subMsg = "아름다운 정원이 완성되어 가고 있어요!";
+      setCelebration({ show: true, message: "오늘 루틴 완료!", subMessage: subMsg });
     }
   }, [allDone]);
 
@@ -120,7 +130,7 @@ export default function HomePage() {
   return (
     <div className="page fade-in">
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
-      <Celebration show={celebration.show} message={celebration.message} onClose={() => setCelebration({ show: false, message: "" })} />
+      <Celebration show={celebration.show} message={celebration.message} subMessage={celebration.subMessage} onClose={() => setCelebration({ show: false, message: "", subMessage: "" })} />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>

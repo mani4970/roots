@@ -27,7 +27,9 @@ export default function QTCompletePage() {
         <div style={{ fontSize: 56, marginBottom: 16 }}>🌱</div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginBottom: 10, lineHeight: 1.3 }}>큐티 완료!</h1>
         <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 6 }}>오늘도 말씀 앞에 앉았어요.</p>
-        <p style={{ color: "var(--sage-dark)", fontSize: 13, lineHeight: 1.65, marginBottom: 28 }}>오늘 하루 하나님과 동행한<br />당신을 축복합니다 ✨</p>
+        <p style={{ color: "var(--sage-dark)", fontSize: 13, lineHeight: 1.65, marginBottom: 28 }}>
+          오늘 하루 하나님과 동행할<br />당신을 축복합니다 ✨
+        </p>
         <Link href="/"><button className="btn-sage">홈으로 돌아가기</button></Link>
       </div>
     </div>

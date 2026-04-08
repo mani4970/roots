@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-import RootsMan from "./RootsMan";
 
 interface TreeGrowthProps {
   days: number;
@@ -49,15 +48,8 @@ function getTreeState(days: number, lastCheckin: string | null) {
   return { img, stage: stages[img - 1], isWithering, isRegressed, daysSince };
 }
 
-function getTimeOfDay() {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 20) return "day";
-  return "night";
-}
-
-export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
   const { img, stage, isWithering, isRegressed, daysSince } = getTreeState(days, lastCheckin);
-  const isNight = getTimeOfDay() === "night";
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -75,29 +67,20 @@ export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeG
       )}
 
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        {/* 밤엔 dark.png, 낮엔 나무 이미지 */}
-        {isNight ? (
-          <Image src="/dark.png" alt="밤" fill style={{ objectFit: "cover", objectPosition: "50% 20%" }} priority />
-        ) : (
-          <Image
-            src={`/tree${img}.png`}
-            alt={stage.label}
-            fill
-            style={{ objectFit: "cover", filter: isWithering ? "grayscale(50%) brightness(0.7)" : "none" }}
-            priority
-          />
-        )}
-
-        {/* 배지 */}
+        <Image
+          src={`/tree${img}.png`}
+          alt={stage.label}
+          fill
+          style={{ objectFit: "cover", filter: isWithering ? "grayscale(50%) brightness(0.7)" : "none" }}
+          priority
+        />
         <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
           {stage.label}
         </div>
         <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.8)", color: "var(--text)", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
           {days}일째
         </div>
-
         {isWithering && <div style={{ position: "absolute", inset: 0, background: "rgba(100,70,30,0.2)", zIndex: 2 }} />}
-        <RootsMan animate={allDone} />
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
