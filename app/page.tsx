@@ -65,8 +65,12 @@ export default function HomePage() {
 
     if (tqt?.decision) {
       const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
-      const saved = localStorage.getItem(`decisions_${today}`);
-      const doneList: boolean[] = saved ? JSON.parse(saved) : decisions.map(() => false);
+      // DB에서 done 상태 읽기 (daily_checkins.decisions_done)
+      const { data: dc } = await supabase.from("daily_checkins")
+        .select("decisions_done").eq("user_id", user.id).eq("date", today).maybeSingle();
+      const doneList: boolean[] = dc?.decisions_done
+        ? JSON.parse(dc.decisions_done)
+        : decisions.map(() => false);
       setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
     }
 
@@ -122,12 +126,21 @@ export default function HomePage() {
     }
   }
 
-  function toggleMyDecision(i: number) {
+  async function toggleMyDecision(i: number) {
     if (myDecisions[i].done) return;
     const today = new Date().toISOString().split("T")[0];
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
     setMyDecisions(updated);
-    localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
+    // DB에 저장
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("daily_checkins").upsert({
+        user_id: user.id,
+        date: today,
+        decisions_done: JSON.stringify(updated.map(d => d.done)),
+      }, { onConflict: "user_id,date" });
+    }
     if (!myDecisions[i].done && !celebrationShownRef.current) {
       if (!localStorage.getItem(`celebrated_${today}`)) {
         setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });

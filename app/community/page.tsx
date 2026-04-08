@@ -71,8 +71,14 @@ export default function CommunityPage() {
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
 
-    const savedPrayed = localStorage.getItem(`comm_prayed_${user.id}`);
-    if (savedPrayed) setPrayedIds(JSON.parse(savedPrayed));
+    // prayedIds: localStorage + DB 병합
+    const savedPrayed: string[] = JSON.parse(localStorage.getItem(`comm_prayed_${user.id}`) ?? "[]");
+    const { data: prayLogs } = await supabase.from("user_prayer_logs")
+      .select("prayer_id").eq("user_id", user.id);
+    const dbPrayed = (prayLogs ?? []).map((r: any) => r.prayer_id);
+    const merged = Array.from(new Set([...savedPrayed, ...dbPrayed]));
+    setPrayedIds(merged);
+    if (merged.length > 0) localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify(merged));
     const myRx = localStorage.getItem(`comm_reactions_${user.id}`);
     if (myRx) setMyReactions(JSON.parse(myRx));
     const myGRx = localStorage.getItem(`group_reactions_${user.id}`);
@@ -145,6 +151,16 @@ export default function CommunityPage() {
   async function prayTogether(id: string) {
     if (prayedIds.includes(id)) return;
     const supabase = createClient();
+    // DB에서도 이미 기도했는지 확인 (다른 기기 중복 방지)
+    const { data: logCheck } = await supabase.from("user_prayer_logs")
+      .select("id").eq("user_id", userId).eq("prayer_id", id).maybeSingle();
+    if (logCheck) {
+      // 이미 기도했으면 prayedIds만 업데이트하고 리턴
+      if (!prayedIds.includes(id)) setPrayedIds(prev => [...prev, id]);
+      return;
+    }
+    // 기도 로그 저장
+    await supabase.from("user_prayer_logs").insert({ user_id: userId, prayer_id: id });
     const { data: current } = await supabase.from("prayer_items")
       .select("prayer_count").eq("id", id).single();
     const newCount = (current?.prayer_count ?? 0) + 1;

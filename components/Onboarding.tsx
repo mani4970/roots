@@ -7,45 +7,35 @@ const SLIDES = [
     title: "Roots에 오신 걸 환영해요",
     desc: "말씀에 뿌리내리고, 함께 자라다.\n매일 5분, 하나님과 깊어지는 시간을 만들어요.",
     sub: null,
-    bg: "var(--sage-light)",
-    accent: "var(--sage-dark)",
   },
   {
     emoji: "💭",
     title: "감정 체크인으로 시작해요",
-    desc: "오늘 내 마음 상태를 선택하면\nAI가 오늘의 말씀과 구체적 결단을 건네줘요.",
-    sub: "\"기도하세요\"가 아니라\n\"오늘 점심에 5분, 핸드폰 내려놓고 주님께 말 걸어보세요\"처럼요.",
-    bg: "var(--terra-light)",
-    accent: "var(--terra-dark)",
+    desc: "오늘 내 마음 상태를 선택하면 AI가\n오늘의 말씀과 구체적 결단을 건네줘요.",
+    sub: "\"기도하세요\"가 아니라\n\"오늘 점심 5분, 핸드폰 내려놓고 주님께 말 걸어보세요\"처럼요.",
   },
   {
     emoji: "📖",
     title: "큐티 6단계로 말씀을 심어요",
-    desc: "① 들어가는 기도\n② 본문 & 요약\n③ 느낌과 묵상\n④ 적용과 결단\n⑤ 올려드리는 기도",
+    desc: "① 들어가는 기도\n② 본문 요약\n③ 붙잡은 말씀\n④ 느낌과 묵상\n⑤ 적용과 결단\n⑥ 올려드리는 기도",
     sub: "각 단계마다 예시가 있어서\n처음이어도 혼자서 할 수 있어요!",
-    bg: "var(--sage-light)",
-    accent: "var(--sage-dark)",
   },
   {
     emoji: "🌳",
     title: "매일 하면 나무가 자라요",
     desc: "큐티, 기도, 결단을 완료할수록\n나무가 자라 150일이면 정원이 완성돼요!",
     sub: "7일 쉬면 나무가 시들어요 🥺\n매일 조금씩, 꾸준히가 핵심이에요.",
-    bg: "var(--beige-light)",
-    accent: "var(--beige)",
   },
   {
     emoji: "👥",
     title: "함께하면 더 오래 해요",
     desc: "그룹을 만들어 큐티를 나누고\n서로의 기도제목을 위해 함께 기도해요.",
     sub: "혼자 하는 신앙에서\n함께 자라는 신앙으로.",
-    bg: "var(--sage-light)",
-    accent: "var(--sage-dark)",
   },
 ];
 
 async function requestNotificationPermission() {
-  if (!("Notification" in window)) return false;
+  if (typeof window === "undefined" || !("Notification" in window)) return false;
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") return false;
   const permission = await Notification.requestPermission();
@@ -67,12 +57,8 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
   }
 
   function next() {
-    if (!isLast) {
-      setPage(p => p + 1);
-    } else {
-      // 마지막 슬라이드 → 알림 권한 요청 단계
-      setShowNotifStep(true);
-    }
+    if (!isLast) setPage(p => p + 1);
+    else setShowNotifStep(true);
   }
 
   async function handleNotifRequest() {
@@ -80,13 +66,9 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     const granted = await requestNotificationPermission();
     setNotifGranted(granted);
     setRequesting(false);
-    if (granted) {
-      // 잠깐 후 완료
-      setTimeout(() => neverShow(), 1200);
-    }
+    if (granted) setTimeout(() => neverShow(), 1200);
   }
 
-  // 알림 권한 요청 단계
   if (showNotifStep) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
@@ -102,7 +84,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
               <div style={{ fontSize: 56, marginBottom: 16 }}>🔔</div>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 12, lineHeight: 1.3 }}>알림을 허용해주세요</h2>
               <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>
-                매일 아침 6시 큐티 알림과<br />저녁 9시 결단 점검 알림을 보내드려요.
+                매일 아침 큐티 알림으로<br />말씀 루틴을 놓치지 않아요.
               </p>
               <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 28 }}>알림이 없으면 루틴을 잊기 쉬워요 😢</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -122,34 +104,23 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
-      <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 360, overflow: "hidden" }}>
-        {/* 컬러 헤더 */}
-        <div style={{ background: slide.bg, padding: "32px 28px 24px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
-          {/* 도트 */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 }}>
-            {SLIDES.map((_, i) => (
-              <div key={i} style={{ width: i === page ? 20 : 6, height: 6, borderRadius: 3, background: i === page ? slide.accent : "rgba(0,0,0,0.15)", transition: "all 0.3s" }} />
-            ))}
+      <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 360, padding: "36px 28px 28px", textAlign: "center" }}>
+        {/* 도트 */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 28 }}>
+          {SLIDES.map((_, i) => (
+            <div key={i} style={{ width: i === page ? 20 : 6, height: 6, borderRadius: 3, background: i === page ? "var(--sage)" : "var(--border)", transition: "all 0.3s" }} />
+          ))}
+        </div>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>{slide.emoji}</div>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 14, lineHeight: 1.3 }}>{slide.title}</h2>
+        <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.85, whiteSpace: "pre-line", marginBottom: slide.sub ? 14 : 32 }}>{slide.desc}</p>
+        {slide.sub && (
+          <div style={{ background: "var(--bg3)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border)", marginBottom: 24 }}>
+            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, whiteSpace: "pre-line" }}>{slide.sub}</p>
           </div>
-          <div style={{ fontSize: 56, marginBottom: 14 }}>{slide.emoji}</div>
-          <h2 style={{ fontSize: 19, fontWeight: 800, color: slide.accent, lineHeight: 1.3 }}>{slide.title}</h2>
-        </div>
-
-        {/* 본문 */}
-        <div style={{ padding: "20px 28px 24px" }}>
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.85, whiteSpace: "pre-line", marginBottom: slide.sub ? 14 : 0, textAlign: "center" }}>{slide.desc}</p>
-          {slide.sub && (
-            <div style={{ background: "var(--bg3)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border)" }}>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, whiteSpace: "pre-line", textAlign: "center" }}>{slide.sub}</p>
-            </div>
-          )}
-        </div>
-
-        {/* 버튼 */}
-        <div style={{ padding: "0 24px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button onClick={next} className="btn-sage" style={{ fontSize: 14 }}>
-            {isLast ? "시작하기 🌱" : "다음 →"}
-          </button>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button onClick={next} className="btn-sage">{isLast ? "시작하기 🌱" : "다음 →"}</button>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={onClose} className="btn-outline" style={{ flex: 1, fontSize: 12 }}>닫기</button>
             <button onClick={neverShow} className="btn-outline" style={{ flex: 1, fontSize: 12 }}>다시 보지 않기</button>

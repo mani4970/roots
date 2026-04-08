@@ -208,14 +208,18 @@ function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const initVersion = params.get("version") ?? (typeof window !== "undefined" ? localStorage.getItem("bible_version") ?? "개역한글" : "개역한글");
+  const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
 
   // 날짜 선택 (기본: 오늘)
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // 형식 선택: "6step" | "sunday" | "free"
+  // 형식 선택: URL params 우선, 없으면 주일 자동
   const [mode, setMode] = useState<"6step" | "sunday" | "free">(() => {
+    if (initMode === "free") return "free";
+    if (initMode === "sunday") return "sunday";
+    if (initMode === "6step") return "6step";
     if (isSunday(todayStr)) return "sunday";
     return "6step";
   });
