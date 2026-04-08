@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 function RecordContent() {
   const router = useRouter();
@@ -11,11 +11,13 @@ function RecordContent() {
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
-  const [shared, setShared] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [myGroups, setMyGroups] = useState<any[]>([]);
-  const [selectedShare, setSelectedShare] = useState<"all" | string>("all");
+  // 다중 선택: "all" | groupId 배열
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  // 현재 공유 대상들
+  const [sharedTargets, setSharedTargets] = useState<string[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -25,16 +27,21 @@ function RecordContent() {
       const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
       if (data) {
         setRecord(data);
-        // "private" 또는 null/undefined가 아니면 공유 중
+        // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
         const v = data.visibility ?? "private";
-        setShared(v !== "private");
+        if (v !== "private") {
+          setSharedTargets(v.split(",").filter(Boolean));
+        }
       }
-      // 내가 속한 그룹
+      // 내가 속한 그룹 — Supabase에서 로드
       if (user) {
-        const savedGroups = localStorage.getItem("community_groups");
-        if (savedGroups) {
-          const all = JSON.parse(savedGroups);
-          setMyGroups(all.filter((g: any) => g.members.includes(user.id)));
+        const { data: memberRows } = await supabase.from("group_members")
+          .select("group_id").eq("user_id", user.id);
+        const gIds = (memberRows ?? []).map((r: any) => r.group_id);
+        if (gIds.length > 0) {
+          const { data: groupData } = await supabase.from("groups")
+            .select("id, name, is_public").in("id", gIds);
+          setMyGroups(groupData ?? []);
         }
       }
       setLoading(false);
@@ -42,21 +49,28 @@ function RecordContent() {
     load();
   }, [id]);
 
+  function toggleTarget(target: string) {
+    setSelectedTargets(prev =>
+      prev.includes(target) ? prev.filter(t => t !== target) : [...prev, target]
+    );
+  }
+
   async function doShare() {
+    if (selectedTargets.length === 0) return;
     setSharing(true);
     const supabase = createClient();
-    const newVisibility = selectedShare === "all" ? "all" : `group_${selectedShare}`;
-    // group_id 컬럼 없을 수 있으므로 visibility만 업데이트
     const { data: { user } } = await supabase.auth.getUser();
+    // visibility: "all,group_xxx,group_yyy" 형태로 저장
+    // 단 "all"이 있으면 그룹도 포함해서 쉼표로 합치기
+    const newVisibility = selectedTargets.join(",");
     const { error, data } = await supabase.from("qt_records")
       .update({ visibility: newVisibility })
       .eq("id", id)
-      .eq("user_id", user?.id) // user_id 명시적으로 추가
+      .eq("user_id", user?.id)
       .select();
-    console.log("doShare result - error:", error, "data:", data);
     if (!error && data && data.length > 0) {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
-      setShared(true);
+      setSharedTargets(selectedTargets);
     }
     setSharing(false);
     setShowShareModal(false);
@@ -65,24 +79,27 @@ function RecordContent() {
   async function unshare() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("unshare - user:", user?.id, "record id:", id);
-    const { error, data } = await supabase.from("qt_records")
+    const { error } = await supabase.from("qt_records")
       .update({ visibility: "private" })
       .eq("id", id)
-      .eq("user_id", user?.id) // user_id 명시적으로 추가
-      .select();
-    console.log("unshare result - error:", error, "data:", data);
+      .eq("user_id", user?.id);
     if (!error) {
       setRecord((r: any) => ({ ...r, visibility: "private" }));
-      setShared(false);
+      setSharedTargets([]);
     }
+  }
+
+  function openShareModal() {
+    // 현재 공유 중인 것들을 초기 선택으로
+    setSelectedTargets(sharedTargets.length > 0 ? [...sharedTargets] : []);
+    setShowShareModal(true);
   }
 
   function copyAll() {
     if (!record) return;
     const date = new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
     const decisions = record.decision
-      ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i+1}. ${d}`).join("\n")
+      ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
     const parts = [
       `📖 ${date} · ${record.bible_ref}`,
@@ -99,9 +116,22 @@ function RecordContent() {
     });
   }
 
+  function getShareLabel() {
+    if (sharedTargets.length === 0) return null;
+    const labels: string[] = [];
+    if (sharedTargets.includes("all")) labels.push("전체 커뮤니티");
+    sharedTargets.filter(t => t !== "all").forEach(t => {
+      const gId = t.startsWith("group_") ? t.replace("group_", "") : t;
+      const g = myGroups.find(g => g.id === gId);
+      if (g) labels.push(`'${g.name}'`);
+    });
+    return labels.length > 0 ? `${labels.join(", ")}에 공유 중` : null;
+  }
+
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
   if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>기록을 찾을 수 없어요</p></div>;
 
+  const isShared = sharedTargets.length > 0;
   const SECTIONS = [
     { key: "opening_prayer", label: "들어가는 기도" },
     { key: "summary", label: "본문 요약" },
@@ -111,17 +141,6 @@ function RecordContent() {
     { key: "decision", label: "행동 (결단)", isDecision: true },
     { key: "closing_prayer", label: "올려드리는 기도" },
   ];
-
-  const currentVisibilityLabel = () => {
-    if (!shared) return null;
-    if (record.visibility === "all") return "전체 커뮤니티에 공유 중";
-    if ((record.visibility ?? "").startsWith("group_")) {
-      const gId = record.visibility.replace("group_", "");
-      const g = myGroups.find((g: any) => g.id === gId);
-      return g ? `'${g.name}' 그룹에 공유 중` : "그룹에 공유 중";
-    }
-    return null;
-  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
@@ -133,8 +152,8 @@ function RecordContent() {
           {new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{record.bible_ref}</h1>
-        {shared && currentVisibilityLabel() && (
-          <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {currentVisibilityLabel()}</p>
+        {isShared && getShareLabel() && (
+          <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {getShareLabel()}</p>
         )}
       </div>
 
@@ -143,57 +162,85 @@ function RecordContent() {
         <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
           <Copy size={14} /> {copied ? "복사됨! ✓" : "전체 복사"}
         </button>
-        {shared ? (
-          <button onClick={unshare} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
-            <Check size={14} /> 공유 중 (취소)
+        {isShared ? (
+          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
+            <Check size={14} /> 공유 중 (수정)
           </button>
         ) : (
-          <button onClick={() => setShowShareModal(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
+          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
             <Share2 size={14} /> 나누기
+          </button>
+        )}
+        {isShared && (
+          <button onClick={unshare} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+            취소
           </button>
         )}
       </div>
 
-      {/* 공개 범위 선택 모달 */}
+      {/* 나누기 모달 */}
       {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>큐티 나누기</h2>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>어디에 나눌지 선택해주세요</p>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>큐티 나누기</h2>
+              <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)</p>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              <button onClick={() => setSelectedShare("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedShare === "all" ? "var(--sage)" : "var(--border)"}`, background: selectedShare === "all" ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
-                <Globe size={20} style={{ color: selectedShare === "all" ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedShare === "all" ? "var(--sage-dark)" : "var(--text)" }}>전체 커뮤니티</p>
+              {/* 전체 커뮤니티 */}
+              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>전체 커뮤니티</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>모든 Roots 사용자에게 공개</p>
                 </div>
-                {selectedShare === "all" && <Check size={16} style={{ color: "var(--sage)", marginLeft: "auto" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {selectedTargets.includes("all") && <Check size={12} style={{ color: "white" }} />}
+                </div>
               </button>
+
+              {/* 내 그룹들 */}
               {myGroups.length > 0 && (
                 <>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4 }}>내 그룹</p>
-                  {myGroups.map(g => (
-                    <button key={g.id} onClick={() => setSelectedShare(g.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedShare === g.id ? "var(--sage)" : "var(--border)"}`, background: selectedShare === g.id ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
-                      <Lock size={20} style={{ color: selectedShare === g.id ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: selectedShare === g.id ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
-                        <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>나 포함 {g.members.length}명 · {g.isPublic ? "공개" : "비공개"}</p>
-                      </div>
-                      {selectedShare === g.id && <Check size={16} style={{ color: "var(--sage)", marginLeft: "auto" }} />}
-                    </button>
-                  ))}
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>내 그룹</p>
+                  {myGroups.map(g => {
+                    const key = `group_${g.id}`;
+                    const isSelected = selectedTargets.includes(key);
+                    return (
+                      <button key={g.id} onClick={() => toggleTarget(key)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                        <Lock size={20} style={{ color: isSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{g.is_public ? "공개 그룹" : "비공개 그룹"}</p>
+                        </div>
+                        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {isSelected && <Check size={12} style={{ color: "white" }} />}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </>
               )}
+
               {myGroups.length === 0 && (
                 <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>
                   그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!
                 </p>
               )}
             </div>
+
+            {selectedTargets.length > 0 && (
+              <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
+                {selectedTargets.length}곳에 나누기
+              </p>
+            )}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>취소</button>
-              <button onClick={doShare} disabled={sharing} className="btn-sage" style={{ flex: 1 }}>
-                {sharing ? <Loader2 size={16} className="spin" /> : "나누기"}
+              <button onClick={doShare} disabled={sharing || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
+                {sharing ? <Loader2 size={16} className="spin" /> : `나누기${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
               </button>
             </div>
           </div>

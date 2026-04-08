@@ -18,12 +18,8 @@ export default function SignupPage() {
     if (password.length < 6) { setError("비밀번호는 6자 이상이어야 해요"); return; }
     setLoading(true); setError("");
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name: nickname } } });
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { name: nickname } } });
     if (error) { setError("회원가입에 실패했어요. 다시 시도해주세요."); setLoading(false); return; }
-    // profiles 테이블에 닉네임 저장
-    if (data.user) {
-      await supabase.from("profiles").upsert({ id: data.user.id, name: nickname }, { onConflict: "id" });
-    }
     router.push("/"); router.refresh();
   }
 
