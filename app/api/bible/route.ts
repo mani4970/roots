@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// ibibles.net 버전 코드
 const VERSION_MAP: Record<string, string> = {
   "개역한글": "kor",
   "개역개정": "kor_rev",
@@ -9,7 +8,6 @@ const VERSION_MAP: Record<string, string> = {
   "NIV": "eng_niv",
 };
 
-// 성경 책 코드 (ibibles.net 영어 약어)
 const BOOK_MAP: Record<string, string> = {
   "창세기": "gen", "출애굽기": "exo", "레위기": "lev", "민수기": "num",
   "신명기": "deu", "여호수아": "jos", "사사기": "jdg", "룻기": "rut",
@@ -36,50 +34,69 @@ export async function GET(req: NextRequest) {
   const version = searchParams.get("version") ?? "개역한글";
   const book = searchParams.get("book") ?? "요한복음";
   const chapter = searchParams.get("chapter") ?? "3";
-  const startVerse = searchParams.get("startVerse") ?? "16";
-  const endVerse = searchParams.get("endVerse") ?? startVerse;
+  const startVerse = parseInt(searchParams.get("startVerse") ?? "16");
+  const endVerse = parseInt(searchParams.get("endVerse") ?? String(startVerse));
 
   const vCode = VERSION_MAP[version] ?? "kor";
   const bCode = BOOK_MAP[book] ?? "joh";
 
-  // ibibles.net URL 형식: quote.php?kor-joh/3:16-3:18
-  const url = `https://ibibles.net/quote.php?${vCode}-${bCode}/${chapter}:${startVerse}-${chapter}:${endVerse}`;
-
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; Roots Bible App)" },
-      next: { revalidate: 86400 }, // 하루 캐시
+    // 절마다 개별 fetch해서 번호와 함께 조합
+    const verses: { num: number; text: string }[] = [];
+
+    for (let v = startVerse; v <= endVerse; v++) {
+      const url = `https://ibibles.net/quote.php?${vCode}-${bCode}/${chapter}:${v}`;
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          next: { revalidate: 86400 },
+        });
+        const html = await res.text();
+
+        if (html.includes("Bad Request") || html.includes("Host not allowed") || !html.trim()) {
+          continue;
+        }
+
+        // HTML 파싱 — <small> 태그 안의 절번호 제거하고 텍스트만 추출
+        let text = html
+          .replace(/<small[^>]*>.*?<\/small>/gi, "")
+          .replace(/<br\s*\/?>/gi, " ")
+          .replace(/<[^>]+>/g, "")
+          .replace(/&nbsp;/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/Bible Quote/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (text) {
+          verses.push({ num: v, text });
+        }
+      } catch {
+        // 절 하나 실패해도 계속
+      }
+    }
+
+    if (verses.length === 0) {
+      return NextResponse.json({
+        error: "본문을 불러올 수 없어요. 개역한글 버전을 사용해보세요."
+      }, { status: 404 });
+    }
+
+    // 절 번호와 함께 텍스트 조합
+    const formattedVerses = verses.map(v => `${v.num} ${v.text}`);
+    const fullText = formattedVerses.join("\n");
+    const reference = `${book} ${chapter}:${startVerse}${endVerse !== startVerse ? `-${endVerse}` : ""}`;
+
+    return NextResponse.json({
+      text: fullText,
+      verses: verses,          // 절별 배열 (붙잡은 말씀 선택용)
+      reference,
+      version,
     });
 
-    if (!res.ok) {
-      return NextResponse.json({ error: "성경 서버 연결 실패" }, { status: 502 });
-    }
-
-    const html = await res.text();
-
-    // HTML에서 텍스트 추출
-    // ibibles.net은 <small>절번호</small> 텍스트 형식
-    let text = html
-      .replace(/<small[^>]*>.*?<\/small>/gi, "") // 절 번호 제거
-      .replace(/<br\s*\/?>/gi, "\n") // br을 줄바꿈으로
-      .replace(/<[^>]+>/g, "") // 나머지 태그 제거
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .trim();
-
-    // 빈 줄 정리
-    text = text.split("\n").map(l => l.trim()).filter(l => l.length > 0).join("\n");
-
-    if (!text || text.includes("Bad Request") || text.includes("Host not allowed")) {
-      return NextResponse.json({ error: "본문을 불러올 수 없어요. 개역한글 버전을 사용해보세요." }, { status: 404 });
-    }
-
-    const reference = `${book} ${chapter}:${startVerse}${endVerse !== startVerse ? `-${endVerse}` : ""}`;
-    return NextResponse.json({ text, reference, version });
-
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "네트워크 오류가 발생했어요" }, { status: 500 });
   }
 }

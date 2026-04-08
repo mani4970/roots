@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import RootsMan from "./RootsMan";
 
 interface TreeGrowthProps {
@@ -52,72 +51,13 @@ function getTreeState(days: number, lastCheckin: string | null) {
 
 function getTimeOfDay() {
   const h = new Date().getHours();
-  if (h >= 5 && h < 17) return "day";
-  if (h >= 17 && h < 20) return "evening";
+  if (h >= 5 && h < 20) return "day";
   return "night";
-}
-
-// 새 스프라이트 — bird_sprite.png (1408x384, 6프레임)
-const BIRD_FRAMES = 6;
-const BIRD_W = 1408;
-const BIRD_FRAME_W = BIRD_W / BIRD_FRAMES; // 234.67
-
-function BirdSprite({ posX, posY, size = 26 }: { posX: string; posY: number; size?: number }) {
-  const [frame, setFrame] = useState(() => Math.floor(Math.random() * BIRD_FRAMES));
-  useEffect(() => {
-    const delay = Math.floor(Math.random() * 200);
-    const t = setTimeout(() => {
-      const interval = setInterval(() => setFrame(f => (f + 1) % BIRD_FRAMES), 130);
-      return () => clearInterval(interval);
-    }, delay);
-    return () => clearTimeout(t);
-  }, []);
-
-  const scale = size / BIRD_FRAME_W;
-  const renderH = Math.round(384 * scale);
-
-  return (
-    <div style={{ position: "absolute", left: posX, top: posY, width: size, height: renderH, overflow: "hidden", imageRendering: "pixelated", zIndex: 3 }}>
-      <img
-        src="/bird_sprite.png"
-        alt=""
-        style={{ position: "absolute", top: 0, left: -frame * BIRD_FRAME_W * scale, width: BIRD_W * scale, height: 384 * scale, imageRendering: "pixelated" }}
-      />
-    </div>
-  );
-}
-
-// 달 스프라이트 — moon.png (2816x1536, 6프레임, 위쪽 1/3이 달)
-const MOON_FRAMES = 6;
-const MOON_W = 2816;
-const MOON_FRAME_W = MOON_W / MOON_FRAMES;
-const MOON_H = 1536 / 3; // 달은 위쪽 512px
-
-function MoonSprite() {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setFrame(f => (f + 1) % MOON_FRAMES), 600);
-    return () => clearInterval(t);
-  }, []);
-  const size = 48;
-  const scale = size / MOON_FRAME_W;
-  const renderH = Math.round(MOON_H * scale);
-  return (
-    <div style={{ position: "absolute", top: 8, right: 12, width: size, height: renderH, overflow: "hidden", imageRendering: "pixelated", zIndex: 3 }}>
-      <img
-        src="/moon.png"
-        alt=""
-        style={{ position: "absolute", top: 0, left: -frame * MOON_FRAME_W * scale, width: MOON_W * scale, height: (1536 * scale), imageRendering: "pixelated" }}
-      />
-    </div>
-  );
 }
 
 export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeGrowthProps) {
   const { img, stage, isWithering, isRegressed, daysSince } = getTreeState(days, lastCheckin);
-  const timeOfDay = getTimeOfDay();
-  const isNight = timeOfDay === "night";
-  const isEvening = timeOfDay === "evening";
+  const isNight = getTimeOfDay() === "night";
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -134,8 +74,8 @@ export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeG
         </div>
       )}
 
-      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: isNight ? "#0f1628" : "var(--bg2)" }}>
-        {/* 배경 이미지 */}
+      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
+        {/* 밤엔 dark.png, 낮엔 나무 이미지 */}
         {isNight ? (
           <Image src="/dark.png" alt="밤" fill style={{ objectFit: "cover", objectPosition: "50% 20%" }} priority />
         ) : (
@@ -143,33 +83,10 @@ export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeG
             src={`/tree${img}.png`}
             alt={stage.label}
             fill
-            style={{
-              objectFit: "cover",
-              filter: isWithering ? "grayscale(50%) brightness(0.7)" : isEvening ? "sepia(20%) brightness(0.88)" : "none",
-            }}
+            style={{ objectFit: "cover", filter: isWithering ? "grayscale(50%) brightness(0.7)" : "none" }}
             priority
           />
         )}
-
-        {/* 저녁 오버레이 */}
-        {isEvening && <div style={{ position: "absolute", inset: 0, background: "rgba(60,30,10,0.25)", zIndex: 2 }} />}
-
-        {/* 낮: 해 (정적) + 새 3마리 */}
-        {timeOfDay === "day" && (
-          <>
-            {/* 해 — 정적 PNG, 움직이지 않음 */}
-            <div style={{ position: "absolute", top: 10, left: 14, width: 36, height: 36, zIndex: 3, imageRendering: "pixelated" }}>
-              <img src="/sun_static.png" alt="해" style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
-            </div>
-            {/* 새 3마리 — 각각 다른 위치, 프레임 오프셋으로 자연스럽게 */}
-            <BirdSprite posX="38%" posY={12} size={24} />
-            <BirdSprite posX="55%" posY={20} size={22} />
-            <BirdSprite posX="68%" posY={8} size={26} />
-          </>
-        )}
-
-        {/* 밤: 달 스프라이트 */}
-        {isNight && <MoonSprite />}
 
         {/* 배지 */}
         <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
@@ -180,7 +97,6 @@ export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeG
         </div>
 
         {isWithering && <div style={{ position: "absolute", inset: 0, background: "rgba(100,70,30,0.2)", zIndex: 2 }} />}
-
         <RootsMan animate={allDone} />
       </div>
 
