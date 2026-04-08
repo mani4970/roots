@@ -8,21 +8,29 @@ import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft }
 const REACTIONS = [
   { id: "bless", label: "축복해요", icon: "🙏" },
   { id: "cheer", label: "응원해요", icon: "💪" },
-  { id: "pray", label: "기도해요", icon: "✨" },
+  { id: "pray", label: "함께기도해요", icon: "✨" },
 ];
 
 const APP_URL = "https://roots-puce.vercel.app";
 
 function Avatar({ url, name, size = 28, emoji = "🙏" }: { url?: string; name?: string; size?: number; emoji?: string }) {
-  if (url) return (
-    <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-  );
+  if (url) return <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
       <span style={{ fontSize: size * 0.4 }}>{emoji}</span>
     </div>
   );
 }
+
+const SECTIONS = [
+  { key: "opening_prayer", label: "들어가는 기도" },
+  { key: "summary", label: "본문 요약" },
+  { key: "key_verse", label: "붙잡은 말씀", italic: true },
+  { key: "meditation", label: "느낌과 묵상" },
+  { key: "application", label: "성품 (적용)" },
+  { key: "decision", label: "행동 (결단)", isDecision: true },
+  { key: "closing_prayer", label: "올려드리는 기도" },
+];
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -33,7 +41,8 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // 큐티 나눔 반응
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
   const [myReactions, setMyReactions] = useState<Record<string, string>>({});
 
@@ -47,6 +56,11 @@ export default function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
+  const [groupReactions, setGroupReactions] = useState<Record<string, Record<string, number>>>({});
+  const [myGroupReactions, setMyGroupReactions] = useState<Record<string, string>>({});
+
+  // 큐티 전체보기 모달
+  const [detailQt, setDetailQt] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
 
@@ -61,6 +75,8 @@ export default function CommunityPage() {
     if (savedPrayed) setPrayedIds(JSON.parse(savedPrayed));
     const myRx = localStorage.getItem(`comm_reactions_${user.id}`);
     if (myRx) setMyReactions(JSON.parse(myRx));
+    const myGRx = localStorage.getItem(`group_reactions_${user.id}`);
+    if (myGRx) setMyGroupReactions(JSON.parse(myGRx));
 
     if (tab === "prayer") {
       const { data } = await supabase.from("prayer_items")
@@ -70,17 +86,10 @@ export default function CommunityPage() {
       if (data) setPrayers(data);
 
     } else if (tab === "qt") {
-      const { data: memberRows } = await supabase.from("group_members")
-        .select("group_id").eq("user_id", user.id);
-      const myGroupIds = (memberRows ?? []).map((r: any) => `group_${r.group_id}`);
-      const visibilities = ["all", ...myGroupIds];
-
-      // visibility가 단일값("all", "group_xxx") 또는 복합값("all,group_xxx")일 수 있음
-      // ilike로 각각 포함 여부 체크
-      const visibilityFilters = visibilities.map(v => `visibility.ilike.%${v}%`).join(",");
+      // 전체 커뮤니티 공유만 (visibility에 "all" 포함)
       const { data } = await supabase.from("qt_records")
         .select("*, profiles(name, avatar_url)")
-        .or(visibilityFilters)
+        .ilike("visibility", "%all%")
         .order("created_at", { ascending: false }).limit(30);
       if (data) {
         setQtShares(data);
@@ -123,31 +132,38 @@ export default function CommunityPage() {
     const { data } = await supabase.from("qt_records")
       .select("*, profiles(name, avatar_url)")
       .ilike("visibility", `%group_${group.id}%`)
-      .order("created_at", { ascending: false }).limit(20);
-    setGroupQts(data ?? []);
+      .order("created_at", { ascending: false }).limit(30);
+    if (data) {
+      setGroupQts(data);
+      const rxMap: Record<string, Record<string, number>> = {};
+      data.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
+      setGroupReactions(rxMap);
+    }
     setLoadingGroupQts(false);
   }
 
   async function prayTogether(id: string) {
     if (prayedIds.includes(id)) return;
     const supabase = createClient();
-    const { data: current } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+    const { data: current } = await supabase.from("prayer_items")
+      .select("prayer_count").eq("id", id).single();
     const newCount = (current?.prayer_count ?? 0) + 1;
-    await supabase.from("prayer_items").update({ prayer_count: newCount }).eq("id", id);
+    await supabase.from("prayer_items")
+      .update({ prayer_count: newCount }).eq("id", id);
     const newArr = [...prayedIds, id];
     setPrayedIds(newArr);
     if (userId) localStorage.setItem(`comm_prayed_${userId}`, JSON.stringify(newArr));
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
   }
 
+  // 큐티 나눔 탭 반응
   function reactToQT(qtId: string, reactionId: string) {
     const current = reactions[qtId] ?? {};
     const myPrev = myReactions[qtId];
     const updated = { ...current };
     if (myPrev === reactionId) {
       updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
-      const newMy = { ...myReactions };
-      delete newMy[qtId];
+      const newMy = { ...myReactions }; delete newMy[qtId];
       setMyReactions(newMy);
       if (userId) localStorage.setItem(`comm_reactions_${userId}`, JSON.stringify(newMy));
     } else {
@@ -160,6 +176,30 @@ export default function CommunityPage() {
     setReactions(prev => ({ ...prev, [qtId]: updated }));
   }
 
+  // 그룹 큐티 반응
+  function reactToGroupQT(qtId: string, reactionId: string) {
+    const current = groupReactions[qtId] ?? {};
+    const myPrev = myGroupReactions[qtId];
+    const updated = { ...current };
+    if (myPrev === reactionId) {
+      updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
+      const newMy = { ...myGroupReactions }; delete newMy[qtId];
+      setMyGroupReactions(newMy);
+      if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
+    } else {
+      if (myPrev) updated[myPrev] = Math.max(0, (updated[myPrev] ?? 1) - 1);
+      updated[reactionId] = (updated[reactionId] ?? 0) + 1;
+      const newMy = { ...myGroupReactions, [qtId]: reactionId };
+      setMyGroupReactions(newMy);
+      if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
+    }
+    setGroupReactions(prev => ({ ...prev, [qtId]: updated }));
+    // detailQt도 업데이트
+    if (detailQt?.id === qtId) {
+      setDetailQt((prev: any) => ({ ...prev, _reactions: { ...updated } }));
+    }
+  }
+
   async function createGroup() {
     if (!groupName.trim() || !userId) return;
     setSavingGroup(true);
@@ -170,7 +210,6 @@ export default function CommunityPage() {
       is_public: isPublic,
       created_by: userId,
     }).select().single();
-
     if (error || !newGroup) { console.error("그룹 생성 실패:", error); setSavingGroup(false); return; }
     await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
@@ -184,9 +223,7 @@ export default function CommunityPage() {
       { group_id: groupId, user_id: userId },
       { onConflict: "group_id,user_id" }
     );
-    setGroups(prev => prev.map(g =>
-      g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 } : g
-    ));
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 } : g));
     if (selectedGroup?.id === groupId) {
       setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 }));
     }
@@ -194,10 +231,7 @@ export default function CommunityPage() {
 
   function copyInviteLink(groupId: string) {
     const link = `${APP_URL}/join?group=${groupId}`;
-    navigator.clipboard.writeText(link).then(() => {
-      setCopiedId(groupId);
-      setTimeout(() => setCopiedId(null), 2000);
-    });
+    navigator.clipboard.writeText(link).then(() => { setCopiedId(groupId); setTimeout(() => setCopiedId(null), 2000); });
   }
 
   function shareInvite(group: any) {
@@ -213,6 +247,74 @@ export default function CommunityPage() {
     else navigator.clipboard.writeText(text);
   }
 
+  // 큐티 전체보기 모달
+  function QTDetailModal({ r, onClose, onReact, myRx, rxMap }: { r: any; onClose: () => void; onReact: (id: string, rx: string) => void; myRx: Record<string, string>; rxMap: Record<string, Record<string, number>> }) {
+    const rx = rxMap[r.id] ?? {};
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, overflowY: "auto" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 16px 40px" }}>
+          <div style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", width: "100%", maxWidth: 480, padding: "24px 20px" }}>
+            {/* 헤더 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} emoji="📖" />
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{r.profiles?.name ?? "이름 없음"}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}</p>
+                </div>
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={22} /></button>
+            </div>
+
+            {/* 본문 제목 */}
+            <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
+              <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{r.bible_ref}</p>
+              {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", opacity: 0.9 }}>"{r.key_verse}"</p>}
+            </div>
+
+            {/* 섹션들 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).map(({ key, label, italic, isDecision }) => (
+                <div key={key}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{label}</p>
+                  {isDecision ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {r[key].split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
+                        <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+                          <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}.</span> {d}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, fontStyle: italic ? "italic" : "normal" }}>{r[key]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* 반응 버튼 */}
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 16 }}>
+              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 10, fontWeight: 600 }}>이 말씀 묵상에 반응해주세요</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {REACTIONS.map(reaction => {
+                  const isSelected = myRx[r.id] === reaction.id;
+                  const count = rx[reaction.id] ?? 0;
+                  return (
+                    <button key={reaction.id} onClick={() => onReact(r.id, reaction.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 6px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer" }}>
+                      <span style={{ fontSize: 20 }}>{reaction.icon}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>{reaction.label}</span>
+                      {count > 0 && <span style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 700 }}>{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const TABS = [
     { id: "prayer", label: "중보기도" },
     { id: "qt", label: "큐티 나눔" },
@@ -224,7 +326,7 @@ export default function CommunityPage() {
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-          <button onClick={() => { setSelectedGroup(null); setGroupQts([]); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+          <button onClick={() => { setSelectedGroup(null); setGroupQts([]); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -238,6 +340,7 @@ export default function CommunityPage() {
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* 버튼들 */}
           <div style={{ display: "flex", gap: 8 }}>
             {!selectedGroup.isMember ? (
               <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ flex: 1 }}>참여하기</button>
@@ -253,6 +356,7 @@ export default function CommunityPage() {
             </button>
           </div>
 
+          {/* 그룹 큐티 목록 */}
           <div style={{ marginTop: 8 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>그룹 큐티 나눔</p>
             {loadingGroupQts ? (
@@ -267,23 +371,55 @@ export default function CommunityPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {groupQts.map(r => (
-                  <div key={r.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
+                {groupQts.map(r => {
+                  const rx = groupReactions[r.id] ?? {};
+                  return (
+                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                      {/* 카드 헤더 */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref}</p>
+                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+
+                      {/* 반응 버튼 - 클릭 시 상세보기로 전파 안 되게 */}
+                      <div style={{ display: "flex", gap: 6, marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                        {REACTIONS.map(reaction => {
+                          const isSelected = myGroupReactions[r.id] === reaction.id;
+                          const count = rx[reaction.id] ?? 0;
+                          return (
+                            <button key={reaction.id} onClick={() => reactToGroupQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 20, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 11, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>
+                              <span style={{ fontSize: 13 }}>{reaction.icon}</span>
+                              <span>{reaction.label}</span>
+                              {count > 0 && <span style={{ fontWeight: 700 }}>{count}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: 6 }}>{r.bible_ref}</p>
-                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>"{r.key_verse.slice(0, 80)}{r.key_verse.length > 80 ? "..." : ""}"</p>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
+
+        {/* 큐티 전체보기 모달 */}
+        {detailQt && (
+          <QTDetailModal
+            r={detailQt}
+            onClose={() => setDetailQt(null)}
+            onReact={reactToGroupQT}
+            myRx={myGroupReactions}
+            rxMap={groupReactions}
+          />
+        )}
+
         <BottomNav />
       </div>
     );
@@ -338,7 +474,9 @@ export default function CommunityPage() {
                   <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
                     <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
-                      {prayedIds.includes(p.id) ? `기도했어요 · ${p.prayer_count ?? 0}명` : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
+                      {prayedIds.includes(p.id)
+                        ? `기도했어요 · ${p.prayer_count ?? 0}명`
+                        : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
                     </span>
                   </button>
                 </div>
@@ -347,52 +485,61 @@ export default function CommunityPage() {
           )
 
         ) : tab === "qt" ? (
-          qtShares.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 0" }}>
-              <p style={{ fontSize: 32, marginBottom: 10 }}>📖</p>
-              <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 나눈 큐티가 없어요</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {qtShares.map(r => {
-                const isExpanded = expandedId === r.id;
-                const rx = reactions[r.id] ?? {};
-                return (
-                  <div key={r.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
-                        {r.visibility !== "all" && <span style={{ fontSize: 9, color: "var(--text3)", background: "var(--bg3)", padding: "2px 6px", borderRadius: 8 }}>그룹</span>}
+          <>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>전체 커뮤니티에 공유된 큐티예요</p>
+            {qtShares.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <p style={{ fontSize: 32, marginBottom: 10 }}>📖</p>
+                <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 나눈 큐티가 없어요</p>
+                <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>큐티 기록에서 "전체 커뮤니티"로 나눠보세요!</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {qtShares.map(r => {
+                  const rx = reactions[r.id] ?? {};
+                  return (
+                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref}</p>
+                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+
+                      <div style={{ display: "flex", gap: 6, marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                        {REACTIONS.map(reaction => {
+                          const isSelected = myReactions[r.id] === reaction.id;
+                          const count = rx[reaction.id] ?? 0;
+                          return (
+                            <button key={reaction.id} onClick={() => reactToQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 20, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 11, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>
+                              <span style={{ fontSize: 13 }}>{reaction.icon}</span>
+                              <span>{reaction.label}</span>
+                              {count > 0 && <span style={{ fontWeight: 700 }}>{count}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: 6 }}>{r.bible_ref}</p>
-                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                    {isExpanded && r.meditation && (
-                      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginBottom: 10 }}>
-                        <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginBottom: 4 }}>느낌과 묵상</p>
-                        <p style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.65 }}>{r.meditation}</p>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {REACTIONS.map(reaction => (
-                          <button key={reaction.id} onClick={() => reactToQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", borderRadius: 20, border: `1px solid ${myReactions[r.id] === reaction.id ? "var(--sage)" : "var(--border)"}`, background: myReactions[r.id] === reaction.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 11, color: myReactions[r.id] === reaction.id ? "var(--sage-dark)" : "var(--text3)" }}>
-                            <span style={{ fontSize: 12 }}>{reaction.icon}</span>
-                            {(rx[reaction.id] ?? 0) > 0 && <span>{rx[reaction.id]}</span>}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={() => setExpandedId(isExpanded ? null : r.id)} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>
-                        {isExpanded ? "접기" : "더보기"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 큐티 전체보기 모달 (큐티 나눔 탭) */}
+            {detailQt && (
+              <QTDetailModal
+                r={detailQt}
+                onClose={() => setDetailQt(null)}
+                onReact={reactToQT}
+                myRx={myReactions}
+                rxMap={reactions}
+              />
+            )}
+          </>
 
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -428,6 +575,7 @@ export default function CommunityPage() {
         )}
       </div>
 
+      {/* 그룹 만들기 모달 */}
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
