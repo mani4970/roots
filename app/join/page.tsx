@@ -9,24 +9,31 @@ function JoinContent() {
   const params = useSearchParams();
   const groupId = params.get("group");
   const [group, setGroup] = useState<any>(null);
+  const [memberCount, setMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!groupId) { setError("잘못된 초대 링크예요"); setLoading(false); return; }
-    // localStorage에서 그룹 찾기
-    const saved = localStorage.getItem("community_groups");
-    if (saved) {
-      const groups = JSON.parse(saved);
-      const found = groups.find((g: any) => g.id === groupId);
-      if (found) setGroup(found);
-      else setError("그룹을 찾을 수 없어요");
-    } else {
-      setError("그룹을 찾을 수 없어요");
+    async function load() {
+      if (!groupId) { setError("잘못된 초대 링크예요"); setLoading(false); return; }
+      const supabase = createClient();
+      // Supabase에서 그룹 정보 가져오기
+      const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).single();
+      if (error || !data) {
+        setError("그룹을 찾을 수 없어요");
+        setLoading(false);
+        return;
+      }
+      setGroup(data);
+      // 멤버 수
+      const { count } = await supabase.from("group_members")
+        .select("*", { count: "exact", head: true }).eq("group_id", groupId);
+      setMemberCount(count ?? 0);
+      setLoading(false);
     }
-    setLoading(false);
+    load();
   }, [groupId]);
 
   async function join() {
@@ -34,20 +41,14 @@ function JoinContent() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      // 로그인 안됐으면 로그인 페이지로, 완료 후 다시 돌아오게
       router.push(`/login?redirect=/join?group=${groupId}`);
       return;
     }
-    // 그룹에 참여
-    const saved = localStorage.getItem("community_groups");
-    if (saved) {
-      const groups = JSON.parse(saved);
-      const updated = groups.map((g: any) =>
-        g.id === groupId && !g.members.includes(user.id)
-          ? { ...g, members: [...g.members, user.id] }
-          : g
-      );
-      localStorage.setItem("community_groups", JSON.stringify(updated));
+    // 이미 멤버인지 확인
+    const { data: existing } = await supabase.from("group_members")
+      .select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
+    if (!existing) {
+      await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id });
     }
     setJoined(true);
     setJoining(false);
@@ -82,9 +83,9 @@ function JoinContent() {
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>그룹 초대</p>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{group?.name}</h2>
-            {group?.desc && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{group.desc}</p>}
+            {group?.description && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{group.description}</p>}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 20 }}>
-              <span style={{ fontSize: 12, color: "var(--text3)" }}>👥 {group?.members?.length ?? 0}명 참여 중</span>
+              <span style={{ fontSize: 12, color: "var(--text3)" }}>👥 {memberCount}명 참여 중</span>
             </div>
             <button className="btn-sage" onClick={join} disabled={joining} style={{ width: "100%" }}>
               {joining ? <Loader2 size={16} className="spin" /> : "그룹 참여하기"}

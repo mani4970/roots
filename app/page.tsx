@@ -105,7 +105,9 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
-    const newVal = !todayDone.decision;
+    // 이미 완료한 결단은 취소 안됨
+    if (todayDone.decision) return;
+    const newVal = true;
     await supabase.from("daily_checkins").upsert({
       user_id: user.id,
       date: today,
