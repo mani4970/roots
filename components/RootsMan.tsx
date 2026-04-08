@@ -1,86 +1,115 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
-// spread1: 걷기 4프레임(0~3) + 물주기준비 2프레임(4~5) — 위쪽 절반만 사용
-// spread2: 물주기 6프레임(0~5)
-// 전체 시트: 2816x1536, 6프레임, 각 프레임 469x768(위쪽캐릭터)
-const FRAME_W = 2816 / 6;   // 약 469px
-const FRAME_H = 1536 / 2;   // 768px (위쪽 절반 = 캐릭터만)
-const FRAME_H2 = 1536;      // spread2는 전체 높이
+// rootsman_transparent.png: 2000x1091, 6프레임
+// 프레임 순서 (왼쪽부터):
+// 0: 물주기1(물 나옴)  1: 물주기2(물 접음)
+// 2: 서있기  3: 걷기1  4: 서있기2  5: 걷기2
+const TOTAL_W = 2000;
+const FRAME_H = 1091;
+const FRAME_W = TOTAL_W / 6; // 333.33px
+const RENDER_W = 72; // 화면에 표시할 크기
+const SCALE = RENDER_W / FRAME_W;
+const RENDER_H = Math.round(FRAME_H * SCALE);
 
-type Phase = "idle" | "walking" | "watering" | "done";
+// 걷기 프레임: 오른쪽→왼쪽 방향(뒤집기), 프레임 3,4,5,2 반복
+const WALK_FRAMES = [3, 4, 5, 2];
+// 물주기 프레임: 0, 1 반복
+const WATER_FRAMES = [0, 1];
+
+type Phase = "idle" | "enter" | "water" | "exit" | "done";
 
 interface RootsManProps {
-  animate: boolean; // true가 되면 애니메이션 시작
-  onDone?: () => void;
+  trigger: boolean; // true가 되면 애니메이션 시작
 }
 
-export default function RootsMan({ animate, onDone }: RootsManProps) {
+export default function RootsMan({ trigger }: RootsManProps) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [frame, setFrame] = useState(0);
-  const [posX, setPosX] = useState(110); // 오른쪽 밖에서 시작 (%)
+  const [frame, setFrame] = useState(3);
+  const [posX, setPosX] = useState(110); // vw 단위 (110 = 화면 밖 오른쪽)
+  const [flipX, setFlipX] = useState(false); // true = 반전(왼쪽 방향)
+  const [opacity, setOpacity] = useState(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    if (!animate) return;
-    setPhase("walking");
-    setFrame(0);
-    setPosX(110);
-  }, [animate]);
+    if (trigger && !hasRun.current) {
+      hasRun.current = true;
+      // confetti 끝나고 1초 후 등장
+      setTimeout(() => startAnimation(), 1000);
+    }
+    if (!trigger) {
+      hasRun.current = false;
+      setPhase("idle");
+    }
+  }, [trigger]);
 
-  useEffect(() => {
-    if (phase === "idle" || phase === "done") return;
-
+  function clearInv() {
     if (intervalRef.current) clearInterval(intervalRef.current);
+  }
 
-    if (phase === "walking") {
-      // 걷기: 4프레임 반복하며 왼쪽으로 이동
-      let f = 0;
-      let x = 110;
-      intervalRef.current = setInterval(() => {
-        f = (f + 1) % 4;
-        x = Math.max(18, x - 4); // 왼쪽으로 이동 (18%에서 멈춤)
-        setFrame(f);
-        setPosX(x);
-        if (x <= 18) {
-          clearInterval(intervalRef.current!);
-          setPhase("watering");
-          setFrame(4); // spread1의 물주기 준비 프레임
-        }
-      }, 100);
-    }
+  function startAnimation() {
+    // 1. 오른쪽에서 걸어 들어오기 (왼쪽 방향으로 걷기 = flipX true)
+    setPhase("enter");
+    setFlipX(true);
+    setOpacity(1);
+    setPosX(110);
+    setFrame(3);
 
-    if (phase === "watering") {
-      // 물주기: spread2의 6프레임 반복
-      let f = 0;
-      let count = 0;
-      intervalRef.current = setInterval(() => {
-        f = (f + 1) % 6;
-        count++;
-        setFrame(10 + f); // 10+ = spread2 프레임
-        if (count >= 18) { // 3번 반복 후 종료
-          clearInterval(intervalRef.current!);
-          setPhase("done");
-          onDone?.();
-        }
-      }, 120);
-    }
+    let x = 110;
+    let wf = 0;
+    clearInv();
+    intervalRef.current = setInterval(() => {
+      x = Math.max(38, x - 3.5);
+      wf = (wf + 1) % WALK_FRAMES.length;
+      setPosX(x);
+      setFrame(WALK_FRAMES[wf]);
+      if (x <= 38) {
+        clearInv();
+        // 2. 물주기 시작
+        setTimeout(() => startWatering(), 200);
+      }
+    }, 80);
+  }
 
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [phase]);
+  function startWatering() {
+    setPhase("water");
+    setFlipX(false); // 오른쪽 방향으로 물주기
+    let wf = 0;
+    let count = 0;
+    clearInv();
+    intervalRef.current = setInterval(() => {
+      wf = (wf + 1) % WATER_FRAMES.length;
+      count++;
+      setFrame(WATER_FRAMES[wf]);
+      if (count >= 10) { // 5번 반복
+        clearInv();
+        setTimeout(() => startExit(), 300);
+      }
+    }, 200);
+  }
+
+  function startExit() {
+    // 3. 오른쪽으로 걸어서 퇴장 (오른쪽 방향 = flipX false)
+    setPhase("exit");
+    setFlipX(false);
+    let x = 38;
+    let wf = 0;
+    clearInv();
+    intervalRef.current = setInterval(() => {
+      x = Math.min(115, x + 3.5);
+      wf = (wf + 1) % WALK_FRAMES.length;
+      setPosX(x);
+      setFrame(WALK_FRAMES[wf]);
+      if (x >= 112) {
+        clearInv();
+        setPhase("done");
+        hasRun.current = false; // 다음에 다시 쓸 수 있도록
+      }
+    }, 80);
+  }
 
   if (phase === "idle" || phase === "done") return null;
-
-  // 어떤 시트/프레임 쓸지 결정
-  const isSpread2 = frame >= 10;
-  const actualFrame = isSpread2 ? frame - 10 : frame;
-  const sheetSrc = isSpread2 ? "/roots-man-spread2.png" : "/roots-man-spread1.png";
-  const frameH = isSpread2 ? FRAME_H2 : FRAME_H;
-  // 렌더 크기 (표시 너비 80px 기준)
-  const renderW = 80;
-  const renderH = isSpread2 ? Math.round(renderW * frameH / FRAME_W) : Math.round(renderW * FRAME_H / FRAME_W);
-  const scaleX = renderW / FRAME_W;
-  const scaleY = renderH / frameH;
 
   return (
     <div style={{
@@ -88,23 +117,25 @@ export default function RootsMan({ animate, onDone }: RootsManProps) {
       bottom: 0,
       left: `${posX}%`,
       transform: "translateX(-50%)",
-      width: renderW,
-      height: renderH,
+      width: RENDER_W,
+      height: RENDER_H,
       overflow: "hidden",
       imageRendering: "pixelated",
-      zIndex: 5,
-      transition: phase === "walking" ? "left 0.1s linear" : "none",
+      zIndex: 10,
+      opacity,
     }}>
       <img
-        src={sheetSrc}
+        src="/rootsman_transparent.png"
         alt="roots-man"
         style={{
           position: "absolute",
           top: 0,
-          left: -actualFrame * FRAME_W * scaleX,
-          width: 2816 * scaleX,
-          height: frameH * scaleY,
+          left: -frame * FRAME_W * SCALE,
+          width: TOTAL_W * SCALE,
+          height: FRAME_H * SCALE,
           imageRendering: "pixelated",
+          transform: flipX ? "scaleX(-1)" : "none",
+          transformOrigin: `${RENDER_W / 2}px center`,
         }}
       />
     </div>

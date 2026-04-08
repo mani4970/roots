@@ -1,10 +1,11 @@
 "use client";
 import Image from "next/image";
+import RootsMan from "./RootsMan";
 
 interface TreeGrowthProps {
   days: number;
   lastCheckin: string | null;
-  allDone?: boolean;
+  showRootsMan?: boolean; // 루틴 완료 후 trigger
 }
 
 function getTreeState(days: number, lastCheckin: string | null) {
@@ -55,10 +56,9 @@ function isNightTime() {
   return h >= 20 || h < 5;
 }
 
-export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
   const { img, stage, isWithering, isRegressed, daysSince } = getTreeState(days, lastCheckin);
   const isNight = isNightTime();
-  // 밤이면 dark{img}.png, 낮이면 tree{img}.png
   const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
 
   return (
@@ -91,6 +91,9 @@ export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
           {days}일째
         </div>
         {isWithering && <div style={{ position: "absolute", inset: 0, background: "rgba(100,70,30,0.2)", zIndex: 2 }} />}
+
+        {/* RootsMan 애니메이션 */}
+        <RootsMan trigger={showRootsMan} />
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>

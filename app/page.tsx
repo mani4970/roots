@@ -38,6 +38,7 @@ export default function HomePage() {
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const celebratedToday = useRef(false); // 오늘 이미 축하했는지 추적
+  const [showRootsMan, setShowRootsMan] = useState(false);
 
   // 결단 완료 여부: 추천 결단 OR 나의 결단 중 하나라도 완료
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
@@ -165,7 +166,7 @@ export default function HomePage() {
         show={celebration.show}
         message={celebration.message}
         subMessage={celebration.subMessage}
-        onClose={() => setCelebration({ show: false, message: "", subMessage: "" })}
+        onClose={() => { setCelebration({ show: false, message: "", subMessage: "" }); if (celebration.message.includes("루틴")) setShowRootsMan(true); }}
       />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -178,7 +179,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} />
+      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>
