@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { Loader2, Plus, X, Users, Share2, Link, Copy, Check } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
 
 const REACTIONS = [
   { id: "bless", label: "축복해요", icon: "🙏" },
@@ -21,6 +21,7 @@ export default function CommunityPage() {
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  // 기도한 항목: id → count (실시간 반영)
   const [prayedIds, setPrayedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
@@ -28,9 +29,10 @@ export default function CommunityPage() {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
-  const [savingGroup, setSavingGroup] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
+  const [savingGroup, setSavingGroup] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null); // 그룹 상세
 
   useEffect(() => { loadData(); }, [tab]);
 
@@ -40,6 +42,7 @@ export default function CommunityPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
+
     const saved = localStorage.getItem(`comm_prayed_${user.id}`);
     if (saved) setPrayedIds(new Set(JSON.parse(saved)));
     const myRx = localStorage.getItem(`comm_reactions_${user.id}`);
@@ -51,16 +54,13 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false });
       if (data) setPrayers(data);
     } else if (tab === "qt") {
-      // 내가 속한 그룹 ID 목록
       const savedGroups = localStorage.getItem("community_groups");
       const myGroupIds: string[] = [];
-      if (savedGroups && user) {
+      if (savedGroups) {
         const allGroups = JSON.parse(savedGroups);
-        allGroups.filter((g: any) => g.members.includes(user.id)).forEach((g: any) => {
-          myGroupIds.push(`group_${g.id}`);
-        });
+        allGroups.filter((g: any) => g.members.includes(user.id))
+          .forEach((g: any) => myGroupIds.push(`group_${g.id}`));
       }
-      // 전체 공개 + 내 그룹 공유 둘 다
       const visibilities = ["all", ...myGroupIds];
       const { data } = await supabase.from("qt_records")
         .select("*, profiles(name)").in("visibility", visibilities)
@@ -75,22 +75,40 @@ export default function CommunityPage() {
       const savedGroups = localStorage.getItem("community_groups");
       if (savedGroups) {
         const all = JSON.parse(savedGroups);
-        // 공개 그룹 + 내가 만든/참여한 비공개 그룹
         const visible = all.filter((g: any) => g.isPublic || g.members.includes(user.id));
         setGroups(visible);
+        // 그룹 탭에서도 내 그룹 큐티 나눔 로드
+        const myGroupIds = all
+          .filter((g: any) => g.members.includes(user.id))
+          .map((g: any) => `group_${g.id}`);
+        if (myGroupIds.length > 0) {
+          const { data: groupQtData } = await supabase.from("qt_records")
+            .select("*, profiles(name)").in("visibility", myGroupIds)
+            .order("created_at", { ascending: false }).limit(50);
+          if (groupQtData) {
+            setQtShares(groupQtData);
+            const rxMap: Record<string, Record<string, number>> = {};
+            groupQtData.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
+            setReactions(rxMap);
+          }
+        }
       }
     }
     setLoading(false);
   }
 
-  async function prayTogether(id: string, count: number) {
+  async function prayTogether(id: string) {
     if (prayedIds.has(id)) return;
     const supabase = createClient();
-    await supabase.from("prayer_items").update({ prayer_count: (count ?? 0) + 1 }).eq("id", id);
+    // 현재 count 가져오기
+    const { data: current } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+    const newCount = (current?.prayer_count ?? 0) + 1;
+    await supabase.from("prayer_items").update({ prayer_count: newCount }).eq("id", id);
     const newArr = Array.from(prayedIds).concat(id);
     setPrayedIds(new Set(newArr));
     if (userId) localStorage.setItem(`comm_prayed_${userId}`, JSON.stringify(newArr));
-    setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: (p.prayer_count ?? 0) + 1 } : p));
+    // UI 즉시 업데이트 — 최신 count 반영
+    setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
   }
 
   function reactToQT(qtId: string, reactionId: string) {
@@ -126,20 +144,28 @@ export default function CommunityPage() {
     };
     const updated = [...groups, newGroup];
     setGroups(updated);
-    localStorage.setItem("community_groups", JSON.stringify(updated));
+    const allGroups = JSON.parse(localStorage.getItem("community_groups") ?? "[]");
+    localStorage.setItem("community_groups", JSON.stringify([...allGroups, newGroup]));
     setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
   }
 
   function joinGroup(groupId: string) {
-    const updated = groups.map(g =>
+    const allGroups = JSON.parse(localStorage.getItem("community_groups") ?? "[]");
+    const updated = allGroups.map((g: any) =>
       g.id === groupId && !g.members.includes(userId)
         ? { ...g, members: [...g.members, userId] } : g
     );
-    setGroups(updated);
     localStorage.setItem("community_groups", JSON.stringify(updated));
+    setGroups(prev => prev.map(g =>
+      g.id === groupId && !g.members.includes(userId)
+        ? { ...g, members: [...g.members, userId] } : g
+    ));
+    // 상세 화면도 업데이트
+    if (selectedGroup?.id === groupId) {
+      setSelectedGroup((g: any) => ({ ...g, members: [...g.members, userId] }));
+    }
   }
 
-  // 그룹 초대링크 복사
   function copyInviteLink(groupId: string) {
     const link = `${APP_URL}/join?group=${groupId}`;
     navigator.clipboard.writeText(link).then(() => {
@@ -148,25 +174,17 @@ export default function CommunityPage() {
     });
   }
 
-  // 그룹 초대 공유 (Web Share API)
   function shareInvite(group: any) {
     const link = `${APP_URL}/join?group=${group.id}`;
-    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇`;
-    if (navigator.share) {
-      navigator.share({ title: `Roots - ${group.name}`, text });
-    } else {
-      copyInviteLink(group.id);
-    }
+    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${link}`;
+    if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
+    else copyInviteLink(group.id);
   }
 
-  // 앱 초대 공유
   function shareApp() {
     const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
-    if (navigator.share) {
-      navigator.share({ title: "Roots 앱 초대", text });
-    } else {
-      navigator.clipboard.writeText(text);
-    }
+    if (navigator.share) navigator.share({ title: "Roots 앱 초대", text });
+    else navigator.clipboard.writeText(text);
   }
 
   const TABS = [
@@ -174,6 +192,105 @@ export default function CommunityPage() {
     { id: "qt", label: "큐티 나눔" },
     { id: "group", label: "그룹" },
   ];
+
+  // 그룹 상세 화면
+  if (selectedGroup) {
+    const isMember = selectedGroup.members.includes(userId);
+    const groupVisibility = `group_${selectedGroup.id}`;
+    // 이 그룹에 나눈 큐티만 필터
+    const groupQts = qtShares.filter(r => r.visibility === groupVisibility);
+
+    return (
+      <div className="page">
+        <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+          <button onClick={() => setSelectedGroup(null)} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{selectedGroup.name}</h1>
+            <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: selectedGroup.isPublic ? "var(--sage-light)" : "var(--bg3)", color: selectedGroup.isPublic ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${selectedGroup.isPublic ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
+              {selectedGroup.isPublic ? "공개" : "비공개"}
+            </span>
+          </div>
+          {selectedGroup.desc && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.desc}</p>}
+          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>👥 나 포함 {selectedGroup.members.length}명</p>
+        </div>
+
+        <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* 초대 버튼 */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {!isMember && (
+              <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ flex: 1 }}>참여하기</button>
+            )}
+            {isMember && (
+              <div style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", textAlign: "center", fontSize: 12, color: "var(--text3)", fontWeight: 600 }}>✓ 참여 중</div>
+            )}
+            <button onClick={() => copyInviteLink(selectedGroup.id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: copiedId === selectedGroup.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copiedId === selectedGroup.id ? "var(--sage-dark)" : "var(--text2)", fontWeight: 600 }}>
+              {copiedId === selectedGroup.id ? <Check size={13} /> : <Copy size={13} />}
+              {copiedId === selectedGroup.id ? "복사됨!" : "링크 복사"}
+            </button>
+            <button onClick={() => shareInvite(selectedGroup)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
+              <Share2 size={13} />초대
+            </button>
+          </div>
+
+          {/* 그룹 큐티 나눔 목록 */}
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>그룹 큐티 나눔</p>
+            {groupQts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
+                <p style={{ fontSize: 24, marginBottom: 8 }}>📖</p>
+                <p style={{ fontSize: 13, color: "var(--text3)" }}>아직 이 그룹에 나눈 큐티가 없어요</p>
+                <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>큐티 기록에서 이 그룹을 선택해 나눠보세요!</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {groupQts.map(r => {
+                  const isExpanded = expandedId === r.id;
+                  const rx = reactions[r.id] ?? {};
+                  return (
+                    <div key={r.id} className="card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 12 }}>📖</span>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "익명"}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      </div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: 6 }}>{r.bible_ref}</p>
+                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                      {isExpanded && r.meditation && (
+                        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginBottom: 10 }}>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginBottom: 4 }}>느낌과 묵상</p>
+                          <p style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.65 }}>{r.meditation}</p>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {REACTIONS.map(reaction => (
+                            <button key={reaction.id} onClick={() => reactToQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 10px", borderRadius: 20, border: `1px solid ${myReactions[r.id] === reaction.id ? "var(--sage)" : "var(--border)"}`, background: myReactions[r.id] === reaction.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 11, color: myReactions[r.id] === reaction.id ? "var(--sage-dark)" : "var(--text3)" }}>
+                              <span style={{ fontSize: 12 }}>{reaction.icon}</span>
+                              {(rx[reaction.id] ?? 0) > 0 && <span>{rx[reaction.id]}</span>}
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={() => setExpandedId(isExpanded ? null : r.id)} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>
+                          {isExpanded ? "접기" : "더보기"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -183,7 +300,6 @@ export default function CommunityPage() {
             <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>커뮤니티</h1>
             <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>함께 기도하고 말씀을 나눠요</p>
           </div>
-          {/* 앱 초대 버튼 */}
           <button onClick={shareApp} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 20, padding: "7px 12px", cursor: "pointer", marginTop: 4 }}>
             <Share2 size={13} style={{ color: "var(--sage-dark)" }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--sage-dark)" }}>앱 초대</span>
@@ -224,9 +340,9 @@ export default function CommunityPage() {
                   </div>
                   <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12 }}>{p.content}</p>
                   <button
-                    onClick={() => prayTogether(p.id, p.prayer_count ?? 0)}
+                    onClick={() => prayTogether(p.id)}
                     disabled={prayedIds.has(p.id)}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "9px", borderRadius: 12, border: `1px solid ${prayedIds.has(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.has(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.has(p.id) ? "default" : "pointer" }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.has(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.has(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.has(p.id) ? "default" : "pointer" }}
                   >
                     <span style={{ fontSize: 14 }}>{prayedIds.has(p.id) ? "✅" : "🙏"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.has(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
@@ -258,6 +374,7 @@ export default function CommunityPage() {
                           <span style={{ fontSize: 12 }}>📖</span>
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "익명"}</span>
+                        {r.visibility !== "all" && <span style={{ fontSize: 9, color: "var(--text3)", background: "var(--bg3)", padding: "2px 6px", borderRadius: 8 }}>그룹</span>}
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
@@ -288,66 +405,37 @@ export default function CommunityPage() {
             </div>
           )
         ) : (
-          /* 그룹 탭 */
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button onClick={() => setShowGroupForm(true)} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={16} /> 새 그룹 만들기
             </button>
-
             {groups.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <p style={{ fontSize: 32, marginBottom: 10 }}>👥</p>
                 <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 그룹이 없어요</p>
-                <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>그룹을 만들고 친구를 초대해요</p>
               </div>
             ) : (
               groups.map(g => {
                 const isMember = g.members.includes(userId);
-                const isCopied = copiedId === g.id;
                 return (
-                  <div key={g.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{g.name}</p>
-                          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.isPublic ? "var(--sage-light)" : "var(--bg3)", color: g.isPublic ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.isPublic ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
-                            {g.isPublic ? "공개" : "비공개"}
-                          </span>
-                        </div>
-                        {g.desc && <p style={{ fontSize: 12, color: "var(--text3)" }}>{g.desc}</p>}
+                  <button key={g.id} onClick={() => setSelectedGroup(g)} style={{ width: "100%", textAlign: "left", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{g.name}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.isPublic ? "var(--sage-light)" : "var(--bg3)", color: g.isPublic ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.isPublic ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
+                          {g.isPublic ? "공개" : "비공개"}
+                        </span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                        <Users size={12} style={{ color: "var(--text3)" }} />
-                        <span style={{ fontSize: 11, color: "var(--text3)" }}>{g.members.length}명</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                          <Users size={11} style={{ color: "var(--text3)" }} />
+                          <span style={{ fontSize: 11, color: "var(--text3)" }}>나 포함 {g.members.length}명</span>
+                        </div>
+                        {isMember && <span style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 600 }}>✓ 참여 중</span>}
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", gap: 6 }}>
-                      {/* 참여 버튼 */}
-                      {!isMember && (
-                        <button onClick={() => joinGroup(g.id)} style={{ flex: 1, padding: "9px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
-                          참여하기
-                        </button>
-                      )}
-                      {isMember && (
-                        <div style={{ flex: 1, padding: "9px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", textAlign: "center", fontSize: 12, color: "var(--text3)" }}>
-                          ✓ 참여 중
-                        </div>
-                      )}
-
-                      {/* 초대링크 복사 */}
-                      <button onClick={() => copyInviteLink(g.id)} style={{ padding: "9px 12px", borderRadius: 12, border: "1px solid var(--border)", background: isCopied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: isCopied ? "var(--sage-dark)" : "var(--text2)", fontWeight: 600 }}>
-                        {isCopied ? <Check size={13} /> : <Copy size={13} />}
-                        {isCopied ? "복사됨!" : "링크 복사"}
-                      </button>
-
-                      {/* 공유 버튼 */}
-                      <button onClick={() => shareInvite(g)} style={{ padding: "9px 12px", borderRadius: 12, border: "1px solid rgba(122,157,122,0.3)", background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>
-                        <Share2 size={13} />
-                        초대
-                      </button>
-                    </div>
-                  </div>
+                    <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
+                  </button>
                 );
               })
             )}
@@ -355,7 +443,6 @@ export default function CommunityPage() {
         )}
       </div>
 
-      {/* 그룹 만들기 모달 */}
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
@@ -372,7 +459,6 @@ export default function CommunityPage() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>소개 (선택)</label>
                 <textarea className="textarea-field" rows={2} placeholder="그룹을 소개해주세요..." value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
               </div>
-              {/* 공개/비공개 선택 */}
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>공개 설정</label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -398,7 +484,6 @@ export default function CommunityPage() {
           </div>
         </div>
       )}
-
       <BottomNav />
     </div>
   );

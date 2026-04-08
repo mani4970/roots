@@ -36,7 +36,11 @@ export default function HomePage() {
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  // 초기값을 바로 localStorage에서 읽어서 깜빡임 없애기
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("onboarding_done");
+  });
   const [showRootsMan, setShowRootsMan] = useState(false);
   const celebrationShownRef = useRef(false);
 
@@ -78,18 +82,13 @@ export default function HomePage() {
       celebrationShownRef.current = true;
     }
 
-    // 온보딩 — done 없으면 표시 (loading 완료 후 바로)
-    const onboardingDone = localStorage.getItem("onboarding_done");
-    if (!onboardingDone) {
-      setShowOnboarding(true);
-    }
-
     setLoading(false);
   }
 
   // allDone 감지 — 이미 축하했으면 스킵, 온보딩 중이면 스킵
   useEffect(() => {
-    if (!loading && allDone && !celebrationShownRef.current && !showOnboarding) {
+    const onboardingDone = localStorage.getItem("onboarding_done");
+    if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
       const today = new Date().toISOString().split("T")[0];
       if (!localStorage.getItem(`celebrated_${today}`)) {
         celebrationShownRef.current = true;
