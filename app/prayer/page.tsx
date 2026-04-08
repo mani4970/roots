@@ -37,8 +37,8 @@ export default function PrayerPage() {
     const supabase = createClient();
     await supabase.from("prayer_items").insert({ user_id: userId, content: newPrayer.trim(), is_anonymous: false, visibility: "private" });
     setNewPrayer(""); setShowForm(false); setSaving(false);
-    // 첫 저장 시 축하
-    if (prayers.length === 0) setCelebration(true);
+    // 기도 저장 시 축하
+    setCelebration(true);
     loadPrayers();
   }
 
@@ -66,7 +66,7 @@ export default function PrayerPage() {
 
   return (
     <div className="page">
-      <Celebration show={celebration} message="기도 제목 저장!" onClose={() => setCelebration(false)} />
+      <Celebration show={celebration} message="기도 제목 저장! 🙏" subMessage="구하고 찾는 자에게 반드시 하나님이 응답하실거예요" onClose={() => setCelebration(false)} />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>기도</h1>

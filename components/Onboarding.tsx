@@ -3,8 +3,8 @@ import { useState } from "react";
 
 const SLIDES = [
   { emoji: "🌱", title: "Roots에 오신 걸 환영해요", desc: "말씀에 뿌리내리고, 함께 자라다.\n매일 큐티, 기도, 결단으로 나무를 키워요." },
-  { emoji: "🌳", title: "나무가 자라요", desc: "매일 큐티나 기도를 하면 나무가 자라요.\n100일이 되면 열매를 맺고, 계속하면 정원이 완성돼요!" },
-  { emoji: "💧", title: "roots-man이 물을 줘요", desc: "큐티, 기도, 결단을 모두 완료하면\nroots-man이 정원에 들어와 나무에 물을 줘요." },
+  { emoji: "🌳", title: "나무가 자라요", desc: "매일 큐티나 기도를 하면 나무가 자라요.\n150일이 되면 풍성한 정원이 완성돼요!" },
+  { emoji: "💧", title: "루틴을 완성해요", desc: "큐티 + 기도 + 결단\n세 가지를 모두 완료하면 confetti가 터져요 🎉" },
   { emoji: "✨", title: "오늘의 루틴", desc: "① 오늘의 말씀 받기\n② 큐티하기\n③ 기도 제목 적기\n④ 결단 실천하기" },
 ];
 
@@ -21,6 +21,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
       <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 360, padding: "36px 28px 28px", textAlign: "center" }}>
+        {/* 도트 */}
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 28 }}>
           {SLIDES.map((_, i) => (
             <div key={i} style={{ width: i === page ? 20 : 6, height: 6, borderRadius: 3, background: i === page ? "var(--sage)" : "var(--border)", transition: "all 0.3s" }} />

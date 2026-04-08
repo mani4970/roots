@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -17,6 +17,17 @@ function getGreeting() {
   return "좋은 밤이에요 🌙";
 }
 
+function getTreeSubMsg(streak: number) {
+  if (streak <= 1) return "씨앗이 땅속에서 뿌리를 내리기 시작했어요!";
+  if (streak <= 14) return "씨앗이 조금씩 움트고 있어요!";
+  if (streak <= 29) return "새싹이 햇빛을 향해 자라고 있어요!";
+  if (streak <= 59) return "묘목이 점점 단단해지고 있어요!";
+  if (streak <= 79) return "나무가 무럭무럭 자라고 있어요!";
+  if (streak <= 99) return "나무가 점점 더 자라고 있어요!";
+  if (streak <= 129) return "열매를 맺은 나무처럼 풍성해지고 있어요!";
+  return "아름다운 정원이 완성되어 가고 있어요!";
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -26,38 +37,39 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const celebratedToday = useRef(false); // 오늘 이미 축하했는지 추적
 
-  // 3개 모두 완료 여부
-  const allDone = todayDone.qt && todayDone.prayer && (todayDone.decision || myDecisions.some(d => d.done));
+  // 결단 완료 여부: 추천 결단 OR 나의 결단 중 하나라도 완료
+  const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
+  const allDone = todayDone.qt && todayDone.prayer && decisionDone;
 
   useEffect(() => { load(); }, []);
 
-  // 온보딩 체크
+  // 온보딩 — 모든 유저, localStorage에 done 없으면 표시
   useEffect(() => {
-    if (!loading && profile) {
+    if (!loading) {
       const done = localStorage.getItem("onboarding_done");
-      if (!done && (profile.streak_days ?? 0) === 0) {
-        setShowOnboarding(true);
+      if (!done) setShowOnboarding(true);
+    }
+  }, [loading]);
+
+  // allDone 되면 축하 — 오늘 한 번만
+  useEffect(() => {
+    if (allDone && !loading && !celebratedToday.current) {
+      const today = new Date().toISOString().split("T")[0];
+      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
+      if (!alreadyCelebrated) {
+        celebratedToday.current = true;
+        localStorage.setItem(`celebrated_${today}`, "true");
+        const streak = profile?.streak_days ?? 0;
+        setCelebration({
+          show: true,
+          message: "오늘 루틴 완료! 🎉",
+          subMessage: `오늘 하루 하나님과 더 가까워진 당신을 축복합니다!\n${getTreeSubMsg(streak)}`,
+        });
       }
     }
-  }, [loading, profile]);
-
-  // allDone 되면 단계별 메시지
-  useEffect(() => {
-    if (allDone && !loading) {
-      const streak = profile?.streak_days ?? 0;
-      let subMsg = "";
-      if (streak <= 1) subMsg = "씨앗이 땅속에서 뿌리를 내리기 시작했어요!";
-      else if (streak <= 14) subMsg = "씨앗이 조금씩 움트고 있어요!";
-      else if (streak <= 29) subMsg = "새싹이 햇빛을 향해 자라고 있어요!";
-      else if (streak <= 59) subMsg = "묘목이 점점 단단해지고 있어요!";
-      else if (streak <= 79) subMsg = "나무가 무럭무럭 자라고 있어요!";
-      else if (streak <= 99) subMsg = "나무가 점점 더 자라고 있어요!";
-      else if (streak <= 114) subMsg = "열매를 맺은 나무처럼 풍성해지고 있어요!";
-      else subMsg = "아름다운 정원이 완성되어 가고 있어요!";
-      setCelebration({ show: true, message: "오늘 루틴 완료!", subMessage: subMsg });
-    }
-  }, [allDone]);
+  }, [allDone, loading]);
 
   async function load() {
     const supabase = createClient();
@@ -80,6 +92,11 @@ export default function HomePage() {
       setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
     }
     setTodayDone({ qt: !!tqt, prayer: !!tp, decision: ci?.completed_mission ?? false });
+    // 오늘 이미 모두 완료했으면 ref 세팅 (재방문 시 중복 방지)
+    const today2 = new Date().toISOString().split("T")[0];
+    if (localStorage.getItem(`celebrated_${today2}`)) {
+      celebratedToday.current = true;
+    }
     setLoading(false);
   }
 
@@ -92,6 +109,13 @@ export default function HomePage() {
     const newVal = !todayDone.decision;
     await supabase.from("daily_checkins").update({ completed_mission: newVal }).eq("user_id", user.id).eq("date", today);
     setTodayDone(p => ({ ...p, decision: newVal }));
+    // 결단 완료 시 개별 축하
+    if (newVal && !celebratedToday.current) {
+      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
+      if (!alreadyCelebrated) {
+        setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
+      }
+    }
   }
 
   function toggleMyDecision(i: number) {
@@ -99,6 +123,13 @@ export default function HomePage() {
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
     setMyDecisions(updated);
     localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
+    // 결단 완료 시 개별 축하
+    if (!myDecisions[i].done && !celebratedToday.current) {
+      const alreadyCelebrated = localStorage.getItem(`celebrated_${today}`);
+      if (!alreadyCelebrated) {
+        setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
+      }
+    }
   }
 
   async function logout() {
@@ -130,7 +161,12 @@ export default function HomePage() {
   return (
     <div className="page fade-in">
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
-      <Celebration show={celebration.show} message={celebration.message} subMessage={celebration.subMessage} onClose={() => setCelebration({ show: false, message: "", subMessage: "" })} />
+      <Celebration
+        show={celebration.show}
+        message={celebration.message}
+        subMessage={celebration.subMessage}
+        onClose={() => setCelebration({ show: false, message: "", subMessage: "" })}
+      />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
@@ -142,7 +178,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} allDone={allDone} />
+      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>
@@ -209,7 +245,7 @@ export default function HomePage() {
           {[
             { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖", onClick: null },
             { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏", onClick: null },
-            { label: "결단", href: null, done: todayDone.decision || myDecisions.some(d => d.done), icon: "✊", onClick: toggleAiDecision },
+            { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: toggleAiDecision },
           ].map(({ label, href, done, icon, onClick }: any) => {
             const isTerra = label === "결단";
             const bg = done ? (isTerra ? "var(--terra-light)" : "var(--sage-light)") : "var(--bg2)";

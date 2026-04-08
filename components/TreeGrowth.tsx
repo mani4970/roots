@@ -30,7 +30,8 @@ function getTreeState(days: number, lastCheckin: string | null) {
   else if (effectiveDays <= 99) img = 7;
   else if (effectiveDays <= 114) img = 8;
   else if (effectiveDays <= 129) img = 9;
-  else img = 10;
+  else if (effectiveDays <= 149) img = 10;
+  else img = 11;
 
   const stages = [
     { label: "씨앗 심겨졌어요", desc: "겨자씨가 땅에 심겨졌어요" },
@@ -43,13 +44,22 @@ function getTreeState(days: number, lastCheckin: string | null) {
     { label: "정원 시작", desc: "새 씨앗이 뿌려졌어요" },
     { label: "정원 성장", desc: "이웃 나무가 자라고 있어요" },
     { label: "정원 완성 🏆", desc: "아름다운 정원이 완성됐어요!" },
+    { label: "풍성한 정원 🌳", desc: "열매가 가득한 정원이에요!" },
   ];
 
   return { img, stage: stages[img - 1], isWithering, isRegressed, daysSince };
 }
 
+function isNightTime() {
+  const h = new Date().getHours();
+  return h >= 20 || h < 5;
+}
+
 export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
   const { img, stage, isWithering, isRegressed, daysSince } = getTreeState(days, lastCheckin);
+  const isNight = isNightTime();
+  // 밤이면 dark{img}.png, 낮이면 tree{img}.png
+  const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -68,7 +78,7 @@ export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
 
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
         <Image
-          src={`/tree${img}.png`}
+          src={imgSrc}
           alt={stage.label}
           fill
           style={{ objectFit: "cover", filter: isWithering ? "grayscale(50%) brightness(0.7)" : "none" }}
@@ -85,10 +95,10 @@ export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>{Math.min(days, 100)} / 100일</span>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>{Math.min(days, 150)} / 150일</span>
       </div>
       <div className="progress-bar" style={{ marginTop: 6 }}>
-        <div className="progress-fill" style={{ width: `${Math.min((days / 100) * 100, 100)}%` }} />
+        <div className="progress-fill" style={{ width: `${Math.min((days / 150) * 100, 100)}%` }} />
       </div>
       <div style={{ marginTop: 8 }}>
         <div className="streak-chip">
