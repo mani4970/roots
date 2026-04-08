@@ -102,13 +102,17 @@ export default function HomePage() {
   }
 
   async function toggleAiDecision() {
-    if (!todayVerse) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
     const newVal = !todayDone.decision;
-    await supabase.from("daily_checkins").update({ completed_mission: newVal }).eq("user_id", user.id).eq("date", today);
+    // upsert: row가 없어도 생성됨
+    await supabase.from("daily_checkins").upsert({
+      user_id: user.id,
+      date: today,
+      completed_mission: newVal,
+    }, { onConflict: "user_id,date" });
     setTodayDone(p => ({ ...p, decision: newVal }));
     // 결단 완료 시 개별 축하
     if (newVal && !celebratedToday.current) {
@@ -248,14 +252,13 @@ export default function HomePage() {
             { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏", onClick: null },
             { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: toggleAiDecision },
           ].map(({ label, href, done, icon, onClick }: any) => {
-            const isTerra = label === "결단";
-            const bg = done ? (isTerra ? "var(--terra-light)" : "var(--sage-light)") : "var(--bg2)";
-            const border = done ? (isTerra ? "rgba(196,149,106,0.3)" : "rgba(122,157,122,0.3)") : "var(--border)";
-            const color = done ? (isTerra ? "var(--terra-dark)" : "var(--sage-dark)") : "var(--text)";
+            const bg = done ? "var(--sage-light)" : "var(--bg2)";
+            const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
+            const color = done ? "var(--sage-dark)" : "var(--text)";
             const inner = <>
               <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
-              <div style={{ fontSize: 9, color: done ? color : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
+              <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
             </>;
             return onClick ? (
               <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center", cursor: "pointer" }}>{inner}</button>

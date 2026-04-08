@@ -1,16 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { Flame, LogOut, Loader2 } from "lucide-react";
+import { Loader2, Pencil, Check, X, Camera, Share2 } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
-  const [calendarDone, setCalendarDone] = useState<Set<string>>(new Set());
-  const [stats, setStats] = useState({ answered: 0, prayers: 0, community: 0 });
   const [loading, setLoading] = useState(true);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [qtRecords, setQtRecords] = useState<any[]>([]);
+  const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -18,141 +23,196 @@ export default function ProfilePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
-    const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (data) setProfile(data);
+    const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    if (p) { setProfile(p); setNewName(p.name ?? ""); }
 
-    // 이번 달 큐티 날짜들
+    // 이번 달 큐티 기록
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-    const { data: qtDates } = await supabase.from("qt_records").select("date")
-      .eq("user_id", user.id).gte("date", firstDay).lte("date", lastDay);
-    if (qtDates) setCalendarDone(new Set(qtDates.map((r: any) => r.date)));
+    const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
+    const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).gte("date", firstDay);
+    if (qt) setQtRecords(qt);
 
-    // 통계
-    const { count: answered } = await supabase.from("prayer_items").select("id", { count: "exact" }).eq("user_id", user.id).eq("is_answered", true);
-    const { count: prayers } = await supabase.from("prayer_items").select("id", { count: "exact" }).eq("user_id", user.id);
-    const { count: community } = await supabase.from("qt_records").select("id", { count: "exact" }).eq("user_id", user.id).eq("visibility", "all");
-    setStats({ answered: answered ?? 0, prayers: prayers ?? 0, community: community ?? 0 });
+    // 기도 통계
+    const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
+    if (prayers) {
+      setPrayerStats({
+        total: prayers.length,
+        answered: prayers.filter(p => p.is_answered).length,
+        shared: prayers.filter(p => p.visibility === "all").length,
+      });
+    }
     setLoading(false);
   }
 
-  async function logout() {
+  async function saveName() {
+    if (!newName.trim()) return;
+    setSavingName(true);
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ name: newName.trim() }).eq("id", user.id);
+    setProfile((p: any) => ({ ...p, name: newName.trim() }));
+    setEditingName(false);
+    setSavingName(false);
   }
 
-  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const todayDate = now.getDate();
-  const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+    const ext = file.name.split(".").pop();
+    const path = `avatars/${user.id}.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+      setProfile((p: any) => ({ ...p, avatar_url: publicUrl }));
+    }
+    setUploadingPhoto(false);
+  }
+
+  // 이번 달 캘린더
+  function renderCalendar() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDow = new Date(year, month, 1).getDay();
+    const doneDates = new Set(qtRecords.map(r => r.date));
+    const cells = [];
+    for (let i = 0; i < firstDow; i++) cells.push(<div key={`e${i}`} />);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const done = doneDates.has(dateStr);
+      const isToday = d === now.getDate();
+      cells.push(
+        <div key={d} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: done ? "var(--sage)" : isToday ? "var(--bg3)" : "transparent", border: isToday && !done ? "1px solid var(--sage)" : "none" }}>
+          <span style={{ fontSize: 10, fontWeight: done ? 700 : 400, color: done ? "var(--bg)" : isToday ? "var(--sage)" : "var(--text3)" }}>{d}</span>
+        </div>
+      );
+    }
+    return cells;
+  }
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+    </div>
+  );
 
   return (
-    <div className="page">
-      {/* 헤더 */}
-      <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "var(--sage-dark)" }}>
-            {profile?.name?.[0] ?? "?"}
+    <div className="page" style={{ paddingBottom: 80 }}>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
+        {/* 프로필 사진 + 이름 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* 사진 */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="프로필" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: 28 }}>🌱</span>
+              )}
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploadingPhoto}
+              style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            >
+              {uploadingPhoto ? <Loader2 size={10} style={{ color: "white" }} className="spin" /> : <Camera size={10} style={{ color: "white" }} />}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>
-          <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{profile?.name}</h1>
-            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>Roots 멤버</p>
-          </div>
-        </div>
-        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><LogOut size={18} /></button>
-      </div>
 
-      {/* 핵심 통계 */}
-      <div style={{ padding: "16px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {[
-          { label: "연속 기록", value: `${profile?.streak_days ?? 0}일`, color: "var(--sage-dark)", sub: "🔥" },
-          { label: "총 큐티", value: `${profile?.total_days ?? 0}회`, color: "var(--text)", sub: "📖" },
-          { label: "기도 응답", value: `${stats.answered}회`, color: "var(--terra-dark)", sub: "🙏" },
-        ].map(s => (
-          <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 10px", textAlign: "center" }}>
-            <p style={{ fontSize: 18, marginBottom: 2 }}>{s.sub}</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</p>
-            <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* 신앙 여정 통계 */}
-      <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">나의 신앙 여정</div>
-        <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18, padding: "16px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {[
-              { label: "기도 제목", value: stats.prayers, icon: "🙏", total: 50 },
-              { label: "기도 응답", value: stats.answered, icon: "✨", total: 20 },
-              { label: "커뮤니티 나눔", value: stats.community, icon: "🌿", total: 30 },
-            ].map(s => (
-              <div key={s.label}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: "var(--text2)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{s.icon}</span>{s.label}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{s.value}회</span>
-                </div>
-                <div style={{ height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ height: "100%", background: "var(--sage)", borderRadius: 2, width: `${Math.min((s.value / s.total) * 100, 100)}%`, transition: "width 0.7s ease" }} />
-                </div>
+          {/* 이름 */}
+          <div style={{ flex: 1 }}>
+            {editingName ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--sage)", borderRadius: 10, padding: "6px 10px", color: "var(--text)", fontSize: 16, outline: "none" }}
+                  autoFocus
+                  onKeyDown={e => e.key === "Enter" && saveName()}
+                />
+                <button onClick={saveName} disabled={savingName} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--sage)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  {savingName ? <Loader2 size={14} style={{ color: "white" }} className="spin" /> : <Check size={14} style={{ color: "white" }} />}
+                </button>
+                <button onClick={() => { setEditingName(false); setNewName(profile?.name ?? ""); }} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <X size={14} style={{ color: "var(--text3)" }} />
+                </button>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6 }}>
-            <Flame size={14} style={{ color: "var(--terra-dark)" }} />
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{profile?.streak_days ?? 0}일 연속으로 말씀 앞에 앉았어요</span>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{profile?.name ?? "성도"}</h1>
+                <button onClick={() => setEditingName(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)" }}>
+                  <Pencil size={14} />
+                </button>
+              </div>
+            )}
+            <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>{profile?.streak_days ?? 0}일 연속 기록 중 🔥</p>
           </div>
         </div>
       </div>
 
       {/* 이번 달 큐티 캘린더 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div style={{ padding: "16px 16px 0" }}>
         <div className="sec-label">
-          {year}년 {month + 1}월 큐티 캘린더
+          {new Date().getMonth() + 1}월 큐티 현황
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}일</span>
         </div>
-        <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18, padding: 16 }}>
-          {/* 요일 헤더 */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
-            {DAYS.map(d => (
-              <div key={d} style={{ textAlign: "center", fontSize: 10, color: "var(--text3)", fontWeight: 600, padding: "2px 0" }}>{d}</div>
+        <div className="card">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+            {["일","월","화","수","목","금","토"].map(d => (
+              <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
             ))}
           </div>
-          {/* 날짜 */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-            {Array.from({ length: firstWeekday }).map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const done = calendarDone.has(dateStr);
-              const isToday = day === todayDate;
-              const isFuture = day > todayDate;
-              return (
-                <div key={day} style={{ textAlign: "center", padding: "4px 2px" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: isToday ? 700 : 400, background: done ? "var(--sage)" : isToday ? "var(--bg3)" : "transparent", color: done ? "var(--bg)" : isToday ? "var(--sage)" : isFuture ? "var(--border)" : "var(--text2)", border: isToday ? "2px solid var(--sage)" : "none" }}>
-                    {done ? "✓" : day}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 이번 달 통계 */}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 12, color: "var(--text3)" }}>이번 달 큐티</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{calendarDone.size}일 / {todayDate}일</span>
+            {renderCalendar()}
           </div>
         </div>
+      </div>
+
+      {/* 신앙 여정 통계 */}
+      <div style={{ padding: "14px 16px 0" }}>
+        <div className="sec-label">신앙 여정</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {[
+            { label: "기도 제목", value: prayerStats.total, icon: "🙏" },
+            { label: "기도 응답", value: prayerStats.answered, icon: "✨" },
+            { label: "커뮤니티 나눔", value: prayerStats.shared, icon: "🤝" },
+          ].map(s => (
+            <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 8px" }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 4 }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 앱 초대하기 */}
+      <div style={{ padding: "14px 16px 0" }}>
+        <button
+          onClick={() => {
+            const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://roots-puce.vercel.app`;
+            if (navigator.share) {
+              navigator.share({ title: "Roots 앱 초대", text, url: "https://roots-puce.vercel.app" });
+            } else {
+              navigator.clipboard.writeText(text);
+            }
+          }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}
+        >
+          <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>친구 초대하기</span>
+        </button>
       </div>
 
       <BottomNav />
