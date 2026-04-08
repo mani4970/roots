@@ -97,36 +97,34 @@ export default function QTPage() {
             <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 큐티 기록이 없어요</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {years.map(year => (
               <div key={year}>
-                {/* 연도 헤더 — 클릭해서 열기/닫기 */}
+                {/* 연도 버튼 */}
                 <button
                   onClick={() => setExpandedYear(expandedYear === year ? null : year)}
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: expandedYear === year ? "14px 14px 0 0" : 14, cursor: "pointer" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "0 2px", marginBottom: 10 }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{year}년</span>
-                    <span style={{ fontSize: 11, color: "var(--text3)" }}>{byYear[year].length}개</span>
-                  </div>
-                  <ChevronDown size={16} style={{ color: "var(--text3)", transform: expandedYear === year ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                  <span style={{ fontSize: 16, fontWeight: 800, color: expandedYear === year ? "var(--sage-dark)" : "var(--text2)" }}>{year}년</span>
+                  <span style={{ fontSize: 12, color: "var(--text3)", fontWeight: 400 }}>{byYear[year].length}개</span>
+                  <ChevronDown size={14} style={{ color: "var(--text3)", transform: expandedYear === year ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
                 </button>
 
-                {/* 해당 연도 기록 목록 */}
+                {/* 해당 연도 기록 — 깔끔한 리스트 */}
                 {expandedYear === year && (
-                  <div style={{ borderRadius: "0 0 14px 14px", overflow: "hidden" }}>
-                    {byYear[year].map((r: any, idx: number) => (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {byYear[year].map((r: any) => (
                       <button
                         key={r.id}
                         onClick={() => router.push(`/qt/record?id=${r.id}`)}
-                        style={{ width: "100%", textAlign: "left", cursor: "pointer", padding: "12px 14px", background: "var(--bg)", borderTop: idx > 0 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 10 }}
+                        className="qt-record-item"
                       >
                         <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 3 }}>
+                          <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
                             {new Date(r.date).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}
                           </p>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: 3 }}>{r.bible_ref}</p>
-                          {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 40)}..."</p>}
+                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>{r.bible_ref}</p>
+                          {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"</p>}
                         </div>
                         <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
                       </button>

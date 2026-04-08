@@ -51,9 +51,20 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false });
       if (data) setPrayers(data);
     } else if (tab === "qt") {
+      // 내가 속한 그룹 ID 목록
+      const savedGroups = localStorage.getItem("community_groups");
+      const myGroupIds: string[] = [];
+      if (savedGroups && user) {
+        const allGroups = JSON.parse(savedGroups);
+        allGroups.filter((g: any) => g.members.includes(user.id)).forEach((g: any) => {
+          myGroupIds.push(`group_${g.id}`);
+        });
+      }
+      // 전체 공개 + 내 그룹 공유 둘 다
+      const visibilities = ["all", ...myGroupIds];
       const { data } = await supabase.from("qt_records")
-        .select("*, profiles(name)").eq("visibility", "all")
-        .order("created_at", { ascending: false }).limit(20);
+        .select("*, profiles(name)").in("visibility", visibilities)
+        .order("created_at", { ascending: false }).limit(30);
       if (data) {
         setQtShares(data);
         const rxMap: Record<string, Record<string, number>> = {};

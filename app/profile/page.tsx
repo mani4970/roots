@@ -25,7 +25,14 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (p) { setProfile(p); setNewName(p.name ?? ""); }
+    if (p) {
+      // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
+      if (p.avatar_url && !p.avatar_url.includes("?t=")) {
+        p.avatar_url = `${p.avatar_url}?t=${Date.now()}`;
+      }
+      setProfile(p);
+      setNewName(p.name ?? "");
+    }
     const now = new Date();
     const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
     const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).gte("date", firstDay);
@@ -75,9 +82,9 @@ export default function ProfilePage() {
       return;
     }
     const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-    // 캐시 방지용 타임스탬프
+    // DB에는 원본 URL 저장, state에도 타임스탬프 붙여서 캐시 방지
     const urlWithTs = `${publicUrl}?t=${Date.now()}`;
-    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+    await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
     setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
     setUploadingPhoto(false);
   }

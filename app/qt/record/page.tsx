@@ -25,7 +25,7 @@ function RecordContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
       const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
-      if (data) { setRecord(data); setShared(data.visibility === "all"); }
+      if (data) { setRecord(data); setShared(data.visibility === "all" || (data.visibility ?? "").startsWith("group_")); }
       // 내가 속한 그룹 로드
       const savedGroups = localStorage.getItem("community_groups");
       if (savedGroups && user) {
