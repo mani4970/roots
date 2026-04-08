@@ -15,23 +15,27 @@ function RecordContent() {
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [myGroups, setMyGroups] = useState<any[]>([]);
-  const [selectedShare, setSelectedShare] = useState<"all" | string>("all"); // "all" or groupId
-  const [userId, setUserId] = useState<string | null>(null);
+  const [selectedShare, setSelectedShare] = useState<"all" | string>("all");
 
   useEffect(() => {
     async function load() {
       if (!id) return;
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
       const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
-      if (data) { setRecord(data); setShared(data.visibility === "all" || (data.visibility ?? "").startsWith("group_")); }
-      // 내가 속한 그룹 로드
-      const savedGroups = localStorage.getItem("community_groups");
-      if (savedGroups && user) {
-        const all = JSON.parse(savedGroups);
-        const mine = all.filter((g: any) => g.members.includes(user.id));
-        setMyGroups(mine);
+      if (data) {
+        setRecord(data);
+        // "private" 또는 null/undefined가 아니면 공유 중
+        const v = data.visibility ?? "private";
+        setShared(v !== "private");
+      }
+      // 내가 속한 그룹
+      if (user) {
+        const savedGroups = localStorage.getItem("community_groups");
+        if (savedGroups) {
+          const all = JSON.parse(savedGroups);
+          setMyGroups(all.filter((g: any) => g.members.includes(user.id)));
+        }
       }
       setLoading(false);
     }
@@ -42,16 +46,36 @@ function RecordContent() {
     setSharing(true);
     const supabase = createClient();
     const newVisibility = selectedShare === "all" ? "all" : `group_${selectedShare}`;
-    await supabase.from("qt_records").update({ visibility: newVisibility, group_id: selectedShare === "all" ? null : selectedShare }).eq("id", id);
-    setShared(true);
+    // group_id 컬럼 없을 수 있으므로 visibility만 업데이트
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error, data } = await supabase.from("qt_records")
+      .update({ visibility: newVisibility })
+      .eq("id", id)
+      .eq("user_id", user?.id) // user_id 명시적으로 추가
+      .select();
+    console.log("doShare result - error:", error, "data:", data);
+    if (!error && data && data.length > 0) {
+      setRecord((r: any) => ({ ...r, visibility: newVisibility }));
+      setShared(true);
+    }
     setSharing(false);
     setShowShareModal(false);
   }
 
   async function unshare() {
     const supabase = createClient();
-    await supabase.from("qt_records").update({ visibility: "private", group_id: null }).eq("id", id);
-    setShared(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log("unshare - user:", user?.id, "record id:", id);
+    const { error, data } = await supabase.from("qt_records")
+      .update({ visibility: "private" })
+      .eq("id", id)
+      .eq("user_id", user?.id) // user_id 명시적으로 추가
+      .select();
+    console.log("unshare result - error:", error, "data:", data);
+    if (!error) {
+      setRecord((r: any) => ({ ...r, visibility: "private" }));
+      setShared(false);
+    }
   }
 
   function copyAll() {
@@ -88,6 +112,17 @@ function RecordContent() {
     { key: "closing_prayer", label: "올려드리는 기도" },
   ];
 
+  const currentVisibilityLabel = () => {
+    if (!shared) return null;
+    if (record.visibility === "all") return "전체 커뮤니티에 공유 중";
+    if ((record.visibility ?? "").startsWith("group_")) {
+      const gId = record.visibility.replace("group_", "");
+      const g = myGroups.find((g: any) => g.id === gId);
+      return g ? `'${g.name}' 그룹에 공유 중` : "그룹에 공유 중";
+    }
+    return null;
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
@@ -98,6 +133,9 @@ function RecordContent() {
           {new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{record.bible_ref}</h1>
+        {shared && currentVisibilityLabel() && (
+          <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {currentVisibilityLabel()}</p>
+        )}
       </div>
 
       {/* 액션 버튼 */}
@@ -123,7 +161,6 @@ function RecordContent() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>큐티 나누기</h2>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>어디에 나눌지 선택해주세요</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {/* 전체 공개 */}
               <button onClick={() => setSelectedShare("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedShare === "all" ? "var(--sage)" : "var(--border)"}`, background: selectedShare === "all" ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
                 <Globe size={20} style={{ color: selectedShare === "all" ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                 <div>
@@ -132,8 +169,6 @@ function RecordContent() {
                 </div>
                 {selectedShare === "all" && <Check size={16} style={{ color: "var(--sage)", marginLeft: "auto" }} />}
               </button>
-
-              {/* 내 그룹들 */}
               {myGroups.length > 0 && (
                 <>
                   <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4 }}>내 그룹</p>
@@ -142,12 +177,17 @@ function RecordContent() {
                       <Lock size={20} style={{ color: selectedShare === g.id ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 600, color: selectedShare === g.id ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
-                        <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{g.members.length}명 · {g.isPublic ? "공개" : "비공개"} 그룹</p>
+                        <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>나 포함 {g.members.length}명 · {g.isPublic ? "공개" : "비공개"}</p>
                       </div>
                       {selectedShare === g.id && <Check size={16} style={{ color: "var(--sage)", marginLeft: "auto" }} />}
                     </button>
                   ))}
                 </>
+              )}
+              {myGroups.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>
+                  그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!
+                </p>
               )}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
