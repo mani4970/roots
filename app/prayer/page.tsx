@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
-import { Plus, CheckCircle, Loader2, Send } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
 export default function PrayerPage() {
   const router = useRouter();
@@ -15,6 +15,8 @@ export default function PrayerPage() {
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   useEffect(() => { loadPrayers(); }, []);
 
@@ -33,12 +35,18 @@ export default function PrayerPage() {
     if (!newPrayer.trim() || !userId) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("prayer_items").insert({
-      user_id: userId, content: newPrayer.trim(), is_anonymous: false, visibility: "private"
-    });
+    await supabase.from("prayer_items").insert({ user_id: userId, content: newPrayer.trim(), is_anonymous: false, visibility: "private" });
     setNewPrayer(""); setShowForm(false); setSaving(false);
-    // 첫 기도 제목 저장 시 축하!
+    // 첫 저장 시 축하
     if (prayers.length === 0) setCelebration(true);
+    loadPrayers();
+  }
+
+  async function saveEdit() {
+    if (!editText.trim() || !editId) return;
+    const supabase = createClient();
+    await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
+    setEditId(null); setEditText("");
     loadPrayers();
   }
 
@@ -58,11 +66,7 @@ export default function PrayerPage() {
 
   return (
     <div className="page">
-      <Celebration
-        show={celebration}
-        message="기도 제목 저장 완료!"
-        onClose={() => setCelebration(false)}
-      />
+      <Celebration show={celebration} message="기도 제목 저장!" onClose={() => setCelebration(false)} />
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>기도</h1>
@@ -95,32 +99,55 @@ export default function PrayerPage() {
                     </span>
                   </div>
                 )}
-                <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, color: "var(--text)" }}>{p.content}</p>
-                {p.testimony && <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 10, fontStyle: "italic" }}>"{p.testimony}"</p>}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {!p.is_answered && (
-                      <button onClick={() => markAnswered(p.id)} style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer" }}>
-                        응답됐어요 🙌
+
+                {/* 수정 모드 */}
+                {editId === p.id ? (
+                  <div>
+                    <textarea className="textarea-field" rows={3} value={editText} onChange={e => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={saveEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px", borderRadius: 10, background: "var(--sage)", color: "var(--bg)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        <Check size={14} /> 저장
                       </button>
-                    )}
-                    {!p.is_answered && p.visibility !== "all" && (
-                      <button onClick={() => requestIntercession(p.id)} style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                        <Send size={10} /> 중보기도 요청
+                      <button onClick={() => setEditId(null)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px", borderRadius: 10, background: "var(--bg3)", color: "var(--text3)", border: "1px solid var(--border)", cursor: "pointer", fontSize: 12 }}>
+                        <X size={14} /> 취소
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
-                </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, color: "var(--text)" }}>{p.content}</p>
+                    {p.testimony && <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 10, fontStyle: "italic" }}>"{p.testimony}"</p>}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {!p.is_answered && (
+                          <>
+                            <button onClick={() => { setEditId(p.id); setEditText(p.content); }} style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                              <Pencil size={10} /> 수정
+                            </button>
+                            <button onClick={() => markAnswered(p.id)} style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer" }}>
+                              응답됐어요 🙌
+                            </button>
+                            {p.visibility !== "all" && (
+                              <button onClick={() => requestIntercession(p.id)} style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                                <Send size={10} /> 중보기도 요청
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* 기도 작성 폼 — 가운데 정렬 */}
+      {/* 기도 작성 폼 — 가운데 */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>기도 제목 적기</h2>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>기본적으로 나만 볼 수 있어요.</p>

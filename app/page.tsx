@@ -5,6 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
+import Onboarding from "@/components/Onboarding";
 import { createClient } from "@/lib/supabase";
 import { ChevronRight, LogOut, Check } from "lucide-react";
 
@@ -24,8 +25,29 @@ export default function HomePage() {
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState({ show: false, message: "" });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // 3개 모두 완료 여부
+  const allDone = todayDone.qt && todayDone.prayer && (todayDone.decision || myDecisions.some(d => d.done));
 
   useEffect(() => { load(); }, []);
+
+  // 온보딩 체크
+  useEffect(() => {
+    if (!loading && profile) {
+      const done = localStorage.getItem("onboarding_done");
+      if (!done && (profile.streak_days ?? 0) === 0) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [loading, profile]);
+
+  // allDone 되면 축하
+  useEffect(() => {
+    if (allDone && !loading) {
+      setCelebration({ show: true, message: "오늘 루틴 완료!" });
+    }
+  }, [allDone]);
 
   async function load() {
     const supabase = createClient();
@@ -38,12 +60,9 @@ export default function HomePage() {
       .select("verse,mission,completed_mission,reference,message")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) setTodayVerse(ci);
-    const { data: tqt } = await supabase.from("qt_records")
-      .select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
-    const { data: tp } = await supabase.from("prayer_items").select("id")
-      .eq("user_id", user.id)
-      .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`)
-      .maybeSingle();
+    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
+    const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
+      .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
     if (tqt?.decision) {
       const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
       const saved = localStorage.getItem(`decisions_${today}`);
@@ -63,7 +82,6 @@ export default function HomePage() {
     const newVal = !todayDone.decision;
     await supabase.from("daily_checkins").update({ completed_mission: newVal }).eq("user_id", user.id).eq("date", today);
     setTodayDone(p => ({ ...p, decision: newVal }));
-    if (newVal) setCelebration({ show: true, message: "결단 실천 완료!" });
   }
 
   function toggleMyDecision(i: number) {
@@ -71,10 +89,6 @@ export default function HomePage() {
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
     setMyDecisions(updated);
     localStorage.setItem(`decisions_${today}`, JSON.stringify(updated.map(d => d.done)));
-    // 모든 결단 완료 시 축하
-    if (updated.every(d => d.done)) {
-      setCelebration({ show: true, message: "모든 결단 완료!" });
-    }
   }
 
   async function logout() {
@@ -103,18 +117,11 @@ export default function HomePage() {
     </div>
   );
 
-  const streak = profile?.streak_days ?? 0;
-
   return (
     <div className="page fade-in">
-      {/* 축하 오버레이 */}
-      <Celebration
-        show={celebration.show}
-        message={celebration.message}
-        onClose={() => setCelebration({ show: false, message: "" })}
-      />
+      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+      <Celebration show={celebration.show} message={celebration.message} onClose={() => setCelebration({ show: false, message: "" })} />
 
-      {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 4 }}>{getGreeting()}</div>
@@ -125,8 +132,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* 나무 + roots-man */}
-      <TreeGrowth days={streak} lastCheckin={profile?.last_checkin ?? null} />
+      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} allDone={allDone} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>
@@ -137,9 +143,7 @@ export default function HomePage() {
               <div style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 8 }}>{todayVerse.reference}</div>
               <p className="verse-text">"{todayVerse.verse}"</p>
               {todayVerse.message && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(122,157,122,0.2)", fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
-                  {todayVerse.message}
-                </div>
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(122,157,122,0.2)", fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{todayVerse.message}</div>
               )}
             </>
           ) : (
@@ -151,7 +155,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 오늘의 추천 결단 */}
+      {/* 추천 결단 */}
       {todayVerse?.mission && (
         <div style={{ padding: "0 16px 14px" }}>
           <div className="sec-label">오늘의 추천 결단</div>
@@ -169,23 +173,21 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 나의 결단 (큐티에서 작성) */}
+      {/* 나의 결단 */}
       {myDecisions.length > 0 && (
         <div style={{ padding: "0 16px 14px" }}>
           <div className="sec-label">오늘 나의 결단</div>
           <div className="card">
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {myDecisions.map((d, i) => (
-                <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-                    {d.done && <Check size={12} style={{ color: "var(--bg)" }} />}
-                  </div>
-                  <span style={{ fontSize: 13, color: d.done ? "var(--text3)" : "var(--text)", lineHeight: 1.5, textDecoration: d.done ? "line-through" : "none" }}>
-                    {i + 1}. {d.text}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {myDecisions.map((d, i) => (
+              <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "0 0 8px", width: "100%" }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  {d.done && <Check size={12} style={{ color: "var(--bg)" }} />}
+                </div>
+                <span style={{ fontSize: 13, color: d.done ? "var(--text3)" : "var(--text)", lineHeight: 1.5, textDecoration: d.done ? "line-through" : "none" }}>
+                  {i + 1}. {d.text}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}

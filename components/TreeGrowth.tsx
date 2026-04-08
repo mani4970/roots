@@ -1,10 +1,12 @@
 "use client";
-
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import RootsMan from "./RootsMan";
 
 interface TreeGrowthProps {
   days: number;
   lastCheckin: string | null;
+  allDone?: boolean;
 }
 
 function getTreeState(days: number, lastCheckin: string | null) {
@@ -15,10 +17,8 @@ function getTreeState(days: number, lastCheckin: string | null) {
     today.setHours(0,0,0,0); last.setHours(0,0,0,0);
     daysSince = Math.floor((today.getTime() - last.getTime()) / 86400000);
   }
-
   const isWithering = daysSince >= 7 && daysSince < 14;
   const isRegressed = daysSince >= 14;
-
   let effectiveDays = days;
   if (isRegressed && days > 0) effectiveDays = Math.max(0, days - 15);
 
@@ -50,12 +50,93 @@ function getTreeState(days: number, lastCheckin: string | null) {
   return { img, stage: stages[img - 1], isWithering, isRegressed, daysSince };
 }
 
-export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
+// 시간대 판별
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 17) return "day";    // 낮
+  if (h >= 17 && h < 20) return "evening"; // 저녁
+  return "night";                          // 밤
+}
+
+// 해 스프라이트: sun and bird.png 위쪽 절반, 5프레임, 총 1408x384 (위쪽 384px)
+const SUN_FRAMES = 5;
+const SUN_SHEET_W = 1408;
+const SUN_FRAME_W = SUN_SHEET_W / SUN_FRAMES; // 281.6px
+const SUN_H = 384; // 위쪽 절반
+
+// 새 스프라이트: sun and bird.png 아래쪽 절반, 6프레임
+const BIRD_FRAMES = 6;
+const BIRD_FRAME_W = SUN_SHEET_W / BIRD_FRAMES; // 234.67px
+const BIRD_H = 384;
+
+// 달 스프라이트: moon.png, 6프레임, 2816x1536
+const MOON_FRAMES = 6;
+const MOON_SHEET_W = 2816;
+const MOON_FRAME_W = MOON_SHEET_W / MOON_FRAMES; // 469px
+const MOON_H = 1536;
+
+function SunSprite() {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setFrame(f => (f + 1) % SUN_FRAMES), 400);
+    return () => clearInterval(t);
+  }, []);
+  const renderW = 48;
+  const scale = renderW / SUN_FRAME_W;
+  const renderH = Math.round(SUN_H * scale);
+  return (
+    <div style={{ position: "absolute", top: 8, left: 12, width: renderW, height: renderH, overflow: "hidden", imageRendering: "pixelated", zIndex: 3 }}>
+      <img src="/sun and bird.png" alt="sun" style={{ position: "absolute", top: 0, left: -frame * SUN_FRAME_W * scale, width: SUN_SHEET_W * scale, height: SUN_H * scale * 2, imageRendering: "pixelated" }} />
+    </div>
+  );
+}
+
+function BirdSprite({ posX, posY }: { posX: number; posY: number }) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const offset = Math.floor(Math.random() * BIRD_FRAMES);
+    setFrame(offset);
+    const t = setInterval(() => setFrame(f => (f + 1) % BIRD_FRAMES), 120);
+    return () => clearInterval(t);
+  }, []);
+  const renderW = 28;
+  const scale = renderW / BIRD_FRAME_W;
+  const renderH = Math.round(BIRD_H * scale);
+  return (
+    <div style={{ position: "absolute", top: posY, left: `${posX}%`, width: renderW, height: renderH, overflow: "hidden", imageRendering: "pixelated", zIndex: 3 }}>
+      <img src="/sun and bird.png" alt="bird" style={{ position: "absolute", top: -SUN_H * scale, left: -frame * BIRD_FRAME_W * scale, width: SUN_SHEET_W * scale, height: BIRD_H * scale * 2, imageRendering: "pixelated" }} />
+    </div>
+  );
+}
+
+function MoonSprite() {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setFrame(f => (f + 1) % MOON_FRAMES), 500);
+    return () => clearInterval(t);
+  }, []);
+  const renderW = 52;
+  const scale = renderW / MOON_FRAME_W;
+  const renderH = Math.round(MOON_H * scale);
+  return (
+    <div style={{ position: "absolute", top: 6, right: 12, width: renderW, height: renderH, overflow: "hidden", imageRendering: "pixelated", zIndex: 3 }}>
+      <img src="/moon.png" alt="moon" style={{ position: "absolute", top: 0, left: -frame * MOON_FRAME_W * scale, width: MOON_SHEET_W * scale, height: MOON_H * scale, imageRendering: "pixelated" }} />
+    </div>
+  );
+}
+
+export default function TreeGrowth({ days, lastCheckin, allDone = false }: TreeGrowthProps) {
   const { img, stage, isWithering, isRegressed, daysSince } = getTreeState(days, lastCheckin);
+  const timeOfDay = getTimeOfDay();
+  const isNight = timeOfDay === "night";
+  const isEvening = timeOfDay === "evening";
+
+  // 밤이면 dark.png (첫 번째 컷 = 1408x256 첫 행) 사용
+  // dark.png는 4열x3행 스토리보드, 각 씬은 352x256
+  // 가장 예쁜 첫 번째 씬(달밤+나무)을 나무 대신 보여줌
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
-      {/* 단절 경고 */}
       {isWithering && !isRegressed && (
         <div style={{ background: "rgba(196,149,106,0.15)", border: "1px solid rgba(196,149,106,0.3)", borderRadius: 12, padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🥀</span>
@@ -69,29 +150,64 @@ export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
         </div>
       )}
 
-      {/* 나무 이미지 */}
-      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        <Image
-          src={`/tree${img}.png`}
-          alt={stage.label}
-          fill
-          style={{
-            objectFit: "cover",
-            filter: isWithering ? "grayscale(50%) brightness(0.7)" : "none",
-            transition: "filter 0.5s ease",
-          }}
-          priority
-        />
-        <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20 }}>
+      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: isNight ? "#1a1f3a" : isEvening ? "#2d1f3a" : "var(--bg2)" }}>
+
+        {/* 밤: dark.png 전체 배경으로 */}
+        {isNight ? (
+          <Image
+            src="/dark.png"
+            alt="밤 배경"
+            fill
+            style={{ objectFit: "cover", objectPosition: "50% 25%" }}
+            priority
+          />
+        ) : (
+          /* 낮/저녁: 나무 이미지 */
+          <Image
+            src={`/tree${img}.png`}
+            alt={stage.label}
+            fill
+            style={{
+              objectFit: "cover",
+              filter: isWithering ? "grayscale(50%) brightness(0.7)" : isEvening ? "sepia(30%) brightness(0.85)" : "none",
+              transition: "filter 0.5s ease",
+            }}
+            priority
+          />
+        )}
+
+        {/* 저녁 어두운 오버레이 */}
+        {isEvening && (
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(80,40,20,0.35), rgba(20,10,40,0.2))", zIndex: 2 }} />
+        )}
+
+        {/* 낮: 해 + 새 스프라이트 */}
+        {timeOfDay === "day" && (
+          <>
+            <SunSprite />
+            <BirdSprite posX={55} posY={14} />
+            <BirdSprite posX={70} posY={22} />
+            <BirdSprite posX={40} posY={8} />
+          </>
+        )}
+
+        {/* 밤: 달 스프라이트 */}
+        {isNight && <MoonSprite />}
+
+        {/* 배지 */}
+        <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
           {stage.label}
         </div>
-        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.75)", color: "var(--text)", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
+        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.75)", color: "var(--text)", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
           {days}일째
         </div>
-        {isWithering && <div style={{ position: "absolute", inset: 0, background: "rgba(100,70,30,0.2)" }} />}
+
+        {isWithering && <div style={{ position: "absolute", inset: 0, background: "rgba(100,70,30,0.2)", zIndex: 2 }} />}
+
+        {/* RootsMan */}
+        <RootsMan animate={allDone} />
       </div>
 
-      {/* 진행 정보 */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{Math.min(days, 100)} / 100일</span>
@@ -99,21 +215,10 @@ export default function TreeGrowth({ days, lastCheckin }: TreeGrowthProps) {
       <div className="progress-bar" style={{ marginTop: 6 }}>
         <div className="progress-fill" style={{ width: `${Math.min((days / 100) * 100, 100)}%` }} />
       </div>
-
-      {/* roots-man + 스트릭 */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+      <div style={{ marginTop: 8 }}>
         <div className="streak-chip">
           <span style={{ fontSize: 12 }}>{isWithering ? "🥀" : "🔥"}</span>
           <span>{days}일 연속 기록 중</span>
-        </div>
-        {/* 물 주는 캐릭터 */}
-        <div style={{ position: "relative", width: 56, height: 44 }}>
-          <Image
-            src="/roots-man.png"
-            alt="물 주는 중"
-            fill
-            style={{ objectFit: "contain" }}
-          />
         </div>
       </div>
     </div>
