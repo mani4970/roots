@@ -33,15 +33,17 @@ export default function RootsMan({ trigger }: RootsManProps) {
   const hasRun = useRef(false);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
     if (trigger && !hasRun.current) {
       hasRun.current = true;
-      // confetti 끝나고 1초 후 등장
-      setTimeout(() => startAnimation(), 1200);
+      timeoutId = setTimeout(() => startAnimation(), 1200);
     }
     if (!trigger) {
       hasRun.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
       setPhase("idle");
     }
+    return () => { if (timeoutId) clearTimeout(timeoutId); };
   }, [trigger]);
 
   function clearInv() {

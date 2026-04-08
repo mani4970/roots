@@ -30,7 +30,7 @@ export default function QTCompletePage() {
         <p style={{ color: "var(--sage-dark)", fontSize: 13, lineHeight: 1.65, marginBottom: 28 }}>
           오늘 하루 하나님과 동행할<br />당신을 축복합니다 ✨
         </p>
-        <Link href="/"><button className="btn-sage">홈으로 돌아가기</button></Link>
+        <button className="btn-sage" onClick={() => { window.location.href = "/"; }}>홈으로 돌아가기</button>
       </div>
     </div>
   );

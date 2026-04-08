@@ -176,6 +176,9 @@ function QTWriteContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
       const today = new Date().toISOString().split("T")[0];
+      // 오늘 이미 큐티 했는지 확인
+      const { data: existing } = await supabase.from("qt_records").select("id").eq("user_id", user.id).eq("date", today).maybeSingle();
+      if (existing) { router.push("/qt/complete"); return; }
       const decisionText = decisions.filter(d => d.trim()).join("\n");
       await supabase.from("qt_records").insert({
         user_id: user.id, date: today,
@@ -236,7 +239,7 @@ function QTWriteContent() {
           return (
             <button
               key={i}
-              onClick={() => setCur(i)}
+              onClick={() => { if (i <= cur || isStepDone(i)) setCur(i); }}
               style={{
                 flexShrink: 0,
                 padding: "10px 14px",
@@ -277,7 +280,12 @@ function QTWriteContent() {
               {/* 본문 — 절별로 표시, 클릭하면 붙잡은 말씀에 추가 */}
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "14px 16px", border: "1px solid rgba(122,157,122,0.3)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{answers.bible_ref}</p>
+                  {answers.bible_ref === "직접입력" ? (
+                    <input type="text" className="input-field" placeholder="예: 요한복음 3:16" style={{ fontSize: 12, padding: "6px 10px", flex: 1, marginRight: 8 }}
+                      onChange={e => setAnswers(p => ({ ...p, bible_ref: e.target.value }))} />
+                  ) : (
+                    <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{answers.bible_ref}</p>
+                  )}
                   <button onClick={() => { setPassageLoaded(false); setPassageVerses([]); setAnswers(p => ({ ...p, passage: "", bible_ref: "" })); }} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>
                     다시 선택
                   </button>

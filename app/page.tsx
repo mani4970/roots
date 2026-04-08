@@ -87,9 +87,9 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // allDone 감지 — 이미 축하했으면 스킵
+  // allDone 감지 — 이미 축하했으면 스킵, 온보딩 중이면 스킵
   useEffect(() => {
-    if (!loading && allDone && !celebrationShownRef.current) {
+    if (!loading && allDone && !celebrationShownRef.current && !showOnboarding) {
       const today = new Date().toISOString().split("T")[0];
       if (!localStorage.getItem(`celebrated_${today}`)) {
         celebrationShownRef.current = true;
@@ -252,7 +252,7 @@ export default function HomePage() {
           {[
             { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖", onClick: null },
             { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏", onClick: null },
-            { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: toggleAiDecision },
+            { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: () => todayVerse ? toggleAiDecision() : router.push("/checkin") },
           ].map(({ label, href, done, icon, onClick }: any) => {
             const bg = done ? "var(--sage-light)" : "var(--bg2)";
             const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
