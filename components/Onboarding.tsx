@@ -34,19 +34,8 @@ const SLIDES = [
   },
 ];
 
-async function requestNotificationPermission() {
-  if (typeof window === "undefined" || !("Notification" in window)) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  const permission = await Notification.requestPermission();
-  return permission === "granted";
-}
-
 export default function Onboarding({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(0);
-  const [showNotifStep, setShowNotifStep] = useState(false);
-  const [notifGranted, setNotifGranted] = useState(false);
-  const [requesting, setRequesting] = useState(false);
 
   const slide = SLIDES[page];
   const isLast = page === SLIDES.length - 1;
@@ -58,48 +47,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
   function next() {
     if (!isLast) setPage(p => p + 1);
-    else setShowNotifStep(true);
-  }
-
-  async function handleNotifRequest() {
-    setRequesting(true);
-    const granted = await requestNotificationPermission();
-    setNotifGranted(granted);
-    setRequesting(false);
-    if (granted) setTimeout(() => neverShow(), 1200);
-  }
-
-  if (showNotifStep) {
-    return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
-        <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 360, padding: "36px 28px 28px", textAlign: "center" }}>
-          {notifGranted ? (
-            <>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 12 }}>준비됐어요!</h2>
-              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.7 }}>매일 아침 말씀 알림이 올 거예요.<br />Roots와 함께 자라가요 🌱</p>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>🔔</div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 12, lineHeight: 1.3 }}>알림을 허용해주세요</h2>
-              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>
-                매일 아침 큐티 알림으로<br />말씀 루틴을 놓치지 않아요.
-              </p>
-              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 28 }}>알림이 없으면 루틴을 잊기 쉬워요 😢</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={handleNotifRequest} disabled={requesting} className="btn-sage" style={{ fontSize: 14 }}>
-                  {requesting ? "요청 중..." : "🔔 알림 허용하기"}
-                </button>
-                <button onClick={neverShow} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, cursor: "pointer", padding: "8px" }}>
-                  나중에 설정할게요
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
+    else neverShow();
   }
 
   return (
