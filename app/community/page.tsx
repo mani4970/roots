@@ -40,11 +40,14 @@ export default function CommunityPage() {
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // 중보기도
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
 
-  // 큐티 나눔 반응
-  const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
-  const [myReactions, setMyReactions] = useState<Record<string, string>>({});
+  // 큐티 반응: { [qtId]: { bless: 3, cheer: 1, pray: 2 } }
+  const [qtReactionCounts, setQtReactionCounts] = useState<Record<string, Record<string, number>>>({});
+  // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
+  const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>({});
 
   // 그룹
   const [showGroupForm, setShowGroupForm] = useState(false);
@@ -56,13 +59,37 @@ export default function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
-  const [groupReactions, setGroupReactions] = useState<Record<string, Record<string, number>>>({});
-  const [myGroupReactions, setMyGroupReactions] = useState<Record<string, string>>({});
-
-  // 큐티 전체보기 모달
   const [detailQt, setDetailQt] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
+
+  // 프로필 fetch 헬퍼
+  async function fetchProfiles(supabase: any, data: any[]) {
+    const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
+    if (uids.length === 0) return {};
+    const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
+    const map: Record<string, any> = {};
+    (profs ?? []).forEach((p: any) => { map[p.id] = p; });
+    return map;
+  }
+
+  // qt_reactions 로드 헬퍼 - qtIds 목록의 반응 카운트 + 내 반응 가져오기
+  async function fetchQtReactions(supabase: any, qtIds: string[], uid: string) {
+    if (qtIds.length === 0) return { counts: {}, mine: {} };
+    const { data: rxData } = await supabase.from("qt_reactions")
+      .select("qt_id, reaction, user_id")
+      .in("qt_id", qtIds);
+
+    const counts: Record<string, Record<string, number>> = {};
+    const mine: Record<string, string> = {};
+
+    (rxData ?? []).forEach((r: any) => {
+      if (!counts[r.qt_id]) counts[r.qt_id] = {};
+      counts[r.qt_id][r.reaction] = (counts[r.qt_id][r.reaction] ?? 0) + 1;
+      if (r.user_id === uid) mine[r.qt_id] = r.reaction;
+    });
+    return { counts, mine };
+  }
 
   async function loadData() {
     setLoading(true);
@@ -71,49 +98,35 @@ export default function CommunityPage() {
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
 
-    // prayedIds: localStorage + DB 병합
-    const savedPrayed: string[] = JSON.parse(localStorage.getItem(`comm_prayed_${user.id}`) ?? "[]");
+    // prayedIds: DB에서 로드
     const { data: prayLogs } = await supabase.from("user_prayer_logs")
       .select("prayer_id").eq("user_id", user.id);
     const dbPrayed = (prayLogs ?? []).map((r: any) => r.prayer_id);
-    const merged = Array.from(new Set([...savedPrayed, ...dbPrayed]));
-    setPrayedIds(merged);
-    if (merged.length > 0) localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify(merged));
-    const myRx = localStorage.getItem(`comm_reactions_${user.id}`);
-    if (myRx) setMyReactions(JSON.parse(myRx));
-    const myGRx = localStorage.getItem(`group_reactions_${user.id}`);
-    if (myGRx) setMyGroupReactions(JSON.parse(myGRx));
+    setPrayedIds(dbPrayed);
+    localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify(dbPrayed));
 
     if (tab === "prayer") {
       const { data } = await supabase.from("prayer_items")
-        .select("*")
-        .eq("visibility", "all").eq("is_answered", false)
+        .select("*").eq("visibility", "all").eq("is_answered", false)
         .order("created_at", { ascending: false });
       if (data) {
-        // 프로필 별도 fetch
-        const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
-        const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
-        const profMap: Record<string, any> = {};
-        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+        const profMap = await fetchProfiles(supabase, data);
         setPrayers(data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
       }
 
     } else if (tab === "qt") {
-      // 전체 커뮤니티 공유만 (visibility에 "all" 포함)
       const { data } = await supabase.from("qt_records")
-        .select("*")
-        .ilike("visibility", "%all%")
+        .select("*").ilike("visibility", "%all%")
         .order("created_at", { ascending: false }).limit(30);
       if (data) {
-        const uids2 = Array.from(new Set(data.map((r: any) => r.user_id)));
-        const { data: profs2 } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids2);
-        const profMap2: Record<string, any> = {};
-        (profs2 ?? []).forEach((p: any) => { profMap2[p.id] = p; });
-        const withProfs = data.map((r: any) => ({ ...r, profiles: profMap2[r.user_id] ?? null }));
+        const profMap = await fetchProfiles(supabase, data);
+        const withProfs = data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null }));
         setQtShares(withProfs);
-        const rxMap: Record<string, Record<string, number>> = {};
-        withProfs.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
-        setReactions(rxMap);
+        // 반응 카운트 로드
+        const qtIds = data.map((r: any) => r.id);
+        const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
+        setQtReactionCounts(counts);
+        setMyQtReactions(mine);
       }
 
     } else {
@@ -147,124 +160,93 @@ export default function CommunityPage() {
     setSelectedGroup(group);
     setLoadingGroupQts(true);
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase.from("qt_records")
-      .select("*")
-      .ilike("visibility", `%group_${group.id}%`)
+      .select("*").ilike("visibility", `%group_${group.id}%`)
       .order("created_at", { ascending: false }).limit(30);
-    if (data) {
-      const uids3 = Array.from(new Set(data.map((r: any) => r.user_id)));
-      const { data: profs3 } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids3);
-      const profMap3: Record<string, any> = {};
-      (profs3 ?? []).forEach((p: any) => { profMap3[p.id] = p; });
-      const withProfs3 = data.map((r: any) => ({ ...r, profiles: profMap3[r.user_id] ?? null }));
-      setGroupQts(withProfs3);
-      const rxMap: Record<string, Record<string, number>> = {};
-      withProfs3.forEach((r: any) => { if (r.reactions) rxMap[r.id] = r.reactions; });
-      setGroupReactions(rxMap);
+    if (data && user) {
+      const profMap = await fetchProfiles(supabase, data);
+      const withProfs = data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null }));
+      setGroupQts(withProfs);
+      // 반응 카운트 로드
+      const qtIds = data.map((r: any) => r.id);
+      const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
+      setQtReactionCounts(prev => ({ ...prev, ...counts }));
+      setMyQtReactions(prev => ({ ...prev, ...mine }));
     }
     setLoadingGroupQts(false);
+  }
+
+  // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
+  async function reactToQT(qtId: string, reactionId: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const myPrev = myQtReactions[qtId];
+
+    if (myPrev === reactionId) {
+      // 같은 반응 → 취소
+      await supabase.from("qt_reactions")
+        .delete().eq("qt_id", qtId).eq("user_id", user.id);
+      setMyQtReactions(prev => { const n = { ...prev }; delete n[qtId]; return n; });
+      setQtReactionCounts(prev => ({
+        ...prev,
+        [qtId]: { ...prev[qtId], [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1) }
+      }));
+    } else {
+      // 새 반응 or 변경
+      await supabase.from("qt_reactions").upsert(
+        { qt_id: qtId, user_id: user.id, reaction: reactionId },
+        { onConflict: "qt_id,user_id" }
+      );
+      setMyQtReactions(prev => ({ ...prev, [qtId]: reactionId }));
+      setQtReactionCounts(prev => {
+        const cur = { ...prev[qtId] };
+        if (myPrev) cur[myPrev] = Math.max(0, (cur[myPrev] ?? 1) - 1);
+        cur[reactionId] = (cur[reactionId] ?? 0) + 1;
+        return { ...prev, [qtId]: cur };
+      });
+    }
   }
 
   async function prayTogether(id: string) {
     if (prayedIds.includes(id)) return;
     const supabase = createClient();
-
-    // userId state 대신 직접 auth에서 가져오기 (state 타이밍 문제 방지)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const uid = user.id;
 
-    // DB에서 이미 기도했는지 확인
-    const { data: logCheck } = await supabase.from("user_prayer_logs")
-      .select("id").eq("user_id", uid).eq("prayer_id", id).maybeSingle();
-    if (logCheck) {
+    // 중복 체크
+    const { data: existing } = await supabase.from("user_prayer_logs")
+      .select("id").eq("user_id", user.id).eq("prayer_id", id).maybeSingle();
+    if (existing) {
       setPrayedIds(prev => prev.includes(id) ? prev : [...prev, id]);
       return;
     }
 
-    // 기도 로그 저장
+    // 로그 저장
     const { error: logError } = await supabase.from("user_prayer_logs")
-      .insert({ user_id: uid, prayer_id: id });
+      .insert({ user_id: user.id, prayer_id: id });
     if (logError) {
-      console.error("기도 로그 저장 실패:", logError);
-      // UNIQUE 위반(이미 기도)이면 UI만 업데이트
-      if (logError.code === "23505") {
-        setPrayedIds(prev => prev.includes(id) ? prev : [...prev, id]);
-      }
+      if (logError.code === "23505") setPrayedIds(prev => [...prev, id]);
       return;
     }
 
-    // prayer_count 업데이트 - RPC로 원자적 증가
-    const { error: countError } = await supabase.rpc("increment_prayer_count", { prayer_id: id });
+    // 카운트 증가
+    const { error: rpcError } = await supabase.rpc("increment_prayer_count", { prayer_id: id });
     let newCount = 0;
-    if (countError) {
-      // RPC 없으면 직접 update
-      console.log("RPC 없음, 직접 update 시도");
-      const { data: current } = await supabase.from("prayer_items")
-        .select("prayer_count").eq("id", id).single();
-      newCount = (current?.prayer_count ?? 0) + 1;
-      const { error: updateError } = await supabase.from("prayer_items")
-        .update({ prayer_count: newCount }).eq("id", id);
-      if (updateError) console.error("prayer_count 업데이트 실패:", updateError);
+    if (rpcError) {
+      const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+      newCount = (cur?.prayer_count ?? 0) + 1;
+      await supabase.from("prayer_items").update({ prayer_count: newCount }).eq("id", id);
     } else {
-      // RPC 성공시 현재 값 다시 읽기
-      const { data: current } = await supabase.from("prayer_items")
-        .select("prayer_count").eq("id", id).single();
-      newCount = current?.prayer_count ?? 1;
+      const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+      newCount = cur?.prayer_count ?? 1;
     }
 
-    const newArr = [...prayedIds, id];
-    setPrayedIds(newArr);
-    localStorage.setItem(`comm_prayed_${uid}`, JSON.stringify(newArr));
+    setPrayedIds(prev => [...prev, id]);
+    localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify([...prayedIds, id]));
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
-  }
-
-  // 큐티 나눔 탭 반응
-  async function reactToQT(qtId: string, reactionId: string) {
-    const current = reactions[qtId] ?? {};
-    const myPrev = myReactions[qtId];
-    const updated = { ...current };
-    let newMy: Record<string, string>;
-    if (myPrev === reactionId) {
-      updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
-      newMy = { ...myReactions }; delete newMy[qtId];
-    } else {
-      if (myPrev) updated[myPrev] = Math.max(0, (updated[myPrev] ?? 1) - 1);
-      updated[reactionId] = (updated[reactionId] ?? 0) + 1;
-      newMy = { ...myReactions, [qtId]: reactionId };
-    }
-    setMyReactions(newMy);
-    setReactions(prev => ({ ...prev, [qtId]: updated }));
-    if (userId) localStorage.setItem(`comm_reactions_${userId}`, JSON.stringify(newMy));
-    // DB에 reactions 저장
-    const supabase = createClient();
-    await supabase.from("qt_records").update({ reactions: updated }).eq("id", qtId);
-  }
-
-  // 그룹 큐티 반응
-  async function reactToGroupQT(qtId: string, reactionId: string) {
-    const current = groupReactions[qtId] ?? {};
-    const myPrev = myGroupReactions[qtId];
-    const updated = { ...current };
-    let newMy: Record<string, string>;
-    if (myPrev === reactionId) {
-      updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
-      newMy = { ...myGroupReactions }; delete newMy[qtId];
-    } else {
-      if (myPrev) updated[myPrev] = Math.max(0, (updated[myPrev] ?? 1) - 1);
-      updated[reactionId] = (updated[reactionId] ?? 0) + 1;
-      newMy = { ...myGroupReactions, [qtId]: reactionId };
-    }
-    setMyGroupReactions(newMy);
-    setGroupReactions(prev => ({ ...prev, [qtId]: updated }));
-    if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
-    // DB에 reactions 저장
-    const supabase = createClient();
-    await supabase.from("qt_records").update({ reactions: updated }).eq("id", qtId);
-    // detailQt도 업데이트
-    if (detailQt?.id === qtId) {
-      setDetailQt((prev: any) => ({ ...prev, _reactions: { ...updated } }));
-    }
   }
 
   async function createGroup() {
@@ -272,12 +254,10 @@ export default function CommunityPage() {
     setSavingGroup(true);
     const supabase = createClient();
     const { data: newGroup, error } = await supabase.from("groups").insert({
-      name: groupName.trim(),
-      description: groupDesc.trim() || null,
-      is_public: isPublic,
-      created_by: userId,
+      name: groupName.trim(), description: groupDesc.trim() || null,
+      is_public: isPublic, created_by: userId,
     }).select().single();
-    if (error || !newGroup) { console.error("그룹 생성 실패:", error); setSavingGroup(false); return; }
+    if (error || !newGroup) { setSavingGroup(false); return; }
     await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
     loadData();
@@ -286,24 +266,17 @@ export default function CommunityPage() {
   async function joinGroup(groupId: string) {
     if (!userId) return;
     const supabase = createClient();
-    await supabase.from("group_members").upsert(
-      { group_id: groupId, user_id: userId },
-      { onConflict: "group_id,user_id" }
-    );
+    await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 } : g));
-    if (selectedGroup?.id === groupId) {
-      setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 }));
-    }
+    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 }));
   }
 
   function copyInviteLink(groupId: string) {
-    const link = `${APP_URL}/join?group=${groupId}`;
-    navigator.clipboard.writeText(link).then(() => { setCopiedId(groupId); setTimeout(() => setCopiedId(null), 2000); });
+    navigator.clipboard.writeText(`${APP_URL}/join?group=${groupId}`).then(() => { setCopiedId(groupId); setTimeout(() => setCopiedId(null), 2000); });
   }
 
   function shareInvite(group: any) {
-    const link = `${APP_URL}/join?group=${group.id}`;
-    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${link}`;
+    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
     if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
     else copyInviteLink(group.id);
   }
@@ -314,14 +287,37 @@ export default function CommunityPage() {
     else navigator.clipboard.writeText(text);
   }
 
+  // 반응 버튼 컴포넌트
+  function ReactionButtons({ qtId, onReact }: { qtId: string; onReact: (qtId: string, rx: string) => void }) {
+    const counts = qtReactionCounts[qtId] ?? {};
+    const myRx = myQtReactions[qtId];
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return (
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {REACTIONS.map(reaction => {
+          const count = counts[reaction.id] ?? 0;
+          const isSelected = myRx === reaction.id;
+          return (
+            <button key={reaction.id} onClick={() => onReact(qtId, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 11px", borderRadius: 20, border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 12, color: isSelected ? "var(--sage-dark)" : "var(--text3)", fontWeight: isSelected ? 700 : 400, transition: "all 0.15s" }}>
+              <span style={{ fontSize: 14 }}>{reaction.icon}</span>
+              <span>{reaction.label}</span>
+              {count > 0 && <span style={{ fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--text2)", marginLeft: 2 }}>{count}</span>}
+            </button>
+          );
+        })}
+        {total > 0 && (
+          <span style={{ fontSize: 11, color: "var(--text3)", alignSelf: "center", marginLeft: 2 }}>총 {total}개</span>
+        )}
+      </div>
+    );
+  }
+
   // 큐티 전체보기 모달
-  function QTDetailModal({ r, onClose, onReact, myRx, rxMap }: { r: any; onClose: () => void; onReact: (id: string, rx: string) => void; myRx: Record<string, string>; rxMap: Record<string, Record<string, number>> }) {
-    const rx = rxMap[r.id] ?? {};
+  function QTDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
     return (
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, overflowY: "auto" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 16px 40px" }}>
           <div style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", width: "100%", maxWidth: 480, padding: "24px 20px" }}>
-            {/* 헤더 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} emoji="📖" />
@@ -332,14 +328,12 @@ export default function CommunityPage() {
               </div>
               <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={22} /></button>
             </div>
-
-            {/* 본문 제목 */}
-            <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
-              <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{r.bible_ref}</p>
-              {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", opacity: 0.9 }}>"{r.key_verse}"</p>}
-            </div>
-
-            {/* 섹션들 */}
+            {r.bible_ref && (
+              <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{r.bible_ref}</p>
+                {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", whiteSpace: "pre-line" }}>"{r.key_verse}"</p>}
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).map(({ key, label, italic, isDecision }) => (
                 <div key={key}>
@@ -358,23 +352,9 @@ export default function CommunityPage() {
                 </div>
               ))}
             </div>
-
-            {/* 반응 버튼 */}
             <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 16 }}>
               <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 10, fontWeight: 600 }}>이 말씀 묵상에 반응해주세요</p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {REACTIONS.map(reaction => {
-                  const isSelected = myRx[r.id] === reaction.id;
-                  const count = rx[reaction.id] ?? 0;
-                  return (
-                    <button key={reaction.id} onClick={() => onReact(r.id, reaction.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 6px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer" }}>
-                      <span style={{ fontSize: 20 }}>{reaction.icon}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>{reaction.label}</span>
-                      {count > 0 && <span style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 700 }}>{count}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              <ReactionButtons qtId={r.id} onReact={reactToQT} />
             </div>
           </div>
         </div>
@@ -382,13 +362,8 @@ export default function CommunityPage() {
     );
   }
 
-  const TABS = [
-    { id: "prayer", label: "중보기도" },
-    { id: "qt", label: "큐티 나눔" },
-    { id: "group", label: "그룹" },
-  ];
+  const TABS = [{ id: "prayer", label: "중보기도" }, { id: "qt", label: "큐티 나눔" }, { id: "group", label: "그룹" }];
 
-  // 그룹 상세
   if (selectedGroup) {
     return (
       <div className="page">
@@ -407,7 +382,6 @@ export default function CommunityPage() {
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* 버튼들 */}
           <div style={{ display: "flex", gap: 8 }}>
             {!selectedGroup.isMember ? (
               <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ flex: 1 }}>참여하기</button>
@@ -423,70 +397,39 @@ export default function CommunityPage() {
             </button>
           </div>
 
-          {/* 그룹 큐티 목록 */}
           <div style={{ marginTop: 8 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>그룹 큐티 나눔</p>
             {loadingGroupQts ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
-                <Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" />
-              </div>
+              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
             ) : groupQts.length === 0 ? (
               <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
                 <p style={{ fontSize: 24, marginBottom: 8 }}>📖</p>
                 <p style={{ fontSize: 13, color: "var(--text3)" }}>아직 이 그룹에 나눈 큐티가 없어요</p>
-                <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>큐티 기록에서 이 그룹을 선택해 나눠보세요!</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {groupQts.map(r => {
-                  const rx = groupReactions[r.id] ?? {};
-                  return (
-                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
-                      {/* 카드 헤더 */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
-                        </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                {groupQts.map(r => (
+                  <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref}</p>
-                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-
-                      {/* 반응 버튼 - 클릭 시 상세보기로 전파 안 되게 */}
-                      <div style={{ display: "flex", gap: 6, marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                        {REACTIONS.map(reaction => {
-                          const isSelected = myGroupReactions[r.id] === reaction.id;
-                          const count = rx[reaction.id] ?? 0;
-                          return (
-                            <button key={reaction.id} onClick={() => reactToGroupQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 20, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 11, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>
-                              <span style={{ fontSize: 13 }}>{reaction.icon}</span>
-                              <span>{reaction.label}</span>
-                              {count > 0 && <span style={{ fontWeight: 700 }}>{count}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
-                  );
-                })}
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || "자유 묵상"}</p>
+                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                    <div onClick={e => e.stopPropagation()}>
+                      <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                    </div>
+                    <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
-
-        {/* 큐티 전체보기 모달 */}
-        {detailQt && (
-          <QTDetailModal
-            r={detailQt}
-            onClose={() => setDetailQt(null)}
-            onReact={reactToGroupQT}
-            myRx={myGroupReactions}
-            rxMap={groupReactions}
-          />
-        )}
-
+        {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
         <BottomNav />
       </div>
     );
@@ -516,9 +459,7 @@ export default function CommunityPage() {
 
       <div style={{ padding: "16px 16px 0" }}>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-            <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
-          </div>
+          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>
 
         ) : tab === "prayer" ? (
           prayers.length === 0 ? (
@@ -537,12 +478,12 @@ export default function CommunityPage() {
                     </div>
                     <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                   </div>
-                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12 }}>{p.content}</p>
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
                   <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
                     <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
                       {prayedIds.includes(p.id)
-                        ? `기도했어요 · ${p.prayer_count ?? 0}명`
+                        ? `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`
                         : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
                     </span>
                   </button>
@@ -558,54 +499,29 @@ export default function CommunityPage() {
               <div style={{ textAlign: "center", padding: "48px 0" }}>
                 <p style={{ fontSize: 32, marginBottom: 10 }}>📖</p>
                 <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 나눈 큐티가 없어요</p>
-                <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>큐티 기록에서 "전체 커뮤니티"로 나눠보세요!</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {qtShares.map(r => {
-                  const rx = reactions[r.id] ?? {};
-                  return (
-                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
-                        </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                {qtShares.map(r => (
+                  <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? "이름 없음"}</span>
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref}</p>
-                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 8 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-
-                      <div style={{ display: "flex", gap: 6, marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                        {REACTIONS.map(reaction => {
-                          const isSelected = myReactions[r.id] === reaction.id;
-                          const count = rx[reaction.id] ?? 0;
-                          return (
-                            <button key={reaction.id} onClick={() => reactToQT(r.id, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 20, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 11, color: isSelected ? "var(--sage-dark)" : "var(--text3)" }}>
-                              <span style={{ fontSize: 13 }}>{reaction.icon}</span>
-                              <span>{reaction.label}</span>
-                              {count > 0 && <span style={{ fontWeight: 700 }}>{count}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
-                  );
-                })}
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || "자유 묵상"}</p>
+                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                    <div onClick={e => e.stopPropagation()}>
+                      <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                    </div>
+                    <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>탭하여 전체 보기 →</p>
+                  </div>
+                ))}
               </div>
             )}
-
-            {/* 큐티 전체보기 모달 (큐티 나눔 탭) */}
-            {detailQt && (
-              <QTDetailModal
-                r={detailQt}
-                onClose={() => setDetailQt(null)}
-                onReact={reactToQT}
-                myRx={myReactions}
-                rxMap={reactions}
-              />
-            )}
+            {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
           </>
 
         ) : (
@@ -642,7 +558,6 @@ export default function CommunityPage() {
         )}
       </div>
 
-      {/* 그룹 만들기 모달 */}
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
@@ -662,16 +577,13 @@ export default function CommunityPage() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>공개 설정</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setIsPublic(true)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${isPublic ? "var(--sage)" : "var(--border)"}`, background: isPublic ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
-                    <div style={{ fontSize: 16, marginBottom: 3 }}>🌍</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: isPublic ? "var(--sage-dark)" : "var(--text)" }}>공개</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>누구나 볼 수 있어요</div>
-                  </button>
-                  <button onClick={() => setIsPublic(false)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${!isPublic ? "var(--sage)" : "var(--border)"}`, background: !isPublic ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
-                    <div style={{ fontSize: 16, marginBottom: 3 }}>🔒</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: !isPublic ? "var(--sage-dark)" : "var(--text)" }}>비공개</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>초대링크로만 참여</div>
-                  </button>
+                  {[{ v: true, emoji: "🌍", label: "공개", sub: "누구나 볼 수 있어요" }, { v: false, emoji: "🔒", label: "비공개", sub: "초대링크로만 참여" }].map(opt => (
+                    <button key={String(opt.v)} onClick={() => setIsPublic(opt.v)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${isPublic === opt.v ? "var(--sage)" : "var(--border)"}`, background: isPublic === opt.v ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
+                      <div style={{ fontSize: 16, marginBottom: 3 }}>{opt.emoji}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: isPublic === opt.v ? "var(--sage-dark)" : "var(--text)" }}>{opt.label}</div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>{opt.sub}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
