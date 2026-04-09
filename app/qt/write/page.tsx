@@ -306,16 +306,28 @@ function QTWriteContent() {
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
 
+      let insertError: any = null;
+
       if (mode === "free") {
-        await supabase.from("qt_records").insert({
+        // qt_mode 컬럼 시도, 없으면 없이 재시도
+        const res1 = await supabase.from("qt_records").insert({
           user_id: user.id, date: selectedDate,
           meditation: freeText,
           decision: decisionText,
           bible_version: initVersion,
           qt_mode: "free",
         });
+        if (res1.error) {
+          const res1b = await supabase.from("qt_records").insert({
+            user_id: user.id, date: selectedDate,
+            meditation: freeText,
+            decision: decisionText,
+            bible_version: initVersion,
+          });
+          insertError = res1b.error;
+        }
       } else {
-        await supabase.from("qt_records").insert({
+        const res2 = await supabase.from("qt_records").insert({
           user_id: user.id, date: selectedDate,
           opening_prayer: answers.opening_prayer ?? "",
           bible_ref: answers.bible_ref ?? "",
@@ -329,6 +341,30 @@ function QTWriteContent() {
           bible_version: initVersion,
           qt_mode: mode,
         });
+        if (res2.error) {
+          // qt_mode 컬럼이 없는 경우 재시도
+          const res2b = await supabase.from("qt_records").insert({
+            user_id: user.id, date: selectedDate,
+            opening_prayer: answers.opening_prayer ?? "",
+            bible_ref: answers.bible_ref ?? "",
+            summary: answers.summary ?? "",
+            key_verse: answers.key_verse ?? "",
+            passage: answers.passage ?? "",
+            meditation: answers.meditation ?? "",
+            application: answers.application ?? "",
+            decision: decisionText,
+            closing_prayer: answers.closing_prayer ?? "",
+            bible_version: initVersion,
+          });
+          insertError = res2b.error;
+        }
+      }
+
+      if (insertError) {
+        console.error("큐티 저장 실패:", insertError);
+        alert("저장에 실패했어요. 다시 시도해주세요.");
+        setSaving(false);
+        return;
       }
 
       // 오늘 날짜인 경우만 streak 업데이트
