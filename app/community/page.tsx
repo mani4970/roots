@@ -187,19 +187,28 @@ export default function CommunityPage() {
 
     if (myPrev === reactionId) {
       // 같은 반응 → 취소
-      await supabase.from("qt_reactions")
+      const { error: delErr } = await supabase.from("qt_reactions")
         .delete().eq("qt_id", qtId).eq("user_id", user.id);
+      if (delErr) { console.error("반응 취소 실패:", delErr); return; }
       setMyQtReactions(prev => { const n = { ...prev }; delete n[qtId]; return n; });
       setQtReactionCounts(prev => ({
         ...prev,
         [qtId]: { ...prev[qtId], [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1) }
       }));
     } else {
-      // 새 반응 or 변경
-      await supabase.from("qt_reactions").upsert(
+      // 새 반응 or 변경 — insert 먼저, 실패하면 update
+      const { error: upsertErr } = await supabase.from("qt_reactions").upsert(
         { qt_id: qtId, user_id: user.id, reaction: reactionId },
         { onConflict: "qt_id,user_id" }
       );
+      if (upsertErr) {
+        console.error("반응 저장 실패:", upsertErr);
+        // onConflict가 안 먹히는 경우 update 시도
+        const { error: updateErr } = await supabase.from("qt_reactions")
+          .update({ reaction: reactionId })
+          .eq("qt_id", qtId).eq("user_id", user.id);
+        if (updateErr) { console.error("반응 update도 실패:", updateErr); return; }
+      }
       setMyQtReactions(prev => ({ ...prev, [qtId]: reactionId }));
       setQtReactionCounts(prev => {
         const cur = { ...prev[qtId] };
