@@ -1,5 +1,5 @@
-const CACHE_NAME = "roots-v2";
-const STATIC_ASSETS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE_NAME = "roots-v3";
+const STATIC_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -18,8 +18,26 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  const url = new URL(event.request.url);
+
+  // API 요청, Supabase, POST 등은 절대 가로채지 않음
+  if (
+    event.request.method !== "GET" ||
+    url.hostname.includes("supabase.co") ||
+    url.hostname.includes("anthropic.com") ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/")
+  ) {
+    return; // 서비스워커 개입 없이 그냥 통과
+  }
+
+  // 정적 파일만 캐시
+  if (STATIC_ASSETS.includes(url.pathname)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        return cached || fetch(event.request);
+      })
+    );
+  }
+  // 나머지는 그냥 네트워크
 });
