@@ -28,6 +28,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -ap
 * { scrollbar-width: none; }
 button { cursor: pointer; font-family: 'Pretendard', sans-serif; }
 input, textarea, select { font-family: 'Pretendard', sans-serif; font-size: 16px; }
+input, textarea, select { font-size: 16px !important; } /* iOS 줌 방지 */
 a { text-decoration: none; color: inherit; }
 
 /* 버튼 */

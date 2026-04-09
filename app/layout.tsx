@@ -33,7 +33,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           __html: `
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                  // 알림 권한이 있으면 로컬 알림 예약
+                  if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'SCHEDULE_NOTIFICATIONS' });
+                  }
+                  navigator.serviceWorker.ready.then(function(r) {
+                    if (Notification.permission === 'granted') {
+                      r.active && r.active.postMessage({ type: 'SCHEDULE_NOTIFICATIONS' });
+                    }
+                  });
+                }).catch(function(err) {
                   console.log('SW registration failed:', err);
                 });
               });
