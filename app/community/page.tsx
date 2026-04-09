@@ -168,65 +168,99 @@ export default function CommunityPage() {
   async function prayTogether(id: string) {
     if (prayedIds.includes(id)) return;
     const supabase = createClient();
-    // DB에서도 이미 기도했는지 확인 (다른 기기 중복 방지)
+
+    // userId state 대신 직접 auth에서 가져오기 (state 타이밍 문제 방지)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const uid = user.id;
+
+    // DB에서 이미 기도했는지 확인
     const { data: logCheck } = await supabase.from("user_prayer_logs")
-      .select("id").eq("user_id", userId).eq("prayer_id", id).maybeSingle();
+      .select("id").eq("user_id", uid).eq("prayer_id", id).maybeSingle();
     if (logCheck) {
-      // 이미 기도했으면 prayedIds만 업데이트하고 리턴
-      if (!prayedIds.includes(id)) setPrayedIds(prev => [...prev, id]);
+      setPrayedIds(prev => prev.includes(id) ? prev : [...prev, id]);
       return;
     }
+
     // 기도 로그 저장
-    await supabase.from("user_prayer_logs").insert({ user_id: userId, prayer_id: id });
-    const { data: current } = await supabase.from("prayer_items")
-      .select("prayer_count").eq("id", id).single();
-    const newCount = (current?.prayer_count ?? 0) + 1;
-    await supabase.from("prayer_items")
-      .update({ prayer_count: newCount }).eq("id", id);
+    const { error: logError } = await supabase.from("user_prayer_logs")
+      .insert({ user_id: uid, prayer_id: id });
+    if (logError) {
+      console.error("기도 로그 저장 실패:", logError);
+      // UNIQUE 위반(이미 기도)이면 UI만 업데이트
+      if (logError.code === "23505") {
+        setPrayedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+      }
+      return;
+    }
+
+    // prayer_count 업데이트 - RPC로 원자적 증가
+    const { error: countError } = await supabase.rpc("increment_prayer_count", { prayer_id: id });
+    let newCount = 0;
+    if (countError) {
+      // RPC 없으면 직접 update
+      console.log("RPC 없음, 직접 update 시도");
+      const { data: current } = await supabase.from("prayer_items")
+        .select("prayer_count").eq("id", id).single();
+      newCount = (current?.prayer_count ?? 0) + 1;
+      const { error: updateError } = await supabase.from("prayer_items")
+        .update({ prayer_count: newCount }).eq("id", id);
+      if (updateError) console.error("prayer_count 업데이트 실패:", updateError);
+    } else {
+      // RPC 성공시 현재 값 다시 읽기
+      const { data: current } = await supabase.from("prayer_items")
+        .select("prayer_count").eq("id", id).single();
+      newCount = current?.prayer_count ?? 1;
+    }
+
     const newArr = [...prayedIds, id];
     setPrayedIds(newArr);
-    if (userId) localStorage.setItem(`comm_prayed_${userId}`, JSON.stringify(newArr));
+    localStorage.setItem(`comm_prayed_${uid}`, JSON.stringify(newArr));
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
   }
 
   // 큐티 나눔 탭 반응
-  function reactToQT(qtId: string, reactionId: string) {
+  async function reactToQT(qtId: string, reactionId: string) {
     const current = reactions[qtId] ?? {};
     const myPrev = myReactions[qtId];
     const updated = { ...current };
+    let newMy: Record<string, string>;
     if (myPrev === reactionId) {
       updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
-      const newMy = { ...myReactions }; delete newMy[qtId];
-      setMyReactions(newMy);
-      if (userId) localStorage.setItem(`comm_reactions_${userId}`, JSON.stringify(newMy));
+      newMy = { ...myReactions }; delete newMy[qtId];
     } else {
       if (myPrev) updated[myPrev] = Math.max(0, (updated[myPrev] ?? 1) - 1);
       updated[reactionId] = (updated[reactionId] ?? 0) + 1;
-      const newMy = { ...myReactions, [qtId]: reactionId };
-      setMyReactions(newMy);
-      if (userId) localStorage.setItem(`comm_reactions_${userId}`, JSON.stringify(newMy));
+      newMy = { ...myReactions, [qtId]: reactionId };
     }
+    setMyReactions(newMy);
     setReactions(prev => ({ ...prev, [qtId]: updated }));
+    if (userId) localStorage.setItem(`comm_reactions_${userId}`, JSON.stringify(newMy));
+    // DB에 reactions 저장
+    const supabase = createClient();
+    await supabase.from("qt_records").update({ reactions: updated }).eq("id", qtId);
   }
 
   // 그룹 큐티 반응
-  function reactToGroupQT(qtId: string, reactionId: string) {
+  async function reactToGroupQT(qtId: string, reactionId: string) {
     const current = groupReactions[qtId] ?? {};
     const myPrev = myGroupReactions[qtId];
     const updated = { ...current };
+    let newMy: Record<string, string>;
     if (myPrev === reactionId) {
       updated[reactionId] = Math.max(0, (updated[reactionId] ?? 1) - 1);
-      const newMy = { ...myGroupReactions }; delete newMy[qtId];
-      setMyGroupReactions(newMy);
-      if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
+      newMy = { ...myGroupReactions }; delete newMy[qtId];
     } else {
       if (myPrev) updated[myPrev] = Math.max(0, (updated[myPrev] ?? 1) - 1);
       updated[reactionId] = (updated[reactionId] ?? 0) + 1;
-      const newMy = { ...myGroupReactions, [qtId]: reactionId };
-      setMyGroupReactions(newMy);
-      if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
+      newMy = { ...myGroupReactions, [qtId]: reactionId };
     }
+    setMyGroupReactions(newMy);
     setGroupReactions(prev => ({ ...prev, [qtId]: updated }));
+    if (userId) localStorage.setItem(`group_reactions_${userId}`, JSON.stringify(newMy));
+    // DB에 reactions 저장
+    const supabase = createClient();
+    await supabase.from("qt_records").update({ reactions: updated }).eq("id", qtId);
     // detailQt도 업데이트
     if (detailQt?.id === qtId) {
       setDetailQt((prev: any) => ({ ...prev, _reactions: { ...updated } }));
@@ -319,7 +353,7 @@ export default function CommunityPage() {
                       ))}
                     </div>
                   ) : (
-                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, fontStyle: italic ? "italic" : "normal" }}>{r[key]}</p>
+                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>{r[key]}</p>
                   )}
                 </div>
               ))}

@@ -263,7 +263,7 @@ function RecordContent() {
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal" }}>{value}</p>
+                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>{value}</p>
               )}
             </div>
           );
