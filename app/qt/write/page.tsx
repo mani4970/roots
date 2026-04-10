@@ -68,7 +68,7 @@ function isSunday(dateStr: string) {
 const STEPS_6 = [
   { barIdx: [0],    title: "들어가는 기도",      subtitle: "말씀 앞에 나아가기 전 기도",  placeholder: "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", hint: "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.", id: "opening_prayer" },
   { barIdx: [1, 2], title: "본문 요약 & 붙잡은 말씀", subtitle: "본문을 읽고 마음에 새겨요", placeholder: "", hint: "", id: "passage_step", isPassageStep: true },
-  { barIdx: [3],    title: "느낌과 묵상",         subtitle: "이 말씀이 내게 주는 의미",     placeholder: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", hint: "정답이 없어요. 성령님의 이끄심에 맡겨봐요.", id: "meditation" },
+  { barIdx: [3],    title: "느낌과 묵상",         subtitle: "이 말씀이 내게 주는 의미",     placeholder: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", hint: "성령님의 이끄심에 맡겨봐요.", id: "meditation" },
   { barIdx: [4],    title: "적용과 결단",          subtitle: "오늘 하루 어떻게 살 건가요?", placeholder: "", hint: "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.", id: "application", isDecision: true },
   { barIdx: [5],    title: "올려드리는 기도",       subtitle: "말씀으로 드리는 기도",         placeholder: "말씀을 붙들고 기도를 올려드려요...", hint: "말씀과 결단을 간결하게 다시 하나님께 올려드려요.", id: "closing_prayer", isLast: true },
 ];
@@ -79,7 +79,7 @@ const BAR_LABELS_6 = ["들어가는 기도", "본문 요약", "붙잡은 말씀"
 const STEPS_SUNDAY = [
   { id: "sermon_info", title: "설교 정보", subtitle: "오늘 설교 제목과 본문을 입력해요", isSermonInfo: true },
   { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
-  { id: "summary", title: "설교 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 제목, 본문, 핵심 내용을 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
+  { id: "summary", title: "설교 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 제목, 본문, 핵심 내용을 요약해보세요...", hint: "목사님이 전한 핵심 메시지를 나의 말로 정리해요." },
   { id: "meditation", title: "느낌과 묵상", subtitle: "하나님이 내게 하신 말씀", placeholder: "오늘 설교를 통해 하나님이 나에게 하신 말씀은 무엇인가요?", hint: "개인적이고 솔직하게 써보세요." },
   { id: "application", title: "적용과 결단", subtitle: "이번 주 어떻게 살 건가요?", placeholder: "", hint: "말씀이 내 성품과 삶이 되도록 의지적으로 결단해요.", isDecision: true },
   { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜에 감사하며...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },

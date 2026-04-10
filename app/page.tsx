@@ -6,6 +6,9 @@ import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
 import Onboarding from "@/components/Onboarding";
+import RootsManPopup from "@/components/RootsManPopup";
+import WelcomeBackPopup from "@/components/WelcomeBackPopup";
+import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import { createClient } from "@/lib/supabase";
 import { ChevronRight, LogOut, Check } from "lucide-react";
 
@@ -28,6 +31,10 @@ function getTreeSubMsg(streak: number) {
   return "아름다운 정원이 완성되어 가고 있어요!";
 }
 
+const gardenTopRef_scroll = () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -38,6 +45,12 @@ export default function HomePage() {
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
+  const [showRootsManPopup, setShowRootsManPopup] = useState(false);
+  const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
+    show: false, type: "garden", badgeIndex: 0,
+  });
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+  const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const celebrationShownRef = useRef(false);
 
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
@@ -51,7 +64,23 @@ export default function HomePage() {
     if (!user) { router.push("/login"); return; }
 
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (p) setProfile(p);
+    if (p) {
+      setProfile(p);
+      // 복귀 팝업: 3일 이상 안 왔으면 표시
+      const lastCheckin = p.last_checkin ? p.last_checkin.split("T")[0] : null;
+      if (lastCheckin) {
+        const lastDate = new Date(lastCheckin);
+        lastDate.setHours(0,0,0,0);
+        const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
+        const welcomeKey = `welcome_back_${new Date().toISOString().split("T")[0]}`;
+        if (diffDays >= 3 && !localStorage.getItem(welcomeKey)) {
+          localStorage.setItem(welcomeKey, "true");
+          setWelcomeBackDays(diffDays);
+          setShowWelcomeBack(true);
+        }
+      }
+    }
 
     const today = new Date().toISOString().split("T")[0];
     const { data: ci } = await supabase.from("daily_checkins")
@@ -65,7 +94,6 @@ export default function HomePage() {
 
     if (tqt?.decision) {
       const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
-      // DB에서 done 상태 읽기 (daily_checkins.decisions_done)
       const { data: dc } = await supabase.from("daily_checkins")
         .select("decisions_done").eq("user_id", user.id).eq("date", today).maybeSingle();
       const doneList: boolean[] = dc?.decisions_done
@@ -77,16 +105,14 @@ export default function HomePage() {
     const decisionVal = ci?.completed_mission ?? false;
     setTodayDone({ qt: !!tqt, prayer: !!tp, decision: decisionVal });
 
-    // 오늘 이미 축하했으면 ref 세팅
     if (localStorage.getItem(`celebrated_${today}`)) {
       celebrationShownRef.current = true;
     }
-
     if (!localStorage.getItem("onboarding_done")) { setShowOnboarding(true); }
     setLoading(false);
   }
 
-  // allDone 감지 — 이미 축하했으면 스킵, 온보딩 중이면 스킵
+  // allDone 감지 — 루틴 완료 축하
   useEffect(() => {
     const onboardingDone = localStorage.getItem("onboarding_done");
     if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
@@ -104,21 +130,45 @@ export default function HomePage() {
     }
   }, [allDone, loading]);
 
+  // 10일 업데이트 팝업 확인
+  useEffect(() => {
+    if (!profile) return;
+    const streak = profile.streak_days ?? 0;
+    if (streak === 0) return;
+    const today = new Date().toISOString().split("T")[0];
+
+    // 100일 배지
+    if (streak % 100 === 0) {
+      const badgeKey = `badge_shown_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        const badgeIndex = Math.floor(streak / 100) - 1;
+        setGardenPopup({ show: true, type: "badge", badgeIndex });
+        return;
+      }
+    }
+
+    // 10일 정원 업데이트 (100의 배수 제외)
+    if (streak % 10 === 0 && streak % 100 !== 0) {
+      const gardenKey = `garden_shown_${streak}`;
+      if (!localStorage.getItem(gardenKey)) {
+        localStorage.setItem(gardenKey, "true");
+        setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+      }
+    }
+  }, [profile]);
+
   async function toggleAiDecision() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
-    // 이미 완료한 결단은 취소 안됨
     if (todayDone.decision) return;
-    const newVal = true;
     await supabase.from("daily_checkins").upsert({
-      user_id: user.id,
-      date: today,
-      completed_mission: newVal,
+      user_id: user.id, date: today, completed_mission: true,
     }, { onConflict: "user_id,date" });
-    setTodayDone(p => ({ ...p, decision: newVal }));
-    if (newVal && !celebrationShownRef.current) {
+    setTodayDone(p => ({ ...p, decision: true }));
+    if (!celebrationShownRef.current) {
       const today2 = new Date().toISOString().split("T")[0];
       if (!localStorage.getItem(`celebrated_${today2}`)) {
         setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
@@ -131,24 +181,20 @@ export default function HomePage() {
     const today = new Date().toISOString().split("T")[0];
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
     setMyDecisions(updated);
-    // DB에 저장
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // update 우선 시도, row 없으면 insert
       const { error } = await supabase.from("daily_checkins")
         .update({ decisions_done: JSON.stringify(updated.map(d => d.done)) })
         .eq("user_id", user.id).eq("date", today);
       if (error) {
-        // row가 없는 경우 insert
         await supabase.from("daily_checkins").insert({
-          user_id: user.id,
-          date: today,
+          user_id: user.id, date: today,
           decisions_done: JSON.stringify(updated.map(d => d.done)),
         });
       }
     }
-    if (!myDecisions[i].done && !celebrationShownRef.current) {
+    if (!celebrationShownRef.current) {
       if (!localStorage.getItem(`celebrated_${today}`)) {
         setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
       }
@@ -184,13 +230,49 @@ export default function HomePage() {
   return (
     <div className="page fade-in">
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+
+      {/* 0. 복귀 팝업 */}
+      <WelcomeBackPopup
+        show={showWelcomeBack}
+        daysSince={welcomeBackDays}
+        onClose={() => setShowWelcomeBack(false)}
+      />
+
+      {/* 1. 루틴 완료 confetti 축하 */}
       <Celebration
         show={celebration.show}
         message={celebration.message}
         subMessage={celebration.subMessage}
         onClose={() => {
           setCelebration({ show: false, message: "", subMessage: "" });
-          if (celebration.message.includes("루틴")) setShowRootsMan(true);
+          // 루틴 완료 축하였으면 → 농부 팝업 + RootsMan 애니메이션
+          if (celebration.message.includes("루틴")) {
+            setShowRootsMan(true);
+            setShowRootsManPopup(true);
+          }
+        }}
+      />
+
+      {/* 2. 농부 팝업 (루틴 완료 후) */}
+      <RootsManPopup
+        show={showRootsManPopup}
+        streakDays={profile?.streak_days ?? 0}
+        onClose={() => {
+          setShowRootsManPopup(false);
+          // 정원(홈 상단)으로 스크롤
+          gardenTopRef_scroll();
+        }}
+      />
+
+      {/* 3. 10일/100일 정원 업데이트 팝업 */}
+      <GardenUpdatePopup
+        show={gardenPopup.show}
+        type={gardenPopup.type}
+        streakDays={profile?.streak_days ?? 0}
+        badgeIndex={gardenPopup.badgeIndex}
+        onClose={() => {
+          setGardenPopup(p => ({ ...p, show: false }));
+          gardenTopRef_scroll();
         }}
       />
 
@@ -204,7 +286,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
+      <TreeGrowth days={profile?.streak_days ?? 0} heartHalves={profile?.heart_halves ?? undefined} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>

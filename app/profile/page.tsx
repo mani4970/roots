@@ -226,6 +226,54 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* 성령의 열매 배지 */}
+      {(() => {
+        const streak = profile?.streak_days ?? 0;
+        const earnedCount = Math.min(Math.floor(streak / 100), 9);
+        const BADGES = [
+          { name: "Love", desc: "사랑", fruit: "🍎" },
+          { name: "Peace", desc: "화평", fruit: "🍉" },
+          { name: "Joy", desc: "희락", fruit: "🍌" },
+          { name: "Goodness", desc: "양선", fruit: "🍊" },
+          { name: "Kindness", desc: "자비", fruit: "🍒" },
+          { name: "Patience", desc: "오래참음", fruit: "🍍" },
+          { name: "Faithfulness", desc: "충성", fruit: "🍇" },
+          { name: "Gentleness", desc: "온유", fruit: "🍋" },
+          { name: "Self-Control", desc: "절제", fruit: "🍓" },
+        ];
+        return (
+          <div style={{ padding: "14px 16px 0" }}>
+            <div className="sec-label">
+              성령의 열매
+              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
+            </div>
+            <div className="card">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                {BADGES.map((b, i) => {
+                  const earned = i < earnedCount;
+                  return (
+                    <div key={b.name} style={{ textAlign: "center", padding: "12px 8px", background: earned ? "rgba(232,197,71,0.1)" : "var(--bg)", borderRadius: 14, border: `1px solid ${earned ? "rgba(232,197,71,0.4)" : "var(--border)"}`, opacity: earned ? 1 : 0.4 }}>
+                      <div style={{ fontSize: 28, marginBottom: 4, width: 48, height: 48, margin: "0 auto 4px", position: "relative", opacity: earned ? 1 : 0.3 }}>
+                        <img src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`} alt={b.name}
+                          style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.9)" : "var(--text3)" }}>{b.name}</div>
+                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{b.desc}</div>
+                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 3 }}>✓ 획득</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              {earnedCount === 0 && (
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 10 }}>
+                  100일을 채우면 첫 번째 열매를 받아요 🌱
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 친구 초대 */}
       <div style={{ padding: "14px 16px 0" }}>
         <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
