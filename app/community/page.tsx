@@ -11,7 +11,7 @@ const REACTIONS = [
   { id: "pray", label: "함께기도해요", icon: "✨" },
 ];
 
-const APP_URL = "https://roots-puce.vercel.app";
+const APP_URL = "https://christian-roots.com";
 
 function Avatar({ url, name, size = 28, emoji = "🙏" }: { url?: string; name?: string; size?: number; emoji?: string }) {
   if (url) return <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
