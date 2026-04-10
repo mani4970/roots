@@ -42,6 +42,22 @@ const TRANSLATIONS = [
 
 const ALL_TRANSLATIONS = TRANSLATIONS.flatMap(g => g.items);
 
+// 번역본 ID → 언어 코드
+const TRANSLATION_LANG: Record<number, string> = {
+  92:"KO", 84:"KO", 98:"KO", 88:"KO", 89:"KO", 90:"KO", 83:"KO", 81:"KO", 99:"KO", 87:"KO",
+  67:"EN", 80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
+  29:"DE", 27:"DE", 97:"DE",
+  26:"FR", 24:"FR",
+};
+
+// 언어별 책 이름 (구약 39권 + 신약 27권)
+const BOOK_NAMES: Record<string, string[]> = {
+  KO: ["창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하","열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언","전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스","오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기","마태복음","마가복음","누가복음","요한복음","사도행전","로마서","고린도전서","고린도후서","갈라디아서","에베소서","빌립보서","골로새서","데살로니가전서","데살로니가후서","디모데전서","디모데후서","디도서","빌레몬서","히브리서","야고보서","베드로전서","베드로후서","요한일서","요한이서","요한삼서","유다서","요한계시록"],
+  EN: ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi","Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"],
+  DE: ["1. Mose","2. Mose","3. Mose","4. Mose","5. Mose","Josua","Richter","Rut","1. Samuel","2. Samuel","1. Könige","2. Könige","1. Chronik","2. Chronik","Esra","Nehemia","Ester","Hiob","Psalmen","Sprüche","Prediger","Hoheslied","Jesaja","Jeremia","Klagelieder","Hesekiel","Daniel","Hosea","Joel","Amos","Obadja","Jona","Micha","Nahum","Habakuk","Zefanja","Haggai","Sacharja","Maleachi","Matthäus","Markus","Lukas","Johannes","Apostelgeschichte","Römer","1. Korinther","2. Korinther","Galater","Epheser","Philipper","Kolosser","1. Thessalonicher","2. Thessalonicher","1. Timotheus","2. Timotheus","Titus","Philemon","Hebräer","Jakobus","1. Petrus","2. Petrus","1. Johannes","2. Johannes","3. Johannes","Judas","Offenbarung"],
+  FR: ["Genèse","Exode","Lévitique","Nombres","Deutéronome","Josué","Juges","Ruth","1 Samuel","2 Samuel","1 Rois","2 Rois","1 Chroniques","2 Chroniques","Esdras","Néhémie","Esther","Job","Psaumes","Proverbes","Ecclésiaste","Cantique","Ésaïe","Jérémie","Lamentations","Ézéchiel","Daniel","Osée","Joël","Amos","Abdias","Jonas","Michée","Nahum","Habacuc","Sophonie","Aggée","Zacharie","Malachie","Matthieu","Marc","Luc","Jean","Actes","Romains","1 Corinthiens","2 Corinthiens","Galates","Éphésiens","Philippiens","Colossiens","1 Thessaloniciens","2 Thessaloniciens","1 Timothée","2 Timothée","Tite","Philémon","Hébreux","Jacques","1 Pierre","2 Pierre","1 Jean","2 Jean","3 Jean","Jude","Apocalypse"],
+};
+
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
 }
@@ -89,6 +105,10 @@ function QTWriteContent() {
 
   // 말씀 선택 (6step, free)
   const [bibleStep, setBibleStep] = useState<"select" | "done">("select");
+  const currentLang = TRANSLATION_LANG[selectedTranslation] ?? "KO";
+  const currentBookNames = BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"];
+  const OT_BOOKS_LOCAL = currentBookNames.slice(0, 39);
+  const NT_BOOKS_LOCAL = currentBookNames.slice(39);
   const [book, setBook] = useState("창세기");
   const [chapter, setChapter] = useState("1");
   const [startV, setStartV] = useState("1");
@@ -333,7 +353,7 @@ function QTWriteContent() {
                 <button onClick={() => setShowBookPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 20 }}>✕</button>
               </div>
               <div style={{ overflowY: "auto", flex: 1 }}>
-                {[{ label: "구약", books: OT_BOOKS }, { label: "신약", books: NT_BOOKS }].map(({ label, books }) => (
+                {[{ label: "구약", books: OT_BOOKS_LOCAL }, { label: "신약", books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
                   <div key={label}>
                     <div style={{ padding: "10px 20px 4px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px" }}>{label}</p></div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "6px 16px" }}>
@@ -363,7 +383,13 @@ function QTWriteContent() {
                   <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", marginBottom: 8 }}>{group.group}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {group.items.map(t => (
-                      <button key={t.id} onClick={() => { setSelectedTranslation(t.id); setShowTranslationPicker(false); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--sage)" : "var(--border)"}`, background: selectedTranslation === t.id ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer" }}>
+                      <button key={t.id} onClick={() => {
+                const newLang = TRANSLATION_LANG[t.id] ?? "KO";
+                const newBooks = BOOK_NAMES[newLang] ?? BOOK_NAMES["KO"];
+                setBook(newBooks[0]); // 첫 번째 책으로 리셋
+                setSelectedTranslation(t.id);
+                setShowTranslationPicker(false);
+              }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--sage)" : "var(--border)"}`, background: selectedTranslation === t.id ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer" }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: selectedTranslation === t.id ? "var(--sage-dark)" : "var(--text)" }}>{t.name}</span>
                         {selectedTranslation === t.id && <Check size={14} style={{ color: "var(--sage)" }} />}
                       </button>
