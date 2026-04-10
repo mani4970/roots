@@ -50,7 +50,8 @@ function QTWriteContent() {
   });
 
   // 말씀 선택 단계 (6step, sunday는 말씀 먼저)
-  const [bibleStep, setBibleStep] = useState<"select" | "done">(mode === "sunday" ? "done" : "select");
+  const [bibleStep, setBibleStep] = useState<"select" | "done">("select");
+  const [selectedVerseNums, setSelectedVerseNums] = useState<number[]>([]); // 선택된 절 번호
   const [book, setBook] = useState("요한복음");
   const [chapter, setChapter] = useState("3");
   const [startV, setStartV] = useState("16");
@@ -105,7 +106,18 @@ function QTWriteContent() {
 
   function selectVerse(verseText: string, num: number) {
     const line = `${num} ${verseText}`;
-    setKeyVerse(prev => prev ? prev + "\n" + line : line);
+    // 이미 선택된 절이면 제거, 아니면 추가
+    if (selectedVerseNums.includes(num)) {
+      setSelectedVerseNums(prev => prev.filter(n => n !== num));
+      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${num} `)).join("\n"));
+    } else {
+      setSelectedVerseNums(prev => [...prev, num]);
+      setKeyVerse(prev => prev ? prev + "\n" + line : line);
+      // 햅틱 진동 (지원되는 기기에서)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+    }
   }
 
   function set(key: string, val: string) { setAnswers(p => ({ ...p, [key]: val })); }
@@ -202,7 +214,7 @@ function QTWriteContent() {
   const translationName = translations.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
   // ─── 말씀 선택 화면 (6step / 자유형식) ───
-  if (mode !== "sunday" && bibleStep === "select") {
+  if (bibleStep === "select") {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -258,10 +270,10 @@ function QTWriteContent() {
             {loadingBible ? <><Loader2 size={16} className="spin" />불러오는 중...</> : <><BookOpen size={16} />말씀 불러오기</>}
           </button>
 
-          {/* 자유형식은 말씀 없이 바로 시작 가능 */}
-          {mode === "free" && (
+          {/* 자유형식 / 주일예배는 말씀 없이 바로 시작 가능 */}
+          {(mode === "free" || mode === "sunday") && (
             <button onClick={() => setBibleStep("done")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
-              말씀 없이 자유롭게 작성하기
+              {mode === "sunday" ? "설교 본문 없이 바로 시작하기" : "말씀 없이 자유롭게 작성하기"}
             </button>
           )}
         </div>
@@ -347,7 +359,7 @@ function QTWriteContent() {
       {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <button onClick={() => mode !== "sunday" ? setBibleStep("select") : router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+          <button onClick={() => bibleStep === "done" && passageVerses.length > 0 ? setBibleStep("select") : router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
           </button>
           <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
@@ -398,9 +410,10 @@ function QTWriteContent() {
           <p style={{ fontSize: 10, fontWeight: 600, color: "var(--sage-dark)", marginBottom: 6 }}>💡 절을 탭하면 붙잡은 말씀에 추가돼요</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
             {passageVerses.map(v => (
-              <button key={v.num} onClick={() => selectVerse(v.text, v.num)} style={{ textAlign: "left", background: "rgba(122,157,122,0.08)", borderRadius: 8, padding: "6px 10px", border: "1px solid rgba(122,157,122,0.15)", cursor: "pointer", display: "flex", gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                <span style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{v.text}</span>
+              <button key={v.num} onClick={() => selectVerse(v.text, v.num)} style={{ textAlign: "left", background: selectedVerseNums.includes(v.num) ? "var(--sage-light)" : "rgba(122,157,122,0.08)", borderRadius: 8, padding: "6px 10px", border: `1px solid ${selectedVerseNums.includes(v.num) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
+                <span style={{ fontSize: 12, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.5, fontWeight: selectedVerseNums.includes(v.num) ? 600 : 400 }}>{v.text}</span>
+                {selectedVerseNums.includes(v.num) && <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sage)", flexShrink: 0 }}>✓</span>}
               </button>
             ))}
           </div>
@@ -421,9 +434,10 @@ function QTWriteContent() {
               <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", marginBottom: 4 }}>💡 절을 탭하면 붙잡은 말씀에 추가돼요</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 120, overflowY: "auto", marginBottom: 8 }}>
                 {passageVerses.map(v => (
-                  <button key={v.num} onClick={() => selectVerse(v.text, v.num)} style={{ textAlign: "left", background: "rgba(122,157,122,0.08)", borderRadius: 8, padding: "6px 10px", border: "1px solid rgba(122,157,122,0.15)", cursor: "pointer", display: "flex", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage)", flexShrink: 0 }}>{v.num}</span>
-                    <span style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{v.text}</span>
+                  <button key={v.num} onClick={() => selectVerse(v.text, v.num)} style={{ textAlign: "left", background: selectedVerseNums.includes(v.num) ? "var(--sage-light)" : "rgba(122,157,122,0.08)", borderRadius: 8, padding: "6px 10px", border: `1px solid ${selectedVerseNums.includes(v.num) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
+                    <span style={{ fontSize: 12, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.5, fontWeight: selectedVerseNums.includes(v.num) ? 600 : 400 }}>{v.text}</span>
+                    {selectedVerseNums.includes(v.num) && <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sage)", flexShrink: 0 }}>✓</span>}
                   </button>
                 ))}
               </div>
