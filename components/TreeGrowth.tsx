@@ -50,26 +50,24 @@ function isNightTime() {
   return h >= 20 || h < 5;
 }
 
-// heartHalves 0~10 → heart_0.png ~ heart_10.png (또는 heart_11.png)
-// heart_0 = 거의 빈, heart_10/11 = 꽉 참
-function getHeartImgIndex(heartHalves: number): number {
-  const clamped = Math.max(0, Math.min(10, heartHalves));
-  return clamped; // 0~10 → heart_0.png ~ heart_10.png
-}
-
 export default function TreeGrowth({ days, heartHalves, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
   const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin);
   const isNight = isNightTime();
   const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
-
-  // heartHalves: DB값 우선, 없으면 cycleDay 기반 계산
-  const displayHearts = typeof heartHalves === "number"
-    ? heartHalves
-    : (cycleDay % 10 === 0 && cycleDay > 0 ? 10 : (cycleDay % 10) * 2);
-
-  const heartImgIdx = getHeartImgIndex(displayHearts);
-  const periodProgress = (displayHearts / 10) * 100;
   const isAway = daysSince >= 3;
+
+  // 하트 계산: DB값 우선, 없으면 days 기반
+  // 하루에 반칸(+1) → 4일이면 4칸 → heart_4.png
+  // 10일이면 꽉 참 → heart_10.png
+  const displayHearts = typeof heartHalves === "number"
+    ? Math.max(0, Math.min(10, heartHalves))
+    : Math.min(days % 10 === 0 && days > 0 ? 10 : (days % 10), 10);
+
+  // heart_0 ~ heart_10 (0=빈, 10=꽉 참)
+  const heartImgIdx = displayHearts;
+
+  // 프로그레스바: 10일 기준 (하트 기반)
+  const periodProgress = (displayHearts / 10) * 100;
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -83,14 +81,13 @@ export default function TreeGrowth({ days, heartHalves, lastCheckin, showRootsMa
       )}
 
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        <Image src={imgSrc} alt={stage.label} fill
-          style={{ objectFit: "cover" }} priority />
+        <Image src={imgSrc} alt={stage.label} fill style={{ objectFit: "cover" }} priority />
 
-        {/* 단계 뱃지 */}
+        {/* 단계 뱃지 - 왼쪽 상단 */}
         <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
           {stage.label}
         </div>
-        {/* 날짜 뱃지 */}
+        {/* 날짜 뱃지 - 오른쪽 상단 */}
         <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.8)", color: "var(--text)", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
           {days}일째
         </div>
@@ -101,32 +98,50 @@ export default function TreeGrowth({ days, heartHalves, lastCheckin, showRootsMa
           </div>
         )}
 
-        {/* 하트 이미지 - 왼쪽 하단 고정 */}
+        {/* 하트 이미지 - 왼쪽 하단, 이미지 안에 완전히 들어오게 */}
         <div style={{
-          position: "absolute", bottom: 8, left: 8, zIndex: 8,
-          background: "rgba(26,28,30,0.55)", backdropFilter: "blur(4px)",
-          borderRadius: 10, padding: "4px 8px",
-          width: 80, height: 28, overflow: "hidden",
+          position: "absolute",
+          bottom: 10,
+          left: 10,
+          zIndex: 8,
+          background: "rgba(26,28,30,0.6)",
+          backdropFilter: "blur(4px)",
+          borderRadius: 10,
+          padding: "5px 10px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 90,
+          height: 32,
         }}>
           <img
             src={`/heart_${heartImgIdx}.png`}
             alt={`하트 ${displayHearts}/10`}
-            style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              imageRendering: "pixelated",
+            }}
           />
         </div>
 
         <RootsMan trigger={showRootsMan} />
       </div>
 
+      {/* 하단 정보 */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>
-          ❤️ {Math.floor(displayHearts/2)}{displayHearts%2===1?".5":""} / 5
+          ❤️ {Math.floor(displayHearts / 2)}{displayHearts % 2 === 1 ? ".5" : ""} / 5
         </span>
       </div>
+
+      {/* 10일 기준 프로그레스 바 */}
       <div className="progress-bar" style={{ marginTop: 6 }}>
         <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
       </div>
+
       <div style={{ marginTop: 8 }}>
         <div className="streak-chip">
           <span style={{ fontSize: 12 }}>{isAway ? "🌿" : "🔥"}</span>

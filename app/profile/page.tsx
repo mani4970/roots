@@ -248,24 +248,33 @@ export default function ProfilePage() {
               <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
             </div>
             <div className="card">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, justifyItems: "center" }}>
                 {BADGES.map((b, i) => {
                   const earned = i < earnedCount;
                   return (
-                    <div key={b.name} style={{ textAlign: "center", padding: "12px 8px", background: earned ? "rgba(232,197,71,0.1)" : "var(--bg)", borderRadius: 14, border: `1px solid ${earned ? "rgba(232,197,71,0.4)" : "var(--border)"}`, opacity: earned ? 1 : 0.4 }}>
-                      <div style={{ fontSize: 28, marginBottom: 4, width: 48, height: 48, margin: "0 auto 4px", position: "relative", opacity: earned ? 1 : 0.3 }}>
-                        <img src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`} alt={b.name}
-                          style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <div key={b.name} style={{
+                      display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center",
+                      textAlign: "center", width: "100%",
+                      opacity: earned ? 1 : 0.3,
+                    }}>
+                      {/* 배지 이미지만, 테두리 없이 */}
+                      <div style={{ width: 72, height: 72, margin: "0 auto 6px" }}>
+                        <img
+                          src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`}
+                          alt={b.name}
+                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                        />
                       </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.9)" : "var(--text3)" }}>{b.name}</div>
-                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{b.desc}</div>
-                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 3 }}>✓ 획득</div>}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)" }}>{b.name}</div>
+                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 1 }}>{b.desc}</div>
+                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>✓ 획득</div>}
                     </div>
                   );
                 })}
               </div>
               {earnedCount === 0 && (
-                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 10 }}>
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
                   100일을 채우면 첫 번째 열매를 받아요 🌱
                 </p>
               )}
