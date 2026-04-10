@@ -113,6 +113,18 @@ function QTWriteContent() {
   const [chapter, setChapter] = useState("1");
   const [startV, setStartV] = useState("1");
   const [endV, setEndV] = useState("1");
+
+  // 장 변경 시 절 범위 초과 자동 조정
+  function handleChapterChange(newChapter: string) {
+    setChapter(newChapter);
+    const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+    const allLocalBooks = [...(BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"])];
+    const idx = allLocalBooks.indexOf(book);
+    const koBook = idx >= 0 ? allKoBooks[idx] : book;
+    const maxV = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(newChapter)-1] ?? 176;
+    if (parseInt(startV) > maxV) setStartV(String(maxV));
+    if (parseInt(endV) > maxV) setEndV(String(maxV));
+  }
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [loadingBible, setLoadingBible] = useState(false);
   const [bibleError, setBibleError] = useState("");
@@ -211,6 +223,46 @@ function QTWriteContent() {
     return d.toISOString().split("T")[0];
   });
 
+  async function saveDraft() {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+
+      const decisionText = decisions.filter(d => d.trim()).join("\n");
+      let draftData: any = {
+        user_id: user.id,
+        date: selectedDate,
+        qt_mode: mode,
+        is_draft: true,
+        bible_ref: bibleRef,
+        key_verse: keyVerse,
+        opening_prayer: answers.opening_prayer ?? "",
+        summary: answers.summary ?? "",
+        meditation: answers.meditation ?? "",
+        application: answers.application ?? "",
+        decision: decisionText,
+        closing_prayer: answers.closing_prayer ?? "",
+      };
+
+      // 기존 draft 있으면 update, 없으면 insert
+      const { data: existing } = await supabase.from("qt_records")
+        .select("id").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
+
+      if (existing) {
+        await supabase.from("qt_records").update(draftData).eq("id", existing.id);
+      } else {
+        await supabase.from("qt_records").insert(draftData);
+      }
+      alert("임시저장됐어요! 나중에 이어쓸 수 있어요 😊");
+    } catch (e) {
+      alert("임시저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -251,11 +303,22 @@ function QTWriteContent() {
         };
       }
 
-      const { error } = await supabase.from("qt_records").insert(insertData);
-      if (error) {
-        const { qt_mode, ...withoutMode } = insertData;
-        const { error: e2 } = await supabase.from("qt_records").insert(withoutMode);
-        if (e2) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
+      // 기존 draft가 있으면 update, 없으면 insert
+      const { data: existingDraft } = await supabase.from("qt_records")
+        .select("id").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
+
+      if (existingDraft) {
+        // draft → 완료로 업데이트
+        const { error } = await supabase.from("qt_records")
+          .update({ ...insertData, is_draft: false }).eq("id", existingDraft.id);
+        if (error) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
+      } else {
+        const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
+        if (error) {
+          const { qt_mode, ...withoutMode } = insertData;
+          const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
+          if (e2) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
+        }
       }
 
       // streak 업데이트는 홈(page.tsx)에서 3개 루틴 모두 완료 시 처리
@@ -302,23 +365,39 @@ function QTWriteContent() {
             </button>
           </div>
 
-          {/* 장 + 절 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            {[
-              { label: "장", value: chapter, setter: setChapter, max: 150, unit: "장" },
-              { label: "시작 절", value: startV, setter: setStartV, max: 176, unit: "절" },
-              { label: "끝 절", value: endV, setter: setEndV, max: 176, unit: "절" },
-            ].map(({ label, value, setter, max, unit }) => (
-              <div key={label}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{label}</label>
-                <select value={value} onChange={e => setter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                  {Array.from({ length: max }, (_, i) => String(i + 1)).map(v => (
-                    <option key={v} value={v}>{v}{unit}</option>
-                  ))}
-                </select>
+          {/* 장 + 절 - 책에 따라 동적 범위 */}
+          {(() => {
+            // 현재 책의 한국어 이름 추출 (번역본 무관하게 장/절 수는 동일)
+            const koBookName = (() => {
+              // 현재 선택된 book이 한국어면 그대로, 아니면 인덱스로 매핑
+              const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+              const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+              const idx = allLocalBooks.indexOf(book);
+              return idx >= 0 ? allKoBooks[idx] : book;
+            })();
+            const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
+            const maxChapter = chaptersData.length || 150;
+            const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
+            const maxEndV = chaptersData[parseInt(chapter)-1] ?? 176;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {[
+                  { label: "장", value: chapter, setter: handleChapterChange, max: maxChapter, unit: "장" },
+                  { label: "시작 절", value: startV, setter: (v: string) => { setStartV(v); if(parseInt(v) > parseInt(endV)) setEndV(v); }, max: maxStartV, unit: "절" },
+                  { label: "끝 절", value: endV, setter: setEndV, max: maxEndV, unit: "절" },
+                ].map(({ label, value, setter, max, unit }) => (
+                  <div key={label}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{label}</label>
+                    <select value={value} onChange={e => setter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                      {Array.from({ length: max }, (_, i) => String(i + 1)).map(v => (
+                        <option key={v} value={v}>{v}{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
@@ -729,15 +808,25 @@ function QTWriteContent() {
       )}
 
       {/* 하단 버튼 */}
-      <div style={{ padding: "12px 16px 32px", display: "flex", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-        {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
-        {step6.isLast ? (
-          <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-            {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
-          </button>
-        ) : (
-          <button onClick={() => setCur(c => c + 1)} disabled={!canNext6val} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
-        )}
+      <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
+          {step6.isLast ? (
+            <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+              {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
+            </button>
+          ) : (
+            <button onClick={() => setCur(c => c + 1)} disabled={!canNext6val} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+          )}
+        </div>
+        {/* 임시저장 버튼 */}
+        <button
+          onClick={saveDraft}
+          disabled={saving}
+          style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          💾 임시저장하고 나중에 이어쓰기
+        </button>
       </div>
     </div>
   );

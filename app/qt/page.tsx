@@ -47,6 +47,7 @@ export default function QTPage() {
   const [showStartModal, setShowStartModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
+  const [hasDraft, setHasDraft] = useState(false);
 
   useEffect(() => {
     load();
@@ -57,9 +58,13 @@ export default function QTPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     const today = new Date().toISOString().split("T")[0];
-    const { data: tqt } = await supabase.from("qt_records").select("id").eq("user_id", user.id).eq("date", today).maybeSingle();
-    setTodayDone(!!tqt);
-    const { data } = await supabase.from("qt_records").select("*").eq("user_id", user.id).order("date", { ascending: false });
+    const { data: tqt } = await supabase.from("qt_records")
+      .select("id,is_draft").eq("user_id", user.id).eq("date", today).maybeSingle();
+    setTodayDone(!!tqt && !tqt.is_draft); // 임시저장은 완료 아님
+    setHasDraft(!!tqt && tqt.is_draft === true); // 오늘 임시저장 있는지
+    const { data } = await supabase.from("qt_records").select("*")
+      .eq("user_id", user.id).eq("is_draft", false) // 완료된 것만 기록에 표시
+      .order("date", { ascending: false });
     if (data) setRecords(data);
     setLoading(false);
   }

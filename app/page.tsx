@@ -32,7 +32,7 @@ function getTreeSubMsg(streak: number) {
 }
 
 const gardenTopRef_scroll = () => {
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "instant" });
 };
 
 export default function HomePage() {
@@ -51,6 +51,7 @@ export default function HomePage() {
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
+  const [showPrayerCheck, setShowPrayerCheck] = useState(false);
   const celebrationShownRef = useRef(false);
 
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
@@ -84,13 +85,14 @@ export default function HomePage() {
 
     const today = new Date().toISOString().split("T")[0];
     const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,mission,completed_mission,reference,message")
+      .select("verse,mission,completed_mission,reference,message,prayer_checked")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) setTodayVerse(ci);
 
     const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
     const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
       .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
+    const prayerChecked = ci?.prayer_checked ?? false;
 
     if (tqt?.decision) {
       const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
@@ -103,7 +105,7 @@ export default function HomePage() {
     }
 
     const decisionVal = ci?.completed_mission ?? false;
-    setTodayDone({ qt: !!tqt, prayer: !!tp, decision: decisionVal });
+    setTodayDone({ qt: !!tqt, prayer: !!tp || prayerChecked, decision: decisionVal });
 
     if (localStorage.getItem(`celebrated_${today}`)) {
       celebrationShownRef.current = true;
@@ -190,6 +192,20 @@ export default function HomePage() {
     }
   }, [profile]);
 
+  async function togglePrayer() {
+    if (todayDone.prayer) return; // 이미 완료면 취소 불가
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0];
+    await supabase.from("daily_checkins").upsert({
+      user_id: user.id,
+      date: today,
+      prayer_checked: true,
+    }, { onConflict: "user_id,date" });
+    setTodayDone(p => ({ ...p, prayer: true }));
+  }
+
   async function toggleAiDecision() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -270,6 +286,53 @@ export default function HomePage() {
         onClose={() => setShowWelcomeBack(false)}
       />
 
+      {/* 기도 체크 팝업 */}
+      {showPrayerCheck && (
+        <div
+          onClick={() => setShowPrayerCheck(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 102, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 90 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}
+          >
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🙏</div>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
+              오늘 기도하셨나요?
+            </h3>
+            <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>
+                오늘 하루 하나님과 잠깐이라도{"
+"}기도하는 시간을 가졌다면 체크해주세요.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setShowPrayerCheck(false)}
+                style={{ flex: 1, padding: "12px", background: "var(--bg3)", color: "var(--text3)", border: "1px solid var(--border)", borderRadius: 14, fontSize: 13, cursor: "pointer" }}
+              >
+                아직요
+              </button>
+              <button
+                onClick={() => { togglePrayer(); setShowPrayerCheck(false); }}
+                style={{ flex: 2, padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+              >
+                네, 기도했어요 ✓
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
+              기도 제목을 적고 싶으시면 →{" "}
+              <span
+                onClick={() => { setShowPrayerCheck(false); router.push("/prayer"); }}
+                style={{ color: "var(--sage-dark)", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+              >
+                기도탭으로 이동
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 1. 루틴 완료 confetti 축하 */}
       <Celebration
         show={celebration.show}
@@ -290,9 +353,9 @@ export default function HomePage() {
         streakDays={profile?.streak_days ?? 0}
         onClose={() => {
           setShowRootsManPopup(false);
-          // 먼저 홈 상단으로 스크롤 → 그 다음 RootsMan 애니메이션 시작 (스크롤 후 보이도록)
-          gardenTopRef_scroll();
-          setTimeout(() => setShowRootsMan(true), 400);
+          // 홈 상단으로 즉시 스크롤 (smooth 대신 instant) 후 바로 농부 등장
+          window.scrollTo({ top: 0, behavior: "instant" });
+          setShowRootsMan(true);
         }}
       />
 
@@ -384,7 +447,7 @@ export default function HomePage() {
         <div style={{ display: "flex", gap: 8 }}>
           {[
             { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖", onClick: null },
-            { label: "기도", href: "/prayer", done: todayDone.prayer, icon: "🙏", onClick: null },
+            { label: "기도", href: null, done: todayDone.prayer, icon: "🙏", onClick: () => !todayDone.prayer && setShowPrayerCheck(true) },
             { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: () => todayVerse ? toggleAiDecision() : router.push("/checkin") },
           ].map(({ label, href, done, icon, onClick }: any) => {
             const bg = done ? "var(--sage-light)" : "var(--bg2)";
