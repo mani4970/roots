@@ -3,12 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { ChevronRight, Loader2, Plus, Settings, ChevronDown, HelpCircle, X } from "lucide-react";
-
-const BIBLE_VERSIONS = [
-  { id: "kor", label: "개역한글" },
-  { id: "kjv", label: "KJV" },
-];
+import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
 
 const QT_GUIDE = [
   {
@@ -48,24 +43,14 @@ export default function QTPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showVersionPicker, setShowVersionPicker] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState("kor");
   const [expandedYear, setExpandedYear] = useState<number | null>(new Date().getFullYear());
   const [showStartModal, setShowStartModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
 
   useEffect(() => {
-    const saved = localStorage.getItem("bible_version");
-    if (saved) setSelectedVersion(saved);
     load();
   }, []);
-
-  function selectVersion(id: string) {
-    setSelectedVersion(id);
-    localStorage.setItem("bible_version", id);
-    setShowVersionPicker(false);
-  }
 
   async function load() {
     const supabase = createClient();
@@ -86,25 +71,18 @@ export default function QTPage() {
     return acc;
   }, {} as Record<number, any[]>);
   const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
-  const currentVersionLabel = BIBLE_VERSIONS.find(v => v.id === selectedVersion)?.label ?? "개역한글";
   const currentGuide = QT_GUIDE[guidePage];
 
   function startQT(mode: string) {
     setShowStartModal(false);
-    router.push(`/qt/write?version=${selectedVersion}&mode=${mode}`);
+    router.push(`/qt/write?mode=${mode}`);
   }
 
   return (
     <div className="page">
-      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>큐티</h1>
-          <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>말씀과 함께하는 조용한 시간</p>
-        </div>
-        <button onClick={() => setShowVersionPicker(true)} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 600, color: "var(--text2)", cursor: "pointer" }}>
-          <Settings size={12} style={{ color: "var(--sage)" }} />
-          {currentVersionLabel}
-        </button>
+      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>큐티</h1>
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>말씀과 함께하는 조용한 시간</p>
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
@@ -247,25 +225,7 @@ export default function QTPage() {
         </div>
       )}
 
-      {/* 성경 버전 선택 모달 */}
-      {showVersionPicker && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40, display: "flex", alignItems: "flex-end" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: 24 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>성경 버전 선택</h2>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>무료로 사용 가능한 버전이에요</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {BIBLE_VERSIONS.map(v => (
-                <button key={v.id} onClick={() => selectVersion(v.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: `1px solid ${selectedVersion === v.id ? "var(--sage)" : "var(--border)"}`, background: selectedVersion === v.id ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer" }}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: selectedVersion === v.id ? "var(--sage-dark)" : "var(--text)" }}>{v.label}</span>
-                  {selectedVersion === v.id && <span style={{ fontSize: 12, color: "var(--sage)", fontWeight: 600 }}>✓ 선택됨</span>}
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12, lineHeight: 1.5 }}>개역개정은 저작권 문제로 제공이 어려워요.</p>
-            <button className="btn-outline" onClick={() => setShowVersionPicker(false)} style={{ marginTop: 14 }}>닫기</button>
-          </div>
-        </div>
-      )}
+
 
       <BottomNav />
     </div>
