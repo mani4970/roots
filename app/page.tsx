@@ -302,8 +302,7 @@ export default function HomePage() {
             </h3>
             <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>
-                오늘 하루 하나님과 잠깐이라도{"
-"}기도하는 시간을 가졌다면 체크해주세요.
+                오늘 하루 하나님과 잠깐이라도<br />기도하는 시간을 가졌다면 체크해주세요.
               </p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
