@@ -112,7 +112,7 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // allDone 감지 — 루틴 완료 축하
+  // allDone 감지 — 루틴 완료 축하 + streak 업데이트
   useEffect(() => {
     const onboardingDone = localStorage.getItem("onboarding_done");
     if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
@@ -120,6 +120,10 @@ export default function HomePage() {
       if (!localStorage.getItem(`celebrated_${today}`)) {
         celebrationShownRef.current = true;
         localStorage.setItem(`celebrated_${today}`, "true");
+
+        // 3개 루틴 모두 완료 시 streak 업데이트
+        updateStreak(today);
+
         const streak = profile?.streak_days ?? 0;
         setCelebration({
           show: true,
@@ -129,6 +133,34 @@ export default function HomePage() {
       }
     }
   }, [allDone, loading]);
+
+  // streak 업데이트 함수 (3개 루틴 완료 시 호출)
+  async function updateStreak(today: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: p } = await supabase.from("profiles")
+      .select("streak_days, total_days, last_checkin").eq("id", user.id).single();
+    if (!p) return;
+    const lastCheckinDate = p.last_checkin ? p.last_checkin.split("T")[0] : null;
+    // 오늘 이미 streak 업데이트 했으면 스킵
+    if (lastCheckinDate === today) return;
+    const last = p.last_checkin ? new Date(p.last_checkin) : null;
+    const todayD = new Date(today);
+    const yesterday = new Date(todayD);
+    yesterday.setDate(yesterday.getDate() - 1);
+    let newStreak = 1;
+    if (last && last.toDateString() === yesterday.toDateString()) {
+      newStreak = (p.streak_days ?? 0) + 1;
+    }
+    await supabase.from("profiles").update({
+      streak_days: newStreak,
+      total_days: (p.total_days ?? 0) + 1,
+      last_checkin: today,
+    }).eq("id", user.id);
+    // 로컬 상태 업데이트
+    setProfile((prev: any) => prev ? { ...prev, streak_days: newStreak, last_checkin: today } : prev);
+  }
 
   // 10일 업데이트 팝업 확인
   useEffect(() => {
@@ -245,9 +277,8 @@ export default function HomePage() {
         subMessage={celebration.subMessage}
         onClose={() => {
           setCelebration({ show: false, message: "", subMessage: "" });
-          // 루틴 완료 축하였으면 → 농부 팝업 + RootsMan 애니메이션
+          // 루틴 완료 축하였으면 → 농부 팝업 먼저 (RootsMan은 팝업 닫힌 후 스크롤 시 시작)
           if (celebration.message.includes("루틴")) {
-            setShowRootsMan(true);
             setShowRootsManPopup(true);
           }
         }}
@@ -259,8 +290,9 @@ export default function HomePage() {
         streakDays={profile?.streak_days ?? 0}
         onClose={() => {
           setShowRootsManPopup(false);
-          // 정원(홈 상단)으로 스크롤
+          // 먼저 홈 상단으로 스크롤 → 그 다음 RootsMan 애니메이션 시작 (스크롤 후 보이도록)
           gardenTopRef_scroll();
+          setTimeout(() => setShowRootsMan(true), 400);
         }}
       />
 
@@ -286,7 +318,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      <TreeGrowth days={profile?.streak_days ?? 0} heartHalves={profile?.heart_halves ?? undefined} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
+      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>

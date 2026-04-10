@@ -4,7 +4,6 @@ import RootsMan from "./RootsMan";
 
 interface TreeGrowthProps {
   days: number;
-  heartHalves?: number; // 0~10 (반칸 단위, 10=꽉 참)
   lastCheckin: string | null;
   showRootsMan?: boolean;
 }
@@ -50,24 +49,15 @@ function isNightTime() {
   return h >= 20 || h < 5;
 }
 
-export default function TreeGrowth({ days, heartHalves, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
   const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin);
   const isNight = isNightTime();
   const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
   const isAway = daysSince >= 3;
 
-  // 하트 계산: DB값 우선, 없으면 days 기반
-  // 하루에 반칸(+1) → 4일이면 4칸 → heart_4.png
-  // 10일이면 꽉 참 → heart_10.png
-  const displayHearts = typeof heartHalves === "number"
-    ? Math.max(0, Math.min(10, heartHalves))
-    : Math.min(days % 10 === 0 && days > 0 ? 10 : (days % 10), 10);
-
-  // heart_0 ~ heart_10 (0=빈, 10=꽉 참)
-  const heartImgIdx = displayHearts;
-
-  // 프로그레스바: 10일 기준 (하트 기반)
-  const periodProgress = (displayHearts / 10) * 100;
+  // 10일 기준 프로그레스 (0일=0%, 10일=100%, 반복)
+  const dayInCycle = cycleDay % 10 === 0 && cycleDay > 0 ? 10 : cycleDay % 10;
+  const periodProgress = (dayInCycle / 10) * 100;
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -98,43 +88,13 @@ export default function TreeGrowth({ days, heartHalves, lastCheckin, showRootsMa
           </div>
         )}
 
-        {/* 하트 이미지 - 왼쪽 하단, 이미지 안에 완전히 들어오게 */}
-        <div style={{
-          position: "absolute",
-          bottom: 10,
-          left: 10,
-          zIndex: 8,
-          background: "rgba(26,28,30,0.6)",
-          backdropFilter: "blur(4px)",
-          borderRadius: 10,
-          padding: "5px 10px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 90,
-          height: 32,
-        }}>
-          <img
-            src={`/heart_${heartImgIdx}.png`}
-            alt={`하트 ${displayHearts}/10`}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              imageRendering: "pixelated",
-            }}
-          />
-        </div>
-
         <RootsMan trigger={showRootsMan} />
       </div>
 
       {/* 하단 정보 */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>
-          ❤️ {Math.floor(displayHearts / 2)}{displayHearts % 2 === 1 ? ".5" : ""} / 5
-        </span>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>{dayInCycle} / 10일</span>
       </div>
 
       {/* 10일 기준 프로그레스 바 */}
