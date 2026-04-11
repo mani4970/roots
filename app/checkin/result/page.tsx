@@ -12,37 +12,73 @@ function ResultContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/verse", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emotions }),
-    })
-      .then(r => r.json())
-      .then(async data => {
-        setResult(data);
+    async function loadVerse() {
+      try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const today = new Date().toISOString().split("T")[0];
-          await supabase.from("daily_checkins").upsert({
-            user_id: user.id,
-            date: today,
-            emotions,
-            verse: data.verse,
-            reference: data.reference,
-            message: data.message,
-            mission: data.mission,
-            completed_mission: false,
-          }, { onConflict: "user_id,date" });
+        if (!user) return;
+
+        const today = new Date().toISOString().split("T")[0];
+
+        // 오늘 이미 말씀이 있으면 API 호출 없이 기존 말씀 사용
+        const { data: existing } = await supabase
+          .from("daily_checkins")
+          .select("verse,reference,message,mission,completed_mission")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .maybeSingle();
+
+        if (existing?.verse) {
+          setResult(existing);
+          setLoading(false);
+          return;
         }
-      })
-      .catch(() => setResult({
-        verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
-        reference: "마태복음 11:28",
-        message: "지치고 힘든 마음을 주님께 내려놓는 하루가 되길 바랍니다. 혼자 짊어지지 않아도 됩니다.",
-        mission: "오늘 5분만 조용한 곳에서 눈 감고 주님께 솔직하게 마음을 털어놓아 보세요.",
-      }))
-      .finally(() => setLoading(false));
+
+        // 어제 말씀 참고용 (중복 방지)
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const { data: prevDay } = await supabase
+          .from("daily_checkins")
+          .select("verse,reference")
+          .eq("user_id", user.id)
+          .eq("date", yesterday)
+          .maybeSingle();
+
+        const res = await fetch("/api/verse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            emotions,
+            prevVerse: prevDay?.verse ?? null,
+            prevReference: prevDay?.reference ?? null,
+          }),
+        });
+        const data = await res.json();
+        setResult(data);
+
+        // 저장 (오늘 처음이므로 insert)
+        await supabase.from("daily_checkins").upsert({
+          user_id: user.id,
+          date: today,
+          emotions,
+          verse: data.verse,
+          reference: data.reference,
+          message: data.message,
+          mission: data.mission,
+          completed_mission: false,
+        }, { onConflict: "user_id,date" });
+
+      } catch {
+        setResult({
+          verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
+          reference: "마태복음 11:28",
+          message: "지치고 힘든 마음을 주님께 내려놓는 하루가 되길 바랍니다. 혼자 짊어지지 않아도 됩니다.",
+          mission: "오늘 5분만 조용한 곳에서 눈 감고 주님께 솔직하게 마음을 털어놓아 보세요.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadVerse();
   }, []);
 
   if (loading) return (
@@ -55,7 +91,7 @@ function ResultContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }} className="fade-in">
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+        <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>오늘의 말씀</h1>
