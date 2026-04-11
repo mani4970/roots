@@ -901,12 +901,7 @@ function QTWriteContent() {
       {/* 일반 텍스트 단계 (들어가는기도, 느낌과묵상, 올려드리는기도) */}
       {!step6.isPassageStep && !step6.isDecision && (
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
-          {cur >= 2 && keyVerse && (
-            <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(122,157,122,0.2)" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{bibleRef}</p>
-              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", whiteSpace: "pre-line" }}>{keyVerse.slice(0, 80)}{keyVerse.length > 80 ? "..." : ""}</p>
-            </div>
-          )}
+
           <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{step6.hint}</p>
           <textarea className="textarea-field" rows={9} placeholder={step6.placeholder} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
         </div>
