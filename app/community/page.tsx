@@ -35,7 +35,9 @@ const SECTIONS = [
 export default function CommunityPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"prayer" | "qt" | "group">("prayer");
+  const [prayerTab, setPrayerTab] = useState<"praying" | "answered">("praying");
   const [prayers, setPrayers] = useState<any[]>([]);
+  const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +108,21 @@ export default function CommunityPage() {
     localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify(dbPrayed));
 
     if (tab === "prayer") {
+      // 기도 중 (미응답)
       const { data } = await supabase.from("prayer_items")
         .select("*").eq("visibility", "all").eq("is_answered", false)
         .order("created_at", { ascending: false });
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
         setPrayers(data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+      }
+      // 응답됨 (간증 있는 것)
+      const { data: answered } = await supabase.from("prayer_items")
+        .select("*").eq("visibility", "all").eq("is_answered", true)
+        .order("answered_at", { ascending: false });
+      if (answered) {
+        const profMap2 = await fetchProfiles(supabase, answered);
+        setAnsweredPrayers(answered.map((r: any) => ({ ...r, profiles: profMap2[r.user_id] ?? null })));
       }
 
     } else if (tab === "qt") {
@@ -471,35 +482,103 @@ export default function CommunityPage() {
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>
 
         ) : tab === "prayer" ? (
-          prayers.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 0" }}>
-              <p style={{ fontSize: 32, marginBottom: 10 }}>🙏</p>
-              <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 중보기도 요청이 없어요</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {prayers.map(p => (
-                <div key={p.id} className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? "이름 없음"}</span>
-                    </div>
-                    <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
-                  </div>
-                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
-                  <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
-                    <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
-                      {prayedIds.includes(p.id)
-                        ? `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`
-                        : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
+          <>
+            {/* 기도 중 / 응답됐어요 서브탭 */}
+            <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
+              {[
+                { key: "praying", label: "기도 중 🙏", count: prayers.length },
+                { key: "answered", label: "응답됐어요 ✨", count: answeredPrayers.length },
+              ].map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setPrayerTab(key as any)}
+                  style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: prayerTab === key ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: prayerTab === key ? 700 : 400, color: prayerTab === key ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                  {count > 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: prayerTab === key ? "var(--bg)" : "var(--text3)", background: prayerTab === key ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px" }}>
+                      {count}
                     </span>
-                  </button>
-                </div>
+                  )}
+                </button>
               ))}
             </div>
-          )
+
+            {/* 기도 중 */}
+            {prayerTab === "praying" && (
+              prayers.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <p style={{ fontSize: 32, marginBottom: 10 }}>🙏</p>
+                  <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 중보기도 요청이 없어요</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {prayers.map(p => (
+                    <div key={p.id} className="card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? "이름 없음"}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      </div>
+                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
+                      <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
+                        <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
+                          {prayedIds.includes(p.id)
+                            ? `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`
+                            : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* 응답됐어요 */}
+            {prayerTab === "answered" && (
+              answeredPrayers.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <p style={{ fontSize: 32, marginBottom: 10 }}>✨</p>
+                  <p style={{ color: "var(--text3)", fontSize: 14 }}>아직 응답된 기도가 없어요</p>
+                  <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>기도가 응답되면 이곳에 나타나요</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {answeredPrayers.map(p => (
+                    <div key={p.id} className="card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? "이름 없음"}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : ""}
+                        </span>
+                      </div>
+                      {/* 기도 제목 */}
+                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text2)", marginBottom: 8, whiteSpace: "pre-line", textDecoration: "line-through", opacity: 0.7 }}>{p.content}</p>
+                      {/* 간증 */}
+                      {p.testimony && (
+                        <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>🙌 기도 응답 간증</p>
+                          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>✅ 응답됨</span>
+                        {(p.prayer_count ?? 0) > 0 && (
+                          <span style={{ fontSize: 11, color: "var(--text3)" }}>· {p.prayer_count}명이 함께 기도했어요</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </>
 
         ) : tab === "qt" ? (
           <>
