@@ -109,7 +109,7 @@ function RecordContent() {
       record.meditation ? `\n느낌과 묵상\n${record.meditation}` : "",
       (record.application || decisions) ? `\n적용과 결단\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n올려드리는 기도\n${record.closing_prayer}` : "",
-      "\n\n— Roots 앱",
+      "\n\n— 말씀에 뿌리내리다, Roots",
     ].filter(Boolean).join("\n");
     navigator.clipboard.writeText(parts).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
@@ -145,7 +145,7 @@ function RecordContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+        <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
