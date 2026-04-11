@@ -48,6 +48,7 @@ export default function QTPage() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
+  const [showDraftPopup, setShowDraftPopup] = useState(false);
 
   useEffect(() => {
     load();
@@ -61,7 +62,9 @@ export default function QTPage() {
     const { data: tqt } = await supabase.from("qt_records")
       .select("id,is_draft").eq("user_id", user.id).eq("date", today).maybeSingle();
     setTodayDone(!!tqt && !tqt.is_draft); // 임시저장은 완료 아님
-    setHasDraft(!!tqt && tqt.is_draft === true); // 오늘 임시저장 있는지
+    const draftExists = !!tqt && tqt.is_draft === true;
+    setHasDraft(draftExists); // 오늘 임시저장 있는지
+    if (draftExists) setShowDraftPopup(true); // 바로 팝업 표시
     const { data } = await supabase.from("qt_records").select("*")
       .eq("user_id", user.id).eq("is_draft", false) // 완료된 것만 기록에 표시
       .order("date", { ascending: false });
@@ -83,8 +86,56 @@ export default function QTPage() {
     router.push(`/qt/write?mode=${mode}`);
   }
 
+  async function deleteDraftAndStart() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0];
+    await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
+    setHasDraft(false);
+    setShowDraftPopup(false);
+    setShowStartModal(true);
+  }
+
   return (
     <div className="page">
+      {/* 이어서 하시겠어요 팝업 */}
+      {showDraftPopup && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+          <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>📖</div>
+            <h2 style={{ fontSize: 19, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
+              이어서 큐티 하시겠어요?
+            </h2>
+            <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 20 }}>
+              <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>
+                임시저장된 큐티가 있어요.<br />저장된 내용부터 이어서 할 수 있어요.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => { setShowDraftPopup(false); router.push("/qt/write?mode=6step&resume=true"); }}
+                style={{ width: "100%", padding: "13px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+              >
+                이어서 하기 →
+              </button>
+              <button
+                onClick={deleteDraftAndStart}
+                style={{ width: "100%", padding: "13px", background: "none", color: "var(--text3)", border: "1px solid var(--border)", borderRadius: 14, fontSize: 13, cursor: "pointer" }}
+              >
+                처음부터 새로 하기
+              </button>
+              <button
+                onClick={() => setShowDraftPopup(false)}
+                style={{ width: "100%", padding: "10px", background: "none", color: "var(--text3)", border: "none", fontSize: 12, cursor: "pointer" }}
+              >
+                나중에 할게요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>큐티</h1>
         <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>말씀과 함께하는 조용한 시간</p>

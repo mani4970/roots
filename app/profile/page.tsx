@@ -35,7 +35,7 @@ export default function ProfilePage() {
     }
     const now = new Date();
     const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
-    const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).gte("date", firstDay);
+    const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).eq("is_draft", false).gte("date", firstDay);
     if (qt) setQtRecords(qt);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     if (prayers) {

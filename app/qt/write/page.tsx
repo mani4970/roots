@@ -93,6 +93,7 @@ function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
+  const isResume = params.get("resume") === "true"; // 이어쓰기 여부
   const todayStr = new Date().toISOString().split("T")[0];
 
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -152,6 +153,7 @@ function QTWriteContent() {
   // 임시저장 데이터 로드
   useEffect(() => {
     async function loadDraft() {
+      if (!isResume) return; // 이어쓰기 모드일 때만 로드
       const { createClient: cc } = await import("@/lib/supabase");
       const supabase = cc();
       const { data: { user } } = await supabase.auth.getUser();
@@ -159,9 +161,13 @@ function QTWriteContent() {
       const { data: draft } = await supabase.from("qt_records")
         .select("*").eq("user_id", user.id).eq("date", todayStr).eq("is_draft", true).maybeSingle();
       if (!draft) return;
+
       // 기존 draft 데이터 복원
       if (draft.bible_ref) setBibleRef(draft.bible_ref);
-      if (draft.key_verse) { setKeyVerse(draft.key_verse); setBibleStep("done"); }
+      if (draft.key_verse) {
+        setKeyVerse(draft.key_verse);
+        setBibleStep("done");
+      }
       if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
       if (draft.summary) setAnswers(p => ({ ...p, summary: draft.summary }));
       if (draft.meditation) setAnswers(p => ({ ...p, meditation: draft.meditation }));
@@ -171,6 +177,35 @@ function QTWriteContent() {
         const dList = draft.decision.split("\n").filter((d: string) => d.trim());
         if (dList.length > 0) setDecisions(dList);
       }
+
+      // 말씀 본문 재로드 (bible_ref가 있으면)
+      if (draft.bible_ref) {
+        try {
+          // bible_ref 파싱: "창세기 1:1-10" 형태
+          const ref = draft.bible_ref;
+          const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+          if (match) {
+            const [, bookName, chap, sv, ev] = match;
+            setBook(bookName);
+            setChapter(chap);
+            setStartV(sv);
+            setEndV(ev ?? sv);
+            // API로 절 내용 재로드
+            const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
+            const data = await res.json();
+            if (data.verses) {
+              setPassageVerses(data.verses);
+              setBibleStep("done");
+            }
+          }
+        } catch (e) {
+          // 말씀 로드 실패해도 나머지 데이터는 복원됨
+        }
+      }
+
+      // 저장된 단계로 이동
+      const savedStep = draft.current_step ?? 0;
+      if (savedStep > 0) setCur(savedStep);
     }
     loadDraft();
   }, []);
@@ -266,6 +301,7 @@ function QTWriteContent() {
         date: selectedDate,
         qt_mode: mode,
         is_draft: true,
+        current_step: cur,
         bible_ref: bibleRef,
         key_verse: keyVerse,
         opening_prayer: answers.opening_prayer ?? "",
