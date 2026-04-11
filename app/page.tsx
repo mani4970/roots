@@ -51,7 +51,6 @@ export default function HomePage() {
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
-  const [showPrayerCheck, setShowPrayerCheck] = useState(false);
   const celebrationShownRef = useRef(false);
 
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
@@ -89,7 +88,7 @@ export default function HomePage() {
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) setTodayVerse(ci);
 
-    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).maybeSingle();
+    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).eq("is_draft", false).maybeSingle();
     const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
       .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
     const prayerChecked = ci?.prayer_checked ?? false;
@@ -286,51 +285,7 @@ export default function HomePage() {
         onClose={() => setShowWelcomeBack(false)}
       />
 
-      {/* 기도 체크 팝업 */}
-      {showPrayerCheck && (
-        <div
-          onClick={() => setShowPrayerCheck(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 102, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 90 }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}
-          >
-            <div style={{ fontSize: 44, marginBottom: 12 }}>🙏</div>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
-              오늘 기도하셨나요?
-            </h3>
-            <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>
-                오늘 하루 하나님과 잠깐이라도<br />기도하는 시간을 가졌다면 체크해주세요.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setShowPrayerCheck(false)}
-                style={{ flex: 1, padding: "12px", background: "var(--bg3)", color: "var(--text3)", border: "1px solid var(--border)", borderRadius: 14, fontSize: 13, cursor: "pointer" }}
-              >
-                아직요
-              </button>
-              <button
-                onClick={() => { togglePrayer(); setShowPrayerCheck(false); }}
-                style={{ flex: 2, padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
-              >
-                네, 기도했어요 ✓
-              </button>
-            </div>
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
-              기도 제목을 적고 싶으시면 →{" "}
-              <span
-                onClick={() => { setShowPrayerCheck(false); router.push("/prayer"); }}
-                style={{ color: "var(--sage-dark)", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
-              >
-                기도탭으로 이동
-              </span>
-            </p>
-          </div>
-        </div>
-      )}
+
 
       {/* 1. 루틴 완료 confetti 축하 */}
       <Celebration
@@ -440,29 +395,46 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 오늘의 루틴 */}
+      {/* 기도 체크 */}
+      <div style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">오늘의 기도</div>
+        <div className="card" style={{ padding: "14px 16px" }}>
+          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 12 }}>
+            오늘 잠깐이라도 기도를 통해 하나님과 인격적인 만남을 하셨나요?
+          </div>
+          <button
+            onClick={togglePrayer}
+            disabled={todayDone.prayer}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.prayer ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.prayer ? "var(--sage)" : "var(--border)"}`, cursor: todayDone.prayer ? "default" : "pointer", width: "100%" }}
+          >
+            <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${todayDone.prayer ? "white" : "var(--text3)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: todayDone.prayer ? "rgba(255,255,255,0.2)" : "transparent" }}>
+              {todayDone.prayer && <Check size={12} style={{ color: "white" }} />}
+            </div>
+            <span style={{ fontSize: 12, color: todayDone.prayer ? "white" : "var(--text2)", fontWeight: todayDone.prayer ? 600 : 400 }}>
+              {todayDone.prayer ? "기도 완료! 🙏" : "네, 오늘 기도했어요"}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 오늘의 루틴 - 상태 표시만 (클릭 불가) */}
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">오늘의 루틴</div>
         <div style={{ display: "flex", gap: 8 }}>
           {[
-            { label: "큐티", href: "/qt", done: todayDone.qt, icon: "📖", onClick: null },
-            { label: "기도", href: null, done: todayDone.prayer, icon: "🙏", onClick: () => !todayDone.prayer && setShowPrayerCheck(true) },
-            { label: "결단", href: null, done: decisionDone, icon: "✊", onClick: () => todayVerse ? toggleAiDecision() : router.push("/checkin") },
-          ].map(({ label, href, done, icon, onClick }: any) => {
+            { label: "큐티", done: todayDone.qt, icon: "📖" },
+            { label: "기도", done: todayDone.prayer, icon: "🙏" },
+            { label: "결단", done: decisionDone, icon: "✊" },
+          ].map(({ label, done, icon }) => {
             const bg = done ? "var(--sage-light)" : "var(--bg2)";
             const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
             const color = done ? "var(--sage-dark)" : "var(--text)";
-            const inner = <>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
-              <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
-            </>;
-            return onClick ? (
-              <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center", cursor: "pointer" }}>{inner}</button>
-            ) : (
-              <Link key={label} href={href} style={{ flex: 1 }}>
-                <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center" }}>{inner}</div>
-              </Link>
+            return (
+              <div key={label} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
+                <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
+              </div>
             );
           })}
         </div>

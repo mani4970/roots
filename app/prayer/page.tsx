@@ -93,7 +93,11 @@ export default function PrayerPage() {
 
       {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>기도</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>기도</h1>
+        <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
+          기도 제목을 적어보세요. 함께 중보기도를 요청하세요.<br />
+          기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요.
+        </p>
 
         {/* 탭 */}
         <div style={{ display: "flex", gap: 0 }}>

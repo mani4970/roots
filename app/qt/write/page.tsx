@@ -149,6 +149,33 @@ function QTWriteContent() {
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
 
+  // 임시저장 데이터 로드
+  useEffect(() => {
+    async function loadDraft() {
+      const { createClient: cc } = await import("@/lib/supabase");
+      const supabase = cc();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: draft } = await supabase.from("qt_records")
+        .select("*").eq("user_id", user.id).eq("date", todayStr).eq("is_draft", true).maybeSingle();
+      if (!draft) return;
+      // 기존 draft 데이터 복원
+      if (draft.bible_ref) setBibleRef(draft.bible_ref);
+      if (draft.key_verse) { setKeyVerse(draft.key_verse); setBibleStep("done"); }
+      if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
+      if (draft.summary) setAnswers(p => ({ ...p, summary: draft.summary }));
+      if (draft.meditation) setAnswers(p => ({ ...p, meditation: draft.meditation }));
+      if (draft.application) setAnswers(p => ({ ...p, application: draft.application }));
+      if (draft.closing_prayer) setAnswers(p => ({ ...p, closing_prayer: draft.closing_prayer }));
+      if (draft.decision) {
+        const dList = draft.decision.split("
+").filter((d: string) => d.trim());
+        if (dList.length > 0) setDecisions(dList);
+      }
+    }
+    loadDraft();
+  }, []);
+
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
   async function loadPassage() {
@@ -275,8 +302,9 @@ function QTWriteContent() {
       if (!user) { router.push("/login"); return; }
 
       const { data: existing } = await supabase.from("qt_records")
-        .select("id").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
-      if (existing) { alert(`${selectedDate} 큐티 기록이 이미 있어요!`); setSaving(false); return; }
+        .select("id,is_draft").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
+      // 완료된 기록이 이미 있으면 막기 (draft는 통과)
+      if (existing && !existing.is_draft) { alert(`${selectedDate} 큐티 기록이 이미 있어요!`); setSaving(false); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
       let insertData: any = { user_id: user.id, date: selectedDate, qt_mode: mode };
@@ -307,14 +335,10 @@ function QTWriteContent() {
         };
       }
 
-      // 기존 draft가 있으면 update, 없으면 insert
-      const { data: existingDraft } = await supabase.from("qt_records")
-        .select("id").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
-
-      if (existingDraft) {
-        // draft → 완료로 업데이트
+      // draft가 있으면 update, 없으면 insert
+      if (existing && existing.is_draft) {
         const { error } = await supabase.from("qt_records")
-          .update({ ...insertData, is_draft: false }).eq("id", existingDraft.id);
+          .update({ ...insertData, is_draft: false }).eq("id", existing.id);
         if (error) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
       } else {
         const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
@@ -600,7 +624,7 @@ function QTWriteContent() {
             const done = i < cur;
             const isCurr = i === cur;
             return (
-              <button key={i} onClick={() => { if (i < cur) setCur(i); }} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: i < cur ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
+              <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)" }}>{i + 1}.</span>
                 <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{s.title}</span>
                 {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
@@ -666,7 +690,7 @@ function QTWriteContent() {
               {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
             </button>
           ) : (
-            <button onClick={() => setCur(c => c + 1)} disabled={!canNext} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
           )}
         </div>
       </div>
@@ -721,7 +745,7 @@ function QTWriteContent() {
           const done = i < cur;
           const isCurr = i === cur;
           return (
-            <button key={i} onClick={() => { if (i < cur) setCur(i); }} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: i < cur ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
+            <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{s.title}</span>
               {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
             </button>
@@ -746,20 +770,20 @@ function QTWriteContent() {
             </div>
           </div>
 
-          {/* 붙잡은 말씀 */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
-              3단계 · 붙잡은 말씀 <span style={{ fontWeight: 400 }}>(위 절 탭하면 자동 추가)</span>
-            </label>
-            <textarea className="textarea-field" rows={3} placeholder="마음에 와닿은 구절을 적거나 위에서 선택하세요..." value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
-          </div>
-
-          {/* 본문 요약 */}
+          {/* 2단계: 본문 요약 먼저 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               2단계 · 본문 요약
             </label>
             <textarea className="textarea-field" rows={4} placeholder="본문 내용을 자신의 말로 요약해보세요..." value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
+          </div>
+
+          {/* 3단계: 붙잡은 말씀 아래 */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
+              3단계 · 붙잡은 말씀 <span style={{ fontWeight: 400 }}>(위 절 탭하면 자동 추가)</span>
+            </label>
+            <textarea className="textarea-field" rows={3} placeholder="마음에 와닿은 구절을 적거나 위에서 선택하세요..." value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
           </div>
         </div>
       )}
@@ -820,7 +844,7 @@ function QTWriteContent() {
               {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
             </button>
           ) : (
-            <button onClick={() => setCur(c => c + 1)} disabled={!canNext6val} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
           )}
         </div>
         {/* 임시저장 버튼 */}
