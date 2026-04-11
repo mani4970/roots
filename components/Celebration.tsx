@@ -17,8 +17,7 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
   useEffect(() => {
     if (show) {
       fetch("/confetti.json").then(r => r.json()).then(setAnimData).catch(() => {});
-      const t = setTimeout(onClose, 4000);
-      return () => clearTimeout(t);
+      // 자동 닫힘 없음 - 탭하면 바로 닫힘
     }
   }, [show]);
 
