@@ -138,6 +138,7 @@ function QTWriteContent() {
   const [keyVerse, setKeyVerse] = useState("");
   const [selectedVerseNums, setSelectedVerseNums] = useState<number[]>([]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
+  const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
 
   // 큐티 작성
   const [cur, setCur] = useState(0);
@@ -396,7 +397,7 @@ function QTWriteContent() {
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
@@ -564,7 +565,7 @@ function QTWriteContent() {
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={() => setBibleStep("select")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
@@ -639,7 +640,7 @@ function QTWriteContent() {
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={() => cur > 0 ? setCur(c => c - 1) : router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
@@ -740,7 +741,7 @@ function QTWriteContent() {
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <button onClick={() => cur === 0 ? setBibleStep("select") : setCur(c => c - 1)} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+          <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
           </button>
           <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
@@ -749,10 +750,30 @@ function QTWriteContent() {
         {/* 말씀 미리보기 */}
         {bibleRef && (
           <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 2 }}>{bibleRef} · {translationName}</p>
-            <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic" }}>
-              {passageVerses[0]?.text?.slice(0, 50)}...
-            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: versePreviewExpanded ? 8 : 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
+              <button
+                onClick={() => setVersePreviewExpanded(p => !p)}
+                style={{ display: "flex", alignItems: "center", gap: 3, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+              >
+                {versePreviewExpanded ? <><ChevronUp size={13} />접기</> : <><ChevronDown size={13} />더보기</>}
+              </button>
+            </div>
+            {!versePreviewExpanded && (
+              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic", marginTop: 4 }}>
+                {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
+              </p>
+            )}
+            {versePreviewExpanded && passageVerses.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {passageVerses.map(v => (
+                  <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>
+                    {v.text}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
