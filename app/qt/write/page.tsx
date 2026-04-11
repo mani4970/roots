@@ -168,8 +168,7 @@ function QTWriteContent() {
       if (draft.application) setAnswers(p => ({ ...p, application: draft.application }));
       if (draft.closing_prayer) setAnswers(p => ({ ...p, closing_prayer: draft.closing_prayer }));
       if (draft.decision) {
-        const dList = draft.decision.split("
-").filter((d: string) => d.trim());
+        const dList = draft.decision.split("\n").filter((d: string) => d.trim());
         if (dList.length > 0) setDecisions(dList);
       }
     }
