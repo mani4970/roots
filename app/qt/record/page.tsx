@@ -18,6 +18,7 @@ function RecordContent() {
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   // 현재 공유 대상들
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
 
   useEffect(() => {
     async function load() {
@@ -71,6 +72,29 @@ function RecordContent() {
     if (!error && data && data.length > 0) {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
       setSharedTargets(selectedTargets);
+      // 말씀 배달부 뱃지 체크 (큐티 나눔 30번) - "all" 포함한 경우만
+      if (selectedTargets.includes("all")) {
+        try {
+          const { data: { user: u } } = await supabase.auth.getUser();
+          if (u) {
+            const { data: prof } = await supabase.from("profiles")
+              .select("badge_qt_bird").eq("id", u.id).single();
+            if (!prof?.badge_qt_bird) {
+              const { data: shares } = await supabase.from("qt_records")
+                .select("id").eq("user_id", u.id).eq("is_draft", false)
+                .not("visibility", "is", null).neq("visibility", "private");
+              if ((shares?.length ?? 0) >= 30) {
+                await supabase.from("profiles").update({ badge_qt_bird: true }).eq("id", u.id);
+                setBadgePopup({
+                  img: "/qt_bird.png",
+                  title: "말씀 배달부 배지 획득! 🕊️",
+                  msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.",
+                });
+              }
+            }
+          }
+        } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
+      }
     }
     setSharing(false);
     setShowShareModal(false);

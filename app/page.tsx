@@ -51,6 +51,7 @@ export default function HomePage() {
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const celebrationShownRef = useRef(false);
 
   const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
@@ -141,7 +142,7 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data: p } = await supabase.from("profiles")
-      .select("streak_days, total_days, last_checkin").eq("id", user.id).single();
+      .select("streak_days, total_days, last_checkin, badge_angel").eq("id", user.id).single();
     if (!p) return;
     const lastCheckinDate = p.last_checkin ? p.last_checkin.split("T")[0] : null;
     // 오늘 이미 streak 업데이트 했으면 스킵
@@ -149,13 +150,26 @@ export default function HomePage() {
     const last = p.last_checkin ? new Date(p.last_checkin) : null;
     // 하루 빠져도 streak 유지 - 그냥 이어서 카운트
     let newStreak = last ? (p.streak_days ?? 0) + 1 : 1;
-    await supabase.from("profiles").update({
+    // 천사 뱃지 체크 (100일 달성)
+    const alreadyHasAngel = p.badge_angel ?? false;
+    const badgeUpdate: any = {
       streak_days: newStreak,
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
-    }).eq("id", user.id);
-    // 로컬 상태 업데이트
-    setProfile((prev: any) => prev ? { ...prev, streak_days: newStreak, last_checkin: today } : prev);
+    };
+    if (newStreak >= 100 && !alreadyHasAngel) {
+      badgeUpdate.badge_angel = true;
+    }
+    await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
+    setProfile((prev: any) => prev ? { ...prev, ...badgeUpdate } : prev);
+    // 100일 달성 팝업 (처음 달성 시에만)
+    if (newStreak >= 100 && !alreadyHasAngel) {
+      setBadgePopup({
+        img: "/angel.png",
+        title: "천사 배지 획득! 👼",
+        msg: "100일간 영적 루틴을 멈추지 않은 당신을 축복합니다.",
+      });
+    }
   }
 
   // 10일 업데이트 팝업 확인
@@ -279,6 +293,24 @@ export default function HomePage() {
         daysSince={welcomeBackDays}
         onClose={() => setShowWelcomeBack(false)}
       />
+
+      {/* 신앙의 결실 뱃지 팝업 */}
+      {badgePopup && (
+        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
+              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+            </div>
+            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              감사해요 🙏
+            </button>
+          </div>
+        </div>
+      )}
 
 
 

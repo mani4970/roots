@@ -18,7 +18,6 @@ export default function ProfilePage() {
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const [qtShareCount, setQtShareCount] = useState(0);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
-  const [showBadgePopup, setShowBadgePopup] = useState<null|{img:string;title:string;msg:string}>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
@@ -56,34 +55,6 @@ export default function ProfilePage() {
       .select("id").eq("user_id", user.id).not("visibility", "is", null).eq("is_draft", false);
     const qtShareCnt = qtShares?.length ?? 0;
     setQtShareCount(qtShareCnt);
-
-    // 뱃지 체크 및 부여
-    const streak = p?.streak_days ?? 0;
-    const badgeAngel = p?.badge_angel ?? false;
-    const badgePrayer = p?.badge_prayer_warrior ?? false;
-    const badgeBird = p?.badge_qt_bird ?? false;
-
-    const newBadges: any = {};
-    let popupBadge: {img:string;title:string;msg:string}|null = null;
-
-    if (streak >= 100 && !badgeAngel) {
-      newBadges.badge_angel = true;
-      popupBadge = { img: "/angel.png", title: "천사 배지 획득! 👼", msg: "100일간 영적 루틴을 멈추지 않은 당신을 축복합니다." };
-    }
-    if (sharedCount >= 15 && !badgePrayer) {
-      newBadges.badge_prayer_warrior = true;
-      if (!popupBadge) popupBadge = { img: "/prayer_warrior.png", title: "기도의 용사 배지 획득! ⚔️", msg: "구하고 찾는 자에게 응답하시는 하나님이 반드시 응답하실 거예요!" };
-    }
-    if (qtShareCnt >= 30 && !badgeBird) {
-      newBadges.badge_qt_bird = true;
-      if (!popupBadge) popupBadge = { img: "/qt_bird.png", title: "말씀 배달부 배지 획득! 🕊️", msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다." };
-    }
-
-    if (Object.keys(newBadges).length > 0) {
-      await supabase.from("profiles").update(newBadges).eq("id", user.id);
-      setProfile((prev: any) => ({ ...prev, ...newBadges }));
-      if (popupBadge) setShowBadgePopup(popupBadge);
-    }
 
     setLoading(false);
   }

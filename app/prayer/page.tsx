@@ -8,6 +8,7 @@ import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react
 
 export default function PrayerPage() {
   const router = useRouter();
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
@@ -61,7 +62,24 @@ export default function PrayerPage() {
 
   async function requestIntercession(id: string) {
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
+    // 기도의 용사 뱃지 체크 (중보요청 15번)
+    const { data: prof } = await supabase.from("profiles")
+      .select("badge_prayer_warrior").eq("id", user.id).single();
+    if (!prof?.badge_prayer_warrior) {
+      const { data: shared } = await supabase.from("prayer_items")
+        .select("id").eq("user_id", user.id).eq("visibility", "all");
+      if ((shared?.length ?? 0) >= 15) {
+        await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
+        setBadgePopup({
+          img: "/prayer_warrior.png",
+          title: "기도의 용사 배지 획득! ⚔️",
+          msg: "구하고 찾는 자에게 응답하시는 하나님이 반드시 응답하실 거예요!",
+        });
+      }
+    }
     loadPrayers();
   }
 
@@ -84,6 +102,22 @@ export default function PrayerPage() {
 
   return (
     <div className="page">
+      {badgePopup && (
+        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
+              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+            </div>
+            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              감사해요 🙏
+            </button>
+          </div>
+        </div>
+      )}
       <Celebration
         show={celebration}
         message="기도 제목 저장! 🙏"
