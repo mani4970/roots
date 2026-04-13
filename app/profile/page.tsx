@@ -16,6 +16,9 @@ export default function ProfilePage() {
   const [photoError, setPhotoError] = useState("");
   const [qtRecords, setQtRecords] = useState<any[]>([]);
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
+  const [qtShareCount, setQtShareCount] = useState(0);
+  const [prayerSharedCount, setPrayerSharedCount] = useState(0);
+  const [showBadgePopup, setShowBadgePopup] = useState<null|{img:string;title:string;msg:string}>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
@@ -39,12 +42,49 @@ export default function ProfilePage() {
     if (qt) setQtRecords(qt);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     if (prayers) {
+      const sharedCount = prayers.filter((p: any) => p.visibility === "all").length;
       setPrayerStats({
         total: prayers.length,
         answered: prayers.filter((p: any) => p.is_answered).length,
-        shared: prayers.filter((p: any) => p.visibility === "all").length,
+        shared: sharedCount,
       });
+      setPrayerSharedCount(sharedCount);
     }
+
+    // 큐티 커뮤니티 나눔 횟수
+    const { data: qtShares } = await supabase.from("qt_records")
+      .select("id").eq("user_id", user.id).not("visibility", "is", null).eq("is_draft", false);
+    const qtShareCnt = qtShares?.length ?? 0;
+    setQtShareCount(qtShareCnt);
+
+    // 뱃지 체크 및 부여
+    const streak = p?.streak_days ?? 0;
+    const badgeAngel = p?.badge_angel ?? false;
+    const badgePrayer = p?.badge_prayer_warrior ?? false;
+    const badgeBird = p?.badge_qt_bird ?? false;
+
+    const newBadges: any = {};
+    let popupBadge: {img:string;title:string;msg:string}|null = null;
+
+    if (streak >= 100 && !badgeAngel) {
+      newBadges.badge_angel = true;
+      popupBadge = { img: "/angel.png", title: "천사 배지 획득! 👼", msg: "100일간 영적 루틴을 멈추지 않은 당신을 축복합니다." };
+    }
+    if (sharedCount >= 15 && !badgePrayer) {
+      newBadges.badge_prayer_warrior = true;
+      if (!popupBadge) popupBadge = { img: "/prayer_warrior.png", title: "기도의 용사 배지 획득! ⚔️", msg: "구하고 찾는 자에게 응답하시는 하나님이 반드시 응답하실 거예요!" };
+    }
+    if (qtShareCnt >= 30 && !badgeBird) {
+      newBadges.badge_qt_bird = true;
+      if (!popupBadge) popupBadge = { img: "/qt_bird.png", title: "말씀 배달부 배지 획득! 🕊️", msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다." };
+    }
+
+    if (Object.keys(newBadges).length > 0) {
+      await supabase.from("profiles").update(newBadges).eq("id", user.id);
+      setProfile((prev: any) => ({ ...prev, ...newBadges }));
+      if (popupBadge) setShowBadgePopup(popupBadge);
+    }
+
     setLoading(false);
   }
 
@@ -192,22 +232,6 @@ export default function ProfilePage() {
 
       {/* 이번 달 큐티 캘린더 */}
       <div style={{ padding: "16px 16px 0" }}>
-        <div className="sec-label">
-          {new Date().getMonth() + 1}월 큐티 현황
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}일</span>
-        </div>
-        <div className="card">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-            {["일","월","화","수","목","금","토"].map(d => (
-              <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-            {renderCalendar()}
-          </div>
-        </div>
-      </div>
-
       {/* 신앙 여정 통계 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">신앙 여정</div>
@@ -215,7 +239,7 @@ export default function ProfilePage() {
           {[
             { label: "기도 제목", value: prayerStats.total, icon: "🙏" },
             { label: "기도 응답", value: prayerStats.answered, icon: "✨" },
-            { label: "커뮤니티 나눔", value: prayerStats.shared, icon: "🤝" },
+            { label: "큐티 나눔", value: qtShareCount, icon: "🤝" },
           ].map(s => (
             <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 8px" }}>
               <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
@@ -223,6 +247,32 @@ export default function ProfilePage() {
               <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 신앙의 결실 뱃지 */}
+      <div style={{ padding: "14px 16px 0" }}>
+        <div className="sec-label">신앙의 결실</div>
+        <div className="card">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, justifyItems: "center" }}>
+            {[
+              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "100일 streak", condition: (profile?.streak_days ?? 0) >= 100 },
+              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회", condition: prayerSharedCount >= 15 },
+              { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회", condition: qtShareCount >= 30 },
+            ].map(b => {
+              const earned = profile?.[b.key] ?? false;
+              return (
+                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3 }}>
+                  <div style={{ width: 72, height: 72, marginBottom: 6 }}>
+                    <img src={b.img} alt={b.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)" }}>{b.title}</div>
+                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{b.desc}</div>
+                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>✓ 획득</div>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -282,6 +332,24 @@ export default function ProfilePage() {
           </div>
         );
       })()}
+
+      {/* 큐티 현황 달력 */}
+      <div style={{ padding: "14px 16px 0" }}>
+        <div className="sec-label">
+          {new Date().getMonth() + 1}월 큐티 현황
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}일</span>
+        </div>
+        <div className="card">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+            {["일","월","화","수","목","금","토"].map(d => (
+              <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            {renderCalendar()}
+          </div>
+        </div>
+      </div>
 
       {/* 친구 초대 */}
       <div style={{ padding: "14px 16px 0" }}>
