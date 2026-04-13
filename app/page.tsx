@@ -147,13 +147,8 @@ export default function HomePage() {
     // 오늘 이미 streak 업데이트 했으면 스킵
     if (lastCheckinDate === today) return;
     const last = p.last_checkin ? new Date(p.last_checkin) : null;
-    const todayD = new Date(today);
-    const yesterday = new Date(todayD);
-    yesterday.setDate(yesterday.getDate() - 1);
-    let newStreak = 1;
-    if (last && last.toDateString() === yesterday.toDateString()) {
-      newStreak = (p.streak_days ?? 0) + 1;
-    }
+    // 하루 빠져도 streak 유지 - 그냥 이어서 카운트
+    let newStreak = last ? (p.streak_days ?? 0) + 1 : 1;
     await supabase.from("profiles").update({
       streak_days: newStreak,
       total_days: (p.total_days ?? 0) + 1,

@@ -79,14 +79,18 @@ const STEPS_6 = [
 
 const BAR_LABELS_6 = ["들어가는 기도", "본문 요약", "붙잡은 말씀", "느낌과 묵상", "적용과 결단", "올려드리는 기도"];
 
-// ─── 주일예배 단계 ───
+// ─── 주일예배 단계 (개편) ───
+// 0: 설교 정보 + 말씀 선택
+// 1: 들어가는 기도
+// 2: 말씀 요약
+// 3: 깨달음과 결단 (깨달음 + 성품 + 행동들)
+// 4: 올려드리는 기도
 const STEPS_SUNDAY = [
-  { id: "sermon_info", title: "설교 정보", subtitle: "오늘 설교 제목과 본문을 입력해요", isSermonInfo: true },
-  { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
-  { id: "summary", title: "설교 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 제목, 본문, 핵심 내용을 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
-  { id: "meditation", title: "느낌과 묵상", subtitle: "하나님이 내게 하신 말씀", placeholder: "오늘 설교를 통해 하나님이 나에게 하신 말씀은 무엇인가요?", hint: "개인적이고 솔직하게 써보세요." },
-  { id: "application", title: "적용과 결단", subtitle: "이번 주 어떻게 살 건가요?", placeholder: "", hint: "말씀이 내 성품과 삶이 되도록 의지적으로 결단해요.", isDecision: true },
-  { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜에 감사하며...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },
+  { id: "sermon_info", title: "설교 정보", subtitle: "설교 제목과 말씀 본문을 선택해요", isSermonInfo: true },
+  { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
+  { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
+  { id: "meditation", title: "깨달음과 결단", subtitle: "말씀이 내게 주는 깨달음과 결단", placeholder: "", hint: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", isDecision: true },
+  { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜와 결단을 하나님께 올려드려요...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },
 ];
 
 function QTWriteContent() {
@@ -114,10 +118,21 @@ function QTWriteContent() {
   const currentBookNames = BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"];
   const OT_BOOKS_LOCAL = currentBookNames.slice(0, 39);
   const NT_BOOKS_LOCAL = currentBookNames.slice(39);
+  // 말씀 선택 (단일)
   const [book, setBook] = useState("창세기");
   const [chapter, setChapter] = useState("1");
   const [startV, setStartV] = useState("1");
   const [endV, setEndV] = useState("1");
+  // 끝 장/절 (장 넘어가는 경우)
+  const [endChapter, setEndChapter] = useState("1");
+  const [crossChapter, setCrossChapter] = useState(false); // 장 넘어가는 말씀 여부
+
+  // 말씀 여러 개 (추가 말씀)
+  type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: {num:number;text:string}[]; ref: string };
+  const [passages, setPassages] = useState<PassageItem[]>([]);
+
+  // 주일예배 말씀 선택 step
+  const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
 
   // 장 변경 시 절 범위 초과 자동 조정
   function handleChapterChange(newChapter: string) {
@@ -235,18 +250,67 @@ function QTWriteContent() {
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
   async function loadPassage() {
-    if (parseInt(endV) < parseInt(startV)) { setBibleError("끝 절이 시작 절보다 작아요"); return; }
     setLoadingBible(true); setBibleError("");
     try {
-      const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
-      const data = await res.json();
-      if (data.error) { setBibleError(data.error); }
-      else {
-        setPassageVerses(data.verses ?? []);
-        setBibleRef(data.reference);
-        setBibleStep("done");
-        setSelectedVerseNums([]);
-        setKeyVerse("");
+      let allVerses: {num:number;text:string}[] = [];
+      let refStr = "";
+
+      if (crossChapter && endChapter !== chapter) {
+        // 장 넘어가는 경우: 시작장 끝까지 + 끝장 처음부터
+        const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
+        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
+        const res1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
+        const d1 = await res1.json();
+        const res2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const d2 = await res2.json();
+        const v1 = (d1.verses??[]).map((v:any)=>({...v, num: `${chapter}:${v.num}`}));
+        const v2 = (d2.verses??[]).map((v:any)=>({...v, num: `${endChapter}:${v.num}`}));
+        allVerses = [...v1, ...v2];
+        refStr = `${book.length>3?book.slice(0,3):book} ${chapter}:${startV}-${endChapter}:${endV}`;
+      } else {
+        if (parseInt(endV) < parseInt(startV)) { setBibleError("끝 절이 시작 절보다 작아요"); setLoadingBible(false); return; }
+        const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
+        const data = await res.json();
+        if (data.error) { setBibleError(data.error); setLoadingBible(false); return; }
+        allVerses = data.verses ?? [];
+        refStr = data.reference;
+      }
+
+      setPassageVerses(allVerses);
+      setBibleRef(refStr);
+      setBibleStep("done");
+      setSundayBibleStep("done");
+      setSelectedVerseNums([]);
+      setKeyVerse("");
+    } catch { setBibleError("본문을 불러오지 못했어요."); }
+    setLoadingBible(false);
+  }
+
+  // 말씀 추가하기 (passages 배열에 추가)
+  async function addPassage() {
+    setLoadingBible(true); setBibleError("");
+    try {
+      const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
+      let vers: {num:number;text:string}[] = [];
+      let refStr = "";
+      if (crossChapter && endChapter !== chapter) {
+        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
+        const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
+        const d1 = await r1.json();
+        const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const d2 = await r2.json();
+        vers = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${endChapter}:${v.num}`}))];
+        refStr = `${book.length>3?book.slice(0,3):book} ${chapter}:${startV}-${endChapter}:${endV}`;
+      } else {
+        const r = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
+        const d = await r.json();
+        vers = d.verses ?? []; refStr = d.reference;
+      }
+      if (vers.length > 0) {
+        const newP: PassageItem = { book, chapter, startV, endV, endChapter, cross: crossChapter, verses: vers, ref: refStr };
+        setPassages(prev => [...prev, newP]);
+        // 첫 번째 말씀이 없으면 메인으로도 설정
+        if (!bibleRef) { setPassageVerses(vers); setBibleRef(refStr); setBibleStep("done"); setSundayBibleStep("done"); }
       }
     } catch { setBibleError("본문을 불러오지 못했어요."); }
     setLoadingBible(false);
@@ -369,9 +433,11 @@ function QTWriteContent() {
       if (mode === "free") {
         insertData = { ...insertData, bible_ref: bibleRef, key_verse: keyVerse, meditation: freeText, decision: decisionText };
       } else if (mode === "sunday") {
+        // 말씀 ref: 메인 + 추가 말씀 합치기
+        const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean).join(", ");
         insertData = {
           ...insertData,
-          bible_ref: sermonRef ? `설교: ${sermonTitle} (${sermonRef})` : `설교: ${sermonTitle}`,
+          bible_ref: allRefs ? `설교: ${sermonTitle} (${allRefs})` : `설교: ${sermonTitle}`,
           opening_prayer: answers.opening_prayer ?? "",
           summary: answers.summary ?? "",
           meditation: answers.meditation ?? "",
@@ -450,36 +516,53 @@ function QTWriteContent() {
             </button>
           </div>
 
-          {/* 장 + 절 - 책에 따라 동적 범위 */}
+          {/* 장/절 선택 + 장 넘어가는 말씀 지원 */}
           {(() => {
-            // 현재 책의 한국어 이름 추출 (번역본 무관하게 장/절 수는 동일)
-            const koBookName = (() => {
-              // 현재 선택된 book이 한국어면 그대로, 아니면 인덱스로 매핑
-              const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
-              const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
-              const idx = allLocalBooks.indexOf(book);
-              return idx >= 0 ? allKoBooks[idx] : book;
-            })();
+            const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+            const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+            const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
             const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
             const maxChapter = chaptersData.length || 150;
             const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
-            const maxEndV = chaptersData[parseInt(chapter)-1] ?? 176;
+            const maxEndV = crossChapter ? (chaptersData[parseInt(endChapter)-1] ?? 176) : (chaptersData[parseInt(chapter)-1] ?? 176);
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[
-                  { label: "장", value: chapter, setter: handleChapterChange, max: maxChapter, unit: "장" },
-                  { label: "시작 절", value: startV, setter: (v: string) => { setStartV(v); if(parseInt(v) > parseInt(endV)) setEndV(v); }, max: maxStartV, unit: "절" },
-                  { label: "끝 절", value: endV, setter: setEndV, max: maxEndV, unit: "절" },
-                ].map(({ label, value, setter, max, unit }) => (
-                  <div key={label}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{label}</label>
-                    <select value={value} onChange={e => setter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: max }, (_, i) => String(i + 1)).map(v => (
-                        <option key={v} value={v}>{v}{unit}</option>
-                      ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* 시작: 장 + 절 */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>시작 장</label>
+                    <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                      {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}장</option>)}
                     </select>
                   </div>
-                ))}
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>시작 절</label>
+                    <select value={startV} onChange={e => { setStartV(e.target.value); if(!crossChapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
+                      {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
+                    </select>
+                  </div>
+                </div>
+                {/* 장 넘어가기 토글 */}
+                <button onClick={() => { setCrossChapter(p=>!p); if(!crossChapter) setEndChapter(chapter); }} style={{ display: "flex", alignItems: "center", gap: 6, background: crossChapter ? "var(--sage-light)" : "none", border: `1px solid ${crossChapter ? "var(--sage)" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", fontSize: 12, color: crossChapter ? "var(--sage-dark)" : "var(--text3)" }}>
+                  <span>{crossChapter ? "✓" : "+"}</span> 장이 넘어가는 말씀 (예: 9장 25절~10장 6절)
+                </button>
+                {/* 끝: 장 + 절 */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {crossChapter && (
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>끝 장</label>
+                      <select value={endChapter} onChange={e => setEndChapter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}장</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>끝 절</label>
+                    <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                      {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
             );
           })()}
@@ -489,6 +572,25 @@ function QTWriteContent() {
           <button onClick={loadPassage} disabled={loadingBible} className="btn-sage">
             {loadingBible ? <><Loader2 size={16} className="spin" />불러오는 중...</> : <><BookOpen size={16} />말씀 불러오기</>}
           </button>
+
+          {/* 말씀 추가 버튼 */}
+          {(bibleRef || passages.length > 0) && (
+            <button onClick={addPassage} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              <Plus size={14} /> 말씀 추가하기 (여러 본문일 경우)
+            </button>
+          )}
+
+          {/* 추가된 말씀 목록 */}
+          {passages.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {passages.map((p, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
+                  <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {p.ref}</span>
+                  <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {mode === "free" && (
             <button onClick={() => setBibleStep("done")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
@@ -655,7 +757,6 @@ function QTWriteContent() {
   // ─── 주일예배 작성 화면 ───
   if (mode === "sunday") {
     const step = STEPS_SUNDAY[cur] as any;
-    const canNext = canNextSunday();
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
@@ -666,7 +767,6 @@ function QTWriteContent() {
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
           </div>
-          {/* 진행바 */}
           <div className="step-bar" style={{ marginBottom: 8 }}>
             {STEPS_SUNDAY.map((_, i) => <div key={i} className={`step-bar-item ${i < cur ? "done" : i === cur ? "curr" : ""}`} />)}
           </div>
@@ -675,11 +775,10 @@ function QTWriteContent() {
           <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{step.subtitle}</p>
         </div>
 
-        {/* 단계 탭 */}
+        {/* 단계 탭 - 자유 클릭 */}
         <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           {STEPS_SUNDAY.map((s, i) => {
-            const done = i < cur;
-            const isCurr = i === cur;
+            const done = i < cur; const isCurr = i === cur;
             return (
               <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)" }}>{i + 1}.</span>
@@ -690,49 +789,154 @@ function QTWriteContent() {
           })}
         </div>
 
-        <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          {step.isSermonInfo ? (
+        <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* 0단계: 설교 정보 + 말씀 선택 */}
+          {step.isSermonInfo && (
             <>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>설교 제목</label>
                 <input type="text" className="input-field" placeholder="예: 두려워하지 말라" value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>본문</label>
-                <input type="text" className="input-field" placeholder="예: 이사야 41:10" value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
-              </div>
-            </>
-          ) : step.isDecision ? (
-            <>
-              <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--border)" }}>
-                <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-                  <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
-                  <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
-                </p>
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
-                <textarea className="textarea-field" rows={3} placeholder="이 말씀 앞에서 어떤 마음을 품기로 결심했나요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {decisions.map((d, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
-                      </div>
-                      <input type="text" className="input-field" placeholder={`행동 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
-                      {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
+
+              {/* 말씀 선택 (6단계와 동일) */}
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginBottom: 10 }}>📖 설교 본문 선택</p>
+
+                {sundayBibleStep === "done" && bibleRef ? (
+                  <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(122,157,122,0.3)", marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
+                      <button onClick={() => { setSundayBibleStep("select"); setBibleRef(""); setPassageVerses([]); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>다시 선택</button>
                     </div>
-                  ))}
-                </div>
-                <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-                  <Plus size={14} /> 행동 추가하기
-                </button>
+                    {passages.length > 0 && (
+                      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+                        {passages.map((p,i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: 11, color: "var(--sage-dark)" }}>+ {p.ref}</span>
+                            <button onClick={() => setPassages(prev=>prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={12}/></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* 번역본 선택 */}
+                    <button onClick={() => setShowTranslationPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer", marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {translationName}</span>
+                      <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
+                    </button>
+                    {/* 책 선택 */}
+                    <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", color: "var(--text)", fontSize: 13, marginBottom: 8 }}>
+                      <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
+                    </button>
+                    {/* 장/절 */}
+                    {(() => {
+                      const allKoBooks2 = [...OT_BOOKS, ...NT_BOOKS];
+                      const allLocalBooks2 = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+                      const koN = (() => { const i=allLocalBooks2.indexOf(book); return i>=0?allKoBooks2[i]:book; })();
+                      const cd = BIBLE_CHAPTERS[koN] ?? [];
+                      const mc = cd.length || 150;
+                      const msv = cd[parseInt(chapter)-1] ?? 176;
+                      const mev = crossChapter ? (cd[parseInt(endChapter)-1] ?? 176) : (cd[parseInt(chapter)-1] ?? 176);
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>시작 장</label>
+                              <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
+                                {Array.from({length:mc},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}장</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>시작 절</label>
+                              <select value={startV} onChange={e => setStartV(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
+                                {Array.from({length:msv},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}절</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <button onClick={()=>{setCrossChapter(p=>!p);if(!crossChapter)setEndChapter(chapter);}} style={{ display:"flex",alignItems:"center",gap:6,background:crossChapter?"var(--sage-light)":"none",border:`1px solid ${crossChapter?"var(--sage)":"var(--border)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:12,color:crossChapter?"var(--sage-dark)":"var(--text3)" }}>
+                            <span>{crossChapter?"✓":"+"}</span> 장이 넘어가는 말씀
+                          </button>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            {crossChapter && (
+                              <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>끝 장</label>
+                                <select value={endChapter} onChange={e=>setEndChapter(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
+                                  {Array.from({length:mc},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}장</option>)}
+                                </select>
+                              </div>
+                            )}
+                            <div>
+                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>끝 절</label>
+                              <select value={endV} onChange={e=>setEndV(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
+                                {Array.from({length:mev},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}절</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {bibleError && <p style={{ fontSize: 12, color: "#E05050", marginBottom: 6 }}>{bibleError}</p>}
+                    <button onClick={loadPassage} disabled={loadingBible} className="btn-sage" style={{ marginBottom: 6 }}>
+                      {loadingBible ? <><Loader2 size={16} className="spin" />불러오는 중...</> : <><BookOpen size={16} />말씀 불러오기</>}
+                    </button>
+                  </>
+                )}
+
+                {/* 말씀 추가 */}
+                {bibleRef && (
+                  <button onClick={addPassage} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    <Plus size={14} /> 말씀 추가하기
+                  </button>
+                )}
               </div>
             </>
-          ) : (
+          )}
+
+          {/* 깨달음과 결단 단계 */}
+          {step.isDecision && (
+            <>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>깨달음 (말씀이 내게 주는 것)</label>
+                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 8 }}>오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?</p>
+                <textarea className="textarea-field" rows={4} placeholder="개인적이고 솔직하게 써보세요..." value={answers.meditation ?? ""} onChange={e => set("meditation", e.target.value)} />
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
+                  <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
+                    <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
+                    <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
+                  </p>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
+                  <textarea className="textarea-field" rows={2} placeholder="이 말씀 앞에서 어떤 마음을 품기로 결심했나요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {decisions.map((d, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
+                        </div>
+                        <input type="text" className="input-field" placeholder={`행동 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                        {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
+                    <Plus size={14} /> 행동 추가하기
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 일반 텍스트 단계 (들어가는기도, 말씀요약, 올려드리는기도) */}
+          {!step.isSermonInfo && !step.isDecision && (
             <>
               <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{step.hint}</p>
               <textarea className="textarea-field" rows={9} placeholder={step.placeholder} value={answers[step.id] ?? ""} onChange={e => set(step.id, e.target.value)} />
@@ -740,15 +944,21 @@ function QTWriteContent() {
           )}
         </div>
 
-        <div style={{ padding: "12px 16px 32px", display: "flex", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-          {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
-          {step.isLast ? (
-            <button onClick={save} disabled={!canNext || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-              {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
-            </button>
-          ) : (
-            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
-          )}
+        <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
+            {step.isLast ? (
+              <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+                {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
+              </button>
+            ) : (
+              <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+            )}
+          </div>
+          {/* 임시저장 버튼 */}
+          <button onClick={saveDraft} disabled={saving} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            💾 임시저장하고 나중에 이어쓰기
+          </button>
         </div>
       </div>
     );
