@@ -175,55 +175,53 @@ function QTWriteContent() {
 
   // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
   useEffect(() => {
-    if (hasSchedule && !isResume && mode === "6step") {
-      async function loadSchedulePassage() {
-        try {
-          const bookName = schedBook!;
-          const chap = schedChapter!;
-          const sv = schedStartV!;
-          const ev = schedEndV!;
-          const evChap = schedEndChapter;
+    const loadSchedulePassage = async () => {
+      if (!hasSchedule || isResume || mode !== "6step") return;
+      try {
+        const bookName = schedBook!;
+        const chap = schedChapter!;
+        const sv = schedStartV!;
+        const ev = schedEndV!;
+        const evChap = schedEndChapter;
 
-          setBook(bookName);
-          setChapter(chap);
-          setStartV(sv);
-          setEndV(ev);
+        setBook(bookName);
+        setChapter(chap);
+        setStartV(sv);
+        setEndV(ev);
 
-          let allVerses: {num: number; text: string}[] = [];
-          let refStr = "";
+        let allVerses: {num: number; text: string}[] = [];
+        let refStr = "";
 
-          if (evChap && evChap !== chap) {
-            setCrossChapter(true);
-            setEndChapter(evChap);
-            // 두 장 합치기
-            const allKo = [...OT_BOOKS, ...NT_BOOKS];
-            const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
-            const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
-            const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
-            const r1 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
-            const d1 = await r1.json();
-            const r2 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
-            const d2 = await r2.json();
-            allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
-            refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
-          } else {
-            const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
-            const data = await res.json();
-            allVerses = data.verses ?? [];
-            refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
-          }
-
-          if (allVerses.length > 0) {
-            setPassageVerses(allVerses);
-            setBibleRef(refStr);
-            setBibleStep("done");
-          }
-        } catch (e) {
-          // 스케줄 로드 실패해도 수동 선택 가능
+        if (evChap && evChap !== chap) {
+          setCrossChapter(true);
+          setEndChapter(evChap);
+          const allKo = [...OT_BOOKS, ...NT_BOOKS];
+          const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+          const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
+          const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
+          const r1 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+          const d1 = await r1.json();
+          const r2 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
+          const d2 = await r2.json();
+          allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
+          refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
+        } else {
+          const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
+          const data = await res.json();
+          allVerses = data.verses ?? [];
+          refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
         }
+
+        if (allVerses.length > 0) {
+          setPassageVerses(allVerses);
+          setBibleRef(refStr);
+          setBibleStep("done");
+        }
+      } catch (e) {
+        // 스케줄 로드 실패해도 수동 선택 가능
       }
-      loadSchedulePassage();
-    }
+    };
+    loadSchedulePassage();
   }, []);
 
   // 임시저장 데이터 로드
