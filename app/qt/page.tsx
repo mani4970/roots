@@ -49,6 +49,7 @@ export default function QTPage() {
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPopup, setShowDraftPopup] = useState(false);
+  const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
 
   useEffect(() => {
     load();
@@ -69,6 +70,18 @@ export default function QTPage() {
       .eq("user_id", user.id).eq("is_draft", false) // 완료된 것만 기록에 표시
       .order("date", { ascending: false });
     if (data) setRecords(data);
+
+    // 오늘 큐티 스케줄 로드 (주일 아닌 날만)
+    const todayDate = new Date();
+    if (todayDate.getDay() !== 0) { // 0 = 일요일
+      const { data: sched } = await supabase
+        .from("qt_schedule")
+        .select("book,chapter,start_verse,end_verse,end_chapter,title")
+        .eq("date", today)
+        .maybeSingle();
+      if (sched) setTodaySchedule(sched);
+    }
+
     setLoading(false);
   }
 
@@ -83,7 +96,20 @@ export default function QTPage() {
 
   function startQT(mode: string) {
     setShowStartModal(false);
-    router.push(`/qt/write?mode=${mode}`);
+    if (mode === "6step" && todaySchedule) {
+      // 오늘 스케줄이 있으면 URL에 파라미터로 전달
+      const params = new URLSearchParams({
+        mode: "6step",
+        schedBook: todaySchedule.book,
+        schedChapter: String(todaySchedule.chapter),
+        schedStartV: String(todaySchedule.start_verse),
+        schedEndV: String(todaySchedule.end_verse),
+        ...(todaySchedule.end_chapter ? { schedEndChapter: String(todaySchedule.end_chapter) } : {}),
+      });
+      router.push(`/qt/write?${params.toString()}`);
+    } else {
+      router.push(`/qt/write?mode=${mode}`);
+    }
   }
 
   async function deleteDraftAndStart() {
@@ -150,10 +176,38 @@ export default function QTPage() {
               <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>말씀 앞에 앉은 당신, 수고했어요</p>
             </div>
           </div>
+        ) : new Date().getDay() === 0 ? (
+          // 주일 안내
+          <div>
+            <div className="card-sage" style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>🙌 오늘은 주일이에요!</p>
+              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>6단계 큐티 대신 주일예배 큐티를 진행해 주세요.</p>
+            </div>
+            <button onClick={() => startQT("sunday")} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Plus size={18} /> 주일예배 큐티 시작하기
+            </button>
+          </div>
         ) : (
-          <button onClick={() => setShowStartModal(true)} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Plus size={18} /> 오늘 큐티 시작하기
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* 오늘 스케줄 본문 안내 */}
+            {todaySchedule && (
+              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(122,157,122,0.3)" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>오늘의 큐티 본문</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
+                  {todaySchedule.book} {todaySchedule.chapter}:{todaySchedule.start_verse}
+                  {todaySchedule.end_chapter && todaySchedule.end_chapter !== todaySchedule.chapter
+                    ? `~${todaySchedule.end_chapter}:${todaySchedule.end_verse}`
+                    : todaySchedule.end_verse !== todaySchedule.start_verse
+                    ? `-${todaySchedule.end_verse}`
+                    : ""}
+                </p>
+                {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text3)" }}>{todaySchedule.title}</p>}
+              </div>
+            )}
+            <button onClick={() => setShowStartModal(true)} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Plus size={18} /> {todaySchedule ? "오늘 본문으로 큐티 시작하기" : "오늘 큐티 시작하기"}
+            </button>
+          </div>
         )}
       </div>
 

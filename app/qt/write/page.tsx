@@ -86,7 +86,7 @@ const BAR_LABELS_6 = ["들어가는 기도", "본문 요약", "붙잡은 말씀"
 // 3: 깨달음과 결단 (깨달음 + 성품 + 행동들)
 // 4: 올려드리는 기도
 const STEPS_SUNDAY = [
-  { id: "sermon_info", title: "설교 정보", subtitle: "설교 제목과 말씀 본문을 선택해요", isSermonInfo: true },
+  { id: "sermon_info", title: "설교 정보", subtitle: "설교 제목과 본문 말씀을 적어요", isSermonInfo: true },
   { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
   { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
   { id: "meditation", title: "깨달음과 결단", subtitle: "말씀이 내게 주는 깨달음과 결단", placeholder: "", hint: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", isDecision: true },
@@ -97,7 +97,14 @@ function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
-  const isResume = params.get("resume") === "true"; // 이어쓰기 여부
+  const isResume = params.get("resume") === "true";
+  // 오늘 스케줄 파라미터
+  const schedBook = params.get("schedBook");
+  const schedChapter = params.get("schedChapter");
+  const schedStartV = params.get("schedStartV");
+  const schedEndV = params.get("schedEndV");
+  const schedEndChapter = params.get("schedEndChapter");
+  const hasSchedule = !!(schedBook && schedChapter && schedStartV && schedEndV);
   const todayStr = new Date().toISOString().split("T")[0];
 
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -165,6 +172,59 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
+
+  // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
+  useEffect(() => {
+    if (hasSchedule && !isResume && mode === "6step") {
+      async function loadSchedulePassage() {
+        try {
+          const bookName = schedBook!;
+          const chap = schedChapter!;
+          const sv = schedStartV!;
+          const ev = schedEndV!;
+          const evChap = schedEndChapter;
+
+          setBook(bookName);
+          setChapter(chap);
+          setStartV(sv);
+          setEndV(ev);
+
+          let allVerses: {num: number; text: string}[] = [];
+          let refStr = "";
+
+          if (evChap && evChap !== chap) {
+            setCrossChapter(true);
+            setEndChapter(evChap);
+            // 두 장 합치기
+            const allKo = [...OT_BOOKS, ...NT_BOOKS];
+            const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+            const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
+            const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
+            const r1 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+            const d1 = await r1.json();
+            const r2 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
+            const d2 = await r2.json();
+            allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
+            refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
+          } else {
+            const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
+            const data = await res.json();
+            allVerses = data.verses ?? [];
+            refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
+          }
+
+          if (allVerses.length > 0) {
+            setPassageVerses(allVerses);
+            setBibleRef(refStr);
+            setBibleStep("done");
+          }
+        } catch (e) {
+          // 스케줄 로드 실패해도 수동 선택 가능
+        }
+      }
+      loadSchedulePassage();
+    }
+  }, []);
 
   // 임시저장 데이터 로드
   useEffect(() => {
@@ -798,99 +858,9 @@ function QTWriteContent() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>설교 제목</label>
                 <input type="text" className="input-field" placeholder="예: 두려워하지 말라" value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
-
-              {/* 말씀 선택 (6단계와 동일) */}
-              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginBottom: 10 }}>📖 설교 본문 선택</p>
-
-                {sundayBibleStep === "done" && bibleRef ? (
-                  <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(122,157,122,0.3)", marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
-                      <button onClick={() => { setSundayBibleStep("select"); setBibleRef(""); setPassageVerses([]); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>다시 선택</button>
-                    </div>
-                    {passages.length > 0 && (
-                      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-                        {passages.map((p,i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 11, color: "var(--sage-dark)" }}>+ {p.ref}</span>
-                            <button onClick={() => setPassages(prev=>prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={12}/></button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {/* 번역본 선택 */}
-                    <button onClick={() => setShowTranslationPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer", marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {translationName}</span>
-                      <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
-                    </button>
-                    {/* 책 선택 */}
-                    <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", color: "var(--text)", fontSize: 13, marginBottom: 8 }}>
-                      <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
-                    </button>
-                    {/* 장/절 */}
-                    {(() => {
-                      const allKoBooks2 = [...OT_BOOKS, ...NT_BOOKS];
-                      const allLocalBooks2 = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
-                      const koN = (() => { const i=allLocalBooks2.indexOf(book); return i>=0?allKoBooks2[i]:book; })();
-                      const cd = BIBLE_CHAPTERS[koN] ?? [];
-                      const mc = cd.length || 150;
-                      const msv = cd[parseInt(chapter)-1] ?? 176;
-                      const mev = crossChapter ? (cd[parseInt(endChapter)-1] ?? 176) : (cd[parseInt(chapter)-1] ?? 176);
-                      return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            <div>
-                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>시작 장</label>
-                              <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
-                                {Array.from({length:mc},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}장</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>시작 절</label>
-                              <select value={startV} onChange={e => setStartV(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
-                                {Array.from({length:msv},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}절</option>)}
-                              </select>
-                            </div>
-                          </div>
-                          <button onClick={()=>{setCrossChapter(p=>!p);if(!crossChapter)setEndChapter(chapter);}} style={{ display:"flex",alignItems:"center",gap:6,background:crossChapter?"var(--sage-light)":"none",border:`1px solid ${crossChapter?"var(--sage)":"var(--border)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:12,color:crossChapter?"var(--sage-dark)":"var(--text3)" }}>
-                            <span>{crossChapter?"✓":"+"}</span> 장이 넘어가는 말씀
-                          </button>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            {crossChapter && (
-                              <div>
-                                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>끝 장</label>
-                                <select value={endChapter} onChange={e=>setEndChapter(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
-                                  {Array.from({length:mc},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}장</option>)}
-                                </select>
-                              </div>
-                            )}
-                            <div>
-                              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>끝 절</label>
-                              <select value={endV} onChange={e=>setEndV(e.target.value)} className="input-field" style={{ padding: "10px 8px" }}>
-                                {Array.from({length:mev},(_,i)=>String(i+1)).map(v=><option key={v} value={v}>{v}절</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    {bibleError && <p style={{ fontSize: 12, color: "#E05050", marginBottom: 6 }}>{bibleError}</p>}
-                    <button onClick={loadPassage} disabled={loadingBible} className="btn-sage" style={{ marginBottom: 6 }}>
-                      {loadingBible ? <><Loader2 size={16} className="spin" />불러오는 중...</> : <><BookOpen size={16} />말씀 불러오기</>}
-                    </button>
-                  </>
-                )}
-
-                {/* 말씀 추가 */}
-                {bibleRef && (
-                  <button onClick={addPassage} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
-                    <Plus size={14} /> 말씀 추가하기
-                  </button>
-                )}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>본문 말씀</label>
+                <input type="text" className="input-field" placeholder="예: 이사야 41:10 / 요한복음 3:16" value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
               </div>
             </>
           )}
