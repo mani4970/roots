@@ -225,7 +225,7 @@ export default function ProfilePage() {
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, justifyItems: "center" }}>
             {[
-              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "100일 streak", condition: (profile?.streak_days ?? 0) >= 100 },
+              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "100일 완주", condition: (profile?.streak_days ?? 0) >= 100 },
               { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회", condition: prayerSharedCount >= 15 },
               { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회", condition: qtShareCount >= 30 },
             ].map(b => {
