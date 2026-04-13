@@ -201,8 +201,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 이번 달 큐티 캘린더 */}
-      <div style={{ padding: "16px 16px 0" }}>
       {/* 신앙 여정 통계 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">신앙 여정</div>
