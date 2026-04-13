@@ -176,21 +176,10 @@ export default function QTPage() {
               <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>말씀 앞에 앉은 당신, 수고했어요</p>
             </div>
           </div>
-        ) : new Date().getDay() === 0 ? (
-          // 주일 안내
-          <div>
-            <div className="card-sage" style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>🙌 오늘은 주일이에요!</p>
-              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>6단계 큐티 대신 주일예배 큐티를 진행해 주세요.</p>
-            </div>
-            <button onClick={() => startQT("sunday")} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Plus size={18} /> 주일예배 큐티 시작하기
-            </button>
-          </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {/* 오늘 스케줄 본문 안내 */}
-            {todaySchedule && (
+            {/* 오늘 본문 참고용 카드 (주일 아니고 스케줄 있을 때) */}
+            {new Date().getDay() !== 0 && todaySchedule && (
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(122,157,122,0.3)" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>오늘의 큐티 본문</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
@@ -204,8 +193,15 @@ export default function QTPage() {
                 {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text3)" }}>{todaySchedule.title}</p>}
               </div>
             )}
+            {/* 주일 안내 카드 */}
+            {new Date().getDay() === 0 && (
+              <div className="card-sage">
+                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>🙌 오늘은 주일이에요!</p>
+                <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>6단계 큐티 대신 주일예배 큐티를 진행해 주세요.</p>
+              </div>
+            )}
             <button onClick={() => setShowStartModal(true)} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Plus size={18} /> {todaySchedule ? "오늘 본문으로 큐티 시작하기" : "오늘 큐티 시작하기"}
+              <Plus size={18} /> 오늘 큐티 시작하기
             </button>
           </div>
         )}

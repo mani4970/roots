@@ -119,8 +119,8 @@ function QTWriteContent() {
     return isSunday(todayStr) ? "sunday" : "6step";
   });
 
-  // 말씀 선택 (6step, free)
-  const [bibleStep, setBibleStep] = useState<"select" | "done">("select");
+  // 말씀 선택 (6step, free) - 스케줄 있으면 바로 "done"으로 시작
+  const [bibleStep, setBibleStep] = useState<"select" | "done">(hasSchedule ? "done" : "select");
   const currentLang = TRANSLATION_LANG[selectedTranslation] ?? "KO";
   const currentBookNames = BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"];
   const OT_BOOKS_LOCAL = currentBookNames.slice(0, 39);
@@ -226,7 +226,7 @@ function QTWriteContent() {
 
   // 임시저장 데이터 로드
   useEffect(() => {
-    async function loadDraft() {
+    const loadDraft = async () => {
       if (!isResume) return; // 이어쓰기 모드일 때만 로드
       const { createClient: cc } = await import("@/lib/supabase");
       const supabase = cc();
@@ -1011,21 +1011,27 @@ function QTWriteContent() {
       {/* 본문 요약 & 붙잡은 말씀 단계 */}
       {step6.isPassageStep && (
         <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* 절 선택 */}
-          <div style={{ background: "var(--bg2)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--sage-dark)", marginBottom: 8 }}>💡 절을 탭하면 붙잡은 말씀에 추가돼요</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {passageVerses.map(v => (
-                <button key={v.num} onClick={() => selectVerse(v.text, v.num)} style={{ textAlign: "left", background: selectedVerseNums.includes(v.num) ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${selectedVerseNums.includes(v.num) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                  <span style={{ fontSize: 13, color: selectedVerseNums.includes(v.num) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.6, fontWeight: selectedVerseNums.includes(v.num) ? 600 : 400 }}>{v.text}</span>
-                  {selectedVerseNums.includes(v.num) && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* 2단계: 본문 요약 먼저 */}
+          {/* 본문 전체 보기 (스케줄로 로드된 경우) */}
+          {passageVerses.length > 0 && (
+            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {bibleRef} · {translationName}</p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {passageVerses.map(v => (
+                  <button key={v.num} onClick={() => selectVerse(String(v.text), typeof v.num === "number" ? v.num : 0)} style={{ textAlign: "left", background: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "rgba(122,157,122,0.2)" : "transparent", borderRadius: 8, padding: "6px 8px", border: `1px solid ${selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage)" : "transparent"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", flexShrink: 0, minWidth: 20 }}>{v.num}</span>
+                    <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7 }}>{v.text}</span>
+                    {selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) && <Check size={12} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>💡 절을 탭하면 붙잡은 말씀에 추가돼요</p>
+            </div>
+          )}
+
+          {/* 2단계: 본문 요약 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               2단계 · 본문 요약
@@ -1033,7 +1039,7 @@ function QTWriteContent() {
             <textarea className="textarea-field" rows={4} placeholder="본문 내용을 자신의 말로 요약해보세요..." value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
           </div>
 
-          {/* 3단계: 붙잡은 말씀 아래 */}
+          {/* 3단계: 붙잡은 말씀 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               3단계 · 붙잡은 말씀 <span style={{ fontWeight: 400 }}>(위 절 탭하면 자동 추가)</span>
