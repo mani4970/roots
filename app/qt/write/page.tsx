@@ -307,6 +307,31 @@ function QTWriteContent() {
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
+  // 번역본 변경 시 현재 본문 다시 로드
+  async function reloadPassageWithTranslation(newTranslationId: number) {
+    if (!bibleRef || passageVerses.length === 0) return;
+    setLoadingBible(true);
+    try {
+      if (crossChapter && endChapter !== chapter) {
+        const allKo = [...OT_BOOKS, ...NT_BOOKS];
+        const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+        const koBook = (() => { const i=allLoc.indexOf(book); return i>=0?allKo[i]:book; })();
+        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
+        const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
+        const d1 = await r1.json();
+        const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const d2 = await r2.json();
+        const allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${endChapter}:${v.num}`}))];
+        if (allVerses.length > 0) setPassageVerses(allVerses);
+      } else {
+        const res = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
+        const data = await res.json();
+        if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
+      }
+    } catch (e) { /* 로드 실패 무시 */ }
+    setLoadingBible(false);
+  }
+
   async function loadPassage() {
     setLoadingBible(true); setBibleError("");
     try {
@@ -949,17 +974,36 @@ function QTWriteContent() {
         {/* 말씀 미리보기 */}
         {bibleRef && (
           <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: versePreviewExpanded ? 8 : 0 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
-              <button
-                onClick={() => setVersePreviewExpanded(p => !p)}
-                style={{ display: "flex", alignItems: "center", gap: 3, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
-              >
-                {versePreviewExpanded ? <><ChevronUp size={13} />접기</> : <><ChevronDown size={13} />더보기</>}
-              </button>
+            {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {/* 번역본 선택 */}
+                <select
+                  value={selectedTranslation}
+                  onChange={async e => {
+                    const newId = parseInt(e.target.value);
+                    setSelectedTranslation(newId);
+                    await reloadPassageWithTranslation(newId);
+                  }}
+                  style={{ fontSize: 10, color: "var(--sage-dark)", background: "rgba(122,157,122,0.15)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontWeight: 600 }}
+                >
+                  {ALL_TRANSLATIONS.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)" }} />}
+                {/* 더보기/접기 */}
+                <button
+                  onClick={() => setVersePreviewExpanded(p => !p)}
+                  style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+                >
+                  {versePreviewExpanded ? <><ChevronUp size={13} />접기</> : <><ChevronDown size={13} />더보기</>}
+                </button>
+              </div>
             </div>
             {!versePreviewExpanded && (
-              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic", marginTop: 4 }}>
+              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic" }}>
                 {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
               </p>
             )}
