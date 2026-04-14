@@ -157,13 +157,13 @@ export default function HomePage() {
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
-    if (newStreak >= 100 && !alreadyHasAngel) {
+    if (newStreak >= 900 && !alreadyHasAngel) {
       badgeUpdate.badge_angel = true;
     }
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     setProfile((prev: any) => prev ? { ...prev, ...badgeUpdate } : prev);
-    // 100일 달성 팝업 (처음 달성 시에만)
-    if (newStreak >= 100 && !alreadyHasAngel) {
+    // 900일 달성 팝업 (처음 달성 시에만)
+    if (newStreak >= 900 && !alreadyHasAngel) {
       setBadgePopup({
         img: "/angel.png",
         title: "천사 배지 획득! 👼",
