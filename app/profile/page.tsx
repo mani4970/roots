@@ -19,6 +19,11 @@ export default function ProfilePage() {
   const [qtShareCount, setQtShareCount] = useState(0);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -114,6 +119,49 @@ export default function ProfilePage() {
     } else {
       navigator.clipboard.writeText(text);
     }
+  }
+
+  async function sendFeedback() {
+    if (!feedbackText.trim()) return;
+    setSendingFeedback(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("feedback").insert({
+        user_id: user?.id ?? null,
+        content: feedbackText.trim(),
+        created_at: new Date().toISOString(),
+      });
+      setFeedbackText("");
+      setShowFeedbackModal(false);
+      alert("소중한 의견 감사해요! 😊");
+    } catch (e) {
+      // feedback 테이블 없어도 이메일로 안내
+      window.location.href = `mailto:cookiko313@gmail.com?subject=Roots 앱 피드백&body=${encodeURIComponent(feedbackText)}`;
+    }
+    setSendingFeedback(false);
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // 사용자 데이터 삭제
+      await Promise.all([
+        supabase.from("qt_records").delete().eq("user_id", user.id),
+        supabase.from("prayer_items").delete().eq("user_id", user.id),
+        supabase.from("daily_checkins").delete().eq("user_id", user.id),
+        supabase.from("user_prayer_logs").delete().eq("user_id", user.id),
+        supabase.from("profiles").delete().eq("id", user.id),
+      ]);
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (e) {
+      alert("계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
+    }
+    setDeletingAccount(false);
   }
 
   function renderCalendar() {
@@ -225,8 +273,8 @@ export default function ProfilePage() {
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, justifyItems: "center" }}>
             {[
-              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "100일 완주", condition: (profile?.streak_days ?? 0) >= 100 },
-              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 요청 15회", condition: prayerSharedCount >= 15 },
+              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "100일 streak", condition: (profile?.streak_days ?? 0) >= 100 },
+              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회", condition: prayerSharedCount >= 15 },
               { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회", condition: qtShareCount >= 30 },
             ].map(b => {
               const earned = profile?.[b.key] ?? false;
@@ -328,7 +376,67 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* 피드백 버튼 */}
+      <div style={{ padding: "10px 16px 0" }}>
+        <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
+          <span style={{ fontSize: 14 }}>💬</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>의견 보내기</span>
+        </button>
+      </div>
+
+      {/* 법적 링크 */}
+      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 16 }}>
+        <a href="/impressum" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>Impressum</a>
+        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
+        <a href="/privacy" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>개인정보처리방침</a>
+      </div>
+
+      <div style={{ height: 80 }} />
       <BottomNav />
+
+      {/* 피드백 모달 */}
+      {showFeedbackModal && (
+        <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>💬 의견 보내기</h3>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!</p>
+            <textarea
+              value={feedbackText}
+              onChange={e => setFeedbackText(e.target.value)}
+              placeholder="의견을 입력해 주세요..."
+              rows={4}
+              style={{ width: "100%", padding: "12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 13, resize: "none", outline: "none", boxSizing: "border-box" }}
+            />
+            <button onClick={sendFeedback} disabled={!feedbackText.trim() || sendingFeedback} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
+              {sendingFeedback ? "전송 중..." : "보내기"}
+            </button>
+
+            {/* 계정 관리 */}
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 16, paddingTop: 14 }}>
+              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, textAlign: "center" }}>계정 관리</p>
+              {!showDeleteConfirm ? (
+                <button onClick={() => setShowDeleteConfirm(true)} style={{ width: "100%", padding: "9px", background: "none", border: "1px solid rgba(224,80,80,0.3)", borderRadius: 10, color: "#E05050", fontSize: 12, cursor: "pointer" }}>
+                  계정 탈퇴
+                </button>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 12, color: "#E05050", textAlign: "center", marginBottom: 10, lineHeight: 1.6 }}>
+                    정말 탈퇴하시겠어요?<br />모든 큐티 기록, 기도 제목이 영구 삭제돼요.
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
+                      취소
+                    </button>
+                    <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "#E05050", border: "none", borderRadius: 10, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      {deletingAccount ? "삭제 중..." : "탈퇴하기"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
