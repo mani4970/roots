@@ -265,29 +265,32 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 신앙의 결실 뱃지 */}
+      {/* 신앙의 결실 뱃지 - 가로 스크롤 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">신앙의 결실</div>
-        <div className="card">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, justifyItems: "center" }}>
+        <div className="card" style={{ padding: "16px 12px" }}>
+          <div style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none" }}>
             {[
-              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "성령의 열매 9개 달성", condition: (profile?.streak_days ?? 0) >= 900 },
-              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회", condition: prayerSharedCount >= 15 },
-              { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회", condition: qtShareCount >= 30 },
+              { key: "badge_rootsman", img: "/badge_rootsman.png", title: "루츠맨", desc: "7일 연속" },
+              { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", title: "루츠맨 성경", desc: "52일 연속" },
+              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회" },
+              { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회" },
+              { key: "badge_angel", img: "/angel.png", title: "천사", desc: "성령의 열매 9개" },
             ].map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
-                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3 }}>
-                  <div style={{ width: 72, height: 72, marginBottom: 6 }}>
+                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
+                  <div style={{ width: 68, height: 68, marginBottom: 6 }}>
                     <img src={b.img} alt={b.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)" }}>{b.title}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{b.title}</div>
                   <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{b.desc}</div>
                   {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>✓ 획득</div>}
                 </div>
               );
             })}
           </div>
+          <p style={{ fontSize: 10, color: "var(--text3)", textAlign: "center", marginTop: 8 }}>← 옆으로 밀어서 모두 보기 →</p>
         </div>
       </div>
 
