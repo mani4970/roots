@@ -36,6 +36,7 @@ export default function CommunityPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"prayer" | "qt" | "group">("prayer");
   const [prayerTab, setPrayerTab] = useState<"praying" | "answered">("praying");
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
@@ -267,12 +268,42 @@ export default function CommunityPage() {
     setPrayedIds(prev => [...prev, id]);
     localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify([...prayedIds, id]));
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
+
+    // 바울 뱃지 체크 (함께 기도 30번)
+    try {
+      const { data: prof } = await supabase.from("profiles")
+        .select("badge_paul").eq("id", user.id).single();
+      if (!prof?.badge_paul) {
+        const { data: logs } = await supabase.from("user_prayer_logs")
+          .select("id").eq("user_id", user.id);
+        if ((logs?.length ?? 0) >= 30) {
+          await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
+          setBadgePopup({ img: "/badge_paul.png", title: "바울 배지 획득! 📜", msg: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!" });
+        }
+      }
+    } catch (e) {}
   }
 
   async function createGroup() {
     if (!groupName.trim() || !userId) return;
     setSavingGroup(true);
     const supabase = createClient();
+    // 베드로 뱃지 체크 (첫 그룹 만들기)
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: prof } = await supabase.from("profiles")
+          .select("badge_peter").eq("id", user.id).single();
+        if (!prof?.badge_peter) {
+          const { data: myGroups } = await supabase.from("groups")
+            .select("id").eq("created_by", user.id);
+          if ((myGroups?.length ?? 0) === 0) {
+            await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
+            setBadgePopup({ img: "/badge_peter.png", title: "베드로 배지 획득! 🐟", msg: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!" });
+          }
+        }
+      }
+    } catch (e) {}
     const { data: newGroup, error } = await supabase.from("groups").insert({
       name: groupName.trim(), description: groupDesc.trim() || null,
       is_public: isPublic, created_by: userId,
@@ -457,6 +488,22 @@ export default function CommunityPage() {
 
   return (
     <div className="page">
+      {badgePopup && (
+        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
+              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+            </div>
+            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              감사해요 🙏
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
           <div>

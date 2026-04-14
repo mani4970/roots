@@ -72,24 +72,30 @@ function RecordContent() {
     if (!error && data && data.length > 0) {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
       setSharedTargets(selectedTargets);
-      // 말씀 배달부 뱃지 체크 (큐티 나눔 30번) - "all" 포함한 경우만
+      // 말씀 배달부 + 요셉 뱃지 체크
       if (selectedTargets.includes("all")) {
         try {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (u) {
             const { data: prof } = await supabase.from("profiles")
-              .select("badge_qt_bird").eq("id", u.id).single();
-            if (!prof?.badge_qt_bird) {
-              const { data: shares } = await supabase.from("qt_records")
-                .select("id").eq("user_id", u.id).eq("is_draft", false)
-                .not("visibility", "is", null).neq("visibility", "private");
-              if ((shares?.length ?? 0) >= 30) {
-                await supabase.from("profiles").update({ badge_qt_bird: true }).eq("id", u.id);
-                setBadgePopup({
-                  img: "/qt_bird.png",
-                  title: "말씀 배달부 배지 획득! 🕊️",
-                  msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.",
-                });
+              .select("badge_qt_bird, badge_joseph").eq("id", u.id).single();
+            const { data: shares } = await supabase.from("qt_records")
+              .select("id").eq("user_id", u.id).eq("is_draft", false)
+              .not("visibility", "is", null).neq("visibility", "private");
+            const shareCount = (shares?.length ?? 0);
+            const updates: any = {};
+            if (!prof?.badge_joseph && shareCount >= 1) {
+              updates.badge_joseph = true;
+            }
+            if (!prof?.badge_qt_bird && shareCount >= 30) {
+              updates.badge_qt_bird = true;
+            }
+            if (Object.keys(updates).length > 0) {
+              await supabase.from("profiles").update(updates).eq("id", u.id);
+              if (updates.badge_joseph && !prof?.badge_joseph) {
+                setBadgePopup({ img: "/badge_joseph.png", title: "요셉 배지 획득! 🌈", msg: "요셉의 꿈처럼, 당신의 나눔이 누군가에게 소망이 돼요!" });
+              } else if (updates.badge_qt_bird) {
+                setBadgePopup({ img: "/qt_bird.png", title: "말씀 배달부 배지 획득! 🕊️", msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다." });
               }
             }
           }

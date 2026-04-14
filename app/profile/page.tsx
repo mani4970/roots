@@ -271,9 +271,15 @@ export default function ProfilePage() {
         <div className="card" style={{ padding: "16px 12px" }}>
           <div style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none" }}>
             {[
-              { key: "badge_rootsman", img: "/badge_rootsman.png", title: "루츠맨", desc: "7일 연속" },
-              { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", title: "루츠맨 성경", desc: "52일 연속" },
+              { key: "badge_rootsman", img: "/badge_rootsman.png", title: "루츠맨", desc: "7일 큐티" },
+              { key: "badge_mose", img: "/badge_mose.png", title: "모세", desc: "40일 큐티" },
+              { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", title: "루츠맨 성경", desc: "52일 큐티" },
+              { key: "badge_david", img: "/badge_david.png", title: "다윗", desc: "111일 큐티" },
+              { key: "badge_noah", img: "/badge_noah.png", title: "노아", desc: "첫 기도 응답" },
+              { key: "badge_joseph", img: "/badge_joseph.png", title: "요셉", desc: "첫 큐티 나눔" },
               { key: "badge_prayer_warrior", img: "/prayer_warrior.png", title: "기도의 용사", desc: "중보기도 15회" },
+              { key: "badge_paul", img: "/badge_paul.png", title: "바울", desc: "함께기도 30회" },
+              { key: "badge_peter", img: "/badge_peter.png", title: "베드로", desc: "첫 그룹 만들기" },
               { key: "badge_qt_bird", img: "/qt_bird.png", title: "말씀 배달부", desc: "큐티 나눔 30회" },
               { key: "badge_angel", img: "/angel.png", title: "천사", desc: "성령의 열매 9개" },
             ].map(b => {

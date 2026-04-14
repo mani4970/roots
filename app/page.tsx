@@ -142,7 +142,7 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data: p } = await supabase.from("profiles")
-      .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible").eq("id", user.id).single();
+      .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
     if (!p) return;
     const lastCheckinDate = p.last_checkin ? p.last_checkin.split("T")[0] : null;
     // 오늘 이미 streak 업데이트 했으면 스킵
@@ -153,25 +153,33 @@ export default function HomePage() {
     const alreadyHasAngel = p.badge_angel ?? false;
     const alreadyHasRootsman = p.badge_rootsman ?? false;
     const alreadyHasRootsmanBible = p.badge_rootsman_bible ?? false;
+    const alreadyHasMose = p.badge_mose ?? false;
+    const alreadyHasDavid = p.badge_david ?? false;
     const badgeUpdate: any = {
       streak_days: newStreak,
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
     if (newStreak >= 7 && !alreadyHasRootsman) badgeUpdate.badge_rootsman = true;
+    if (newStreak >= 40 && !alreadyHasMose) badgeUpdate.badge_mose = true;
     if (newStreak >= 52 && !alreadyHasRootsmanBible) badgeUpdate.badge_rootsman_bible = true;
+    if (newStreak >= 111 && !alreadyHasDavid) badgeUpdate.badge_david = true;
     if (newStreak >= 900 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
 
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     setProfile((prev: any) => prev ? { ...prev, ...badgeUpdate } : prev);
 
-    // 뱃지 팝업 (우선순위: 루츠맨 → 루츠맨성경 → 천사)
+    // 뱃지 팝업 (우선순위대로)
     if (newStreak >= 7 && !alreadyHasRootsman) {
       setBadgePopup({ img: "/badge_rootsman.png", title: "루츠맨 배지 획득! 🧑‍🌾", msg: "7일간 말씀과 함께한 당신, Roots의 진짜 시작이에요!" });
+    } else if (newStreak >= 40 && !alreadyHasMose) {
+      setBadgePopup({ img: "/badge_mose.png", title: "모세 배지 획득! 🪄", msg: "광야의 모세처럼, 40일을 걸어온 당신을 하나님이 기억하세요!" });
     } else if (newStreak >= 52 && !alreadyHasRootsmanBible) {
       setBadgePopup({ img: "/badge_rootsman_bible.png", title: "루츠맨 성경 배지 획득! 📖", msg: "52일! 오병이어처럼 작은 헌신이 기적을 만들어요!" });
+    } else if (newStreak >= 111 && !alreadyHasDavid) {
+      setBadgePopup({ img: "/badge_david.png", title: "다윗 배지 획득! 🗡️", msg: "골리앗 앞에 선 다윗처럼, 담대하고 굳건한 믿음의 당신을 축복합니다!" });
     } else if (newStreak >= 900 && !alreadyHasAngel) {
-      setBadgePopup({ img: "/angel.png", title: "천사 배지 획득! 👼", msg: "100일간 영적 루틴을 멈추지 않은 당신을 축복합니다." });
+      setBadgePopup({ img: "/angel.png", title: "천사 배지 획득! 👼", msg: "성령의 열매 9가지를 다 모은 당신을 축복합니다." });
     }
   }
 

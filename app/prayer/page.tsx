@@ -87,6 +87,16 @@ export default function PrayerPage() {
     const testimony = prompt("기도 응답 간증을 나눠주세요 🙏");
     if (!testimony) return;
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    // 노아 뱃지 체크 (첫 기도 응답)
+    if (user) {
+      const { data: prof } = await supabase.from("profiles")
+        .select("badge_noah").eq("id", user.id).single();
+      if (!prof?.badge_noah) {
+        await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
+        setBadgePopup({ img: "/badge_noah.png", title: "노아 배지 획득! ⛵", msg: "노아의 방주처럼, 하나님의 약속은 반드시 이루어져요!" });
+      }
+    }
     await supabase.from("prayer_items").update({
       is_answered: true,
       testimony,
