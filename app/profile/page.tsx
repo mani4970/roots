@@ -130,14 +130,12 @@ export default function ProfilePage() {
       await supabase.from("feedback").insert({
         user_id: user?.id ?? null,
         content: feedbackText.trim(),
-        created_at: new Date().toISOString(),
       });
       setFeedbackText("");
       setShowFeedbackModal(false);
       alert("소중한 의견 감사해요! 😊");
     } catch (e) {
-      // feedback 테이블 없어도 이메일로 안내
-      window.location.href = `mailto:cookiko313@gmail.com?subject=Roots 앱 피드백&body=${encodeURIComponent(feedbackText)}`;
+      alert("전송에 실패했어요. 다시 시도해 주세요.");
     }
     setSendingFeedback(false);
   }

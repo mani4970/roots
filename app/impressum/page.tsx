@@ -1,6 +1,14 @@
+"use client";
+import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+
 export default function ImpressumPage() {
+  const router = useRouter();
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 60px" }}>
+      <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer", marginBottom: 20 }}>
+        <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+      </button>
       <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Impressum</h1>
       <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 28 }}>Angaben gemäß § 5 TMG</p>
 
