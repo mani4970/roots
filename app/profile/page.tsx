@@ -291,7 +291,11 @@ export default function ProfilePage() {
               { key: "badge_peter", img: "/badge_peter.png", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
               { key: "badge_qt_bird", img: "/qt_bird.png", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
               { key: "badge_angel", img: "/angel.png", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
-            ].map(b => {
+            ].sort((a, b) => {
+              const aEarned = profile?.[a.key] ? 1 : 0;
+              const bEarned = profile?.[b.key] ? 1 : 0;
+              return bEarned - aEarned;
+            }).map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
                 <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>

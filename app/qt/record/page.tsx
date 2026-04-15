@@ -20,6 +20,7 @@ function RecordContent() {
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   // 현재 공유 대상들
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
+  const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
 
   useEffect(() => {
