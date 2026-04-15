@@ -109,7 +109,7 @@ function QTWriteContent() {
 
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const translationParam = searchParams.get("translation");
+  const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(translationParam ? parseInt(translationParam) : 92);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
