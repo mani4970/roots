@@ -426,7 +426,7 @@ export default function ProfilePage() {
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
-              placeholder=t("profile_feedback_placeholder", lang)
+              placeholder={t("profile_feedback_placeholder", lang)}
               rows={4}
               style={{ width: "100%", padding: "12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 13, resize: "none", outline: "none", boxSizing: "border-box" }}
             />
