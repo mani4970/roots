@@ -50,6 +50,8 @@ export default function QTPage() {
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPopup, setShowDraftPopup] = useState(false);
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
+  const [preferredTranslation, setPreferredTranslation] = useState(92);
+  const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
   useEffect(() => {
     load();
@@ -82,6 +84,11 @@ export default function QTPage() {
       if (sched) setTodaySchedule(sched);
     }
 
+    // 선호 번역본 로드
+    const { data: prof } = await supabase.from("profiles")
+      .select("preferred_translation").eq("id", user.id).single();
+    if (prof?.preferred_translation) setPreferredTranslation(prof.preferred_translation);
+
     setLoading(false);
   }
 
@@ -97,18 +104,18 @@ export default function QTPage() {
   function startQT(mode: string) {
     setShowStartModal(false);
     if (mode === "6step" && todaySchedule) {
-      // 오늘 스케줄이 있으면 URL에 파라미터로 전달
       const params = new URLSearchParams({
         mode: "6step",
         schedBook: todaySchedule.book,
         schedChapter: String(todaySchedule.chapter),
         schedStartV: String(todaySchedule.start_verse),
         schedEndV: String(todaySchedule.end_verse),
+        translation: String(preferredTranslation),
         ...(todaySchedule.end_chapter ? { schedEndChapter: String(todaySchedule.end_chapter) } : {}),
       });
       router.push(`/qt/write?${params.toString()}`);
     } else {
-      router.push(`/qt/write?mode=${mode}`);
+      router.push(`/qt/write?mode=${mode}&translation=${preferredTranslation}`);
     }
   }
 
@@ -163,8 +170,53 @@ export default function QTPage() {
       )}
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>큐티</h1>
-        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>말씀과 함께하는 조용한 시간</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>큐티</h1>
+          {/* 번역본 선택 버튼 */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowTranslationPicker(p => !p)}
+              style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer" }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text2)" }}>
+                {[
+                  {id:92,name:"개역개정"},{id:84,name:"개역한글"},{id:98,name:"새번역"},{id:88,name:"쉬운성경"},{id:89,name:"우리말성경"},
+                  {id:90,name:"바른성경"},{id:83,name:"현대인의성경"},{id:81,name:"공동번역"},{id:99,name:"새한글"},{id:87,name:"한글KJV"},
+                  {id:67,name:"KJV"},{id:80,name:"NIV"},{id:100,name:"ESV"},{id:62,name:"NASB"},{id:82,name:"NLT"},{id:95,name:"The Message"},
+                  {id:29,name:"Luther"},{id:27,name:"Elberfelder"},{id:97,name:"Hoffnung für Alle"},
+                  {id:26,name:"Louis Segond"},{id:24,name:"Jérusalem"},
+                ].find(t => t.id === preferredTranslation)?.name ?? "개역개정"}
+              </span>
+              <ChevronDown size={12} style={{ color: "var(--text3)" }} />
+            </button>
+            {showTranslationPicker && (
+              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "6px 0", zIndex: 100, minWidth: 170, boxShadow: "0 4px 20px rgba(0,0,0,0.2)", maxHeight: 300, overflowY: "auto" }}>
+                {[
+                  { group: "한국어", items: [{id:92,name:"개역개정"},{id:84,name:"개역한글"},{id:98,name:"새번역"},{id:88,name:"쉬운성경"},{id:89,name:"우리말성경"},{id:90,name:"바른성경"},{id:83,name:"현대인의성경"},{id:81,name:"공동번역"},{id:99,name:"새한글"},{id:87,name:"한글KJV"}] },
+                  { group: "English", items: [{id:67,name:"KJV"},{id:80,name:"NIV"},{id:100,name:"ESV"},{id:62,name:"NASB"},{id:82,name:"NLT"},{id:95,name:"The Message"}] },
+                  { group: "Deutsch", items: [{id:29,name:"Luther"},{id:27,name:"Elberfelder"},{id:97,name:"Hoffnung für Alle"}] },
+                  { group: "Français", items: [{id:26,name:"Louis Segond"},{id:24,name:"Jérusalem"}] },
+                ].map(g => (
+                  <div key={g.group}>
+                    <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", padding: "6px 12px 2px", letterSpacing: "0.5px" }}>{g.group}</p>
+                    {g.items.map(t => (
+                      <button key={t.id} onClick={async () => {
+                        setPreferredTranslation(t.id);
+                        setShowTranslationPicker(false);
+                        const supabase = createClient();
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) await supabase.from("profiles").update({ preferred_translation: t.id }).eq("id", user.id);
+                      }} style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: preferredTranslation === t.id ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 12, color: preferredTranslation === t.id ? "var(--sage-dark)" : "var(--text)", fontWeight: preferredTranslation === t.id ? 700 : 400 }}>
+                        {t.name} {preferredTranslation === t.id ? "✓" : ""}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <p style={{ color: "var(--text3)", fontSize: 12 }}>말씀과 함께하는 조용한 시간</p>
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
