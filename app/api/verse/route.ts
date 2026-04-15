@@ -37,8 +37,11 @@ const EMOTION_HINTS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  let lang = "ko";
   try {
-    const { emotions, prevVerse, prevReference, lang = "ko" } = await req.json();
+    const body = await req.json();
+    lang = body.lang ?? "ko";
+    const { emotions, prevVerse, prevReference } = body;
 
     // emotions는 이제 단일 감정 문자열 (단수 선택)
     const emotionId = Array.isArray(emotions) ? emotions[0] : emotions;
