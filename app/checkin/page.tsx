@@ -2,77 +2,51 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { useLang } from "@/lib/useLang";
+import { t, type TKey } from "@/lib/i18n";
 
-const EMOTIONS = [
+const EMOTION_GROUPS = [
   {
-    category: "기쁨 & 감사",
-    color: "rgba(232,197,71,0.15)",
-    border: "rgba(232,197,71,0.3)",
-    labelColor: "rgba(180,140,30,0.9)",
-    items: [
-      { id: "grateful", label: "감사해요", img: "/emotion_grateful.png" },
-      { id: "joyful", label: "기뻐요", img: "/emotion_joyful.png" },
-      { id: "peaceful", label: "평안해요", img: "/emotion_peaceful.png" },
-      { id: "excited", label: "설레요", img: "/emotion_excited.png" },
-      { id: "full", label: "충만해요", img: "/emotion_full.png" },
-    ],
+    catKey: "checkin_cat1" as TKey,
+    color: "rgba(232,197,71,0.15)", border: "rgba(232,197,71,0.3)", labelColor: "rgba(180,140,30,0.9)",
+    items: ["grateful","joyful","peaceful","excited","full"],
   },
   {
-    category: "은혜 & 영적 갈망",
-    color: "rgba(122,157,122,0.12)",
-    border: "rgba(122,157,122,0.3)",
-    labelColor: "var(--sage-dark)",
-    items: [
-      { id: "grace", label: "은혜받았어요", img: "/emotion_grace.png" },
-      { id: "hungry", label: "말씀이 고파요", img: "/emotion_hungry.png" },
-      { id: "mission", label: "사명감이 생겨요", img: "/emotion_mission.png" },
-      { id: "repent", label: "회개해요", img: "/emotion_repent.png" },
-      { id: "renew", label: "새로워지고 싶어요", img: "/emotion_renew.png" },
-    ],
+    catKey: "checkin_cat2" as TKey,
+    color: "rgba(122,157,122,0.12)", border: "rgba(122,157,122,0.3)", labelColor: "var(--sage-dark)",
+    items: ["grace","hungry","mission","repent","renew"],
   },
   {
-    category: "힘듦 & 지침",
-    color: "rgba(100,120,180,0.1)",
-    border: "rgba(100,120,180,0.25)",
-    labelColor: "rgba(80,100,160,0.9)",
-    items: [
-      { id: "tired", label: "힘들어요", img: "/emotion_tired.png" },
-      { id: "exhausted", label: "지쳐요", img: "/emotion_exhausted.png" },
-      { id: "lonely", label: "외로워요", img: "/emotion_lonely.png" },
-      { id: "sad", label: "슬퍼요", img: "/emotion_sad.png" },
-      { id: "anxious", label: "불안해요", img: "/emotion_anxious.png" },
-    ],
+    catKey: "checkin_cat3" as TKey,
+    color: "rgba(100,120,180,0.1)", border: "rgba(100,120,180,0.25)", labelColor: "rgba(80,100,160,0.9)",
+    items: ["tired","exhausted","lonely","sad","anxious"],
   },
   {
-    category: "흔들림 & 메마름",
-    color: "rgba(180,120,80,0.1)",
-    border: "rgba(180,120,80,0.25)",
-    labelColor: "rgba(150,90,50,0.9)",
-    items: [
-      { id: "doubt", label: "의심돼요", img: "/emotion_doubt.png" },
-      { id: "dry", label: "메말랐어요", img: "/emotion_dry.png" },
-      { id: "angry", label: "화가나요", img: "/emotion_angry.png" },
-      { id: "far", label: "하나님이 멀게 느껴져요", img: "/emotion_far.png" },
-    ],
+    catKey: "checkin_cat4" as TKey,
+    color: "rgba(180,120,80,0.1)", border: "rgba(180,120,80,0.25)", labelColor: "rgba(150,90,50,0.9)",
+    items: ["doubt","dry","angry","far"],
   },
   {
-    category: "오늘의 기도",
-    color: "rgba(122,157,122,0.08)",
-    border: "rgba(122,157,122,0.2)",
-    labelColor: "var(--sage-dark)",
-    items: [
-      { id: "family", label: "가정을 위해", img: "/emotion_family.png" },
-      { id: "work", label: "직장·학업을 위해", img: "/emotion_work.png" },
-      { id: "relation", label: "관계를 위해", img: "/emotion_relation.png" },
-      { id: "health", label: "건강을 위해", img: "/emotion_health.png" },
-      { id: "future", label: "미래를 위해", img: "/emotion_future.png" },
-    ],
+    catKey: "checkin_cat5" as TKey,
+    color: "rgba(122,157,122,0.08)", border: "rgba(122,157,122,0.2)", labelColor: "var(--sage-dark)",
+    items: ["family","work","relation","health","future"],
   },
 ];
 
 export default function CheckinPage() {
   const router = useRouter();
+  const lang = useLang();
   const [selected, setSelected] = useState<string | null>(null);
+
+  const EMOTIONS = EMOTION_GROUPS.map(g => ({
+    ...g,
+    category: t(g.catKey, lang),
+    items: g.items.map(id => ({
+      id,
+      label: t(`emotion_${id}` as TKey, lang),
+      img: `/emotion_${id}.png`,
+    })),
+  }));
 
   const selectedItem = EMOTIONS.flatMap(g => g.items).find(e => e.id === selected);
 
@@ -80,10 +54,10 @@ export default function CheckinPage() {
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 140 }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>돌아가기</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>{t("back", lang)}</span>
         </button>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>오늘 마음이<br />어때요?</h1>
-        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>하나를 선택하면 말씀을 드릴게요</p>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", whiteSpace: "pre-line" }}>{t("checkin_title", lang)}</h1>
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>{t("checkin_sub", lang)}</p>
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
@@ -135,7 +109,7 @@ export default function CheckinPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{selectedItem.label}</span>
           </div>
           <button className="btn-sage" onClick={() => router.push(`/checkin/result?emotions=${selected}`)}>
-            말씀 받기 →
+            {t("checkin_receive", lang)}
           </button>
         </div>
       )}

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
 
 const REACTIONS = [
@@ -36,6 +38,7 @@ export default function CommunityPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"prayer" | "qt" | "group">("prayer");
   const [prayerTab, setPrayerTab] = useState<"praying" | "answered">("praying");
+  const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
@@ -278,7 +281,7 @@ export default function CommunityPage() {
           .select("id").eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
           await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
-          setBadgePopup({ img: "/badge_paul.png", title: "바울 배지 획득! 📜", msg: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!" });
+          setBadgePopup({ img: "/badge_paul.png", title: lang === "de" ? "Paulus-Abzeichen! 📜" : "바울 배지 획득! 📜", msg: t("badge_paul_msg", lang) });
         }
       }
     } catch (e) {}
@@ -299,7 +302,7 @@ export default function CommunityPage() {
             .select("id").eq("created_by", user.id);
           if ((myGroups?.length ?? 0) === 0) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_peter.png", title: "베드로 배지 획득! 🐟", msg: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!" });
+            setBadgePopup({ img: "/badge_peter.png", title: lang === "de" ? "Petrus-Abzeichen! 🐟" : "베드로 배지 획득! 🐟", msg: t("badge_peter_msg", lang) });
           }
         }
       }
@@ -413,14 +416,14 @@ export default function CommunityPage() {
     );
   }
 
-  const TABS = [{ id: "prayer", label: "중보기도" }, { id: "qt", label: "큐티 나눔" }, { id: "group", label: "그룹" }];
+  const TABS = [{ id: "prayer", label: t("community_tab_prayer", lang) }, { id: "qt", label: t("community_tab_qt", lang) }, { id: "group", label: t("community_tab_group", lang) }];
 
   if (selectedGroup) {
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
           <button onClick={() => { setSelectedGroup(null); setGroupQts([]); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{selectedGroup.name}</h1>

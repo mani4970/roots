@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
 export default function PrayerPage() {
   const router = useRouter();
+  const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -75,8 +78,8 @@ export default function PrayerPage() {
         await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
         setBadgePopup({
           img: "/prayer_warrior.png",
-          title: "기도의 용사 배지 획득! ⚔️",
-          msg: "구하고 찾는 자에게 응답하시는 하나님이 반드시 응답하실 거예요!",
+          title: lang === "de" ? "Gebetskrieger-Abzeichen! ⚔️" : "기도의 용사 배지 획득! ⚔️",
+          msg: t("badge_prayer_warrior_msg", lang),
         });
       }
     }
@@ -94,7 +97,7 @@ export default function PrayerPage() {
         .select("badge_noah").eq("id", user.id).single();
       if (!prof?.badge_noah) {
         await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
-        setBadgePopup({ img: "/badge_noah.png", title: "노아 배지 획득! ⛵", msg: "노아의 방주처럼, 하나님의 약속은 반드시 이루어져요!" });
+        setBadgePopup({ img: "/badge_noah.png", title: lang === "de" ? "Noah-Abzeichen! ⛵" : "노아 배지 획득! ⛵", msg: t("badge_noah_msg", lang) });
       }
     }
     await supabase.from("prayer_items").update({
@@ -146,8 +149,8 @@ export default function PrayerPage() {
         {/* 탭 */}
         <div style={{ display: "flex", gap: 0 }}>
           {[
-            { key: "praying", label: "기도 중", count: prayingList.length, icon: "🙏" },
-            { key: "answered", label: "기도 응답", count: answeredList.length, icon: "✨" },
+            { key: "praying", label: t("prayer_tab_praying", lang), count: prayingList.length, icon: "🙏" },
+            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: "✨" },
           ].map(({ key, label, count, icon }) => (
             <button
               key={key}

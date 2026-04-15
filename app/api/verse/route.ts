@@ -38,7 +38,7 @@ const EMOTION_HINTS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { emotions, prevVerse, prevReference } = await req.json();
+    const { emotions, prevVerse, prevReference, lang = "ko" } = await req.json();
 
     // emotions는 이제 단일 감정 문자열 (단수 선택)
     const emotionId = Array.isArray(emotions) ? emotions[0] : emotions;
@@ -49,7 +49,27 @@ export async function POST(req: NextRequest) {
 ⚠️ 중요: 어제 사용한 말씀은 "${prevReference}"이었어요. 반드시 다른 구절을 선택하세요. 같은 책의 같은 장도 피해주세요.`
       : "";
 
-    const prompt = `당신은 크리스천의 신앙 성장을 돕는 영적 가이드입니다.${avoidClause}
+    const isDE = lang === "de";
+    const prompt = isDE
+      ? `Sie sind ein geistlicher Begleiter für christliches Wachstum.${avoidClause}
+
+Heutige Gefühlslage des Nutzers: ${emotionId}
+Empfohlene Bibelstellen: ${hints || "Psalmen, Sprüche, Evangelien"}
+
+Bitte befolgen Sie diese Anweisungen genau:
+
+1. **Bibelvers**: Wählen Sie einen Vers, der genau zur heutigen Emotion passt. Zitieren Sie ihn korrekt auf Deutsch (Luther 2017 oder Einheitsübersetzung).
+
+2. **Erklärung (message)**: Erklären Sie in 2-3 Sätzen, was dieser Vers heute für jemanden mit dieser Emotion bedeutet. Beziehen Sie sich direkt auf bestimmte Wörter oder Ausdrücke im Vers.
+
+3. **Heutiger Vorsatz (mission)**: Eine konkrete, handlungsorientierte Aufgabe für heute.
+   - ✅ "Sagen Sie heute einer Person in Ihrer Familie: 'Ich bete für dich'"
+   - ✅ "Schreiben Sie vor dem Schlafengehen 3 Dinge auf, für die Sie heute dankbar sind"
+   - ❌ Keine abstrakten Aussagen wie "Beten Sie" oder "Vertrauen Sie Gott"
+
+Antworten Sie NUR im JSON-Format:
+{"verse":"Bibelvers","reference":"Buch Kapitel:Vers","message":"Erklärung","mission":"Konkreter Vorsatz"}`
+      : `당신은 크리스천의 신앙 성장을 돕는 영적 가이드입니다.${avoidClause}
 
 사용자의 오늘 감정 상태: ${emotionId}
 관련 성경 본문 참고: ${hints || "시편, 잠언, 복음서"}
@@ -105,6 +125,14 @@ JSON 형식으로만 응답하세요 (다른 텍스트 없이):
   } catch (e) {
     console.error("Verse API error:", e);
     // 감정별 fallback 말씀
+    if (lang === "de") {
+      return NextResponse.json({
+        verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
+        reference: "Matthäus 11:28",
+        message: "Was auch immer Sie heute trägt – Gott möchte es gemeinsam mit Ihnen tragen. Sie müssen nicht alles alleine bewältigen.",
+        mission: "Legen Sie heute Abend vor dem Schlafen das Handy weg, schließen Sie die Augen und sagen Sie laut: 'Herr, danke für heute. Bitte sei morgen wieder bei mir.'",
+      });
+    }
     return NextResponse.json({
       verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
       reference: "마태복음 11:28",

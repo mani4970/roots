@@ -2,6 +2,8 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 function RecordContent() {
@@ -93,9 +95,9 @@ function RecordContent() {
             if (Object.keys(updates).length > 0) {
               await supabase.from("profiles").update(updates).eq("id", u.id);
               if (updates.badge_joseph && !prof?.badge_joseph) {
-                setBadgePopup({ img: "/badge_joseph.png", title: "요셉 배지 획득! 🌈", msg: "요셉의 꿈처럼, 당신의 나눔이 누군가에게 소망이 돼요!" });
+                setBadgePopup({ img: "/badge_joseph.png", title: lang === "de" ? "Josef-Abzeichen! 🌈" : "요셉 배지 획득! 🌈", msg: t("badge_joseph_msg", lang) });
               } else if (updates.badge_qt_bird) {
-                setBadgePopup({ img: "/qt_bird.png", title: "말씀 배달부 배지 획득! 🕊️", msg: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다." });
+                setBadgePopup({ img: "/qt_bird.png", title: lang === "de" ? "Wortüberbringer-Abzeichen! 🕊️" : "말씀 배달부 배지 획득! 🕊️", msg: t("badge_qt_bird_msg", lang) });
               }
             }
           }

@@ -1,49 +1,67 @@
 "use client";
-// 10일마다 정원 업데이트 팝업
-// 100일마다 배지 지급 팝업
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 
 const BADGES = [
-  { name: "Love", fruit: "🍎", desc: "사랑", color: "#e83232" },
-  { name: "Peace", fruit: "🍉", desc: "화평", color: "#3a8a3a" },
-  { name: "Joy", fruit: "🍌", desc: "희락", color: "#f0c030" },
-  { name: "Goodness", fruit: "🍊", desc: "양선", color: "#f07830" },
-  { name: "Kindness", fruit: "🍒", desc: "자비", color: "#c02060" },
-  { name: "Patience", fruit: "🍍", desc: "오래참음", color: "#d4a030" },
-  { name: "Faithfulness", fruit: "🍇", desc: "충성", color: "#8040c0" },
-  { name: "Gentleness", fruit: "🍋", desc: "온유", color: "#d4c030" },
-  { name: "Self-Control", fruit: "🍓", desc: "절제", color: "#e84060" },
+  { name: "Love", fruit: "🍎", desc: "사랑" },
+  { name: "Peace", fruit: "🍉", desc: "화평" },
+  { name: "Joy", fruit: "🍌", desc: "희락" },
+  { name: "Goodness", fruit: "🍊", desc: "양선" },
+  { name: "Kindness", fruit: "🍒", desc: "자비" },
+  { name: "Patience", fruit: "🍍", desc: "오래참음" },
+  { name: "Faithfulness", fruit: "🍇", desc: "충성" },
+  { name: "Gentleness", fruit: "🍋", desc: "온유" },
+  { name: "Self-Control", fruit: "🍓", desc: "절제" },
 ];
 
 interface GardenUpdatePopupProps {
   show: boolean;
-  type: "garden" | "badge";  // garden=10일, badge=100일
+  type: "garden" | "badge";
   streakDays: number;
-  badgeIndex?: number;  // 0~8 (배지 인덱스)
+  badgeIndex?: number;
   onClose: () => void;
 }
 
-function getGardenStageMsg(days: number) {
-  const cycleDay = days === 0 ? 0 : ((days - 1) % 100) + 1;
-  const stage = Math.ceil(cycleDay / 10);
-  const msgs = [
-    "씨앗이 뿌려졌어요! 🌱",
-    "새싹이 폈어요! 🌿",
-    "묘목이 자라나고 있어요! 🌲",
-    "가지가 뻗어나갔어요! 🌳",
-    "나무가 무럭무럭 커요! 🌴",
-    "말씀에 깊이 뿌리내렸어요! 🌿",
-    "열매를 맺기 시작했어요! 🍃",
-    "새들이 날아와 깃들었어요! 🐦",
-    "정원이 거의 완성됐어요! ✨",
-    "풍성한 정원이 완성됐어요! 🌺",
-  ];
-  return msgs[Math.min(stage - 1, 9)] ?? "정원이 자라고 있어요!";
+function getStageMessage(streakDays: number, lang: "ko" | "de" = "ko") {
+  // cycleDay: 현재 100일 주기 내 일수 (1~100)
+  const cycleDay = streakDays === 0 ? 0 : ((streakDays - 1) % 100) + 1;
+  const stage = Math.ceil(cycleDay / 10); // 1~10
+
+  const messages_ko: Record<number, { title: string; desc: string; emoji: string }> = {
+    1:  { emoji: "🌱", title: "씨앗이 뿌려졌어요!", desc: "겨자씨 한 알이 땅에 심겨졌어요.\n말씀이 마음 깊이 뿌리내리기 시작해요." },
+    2:  { emoji: "🌿", title: "새싹이 돋아났어요!", desc: "작은 싹이 흙을 뚫고 올라왔어요.\n하나님 앞에 날마다 나아오고 있어요." },
+    3:  { emoji: "🌲", title: "묘목이 자라고 있어요!", desc: "뿌리가 단단히 내리고 줄기가 세워졌어요.\n말씀이 삶에 스며들고 있어요." },
+    4:  { emoji: "🌳", title: "가지가 뻗어나갔어요!", desc: "가지가 사방으로 뻗어나가고 있어요.\n믿음이 삶의 구석구석에 닿고 있어요." },
+    5:  { emoji: "🌴", title: "나무가 무럭무럭 자라요!", desc: "든든한 나무로 자라고 있어요.\n폭풍 속에서도 흔들리지 않아요." },
+    6:  { emoji: "🍃", title: "잎이 풍성해졌어요!", desc: "무성한 잎으로 그늘을 만들고 있어요.\n당신의 신앙이 주변을 덮기 시작해요." },
+    7:  { emoji: "🍎", title: "열매를 맺기 시작해요!", desc: "드디어 열매가 맺히기 시작했어요!\n말씀이 삶의 열매로 나타나고 있어요." },
+    8:  { emoji: "🐦", title: "새들이 날아왔어요!", desc: "새들이 날아와 가지에 깃들었어요.\n당신의 정원이 생명으로 가득해요." },
+    9:  { emoji: "🌺", title: "정원이 거의 완성돼요!", desc: "아름다운 정원이 거의 완성됐어요.\n100일을 향해 달려가고 있어요!" },
+    10: { emoji: "🏆", title: "풍성한 정원 완성!", desc: "100일의 여정을 거의 마쳤어요!\n곧 성령의 열매 배지를 받게 돼요." },
+  };
+  const messages_de: Record<number, { title: string; desc: string; emoji: string }> = {
+    1:  { emoji: "🌱", title: "Ein Samen wurde gesät!", desc: "Ein Senfkorn wurde in die Erde gelegt.\nGottes Wort beginnt, Wurzeln zu schlagen." },
+    2:  { emoji: "🌿", title: "Ein Sprössling wächst!", desc: "Ein kleines Grün durchbricht die Erde.\nSie kommen täglich zu Gott." },
+    3:  { emoji: "🌲", title: "Der Setzling wächst!", desc: "Die Wurzeln greifen tief, der Stamm steht fest.\nGottes Wort durchdringt Ihr Leben." },
+    4:  { emoji: "🌳", title: "Äste breiten sich aus!", desc: "Die Äste strecken sich in alle Richtungen.\nIhr Glaube berührt jeden Bereich Ihres Lebens." },
+    5:  { emoji: "🌴", title: "Der Baum wächst kräftig!", desc: "Ein starker Baum entsteht.\nAuch im Sturm bleibt er stehen." },
+    6:  { emoji: "🍃", title: "Reichlich Blätter!", desc: "Üppiges Laub spendet Schatten.\nIhr Glaube beginnt, andere zu umhüllen." },
+    7:  { emoji: "🍎", title: "Früchte beginnen zu wachsen!", desc: "Endlich zeigen sich die ersten Früchte!\nGottes Wort trägt Frucht in Ihrem Leben." },
+    8:  { emoji: "🐦", title: "Vögel kommen!", desc: "Vögel fliegen herbei und nisten in den Ästen.\nIhr Garten ist voller Leben." },
+    9:  { emoji: "🌺", title: "Der Garten ist fast fertig!", desc: "Ein wunderschöner Garten entsteht.\n100 Tage sind fast erreicht!" },
+    10: { emoji: "🏆", title: "Üppiger Garten vollendet!", desc: "Die 100-Tage-Reise ist fast abgeschlossen!\nBald erhalten Sie die Frucht des Geistes." },
+  };
+
+  const messages = lang === "de" ? messages_de : messages_ko;
+  return messages[stage] ?? messages[1];
 }
 
 export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex = 0, onClose }: GardenUpdatePopupProps) {
+  const lang = useLang();
   if (!show) return null;
   const badge = BADGES[badgeIndex % BADGES.length];
   const isBadge = type === "badge";
+  const stageMsg = getStageMessage(streakDays, lang);
 
   return (
     <div
@@ -68,8 +86,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
       >
         {isBadge ? (
           <>
-            {/* 배지 획득 */}
-            <div style={{ fontSize: 60, marginBottom: 8 }}>🏅</div>
+            <div style={{ fontSize: 56, marginBottom: 12 }}>🏅</div>
             <div style={{
               width: 80, height: 80, borderRadius: "50%",
               background: "rgba(232,197,71,0.15)",
@@ -83,7 +100,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
                 {badge.name.toUpperCase()}
               </span>
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
               성령의 열매 획득! 🎉
             </h2>
             <div style={{
@@ -94,7 +111,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
                 {badge.name} — {badge.desc}
               </p>
               <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
-                100일 동안 말씀에 뿌리내린 당신에게<br />하나님이 주시는 열매예요!
+                100일 동안 말씀에 뿌리내린 당신에게{"\n"}하나님이 주시는 열매예요!
               </p>
             </div>
             <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
@@ -103,21 +120,20 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
           </>
         ) : (
           <>
-            {/* 10일 업데이트 */}
-            <div style={{ fontSize: 52, marginBottom: 14 }}>🌱</div>
+            <div style={{ fontSize: 56, marginBottom: 14 }}>{stageMsg.emoji}</div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
-              {getGardenStageMsg(streakDays)}
+              {stageMsg.title}
             </h2>
             <div style={{
               padding: "12px 14px", background: "var(--sage-light)",
               borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 8,
             }}>
-              <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>
-                정원이 업데이트됐어요.<br />지금 바로 확인해보세요!
+              <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7, whiteSpace: "pre-line" }}>
+                {stageMsg.desc}
               </p>
             </div>
             <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
-              {streakDays}일째 말씀과 동행 중 🔥
+              정원이 업데이트됐어요! {streakDays}일째 🔥
             </p>
           </>
         )}
@@ -132,7 +148,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
             fontSize: 14, fontWeight: 700, cursor: "pointer",
           }}
         >
-          {isBadge ? "배지 확인하기 🌟" : "정원 확인하러 가기 🌿"}
+          {isBadge ? t("badge_check_btn", lang) : t("garden_check_btn", lang)}
         </button>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
 
 const QT_GUIDE = [
@@ -40,6 +42,7 @@ const QT_GUIDE = [
 
 export default function QTPage() {
   const router = useRouter();
+  const lang = useLang();
   const [records, setRecords] = useState<any[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [loading, setLoading] = useState(true);

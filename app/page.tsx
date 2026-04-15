@@ -10,7 +10,9 @@ import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import { createClient } from "@/lib/supabase";
-import { ChevronRight, LogOut, Check } from "lucide-react";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
+import { ChevronRight, Check, Globe } from "lucide-react";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -51,6 +53,8 @@ export default function HomePage() {
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
+  const lang = useLang();
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const celebrationShownRef = useRef(false);
 
@@ -171,15 +175,15 @@ export default function HomePage() {
 
     // 뱃지 팝업 (우선순위대로)
     if (newStreak >= 7 && !alreadyHasRootsman) {
-      setBadgePopup({ img: "/badge_rootsman.png", title: "루츠맨 배지 획득! 🧑‍🌾", msg: "7일간 말씀과 함께한 당신, Roots의 진짜 시작이에요!" });
+      setBadgePopup({ img: "/badge_rootsman.png", title: lang === "de" ? "Rootsman-Abzeichen! 🧑‍🌾" : "루츠맨 배지 획득! 🧑‍🌾", msg: t("badge_rootsman_msg", lang) });
     } else if (newStreak >= 40 && !alreadyHasMose) {
-      setBadgePopup({ img: "/badge_mose.png", title: "모세 배지 획득! 🪄", msg: "광야의 모세처럼, 40일을 걸어온 당신을 하나님이 기억하세요!" });
+      setBadgePopup({ img: "/badge_mose.png", title: lang === "de" ? "Mose-Abzeichen! 🪄" : "모세 배지 획득! 🪄", msg: t("badge_mose_msg", lang) });
     } else if (newStreak >= 52 && !alreadyHasRootsmanBible) {
-      setBadgePopup({ img: "/badge_rootsman_bible.png", title: "루츠맨 성경 배지 획득! 📖", msg: "52일! 오병이어처럼 작은 헌신이 기적을 만들어요!" });
+      setBadgePopup({ img: "/badge_rootsman_bible.png", title: lang === "de" ? "Rootsman Bibel-Abzeichen! 📖" : "루츠맨 성경 배지 획득! 📖", msg: t("badge_rootsman_bible_msg", lang) });
     } else if (newStreak >= 111 && !alreadyHasDavid) {
-      setBadgePopup({ img: "/badge_david.png", title: "다윗 배지 획득! 🗡️", msg: "골리앗 앞에 선 다윗처럼, 담대하고 굳건한 믿음의 당신을 축복합니다!" });
+      setBadgePopup({ img: "/badge_david.png", title: lang === "de" ? "David-Abzeichen! 🗡️" : "다윗 배지 획득! 🗡️", msg: t("badge_david_msg", lang) });
     } else if (newStreak >= 900 && !alreadyHasAngel) {
-      setBadgePopup({ img: "/angel.png", title: "천사 배지 획득! 👼", msg: "성령의 열매 9가지를 다 모은 당신을 축복합니다." });
+      setBadgePopup({ img: "/angel.png", title: lang === "de" ? "Engel-Abzeichen! 👼" : "천사 배지 획득! 👼", msg: t("badge_angel_msg", lang) });
     }
   }
 
@@ -368,9 +372,36 @@ export default function HomePage() {
           <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 4 }}>{getGreeting()}</div>
           <div className="header-title">{profile?.name ?? "성도"}님의 <em>정원</em></div>
         </div>
-        <button onClick={logout} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer" }}>
-          <LogOut size={18} />
-        </button>
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 20 }}>{lang === "de" ? "🇩🇪" : "🇰🇷"}</span>
+          </button>
+          {showLangPicker && (
+            <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
+          )}
+          {showLangPicker && (
+            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+              {([
+                { code: "ko", flag: "🇰🇷", label: "한국어" },
+                { code: "de", flag: "🇩🇪", label: "Deutsch" },
+              ] as const).map(l => (
+                <button key={l.code} onClick={async () => {
+                  setShowLangPicker(false);
+                  const supabase = createClient();
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    await supabase.from("profiles").update({ preferred_language: l.code }).eq("id", user.id);
+                    window.location.reload();
+                  }
+                }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === l.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === l.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === l.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>{l.flag}</span>
+                  <span>{l.label}</span>
+                  {lang === l.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />

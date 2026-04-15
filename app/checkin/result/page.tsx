@@ -3,10 +3,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
 
 function ResultContent() {
   const params = useSearchParams();
   const router = useRouter();
+  const lang = useLang();
   const emotions = params.get("emotions")?.split(",") ?? [];
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +53,7 @@ function ResultContent() {
             emotions,
             prevVerse: prevDay?.verse ?? null,
             prevReference: prevDay?.reference ?? null,
+            lang,
           }),
         });
         const data = await res.json();
@@ -84,7 +88,7 @@ function ResultContent() {
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
       <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
-      <p style={{ color: "var(--text3)", fontSize: 14 }}>마음에 맞는 말씀을 찾고 있어요...</p>
+      <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("result_loading", lang)}</p>
     </div>
   );
 
@@ -92,7 +96,7 @@ function ResultContent() {
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }} className="fade-in">
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>오늘의 말씀</h1>
         <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>선택한 마음에 맞는 말씀이에요</p>
