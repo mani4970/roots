@@ -296,10 +296,10 @@ export default function ProfilePage() {
               return (
                 <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
                   <div style={{ width: 68, height: 68, marginBottom: 6 }}>
-                    <img src={b.img} alt={b.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <img src={b.img} alt={t(b.titleKey as any, lang)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{b.title}</div>
-                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{b.desc}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{t(b.titleKey as any, lang)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey as any, lang)}</div>
                   {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{lang === "de" ? "✓ Erhalten" : "✓ 획득"}</div>}
                 </div>
               );
