@@ -1,24 +1,36 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t } from "@/lib/i18n";
+import LanguagePicker from "@/components/LanguagePicker";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const lang = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showLangPicker, setShowLangPicker] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!localStorage.getItem("roots_lang_selected")) {
+      setShowLangPicker(true);
+    }
+  }, []);
 
   async function handleLogin() {
     if (!email || !password) return;
     setLoading(true); setError("");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError("이메일 또는 비밀번호가 틀렸어요"); setLoading(false); return; }
+    if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     router.push("/"); router.refresh();
   }
 
@@ -31,6 +43,10 @@ export default function LoginPage() {
     });
   }
 
+  if (showLangPicker) {
+    return <LanguagePicker onSelect={() => { setShowLangPicker(false); window.location.reload(); }} />;
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
@@ -41,7 +57,7 @@ export default function LoginPage() {
           <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
         </svg>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-        <p style={{ color: "var(--text3)", fontSize: 13 }}>말씀에 뿌리내리고, 함께 자라다</p>
+        <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("home_loading_sub", lang)}</p>
       </div>
 
       <div style={{ width: "100%", maxWidth: 360 }}>
@@ -54,34 +70,33 @@ export default function LoginPage() {
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
           )}
-          Google로 계속하기
+          {t("login_google_btn", lang)}
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span style={{ color: "var(--text3)", fontSize: 12 }}>또는 이메일로</span>
+          <span style={{ color: "var(--text3)", fontSize: 12 }}>{t("login_or_email", lang)}</span>
           <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
         <div style={{ marginBottom: 10 }}>
-          <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>이메일</label>
-          {/* font-size: 16px로 모바일 줌 방지 */}
+          <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_email_label", lang)}</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-field" style={{ fontSize: 16 }} />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>비밀번호</label>
+          <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_password_label", lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
         </div>
 
         {error && <p style={{ color: "#E05050", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{error}</p>}
 
         <button onClick={handleLogin} disabled={loading || !email || !password} className="btn-primary">
-          {loading ? <><Loader2 size={18} className="spin" />로그인 중...</> : "로그인"}
+          {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}
         </button>
 
         <p style={{ textAlign: "center", marginTop: 20, color: "var(--text3)", fontSize: 14 }}>
-          계정이 없으신가요?{" "}
-          <Link href="/signup" style={{ color: "var(--sage-dark)", fontWeight: 600 }}>회원가입</Link>
+          {t("login_no_account", lang)}{" "}
+          <Link href="/signup" style={{ color: "var(--sage-dark)", fontWeight: 600 }}>{t("login_signup_link", lang)}</Link>
         </p>
       </div>
     </div>

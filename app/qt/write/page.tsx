@@ -2,6 +2,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { useLang } from "@/lib/useLang";
+import { t, type Lang } from "@/lib/i18n";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp } from "lucide-react";
 
 const OT_BOOKS = ["창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하","열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언","전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스","오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기"];
@@ -61,6 +63,80 @@ const BOOK_NAMES: Record<string, string[]> = {
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
 }
+
+// ─── QT Write 번역 매핑 ──
+// 원본 STEPS_6 / STEPS_SUNDAY 배열의 한국어 문자열을 key로 쓰고,
+// 렌더링 시점에 `trQT(str, lang)` 로 감싸서 독일어/영어로 변환.
+// 배열 구조를 건드리지 않아 기존 로직(step.id, step.isPassageStep 등) 그대로 동작.
+const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
+  // 6단계 제목/부제목
+  "들어가는 기도":                { de: "Eröffnungsgebet" },
+  "말씀 앞에 나아가기 전 기도":     { de: "Gebet vor dem Wort" },
+  "본문 요약 & 붙잡은 말씀":        { de: "Zusammenfassung & Schlüsselvers" },
+  "본문을 읽고 마음에 새겨요":       { de: "Den Text lesen und ins Herz aufnehmen" },
+  "느낌과 묵상":                  { de: "Empfinden & Meditation" },
+  "이 말씀이 내게 주는 의미":       { de: "Was bedeutet das Wort für mich?" },
+  "적용과 결단":                  { de: "Anwendung & Entschluss" },
+  "오늘 하루 어떻게 살 건가요?":    { de: "Wie leben Sie heute?" },
+  "올려드리는 기도":               { de: "Abschlussgebet" },
+  "말씀으로 드리는 기도":           { de: "Gebet mit dem Wort" },
+  // 6단계 placeholder / hint
+  "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz." },
+  "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen." },
+  "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden." },
+  "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten." },
+  "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar." },
+  "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält..." },
+  "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen." },
+  // 6단계 진행바 라벨
+  "본문 요약":                   { de: "Zusammenf." },
+  "붙잡은 말씀":                 { de: "Schlüsselvers" },
+  // 주일예배
+  "설교 정보":                   { de: "Predigt-Info" },
+  "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt" },
+  "예배 전 마음을 준비해요":        { de: "Herz vor dem Gottesdienst vorbereiten" },
+  "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz." },
+  "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst." },
+  "말씀 요약":                   { de: "Zusammenfassung" },
+  "설교 말씀을 내 말로 요약해요":   { de: "Predigt in eigenen Worten zusammenfassen" },
+  "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen..." },
+  "설교자가 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Predigers in eigene Worte fassen." },
+  "깨달음과 결단":                { de: "Erkenntnis & Entschluss" },
+  "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort" },
+  "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen." },
+  "예배의 마무리 기도":            { de: "Abschlussgebet des Gottesdienstes" },
+  "오늘 받은 은혜와 결단을 하나님께 올려드려요...": { de: "Die empfangene Gnade und den Entschluss vor Gott bringen..." },
+  "받은 말씀과 결단을 하나님께 올려드려요.": { de: "Das Wort und den Entschluss Gott darbringen." },
+  // 에러 메시지 / alert
+  "끝 절이 시작 절보다 작아요":      { de: "Endvers ist kleiner als Startvers" },
+  "본문을 불러오지 못했어요.":        { de: "Abschnitt konnte nicht geladen werden." },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert! Sie können später weitermachen 😊" },
+  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen." },
+  "저장에 실패했어요. 다시 시도해주세요.":     { de: "Speichern fehlgeschlagen. Bitte erneut versuchen." },
+  // UI 문자열
+  "오늘":                         { de: "Heute" },
+  "오늘의 말씀 찾기":                { de: "Heutigen Abschnitt finden" },
+  "오늘의 말씀 찾기 (선택)":         { de: "Heutigen Abschnitt finden (optional)" },
+  "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)": { de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)" },
+  "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...": { de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse..." },
+  "예: 두려워하지 말라":             { de: "z. B. Fürchte dich nicht" },
+  "예: 이사야 41:10 / 요한복음 3:16": { de: "z. B. Jesaja 41,10 / Johannes 3,16" },
+  "개인적이고 솔직하게 써보세요...":   { de: "Persönlich und ehrlich schreiben..." },
+  "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?": { de: "Welche Haltung nehmen Sie vor diesem Wort ein?" },
+  "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen..." },
+  "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben..." },
+  // 요일 단어
+  "일": { de: "So" }, "월": { de: "Mo" }, "화": { de: "Di" }, "수": { de: "Mi" },
+  "목": { de: "Do" }, "금": { de: "Fr" }, "토": { de: "Sa" },
+  "· 오늘": { de: "· Heute" },
+};
+
+/** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
+function trQT(str: string, lang: Lang): string {
+  if (lang === "ko") return str;
+  return QT_WRITE_TRANSLATIONS[str]?.[lang] ?? str;
+}
+
 // 성경 66권 장별 최대 절수 데이터
 const BIBLE_CHAPTERS: Record<string, number[]> = {"창세기": [31, 25, 24, 26, 32, 22, 24, 22, 29, 32, 32, 20, 18, 24, 21, 16, 27, 33, 38, 18, 34, 23, 20, 67, 34, 35, 46, 22, 35, 43, 55, 32, 20, 31, 29, 43, 36, 30, 23, 23, 57, 38, 34, 34, 28, 34, 31, 22, 33, 26], "출애굽기": [22, 25, 22, 31, 23, 30, 25, 32, 35, 29, 10, 51, 22, 31, 27, 36, 16, 27, 25, 26, 36, 31, 33, 18, 40, 37, 21, 43, 46, 38, 18, 35, 23, 35, 35, 38, 29, 31, 43, 38], "레위기": [17, 16, 17, 35, 19, 30, 38, 36, 24, 20, 47, 8, 59, 57, 33, 34, 16, 30, 24, 16, 30, 24, 20, 28, 27, 30, 20], "민수기": [54, 34, 51, 49, 31, 27, 89, 26, 23, 36, 35, 16, 33, 45, 41, 50, 13, 32, 22, 29, 35, 41, 30, 25, 18, 65, 23, 31, 40, 16, 54, 42, 56, 29, 34, 13], "신명기": [46, 37, 29, 49, 33, 25, 26, 20, 29, 22, 32, 32, 18, 29, 23, 22, 20, 22, 21, 20, 23, 30, 25, 22, 19, 19, 26, 68, 29, 20, 30, 52, 29, 12], "여호수아": [18, 24, 17, 24, 15, 27, 26, 35, 27, 43, 23, 24, 33, 15, 63, 10, 18, 28, 51, 9, 45, 34, 16, 33], "사사기": [36, 23, 31, 24, 31, 40, 25, 35, 57, 18, 40, 15, 25, 20, 20, 31, 13, 31, 30, 48, 25], "룻기": [22, 23, 18, 22], "사무엘상": [28, 36, 21, 22, 12, 21, 17, 22, 27, 27, 15, 25, 23, 52, 35, 23, 58, 30, 24, 42, 15, 23, 29, 22, 44, 25, 12, 25, 11, 31, 13], "사무엘하": [27, 32, 39, 12, 25, 23, 29, 18, 13, 19, 27, 31, 39, 33, 37, 23, 29, 33, 43, 26, 22, 51, 39, 25], "열왕기상": [53, 46, 28, 34, 18, 38, 51, 66, 28, 29, 43, 33, 34, 31, 34, 34, 24, 46, 21, 43, 29, 53], "열왕기하": [18, 25, 27, 44, 27, 33, 20, 29, 37, 36, 21, 21, 25, 29, 38, 20, 41, 37, 37, 21, 26, 20, 37, 20, 30], "역대상": [54, 55, 24, 43, 26, 81, 40, 40, 44, 14, 47, 40, 14, 17, 29, 43, 27, 17, 19, 8, 30, 19, 32, 31, 31, 32, 34, 21, 30], "역대하": [17, 18, 17, 22, 14, 42, 22, 18, 31, 19, 23, 16, 22, 15, 19, 14, 19, 34, 11, 37, 20, 12, 21, 27, 28, 23, 9, 27, 36, 27, 21, 33, 25, 33, 27, 23], "에스라": [11, 70, 13, 24, 17, 22, 28, 36, 15, 44], "느헤미야": [11, 20, 32, 23, 19, 19, 73, 18, 38, 39, 36, 47, 31], "에스더": [22, 23, 15, 17, 14, 14, 10, 17, 32, 3], "욥기": [22, 13, 26, 21, 27, 30, 21, 22, 35, 22, 20, 25, 28, 22, 35, 22, 16, 21, 29, 29, 34, 30, 17, 25, 6, 14, 23, 28, 25, 31, 40, 22, 33, 37, 16, 33, 24, 41, 30, 24, 34, 17], "시편": [6, 12, 8, 8, 12, 10, 17, 9, 20, 18, 7, 8, 6, 7, 5, 11, 15, 50, 14, 9, 13, 31, 6, 10, 22, 12, 14, 9, 11, 12, 24, 11, 22, 22, 28, 12, 40, 22, 13, 17, 13, 11, 5, 20, 28, 22, 35, 45, 48, 43, 12, 31, 7, 10, 10, 9, 8, 18, 19, 2, 29, 176, 7, 8, 9, 4, 8, 5, 6, 5, 6, 8, 8, 3, 18, 3, 3, 21, 26, 9, 8, 24, 13, 10, 7, 12, 15, 21, 10, 20, 14, 9, 6, 8, 10, 5, 7, 7, 8, 4, 2, 3, 8, 4, 8, 5, 8, 7, 4, 9, 2, 14, 14, 14, 9, 7, 6, 3, 9, 1, 7, 3, 4, 8, 3, 9, 4, 7, 6, 8, 4, 6, 8, 7, 8, 7, 5, 5, 9, 9, 16, 9, 6, 7, 7, 5, 3, 7, 6, 6], "잠언": [33, 22, 35, 27, 23, 35, 27, 36, 18, 32, 31, 28, 25, 35, 33, 33, 28, 24, 29, 30, 31, 29, 35, 34, 28, 28, 27, 28, 27, 33, 31], "전도서": [18, 26, 22, 16, 20, 12, 29, 17, 18, 20, 10, 14], "아가": [17, 17, 11, 16, 16, 13, 13, 14], "이사야": [31, 22, 26, 6, 30, 13, 25, 22, 21, 34, 16, 6, 22, 32, 9, 14, 14, 7, 25, 6, 17, 25, 18, 23, 12, 21, 13, 29, 24, 33, 9, 20, 24, 17, 10, 22, 38, 22, 8, 31, 29, 25, 28, 28, 25, 13, 15, 22, 26, 11, 23, 15, 12, 17, 13, 12, 21, 14, 21, 22, 11, 12, 19, 12, 25, 24], "예레미야": [19, 37, 25, 31, 31, 30, 34, 22, 26, 25, 23, 17, 27, 22, 21, 21, 27, 23, 15, 18, 14, 30, 40, 10, 38, 24, 22, 17, 32, 24, 40, 44, 26, 22, 19, 32, 21, 28, 18, 16, 18, 22, 13, 30, 5, 28, 7, 47, 39, 46, 64, 34], "예레미야애가": [22, 22, 66, 22, 22], "에스겔": [28, 10, 27, 17, 17, 14, 27, 18, 11, 22, 25, 28, 23, 23, 8, 63, 24, 32, 14, 49, 32, 31, 49, 27, 17, 21, 36, 26, 21, 26, 18, 32, 33, 31, 15, 38, 28, 23, 29, 49, 26, 20, 27, 31, 25, 24, 23, 35], "다니엘": [21, 49, 30, 37, 31, 28, 28, 27, 27, 21, 45, 13], "호세아": [11, 23, 5, 19, 15, 11, 16, 14, 17, 15, 12, 14, 16, 9], "요엘": [20, 32, 21], "아모스": [15, 16, 15, 13, 27, 14, 17, 14, 15], "오바댜": [21], "요나": [17, 10, 10, 11], "미가": [16, 13, 12, 13, 15, 16, 20], "나훔": [15, 13, 19], "하박국": [17, 20, 19], "스바냐": [18, 15, 20], "학개": [15, 23], "스가랴": [21, 13, 10, 14, 11, 15, 14, 23, 17, 12, 17, 14, 9, 21], "말라기": [14, 17, 18, 6], "마태복음": [25, 23, 17, 25, 48, 34, 29, 34, 38, 42, 30, 50, 58, 36, 39, 28, 27, 35, 30, 34, 46, 46, 39, 51, 46, 75, 66, 20], "마가복음": [45, 28, 35, 41, 43, 56, 37, 38, 50, 52, 33, 44, 37, 72, 47, 20], "누가복음": [80, 52, 38, 44, 39, 49, 50, 56, 62, 42, 54, 59, 35, 35, 32, 31, 37, 43, 48, 47, 38, 71, 56, 53], "요한복음": [51, 25, 36, 54, 47, 71, 53, 59, 41, 42, 57, 50, 38, 31, 27, 33, 26, 40, 42, 31, 25], "사도행전": [26, 47, 26, 37, 42, 15, 60, 40, 43, 48, 30, 25, 52, 28, 41, 40, 34, 28, 41, 38, 40, 30, 35, 27, 27, 32, 44, 31], "로마서": [32, 29, 31, 25, 21, 23, 25, 39, 33, 21, 36, 21, 14, 23, 33, 27], "고린도전서": [31, 16, 23, 21, 13, 20, 40, 34, 29, 22, 36, 30, 29, 33, 8], "고린도후서": [24, 17, 18, 18, 21, 18, 16, 24, 15, 18, 33, 21, 13], "갈라디아서": [24, 21, 29, 31, 26, 18], "에베소서": [23, 22, 21, 28, 30, 14], "빌립보서": [30, 30, 21, 23], "골로새서": [29, 23, 25, 18], "데살로니가전서": [10, 20, 13, 18, 28], "데살로니가후서": [12, 17, 18], "디모데전서": [20, 15, 16, 16, 25, 21], "디모데후서": [18, 26, 17, 22], "디도서": [16, 15, 15], "빌레몬서": [25], "히브리서": [14, 18, 19, 16, 14, 20, 28, 13, 28, 39, 40, 29, 25], "야고보서": [27, 26, 18, 17, 20], "베드로전서": [25, 25, 22, 19, 14], "베드로후서": [21, 22, 18], "요한일서": [10, 29, 24, 21, 21], "요한이서": [13], "요한삼서": [14], "유다서": [25], "요한계시록": [20, 29, 22, 11, 14, 17, 17, 13, 21, 11, 19, 17, 18, 20, 8, 21, 18, 24, 21, 15, 27, 21]};
 
@@ -96,6 +172,7 @@ const STEPS_SUNDAY = [
 function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const lang = useLang();
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
   const isResume = params.get("resume") === "true";
   // 오늘 스케줄 파라미터
@@ -200,14 +277,14 @@ function QTWriteContent() {
           const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
           const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
           const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
-          const r1 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+          const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
           const d1 = await r1.json();
-          const r2 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
+          const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
           const d2 = await r2.json();
           allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
           refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
         } else {
-          const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
+          const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
           const data = await res.json();
           allVerses = data.verses ?? [];
           refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
@@ -287,7 +364,7 @@ function QTWriteContent() {
             setStartV(sv);
             setEndV(ev ?? sv);
             // API로 절 내용 재로드
-            const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
+            const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
             const data = await res.json();
             if (data.verses && data.verses.length > 0) {
               setPassageVerses(data.verses);
@@ -352,7 +429,7 @@ function QTWriteContent() {
         allVerses = [...v1, ...v2];
         refStr = `${book.length>3?book.slice(0,3):book} ${chapter}:${startV}-${endChapter}:${endV}`;
       } else {
-        if (parseInt(endV) < parseInt(startV)) { setBibleError("끝 절이 시작 절보다 작아요"); setLoadingBible(false); return; }
+        if (parseInt(endV) < parseInt(startV)) { setBibleError(trQT("끝 절이 시작 절보다 작아요", lang)); setLoadingBible(false); return; }
         const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
         const data = await res.json();
         if (data.error) { setBibleError(data.error); setLoadingBible(false); return; }
@@ -366,7 +443,7 @@ function QTWriteContent() {
       setSundayBibleStep("done");
       setSelectedVerseNums([]);
       setKeyVerse("");
-    } catch { setBibleError("본문을 불러오지 못했어요."); }
+    } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
     setLoadingBible(false);
   }
 
@@ -396,7 +473,7 @@ function QTWriteContent() {
         // 첫 번째 말씀이 없으면 메인으로도 설정
         if (!bibleRef) { setPassageVerses(vers); setBibleRef(refStr); setBibleStep("done"); setSundayBibleStep("done"); }
       }
-    } catch { setBibleError("본문을 불러오지 못했어요."); }
+    } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
     setLoadingBible(false);
   }
 
@@ -450,8 +527,8 @@ function QTWriteContent() {
 
   const dateLabel = (d: string) => {
     const date = new Date(d + "T12:00:00");
-    const day = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
-    return `${d} (${day})${d === todayStr ? " · 오늘" : ""}${isSunday(d) ? " 🙌" : ""}`;
+    const day = trQT(["일", "월", "화", "수", "목", "금", "토"][date.getDay()], lang);
+    return `${d} (${day})${d === todayStr ? ` ${trQT("· 오늘", lang)}` : ""}${isSunday(d) ? " 🙌" : ""}`;
   };
   const dateOptions = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - i);
@@ -491,9 +568,9 @@ function QTWriteContent() {
       } else {
         await supabase.from("qt_records").insert(draftData);
       }
-      alert("임시저장됐어요! 나중에 이어쓸 수 있어요 😊");
+      alert(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요 😊", lang));
     } catch (e) {
-      alert("임시저장에 실패했어요. 다시 시도해주세요.");
+      alert(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
     } finally {
       setSaving(false);
     }
@@ -546,13 +623,13 @@ function QTWriteContent() {
       if (existing && existing.is_draft) {
         const { error } = await supabase.from("qt_records")
           .update({ ...insertData, is_draft: false }).eq("id", existing.id);
-        if (error) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
+        if (error) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
       } else {
         const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
         if (error) {
           const { qt_mode, ...withoutMode } = insertData;
           const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
-          if (e2) { alert("저장에 실패했어요. 다시 시도해주세요."); setSaving(false); return; }
+          if (e2) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
         }
       }
 
@@ -571,10 +648,10 @@ function QTWriteContent() {
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
-            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
-            {mode === "free" ? "오늘의 말씀 찾기 (선택)" : "오늘의 말씀 찾기"}
+            {mode === "free" ? trQT("오늘의 말씀 찾기 (선택)", lang) : trQT("오늘의 말씀 찾기", lang)}
           </h1>
           <p style={{ fontSize: 12, color: "var(--text3)" }}>큐티할 말씀을 먼저 선택해요</p>
         </div>
@@ -583,7 +660,7 @@ function QTWriteContent() {
           {/* 날짜 + 번역본 */}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowDatePicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-              <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>📅 {selectedDate === todayStr ? "오늘" : selectedDate}</span>
+              <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>📅 {selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
             </button>
             <button onClick={() => setShowTranslationPicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
@@ -628,7 +705,7 @@ function QTWriteContent() {
                 </div>
                 {/* 장 넘어가기 토글 */}
                 <button onClick={() => { setCrossChapter(p=>!p); if(!crossChapter) setEndChapter(chapter); }} style={{ display: "flex", alignItems: "center", gap: 6, background: crossChapter ? "var(--sage-light)" : "none", border: `1px solid ${crossChapter ? "var(--sage)" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", fontSize: 12, color: crossChapter ? "var(--sage-dark)" : "var(--text3)" }}>
-                  <span>{crossChapter ? "✓" : "+"}</span> 장이 넘어가는 말씀 (예: 9장 25절~10장 6절)
+                  <span>{crossChapter ? "✓" : "+"}</span> {trQT("장이 넘어가는 말씀 (예: 9장 25절~10장 6절)", lang)}
                 </button>
                 {/* 끝: 장 + 절 */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -775,7 +852,7 @@ function QTWriteContent() {
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
-            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>자유 큐티</h1>
         </div>
@@ -805,7 +882,7 @@ function QTWriteContent() {
 
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>오늘의 묵상</label>
-            <textarea className="textarea-field" rows={10} placeholder="오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요..." value={freeText} onChange={e => setFreeText(e.target.value)} />
+            <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => setFreeText(e.target.value)} />
           </div>
 
           <div>
@@ -849,14 +926,14 @@ function QTWriteContent() {
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
             </button>
-            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
           <div className="step-bar" style={{ marginBottom: 8 }}>
             {STEPS_SUNDAY.map((_, i) => <div key={i} className={`step-bar-item ${i < cur ? "done" : i === cur ? "curr" : ""}`} />)}
           </div>
           <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>{cur + 1} / {STEPS_SUNDAY.length}단계</p>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{step.title}</h1>
-          <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{step.subtitle}</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step.title, lang)}</h1>
+          <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{trQT(step.subtitle, lang)}</p>
         </div>
 
         {/* 단계 탭 - 자유 클릭 */}
@@ -866,7 +943,7 @@ function QTWriteContent() {
             return (
               <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)" }}>{i + 1}.</span>
-                <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{s.title}</span>
+                <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
                 {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
               </button>
             );
@@ -880,11 +957,11 @@ function QTWriteContent() {
             <>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>설교 제목</label>
-                <input type="text" className="input-field" placeholder="예: 두려워하지 말라" value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
+                <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>본문 말씀</label>
-                <input type="text" className="input-field" placeholder="예: 이사야 41:10 / 요한복음 3:16" value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
+                <input type="text" className="input-field" placeholder={trQT("예: 이사야 41:10 / 요한복음 3:16", lang)} value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
               </div>
             </>
           )}
@@ -895,7 +972,7 @@ function QTWriteContent() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>깨달음 (말씀이 내게 주는 것)</label>
                 <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 8 }}>오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?</p>
-                <textarea className="textarea-field" rows={4} placeholder="개인적이고 솔직하게 써보세요..." value={answers.meditation ?? ""} onChange={e => set("meditation", e.target.value)} />
+                <textarea className="textarea-field" rows={4} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onChange={e => set("meditation", e.target.value)} />
               </div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
@@ -906,7 +983,7 @@ function QTWriteContent() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
-                  <textarea className="textarea-field" rows={2} placeholder="이 말씀 앞에서 어떤 마음을 품기로 결심했나요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+                  <textarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
@@ -932,8 +1009,8 @@ function QTWriteContent() {
           {/* 일반 텍스트 단계 (들어가는기도, 말씀요약, 올려드리는기도) */}
           {!step.isSermonInfo && !step.isDecision && (
             <>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{step.hint}</p>
-              <textarea className="textarea-field" rows={9} placeholder={step.placeholder} value={answers[step.id] ?? ""} onChange={e => set(step.id, e.target.value)} />
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
+              <textarea className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onChange={e => set(step.id, e.target.value)} />
             </>
           )}
         </div>
@@ -969,7 +1046,7 @@ function QTWriteContent() {
           <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
           </button>
-          <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? "오늘" : selectedDate}</span>
+          <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
         </div>
 
         {/* 말씀 미리보기 */}
@@ -1033,10 +1110,10 @@ function QTWriteContent() {
           })}
         </div>
         <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
-          {step6.barIdx.map(i => BAR_LABELS_6[i]).join(" & ")}
+          {step6.barIdx.map(i => trQT(BAR_LABELS_6[i], lang)).join(" & ")}
         </p>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{step6.title}</h1>
-        <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{step6.subtitle}</p>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
+        <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
       </div>
 
       {/* 단계 탭 */}
@@ -1046,7 +1123,7 @@ function QTWriteContent() {
           const isCurr = i === cur;
           return (
             <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{s.title}</span>
+              <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
               {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
             </button>
           );
@@ -1081,7 +1158,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               2단계 · 본문 요약
             </label>
-            <textarea className="textarea-field" rows={4} placeholder="본문 내용을 자신의 말로 요약해보세요..." value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
+            <textarea className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
           </div>
 
           {/* 3단계: 붙잡은 말씀 */}
@@ -1089,7 +1166,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               3단계 · 붙잡은 말씀 <span style={{ fontWeight: 400 }}>(위 절 탭하면 자동 추가)</span>
             </label>
-            <textarea className="textarea-field" rows={3} placeholder="마음에 와닿은 구절을 적거나 위에서 선택하세요..." value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
+            <textarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
           </div>
         </div>
       )}
@@ -1105,7 +1182,7 @@ function QTWriteContent() {
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
-            <textarea className="textarea-field" rows={3} placeholder="이 말씀 앞에서 어떤 마음을 품기로 결심했나요?" value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+            <textarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
@@ -1131,8 +1208,8 @@ function QTWriteContent() {
       {!step6.isPassageStep && !step6.isDecision && (
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
-          <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{step6.hint}</p>
-          <textarea className="textarea-field" rows={9} placeholder={step6.placeholder} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
+          <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
+          <textarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
         </div>
       )}
 

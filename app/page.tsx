@@ -8,29 +8,31 @@ import Celebration from "@/components/Celebration";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
+import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import { createClient } from "@/lib/supabase";
-import { useLang } from "@/lib/useLang";
+import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
+import { getLanguageOptions, LANG_META, type Lang } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
 import { ChevronRight, Check, Globe } from "lucide-react";
 
-function getGreeting() {
+function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
-  if (h >= 5 && h < 12) return "좋은 아침이에요 ☀️";
-  if (h >= 12 && h < 17) return "좋은 오후예요 🌤️";
-  if (h >= 17 && h < 21) return "좋은 저녁이에요 🌅";
-  return "좋은 밤이에요 🌙";
+  if (h >= 5 && h < 12) return "home_greeting_morning";
+  if (h >= 12 && h < 17) return "home_greeting_afternoon";
+  if (h >= 17 && h < 21) return "home_greeting_evening";
+  return "home_greeting_night";
 }
 
-function getTreeSubMsg(streak: number) {
-  if (streak <= 1) return "씨앗이 땅속에서 뿌리를 내리기 시작했어요!";
-  if (streak <= 14) return "씨앗이 조금씩 움트고 있어요!";
-  if (streak <= 29) return "새싹이 햇빛을 향해 자라고 있어요!";
-  if (streak <= 59) return "묘목이 점점 단단해지고 있어요!";
-  if (streak <= 79) return "나무가 무럭무럭 자라고 있어요!";
-  if (streak <= 99) return "나무가 점점 더 자라고 있어요!";
-  if (streak <= 129) return "열매를 맺은 나무처럼 풍성해지고 있어요!";
-  return "아름다운 정원이 완성되어 가고 있어요!";
+function getTreeSubMsgKey(streak: number): "tree_sub_1"|"tree_sub_14"|"tree_sub_29"|"tree_sub_59"|"tree_sub_79"|"tree_sub_99"|"tree_sub_129"|"tree_sub_max" {
+  if (streak <= 1) return "tree_sub_1";
+  if (streak <= 14) return "tree_sub_14";
+  if (streak <= 29) return "tree_sub_29";
+  if (streak <= 59) return "tree_sub_59";
+  if (streak <= 79) return "tree_sub_79";
+  if (streak <= 99) return "tree_sub_99";
+  if (streak <= 129) return "tree_sub_129";
+  return "tree_sub_max";
 }
 
 const gardenTopRef_scroll = () => {
@@ -55,6 +57,7 @@ export default function HomePage() {
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const lang = useLang();
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const celebrationShownRef = useRef(false);
 
@@ -114,6 +117,10 @@ export default function HomePage() {
     if (localStorage.getItem(`celebrated_${today}`)) {
       celebrationShownRef.current = true;
     }
+    // 첫 실행 언어 선택 (아직 한 번도 선택한 적 없다면)
+    if (isFirstLaunch()) {
+      setShowFirstLangPicker(true);
+    }
     if (!localStorage.getItem("onboarding_done")) { setShowOnboarding(true); }
     setLoading(false);
   }
@@ -133,8 +140,8 @@ export default function HomePage() {
         const streak = profile?.streak_days ?? 0;
         setCelebration({
           show: true,
-          message: "오늘 루틴 완료! 🎉",
-          subMessage: `오늘 하루 하나님과 더 가까워진 당신을 축복합니다!\n${getTreeSubMsg(streak)}`,
+          message: t("home_celebration_title", lang),
+          subMessage: `${t("home_celebration_sub_prefix", lang)}${t(getTreeSubMsgKey(streak), lang)}`,
         });
       }
     }
@@ -242,7 +249,7 @@ export default function HomePage() {
     if (!celebrationShownRef.current) {
       const today2 = new Date().toISOString().split("T")[0];
       if (!localStorage.getItem(`celebrated_${today2}`)) {
-        setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
+        setCelebration({ show: true, message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
       }
     }
   }
@@ -267,7 +274,7 @@ export default function HomePage() {
     }
     if (!celebrationShownRef.current) {
       if (!localStorage.getItem(`celebrated_${today}`)) {
-        setCelebration({ show: true, message: "결단 실천 완료! ✊", subMessage: "말씀을 삶으로 살아내는 당신을 축복해요 🌱" });
+        setCelebration({ show: true, message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
       }
     }
   }
@@ -288,7 +295,7 @@ export default function HomePage() {
       </svg>
       <div style={{ textAlign: "center" }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-        <p style={{ fontSize: 13, color: "var(--text3)" }}>말씀에 뿌리내리고, 함께 자라다</p>
+        <p style={{ fontSize: 13, color: "var(--text3)" }}>{t("home_loading_sub", lang)}</p>
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         {[0,1,2].map(i => (
@@ -300,6 +307,13 @@ export default function HomePage() {
 
   return (
     <div className="page fade-in">
+      {showFirstLangPicker && (
+        <LanguagePicker onSelect={async (l) => {
+          await setPreferredLang(l);
+          setShowFirstLangPicker(false);
+          window.location.reload();
+        }} />
+      )}
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
 
       {/* 0. 복귀 팝업 */}
@@ -321,7 +335,7 @@ export default function HomePage() {
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
             <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              감사해요 🙏
+              {t("home_badge_thanks", lang)}
             </button>
           </div>
         </div>
@@ -369,34 +383,37 @@ export default function HomePage() {
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 4 }}>{getGreeting()}</div>
-          <div className="header-title">{profile?.name ?? "성도"}님의 <em>정원</em></div>
+          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 4 }}>{t(getGreetingKey(), lang)}</div>
+          <div className="header-title">
+            {(() => {
+              const name = profile?.name ?? t("profile_default_name", lang);
+              // {name} placeholder를 치환한 후, "정원"/"Garten" 부분을 <em>으로 감쌈
+              const full = t("home_garden_my", lang, { name });
+              const emWord = lang === "de" ? "Garten" : "정원";
+              const idx = full.lastIndexOf(emWord);
+              if (idx === -1) return full;
+              return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;
+            })()}
+          </div>
         </div>
         <div style={{ position: "relative" }}>
           <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 20 }}>{lang === "de" ? "🇩🇪" : "🇰🇷"}</span>
+            <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
           </button>
           {showLangPicker && (
             <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
           )}
           {showLangPicker && (
             <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
-              {([
-                { code: "ko", flag: "🇰🇷", label: "한국어" },
-                { code: "de", flag: "🇩🇪", label: "Deutsch" },
-              ] as const).map(l => (
-                <button key={l.code} onClick={async () => {
+              {getLanguageOptions().map(opt => (
+                <button key={opt.code} onClick={async () => {
                   setShowLangPicker(false);
-                  const supabase = createClient();
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (user) {
-                    await supabase.from("profiles").update({ preferred_language: l.code }).eq("id", user.id);
-                    window.location.reload();
-                  }
-                }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === l.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === l.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === l.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>{l.flag}</span>
-                  <span>{l.label}</span>
-                  {lang === l.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
+                  await setPreferredLang(opt.code);
+                  window.location.reload();
+                }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>{opt.flag}</span>
+                  <span>{opt.nativeName}</span>
+                  {lang === opt.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
                 </button>
               ))}
             </div>
@@ -408,7 +425,7 @@ export default function HomePage() {
 
       {/* 오늘의 말씀 */}
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">오늘의 말씀</div>
+        <div className="sec-label">{t("home_verse_section", lang)}</div>
         <div className="card-sage">
           {todayVerse?.verse ? (
             <>
@@ -420,8 +437,8 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 12 }}>오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요 🌿</div>
-              <Link href="/checkin"><button className="btn-sage">오늘의 말씀 받기 <ChevronRight size={16} /></button></Link>
+              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 12 }}>{t("home_verse_empty", lang)}</div>
+              <Link href="/checkin"><button className="btn-sage">{t("home_verse_btn", lang)} <ChevronRight size={16} /></button></Link>
             </>
           )}
         </div>
@@ -430,7 +447,7 @@ export default function HomePage() {
       {/* 추천 결단 */}
       {todayVerse?.mission && (
         <div style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">오늘의 추천 결단</div>
+          <div className="sec-label">{t("home_recommend_section", lang)}</div>
           <div className="card-terra">
             <div style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.65, marginBottom: 12 }}>{todayVerse.mission}</div>
             <button onClick={toggleAiDecision} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.decision ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.decision ? "var(--sage)" : "rgba(196,149,106,0.3)"}`, cursor: "pointer", width: "100%" }}>
@@ -438,7 +455,7 @@ export default function HomePage() {
                 {todayDone.decision && <Check size={12} style={{ color: "white" }} />}
               </div>
               <span style={{ fontSize: 12, color: todayDone.decision ? "white" : "var(--text2)", fontWeight: todayDone.decision ? 600 : 400 }}>
-                {todayDone.decision ? "결단 실천 완료! 🎉" : "오늘 이 결단을 실천했어요"}
+                {todayDone.decision ? t("home_decision_practiced", lang) : t("home_decision_practice", lang)}
               </span>
             </button>
           </div>
@@ -448,7 +465,7 @@ export default function HomePage() {
       {/* 나의 결단 */}
       {myDecisions.length > 0 && (
         <div style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">오늘 나의 결단</div>
+          <div className="sec-label">{t("home_my_decision", lang)}</div>
           <div className="card">
             {myDecisions.map((d, i) => (
               <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "0 0 8px", width: "100%" }}>
@@ -466,10 +483,10 @@ export default function HomePage() {
 
       {/* 기도 체크 */}
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">오늘의 기도</div>
+        <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "14px 16px" }}>
           <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 12 }}>
-            오늘 잠깐이라도 기도를 통해 하나님과 인격적인 만남을 하셨나요?
+            {t("home_prayer_desc", lang)}
           </div>
           <button
             onClick={togglePrayer}
@@ -480,7 +497,7 @@ export default function HomePage() {
               {todayDone.prayer && <Check size={12} style={{ color: "white" }} />}
             </div>
             <span style={{ fontSize: 12, color: todayDone.prayer ? "white" : "var(--text2)", fontWeight: todayDone.prayer ? 600 : 400 }}>
-              {todayDone.prayer ? "기도 완료! 🙏" : "네, 오늘 기도했어요"}
+              {todayDone.prayer ? t("home_prayer_done_msg", lang) : t("home_prayer_yes", lang)}
             </span>
           </button>
         </div>
@@ -488,12 +505,12 @@ export default function HomePage() {
 
       {/* 오늘의 루틴 - 상태 표시만 (클릭 불가) */}
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">오늘의 루틴</div>
+        <div className="sec-label">{t("home_routine_section", lang)}</div>
         <div style={{ display: "flex", gap: 8 }}>
           {[
-            { label: "큐티", done: todayDone.qt, icon: "📖" },
-            { label: "기도", done: todayDone.prayer, icon: "🙏" },
-            { label: "결단", done: decisionDone, icon: "✊" },
+            { label: t("home_routine_qt", lang), done: todayDone.qt, icon: "📖" },
+            { label: t("home_routine_prayer", lang), done: todayDone.prayer, icon: "🙏" },
+            { label: t("home_routine_decision", lang), done: decisionDone, icon: "✊" },
           ].map(({ label, done, icon }) => {
             const bg = done ? "var(--sage-light)" : "var(--bg2)";
             const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
@@ -502,7 +519,7 @@ export default function HomePage() {
               <div key={label} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
-                <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? "완료 ✓" : "미완료"}</div>
+                <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? t("home_routine_done", lang) : t("home_routine_notdone", lang)}</div>
               </div>
             );
           })}

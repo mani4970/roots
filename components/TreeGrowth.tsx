@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
 import RootsMan from "./RootsMan";
+import { useLang } from "@/lib/useLang";
+import { t, type Lang, type TKey } from "@/lib/i18n";
 
 interface TreeGrowthProps {
   days: number;
@@ -20,7 +22,16 @@ function getImgIndex(cycleDay: number) {
   return Math.min(Math.ceil(cycleDay / 10) + 1, 11);
 }
 
-function getTreeState(days: number, lastCheckin: string | null) {
+const STAGE_LABEL_KEYS: readonly TKey[] = [
+  "tree_stage_0", "tree_stage_1", "tree_stage_2", "tree_stage_3", "tree_stage_4",
+  "tree_stage_5", "tree_stage_6", "tree_stage_7", "tree_stage_8", "tree_stage_9", "tree_stage_10",
+];
+const STAGE_DESC_KEYS: readonly TKey[] = [
+  "tree_desc_0", "tree_desc_1", "tree_desc_2", "tree_desc_3", "tree_desc_4",
+  "tree_desc_5", "tree_desc_6", "tree_desc_7", "tree_desc_8", "tree_desc_9", "tree_desc_10",
+];
+
+function getTreeState(days: number, lastCheckin: string | null, lang: Lang) {
   let daysSince = 0;
   if (lastCheckin) {
     const last = new Date(lastCheckin);
@@ -31,17 +42,14 @@ function getTreeState(days: number, lastCheckin: string | null) {
   }
   const { cycleDay, cycleIndex } = getCycleInfo(days);
   const img = days === 0 ? 1 : getImgIndex(cycleDay);
-  const stageLabels = [
-    "씨앗 심겨졌어요","씨앗","새싹","묘목","성장 중",
-    "나무","열매 맺음","정원 시작","정원 성장","정원 완성 🏆","풍성한 정원 🌳",
-  ];
-  const stageDescs = [
-    "겨자씨가 땅에 심겨졌어요","겨자씨가 땅에 심겨졌어요","고개를 들고 햇빛을 찾아요",
-    "뿌리를 단단히 내리고 있어요","가지가 뻗어나가고 있어요","든든하게 자라나고 있어요",
-    "새들이 날아와 깃들었어요","새 씨앗이 뿌려졌어요","이웃 나무가 자라고 있어요",
-    "아름다운 정원이 완성됐어요!","열매가 가득한 정원이에요!",
-  ];
-  return { img, cycleDay, cycleIndex, stage: { label: stageLabels[img-1], desc: stageDescs[img-1] }, daysSince };
+  return {
+    img, cycleDay, cycleIndex,
+    stage: {
+      label: t(STAGE_LABEL_KEYS[img - 1], lang),
+      desc:  t(STAGE_DESC_KEYS[img - 1], lang),
+    },
+    daysSince,
+  };
 }
 
 function isNightTime() {
@@ -50,12 +58,12 @@ function isNightTime() {
 }
 
 export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
-  const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin);
+  const lang = useLang();
+  const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin, lang);
   const isNight = isNightTime();
   const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
   const isAway = daysSince >= 3;
 
-  // 10일 기준 프로그레스 (0일=0%, 10일=100%, 반복)
   const dayInCycle = cycleDay % 10 === 0 && cycleDay > 0 ? 10 : cycleDay % 10;
   const periodProgress = (dayInCycle / 10) * 100;
 
@@ -65,7 +73,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
         <div style={{ background: "rgba(196,149,106,0.12)", border: "1px solid rgba(196,149,106,0.25)", borderRadius: 12, padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>🌿</span>
           <span style={{ fontSize: 12, color: "var(--terra-dark)" }}>
-            {daysSince}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪
+            {t("tree_away_msg", lang, { n: daysSince })}
           </span>
         </div>
       )}
@@ -73,31 +81,26 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
         <Image src={imgSrc} alt={stage.label} fill style={{ objectFit: "cover" }} priority />
 
-        {/* 단계 뱃지 - 왼쪽 상단 */}
         <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
           {stage.label}
         </div>
-        {/* 날짜 뱃지 - 오른쪽 상단 */}
         <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.8)", color: "var(--text)", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
-          {days}일째
+          {t("tree_day_count", lang, { n: days })}
         </div>
-        {/* N번째 정원 */}
         {cycleIndex > 0 && (
           <div style={{ position: "absolute", top: 36, right: 10, background: "rgba(232,197,71,0.9)", color: "#1a1c1e", fontSize: 9, fontWeight: 700, padding: "3px 10px", borderRadius: 20, zIndex: 6 }}>
-            🌟 {cycleIndex+1}번째 정원
+            🌟 {t("tree_garden_n", lang, { n: cycleIndex + 1 })}
           </div>
         )}
 
         <RootsMan trigger={showRootsMan} />
       </div>
 
-      {/* 하단 정보 */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>{dayInCycle} / 10일</span>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>{t("tree_progress", lang, { n: dayInCycle })}</span>
       </div>
 
-      {/* 10일 기준 프로그레스 바 */}
       <div className="progress-bar" style={{ marginTop: 6 }}>
         <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
       </div>
@@ -105,7 +108,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
       <div style={{ marginTop: 8 }}>
         <div className="streak-chip">
           <span style={{ fontSize: 12 }}>{isAway ? "🌿" : "🔥"}</span>
-          <span>{days}일 연속 기록 중</span>
+          <span>{t("tree_streak", lang, { n: days })}</span>
         </div>
       </div>
     </div>
