@@ -200,14 +200,14 @@ function QTWriteContent() {
           const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
           const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
           const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
-          const r1 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+          const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
           const d1 = await r1.json();
-          const r2 = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
+          const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
           const d2 = await r2.json();
           allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
           refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
         } else {
-          const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
+          const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
           const data = await res.json();
           allVerses = data.verses ?? [];
           refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
@@ -287,7 +287,7 @@ function QTWriteContent() {
             setStartV(sv);
             setEndV(ev ?? sv);
             // API로 절 내용 재로드
-            const res = await fetch(`/api/bible?translation=92&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
+            const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
             const data = await res.json();
             if (data.verses && data.verses.length > 0) {
               setPassageVerses(data.verses);
