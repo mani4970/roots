@@ -129,6 +129,22 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "일": { de: "So" }, "월": { de: "Mo" }, "화": { de: "Di" }, "수": { de: "Mi" },
   "목": { de: "Do" }, "금": { de: "Fr" }, "토": { de: "Sa" },
   "· 오늘": { de: "· Heute" },
+  // 버튼 / 라벨
+  "나가기":                        { de: "Zurück" },
+  "더보기":                        { de: "Mehr" },
+  "접기":                         { de: "Weniger" },
+  "다음 단계 →":                   { de: "Nächster Schritt →" },
+  "← 이전":                       { de: "← Zurück" },
+  "💾 임시저장하고 나중에 이어쓰기":  { de: "💾 Als Entwurf speichern" },
+  "성품 (마음의 결심)":             { de: "Charakter (Haltung des Herzens)" },
+  "행동 (구체적인 실천)":           { de: "Handlung (konkretes Tun)" },
+  "행동 추가하기":                  { de: "Handlung hinzufügen" },
+  "💡 절을 탭하면 붙잡은 말씀에 추가돼요": { de: "💡 Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern" },
+  "2단계 · 본문 요약":              { de: "Schritt 2 · Zusammenfassung" },
+  "3단계 · 붙잡은 말씀":            { de: "Schritt 3 · Schlüsselvers" },
+  "(위 절 탭하면 자동 추가)":        { de: "(Vers oben antippen)" },
+  "행동 1":                        { de: "Handlung 1" },
+  "단계":                          { de: "Schritt" },
 };
 
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
@@ -646,7 +662,7 @@ function QTWriteContent() {
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
@@ -850,7 +866,7 @@ function QTWriteContent() {
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
@@ -874,7 +890,7 @@ function QTWriteContent() {
               </div>
               {passageVerses.length > LONG_THRESHOLD && (
                 <button onClick={() => setPassageExpanded(p => !p)} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  {passageExpanded ? <><ChevronUp size={14} />접기</> : <><ChevronDown size={14} />더보기</>}
+                  {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
                 </button>
               )}
             </div>
@@ -924,14 +940,14 @@ function QTWriteContent() {
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
           <div className="step-bar" style={{ marginBottom: 8 }}>
             {STEPS_SUNDAY.map((_, i) => <div key={i} className={`step-bar-item ${i < cur ? "done" : i === cur ? "curr" : ""}`} />)}
           </div>
-          <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>{cur + 1} / {STEPS_SUNDAY.length}단계</p>
+          <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>{cur + 1} / {STEPS_SUNDAY.length} {trQT("단계", lang)}</p>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step.title, lang)}</h1>
           <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{trQT(step.subtitle, lang)}</p>
         </div>
@@ -982,24 +998,24 @@ function QTWriteContent() {
                   </p>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
                   <textarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 실천)", lang)}</label>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {decisions.map((d, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                         </div>
-                        <input type="text" className="input-field" placeholder={`행동 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                        <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
                         {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                       </div>
                     ))}
                   </div>
                   <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-                    <Plus size={14} /> 행동 추가하기
+                    <Plus size={14} /> {trQT("행동 추가하기", lang)}
                   </button>
                 </div>
               </div>
@@ -1017,18 +1033,18 @@ function QTWriteContent() {
 
         <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", gap: 8 }}>
-            {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
+            {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
               <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
                 {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
               </button>
             ) : (
-              <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+              <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
             )}
           </div>
           {/* 임시저장 버튼 */}
           <button onClick={saveDraft} disabled={saving} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            💾 임시저장하고 나중에 이어쓰기
+            {trQT("💾 임시저장하고 나중에 이어쓰기", lang)}
           </button>
         </div>
       </div>
@@ -1044,7 +1060,7 @@ function QTWriteContent() {
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
-            <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>나가기</span>
+            <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
           </button>
           <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
         </div>
@@ -1076,7 +1092,7 @@ function QTWriteContent() {
                   onClick={() => setVersePreviewExpanded(p => !p)}
                   style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
                 >
-                  {versePreviewExpanded ? <><ChevronUp size={13} />접기</> : <><ChevronDown size={13} />더보기</>}
+                  {versePreviewExpanded ? <><ChevronUp size={13} />{trQT("접기", lang)}</> : <><ChevronDown size={13} />{trQT("더보기", lang)}</>}
                 </button>
               </div>
             </div>
@@ -1149,14 +1165,14 @@ function QTWriteContent() {
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>💡 절을 탭하면 붙잡은 말씀에 추가돼요</p>
+              <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("💡 절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
             </div>
           )}
 
           {/* 2단계: 본문 요약 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
-              2단계 · 본문 요약
+              {trQT("2단계 · 본문 요약", lang)}
             </label>
             <textarea className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
           </div>
@@ -1164,7 +1180,7 @@ function QTWriteContent() {
           {/* 3단계: 붙잡은 말씀 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
-              3단계 · 붙잡은 말씀 <span style={{ fontWeight: 400 }}>(위 절 탭하면 자동 추가)</span>
+              {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
             </label>
             <textarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
           </div>
@@ -1181,24 +1197,24 @@ function QTWriteContent() {
             </p>
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성품 (마음의 결심)</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
             <textarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>행동 (구체적인 실천)</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 실천)", lang)}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <input type="text" className="input-field" placeholder={`행동 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                  <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
             </div>
             <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-              <Plus size={14} /> 행동 추가하기
+              <Plus size={14} /> {trQT("행동 추가하기", lang)}
             </button>
           </div>
         </div>
@@ -1216,13 +1232,13 @@ function QTWriteContent() {
       {/* 하단 버튼 */}
       <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 8 }}>
-          {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>← 이전</button>}
+          {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
             <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
               {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
             </button>
           ) : (
-            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>다음 단계 →</button>
+            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
           )}
         </div>
         {/* 임시저장 버튼 */}
@@ -1231,7 +1247,7 @@ function QTWriteContent() {
           disabled={saving}
           style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
-          💾 임시저장하고 나중에 이어쓰기
+          {trQT("💾 임시저장하고 나중에 이어쓰기", lang)}
         </button>
       </div>
     </div>
