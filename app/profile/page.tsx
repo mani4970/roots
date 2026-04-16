@@ -96,7 +96,7 @@ export default function ProfilePage() {
     const path = `${user.id}/avatar.${ext}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
-      setPhotoError("업로드 실패: " + error.message);
+      setPhotoError((lang === "de" ? "Upload fehlgeschlagen: " : "업로드 실패: ") + error.message);
       setUploadingPhoto(false);
       return;
     }
@@ -106,7 +106,7 @@ export default function ProfilePage() {
     const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
     if (dbError) {
       console.error("프로필 사진 DB 저장 실패:", dbError);
-      setPhotoError("사진 저장 실패: " + dbError.message);
+      setPhotoError((lang === "de" ? "Foto speichern fehlgeschlagen: " : "사진 저장 실패: ") + dbError.message);
       setUploadingPhoto(false);
       return;
     }
@@ -142,9 +142,9 @@ export default function ProfilePage() {
       });
       setFeedbackText("");
       setShowFeedbackModal(false);
-      alert("소중한 의견 감사해요! 😊");
+      alert(lang === "de" ? "Vielen Dank für Ihr Feedback! 😊" : "소중한 의견 감사해요! 😊");
     } catch (e) {
-      alert("전송에 실패했어요. 다시 시도해 주세요.");
+      alert(lang === "de" ? "Senden fehlgeschlagen. Bitte erneut versuchen." : "전송에 실패했어요. 다시 시도해 주세요.");
     }
     setSendingFeedback(false);
   }
@@ -166,7 +166,7 @@ export default function ProfilePage() {
       await supabase.auth.signOut();
       router.push("/login");
     } catch (e) {
-      alert("계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
+      alert(lang === "de" ? "Fehler beim Löschen. Bitte kontaktieren Sie cookiko313@gmail.com." : "계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
     }
     setDeletingAccount(false);
   }
@@ -244,7 +244,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.name ?? "성도"}</h1>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.name ?? (lang === "de" ? "Nutzer" : "성도")}</h1>
                 <button onClick={() => setEditingName(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", flexShrink: 0 }}>
                   <Pencil size={13} />
                 </button>
@@ -319,14 +319,14 @@ export default function ProfilePage() {
         const earnedCount = Math.min(Math.floor(streak / 100), 9);
         const BADGES = [
           { name: "Love", desc: lang === "de" ? "Liebe" : "사랑", fruit: "🍎" },
-          { name: "Peace", desc: "화평", fruit: "🍉" },
-          { name: "Joy", desc: "희락", fruit: "🍌" },
-          { name: "Goodness", desc: "양선", fruit: "🍊" },
-          { name: "Kindness", desc: "자비", fruit: "🍒" },
-          { name: "Patience", desc: "오래참음", fruit: "🍍" },
-          { name: "Faithfulness", desc: "충성", fruit: "🍇" },
-          { name: "Gentleness", desc: "온유", fruit: "🍋" },
-          { name: "Self-Control", desc: "절제", fruit: "🍓" },
+          { name: "Peace", desc: lang === "de" ? "Frieden" : "화평", fruit: "🍉" },
+          { name: "Joy", desc: lang === "de" ? "Freude" : "희락", fruit: "🍌" },
+          { name: "Goodness", desc: lang === "de" ? "Güte" : "양선", fruit: "🍊" },
+          { name: "Kindness", desc: lang === "de" ? "Freundlichkeit" : "자비", fruit: "🍒" },
+          { name: "Patience", desc: lang === "de" ? "Geduld" : "오래참음", fruit: "🍍" },
+          { name: "Faithfulness", desc: lang === "de" ? "Treue" : "충성", fruit: "🍇" },
+          { name: "Gentleness", desc: lang === "de" ? "Sanftmut" : "온유", fruit: "🍋" },
+          { name: "Self-Control", desc: lang === "de" ? "Selbstbeherrschung" : "절제", fruit: "🍓" },
         ];
         return (
           <div style={{ padding: "14px 16px 0" }}>
@@ -378,7 +378,7 @@ export default function ProfilePage() {
         </div>
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-            {["일","월","화","수","목","금","토"].map(d => (
+            {(lang === "de" ? ["So","Mo","Di","Mi","Do","Fr","Sa"] : ["일","월","화","수","목","금","토"]).map(d => (
               <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
             ))}
           </div>

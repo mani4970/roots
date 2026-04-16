@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Roots — 영적 루틴 앱",
-  description: "말씀에 뿌리내리고, 함께 자라다",
+  description: "Roots — In Gottes Wort verwurzelt, gemeinsam wachsen | 말씀에 뿌리내리고, 함께 자라다",
   manifest: "/manifest.json",
   themeColor: "#7A9D7A",
   appleWebApp: {

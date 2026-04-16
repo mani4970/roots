@@ -87,7 +87,7 @@ export default function PrayerPage() {
   }
 
   async function markAnswered(id: string) {
-    const testimony = prompt("기도 응답 간증을 나눠주세요 🙏");
+    const testimony = prompt(lang === "de" ? "Teilen Sie Ihr Gebetszeugnis 🙏" : "기도 응답 간증을 나눠주세요 🙏");
     if (!testimony) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -133,8 +133,8 @@ export default function PrayerPage() {
       )}
       <Celebration
         show={celebration}
-        message="기도 제목 저장! 🙏"
-        subMessage="구하고 찾는 자에게 반드시 하나님이 응답하실거예요"
+        message={lang === "de" ? "Gebetsanliegen gespeichert! 🙏" : "기도 제목 저장! 🙏"}
+        subMessage={lang === "de" ? "Gott wird denen antworten, die suchen und bitten" : "구하고 찾는 자에게 반드시 하나님이 응답하실거예요"}
         onClose={() => setCelebration(false)}
       />
 
@@ -187,12 +187,12 @@ export default function PrayerPage() {
           <div style={{ textAlign: "center", padding: "52px 0" }}>
             <p style={{ fontSize: 36, marginBottom: 12 }}>{tab === "praying" ? "🙏" : "✨"}</p>
             <p style={{ color: "var(--text3)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              {tab === "praying" ? "기도 제목이 없어요" : "아직 응답된 기도가 없어요"}
+              {tab === "praying" ? (lang === "de" ? "Keine Gebetsanliegen" : "기도 제목이 없어요") : (lang === "de" ? "Noch keine erhörten Gebete" : "아직 응답된 기도가 없어요")}
             </p>
             <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.6 }}>
               {tab === "praying"
                 ? "+ 버튼으로 기도 제목을 적어보세요"
-                : "기도 중인 제목에서 '응답됐어요'를 눌러보세요"}
+                : (lang === "de" ? "Tippen Sie bei einem Gebetsanliegen auf 'Erhört'" : "기도 중인 제목에서 '응답됐어요'를 눌러보세요")}
             </p>
           </div>
         ) : (
@@ -290,12 +290,12 @@ export default function PrayerPage() {
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>기도 제목 적기</h2>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>기본적으로 나만 볼 수 있어요.</p>
             <textarea className="textarea-field" rows={4}
-              placeholder="기도 제목을 적어주세요..."
+              placeholder={lang === "de" ? "Gebetsanliegen eingeben..." : "기도 제목을 적어주세요..."}
               value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>취소</button>
               <button className="btn-sage" onClick={submit} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
-                {saving ? <Loader2 size={16} className="spin" /> : "저장하기"}
+                {saving ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : "저장하기")}
               </button>
             </div>
           </div>

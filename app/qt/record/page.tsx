@@ -3,8 +3,35 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
+
+
+// QT Record 전용 번역 매핑
+const QTR_TR: Record<string, Partial<Record<Lang, string>>> = {
+  "돌아가기": { de: "Zurück" },
+  "전체 복사": { de: "Alles kopieren" },
+  "복사됨! ✓": { de: "Kopiert! ✓" },
+  "나누기": { de: "Teilen" },
+  "공유 중 (수정)": { de: "Geteilt (ändern)" },
+  "취소": { de: "Abbrechen" },
+  "큐티 나누기": { de: "Stille Zeit teilen" },
+  "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": { de: "Gleichzeitig an mehrere Orte teilen (Mehrfachauswahl)" },
+  "전체 커뮤니티": { de: "Gesamte Gemeinde" },
+  "모든 Roots 사용자에게 공개": { de: "Für alle Roots-Nutzer sichtbar" },
+  "내 그룹": { de: "Meine Gruppen" },
+  "공개 그룹": { de: "Öffentliche Gruppe" },
+  "비공개 그룹": { de: "Private Gruppe" },
+  "그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!": { de: "Keine Gruppen. Erstellen Sie eine in der Gemeinde!" },
+  "들어가는 기도": { de: "Eröffnungsgebet" },
+  "본문 요약": { de: "Zusammenfassung" },
+  "붙잡은 말씀": { de: "Schlüsselvers" },
+  "느낌과 묵상": { de: "Empfinden & Meditation" },
+  "성품 (적용)": { de: "Charakter (Anwendung)" },
+  "행동 (결단)": { de: "Handlung (Entschluss)" },
+  "올려드리는 기도": { de: "Abschlussgebet" },
+};
+function trR(s: string, lang: Lang): string { return lang === "ko" ? s : QTR_TR[s]?.[lang] ?? s; }
 
 function RecordContent() {
   const router = useRouter();
@@ -130,7 +157,7 @@ function RecordContent() {
 
   function copyAll() {
     if (!record) return;
-    const date = new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+    const date = new Date(record.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
     const decisions = record.decision
       ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
@@ -152,7 +179,7 @@ function RecordContent() {
   function getShareLabel() {
     if (sharedTargets.length === 0) return null;
     const labels: string[] = [];
-    if (sharedTargets.includes("all")) labels.push("전체 커뮤니티");
+    if (sharedTargets.includes("all")) labels.push(trR("전체 커뮤니티", lang));
     sharedTargets.filter(t => t !== "all").forEach(t => {
       const gId = t.startsWith("group_") ? t.replace("group_", "") : t;
       const g = myGroups.find(g => g.id === gId);
@@ -195,10 +222,10 @@ function RecordContent() {
       )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>돌아가기</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
-          {new Date(record.date).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+          {new Date(record.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{record.bible_ref}</h1>
         {isShared && getShareLabel() && (
@@ -209,15 +236,15 @@ function RecordContent() {
       {/* 액션 버튼 */}
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
         <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
-          <Copy size={14} /> {copied ? "복사됨! ✓" : "전체 복사"}
+          <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
         {isShared ? (
           <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
-            <Check size={14} /> 공유 중 (수정)
+            <Check size={14} /> {trR("공유 중 (수정)", lang)}
           </button>
         ) : (
           <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
-            <Share2 size={14} /> 나누기
+            <Share2 size={14} /> {trR("나누기", lang)}
           </button>
         )}
         {isShared && (
@@ -232,18 +259,18 @@ function RecordContent() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>큐티 나누기</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{trR("큐티 나누기", lang)}</h2>
               <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)</p>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>{trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {/* 전체 커뮤니티 */}
               <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
                 <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>전체 커뮤니티</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>모든 Roots 사용자에게 공개</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>{trR("전체 커뮤니티", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{trR("모든 Roots 사용자에게 공개", lang)}</p>
                 </div>
                 <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {selectedTargets.includes("all") && <Check size={12} style={{ color: "white" }} />}
@@ -253,7 +280,7 @@ function RecordContent() {
               {/* 내 그룹들 */}
               {myGroups.length > 0 && (
                 <>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>내 그룹</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>{trR("내 그룹", lang)}</p>
                   {myGroups.map(g => {
                     const key = `group_${g.id}`;
                     const isSelected = selectedTargets.includes(key);
@@ -262,7 +289,7 @@ function RecordContent() {
                         <Lock size={20} style={{ color: isSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
-                          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{g.is_public ? "공개 그룹" : "비공개 그룹"}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{g.is_public ? trR("공개 그룹", lang) : trR("비공개 그룹", lang)}</p>
                         </div>
                         <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           {isSelected && <Check size={12} style={{ color: "white" }} />}
@@ -275,21 +302,21 @@ function RecordContent() {
 
               {myGroups.length === 0 && (
                 <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>
-                  그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!
+                  {trR("그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", lang)}
                 </p>
               )}
             </div>
 
             {selectedTargets.length > 0 && (
               <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {selectedTargets.length}곳에 나누기
+                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : "곳에 나누기"}
               </p>
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>취소</button>
+              <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>{trR("취소", lang)}</button>
               <button onClick={doShare} disabled={sharing || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
-                {sharing ? <Loader2 size={16} className="spin" /> : `나누기${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
+                {sharing ? <Loader2 size={16} className="spin" /> : `${trR("나누기", lang)}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
               </button>
             </div>
           </div>
@@ -302,7 +329,7 @@ function RecordContent() {
           if (!value) return null;
           return (
             <div key={key} className="card">
-              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{label}</p>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
               {isDecision ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
