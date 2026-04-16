@@ -5,6 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
+import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
 
 const QT_GUIDE_KEYS: { emoji: string; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -194,7 +195,7 @@ export default function QTPage() {
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(122,157,122,0.3)" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>{t("qt_today_bible_ref", lang)}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
-                  {todaySchedule.book} {todaySchedule.chapter}:{todaySchedule.start_verse}
+                  {translateBookName(todaySchedule.book, lang)} {todaySchedule.chapter}:{todaySchedule.start_verse}
                   {todaySchedule.end_chapter && todaySchedule.end_chapter !== todaySchedule.chapter
                     ? `~${todaySchedule.end_chapter}:${todaySchedule.end_verse}`
                     : todaySchedule.end_verse !== todaySchedule.start_verse
@@ -247,7 +248,7 @@ export default function QTPage() {
                             {new Date(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
                           </p>
                           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
-                            {r.bible_ref || (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
+                            {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
                           </p>
                           {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"</p>}
                           {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}

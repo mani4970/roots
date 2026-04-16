@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
+import { translateBibleRef } from "@/lib/bibleBooks";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 
@@ -162,7 +163,7 @@ function RecordContent() {
       ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
     const parts = [
-      `📖 ${date} · ${record.bible_ref}`,
+      `📖 ${date} · ${translateBibleRef(record.bible_ref, lang)}`,
       record.opening_prayer ? `\n들어가는 기도\n${record.opening_prayer}` : "",
       record.summary ? `\n본문 요약\n${record.summary}` : "",
       record.key_verse ? `\n붙잡은 말씀\n${record.key_verse}` : "",
@@ -227,7 +228,7 @@ function RecordContent() {
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
           {new Date(record.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{record.bible_ref}</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
         {isShared && getShareLabel() && (
           <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {getShareLabel()}</p>
         )}
