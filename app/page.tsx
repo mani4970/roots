@@ -424,7 +424,7 @@ export default function HomePage() {
               }
               setTheme(isLight ? "dark" : "light");
             }}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 4, lineHeight: 1 }}
           >
             {theme === "light" ? "☀️" : "🌙"}
           </button>

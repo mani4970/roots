@@ -248,11 +248,7 @@ function RecordContent() {
             <Share2 size={14} /> {trR("나누기", lang)}
           </button>
         )}
-        {isShared && (
-          <button onClick={unshare} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
-            {trR("취소", lang)}
-          </button>
-        )}
+
       </div>
 
       {/* 나누기 모달 */}
