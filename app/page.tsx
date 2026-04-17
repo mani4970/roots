@@ -212,8 +212,18 @@ export default function HomePage() {
       }
     }
 
-    // 10일 정원 업데이트 (100의 배수 제외)
-    if (streak % 10 === 0 && streak % 100 !== 0) {
+    // 10일 단위 정원 업데이트 (100의 배수 제외)
+    // 매 10일마다 나무 이미지가 바뀌므로 (tree1→tree2→...→tree11) 축하 팝업 표시
+    const cycleDay = ((streak - 1) % 100) + 1;
+    if (cycleDay % 10 === 1 && cycleDay > 1) {
+      // 11일, 21일, 31일... — 새 단계 시작
+      const gardenKey = `garden_shown_${streak}`;
+      if (!localStorage.getItem(gardenKey)) {
+        localStorage.setItem(gardenKey, "true");
+        setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+      }
+    } else if (streak % 10 === 0 && streak % 100 !== 0) {
+      // 10일, 20일, 30일... — 단계 마무리
       const gardenKey = `garden_shown_${streak}`;
       if (!localStorage.getItem(gardenKey)) {
         localStorage.setItem(gardenKey, "true");
@@ -351,7 +361,7 @@ export default function HomePage() {
         onClose={() => {
           setCelebration({ show: false, message: "", subMessage: "" });
           // 루틴 완료 축하였으면 → 농부 팝업 먼저 (RootsMan은 팝업 닫힌 후 스크롤 시 시작)
-          if (celebration.message.includes("루틴")) {
+          if (celebration.message.includes("루틴") || celebration.message.includes("Routine")) {
             setShowRootsManPopup(true);
           }
         }}

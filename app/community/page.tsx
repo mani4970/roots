@@ -8,9 +8,9 @@ import { t } from "@/lib/i18n";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
 
 const REACTIONS = [
-  { id: "bless", label: "축복해요", icon: "🙏" },
-  { id: "cheer", label: "응원해요", icon: "💪" },
-  { id: "pray", label: "함께기도해요", icon: "✨" },
+  { id: "bless", label: "축복해요", label_de: "Gesegnet", icon: "🙏" },
+  { id: "cheer", label: "응원해요", label_de: "Ermutigung", icon: "💪" },
+  { id: "pray", label: "함께기도해요", label_de: "Gemeinsam beten", icon: "✨" },
 ];
 
 const APP_URL = "https://christian-roots.com";
@@ -665,7 +665,7 @@ export default function CommunityPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button onClick={() => setShowGroupForm(true)} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Plus size={16} /> 새 그룹 만들기
+              <Plus size={16} /> {lang === "de" ? "Neue Gruppe erstellen" : "새 그룹 만들기"}
             </button>
             {groups.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
@@ -700,7 +700,7 @@ export default function CommunityPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>새 그룹 만들기</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{lang === "de" ? "Neue Gruppe erstellen" : "새 그룹 만들기"}</h2>
               <button onClick={() => setShowGroupForm(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

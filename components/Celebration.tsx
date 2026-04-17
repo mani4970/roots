@@ -1,4 +1,5 @@
 "use client";
+import { useLang } from "@/lib/useLang";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -21,6 +22,7 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
     }
   }, [show]);
 
+  const lang = useLang();
   if (!show) return null;
 
   return (
@@ -40,7 +42,7 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
             <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{subMessage}</p>
           </div>
         )}
-        <div style={{ marginTop: 14, fontSize: 11, color: "var(--text3)" }}>탭하면 닫혀요</div>
+        <div style={{ marginTop: 14, fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Antippen zum Schließen" : "탭하면 닫혀요"}</div>
       </div>
     </div>
   );
