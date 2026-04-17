@@ -330,14 +330,14 @@ export default function CommunityPage() {
   }
 
   function shareInvite(group: any) {
-    const text = `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
+    const text = lang === "de" ? `🌱 Roots - Einladung zur Gruppe ${group.name}!\n\nEine christliche App zum Verwurzeln in Gottes Wort.\nKomm dazu 👇\n${APP_URL}/join?group=${group.id}` : `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
     if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
     else copyInviteLink(group.id);
   }
 
   function shareApp() {
-    const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
-    if (navigator.share) navigator.share({ title: "Roots 앱 초대", text });
+    const text = lang === "de" ? `🌱 Roots - In Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App mit Stille Zeit, Gebet und Vorsätzen.\nMach mit! 👇\n${APP_URL}` : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
+    if (navigator.share) navigator.share({ title: lang === "de" ? "Roots-Einladung" : "Roots 앱 초대", text });
     else navigator.clipboard.writeText(text);
   }
 
@@ -354,7 +354,7 @@ export default function CommunityPage() {
           return (
             <button key={reaction.id} onClick={() => onReact(qtId, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 11px", borderRadius: 20, border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 12, color: isSelected ? "var(--sage-dark)" : "var(--text3)", fontWeight: isSelected ? 700 : 400, transition: "all 0.15s" }}>
               <span style={{ fontSize: 14 }}>{reaction.icon}</span>
-              <span>{reaction.label}</span>
+              <span>{lang === "de" ? reaction.label_de : reaction.label}</span>
               {count > 0 && <span style={{ fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--text2)", marginLeft: 2 }}>{count}</span>}
             </button>
           );
@@ -377,7 +377,7 @@ export default function CommunityPage() {
                 <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} emoji="📖" />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : "이름 없음")}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "long", day: "numeric", weekday: "short" })}</p>
                 </div>
               </div>
               <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={22} /></button>
@@ -432,7 +432,7 @@ export default function CommunityPage() {
             </span>
           </div>
           {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
-          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{lang === "de" ? `👥 ${selectedGroup.member_count} Mitglieder` : `👥 ${selectedGroup.member_count}명 {lang === "de" ? "Mitglied" : "참여 중"}`}</p>
+          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{lang === "de" ? `👥 ${selectedGroup.member_count} Mitglieder` : `👥 ${selectedGroup.member_count}명 참여 중`}</p>
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -469,7 +469,7 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
@@ -502,7 +502,7 @@ export default function CommunityPage() {
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
             <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              감사해요 🙏
+              {lang === "de" ? "Danke 🙏" : "감사해요 🙏"}
             </button>
           </div>
         </div>
@@ -570,7 +570,7 @@ export default function CommunityPage() {
                           <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (lang === "de" ? "Unbekannt" : "이름 없음")}</span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
                       <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
@@ -605,7 +605,7 @@ export default function CommunityPage() {
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (lang === "de" ? "Unbekannt" : "이름 없음")}</span>
                         </div>
                         <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : ""}
+                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" }) : ""}
                         </span>
                       </div>
                       {/* 기도 제목 */}
@@ -647,7 +647,7 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</span>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
@@ -684,7 +684,7 @@ export default function CommunityPage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                       <Users size={11} style={{ color: "var(--text3)" }} />
-                      <span style={{ fontSize: 11, color: "var(--text3)" }}>{g.member_count}명</span>
+                      <span style={{ fontSize: 11, color: "var(--text3)" }}>{g.member_count}</span>
                       {g.isMember && <span style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 600, marginLeft: 6 }}>✓ {lang === "de" ? "Mitglied" : "참여 중"}</span>}
                     </div>
                   </div>
@@ -725,7 +725,7 @@ export default function CommunityPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button className="btn-outline" onClick={() => setShowGroupForm(false)} style={{ flex: 1 }}>취소</button>
+                <button className="btn-outline" onClick={() => setShowGroupForm(false)} style={{ flex: 1 }}>{lang === "de" ? "Abbrechen" : "취소"}</button>
                 <button className="btn-sage" onClick={createGroup} disabled={savingGroup || !groupName.trim()} style={{ flex: 1 }}>
                   {savingGroup ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Erstellen" : "만들기")}
                 </button>
