@@ -3,7 +3,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  /* 새 컬러 시스템 */
+  /* 다크 모드 (기본) */
   --bg: #1A1C1E;
   --bg2: #22252A;
   --bg3: #2A2E34;
@@ -20,9 +20,31 @@
   --border: #333840;
   --beige: #D4C5A9;
   --beige-light: #2E2820;
+  --html-bg: #111315;
 }
 
-html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: #111315; }
+/* 라이트 모드 — 따뜻한 베이지 톤 */
+[data-theme="light"] {
+  --bg: #FAF6F0;
+  --bg2: #FFFFFF;
+  --bg3: #F0EBE3;
+  --sage: #6B8F6B;
+  --sage-light: #E8F0E8;
+  --sage-dark: #4A6F4A;
+  --terra: #B07D4F;
+  --terra-light: #F5EDE4;
+  --terra-dark: #8B6340;
+  --text: #2C2C2A;
+  --text2: #5A5A56;
+  --text3: #9A9A94;
+  --white: #FFFFFF;
+  --border: #E0D8CC;
+  --beige: #8B7D6B;
+  --beige-light: #F5EDE4;
+  --html-bg: #F0EBE3;
+}
+
+html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--html-bg); }
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }

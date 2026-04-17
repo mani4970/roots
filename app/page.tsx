@@ -57,6 +57,7 @@ export default function HomePage() {
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const lang = useLang();
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const celebrationShownRef = useRef(false);
@@ -67,6 +68,14 @@ export default function HomePage() {
   useEffect(() => { load(); }, []);
 
   async function load() {
+    // 테마 복원
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("roots_theme");
+      if (saved === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+        setTheme("light");
+      }
+    }
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
@@ -212,18 +221,12 @@ export default function HomePage() {
       }
     }
 
-    // 10일 단위 정원 업데이트 (100의 배수 제외)
-    // 매 10일마다 나무 이미지가 바뀌므로 (tree1→tree2→...→tree11) 축하 팝업 표시
+    // 나무 성장 단계 변경 팝업 (tree2→tree3, tree3→tree4 등)
+    // cycleDay 11, 21, 31... = 새 나무 이미지로 바뀌는 날 → 성장 축하 팝업
+    // cycleDay 10, 20, 30... = 단계 마무리 → 별도 팝업 없음 (루틴 축하만)
     const cycleDay = ((streak - 1) % 100) + 1;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
-      // 11일, 21일, 31일... — 새 단계 시작
-      const gardenKey = `garden_shown_${streak}`;
-      if (!localStorage.getItem(gardenKey)) {
-        localStorage.setItem(gardenKey, "true");
-        setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
-      }
-    } else if (streak % 10 === 0 && streak % 100 !== 0) {
-      // 10일, 20일, 30일... — 단계 마무리
+      // 11일, 21일, 31일... — 새 단계 시작 (나무 성장!)
       const gardenKey = `garden_shown_${streak}`;
       if (!localStorage.getItem(gardenKey)) {
         localStorage.setItem(gardenKey, "true");
@@ -406,7 +409,27 @@ export default function HomePage() {
             })()}
           </div>
         </div>
-        <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* 다크/라이트 토글 */}
+          <button
+            onClick={() => {
+              const html = document.documentElement;
+              const isLight = html.getAttribute("data-theme") === "light";
+              if (isLight) {
+                html.removeAttribute("data-theme");
+                localStorage.setItem("roots_theme", "dark");
+              } else {
+                html.setAttribute("data-theme", "light");
+                localStorage.setItem("roots_theme", "light");
+              }
+              setTheme(isLight ? "dark" : "light");
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4 }}
+          >
+            {theme === "light" ? "☀️" : "🌙"}
+          </button>
+          {/* 언어 선택 */}
+          <div style={{ position: "relative" }}>
           <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
           </button>
@@ -428,6 +451,7 @@ export default function HomePage() {
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
 
