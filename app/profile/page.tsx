@@ -277,8 +277,13 @@ export default function ProfilePage() {
       {/* 신앙의 결실 뱃지 - 가로 스크롤 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">{lang === "de" ? "Glaubensfrüchte" : "신앙의 결실"}</div>
-        <div className="card" style={{ padding: "16px 12px" }}>
-          <div style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none" }}>
+        <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
+          {/* 좌우 화살표 */}
+          <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
+            style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>‹</button>
+          <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
+            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>›</button>
+          <div id="badge-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
             {[
               { key: "badge_rootsman", img: "/badge_rootsman.png", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
               { key: "badge_mose", img: "/badge_mose.png", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
@@ -309,7 +314,6 @@ export default function ProfilePage() {
               );
             })}
           </div>
-          <p style={{ fontSize: 10, color: "var(--text3)", textAlign: "center", marginTop: 8 }}>{lang === "de" ? "← Seitlich wischen für mehr →" : "← 옆으로 밀어서 모두 보기 →"}</p>
         </div>
       </div>
 
