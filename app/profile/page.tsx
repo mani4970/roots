@@ -250,7 +250,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0}일 연속 기록 중 🔥</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge 🔥" : "일 연속 기록 중 🔥"}</p>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function ProfilePage() {
 
       {/* 신앙 여정 통계 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">신앙 여정</div>
+        <div className="sec-label">{lang === "de" ? "Glaubensweg" : "신앙 여정"}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
             { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: "🙏" },
@@ -276,7 +276,7 @@ export default function ProfilePage() {
 
       {/* 신앙의 결실 뱃지 - 가로 스크롤 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">신앙의 결실</div>
+        <div className="sec-label">{lang === "de" ? "Glaubensfrüchte" : "신앙의 결실"}</div>
         <div className="card" style={{ padding: "16px 12px" }}>
           <div style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none" }}>
             {[
@@ -309,11 +309,11 @@ export default function ProfilePage() {
               );
             })}
           </div>
-          <p style={{ fontSize: 10, color: "var(--text3)", textAlign: "center", marginTop: 8 }}>← 옆으로 밀어서 모두 보기 →</p>
+          <p style={{ fontSize: 10, color: "var(--text3)", textAlign: "center", marginTop: 8 }}>{lang === "de" ? "← Seitlich wischen für mehr →" : "← 옆으로 밀어서 모두 보기 →"}</p>
         </div>
       </div>
 
-      {/* 성령의 열매 배지 */}
+      {/* {lang === "de" ? "Früchte des Geistes" : "성령의 열매"} 배지 */}
       {(() => {
         const streak = profile?.streak_days ?? 0;
         const earnedCount = Math.min(Math.floor(streak / 100), 9);
@@ -331,7 +331,7 @@ export default function ProfilePage() {
         return (
           <div style={{ padding: "14px 16px 0" }}>
             <div className="sec-label">
-              성령의 열매
+              {lang === "de" ? "Früchte des Geistes" : "성령의 열매"}
               <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
             </div>
             <div className="card">
@@ -362,7 +362,7 @@ export default function ProfilePage() {
               </div>
               {earnedCount === 0 && (
                 <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
-                  100일을 채우면 첫 번째 열매를 받아요 🌱
+                  {lang === "de" ? "Nach 100 Tagen erhalten Sie die erste Frucht 🌱" : "100일을 채우면 첫 번째 열매를 받아요 🌱"}
                 </p>
               )}
             </div>
@@ -373,8 +373,8 @@ export default function ProfilePage() {
       {/* 큐티 현황 달력 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
-          {new Date().getMonth() + 1}월 큐티 현황
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}일</span>
+          {lang === "de" ? `QT im ${new Date().toLocaleDateString("de-DE", {month:"long"})}` : `${new Date().getMonth() + 1}월 큐티 현황`}
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{lang === "de" ? " Tage" : "일"}</span>
         </div>
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
@@ -399,7 +399,7 @@ export default function ProfilePage() {
       <div style={{ padding: "14px 16px 0" }}>
         <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
           <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>친구 초대하기</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{lang === "de" ? "Freunde einladen" : "친구 초대하기"}</span>
         </button>
       </div>
 
@@ -407,7 +407,7 @@ export default function ProfilePage() {
       <div style={{ padding: "10px 16px 0" }}>
         <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
           <span style={{ fontSize: 14 }}>💬</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>의견 보내기</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{lang === "de" ? "Feedback senden" : "의견 보내기"}</span>
         </button>
       </div>
 
@@ -425,8 +425,8 @@ export default function ProfilePage() {
       {showFeedbackModal && (
         <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>💬 의견 보내기</h3>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!</p>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{lang === "de" ? "💬 Feedback senden" : "💬 의견 보내기"}</h3>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{lang === "de" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : "불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!"}</p>
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
@@ -440,15 +440,15 @@ export default function ProfilePage() {
 
             {/* 계정 관리 */}
             <div style={{ borderTop: "1px solid var(--border)", marginTop: 16, paddingTop: 14 }}>
-              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, textAlign: "center" }}>계정 관리</p>
+              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, textAlign: "center" }}>{lang === "de" ? "Kontoverwaltung" : "계정 관리"}</p>
               {!showDeleteConfirm ? (
                 <button onClick={() => setShowDeleteConfirm(true)} style={{ width: "100%", padding: "9px", background: "none", border: "1px solid rgba(224,80,80,0.3)", borderRadius: 10, color: "#E05050", fontSize: 12, cursor: "pointer" }}>
-                  계정 탈퇴
+                  {lang === "de" ? "Konto löschen" : "계정 탈퇴"}
                 </button>
               ) : (
                 <div>
                   <p style={{ fontSize: 12, color: "#E05050", textAlign: "center", marginBottom: 10, lineHeight: 1.6 }}>
-                    정말 탈퇴하시겠어요?<br />모든 큐티 기록, 기도 제목이 영구 삭제돼요.
+                    {lang === "de" ? "Wirklich löschen?" : "정말 탈퇴하시겠어요?"}<br />{lang === "de" ? "Alle Daten werden dauerhaft entfernt." : "모든 큐티 기록, 기도 제목이 영구 삭제돼요."}
                   </p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>

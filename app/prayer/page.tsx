@@ -142,8 +142,8 @@ export default function PrayerPage() {
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>기도</h1>
         <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
-          기도 제목을 적어보세요. 함께 중보기도를 요청하세요.<br />
-          기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요.
+          {lang === "de" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : "기도 제목을 적어보세요. 함께 중보기도를 요청하세요."}<br />
+          {lang === "de" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : "기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요."}
         </p>
 
         {/* 탭 */}
@@ -191,7 +191,7 @@ export default function PrayerPage() {
             </p>
             <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.6 }}>
               {tab === "praying"
-                ? "+ 버튼으로 기도 제목을 적어보세요"
+                ? (lang === "de" ? "+ drücken, um ein Anliegen zu schreiben" : "+ 버튼으로 기도 제목을 적어보세요")
                 : (lang === "de" ? "Tippen Sie bei einem Gebetsanliegen auf 'Erhört'" : "기도 중인 제목에서 '응답됐어요'를 눌러보세요")}
             </p>
           </div>
@@ -217,7 +217,7 @@ export default function PrayerPage() {
                 {p.visibility === "all" && !p.is_answered && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
-                      🤲 중보기도 요청 중 · {p.prayer_count ?? 0}명 기도 중
+                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
                     </span>
                   </div>
                 )}
@@ -245,7 +245,7 @@ export default function PrayerPage() {
                     {/* 간증 */}
                     {p.testimony && (
                       <div style={{ background: "rgba(196,149,106,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, border: "1px solid rgba(196,149,106,0.2)" }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)", marginBottom: 4 }}>간증 ✍️</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)", marginBottom: 4 }}>{lang === "de" ? "Zeugnis ✍️" : "간증 ✍️"}</p>
                         <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                       </div>
                     )}
@@ -256,16 +256,16 @@ export default function PrayerPage() {
                           <>
                             <button onClick={() => { setEditId(p.id); setEditText(p.content); }}
                               style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <Pencil size={10} /> 수정
+                              <Pencil size={10} /> {lang === "de" ? "Ändern" : "수정"}
                             </button>
                             <button onClick={() => markAnswered(p.id)}
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
-                              응답됐어요 🙌
+                              {lang === "de" ? "Erhört 🙌" : "응답됐어요 🙌"}
                             </button>
                             {p.visibility !== "all" && (
                               <button onClick={() => requestIntercession(p.id)}
                                 style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Send size={10} /> 중보기도 요청
+                                <Send size={10} /> {lang === "de" ? "Fürbitte bitten" : "중보기도 요청"}
                               </button>
                             )}
                           </>

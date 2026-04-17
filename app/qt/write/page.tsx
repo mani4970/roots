@@ -145,6 +145,29 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "(위 절 탭하면 자동 추가)":        { de: "(Vers oben antippen)" },
   "행동 1":                        { de: "Handlung 1" },
   "단계":                          { de: "Schritt" },
+  "자유 큐티":                     { de: "Freie Stille Zeit" },
+  "오늘의 묵상":                   { de: "Heutige Meditation" },
+  "결단 — 말씀을 삶에 적용해보세요!":  { de: "Vorsatz — Wort im Leben anwenden!" },
+  "결단 1":                       { de: "Vorsatz 1" },
+  "결단 추가하기":                  { de: "Vorsatz hinzufügen" },
+  "큐티 완료":                     { de: "QT abschließen" },
+  "저장 중...":                   { de: "Wird gespeichert..." },
+  "성경 책":                      { de: "Buch der Bibel" },
+  "성경 책 선택":                  { de: "Buch der Bibel wählen" },
+  "시작 장":                      { de: "Anfangskapitel" },
+  "시작 절":                      { de: "Anfangsvers" },
+  "끝 절":                        { de: "Endvers" },
+  "말씀 불러오기":                  { de: "Abschnitt laden" },
+  "불러오는 중...":                { de: "Wird geladen..." },
+  "말씀 없이 자유롭게 작성하기":     { de: "Ohne Abschnitt frei schreiben" },
+  "큐티할 말씀을 먼저 선택해요":     { de: "Bitte zuerst einen Abschnitt wählen" },
+  "다시 선택":                     { de: "Neu wählen" },
+  "설교 제목":                     { de: "Predigttitel" },
+  "본문 말씀":                     { de: "Bibelstelle" },
+  "깨달음 (말씀이 내게 주는 것)":    { de: "Erkenntnis (Was das Wort mir sagt)" },
+  "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?" },
+  "구약":                         { de: "AT" },
+  "신약":                         { de: "NT" },
 };
 
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
@@ -669,7 +692,7 @@ function QTWriteContent() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
             {mode === "free" ? trQT("오늘의 말씀 찾기 (선택)", lang) : trQT("오늘의 말씀 찾기", lang)}
           </h1>
-          <p style={{ fontSize: 12, color: "var(--text3)" }}>큐티할 말씀을 먼저 선택해요</p>
+          <p style={{ fontSize: 12, color: "var(--text3)" }}>{trQT("큐티할 말씀을 먼저 선택해요", lang)}</p>
         </div>
 
         <div style={{ flex: 1, padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
@@ -687,7 +710,7 @@ function QTWriteContent() {
 
           {/* 책 선택 */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>성경 책</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
             <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
               <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
             </button>
@@ -707,13 +730,13 @@ function QTWriteContent() {
                 {/* 시작: 장 + 절 */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>시작 장</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
                     <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
                       {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}장</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>시작 절</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
                     <select value={startV} onChange={e => { setStartV(e.target.value); if(!crossChapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
                       {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
                     </select>
@@ -734,7 +757,7 @@ function QTWriteContent() {
                     </div>
                   )}
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>끝 절</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
                     <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
                       {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
                     </select>
@@ -747,7 +770,7 @@ function QTWriteContent() {
           {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
           <button onClick={loadPassage} disabled={loadingBible} className="btn-sage">
-            {loadingBible ? <><Loader2 size={16} className="spin" />불러오는 중...</> : <><BookOpen size={16} />말씀 불러오기</>}
+            {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("말씀 불러오기", lang)}</>}
           </button>
 
           {/* 말씀 추가 버튼 */}
@@ -771,7 +794,7 @@ function QTWriteContent() {
 
           {mode === "free" && (
             <button onClick={() => setBibleStep("done")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
-              말씀 없이 자유롭게 작성하기
+              {trQT("말씀 없이 자유롭게 작성하기", lang)}
             </button>
           )}
         </div>
@@ -781,11 +804,11 @@ function QTWriteContent() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "flex-end" }}>
             <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 0", maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "0 20px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>성경 책 선택</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("성경 책 선택", lang)}</h3>
                 <button onClick={() => setShowBookPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 20 }}>✕</button>
               </div>
               <div style={{ overflowY: "auto", flex: 1 }}>
-                {[{ label: "구약", books: OT_BOOKS_LOCAL }, { label: "신약", books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
+                {[{ label: trQT("구약", lang), books: OT_BOOKS_LOCAL }, { label: trQT("신약", lang), books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
                   <div key={label}>
                     <div style={{ padding: "10px 20px 4px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px" }}>{label}</p></div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "6px 16px" }}>
@@ -870,7 +893,7 @@ function QTWriteContent() {
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>자유 큐티</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT("자유 큐티", lang)}</h1>
         </div>
 
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
@@ -879,7 +902,7 @@ function QTWriteContent() {
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
-                <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>다시 선택</button>
+                <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
                 {passageVerses.map(v => (
@@ -897,7 +920,7 @@ function QTWriteContent() {
           )}
 
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>오늘의 묵상</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
             <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => setFreeText(e.target.value)} />
           </div>
 
@@ -911,20 +934,20 @@ function QTWriteContent() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <input type="text" className="input-field" placeholder={`결단 ${i + 1}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                  <input type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
             </div>
             <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-              <Plus size={14} /> 결단 추가하기
+              <Plus size={14} /> {trQT("결단 추가하기", lang)}
             </button>
           </div>
         </div>
 
         <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
           <button onClick={save} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
-            {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
+            {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
           </button>
         </div>
       </div>
@@ -972,11 +995,11 @@ function QTWriteContent() {
           {step.isSermonInfo && (
             <>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>설교 제목</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
                 <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>본문 말씀</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("본문 말씀", lang)}</label>
                 <input type="text" className="input-field" placeholder={trQT("예: 이사야 41:10 / 요한복음 3:16", lang)} value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
               </div>
             </>
@@ -986,8 +1009,8 @@ function QTWriteContent() {
           {step.isDecision && (
             <>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>깨달음 (말씀이 내게 주는 것)</label>
-                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 8 }}>오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?</p>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
+                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
                 <textarea className="textarea-field" rows={4} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onChange={e => set("meditation", e.target.value)} />
               </div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
@@ -1036,7 +1059,7 @@ function QTWriteContent() {
             {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
               <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-                {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
+                {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
               </button>
             ) : (
               <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
@@ -1235,7 +1258,7 @@ function QTWriteContent() {
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
             <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-              {saving ? <><Loader2 size={18} className="spin" />저장 중...</> : <><Check size={18} />큐티 완료</>}
+              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
             </button>
           ) : (
             <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>

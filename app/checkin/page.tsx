@@ -88,7 +88,7 @@ export default function CheckinPage() {
                       transform: on ? "scale(1.04)" : "scale(1)",
                     }}
                   >
-                    <div style={{ width: 48, height: 48, margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 32, height: 32, margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <img src={item.img} alt={item.label} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     </div>
                     <span style={{ fontSize: 9, fontWeight: on ? 700 : 500, display: "block", color: on ? group.labelColor : "var(--text2)", lineHeight: 1.3, wordBreak: "keep-all" }}>

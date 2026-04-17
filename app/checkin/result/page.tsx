@@ -98,8 +98,8 @@ function ResultContent() {
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>오늘의 말씀</h1>
-        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>선택한 마음에 맞는 말씀이에요</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>{t('result_title', lang)}</h1>
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>{t('result_sub', lang)}</p>
       </div>
 
       <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -119,17 +119,17 @@ function ResultContent() {
         {/* 결단 카드 */}
         <div className="card-terra">
           <p style={{ fontSize: 9, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
-            오늘의 결단 미션
+            {t('result_mission', lang)}
           </p>
           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>{result?.mission}</p>
         </div>
 
         {/* 홈으로만 */}
         <button onClick={() => router.push("/")} className="btn-primary" style={{ marginTop: 4 }}>
-          홈에서 확인하기 →
+          {t('result_home_btn', lang)}
         </button>
         <p style={{ textAlign: "center", fontSize: 11, color: "var(--text3)" }}>
-          홈에 말씀과 결단이 저장돼요
+          {t('result_home_sub', lang)}
         </p>
       </div>
     </div>
