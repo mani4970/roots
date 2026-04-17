@@ -186,7 +186,7 @@ function RecordContent() {
       const g = myGroups.find(g => g.id === gId);
       if (g) labels.push(`'${g.name}'`);
     });
-    return labels.length > 0 ? `${labels.join(", ")}에 공유 중` : null;
+    return labels.length > 0 ? (lang === "de" ? `Geteilt: ${labels.join(", ")}` : `${labels.join(", ")}에 공유 중`) : null;
   }
 
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
@@ -250,7 +250,7 @@ function RecordContent() {
         )}
         {isShared && (
           <button onClick={unshare} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
-            취소
+            {trR("취소", lang)}
           </button>
         )}
       </div>

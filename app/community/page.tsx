@@ -25,13 +25,13 @@ function Avatar({ url, name, size = 28, emoji = "🙏" }: { url?: string; name?:
 }
 
 const SECTIONS = [
-  { key: "opening_prayer", label: "들어가는 기도" },
-  { key: "summary", label: "본문 요약" },
-  { key: "key_verse", label: "붙잡은 말씀", italic: true },
-  { key: "meditation", label: "느낌과 묵상" },
-  { key: "application", label: "성품 (적용)" },
-  { key: "decision", label: "행동 (결단)", isDecision: true },
-  { key: "closing_prayer", label: "올려드리는 기도" },
+  { key: "opening_prayer", label: "들어가는 기도", label_de: "Eröffnungsgebet" },
+  { key: "summary", label: "본문 요약", label_de: "Zusammenfassung" },
+  { key: "key_verse", label: "붙잡은 말씀", label_de: "Schlüsselvers", italic: true },
+  { key: "meditation", label: "느낌과 묵상", label_de: "Empfinden & Meditation" },
+  { key: "application", label: "성품 (적용)", label_de: "Charakter (Anwendung)" },
+  { key: "decision", label: "행동 (결단)", label_de: "Handlung (Entschluss)", isDecision: true },
+  { key: "closing_prayer", label: "올려드리는 기도", label_de: "Abschlussgebet" },
 ];
 
 export default function CommunityPage() {
@@ -705,15 +705,15 @@ export default function CommunityPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>그룹 이름 *</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Gruppenname *" : "그룹 이름 *"}</label>
                 <input type="text" className="input-field" placeholder={lang === "de" ? "z. B. Jugendgebetsgruppe" : "예: 청년부 큐티 모임"} value={groupName} onChange={e => setGroupName(e.target.value)} />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>소개 (선택)</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Beschreibung (optional)" : "소개 (선택)"}</label>
                 <textarea className="textarea-field" rows={2} placeholder={lang === "de" ? "Gruppe beschreiben..." : "그룹을 소개해주세요..."} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>공개 설정</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{lang === "de" ? "Sichtbarkeit" : "공개 설정"}</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[{ v: true, emoji: "🌍", label: lang === "de" ? "Öffentlich" : "공개", sub: lang === "de" ? "Für alle sichtbar" : "누구나 볼 수 있어요" }, { v: false, emoji: "🔒", label: lang === "de" ? "Privat" : "비공개", sub: lang === "de" ? "Nur per Einladung" : "초대링크로만 참여" }].map(opt => (
                     <button key={String(opt.v)} onClick={() => setIsPublic(opt.v)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${isPublic === opt.v ? "var(--sage)" : "var(--border)"}`, background: isPublic === opt.v ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
