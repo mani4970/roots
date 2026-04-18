@@ -11,9 +11,7 @@ import type { Lang } from "./i18n";
 const LANG_TO_BIBLE: Record<Lang, string> = {
   ko: "KO",
   de: "DE",
-  // 나중에 추가:
-  // en: "EN",
-  // fr: "FR",
+  en: "EN",
 };
 
 export const BOOK_NAMES: Record<string, string[]> = {
