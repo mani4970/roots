@@ -239,7 +239,7 @@ export default function PrayerPage() {
                 ) : (
                   <>
                     <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)" }}>
-                      {p.content} <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })})</span>
+                      {p.content} {p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })})</span>}
                     </p>
 
                     {/* 간증 */}
@@ -271,9 +271,9 @@ export default function PrayerPage() {
                           </>
                         )}
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                      {!p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>
                         {new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}
-                      </span>
+                      </span>}
                     </div>
                   </>
                 )}

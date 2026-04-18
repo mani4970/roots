@@ -24,6 +24,7 @@ function ResultContent() {
         const today = new Date().toISOString().split("T")[0];
 
         // 오늘 이미 말씀이 있으면 API 호출 없이 기존 말씀 사용
+        // 단, 언어가 다르면 (한국어 말씀인데 독일어 사용자) 새로 요청
         const { data: existing } = await supabase
           .from("daily_checkins")
           .select("verse,reference,message,mission,completed_mission")
@@ -31,7 +32,10 @@ function ResultContent() {
           .eq("date", today)
           .maybeSingle();
 
-        if (existing?.verse) {
+        const isKoreanVerse = existing?.verse && /[가-힣]/.test(existing.verse);
+        const langMismatch = lang !== "ko" && isKoreanVerse;
+
+        if (existing?.verse && !langMismatch) {
           setResult(existing);
           setLoading(false);
           return;

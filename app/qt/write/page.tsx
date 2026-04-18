@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
+import { translateBibleRef } from "@/lib/bibleBooks";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp } from "lucide-react";
 
 const OT_BOOKS = ["창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하","열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언","전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스","오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기"];
@@ -738,7 +739,7 @@ function QTWriteContent() {
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
                     <select value={startV} onChange={e => { setStartV(e.target.value); if(!crossChapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
+                      {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                 </div>
@@ -759,7 +760,7 @@ function QTWriteContent() {
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
                     <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}절</option>)}
+                      {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                 </div>
@@ -901,7 +902,7 @@ function QTWriteContent() {
           {hasPassage && (
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef} · {translationName}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, lang)} · {translationName}</p>
                 <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
@@ -1016,8 +1017,13 @@ function QTWriteContent() {
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
                   <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-                    <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
-                    <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
+                    {lang === "de" ? <>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
+                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
+                    </> : <>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
+                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
+                    </>}
                   </p>
                 </div>
                 <div style={{ marginBottom: 10 }}>
@@ -1093,7 +1099,7 @@ function QTWriteContent() {
           <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{bibleRef}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, lang)}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {/* 번역본 선택 */}
                 <select
@@ -1177,7 +1183,7 @@ function QTWriteContent() {
           {passageVerses.length > 0 && (
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {bibleRef} · {translationName}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {translateBibleRef(bibleRef, lang)} · {translationName}</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
@@ -1215,8 +1221,13 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-              <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
-              <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
+              {lang === "de" ? <>
+                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
+                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
+              </> : <>
+                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
+                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
+              </>}
             </p>
           </div>
           <div>
