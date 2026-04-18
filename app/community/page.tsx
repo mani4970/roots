@@ -578,8 +578,8 @@ export default function CommunityPage() {
                         <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
                           {prayedIds.includes(p.id)
-                            ? (lang === "de" ? `Gebetet${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`)
-                            : (lang === "de" ? `Gemeinsam beten${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`)}
+                            ? (lang === "de" ? `Gebetet${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : lang === "en" ? `Prayed${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`)
+                            : (lang === "de" ? `Gemeinsam beten${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : lang === "en" ? `Pray together${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : `함께 기도할게요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`)}
                         </span>
                       </button>
                     </div>
@@ -622,7 +622,7 @@ export default function CommunityPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{lang === "de" ? "✅ Erhört" : lang === "en" ? "✅ Answered" : "✅ 응답됨"}</span>
                           {(p.prayer_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? `· ${p.prayer_count} haben mitgebetet` : `· ${p.prayer_count}명이 함께 기도했어요`}</span>
+                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? `· ${p.prayer_count} haben mitgebetet` : lang === "en" ? `· ${p.prayer_count} prayed together` : `· ${p.prayer_count}명이 함께 기도했어요`}</span>
                           )}
                         </div>
                         {/* ❤️ 좋아요 */}

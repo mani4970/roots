@@ -142,8 +142,8 @@ export default function PrayerPage() {
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("prayer_title", lang)}</h1>
         <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
-          {lang === "de" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : lang === "en" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : "기도 제목을 적어보세요. 함께 중보기도를 요청하세요."}<br />
-          {lang === "de" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : lang === "en" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : "기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요."}
+          {lang === "de" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : lang === "en" ? "Write prayer requests. Ask for intercession." : "기도 제목을 적어보세요. 함께 중보기도를 요청하세요."}<br />
+          {lang === "de" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : lang === "en" ? "When prayers are answered, leave a testimony." : "기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요."}
         </p>
 
         {/* 탭 */}
@@ -217,7 +217,7 @@ export default function PrayerPage() {
                 {p.visibility === "all" && !p.is_answered && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
-                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
+                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : lang === "en" ? `🤲 Intercession · ${p.prayer_count ?? 0} praying` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
                     </span>
                   </div>
                 )}

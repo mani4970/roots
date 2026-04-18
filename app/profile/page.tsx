@@ -366,7 +366,7 @@ export default function ProfilePage() {
               </div>
               {earnedCount === 0 && (
                 <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
-                  {lang === "de" ? "Nach 100 Tagen erhalten Sie die erste Frucht 🌱" : lang === "en" ? "Nach 100 Tagen erhalten Sie die erste Frucht 🌱" : "100일을 채우면 첫 번째 열매를 받아요 🌱"}
+                  {lang === "de" ? "Nach 100 Tagen erhalten Sie die erste Frucht 🌱" : lang === "en" ? "After 100 days you receive the first fruit 🌱" : "100일을 채우면 첫 번째 열매를 받아요 🌱"}
                 </p>
               )}
             </div>
@@ -377,12 +377,12 @@ export default function ProfilePage() {
       {/* 큐티 현황 달력 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
-          {lang === "de" ? `QT im ${new Date().toLocaleDateString("de-DE", {month:"long"})}` : `${new Date().getMonth() + 1}월 큐티 현황`}
+          {lang === "de" ? `QT im ${new Date().toLocaleDateString("de-DE", {month:"long"})}` : lang === "en" ? `QT in ${new Date().toLocaleDateString("en-US", {month:"long"})}` : `${new Date().getMonth() + 1}월 큐티 현황`}
           <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{lang === "de" ? " Tage" : lang === "en" ? " Tage" : "일"}</span>
         </div>
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-            {(lang === "de" ? ["So","Mo","Di","Mi","Do","Fr","Sa"] : ["일","월","화","수","목","금","토"]).map(d => (
+            {(lang === "de" ? ["So","Mo","Di","Mi","Do","Fr","Sa"] : lang === "en" ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] : ["일","월","화","수","목","금","토"]).map(d => (
               <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
             ))}
           </div>

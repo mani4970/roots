@@ -123,7 +123,7 @@ export default function QTPage() {
     setShowStartModal(true);
   }
 
-  const dateLocale = lang === "de" ? "de-DE" : "ko-KR";
+  const dateLocale = lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR";
 
   return (
     <div className="page">
