@@ -71,104 +71,104 @@ function isSunday(dateStr: string) {
 // 배열 구조를 건드리지 않아 기존 로직(step.id, step.isPassageStep 등) 그대로 동작.
 const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 6단계 제목/부제목
-  "들어가는 기도":                { de: "Eröffnungsgebet" },
-  "말씀 앞에 나아가기 전 기도":     { de: "Gebet vor dem Wort" },
-  "본문 요약 & 붙잡은 말씀":        { de: "Zusammenfassung & Schlüsselvers" },
-  "본문을 읽고 마음에 새겨요":       { de: "Den Text lesen und ins Herz aufnehmen" },
-  "느낌과 묵상":                  { de: "Empfinden & Meditation" },
-  "이 말씀이 내게 주는 의미":       { de: "Was bedeutet das Wort für mich?" },
-  "적용과 결단":                  { de: "Anwendung & Entschluss" },
-  "오늘 하루 어떻게 살 건가요?":    { de: "Wie leben Sie heute?" },
-  "올려드리는 기도":               { de: "Abschlussgebet" },
-  "말씀으로 드리는 기도":           { de: "Gebet mit dem Wort" },
+  "들어가는 기도":                { de: "Eröffnungsgebet", en: "Opening Prayer" },
+  "말씀 앞에 나아가기 전 기도":     { de: "Gebet vor dem Wort", en: "Prayer before the Word" },
+  "본문 요약 & 붙잡은 말씀":        { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse" },
+  "본문을 읽고 마음에 새겨요":       { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart" },
+  "느낌과 묵상":                  { de: "Empfinden & Meditation", en: "Reflection & Meditation" },
+  "이 말씀이 내게 주는 의미":       { de: "Was bedeutet das Wort für mich?", en: "What this Word means to me" },
+  "적용과 결단":                  { de: "Anwendung & Entschluss", en: "Application & Resolution" },
+  "오늘 하루 어떻게 살 건가요?":    { de: "Wie leben Sie heute?", en: "How will you live today?" },
+  "올려드리는 기도":               { de: "Abschlussgebet", en: "Closing Prayer" },
+  "말씀으로 드리는 기도":           { de: "Gebet mit dem Wort", en: "Prayer with the Word" },
   // 6단계 placeholder / hint
   "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz." },
-  "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen." },
+  "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart." },
   "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden." },
-  "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten." },
-  "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar." },
-  "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält..." },
-  "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen." },
+  "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you." },
+  "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the decision of the heart, action is shown through hands and feet." },
+  "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält...", en: "Hold on to the Word and pray..." },
+  "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen.", en: "Bring the Word and resolution before God once more." },
   // 6단계 진행바 라벨
-  "본문 요약":                   { de: "Zusammenf." },
-  "붙잡은 말씀":                 { de: "Schlüsselvers" },
+  "본문 요약":                   { de: "Zusammenf.", en: "Summary" },
+  "붙잡은 말씀":                 { de: "Schlüsselvers", en: "Key Verse" },
   // 주일예배
-  "설교 정보":                   { de: "Predigt-Info" },
-  "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt" },
-  "예배 전 마음을 준비해요":        { de: "Herz vor dem Gottesdienst vorbereiten" },
+  "설교 정보":                   { de: "Predigt-Info", en: "Sermon Info" },
+  "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt", en: "Write the sermon title and passage" },
+  "예배 전 마음을 준비해요":        { de: "Herz vor dem Gottesdienst vorbereiten", en: "Prepare your heart for worship" },
   "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz." },
-  "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst." },
-  "말씀 요약":                   { de: "Zusammenfassung" },
-  "설교 말씀을 내 말로 요약해요":   { de: "Predigt in eigenen Worten zusammenfassen" },
-  "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen..." },
-  "설교자가 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Predigers in eigene Worte fassen." },
-  "깨달음과 결단":                { de: "Erkenntnis & Entschluss" },
-  "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort" },
-  "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen." },
-  "예배의 마무리 기도":            { de: "Abschlussgebet des Gottesdienstes" },
-  "오늘 받은 은혜와 결단을 하나님께 올려드려요...": { de: "Die empfangene Gnade und den Entschluss vor Gott bringen..." },
-  "받은 말씀과 결단을 하나님께 올려드려요.": { de: "Das Wort und den Entschluss Gott darbringen." },
+  "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with an open heart before worship." },
+  "말씀 요약":                   { de: "Zusammenfassung", en: "Summary" },
+  "설교 말씀을 내 말로 요약해요":   { de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words" },
+  "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words..." },
+  "설교자가 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words." },
+  "깨달음과 결단":                { de: "Erkenntnis & Entschluss", en: "Insight & Resolution" },
+  "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word" },
+  "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out." },
+  "예배의 마무리 기도":            { de: "Abschlussgebet des Gottesdienstes", en: "Closing prayer of worship" },
+  "오늘 받은 은혜와 결단을 하나님께 올려드려요...": { de: "Die empfangene Gnade und den Entschluss vor Gott bringen...", en: "Bring today's grace and resolution before God..." },
+  "받은 말씀과 결단을 하나님께 올려드려요.": { de: "Das Wort und den Entschluss Gott darbringen.", en: "Offer the Word and resolution to God." },
   // 에러 메시지 / alert
-  "끝 절이 시작 절보다 작아요":      { de: "Endvers ist kleiner als Startvers" },
-  "본문을 불러오지 못했어요.":        { de: "Abschnitt konnte nicht geladen werden." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert! Sie können später weitermachen 😊" },
-  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen." },
-  "저장에 실패했어요. 다시 시도해주세요.":     { de: "Speichern fehlgeschlagen. Bitte erneut versuchen." },
+  "끝 절이 시작 절보다 작아요":      { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse" },
+  "본문을 불러오지 못했어요.":        { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage." },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert! Sie können später weitermachen 😊", en: "Saved as draft! Continue later 😊" },
+  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again." },
+  "저장에 실패했어요. 다시 시도해주세요.":     { de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again." },
   // UI 문자열
-  "오늘":                         { de: "Heute" },
-  "오늘의 말씀 찾기":                { de: "Heutigen Abschnitt finden" },
-  "오늘의 말씀 찾기 (선택)":         { de: "Heutigen Abschnitt finden (optional)" },
-  "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)": { de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)" },
-  "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...": { de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse..." },
-  "예: 두려워하지 말라":             { de: "z. B. Fürchte dich nicht" },
-  "예: 이사야 41:10 / 요한복음 3:16": { de: "z. B. Jesaja 41,10 / Johannes 3,16" },
-  "개인적이고 솔직하게 써보세요...":   { de: "Persönlich und ehrlich schreiben..." },
-  "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?": { de: "Welche Haltung nehmen Sie vor diesem Wort ein?" },
-  "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen..." },
-  "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben..." },
+  "오늘":                         { de: "Heute", en: "Today" },
+  "오늘의 말씀 찾기":                { de: "Heutigen Abschnitt finden", en: "Find today's passage" },
+  "오늘의 말씀 찾기 (선택)":         { de: "Heutigen Abschnitt finden (optional)", en: "Find today's passage (optional)" },
+  "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)": { de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)", en: "Cross-chapter (e.g. 9:25 – 10:6)" },
+  "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...": { de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse...", en: "Write freely about the Word, your thoughts and insights..." },
+  "예: 두려워하지 말라":             { de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid" },
+  "예: 이사야 41:10 / 요한복음 3:16": { de: "z. B. Jesaja 41,10 / Johannes 3,16", en: "e.g. Isaiah 41:10 / John 3:16" },
+  "개인적이고 솔직하게 써보세요...":   { de: "Persönlich und ehrlich schreiben...", en: "Write personally and honestly..." },
+  "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?": { de: "Welche Haltung nehmen Sie vor diesem Wort ein?", en: "What attitude will you take before this Word?" },
+  "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen...", en: "Summarize the text in your own words..." },
+  "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben...", en: "Write the verse that touched you or select above..." },
   // 요일 단어
-  "일": { de: "So" }, "월": { de: "Mo" }, "화": { de: "Di" }, "수": { de: "Mi" },
-  "목": { de: "Do" }, "금": { de: "Fr" }, "토": { de: "Sa" },
-  "· 오늘": { de: "· Heute" },
+  "일": { de: "So", en: "Sun" }, "월": { de: "Mo", en: "Mon" }, "화": { de: "Di", en: "Tue" }, "수": { de: "Mi", en: "Wed" },
+  "목": { de: "Do", en: "Thu" }, "금": { de: "Fr", en: "Fri" }, "토": { de: "Sa", en: "Sat" },
+  "· 오늘": { de: "· Heute", en: "· Today" },
   // 버튼 / 라벨
-  "나가기":                        { de: "Zurück" },
-  "더보기":                        { de: "Mehr" },
-  "접기":                         { de: "Weniger" },
-  "다음 단계 →":                   { de: "Nächster Schritt →" },
-  "← 이전":                       { de: "← Zurück" },
-  "💾 임시저장하고 나중에 이어쓰기":  { de: "💾 Als Entwurf speichern" },
-  "성품 (마음의 결심)":             { de: "Charakter (Haltung des Herzens)" },
-  "행동 (구체적인 실천)":           { de: "Handlung (konkretes Tun)" },
-  "행동 추가하기":                  { de: "Handlung hinzufügen" },
-  "💡 절을 탭하면 붙잡은 말씀에 추가돼요": { de: "💡 Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern" },
-  "2단계 · 본문 요약":              { de: "Schritt 2 · Zusammenfassung" },
-  "3단계 · 붙잡은 말씀":            { de: "Schritt 3 · Schlüsselvers" },
-  "(위 절 탭하면 자동 추가)":        { de: "(Vers oben antippen)" },
-  "행동 1":                        { de: "Handlung 1" },
-  "단계":                          { de: "Schritt" },
-  "자유 큐티":                     { de: "Freie Stille Zeit" },
-  "오늘의 묵상":                   { de: "Heutige Meditation" },
-  "결단 — 말씀을 삶에 적용해보세요!":  { de: "Vorsatz — Wort im Leben anwenden!" },
-  "결단 1":                       { de: "Vorsatz 1" },
-  "결단 추가하기":                  { de: "Vorsatz hinzufügen" },
-  "큐티 완료":                     { de: "QT abschließen" },
-  "저장 중...":                   { de: "Wird gespeichert..." },
-  "성경 책":                      { de: "Buch der Bibel" },
-  "성경 책 선택":                  { de: "Buch der Bibel wählen" },
-  "시작 장":                      { de: "Anfangskapitel" },
-  "시작 절":                      { de: "Anfangsvers" },
-  "끝 절":                        { de: "Endvers" },
-  "말씀 불러오기":                  { de: "Abschnitt laden" },
-  "불러오는 중...":                { de: "Wird geladen..." },
-  "말씀 없이 자유롭게 작성하기":     { de: "Ohne Abschnitt frei schreiben" },
-  "큐티할 말씀을 먼저 선택해요":     { de: "Bitte zuerst einen Abschnitt wählen" },
-  "다시 선택":                     { de: "Neu wählen" },
-  "설교 제목":                     { de: "Predigttitel" },
-  "본문 말씀":                     { de: "Bibelstelle" },
-  "깨달음 (말씀이 내게 주는 것)":    { de: "Erkenntnis (Was das Wort mir sagt)" },
-  "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?" },
-  "구약":                         { de: "AT" },
-  "신약":                         { de: "NT" },
+  "나가기":                        { de: "Zurück", en: "Exit" },
+  "더보기":                        { de: "Mehr", en: "More" },
+  "접기":                         { de: "Weniger", en: "Less" },
+  "다음 단계 →":                   { de: "Nächster Schritt →", en: "Next Step →" },
+  "← 이전":                       { de: "← Zurück", en: "← Back" },
+  "💾 임시저장하고 나중에 이어쓰기":  { de: "💾 Als Entwurf speichern", en: "💾 Save as draft" },
+  "성품 (마음의 결심)":             { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)" },
+  "행동 (구체적인 실천)":           { de: "Handlung (konkretes Tun)", en: "Action (concrete practice)" },
+  "행동 추가하기":                  { de: "Handlung hinzufügen", en: "Add action" },
+  "💡 절을 탭하면 붙잡은 말씀에 추가돼요": { de: "💡 Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "💡 Tap a verse to add it as key verse" },
+  "2단계 · 본문 요약":              { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary" },
+  "3단계 · 붙잡은 말씀":            { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse" },
+  "(위 절 탭하면 자동 추가)":        { de: "(Vers oben antippen)", en: "(Tap verse above)" },
+  "행동 1":                        { de: "Handlung 1", en: "Action 1" },
+  "단계":                          { de: "Schritt", en: "Step" },
+  "자유 큐티":                     { de: "Freie Stille Zeit", en: "Free Quiet Time" },
+  "오늘의 묵상":                   { de: "Heutige Meditation", en: "Today's Meditation" },
+  "결단 — 말씀을 삶에 적용해보세요!":  { de: "Vorsatz — Wort im Leben anwenden!", en: "Resolution — Apply the Word to life!" },
+  "결단 1":                       { de: "Vorsatz 1", en: "Resolution 1" },
+  "결단 추가하기":                  { de: "Vorsatz hinzufügen", en: "Add resolution" },
+  "큐티 완료":                     { de: "QT abschließen", en: "QT Complete" },
+  "저장 중...":                   { de: "Wird gespeichert...", en: "Saving..." },
+  "성경 책":                      { de: "Buch der Bibel", en: "Book of the Bible" },
+  "성경 책 선택":                  { de: "Buch der Bibel wählen", en: "Select a book" },
+  "시작 장":                      { de: "Anfangskapitel", en: "Start chapter" },
+  "시작 절":                      { de: "Anfangsvers", en: "Start verse" },
+  "끝 절":                        { de: "Endvers", en: "End verse" },
+  "말씀 불러오기":                  { de: "Abschnitt laden", en: "Load passage" },
+  "불러오는 중...":                { de: "Wird geladen...", en: "Loading..." },
+  "말씀 없이 자유롭게 작성하기":     { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage" },
+  "큐티할 말씀을 먼저 선택해요":     { de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first" },
+  "다시 선택":                     { de: "Neu wählen", en: "Reselect" },
+  "설교 제목":                     { de: "Predigttitel", en: "Sermon title" },
+  "본문 말씀":                     { de: "Bibelstelle", en: "Bible passage" },
+  "깨달음 (말씀이 내게 주는 것)":    { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)" },
+  "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?" },
+  "구약":                         { de: "AT", en: "OT" },
+  "신약":                         { de: "NT", en: "NT" },
 };
 
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
@@ -751,7 +751,7 @@ function QTWriteContent() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {crossChapter && (
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Endkapitel" : "끝 장"}</label>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Endkapitel" : lang === "en" ? "End chapter" : "끝 장"}</label>
                       <select value={endChapter} onChange={e => setEndChapter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
                         {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
@@ -927,7 +927,7 @@ function QTWriteContent() {
 
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>
-              {lang === "de" ? <>Vorsatz <span style={{ color: "var(--sage-dark)" }}>— Wort im Leben anwenden!</span></> : <>결단 <span style={{ color: "var(--sage-dark)" }}>— 말씀을 삶에 적용해보세요!</span></>}
+              {lang === "de" ? <>Vorsatz <span style={{ color: "var(--sage-dark)" }}>— Wort im Leben anwenden!</span></> : lang === "en" ? <>Resolution <span style={{ color: "var(--sage-dark)" }}>— Apply the Word to life!</span></> : <>결단 <span style={{ color: "var(--sage-dark)" }}>— 말씀을 삶에 적용해보세요!</span></>}
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
@@ -1020,6 +1020,9 @@ function QTWriteContent() {
                     {lang === "de" ? <>
                       <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
                       <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
+                    </> : lang === "en" ? <>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Character</span> is the decision of the heart,{" "}
+                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> is shown through hands and feet.
                     </> : <>
                       <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
                       <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
@@ -1224,6 +1227,9 @@ function QTWriteContent() {
               {lang === "de" ? <>
                 <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
                 <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
+              </> : lang === "en" ? <>
+                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Character</span> is the decision of the heart,{" "}
+                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> is shown through hands and feet.
               </> : <>
                 <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
                 <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.

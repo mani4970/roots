@@ -43,7 +43,7 @@ function JoinContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         // 비로그인 → 그룹 이름 없이 로그인 유도
-        setGroupName(lang === "de" ? "Private Gruppe" : "비공개 그룹");
+        setGroupName(lang === "de" ? "Private Gruppe" : lang === "en" ? "Private group" : "비공개 그룹");
         setIsPublic(false);
         setLoading(false);
         return;
@@ -112,7 +112,7 @@ function JoinContent() {
         ) : (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>
-              {isPublic ? (lang === "de" ? "Gruppeneinladung" : "그룹 초대") : (lang === "de" ? "🔒 Private Gruppeneinladung" : "🔒 비공개 그룹 초대")}
+              {isPublic ? (lang === "de" ? "Gruppeneinladung" : lang === "en" ? "Group invitation" : "그룹 초대") : (lang === "de" ? "🔒 Private Gruppeneinladung" : lang === "en" ? "🔒 Private group invitation" : "🔒 비공개 그룹 초대")}
             </p>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{groupName}</h2>
             {groupDesc && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{groupDesc}</p>}
@@ -127,7 +127,7 @@ function JoinContent() {
               </div>
             )}
             <button className="btn-sage" onClick={join} disabled={joining} style={{ width: "100%" }}>
-              {joining ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Gruppe beitreten" : "그룹 참여하기")}
+              {joining ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Gruppe beitreten" : lang === "en" ? "Join group" : "그룹 참여하기")}
             </button>
             <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
               Roots 계정이 없으신가요? 참여 후 가입할 수 있어요

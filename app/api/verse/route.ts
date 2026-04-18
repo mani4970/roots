@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       : "";
 
     const isDE = lang === "de";
+    const isEN = lang === "en";
     const prompt = isDE
       ? `Sie sind ein geistlicher Begleiter für christliches Wachstum.${avoidClause}
 
@@ -72,6 +73,25 @@ Bitte befolgen Sie diese Anweisungen genau:
 
 Antworten Sie NUR im JSON-Format:
 {"verse":"Bibelvers","reference":"Buch Kapitel:Vers","message":"Erklärung","mission":"Konkreter Vorsatz"}`
+      : isEN
+      ? `You are a spiritual guide helping Christian growth.${avoidClause}
+
+User's emotion today: ${emotionId}
+Suggested Bible passages: ${hints || "Psalms, Proverbs, Gospels"}
+
+Follow these instructions exactly:
+
+1. **Bible verse**: Choose a verse that resonates with today's emotion. Quote it accurately (ESV or NIV).
+
+2. **Explanation (message)**: In 2-3 sentences, explain what this verse means today for someone feeling this emotion. Reference specific words from the verse.
+
+3. **Today's resolution (mission)**: One concrete, actionable task for today.
+   - ✅ "Tell one family member today: 'I'm praying for you'"
+   - ✅ "Before bed, write down 3 things you're grateful for today"
+   - ❌ No abstract statements like "Pray" or "Trust God"
+
+Respond ONLY in JSON format:
+{"verse":"Bible verse","reference":"Book Chapter:Verse","message":"Explanation","mission":"Concrete resolution"}`
       : `당신은 크리스천의 신앙 성장을 돕는 영적 가이드입니다.${avoidClause}
 
 사용자의 오늘 감정 상태: ${emotionId}
@@ -134,6 +154,14 @@ JSON 형식으로만 응답하세요 (다른 텍스트 없이):
         reference: "Matthäus 11:28",
         message: "Was auch immer Sie heute trägt – Gott möchte es gemeinsam mit Ihnen tragen. Sie müssen nicht alles alleine bewältigen.",
         mission: "Legen Sie heute Abend vor dem Schlafen das Handy weg, schließen Sie die Augen und sagen Sie laut: 'Herr, danke für heute. Bitte sei morgen wieder bei mir.'",
+      });
+    }
+    if (lang === "en") {
+      return NextResponse.json({
+        verse: "Come to me, all who labor and are heavy laden, and I will give you rest.",
+        reference: "Matthew 11:28",
+        message: "Whatever burden you carry today, the Lord wants to carry it with you. You don't have to handle it all alone.",
+        mission: "Tonight before bed, put your phone down, close your eyes for 2 minutes and say aloud: 'Lord, thank you for today. Please be with me again tomorrow.'",
       });
     }
     return NextResponse.json({
