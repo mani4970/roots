@@ -618,11 +618,35 @@ export default function CommunityPage() {
                           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                         </div>
                       )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{lang === "de" ? "✅ Erhört" : "✅ 응답됨"}</span>
-                        {(p.prayer_count ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? `· ${p.prayer_count} haben mitgebetet` : `· ${p.prayer_count}명이 함께 기도했어요`}</span>
-                        )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{lang === "de" ? "✅ Erhört" : "✅ 응답됨"}</span>
+                          {(p.prayer_count ?? 0) > 0 && (
+                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? `· ${p.prayer_count} haben mitgebetet` : `· ${p.prayer_count}명이 함께 기도했어요`}</span>
+                          )}
+                        </div>
+                        {/* ❤️ 좋아요 */}
+                        <button
+                          onClick={async () => {
+                            const key = `prayer_liked_${p.id}`;
+                            const alreadyLiked = localStorage.getItem(key);
+                            if (alreadyLiked) return; // 중복 방지
+                            localStorage.setItem(key, "true");
+                            const newCount = (p.like_count ?? 0) + 1;
+                            await createClient().from("prayer_items").update({ like_count: newCount }).eq("id", p.id);
+                            setAnsweredPrayers(prev => prev.map(ap => ap.id === p.id ? { ...ap, like_count: newCount } : ap));
+                          }}
+                          style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 20 }}
+                        >
+                          <span style={{ fontSize: 18, transition: "transform 0.2s", transform: localStorage.getItem(`prayer_liked_${p.id}`) ? "scale(1.1)" : "scale(1)" }}>
+                            {localStorage.getItem(`prayer_liked_${p.id}`) ? "❤️" : "🤍"}
+                          </span>
+                          {(p.like_count ?? 0) > 0 && (
+                            <span style={{ fontSize: 12, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "var(--terra)" : "var(--text3)", fontWeight: 600 }}>
+                              {p.like_count}
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}

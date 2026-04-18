@@ -902,7 +902,7 @@ function QTWriteContent() {
           {hasPassage && (
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, lang)} · {translationName}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
                 <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
@@ -1099,7 +1099,7 @@ function QTWriteContent() {
           <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, lang)}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {/* 번역본 선택 */}
                 <select
@@ -1183,7 +1183,7 @@ function QTWriteContent() {
           {passageVerses.length > 0 && (
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {translateBibleRef(bibleRef, lang)} · {translationName}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (

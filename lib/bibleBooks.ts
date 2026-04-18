@@ -54,19 +54,21 @@ export function translateBookName(koName: string, lang: Lang): string {
  * "창 1:1-10" (약어) → 그대로 (약어는 변환 안 함)
  */
 export function translateBibleRef(ref: string, lang: Lang): string {
-  if (lang === "ko" || !ref) return ref;
+  if (!ref) return ref;
 
-  const koBooks = BOOK_NAMES["KO"];
-  const bibleLang = LANG_TO_BIBLE[lang] ?? "KO";
-  const targetBooks = BOOK_NAMES[bibleLang];
+  const targetLangCode = LANG_TO_BIBLE[lang] ?? "KO";
+  const targetBooks = BOOK_NAMES[targetLangCode];
   if (!targetBooks) return ref;
 
-  // 가장 긴 한국어 책 이름부터 매칭 시도 (예: "역대하"가 "역대"보다 먼저 매칭되게)
-  const sortedKo = [...koBooks].sort((a, b) => b.length - a.length);
-  for (const koBook of sortedKo) {
-    if (ref.startsWith(koBook)) {
-      const idx = koBooks.indexOf(koBook);
-      return targetBooks[idx] + ref.slice(koBook.length);
+  // 모든 언어의 책 이름에서 매칭 시도 (가장 긴 이름부터)
+  for (const [langCode, books] of Object.entries(BOOK_NAMES)) {
+    const sorted = [...books].sort((a, b) => b.length - a.length);
+    for (const bookName of sorted) {
+      if (ref.startsWith(bookName)) {
+        const idx = books.indexOf(bookName);
+        if (langCode === targetLangCode) return ref; // 이미 대상 언어
+        return targetBooks[idx] + ref.slice(bookName.length);
+      }
     }
   }
 
