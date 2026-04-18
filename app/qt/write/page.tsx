@@ -244,7 +244,7 @@ function QTWriteContent() {
   const OT_BOOKS_LOCAL = currentBookNames.slice(0, 39);
   const NT_BOOKS_LOCAL = currentBookNames.slice(39);
   // 말씀 선택 (단일)
-  const [book, setBook] = useState("창세기");
+  const [book, setBook] = useState(currentBookNames[0] ?? "창세기");
   const [chapter, setChapter] = useState("1");
   const [startV, setStartV] = useState("1");
   const [endV, setEndV] = useState("1");
@@ -467,7 +467,7 @@ function QTWriteContent() {
         const v1 = (d1.verses??[]).map((v:any)=>({...v, num: `${chapter}:${v.num}`}));
         const v2 = (d2.verses??[]).map((v:any)=>({...v, num: `${endChapter}:${v.num}`}));
         allVerses = [...v1, ...v2];
-        refStr = `${book.length>3?book.slice(0,3):book} ${chapter}:${startV}-${endChapter}:${endV}`;
+        refStr = `${book} ${chapter}:${startV}-${endChapter}:${endV}`;
       } else {
         if (parseInt(endV) < parseInt(startV)) { setBibleError(trQT("끝 절이 시작 절보다 작아요", lang)); setLoadingBible(false); return; }
         const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
@@ -501,7 +501,7 @@ function QTWriteContent() {
         const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
         const d2 = await r2.json();
         vers = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${endChapter}:${v.num}`}))];
-        refStr = `${book.length>3?book.slice(0,3):book} ${chapter}:${startV}-${endChapter}:${endV}`;
+        refStr = `${book} ${chapter}:${startV}-${endChapter}:${endV}`;
       } else {
         const r = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
         const d = await r.json();
@@ -733,7 +733,7 @@ function QTWriteContent() {
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
                     <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}장</option>)}
+                      {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                   <div>
@@ -751,9 +751,9 @@ function QTWriteContent() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {crossChapter && (
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>끝 장</label>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Endkapitel" : "끝 장"}</label>
                       <select value={endChapter} onChange={e => setEndChapter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}장</option>)}
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                   )}
@@ -927,7 +927,7 @@ function QTWriteContent() {
 
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>
-              결단 <span style={{ color: "var(--sage-dark)" }}>— 말씀을 삶에 적용해보세요!</span>
+              {lang === "de" ? <>Vorsatz <span style={{ color: "var(--sage-dark)" }}>— Wort im Leben anwenden!</span></> : <>결단 <span style={{ color: "var(--sage-dark)" }}>— 말씀을 삶에 적용해보세요!</span></>}
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (

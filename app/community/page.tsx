@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
+import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
 
@@ -384,14 +385,14 @@ export default function CommunityPage() {
             </div>
             {r.bible_ref && (
               <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
-                <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{r.bible_ref}</p>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{translateBibleRef(r.bible_ref, lang)}</p>
                 {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", whiteSpace: "pre-line" }}>"{r.key_verse}"</p>}
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).map(({ key, label, italic, isDecision }) => (
+              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).map(({ key, label, label_de, italic, isDecision }) => (
                 <div key={key}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{label}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{lang === "de" ? label_de : label}</p>
                   {isDecision ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {r[key].split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
@@ -471,7 +472,7 @@ export default function CommunityPage() {
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
@@ -649,7 +650,7 @@ export default function CommunityPage() {
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref || (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
