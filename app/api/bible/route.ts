@@ -106,10 +106,9 @@ export async function GET(req: NextRequest) {
       text: v.text,
     }));
 
-    const short = BOOK_SHORT[book] ?? book;
     const reference = endVerse > startVerse
-      ? `${short} ${chapter}:${startVerse}-${endVerse}`
-      : `${short} ${chapter}:${startVerse}`;
+      ? `${book} ${chapter}:${startVerse}-${endVerse}`
+      : `${book} ${chapter}:${startVerse}`;
 
     const fullText = verses.map((v: any) => `${v.num} ${v.text}`).join("\n");
 

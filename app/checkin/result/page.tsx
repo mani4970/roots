@@ -14,7 +14,21 @@ function ResultContent() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // lang이 localStorage에서 확정될 때까지 대기
+  const [langReady, setLangReady] = useState(false);
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("roots_lang");
+      if (stored && stored !== "ko") {
+        // useLang이 아직 "ko"인데 stored는 "de" → 기다림
+        if (lang !== stored) return;
+      }
+    }
+    setLangReady(true);
+  }, [lang]);
+
+  useEffect(() => {
+    if (!langReady) return;
     async function loadVerse() {
       try {
         const supabase = createClient();
@@ -87,7 +101,7 @@ function ResultContent() {
       }
     }
     loadVerse();
-  }, []);
+  }, [langReady]);
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
