@@ -142,9 +142,9 @@ export default function ProfilePage() {
       });
       setFeedbackText("");
       setShowFeedbackModal(false);
-      alert(lang === "de" ? "Vielen Dank für Ihr Feedback! 😊" : lang === "en" ? "Vielen Dank für Ihr Feedback! 😊" : "소중한 의견 감사해요! 😊");
+      alert(lang === "de" ? "Vielen Dank für Ihr Feedback! 😊" : lang === "en" ? "Thank you for your feedback! 😊" : "소중한 의견 감사해요! 😊");
     } catch (e) {
-      alert(lang === "de" ? "Senden fehlgeschlagen. Bitte erneut versuchen." : lang === "en" ? "Senden fehlgeschlagen. Bitte erneut versuchen." : "전송에 실패했어요. 다시 시도해 주세요.");
+      alert(lang === "de" ? "Senden fehlgeschlagen. Bitte erneut versuchen." : lang === "en" ? "Sending failed. Please try again." : "전송에 실패했어요. 다시 시도해 주세요.");
     }
     setSendingFeedback(false);
   }
@@ -166,7 +166,7 @@ export default function ProfilePage() {
       await supabase.auth.signOut();
       router.push("/login");
     } catch (e) {
-      alert(lang === "de" ? "Fehler beim Löschen. Bitte kontaktieren Sie cookiko313@gmail.com." : lang === "en" ? "Fehler beim Löschen. Bitte kontaktieren Sie cookiko313@gmail.com." : "계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
+      alert(lang === "de" ? "Fehler beim Löschen. Bitte kontaktieren Sie cookiko313@gmail.com." : lang === "en" ? "Error deleting. Please contact cookiko313@gmail.com." : "계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
     }
     setDeletingAccount(false);
   }
@@ -378,7 +378,7 @@ export default function ProfilePage() {
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
           {lang === "de" ? `QT im ${new Date().toLocaleDateString("de-DE", {month:"long"})}` : lang === "en" ? `QT in ${new Date().toLocaleDateString("en-US", {month:"long"})}` : `${new Date().getMonth() + 1}월 큐티 현황`}
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{lang === "de" ? " Tage" : lang === "en" ? " Tage" : "일"}</span>
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{lang === "de" ? " Tage" : lang === "en" ? " Days" : "일"}</span>
         </div>
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
