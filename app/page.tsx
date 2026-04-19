@@ -191,15 +191,15 @@ export default function HomePage() {
 
     // 뱃지 팝업 (우선순위대로)
     if (newStreak >= 7 && !alreadyHasRootsman) {
-      setBadgePopup({ img: "/badge_rootsman.png", title: lang === "de" ? "Rootsman-Abzeichen! 🧑‍🌾" : lang === "en" ? "Rootsman-Abzeichen! 🧑‍🌾" : "루츠맨 배지 획득! 🧑‍🌾", msg: t("badge_rootsman_msg", lang) });
+      setBadgePopup({ img: "/badge_rootsman.png", title: lang === "de" ? "Rootsman-Abzeichen! 🧑‍🌾" : lang === "en" ? "Obtain Rootsman Badge! 🧑‍🌾" : "루츠맨 배지 획득! 🧑‍🌾", msg: t("badge_rootsman_msg", lang) });
     } else if (newStreak >= 40 && !alreadyHasMose) {
-      setBadgePopup({ img: "/badge_mose.png", title: lang === "de" ? "Mose-Abzeichen! 🪄" : lang === "en" ? "Mose-Abzeichen! 🪄" : "모세 배지 획득! 🪄", msg: t("badge_mose_msg", lang) });
+      setBadgePopup({ img: "/badge_mose.png", title: lang === "de" ? "Mose-Abzeichen! 🪄" : lang === "en" ? "Obtain Mose Badge! 🪄" : "모세 배지 획득! 🪄", msg: t("badge_mose_msg", lang) });
     } else if (newStreak >= 52 && !alreadyHasRootsmanBible) {
-      setBadgePopup({ img: "/badge_rootsman_bible.png", title: lang === "de" ? "Rootsman Bibel-Abzeichen! 📖" : lang === "en" ? "Rootsman Bibel-Abzeichen! 📖" : "루츠맨 성경 배지 획득! 📖", msg: t("badge_rootsman_bible_msg", lang) });
+      setBadgePopup({ img: "/badge_rootsman_bible.png", title: lang === "de" ? "Rootsman Bibel-Abzeichen! 📖" : lang === "en" ? "Obtain Rootsman Bibel Badge! 📖" : "루츠맨 성경 배지 획득! 📖", msg: t("badge_rootsman_bible_msg", lang) });
     } else if (newStreak >= 111 && !alreadyHasDavid) {
-      setBadgePopup({ img: "/badge_david.png", title: lang === "de" ? "David-Abzeichen! 🗡️" : lang === "en" ? "David-Abzeichen! 🗡️" : "다윗 배지 획득! 🗡️", msg: t("badge_david_msg", lang) });
+      setBadgePopup({ img: "/badge_david.png", title: lang === "de" ? "David-Abzeichen! 🗡️" : lang === "en" ? "Obtain David Badge! 🗡️" : "다윗 배지 획득! 🗡️", msg: t("badge_david_msg", lang) });
     } else if (newStreak >= 900 && !alreadyHasAngel) {
-      setBadgePopup({ img: "/angel.png", title: lang === "de" ? "Engel-Abzeichen! 👼" : lang === "en" ? "Engel-Abzeichen! 👼" : "천사 배지 획득! 👼", msg: t("badge_angel_msg", lang) });
+      setBadgePopup({ img: "/angel.png", title: lang === "de" ? "Engel-Abzeichen! 👼" : lang === "en" ? "Obtain Angel Badge! 👼" : "천사 배지 획득! 👼", msg: t("badge_angel_msg", lang) });
     }
   }
 
@@ -402,7 +402,7 @@ export default function HomePage() {
               const name = profile?.name ?? t("profile_default_name", lang);
               // {name} placeholder를 치환한 후, "정원"/"Garten" 부분을 <em>으로 감쌈
               const full = t("home_garden_my", lang, { name });
-              const emWord = lang === "de" ? "Garten" : lang === "en" ? "Garten" : "정원";
+              const emWord = lang === "de" ? "Garten" : lang === "en" ? "Garden" : "정원";
               const idx = full.lastIndexOf(emWord);
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;
