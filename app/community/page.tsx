@@ -731,11 +731,11 @@ export default function CommunityPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Gruppenname *" : lang === "en" ? "Group name *" : "그룹 이름 *"}</label>
-                <input type="text" className="input-field" placeholder={lang === "de" ? "z. B. Jugendgebetsgruppe" : lang === "en" ? "z. B. Jugendgebetsgruppe" : "예: 청년부 큐티 모임"} value={groupName} onChange={e => setGroupName(e.target.value)} />
+                <input type="text" className="input-field" placeholder={lang === "de" ? "z. B. Jugendgebetsgruppe" : lang === "en" ? "e.g. youth prayer group" : "예: 청년부 큐티 모임"} value={groupName} onChange={e => setGroupName(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Beschreibung (optional)" : lang === "en" ? "Description (optional)" : "소개 (선택)"}</label>
-                <textarea className="textarea-field" rows={2} placeholder={lang === "de" ? "Gruppe beschreiben..." : lang === "en" ? "Gruppe beschreiben..." : "그룹을 소개해주세요..."} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
+                <textarea className="textarea-field" rows={2} placeholder={lang === "de" ? "Gruppe beschreiben" : lang === "en" ? "Describe group" : "그룹을 소개해주세요"} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{lang === "de" ? "Sichtbarkeit" : lang === "en" ? "Visibility" : "공개 설정"}</label>
