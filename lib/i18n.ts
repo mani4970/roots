@@ -381,7 +381,7 @@ export const T = {
   home_decision_celeb_sub:{ ko: "말씀을 삶으로 살아내는 당신을 축복해요 🌱", de: "Gesegnet, wer Gottes Wort im Leben umsetzt 🌱", en: "Blessed are those who live by God's Word 🌿" },
 
   // "{name}의 정원" / "{name}s Garten"
-  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten" },
+  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden" },
 
   // ── TreeGrowth 하드코딩 ──
   tree_stage_0:  { ko: "씨앗 심겨졌어요",   de: "Samen gepflanzt", en: "Seed planting" },
@@ -408,11 +408,11 @@ export const T = {
   tree_desc_10:  { ko: "열매가 가득한 정원이에요!",      de: "Ein Garten voller Früchte!", en: "A garden full of fruit!" },
 
   // {n} placeholder 사용
-  tree_day_count:   { ko: "{n}일째",                de: "Tag {n}" },
-  tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten" },
-  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage" },
-  tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge" },
-  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪" },
+  tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
+  tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",            en: "{n}. Garden" },
+  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",             en: "{n} / 10 Days" },
+  tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} Days in a row" },
+  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back 💪" },
 
   // TreeGrowth 축하 sub messages
   tree_sub_1:   { ko: "씨앗이 땅속에서 뿌리를 내리기 시작했어요!",  de: "Der Samen beginnt, Wurzeln zu schlagen!", en: "The seed is starting to take root!" },
@@ -552,8 +552,8 @@ export const T = {
   qtw_sun_s1_hint:  { ko: "예배 전 마음을 열고 주님께 나아가는 기도예요.", de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with open heart before worship." },
   qtw_sun_s2_title: { ko: "말씀 요약",           de: "Zusammenfassung", en: "Summary" },
   qtw_sun_s2_sub:   { ko: "설교 말씀을 내 말로 요약해요", de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words" },
-  qtw_sun_s2_ph:    { ko: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words..." },
-  qtw_sun_s2_hint:  { ko: "설교자가 전한 핵심 메시지를 나의 말로 정리해요.", de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words." },
+  qtw_sun_s2_ph:    { ko: "오늘 설교 내용을 요약해보세요", de: "Fassen Sie die Predigt zusammen", en: "Summarize the message" },
+  qtw_sun_s2_hint:  { ko: "목사님이 전한 핵심 메시지를 나의 말로 정리해요.", de: "Die Kernbotschaft des Pastors in eigene Worte fassen.", en: "Put the pastor's core message in your own words." },
   qtw_sun_s3_title: { ko: "깨달음과 결단",       de: "Erkenntnis & Entschluss", en: "Insight & Resolution" },
   qtw_sun_s3_sub:   { ko: "말씀이 내게 주는 깨달음과 결단", de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word" },
   qtw_sun_s3_hint:  { ko: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out." },
