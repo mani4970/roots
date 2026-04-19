@@ -20,7 +20,7 @@ function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" |
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return "home_greeting_morning";
   if (h >= 12 && h < 17) return "home_greeting_afternoon";
-  if (h >= 17 && h < 21) return "home_greeting_evening";
+  if (h >= 17 && h < 19) return "home_greeting_evening";
   return "home_greeting_night";
 }
 
