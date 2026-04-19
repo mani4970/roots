@@ -265,7 +265,7 @@ export const T = {
   welcome_back_btn:      { ko: "오늘 루틴 시작하기 🌱",   de: "Routine starten 🌱", en: "Start fresh today" },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!" },
   welcome_back_30_sub:   { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!" },
-  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!" },
+  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!",         en: "It's been {n} days!" },
   welcome_back_14_sub:   { ko: "괜찮아요, 언제든 돌아오면 돼요.\n오늘부터 다시 함께 자라요!", de: "Kein Problem, Sie können immer zurückkommen.\nFangen wir heute wieder an!", en: "No problem, you can always come back.\nLet's start fresh today!" },
   welcome_back_7_sub:    { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 힘내봐요 💪", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine 💪", en: "Your tree has been waiting.\nLet's continue with the routine!" },
   welcome_back_1_sub:    { ko: "괜찮아요! 오늘 다시 시작해봐요.\n조금씩 꾸준히가 중요해요 🌱", de: "Kein Problem! Fangen wir heute neu an.\nKleine Schritte zählen 🌱", en: "No problem! Let's start fresh.\nSmall steps count too!" },
@@ -280,7 +280,7 @@ export const T = {
   garden_badge_title:   { ko: "성령의 열매 획득! 🎉",       de: "Frucht des Geistes erhalten! 🎉", en: "Fruit of the Spirit received! 🎉" },
   garden_badge_100days: { ko: "100일 동안 말씀에 뿌리내린 당신에게\n하나님이 주시는 열매예요!", de: "100 Tage in Gottes Wort verwurzelt –\ndas ist Ihre Frucht von Gott!", en: "100 days rooted in God's Word –\nthis is your fruit from above!" },
   garden_badge_profile: { ko: "프로필에서 확인할 수 있어요 ✨",  de: "Im Profil ansehen ✨", en: "View in profile ✨" },
-  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째 🔥", de: "Der Garten wurde aktualisiert! Tag {n} 🔥" },
+  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째 🔥", de: "Der Garten wurde aktualisiert! Tag {n} 🔥", en: "The garden has been updated! Day {n} 🔥" },
 
   // 성령의 열매 이름
   fruit_love:      { ko: "사랑",    de: "Liebe", en: "Love" },
@@ -376,7 +376,7 @@ export const T = {
   home_routine_done:      { ko: "완료 ✓",              de: "Erledigt ✓", en: "Done ✓" },
   home_routine_notdone:   { ko: "미완료",               de: "Offen", en: "Open" },
   home_celebration_title: { ko: "오늘 루틴 완료! 🎉",    de: "Routine erledigt! 🎉", en: "Today's routine done! 🎉" },
-  home_celebration_sub_prefix: { ko: "오늘 하루 하나님과 더 가까워진 당신을 축복합니다!\n", de: "Gesegnet sei dieser Tag, an dem Sie Gott nähergekommen sind!\n", en: "" },
+  home_celebration_sub_prefix: { ko: "오늘 하루 하나님과 더 가까워진 당신을 축복합니다!\n", de: "Gesegnet sei dieser Tag, an dem Sie Gott nähergekommen sind!\n", en: "Blessed is this day on which you have drawn closer to God!\n" },
   home_decision_celeb:    { ko: "결단 실천 완료! ✊",     de: "Vorsatz umgesetzt! ✊", en: "Resolution complete! ✊" },
   home_decision_celeb_sub:{ ko: "말씀을 삶으로 살아내는 당신을 축복해요 🌱", de: "Gesegnet, wer Gottes Wort im Leben umsetzt 🌱", en: "Blessed are those who live by God's Word 🌿" },
 
