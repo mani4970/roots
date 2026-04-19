@@ -282,7 +282,7 @@ export default function CommunityPage() {
           .select("id").eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
           await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
-          setBadgePopup({ img: "/badge_paul.png", title: lang === "de" ? "Paulus-Abzeichen! 📜" : lang === "en" ? "Paulus-Abzeichen! 📜" : "바울 배지 획득! 📜", msg: t("badge_paul_msg", lang) });
+          setBadgePopup({ img: "/badge_paul.png", title: lang === "de" ? "Paulus-Abzeichen! 📜" : lang === "en" ? "Paul Badge! 📜" : "바울 배지 획득! 📜", msg: t("badge_paul_msg", lang) });
         }
       }
     } catch (e) {}
@@ -303,7 +303,7 @@ export default function CommunityPage() {
             .select("id").eq("created_by", user.id);
           if ((myGroups?.length ?? 0) === 0) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_peter.png", title: lang === "de" ? "Petrus-Abzeichen! 🐟" : lang === "en" ? "Petrus-Abzeichen! 🐟" : "베드로 배지 획득! 🐟", msg: t("badge_peter_msg", lang) });
+            setBadgePopup({ img: "/badge_peter.png", title: lang === "de" ? "Petrus-Abzeichen! 🐟" : lang === "en" ? "Peter Badge! 🐟" : "베드로 배지 획득! 🐟", msg: t("badge_peter_msg", lang) });
           }
         }
       }
@@ -361,7 +361,7 @@ export default function CommunityPage() {
           );
         })}
         {total > 0 && (
-          <span style={{ fontSize: 11, color: "var(--text3)", alignSelf: "center", marginLeft: 2 }}>{lang === "de" ? `Gesamt: ${total}` : `총 ${total}개`}</span>
+          <span style={{ fontSize: 11, color: "var(--text3)", alignSelf: "center", marginLeft: 2 }}>{lang === "de" ? `Gesamt: ${total}` : lang === "en" ? `Total: ${total}` : `총 ${total}개`}</span>
         )}
       </div>
     );
@@ -433,7 +433,7 @@ export default function CommunityPage() {
             </span>
           </div>
           {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
-          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{lang === "de" ? `👥 ${selectedGroup.member_count} Mitglieder` : `👥 ${selectedGroup.member_count}명 참여 중`}</p>
+          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{lang === "de" ? `👥 ${selectedGroup.member_count} Mitglieder` : lang === "en" ? `👥 ${selectedGroup.member_count} members` : `👥 ${selectedGroup.member_count}명 참여 중`}</p>
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -441,11 +441,11 @@ export default function CommunityPage() {
             {!selectedGroup.isMember ? (
               <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ flex: 1 }}>{lang === "de" ? "Beitreten" : lang === "en" ? "Join" : "참여하기"}</button>
             ) : (
-              <div style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", textAlign: "center", fontSize: 12, color: "var(--text3)", fontWeight: 600 }}>{lang === "de" ? "✓ Mitglied" : lang === "en" ? "✓ Mitglied" : "✓ 참여 중"}</div>
+              <div style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", textAlign: "center", fontSize: 12, color: "var(--text3)", fontWeight: 600 }}>{lang === "de" ? "✓ Mitglied" : lang === "en" ? "✓ Member" : "✓ 참여 중"}</div>
             )}
             <button onClick={() => copyInviteLink(selectedGroup.id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: copiedId === selectedGroup.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copiedId === selectedGroup.id ? "var(--sage-dark)" : "var(--text2)", fontWeight: 600 }}>
               {copiedId === selectedGroup.id ? <Check size={13} /> : <Copy size={13} />}
-              {copiedId === selectedGroup.id ? (lang === "de" ? "Kopiert!" : lang === "en" ? "Kopiert!" : "복사됨!") : (lang === "de" ? "Link kopieren" : lang === "en" ? "Link kopieren" : "링크 복사")}
+              {copiedId === selectedGroup.id ? (lang === "de" ? "Kopiert!" : lang === "en" ? "Copied!" : "복사됨!") : (lang === "de" ? "Link kopieren" : lang === "en" ? "Copy link" : "링크 복사")}
             </button>
             <button onClick={() => shareInvite(selectedGroup)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
               <Share2 size={13} />{lang === "de" ? "Einladen" : lang === "en" ? "Invite" : "초대"}
@@ -537,8 +537,8 @@ export default function CommunityPage() {
             {/* 기도 중 / 응답됐어요 서브탭 */}
             <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
               {[
-                { key: "praying", label: lang === "de" ? "Im Gebet 🙏" : lang === "en" ? "Im Gebet 🙏" : "기도 중 🙏", count: prayers.length },
-                { key: "answered", label: lang === "de" ? "Erhört ✨" : lang === "en" ? "Erhört ✨" : "응답됐어요 ✨", count: answeredPrayers.length },
+                { key: "praying", label: lang === "de" ? "Im Gebet 🙏" : lang === "en" ? "Praying 🙏" : "기도 중 🙏", count: prayers.length },
+                { key: "answered", label: lang === "de" ? "Erhört ✨" : lang === "en" ? "Answered ✨" : "응답됐어요 ✨", count: answeredPrayers.length },
               ].map(({ key, label, count }) => (
                 <button
                   key={key}
@@ -614,7 +614,7 @@ export default function CommunityPage() {
                       {/* 간증 */}
                       {p.testimony && (
                         <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{lang === "de" ? "🙌 Gebetszeugnis" : lang === "en" ? "🙌 Gebetszeugnis" : "🙌 기도 응답 간증"}</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{lang === "de" ? "🙌 Gebetszeugnis" : lang === "en" ? "🙌 Prayer testimony" : "🙌 기도 응답 간증"}</p>
                           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                         </div>
                       )}

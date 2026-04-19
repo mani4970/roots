@@ -250,7 +250,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge 🔥" : lang === "en" ? "Tage in Folge 🔥" : "일 연속 기록 중 🔥"}</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge 🔥" : lang === "en" ? "days in a row 🔥" : "일 연속 기록 중 🔥"}</p>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
@@ -430,7 +430,7 @@ export default function ProfilePage() {
         <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{lang === "de" ? "💬 Feedback senden" : lang === "en" ? "💬 Send feedback" : "💬 의견 보내기"}</h3>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{lang === "de" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : lang === "en" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : "불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!"}</p>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{lang === "de" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : lang === "en" ? "Criticism, ideas or encouragement — all welcome!" : "불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!"}</p>
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
