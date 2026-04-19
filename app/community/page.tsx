@@ -331,13 +331,13 @@ export default function CommunityPage() {
   }
 
   function shareInvite(group: any) {
-    const text = lang === "de" ? `🌱 Roots - Einladung zur Gruppe ${group.name}!\n\nEine christliche App zum Verwurzeln in Gottes Wort.\nKomm dazu 👇\n${APP_URL}/join?group=${group.id}` : `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
+    const text = lang === "de" ? `🌱 Roots - Einladung zur Gruppe ${group.name}!\n\nEine christliche App zum Verwurzeln in Gottes Wort.\nKomm dazu 👇\n${APP_URL}/join?group=${group.id}` : lang === "en" ? `🌱 Roots - Invitation to group ${group.name}!\n\nA Christian app to root yourself in God's Word.\nJoin us 👇\n${APP_URL}/join?group=${group.id}` : `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
     if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
     else copyInviteLink(group.id);
   }
 
   function shareApp() {
-    const text = lang === "de" ? `🌱 Roots - In Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App mit Stille Zeit, Gebet und Vorsätzen.\nMach mit! 👇\n${APP_URL}` : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
+    const text = lang === "de" ? `🌱 Roots - In Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App mit Stille Zeit, Gebet und Vorsätzen.\nMach mit! 👇\n${APP_URL}` : lang === "en" ? `🌱 Roots - Rooted in God's Word, growing together\n\nA Christian app with Quiet Time, Prayer and Resolutions.\nJoin us! 👇\n${APP_URL}` : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
     if (navigator.share) navigator.share({ title: lang === "de" ? "Roots-Einladung" : lang === "en" ? "Roots-Einladung" : "Roots 앱 초대", text });
     else navigator.clipboard.writeText(text);
   }

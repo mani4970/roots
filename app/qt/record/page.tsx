@@ -306,7 +306,7 @@ function RecordContent() {
 
             {selectedTargets.length > 0 && (
               <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : "곳에 나누기"}
+                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : lang === "en" ? "places to share" : "곳에 나누기"}
               </p>
             )}
 
