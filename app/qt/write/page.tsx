@@ -82,9 +82,9 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "올려드리는 기도":               { de: "Abschlussgebet", en: "Closing Prayer" },
   "말씀으로 드리는 기도":           { de: "Gebet mit dem Wort", en: "Prayer with the Word" },
   // 6단계 placeholder / hint
-  "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart." },
+  "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz." },
   "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart." },
-  "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "What does this word mean for my life?\nWrite honestly about your feelings." },
+  "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden." },
   "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you." },
   "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the decision of the heart, action is shown through hands and feet." },
   "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält...", en: "Hold on to the Word and pray..." },
@@ -96,12 +96,12 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "설교 정보":                   { de: "Predigt-Info", en: "Sermon Info" },
   "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt", en: "Write the sermon title and passage" },
   "예배 전 마음을 준비해요":        { de: "Herz vor dem Gottesdienst vorbereiten", en: "Prepare your heart for worship" },
-  "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart." },
+  "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz." },
   "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with an open heart before worship." },
   "말씀 요약":                   { de: "Zusammenfassung", en: "Summary" },
   "설교 말씀을 내 말로 요약해요":   { de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words" },
   "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words..." },
-  "목사님이 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Pastors in eigene Worte fassen.", en: "Put the pastor's core message in your own words." },
+  "설교자가 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words." },
   "깨달음과 결단":                { de: "Erkenntnis & Entschluss", en: "Insight & Resolution" },
   "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word" },
   "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out." },
@@ -204,7 +204,7 @@ const BAR_LABELS_6 = ["들어가는 기도", "본문 요약", "붙잡은 말씀"
 const STEPS_SUNDAY = [
   { id: "sermon_info", title: "설교 정보", subtitle: "설교 제목과 본문 말씀을 적어요", isSermonInfo: true },
   { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
-  { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "목사님이 전한 핵심 메시지를 나의 말로 정리해요." },
+  { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
   { id: "meditation", title: "깨달음과 결단", subtitle: "말씀이 내게 주는 깨달음과 결단", placeholder: "", hint: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", isDecision: true },
   { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜와 결단을 하나님께 올려드려요...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },
 ];
@@ -230,7 +230,7 @@ function QTWriteContent() {
   const [selectedTranslation, setSelectedTranslation] = useState(translationParam ? parseInt(translationParam) : 92);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
-  const [mode] = useState<"6step" | "sunday" | "free">(() => {
+  const [mode, setMode] = useState<"6step" | "sunday" | "free">(() => {
     if (initMode === "free") return "free";
     if (initMode === "sunday") return "sunday";
     if (initMode === "6step") return "6step";
@@ -355,6 +355,7 @@ function QTWriteContent() {
       if (!draft) return;
 
       // 기존 draft 데이터 복원
+      if (draft.qt_mode) setMode(draft.qt_mode);
       if (draft.bible_ref) setBibleRef(draft.bible_ref);
       if (draft.key_verse) {
         setKeyVerse(draft.key_verse);
@@ -409,6 +410,7 @@ function QTWriteContent() {
             if (data.verses && data.verses.length > 0) {
               setPassageVerses(data.verses);
               setBibleStep("done");
+              setSundayBibleStep("done");
             }
           }
         } catch (e) {
@@ -487,6 +489,8 @@ function QTWriteContent() {
     setLoadingBible(false);
   }
 
+  const loadSundayPassage = loadPassage;
+
   // 말씀 추가하기 (passages 배열에 추가)
   async function addPassage() {
     setLoadingBible(true); setBibleError("");
@@ -545,7 +549,7 @@ function QTWriteContent() {
   // 주일예배 canNext
   function canNextSunday(): boolean {
     const step = STEPS_SUNDAY[cur] as any;
-    if (step.isSermonInfo) return sermonTitle.trim().length > 0 || sermonRef.trim().length > 0;
+    if (step.isSermonInfo) return sermonTitle.trim().length > 0 || bibleRef.length > 0;
     if (step.isDecision) return decisions.some(d => d.trim().length > 0);
     return (answers[step.id] ?? "").trim().length > 0;
   }
@@ -976,6 +980,25 @@ function QTWriteContent() {
           <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 3 }}>{trQT(step.subtitle, lang)}</p>
         </div>
 
+        {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
+        {!step.isSermonInfo && bibleRef && passageVerses.length > 0 && (
+          <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
+            <details style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
+              <summary style={{ padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
+                <span style={{ fontSize: 10, color: "var(--text3)" }}>▼ {trQT("더보기", lang)}</span>
+              </summary>
+              <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
+                {passageVerses.map(v => (
+                  <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, marginTop: 4 }}>
+                    <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
+                  </p>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+
         {/* 단계 탭 - 자유 클릭 */}
         <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           {STEPS_SUNDAY.map((s, i) => {
@@ -999,10 +1022,58 @@ function QTWriteContent() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
                 <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("본문 말씀", lang)}</label>
-                <input type="text" className="input-field" placeholder={trQT("예: 이사야 41:10 / 요한복음 3:16", lang)} value={sermonRef} onChange={e => setSermonRef(e.target.value)} />
-              </div>
+              {/* 성경 본문 불러오기 (6단계와 동일한 UI) */}
+              {sundayBibleStep === "select" ? (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("본문 말씀", lang)}</label>
+                  {/* 성경 책 선택 */}
+                  <select className="input-field" value={book} onChange={e => { setBook(e.target.value); setChapter("1"); setStartV("1"); setEndV("1"); }} style={{ marginBottom: 8 }}>
+                    {[{ label: trQT("구약", lang), books: OT_BOOKS_LOCAL }, { label: trQT("신약", lang), books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
+                      <optgroup key={label} label={label}>
+                        {books.map(b => <option key={b} value={b}>{b}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {(() => {
+                    const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+                    const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+                    const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
+                    const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
+                    const maxChapter = chaptersData.length || 150;
+                    const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
+                    const maxEndV = chaptersData[parseInt(chapter)-1] ?? 176;
+                    return (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                        <select className="input-field" value={chapter} onChange={e => { setChapter(e.target.value); setStartV("1"); setEndV("1"); }} style={{ flex: 1 }}>
+                          {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                        <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} style={{ flex: 1 }}>
+                          {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                        <span style={{ alignSelf: "center", color: "var(--text3)" }}>~</span>
+                        <select className="input-field" value={endV} onChange={e => setEndV(e.target.value)} style={{ flex: 1 }}>
+                          {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })()}
+                  <button onClick={loadSundayPassage} disabled={loadingBible} className="btn-primary" style={{ marginBottom: 8 }}>
+                    {loadingBible ? trQT("불러오는 중...", lang) : `📖 ${trQT("말씀 불러오기", lang)}`}
+                  </button>
+                  {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
+                </div>
+              ) : (
+                <div className="card-sage" style={{ padding: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+                    <button onClick={() => { setSundayBibleStep("select"); setPassageVerses([]); setBibleRef(""); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text2)", marginTop: 6, lineHeight: 1.7, fontStyle: "italic" }}>
+                    {passageVerses.slice(0, 2).map(v => `${v.num} ${v.text}`).join(" ")}
+                    {passageVerses.length > 2 ? "..." : ""}
+                  </p>
+                </div>
+              )}
             </>
           )}
 

@@ -134,7 +134,7 @@ export default function QTPage() {
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button onClick={() => { setShowDraftPopup(false); router.push("/qt/write?resume=1"); }} className="btn-primary">{t("qt_draft_continue", lang)}</button>
+              <button onClick={() => { setShowDraftPopup(false); router.push("/qt/write?resume=true"); }} className="btn-primary">{t("qt_draft_continue", lang)}</button>
               <button onClick={deleteDraftAndStart} className="btn-outline">{t("qt_draft_new", lang)}</button>
               <button onClick={() => setShowDraftPopup(false)} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
             </div>
@@ -273,17 +273,23 @@ export default function QTPage() {
             </div>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => startQT("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => {
+                  if (new Date().getDay() === 0) {
+                    alert(lang === "de" ? "Heute ist Sonntag! Bitte machen Sie eine Sonntagsgottesdienst-QT. 🙌" : lang === "en" ? "Today is Sunday! Please do a Sunday worship QT. 🙌" : "오늘은 주일이에요! 주일예배 큐티로 진행해주세요. 🙌");
+                    return;
+                  }
+                  startQT("6step");
+                }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: new Date().getDay() === 0 ? "1px solid var(--border)" : "1px solid var(--sage)", background: new Date().getDay() === 0 ? "var(--bg3)" : "var(--sage-light)", cursor: "pointer", textAlign: "left", opacity: new Date().getDay() === 0 ? 0.6 : 1 }}>
                 <span style={{ fontSize: 28 }}>📖</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: new Date().getDay() === 0 ? "var(--text3)" : "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_6step_desc", lang)}</p>
                 </div>
               </button>
-              <button onClick={() => startQT("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => startQT("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: new Date().getDay() === 0 ? "1px solid var(--sage)" : "1px solid var(--border)", background: new Date().getDay() === 0 ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
                 <span style={{ fontSize: 28 }}>🙌</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: new Date().getDay() === 0 ? "var(--sage-dark)" : "var(--text)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_sunday_desc", lang)}</p>
                 </div>
               </button>

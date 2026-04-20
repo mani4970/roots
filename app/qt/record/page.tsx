@@ -165,7 +165,7 @@ function RecordContent() {
     const parts = [
       `📖 ${date} · ${translateBibleRef(record.bible_ref, lang)}`,
       record.opening_prayer ? `\n들어가는 기도\n${record.opening_prayer}` : "",
-      record.summary ? `\n본문 요약\n${record.summary}` : "",
+      record.summary ? `\n${record.qt_mode === "sunday" ? "말씀 요약" : "본문 요약"}\n${record.summary}` : "",
       record.key_verse ? `\n붙잡은 말씀\n${record.key_verse}` : "",
       record.meditation ? `\n느낌과 묵상\n${record.meditation}` : "",
       (record.application || decisions) ? `\n적용과 결단\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
@@ -195,7 +195,7 @@ function RecordContent() {
   const isShared = sharedTargets.length > 0;
   const SECTIONS = [
     { key: "opening_prayer", label: "들어가는 기도" },
-    { key: "summary", label: "본문 요약" },
+    { key: "summary", label: record?.qt_mode === "sunday" ? "말씀 요약" : "본문 요약" },
     { key: "key_verse", label: "붙잡은 말씀", italic: true },
     { key: "meditation", label: "느낌과 묵상" },
     { key: "application", label: "성품 (적용)" },
@@ -321,7 +321,10 @@ function RecordContent() {
       )}
 
       <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-        {SECTIONS.map(({ key, label, italic, isDecision }) => {
+        {(record?.qt_mode === "sunday"
+          ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
+          : SECTIONS
+        ).map(({ key, label, italic, isDecision }) => {
           const value = record[key];
           if (!value) return null;
           return (

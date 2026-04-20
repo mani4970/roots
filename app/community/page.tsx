@@ -390,7 +390,7 @@ export default function CommunityPage() {
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).map(({ key, label, label_de, label_en, italic, isDecision }) => (
+              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).sort((a, b) => { if (r.qt_mode === "sunday") { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); } return 0; }).map((s) => { const { key, label: rawLabel, label_de: rawLabelDe, label_en: rawLabelEn, italic, isDecision } = s; const isSundaySummary = key === "summary" && r.qt_mode === "sunday"; const label = isSundaySummary ? "말씀 요약" : rawLabel; const label_de = isSundaySummary ? "Predigtzusammenfassung" : rawLabelDe; const label_en = isSundaySummary ? "Sermon Summary" : rawLabelEn; return (
                 <div key={key}>
                   <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{lang === "de" ? label_de : lang === "en" ? label_en : label}</p>
                   {isDecision ? (
@@ -405,7 +405,7 @@ export default function CommunityPage() {
                     <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>{r[key]}</p>
                   )}
                 </div>
-              ))}
+              ); })}
             </div>
             <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 16 }}>
               <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 10, fontWeight: 600 }}>{lang === "de" ? "Reagieren Sie auf diese Stille Zeit" : lang === "en" ? "React to this Quiet Time" : "이 말씀 묵상에 반응해주세요"}</p>
@@ -731,11 +731,11 @@ export default function CommunityPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Gruppenname *" : lang === "en" ? "Group name *" : "그룹 이름 *"}</label>
-                <input type="text" className="input-field" placeholder={lang === "de" ? "z. B. Jugendgebetsgruppe" : lang === "en" ? "e.g. youth prayer group" : "예: 청년부 큐티 모임"} value={groupName} onChange={e => setGroupName(e.target.value)} />
+                <input type="text" className="input-field" placeholder={lang === "de" ? "z. B. Jugendgebetsgruppe" : lang === "en" ? "z. B. Jugendgebetsgruppe" : "예: 청년부 큐티 모임"} value={groupName} onChange={e => setGroupName(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Beschreibung (optional)" : lang === "en" ? "Description (optional)" : "소개 (선택)"}</label>
-                <textarea className="textarea-field" rows={2} placeholder={lang === "de" ? "Gruppe beschreiben" : lang === "en" ? "Describe group" : "그룹을 소개해주세요"} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
+                <textarea className="textarea-field" rows={2} placeholder={lang === "de" ? "Gruppe beschreiben..." : lang === "en" ? "Gruppe beschreiben..." : "그룹을 소개해주세요..."} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{lang === "de" ? "Sichtbarkeit" : lang === "en" ? "Visibility" : "공개 설정"}</label>
