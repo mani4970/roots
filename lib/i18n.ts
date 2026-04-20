@@ -243,11 +243,11 @@ export const T = {
 
   // ── 온보딩 ──
   onboarding_title1:  { ko: "Roots에 오신 걸 환영해요",  de: "Willkommen bei Roots", en: "Every morning,\nroots grow deeper" },
-  onboarding_desc1:   { ko: "말씀에 뿌리내리고, 함께 자라다.\n매일 3가지 루틴으로 하나님과 깊어지는 시간을 만들어요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.\n3 tägliche Routinen für eine tiefere Zeit mit Gott.", en: "Every day: receive a verse,\npray, and set a resolution." },
+  onboarding_desc1:   { ko: "말씀에 뿌리내리고, 함께 자라다.\n매일 3가지 루틴으로 \n하나님과 깊어지는 시간을 만들어요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.\n3 tägliche Routinen für eine tiefere Zeit mit Gott.", en: "Every day: receive a verse,\npray, and set a resolution." },
   onboarding_desc1_sub: { ko: "", de: "", en: "" },
   onboarding_title2:  { ko: "오늘 마음으로 말씀을 받아요", de: "Tagesvers nach Ihrem Herzen", en: "Resolutions —\nnot just thoughts, but actions" },
   onboarding_desc2:   { ko: "오늘 내 감정을 선택하면\nRoots가 딱 맞는 말씀과 오늘의 결단을 건네줘요.", de: "Wählen Sie Ihre Stimmung –\nRoots gibt Ihnen den passenden Vers und Vorsatz.", en: "Not 'please pray' but concrete actions\nyou can do with hands and feet." },
-  onboarding_desc2_sub: { ko: "\"기도하세요\"가 아니라\n\"오늘 점심 5분, 핸드폰 내려놓고 주님께 말 걸어보세요\"처럼\n손발로 할 수 있는 것들이에요.", de: "Nicht \"Bitte beten\" – sondern:\n\"Heute mittags 5 Minuten, Handy weglegen und mit Gott reden.\"\nKonkrete Handlungen." },
+  onboarding_desc2_sub: { ko: "\"기도하세요\"가 아니라\n\"오늘 점심 5분, 핸드폰 내려놓고 주님께 말 걸어보세요\"처럼\n손발로 할 수 있는 것들이에요.", de: "Nicht \"Bitte beten\" – sondern:\n\"Heute mittags 5 Minuten, Handy weglegen und mit Gott reden.\"\nKonkrete Handlungen.", en: "Not \"please pray\" but:\n\"Today at lunch, 5 min, put your phone down and talk to God.\"\nConcrete actions." },
   onboarding_title3:  { ko: "큐티 6단계로 말씀을 심어요", de: "Gottes Wort in 6 Schritten", en: "Quiet Time\nin 6 steps" },
   onboarding_desc3:   { ko: "① 들어가는 기도\n② 본문 요약\n③ 붙잡은 말씀\n④ 느낌과 묵상\n⑤ 적용과 결단\n⑥ 올려드리는 기도", de: "① Eröffnungsgebet\n② Zusammenfassung\n③ Schlüsselvers\n④ Empfinden & Meditation\n⑤ Anwendung & Entschluss\n⑥ Abschlussgebet", en: "① Opening Prayer\n② Summary\n③ Key Verse\n④ Reflection & Meditation\n⑤ Application & Resolution\n⑥ Closing Prayer" },
   onboarding_desc3_sub: { ko: "처음이어도 괜찮아요.\n각 단계마다 안내가 있어서 혼자서도 충분히 할 수 있어요.", de: "Auch für Anfänger geeignet.\nJeder Schritt wird erklärt.", en: "Suitable for beginners.\nEach step is guided." },
@@ -265,7 +265,7 @@ export const T = {
   welcome_back_btn:      { ko: "오늘 루틴 시작하기 🌱",   de: "Routine starten 🌱", en: "Start fresh today" },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!" },
   welcome_back_30_sub:   { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!" },
-  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!",         en: "It's been {n} days!" },
+  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!" },
   welcome_back_14_sub:   { ko: "괜찮아요, 언제든 돌아오면 돼요.\n오늘부터 다시 함께 자라요!", de: "Kein Problem, Sie können immer zurückkommen.\nFangen wir heute wieder an!", en: "No problem, you can always come back.\nLet's start fresh today!" },
   welcome_back_7_sub:    { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 힘내봐요 💪", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine 💪", en: "Your tree has been waiting.\nLet's continue with the routine!" },
   welcome_back_1_sub:    { ko: "괜찮아요! 오늘 다시 시작해봐요.\n조금씩 꾸준히가 중요해요 🌱", de: "Kein Problem! Fangen wir heute neu an.\nKleine Schritte zählen 🌱", en: "No problem! Let's start fresh.\nSmall steps count too!" },
@@ -409,10 +409,10 @@ export const T = {
 
   // {n} placeholder 사용
   tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
-  tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",            en: "{n}. Garden" },
-  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",             en: "{n} / 10 Days" },
-  tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} Days in a row" },
-  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back 💪" },
+  tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",                en: "{n}.garden" },
+  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",                en: "{n} / 10 Days" },
+  tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} days in a row" },
+  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪" },
 
   // TreeGrowth 축하 sub messages
   tree_sub_1:   { ko: "씨앗이 땅속에서 뿌리를 내리기 시작했어요!",  de: "Der Samen beginnt, Wurzeln zu schlagen!", en: "The seed is starting to take root!" },
@@ -462,7 +462,7 @@ export const T = {
   qt_guide_prev:        { ko: "← 이전",                              de: "← Zurück", en: "← Back" },
   qt_guide_next:        { ko: "다음 →",                              de: "Weiter →", en: "Next →" },
   qt_guide_start:       { ko: "시작하기 🌱",                         de: "Loslegen 🌱", en: "Let's go 🌱" },
-  qt_year_records:      { ko: "{year}년 · {count}개 기록",            de: "{year} · {count} Aufzeichnungen" },
+  qt_year_records:      { ko: "{year}년 · {count}개 기록",            de: "{year} · {count} Aufzeichnungen", en: "{year} · {count} recordings" },
 
   // QT 가이드 6단계
   qt_g1_title: { ko: "들어가는 기도",     de: "Eröffnungsgebet", en: "Opening Prayer" },
@@ -473,7 +473,7 @@ export const T = {
   qt_g2_ex:    { ko: "예) 바울이 빌립보 교인들에게 어떤 상황에서도 기뻐하라고 권면하며, 걱정 대신 기도로 하나님께 아뢰면 평강이 임한다고 말한다.", de: "z. B. Paulus ermahnt die Philipper, sich in allen Umständen zu freuen, und sagt: Wer statt sich zu sorgen betet, empfängt Gottes Frieden.", en: "e.g. Paul urges the Philippians to rejoice in all circumstances and not to worry but to bring everything to God in prayer." },
   qt_g3_title: { ko: "붙잡은 말씀",       de: "Schlüsselvers", en: "Key verse" },
   qt_g3_desc:  { ko: "말씀을 읽을 때, 말씀이 우리를 스캔합니다. 우리 마음 밭에 뿌려질 말씀의 씨앗이 있는 부분에서 멈춥니다. 그곳을 붙잡으면 됩니다.", de: "Beim Lesen scannt das Wort uns. Es hält dort an, wo der Same für unser Herz liegt. Dort halten wir fest.", en: "As you read, the Word scans us. It stops where the seed of faith needs to fall." },
-  qt_g3_ex:    { ko: "예) \"아무것도 염려하지 말고 다만 모든 일에 기도와 간구로... 너희 구할 것을 감사함으로 하나님께 아뢰라\" (빌 4:6)", de: "z. B. \"Sorgt euch um nichts, sondern lasst in allen Dingen eure Bitten in Gebet und Flehen mit Danksagung vor Gott kundwerden.\" (Phil 4,6)" },
+  qt_g3_ex:    { ko: "예) \"아무것도 염려하지 말고 다만 모든 일에 기도와 간구로... 너희 구할 것을 감사함으로 하나님께 아뢰라\" (빌 4:6)", de: "z. B. \"Sorgt euch um nichts, sondern lasst in allen Dingen eure Bitten in Gebet und Flehen mit Danksagung vor Gott kundwerden.\" (Phil 4,6)", en: "e.g. \"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.\" (Phil 4:6)" },
   qt_g4_title: { ko: "느낌과 묵상",       de: "Empfinden & Meditation", en: "Reflection & Meditation" },
   qt_g4_desc:  { ko: "말씀은 살아계신 생명의 주로부터 옵니다. 철저하게 개인적으로, 맞춤형으로 옵니다. 물음표가 아닌 느낌표를 두고, 순종의 마음을 품고 성령님의 이끄심에 맡겨봅시다!", de: "Das Wort kommt vom lebendigen Herrn des Lebens. Es kommt ganz persönlich, maßgeschneidert. Setzen Sie Ausrufezeichen statt Fragezeichen, seien Sie gehorsam und lassen Sie sich vom Heiligen Geist leiten!", en: "The Word comes from the living Lord of life. It comes to the very spot where I am today." },
   qt_g4_ex:    { ko: "예) 요즘 취업 걱정에 잠 못 드는데, 주님이 오늘 이 말씀으로 '나한테 가져와'라고 하시는 것 같았다.", de: "z. B. Ich kann vor Jobsorgen nicht schlafen, und heute sagt der Herr mir durch dieses Wort: 'Bring es zu mir.'", en: "e.g. I can't sleep because of job worries, and today the Word says 'Do not be anxious.' The Lord tells me not to worry but to pray and trust Him." },
@@ -552,8 +552,8 @@ export const T = {
   qtw_sun_s1_hint:  { ko: "예배 전 마음을 열고 주님께 나아가는 기도예요.", de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with open heart before worship." },
   qtw_sun_s2_title: { ko: "말씀 요약",           de: "Zusammenfassung", en: "Summary" },
   qtw_sun_s2_sub:   { ko: "설교 말씀을 내 말로 요약해요", de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words" },
-  qtw_sun_s2_ph:    { ko: "오늘 설교 내용을 요약해보세요", de: "Fassen Sie die Predigt zusammen", en: "Summarize the message" },
-  qtw_sun_s2_hint:  { ko: "목사님이 전한 핵심 메시지를 나의 말로 정리해요.", de: "Die Kernbotschaft des Pastors in eigene Worte fassen.", en: "Put the pastor's core message in your own words." },
+  qtw_sun_s2_ph:    { ko: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words..." },
+  qtw_sun_s2_hint:  { ko: "설교자가 전한 핵심 메시지를 나의 말로 정리해요.", de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words." },
   qtw_sun_s3_title: { ko: "깨달음과 결단",       de: "Erkenntnis & Entschluss", en: "Insight & Resolution" },
   qtw_sun_s3_sub:   { ko: "말씀이 내게 주는 깨달음과 결단", de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word" },
   qtw_sun_s3_hint:  { ko: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out." },
