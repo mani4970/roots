@@ -223,8 +223,10 @@ function QTWriteContent() {
   const schedEndChapter = params.get("schedEndChapter");
   const hasSchedule = !!(schedBook && schedChapter && schedStartV && schedEndV);
   const todayStr = new Date().toISOString().split("T")[0];
+  const resumeDateParam = params.get("date");
+  const initialDate = resumeDateParam || todayStr;
 
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(translationParam ? parseInt(translationParam) : 92);
@@ -234,7 +236,7 @@ function QTWriteContent() {
     if (initMode === "free") return "free";
     if (initMode === "sunday") return "sunday";
     if (initMode === "6step") return "6step";
-    return isSunday(todayStr) ? "sunday" : "6step";
+    return isSunday(initialDate) ? "sunday" : "6step";
   });
 
   // 말씀 선택 (6step, free) - 스케줄 있으면 바로 "done"으로 시작
@@ -344,15 +346,48 @@ function QTWriteContent() {
 
   // 임시저장 데이터 로드
   useEffect(() => {
+    const resetDraftState = () => {
+      if (initMode === "free") setMode("free");
+      else if (initMode === "sunday") setMode("sunday");
+      else if (initMode === "6step") setMode("6step");
+      else setMode(isSunday(selectedDate) ? "sunday" : "6step");
+
+      setBibleRef("");
+      setKeyVerse("");
+      setPassageVerses([]);
+      setSelectedVerseNums([]);
+      setAnswers({});
+      setDecisions([""]);
+      setCur(0);
+      setFreeText("");
+      setPassages([]);
+      setBibleStep("select");
+      setSundayBibleStep("select");
+      setSermonTitle("");
+      setSermonRef("");
+    };
+
     const loadDraft = async () => {
       if (!isResume) return; // 이어쓰기 모드일 때만 로드
       const { createClient: cc } = await import("@/lib/supabase");
       const supabase = cc();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: draft } = await supabase.from("qt_records")
-        .select("*").eq("user_id", user.id).eq("date", todayStr).eq("is_draft", true).maybeSingle();
-      if (!draft) return;
+      const { data: drafts, error } = await supabase.from("qt_records")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", selectedDate)
+        .eq("is_draft", true)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (error) return;
+      const draft = drafts?.[0];
+      if (!draft) {
+        resetDraftState();
+        return;
+      }
+
+      resetDraftState();
 
       // 기존 draft 데이터 복원
       if (draft.qt_mode) setMode(draft.qt_mode);
@@ -423,7 +458,7 @@ function QTWriteContent() {
       if (savedStep > 0) setCur(savedStep);
     }
     loadDraft();
-  }, []);
+  }, [isResume, selectedDate]);
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
@@ -587,7 +622,7 @@ function QTWriteContent() {
       if (!user) { router.push("/login"); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
-      let draftData: any = {
+      const draftData: any = {
         user_id: user.id,
         date: selectedDate,
         qt_mode: mode,
@@ -603,14 +638,27 @@ function QTWriteContent() {
         closing_prayer: answers.closing_prayer ?? "",
       };
 
-      // 기존 draft 있으면 update, 없으면 insert
-      const { data: existing } = await supabase.from("qt_records")
-        .select("id").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
+      const { data: rows, error: rowsError } = await supabase.from("qt_records")
+        .select("id,is_draft")
+        .eq("user_id", user.id)
+        .eq("date", selectedDate)
+        .order("updated_at", { ascending: false });
+      if (rowsError) throw rowsError;
 
-      if (existing) {
-        await supabase.from("qt_records").update(draftData).eq("id", existing.id);
+      const completedRecord = rows?.find((row: any) => row.is_draft === false);
+      if (completedRecord) {
+        alert(`${selectedDate} 큐티 기록이 이미 있어요!`);
+        setSaving(false);
+        return;
+      }
+
+      const draftRecord = rows?.find((row: any) => row.is_draft === true);
+      if (draftRecord) {
+        const { error } = await supabase.from("qt_records").update(draftData).eq("id", draftRecord.id);
+        if (error) throw error;
       } else {
-        await supabase.from("qt_records").insert(draftData);
+        const { error } = await supabase.from("qt_records").insert(draftData);
+        if (error) throw error;
       }
       alert(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요 😊", lang));
     } catch (e) {
@@ -627,10 +675,18 @@ function QTWriteContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      const { data: existing } = await supabase.from("qt_records")
-        .select("id,is_draft").eq("user_id", user.id).eq("date", selectedDate).maybeSingle();
+      const { data: rows, error: rowsError } = await supabase.from("qt_records")
+        .select("id,is_draft")
+        .eq("user_id", user.id)
+        .eq("date", selectedDate)
+        .order("updated_at", { ascending: false });
+      if (rowsError) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+
+      const completedRecord = rows?.find((row: any) => row.is_draft === false);
+      const draftRecord = rows?.find((row: any) => row.is_draft === true);
+
       // 완료된 기록이 이미 있으면 막기 (draft는 통과)
-      if (existing && !existing.is_draft) { alert(`${selectedDate} 큐티 기록이 이미 있어요!`); setSaving(false); return; }
+      if (completedRecord) { alert(`${selectedDate} 큐티 기록이 이미 있어요!`); setSaving(false); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
       let insertData: any = { user_id: user.id, date: selectedDate, qt_mode: mode };
@@ -664,9 +720,9 @@ function QTWriteContent() {
       }
 
       // draft가 있으면 update, 없으면 insert
-      if (existing && existing.is_draft) {
+      if (draftRecord) {
         const { error } = await supabase.from("qt_records")
-          .update({ ...insertData, is_draft: false }).eq("id", existing.id);
+          .update({ ...insertData, is_draft: false }).eq("id", draftRecord.id);
         if (error) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
       } else {
         const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });

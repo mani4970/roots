@@ -129,17 +129,6 @@ function ResultContent() {
           <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
             "{result?.verse}"
           </p>
-          <div style={{ borderTop: "1px solid rgba(122,158,118,0.25)", marginTop: 14, paddingTop: 12 }}>
-            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{result?.message}</p>
-          </div>
-        </div>
-
-        {/* 결단 카드 */}
-        <div className="card-terra">
-          <p style={{ fontSize: 9, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
-            {t('result_mission', lang)}
-          </p>
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>{result?.mission}</p>
         </div>
 
         {/* 홈으로만 */}
