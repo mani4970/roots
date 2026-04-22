@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
@@ -10,7 +10,6 @@ import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react
 
 export default function PrayerPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -25,14 +24,6 @@ export default function PrayerPage() {
   const [tab, setTab] = useState<"praying" | "answered">("praying");
 
   useEffect(() => { loadPrayers(); }, []);
-
-  useEffect(() => {
-    if (searchParams.get("compose") === "1") {
-      setTab("praying");
-      setShowForm(true);
-      router.replace("/prayer");
-    }
-  }, [searchParams, router]);
 
   async function loadPrayers() {
     setLoading(true);

@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
-import { buildQTWriteHref } from "@/lib/qtEntry";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
 
 const QT_GUIDE_KEYS: { emoji: string; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -58,14 +57,10 @@ export default function QTPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     const today = new Date().toISOString().split("T")[0];
-    const { data: todayRows } = await supabase.from("qt_records")
-      .select("id,is_draft")
-      .eq("user_id", user.id)
-      .eq("date", today)
-      .order("updated_at", { ascending: false });
-    const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
-    const draftExists = !completedExists && !!todayRows?.some((row: any) => row.is_draft === true);
-    setTodayDone(completedExists);
+    const { data: tqt } = await supabase.from("qt_records")
+      .select("id,is_draft").eq("user_id", user.id).eq("date", today).maybeSingle();
+    setTodayDone(!!tqt && !tqt.is_draft);
+    const draftExists = !!tqt && tqt.is_draft === true;
     setHasDraft(draftExists);
     if (draftExists) setShowDraftPopup(true);
     const { data } = await supabase.from("qt_records").select("*")
@@ -101,11 +96,20 @@ export default function QTPage() {
 
   function startQT(mode: string) {
     setShowStartModal(false);
-    router.push(buildQTWriteHref({
-      mode: mode as "6step" | "sunday" | "free",
-      preferredTranslation,
-      todaySchedule,
-    }));
+    if (mode === "6step" && todaySchedule) {
+      const params = new URLSearchParams({
+        mode: "6step",
+        schedBook: todaySchedule.book,
+        schedChapter: String(todaySchedule.chapter),
+        schedStartV: String(todaySchedule.start_verse),
+        schedEndV: String(todaySchedule.end_verse),
+        translation: String(preferredTranslation),
+        ...(todaySchedule.end_chapter ? { schedEndChapter: String(todaySchedule.end_chapter) } : {}),
+      });
+      router.push(`/qt/write?${params.toString()}`);
+    } else {
+      router.push(`/qt/write?mode=${mode}&translation=${preferredTranslation}`);
+    }
   }
 
   async function deleteDraftAndStart() {

@@ -70,7 +70,7 @@ a { text-decoration: none; color: inherit; }
 .card-terra { background: var(--terra-light); border: 1px solid rgba(196,149,106,0.3); border-radius: 18px; padding: 16px; }
 .card-beige { background: var(--beige-light); border: 1px solid rgba(212,197,169,0.2); border-radius: 18px; padding: 16px; }
 
-.sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+.sec-label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
 .page { min-height: 100vh; background: var(--bg); padding-bottom: 90px; }
 .header-title { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1.2; }
 .header-title em { color: var(--sage); font-style: normal; }
@@ -98,7 +98,7 @@ a { text-decoration: none; color: inherit; }
 .textarea-field::placeholder { color: var(--text3); }
 .textarea-field:focus { outline: none; border-color: var(--sage); }
 
-.verse-text { font-size: 15px; color: var(--beige); line-height: 1.8; font-style: italic; }
+.verse-text { font-size: 14px; color: var(--beige); line-height: 1.75; font-style: italic; }
 
 .qt-record-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
 
