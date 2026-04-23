@@ -1,15 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
+import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
-export default function PrayerPage() {
+function PrayerPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -22,8 +24,26 @@ export default function PrayerPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [tab, setTab] = useState<"praying" | "answered">("praying");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
+  const [testimonyText, setTestimonyText] = useState("");
+  const [savingTestimony, setSavingTestimony] = useState(false);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => { loadPrayers(); }, []);
+
+  useEffect(() => {
+    if (searchParams.get("compose") === "1") {
+      setTab("praying");
+      setShowForm(true);
+      router.replace("/prayer");
+    }
+  }, [searchParams, router]);
 
   async function loadPrayers() {
     setLoading(true);
@@ -41,24 +61,50 @@ export default function PrayerPage() {
   }
 
   async function submit() {
-    if (!newPrayer.trim() || !userId) return;
+    if (!newPrayer.trim() || !userId || saving) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("prayer_items").insert({
-      user_id: userId,
-      content: newPrayer.trim(),
-      is_anonymous: false,
-      visibility: "private",
-    });
-    setNewPrayer(""); setShowForm(false); setSaving(false);
-    setCelebration(true);
-    loadPrayers();
+    try {
+      const { data: insertedPrayer, error: insertError } = await supabase.from("prayer_items").insert({
+        user_id: userId,
+        content: newPrayer.trim(),
+        is_anonymous: false,
+        visibility: "private",
+      }).select("id").single();
+      if (insertError) throw insertError;
+
+      const { error: prayerCompletionError } = await supabase.from("daily_prayer_completions").upsert({
+        user_id: userId,
+        date: getLocalDateString(),
+        source: "written",
+      }, { onConflict: "user_id,date" });
+      if (prayerCompletionError) {
+        if (insertedPrayer?.id) {
+          await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+        }
+        throw prayerCompletionError;
+      }
+
+      setNewPrayer("");
+      setShowForm(false);
+      setCelebration(true);
+      await loadPrayers();
+    } catch (error) {
+      console.error("prayer submit failed", error);
+      setNotice(lang === "de" ? "Das Gebetsanliegen konnte nicht gespeichert werden." : lang === "en" ? "Could not save the prayer request." : "기도 제목을 저장하지 못했어요.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveEdit() {
     if (!editText.trim() || !editId) return;
     const supabase = createClient();
-    await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
+    const { error } = await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
+    if (error) {
+      setNotice(lang === "de" ? "Die Änderungen konnten nicht gespeichert werden." : lang === "en" ? "Could not save your changes." : "수정을 저장하지 못했어요.");
+      return;
+    }
     setEditId(null); setEditText("");
     loadPrayers();
   }
@@ -67,7 +113,11 @@ export default function PrayerPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
+    const { error: visibilityError } = await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
+    if (visibilityError) {
+      setNotice(lang === "de" ? "Die Fürbitte-Anfrage konnte nicht gespeichert werden." : lang === "en" ? "Could not save the intercession request." : "중보기도 요청을 저장하지 못했어요.");
+      return;
+    }
     // 기도의 용사 뱃지 체크 (중보요청 15번)
     const { data: prof } = await supabase.from("profiles")
       .select("badge_prayer_warrior").eq("id", user.id).single();
@@ -86,9 +136,9 @@ export default function PrayerPage() {
     loadPrayers();
   }
 
-  async function markAnswered(id: string) {
-    const testimony = prompt(lang === "de" ? "Teilen Sie Ihr Gebetszeugnis 🙏" : lang === "en" ? "Share your prayer testimony 🙏" : "기도 응답 간증을 나눠주세요 🙏");
-    if (!testimony) return;
+  async function saveAnsweredPrayer() {
+    if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
+    setSavingTestimony(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     // 노아 뱃지 체크 (첫 기도 응답)
@@ -100,13 +150,26 @@ export default function PrayerPage() {
         setBadgePopup({ img: "/badge_noah.png", title: lang === "de" ? "Noah-Abzeichen! ⛵" : lang === "en" ? "Noah Badge! ⛵" : "노아 배지 획득! ⛵", msg: t("badge_noah_msg", lang) });
       }
     }
-    await supabase.from("prayer_items").update({
+    const { error } = await supabase.from("prayer_items").update({
       is_answered: true,
-      testimony,
+      testimony: testimonyText.trim(),
       answered_at: new Date().toISOString(),
-    }).eq("id", id);
-    loadPrayers();
-    setTab("answered"); // 응답 탭으로 자동 이동
+    }).eq("id", testimonyPrayerId);
+    if (error) {
+      setNotice(lang === "de" ? "Die Gebetserhörung konnte nicht gespeichert werden." : lang === "en" ? "Could not save the answered prayer." : "기도 응답을 저장하지 못했어요.");
+      setSavingTestimony(false);
+      return;
+    }
+    setTestimonyPrayerId(null);
+    setTestimonyText("");
+    setSavingTestimony(false);
+    await loadPrayers();
+    setTab("answered");
+  }
+
+  function openAnsweredPrayer(id: string) {
+    setTestimonyPrayerId(id);
+    setTestimonyText("");
   }
 
   const prayingList = prayers.filter(p => !p.is_answered);
@@ -126,9 +189,14 @@ export default function PrayerPage() {
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
             <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              감사해요 🙏
+              {t("badge_thanks", lang)}
             </button>
           </div>
+        </div>
+      )}
+      {notice && (
+        <div style={{ position: "fixed", top: 84, left: "50%", transform: "translateX(-50%)", zIndex: 210, background: "rgba(26,28,30,0.96)", color: "#fff", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px rgba(0,0,0,0.22)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
+          {notice}
         </div>
       )}
       <Celebration
@@ -207,7 +275,7 @@ export default function PrayerPage() {
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{lang === "de" ? "Gebet erhört! 🎉" : lang === "en" ? "Prayer answered! 🎉" : "기도 응답! 🎉"}</span>
                     {p.answered_at && (
                       <span style={{ fontSize: 10, color: "var(--text3)", marginLeft: "auto" }}>
-                        {new Date(p.answered_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}
+                        {new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
                       </span>
                     )}
                   </div>
@@ -239,7 +307,7 @@ export default function PrayerPage() {
                 ) : (
                   <>
                     <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)" }}>
-                      {p.content} {p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })})</span>}
+                      {p.content} {p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
                     </p>
 
                     {/* 간증 */}
@@ -258,7 +326,7 @@ export default function PrayerPage() {
                               style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                               <Pencil size={10} /> {lang === "de" ? "Ändern" : lang === "en" ? "Edit" : "수정"}
                             </button>
-                            <button onClick={() => markAnswered(p.id)}
+                            <button onClick={() => openAnsweredPrayer(p.id)}
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
                               {lang === "de" ? "Erhört 🙌" : lang === "en" ? "Answered 🙌" : "응답됐어요 🙌"}
                             </button>
@@ -272,7 +340,7 @@ export default function PrayerPage() {
                         )}
                       </div>
                       {!p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                        {new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}
+                        {new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
                       </span>}
                     </div>
                   </>
@@ -282,6 +350,34 @@ export default function PrayerPage() {
           </div>
         )}
       </div>
+
+      {testimonyPrayerId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 45, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
+              {lang === "de" ? "Gebetserhörung teilen" : lang === "en" ? "Share answered prayer" : "기도 응답 간증 나누기"}
+            </h2>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>
+              {lang === "de" ? "Schreiben Sie kurz auf, wie Gott geantwortet hat." : lang === "en" ? "Write a short testimony of how God answered." : "하나님이 어떻게 응답하셨는지 짧게 남겨보세요."}
+            </p>
+            <textarea
+              className="textarea-field"
+              rows={4}
+              placeholder={lang === "de" ? "Gebetszeugnis schreiben..." : lang === "en" ? "Write your testimony..." : "응답 간증을 적어주세요..."}
+              value={testimonyText}
+              onChange={e => setTestimonyText(e.target.value)}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button className="btn-outline" onClick={() => { setTestimonyPrayerId(null); setTestimonyText(""); }} style={{ flex: 1 }}>
+                {lang === "de" ? "Abbrechen" : lang === "en" ? "Cancel" : "취소"}
+              </button>
+              <button className="btn-sage" onClick={saveAnsweredPrayer} disabled={savingTestimony || !testimonyText.trim()} style={{ flex: 1 }}>
+                {savingTestimony ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : lang === "en" ? "Save" : "저장하기")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 기도 작성 폼 */}
       {showForm && (
@@ -314,5 +410,22 @@ export default function PrayerPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+
+function PrayerPageFallback() {
+  return (
+    <div className="page" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+    </div>
+  );
+}
+
+export default function PrayerPage() {
+  return (
+    <Suspense fallback={<PrayerPageFallback />}>
+      <PrayerPageContent />
+    </Suspense>
   );
 }

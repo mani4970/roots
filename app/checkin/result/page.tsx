@@ -5,6 +5,7 @@ import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
+import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 
 function ResultContent() {
   const params = useSearchParams();
@@ -35,13 +36,13 @@ function ResultContent() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const today = new Date().toISOString().split("T")[0];
+        const today = getLocalDateString();
 
         // 오늘 이미 말씀이 있으면 API 호출 없이 기존 말씀 사용
         // 단, 언어가 다르면 (한국어 말씀인데 독일어 사용자) 새로 요청
         const { data: existing } = await supabase
           .from("daily_checkins")
-          .select("verse,reference,message,mission,completed_mission")
+          .select("verse,reference")
           .eq("user_id", user.id)
           .eq("date", today)
           .maybeSingle();
@@ -56,7 +57,7 @@ function ResultContent() {
         }
 
         // 어제 말씀 참고용 (중복 방지)
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const yesterday = getShiftedLocalDateString(-1);
         const { data: prevDay } = await supabase
           .from("daily_checkins")
           .select("verse,reference")
@@ -84,17 +85,12 @@ function ResultContent() {
           emotions,
           verse: data.verse,
           reference: data.reference,
-          message: data.message,
-          mission: data.mission,
-          completed_mission: false,
         }, { onConflict: "user_id,date" });
 
       } catch {
         setResult({
           verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
           reference: "마태복음 11:28",
-          message: "지치고 힘든 마음을 주님께 내려놓는 하루가 되길 바랍니다. 혼자 짊어지지 않아도 됩니다.",
-          mission: "오늘 5분만 조용한 곳에서 눈 감고 주님께 솔직하게 마음을 털어놓아 보세요.",
         });
       } finally {
         setLoading(false);
@@ -129,17 +125,6 @@ function ResultContent() {
           <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
             "{result?.verse}"
           </p>
-          <div style={{ borderTop: "1px solid rgba(122,158,118,0.25)", marginTop: 14, paddingTop: 12 }}>
-            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{result?.message}</p>
-          </div>
-        </div>
-
-        {/* 결단 카드 */}
-        <div className="card-terra">
-          <p style={{ fontSize: 9, fontWeight: 700, color: "var(--terra)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
-            {t('result_mission', lang)}
-          </p>
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>{result?.mission}</p>
         </div>
 
         {/* 홈으로만 */}

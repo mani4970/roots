@@ -1,21 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Roots — 영적 루틴 앱",
   description: "Roots — In Gottes Wort verwurzelt, gemeinsam wachsen | 말씀에 뿌리내리고, 함께 자라다",
   manifest: "/manifest.json",
-  themeColor: "#7A9D7A",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Roots",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
 };
 
@@ -47,3 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#7A9D7A",
+};

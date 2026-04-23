@@ -12,9 +12,12 @@ import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
-import { getLanguageOptions, LANG_META, type Lang } from "@/lib/i18n";
+import { getLanguageOptions, LANG_META } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
-import { ChevronRight, Check, Globe } from "lucide-react";
+import { translateBookName } from "@/lib/bibleBooks";
+import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
+import { ChevronRight, Check } from "lucide-react";
+import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -24,19 +27,29 @@ function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" |
   return "home_greeting_night";
 }
 
-function getTreeSubMsgKey(streak: number): "tree_sub_1"|"tree_sub_14"|"tree_sub_29"|"tree_sub_59"|"tree_sub_79"|"tree_sub_99"|"tree_sub_129"|"tree_sub_max" {
-  if (streak <= 1) return "tree_sub_1";
-  if (streak <= 14) return "tree_sub_14";
-  if (streak <= 29) return "tree_sub_29";
-  if (streak <= 59) return "tree_sub_59";
-  if (streak <= 79) return "tree_sub_79";
-  if (streak <= 99) return "tree_sub_99";
-  if (streak <= 129) return "tree_sub_129";
-  return "tree_sub_max";
+function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_20"|"tree_sub_30"|"tree_sub_40"|"tree_sub_50"|"tree_sub_60"|"tree_sub_70"|"tree_sub_80"|"tree_sub_90"|"tree_sub_100" {
+  if (streak <= 0) return "tree_sub_0";
+  const cycleDay = ((streak - 1) % 100) + 1;
+  if (cycleDay <= 10) return "tree_sub_10";
+  if (cycleDay <= 20) return "tree_sub_20";
+  if (cycleDay <= 30) return "tree_sub_30";
+  if (cycleDay <= 40) return "tree_sub_40";
+  if (cycleDay <= 50) return "tree_sub_50";
+  if (cycleDay <= 60) return "tree_sub_60";
+  if (cycleDay <= 70) return "tree_sub_70";
+  if (cycleDay <= 80) return "tree_sub_80";
+  if (cycleDay <= 90) return "tree_sub_90";
+  return "tree_sub_100";
 }
 
 const gardenTopRef_scroll = () => {
   window.scrollTo({ top: 0, behavior: "instant" });
+};
+
+type HomeQTState = {
+  hasDraft: boolean;
+  preferredTranslation: number;
+  todaySchedule: QTSchedule | null;
 };
 
 export default function HomePage() {
@@ -44,9 +57,9 @@ export default function HomePage() {
   const [profile, setProfile] = useState<any>(null);
   const [todayVerse, setTodayVerse] = useState<any>(null);
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
-  const [todayDone, setTodayDone] = useState({ qt: false, prayer: false, decision: false });
+  const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
-  const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "" });
+  const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
@@ -61,14 +74,28 @@ export default function HomePage() {
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const celebrationShownRef = useRef(false);
+  const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
+  const pendingRootsManRef = useRef(false);
+  const applySectionRef = useRef<HTMLDivElement | null>(null);
+  const treeSectionRef = useRef<HTMLDivElement | null>(null);
+  const [homeQTState, setHomeQTState] = useState<HomeQTState>({
+    hasDraft: false,
+    preferredTranslation: 92,
+    todaySchedule: null,
+  });
+  const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
+  const [homeDecisionInput, setHomeDecisionInput] = useState("");
+  const [savingHomeDecision, setSavingHomeDecision] = useState(false);
+  const nextStepSectionRef = useRef<HTMLDivElement | null>(null);
+  const homeDecisionInputRef = useRef<HTMLInputElement | null>(null);
 
-  const decisionDone = todayDone.decision || myDecisions.some(d => d.done);
+  const hasMyDecisions = myDecisions.length > 0;
+  const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
   const allDone = todayDone.qt && todayDone.prayer && decisionDone;
 
   useEffect(() => { load(); }, []);
 
   async function load() {
-    // 테마 복원
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("roots_theme");
       if (saved === "light") {
@@ -83,50 +110,82 @@ export default function HomePage() {
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       setProfile(p);
-      // 복귀 팝업: 3일 이상 안 왔으면 표시
-      const lastCheckin = p.last_checkin ? p.last_checkin.split("T")[0] : null;
+      setHomeQTState(prev => ({
+        ...prev,
+        preferredTranslation: p.preferred_translation || 92,
+      }));
+      const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       if (lastCheckin) {
-        const lastDate = new Date(lastCheckin);
+        const lastDate = parseLocalDateString(lastCheckin);
         lastDate.setHours(0,0,0,0);
         const todayDate = new Date(); todayDate.setHours(0,0,0,0);
         const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
-        const welcomeKey = `welcome_back_${new Date().toISOString().split("T")[0]}`;
-        if (diffDays >= 3 && !localStorage.getItem(welcomeKey)) {
+        const missedDays = Math.max(0, diffDays - 1);
+        const welcomeKey = `welcome_back_${getLocalDateString()}`;
+        if (missedDays >= 1 && !localStorage.getItem(welcomeKey)) {
           localStorage.setItem(welcomeKey, "true");
-          setWelcomeBackDays(diffDays);
+          setWelcomeBackDays(missedDays);
           setShowWelcomeBack(true);
         }
       }
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,mission,completed_mission,reference,message,prayer_checked")
+      .select("verse,reference")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) setTodayVerse(ci);
 
-    const { data: tqt } = await supabase.from("qt_records").select("id,decision").eq("user_id", user.id).eq("date", today).eq("is_draft", false).maybeSingle();
-    const { data: tp } = await supabase.from("prayer_items").select("id").eq("user_id", user.id)
-      .gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`).maybeSingle();
-    const prayerChecked = ci?.prayer_checked ?? false;
+    const { data: qtRecords } = await supabase.from("qt_records")
+      .select("id,is_draft,decision")
+      .eq("user_id", user.id)
+      .eq("date", today);
 
-    if (tqt?.decision) {
-      const decisions = tqt.decision.split("\n").filter((d: string) => d.trim());
+    const { data: prayerCompletion } = await supabase
+      .from("daily_prayer_completions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .maybeSingle();
+    const prayerChecked = !!prayerCompletion;
+
+    const completedQt = qtRecords?.find((record: any) => !record.is_draft) ?? null;
+    const hasDraft = qtRecords?.some((record: any) => record.is_draft) ?? false;
+    setCompletedQtRecordId(completedQt?.id ?? null);
+
+    let todaySchedule: QTSchedule | null = null;
+    if (!isSunday()) {
+      const { data: sched } = await supabase
+        .from("qt_schedule")
+        .select("book,chapter,start_verse,end_verse,end_chapter,title")
+        .eq("date", today)
+        .maybeSingle();
+      todaySchedule = sched ?? null;
+    }
+
+    setHomeQTState(prev => ({
+      ...prev,
+      hasDraft,
+      todaySchedule,
+    }));
+
+    if (completedQt?.decision) {
+      const decisions = completedQt.decision.split("\n").filter((d: string) => d.trim());
       const { data: dc } = await supabase.from("daily_checkins")
         .select("decisions_done").eq("user_id", user.id).eq("date", today).maybeSingle();
       const doneList: boolean[] = dc?.decisions_done
         ? JSON.parse(dc.decisions_done)
         : decisions.map(() => false);
       setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
+    } else {
+      setMyDecisions([]);
     }
 
-    const decisionVal = ci?.completed_mission ?? false;
-    setTodayDone({ qt: !!tqt, prayer: !!tp || prayerChecked, decision: decisionVal });
+    setTodayDone({ qt: !!completedQt, prayer: prayerChecked });
 
     if (localStorage.getItem(`celebrated_${today}`)) {
       celebrationShownRef.current = true;
     }
-    // 첫 실행 언어 선택 (아직 한 번도 선택한 적 없다면)
     if (isFirstLaunch()) {
       setShowFirstLangPicker(true);
     }
@@ -134,29 +193,23 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // allDone 감지 — 루틴 완료 축하 + streak 업데이트
   useEffect(() => {
     const onboardingDone = localStorage.getItem("onboarding_done");
     if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       if (!localStorage.getItem(`celebrated_${today}`)) {
         celebrationShownRef.current = true;
         localStorage.setItem(`celebrated_${today}`, "true");
-
-        // 3개 루틴 모두 완료 시 streak 업데이트
         updateStreak(today);
-
-        const streak = profile?.streak_days ?? 0;
-        setCelebration({
-          show: true,
+        enqueueCelebration({
           message: t("home_celebration_title", lang),
-          subMessage: `${t("home_celebration_sub_prefix", lang)}${t(getTreeSubMsgKey(streak), lang)}`,
+          subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
+          launchRootsMan: true,
         });
       }
     }
   }, [allDone, loading]);
 
-  // streak 업데이트 함수 (3개 루틴 완료 시 호출)
   async function updateStreak(today: string) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -164,12 +217,9 @@ export default function HomePage() {
     const { data: p } = await supabase.from("profiles")
       .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
     if (!p) return;
-    const lastCheckinDate = p.last_checkin ? p.last_checkin.split("T")[0] : null;
-    // 오늘 이미 streak 업데이트 했으면 스킵
+    const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
     if (lastCheckinDate === today) return;
-    const last = p.last_checkin ? new Date(p.last_checkin) : null;
-    // 하루 빠져도 streak 유지 - 그냥 이어서 카운트
-    let newStreak = last ? (p.streak_days ?? 0) + 1 : 1;
+    let newStreak = p.last_checkin ? (p.streak_days ?? 0) + 1 : 1;
     const alreadyHasAngel = p.badge_angel ?? false;
     const alreadyHasRootsman = p.badge_rootsman ?? false;
     const alreadyHasRootsmanBible = p.badge_rootsman_bible ?? false;
@@ -184,49 +234,59 @@ export default function HomePage() {
     if (newStreak >= 40 && !alreadyHasMose) badgeUpdate.badge_mose = true;
     if (newStreak >= 52 && !alreadyHasRootsmanBible) badgeUpdate.badge_rootsman_bible = true;
     if (newStreak >= 111 && !alreadyHasDavid) badgeUpdate.badge_david = true;
-    if (newStreak >= 900 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
-
+    if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
-    setProfile((prev: any) => prev ? { ...prev, ...badgeUpdate } : prev);
-
-    // 뱃지 팝업 (우선순위대로)
-    if (newStreak >= 7 && !alreadyHasRootsman) {
-      setBadgePopup({ img: "/badge_rootsman.png", title: lang === "de" ? "Rootsman-Abzeichen! 🧑‍🌾" : lang === "en" ? "Obtain Rootsman Badge! 🧑‍🌾" : "루츠맨 배지 획득! 🧑‍🌾", msg: t("badge_rootsman_msg", lang) });
-    } else if (newStreak >= 40 && !alreadyHasMose) {
-      setBadgePopup({ img: "/badge_mose.png", title: lang === "de" ? "Mose-Abzeichen! 🪄" : lang === "en" ? "Obtain Mose Badge! 🪄" : "모세 배지 획득! 🪄", msg: t("badge_mose_msg", lang) });
-    } else if (newStreak >= 52 && !alreadyHasRootsmanBible) {
-      setBadgePopup({ img: "/badge_rootsman_bible.png", title: lang === "de" ? "Rootsman Bibel-Abzeichen! 📖" : lang === "en" ? "Obtain Rootsman Bibel Badge! 📖" : "루츠맨 성경 배지 획득! 📖", msg: t("badge_rootsman_bible_msg", lang) });
-    } else if (newStreak >= 111 && !alreadyHasDavid) {
-      setBadgePopup({ img: "/badge_david.png", title: lang === "de" ? "David-Abzeichen! 🗡️" : lang === "en" ? "Obtain David Badge! 🗡️" : "다윗 배지 획득! 🗡️", msg: t("badge_david_msg", lang) });
-    } else if (newStreak >= 900 && !alreadyHasAngel) {
-      setBadgePopup({ img: "/angel.png", title: lang === "de" ? "Engel-Abzeichen! 👼" : lang === "en" ? "Obtain Angel Badge! 👼" : "천사 배지 획득! 👼", msg: t("badge_angel_msg", lang) });
-    }
+    const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    if (newProfile) setProfile(newProfile);
   }
 
-  // 10일 업데이트 팝업 확인
   useEffect(() => {
     if (!profile) return;
-    const streak = profile.streak_days ?? 0;
-    if (streak === 0) return;
-    const today = new Date().toISOString().split("T")[0];
-
-    // 100일 배지
-    if (streak % 100 === 0) {
-      const badgeKey = `badge_shown_${streak}`;
+    const streak = profile?.streak_days ?? 0;
+    if (profile.badge_rootsman) {
+      const badgeKey = `badge_rootsman_${streak}`;
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
-        const badgeIndex = Math.floor(streak / 100) - 1;
-        setGardenPopup({ show: true, type: "badge", badgeIndex });
+        setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+        return;
+      }
+    }
+    if (profile.badge_mose) {
+      const badgeKey = `badge_mose_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+        return;
+      }
+    }
+    if (profile.badge_rootsman_bible) {
+      const badgeKey = `badge_rootsman_bible_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+        return;
+      }
+    }
+    if (profile.badge_david) {
+      const badgeKey = `badge_david_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+        return;
+      }
+    }
+    if (profile.badge_angel && streak > 0 && streak % 100 === 0) {
+      const cycleNumber = Math.floor(streak / 100);
+      const badgeKey = `badge_angel_cycle_${cycleNumber}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setGardenPopup({ show: true, type: "badge", badgeIndex: (cycleNumber - 1) % 9 });
         return;
       }
     }
 
-    // 나무 성장 단계 변경 팝업 (tree2→tree3, tree3→tree4 등)
-    // cycleDay 11, 21, 31... = 새 나무 이미지로 바뀌는 날 → 성장 축하 팝업
-    // cycleDay 10, 20, 30... = 단계 마무리 → 별도 팝업 없음 (루틴 축하만)
-    const cycleDay = ((streak - 1) % 100) + 1;
+    const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
-      // 11일, 21일, 31일... — 새 단계 시작 (나무 성장!)
       const gardenKey = `garden_shown_${streak}`;
       if (!localStorage.getItem(gardenKey)) {
         localStorage.setItem(gardenKey, "true");
@@ -235,41 +295,134 @@ export default function HomePage() {
     }
   }, [profile]);
 
-  async function togglePrayer() {
-    if (todayDone.prayer) return; // 이미 완료면 취소 불가
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const today = new Date().toISOString().split("T")[0];
-    await supabase.from("daily_checkins").upsert({
-      user_id: user.id,
-      date: today,
-      prayer_checked: true,
-    }, { onConflict: "user_id,date" });
-    setTodayDone(p => ({ ...p, prayer: true }));
+  function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
+    setCelebration((current) => {
+      if (!current.show) {
+        return {
+          show: true,
+          message: item.message,
+          subMessage: item.subMessage ?? "",
+          launchRootsMan: !!item.launchRootsMan,
+        };
+      }
+      celebrationQueueRef.current.push(item);
+      return current;
+    });
   }
 
-  async function toggleAiDecision() {
+  function openRootsManExperience() {
+    setShowRootsMan(false);
+    setShowRootsManPopup(true);
+  }
+
+  function closeCelebration() {
+    const launchRootsMan = celebration.launchRootsMan;
+    const next = celebrationQueueRef.current.shift();
+
+    if (next) {
+      if (launchRootsMan) pendingRootsManRef.current = true;
+      setCelebration({
+        show: true,
+        message: next.message,
+        subMessage: next.subMessage ?? "",
+        launchRootsMan: !!next.launchRootsMan,
+      });
+      return;
+    }
+
+    setCelebration({ show: false, message: "", subMessage: "", launchRootsMan: false });
+    if (launchRootsMan || pendingRootsManRef.current) {
+      pendingRootsManRef.current = false;
+      openRootsManExperience();
+    }
+  }
+
+  async function markQuietPrayer() {
+    if (todayDone.prayer) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const today = new Date().toISOString().split("T")[0];
-    if (todayDone.decision) return;
-    await supabase.from("daily_checkins").upsert({
-      user_id: user.id, date: today, completed_mission: true,
+    const today = getLocalDateString();
+    const { error } = await supabase.from("daily_prayer_completions").upsert({
+      user_id: user.id,
+      date: today,
+      source: "quiet",
     }, { onConflict: "user_id,date" });
-    setTodayDone(p => ({ ...p, decision: true }));
-    if (!celebrationShownRef.current) {
-      const today2 = new Date().toISOString().split("T")[0];
-      if (!localStorage.getItem(`celebrated_${today2}`)) {
-        setCelebration({ show: true, message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
+    if (error) {
+      alert(lang === "de" ? "Das Gebet konnte nicht gespeichert werden." : lang === "en" ? "Could not save today's prayer." : "오늘의 기도를 저장하지 못했어요.");
+      return;
+    }
+    setTodayDone(p => ({ ...p, prayer: true }));
+    enqueueCelebration({
+      message: t("home_prayer_quiet_celeb", lang),
+      subMessage: t("home_prayer_quiet_celeb_sub", lang),
+    });
+  }
+
+  function openPrayerRequest() {
+    router.push("/prayer?compose=1");
+  }
+
+  async function saveHomeDecision() {
+    const decisionText = homeDecisionInput.trim();
+    if (!decisionText || savingHomeDecision) return;
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const today = getLocalDateString();
+    setSavingHomeDecision(true);
+    try {
+      let targetRecordId = completedQtRecordId;
+
+      if (!targetRecordId) {
+        const { data: completedRow } = await supabase.from("qt_records")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .eq("is_draft", false)
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        targetRecordId = completedRow?.id ?? null;
       }
+
+      if (!targetRecordId) {
+        router.push("/qt");
+        return;
+      }
+
+      const { error: recordError } = await supabase.from("qt_records")
+        .update({ decision: decisionText })
+        .eq("id", targetRecordId);
+      if (recordError) throw recordError;
+
+      const doneList = [false];
+      const { error: checkinError } = await supabase.from("daily_checkins").upsert({
+        user_id: user.id,
+        date: today,
+        decisions_done: JSON.stringify(doneList),
+      }, { onConflict: "user_id,date" });
+      if (checkinError) throw checkinError;
+
+      setCompletedQtRecordId(targetRecordId);
+      setMyDecisions([{ text: decisionText, done: false }]);
+      setHomeDecisionInput("");
+      requestAnimationFrame(() => {
+        applySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (error) {
+      console.error(error);
+      alert(lang === "de" ? "Der Vorsatz konnte nicht gespeichert werden." : lang === "en" ? "Could not save the resolution." : "결단을 저장하지 못했어요.");
+    } finally {
+      setSavingHomeDecision(false);
     }
   }
 
   async function toggleMyDecision(i: number) {
     if (myDecisions[i].done) return;
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
     setMyDecisions(updated);
     const supabase = createClient();
@@ -285,18 +438,179 @@ export default function HomePage() {
         });
       }
     }
-    if (!celebrationShownRef.current) {
-      if (!localStorage.getItem(`celebrated_${today}`)) {
-        setCelebration({ show: true, message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
-      }
+    if (!celebrationShownRef.current && !localStorage.getItem(`celebrated_${today}`)) {
+      enqueueCelebration({ message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
     }
   }
 
-  async function logout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+  function formatTodaySchedule() {
+    const schedule = homeQTState.todaySchedule;
+    if (!schedule) return null;
+    const translatedBook = translateBookName(schedule.book, lang);
+    const verseRange = schedule.end_chapter && schedule.end_chapter !== schedule.chapter
+      ? `${schedule.chapter}:${schedule.start_verse}-${schedule.end_chapter}:${schedule.end_verse}`
+      : schedule.end_verse !== schedule.start_verse
+      ? `${schedule.chapter}:${schedule.start_verse}-${schedule.end_verse}`
+      : `${schedule.chapter}:${schedule.start_verse}`;
+    return `${translatedBook} ${verseRange}`;
   }
+
+  function startHomeQT(mode?: QTMode) {
+    if (homeQTState.hasDraft && !mode) {
+      router.push("/qt/write?resume=true");
+      return;
+    }
+
+    const nextMode = mode ?? getRecommendedQTMode();
+    router.push(buildQTWriteHref({
+      mode: nextMode,
+      preferredTranslation: homeQTState.preferredTranslation,
+      todaySchedule: homeQTState.todaySchedule,
+    }));
+  }
+
+  function openDecisionSection() {
+    if (!hasMyDecisions) {
+      if (nextStepSectionRef.current) {
+        nextStepSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => homeDecisionInputRef.current?.focus(), 250);
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (applySectionRef.current) {
+      applySectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    router.push("/qt");
+  }
+
+  function openTreeSection() {
+    if (treeSectionRef.current) {
+      treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const recommendedMode = getRecommendedQTMode();
+  const isSundayToday = isSunday();
+  const scheduleRef = formatTodaySchedule();
+
+  const nextStep = (() => {
+    if (!todayVerse?.verse) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_checkin_title", lang),
+        sub: t("home_next_step_checkin_sub", lang),
+        primaryLabel: t("home_verse_btn", lang),
+        primaryAction: () => router.push("/checkin"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (homeQTState.hasDraft) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_draft_title", lang),
+        sub: t("home_next_step_draft_sub", lang),
+        primaryLabel: t("qt_draft_continue", lang),
+        primaryAction: () => startHomeQT(),
+        secondaryLabel: t("home_next_step_qt_secondary", lang),
+        secondaryAction: () => startHomeQT("free"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (!todayDone.qt) {
+      if (isSundayToday) {
+        return {
+        kind: "default" as const,
+          title: t("home_next_step_sunday_title", lang),
+          sub: t("home_next_step_sunday_sub", lang),
+          primaryLabel: t("home_next_step_sunday_btn", lang),
+          primaryAction: () => startHomeQT("sunday"),
+          accent: "sage" as const,
+        };
+      }
+
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_qt_title", lang),
+        sub: t("home_next_step_qt_sub", lang),
+        meta: scheduleRef,
+        primaryLabel: t("home_next_step_qt_primary", lang),
+        primaryAction: () => startHomeQT(recommendedMode),
+        secondaryLabel: t("home_next_step_qt_secondary", lang),
+        secondaryAction: () => startHomeQT("free"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (!todayDone.prayer) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_prayer_title", lang),
+        sub: t("home_next_step_prayer_sub", lang),
+        primaryLabel: t("home_prayer_quiet_option", lang),
+        primaryAction: markQuietPrayer,
+        secondaryLabel: t("home_prayer_write_option", lang),
+        secondaryAction: openPrayerRequest,
+        accent: "terra" as const,
+      };
+    }
+
+    if (!decisionDone) {
+      if (!hasMyDecisions) {
+        return {
+          kind: "decision-compose" as const,
+          title: t("home_next_step_decision_empty_title", lang),
+          sub: t("home_next_step_decision_empty_sub", lang),
+          accent: "terra" as const,
+        };
+      }
+
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_decision_title", lang),
+        sub: t("home_next_step_decision_sub", lang),
+        primaryLabel: t("home_next_step_decision_btn", lang),
+        primaryAction: openDecisionSection,
+        accent: "terra" as const,
+      };
+    }
+
+    return {
+        kind: "default" as const,
+      title: t("home_next_step_complete_title", lang),
+      sub: t("home_next_step_complete_sub", lang),
+      primaryLabel: t("home_next_step_complete_btn", lang),
+      primaryAction: openRootsManExperience,
+      accent: "sage" as const,
+    };
+  })();
+
+  const routineCards = [
+    {
+      label: t("home_routine_qt", lang),
+      done: todayDone.qt,
+      icon: "📖",
+      onClick: () => router.push("/qt"),
+    },
+    {
+      label: t("home_routine_prayer", lang),
+      done: todayDone.prayer,
+      icon: "🙏",
+      onClick: () => router.push("/prayer"),
+    },
+    {
+      label: t("home_routine_decision", lang),
+      done: decisionDone,
+      icon: "✊",
+      onClick: openDecisionSection,
+    },
+  ];
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -329,14 +643,12 @@ export default function HomePage() {
       )}
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
 
-      {/* 0. 복귀 팝업 */}
       <WelcomeBackPopup
         show={showWelcomeBack}
         daysSince={welcomeBackDays}
         onClose={() => setShowWelcomeBack(false)}
       />
 
-      {/* 신앙의 결실 뱃지 팝업 */}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
@@ -354,35 +666,27 @@ export default function HomePage() {
         </div>
       )}
 
-
-
-      {/* 1. 루틴 완료 confetti 축하 */}
       <Celebration
         show={celebration.show}
         message={celebration.message}
         subMessage={celebration.subMessage}
-        onClose={() => {
-          setCelebration({ show: false, message: "", subMessage: "" });
-          // 루틴 완료 축하였으면 → 농부 팝업 먼저 (RootsMan은 팝업 닫힌 후 스크롤 시 시작)
-          if (celebration.message.includes("루틴") || celebration.message.includes("Routine")) {
-            setShowRootsManPopup(true);
-          }
-        }}
+        onClose={closeCelebration}
       />
 
-      {/* 2. 농부 팝업 (루틴 완료 후) */}
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
         onClose={() => {
           setShowRootsManPopup(false);
-          // 홈 상단으로 즉시 스크롤 (smooth 대신 instant) 후 바로 농부 등장
-          window.scrollTo({ top: 0, behavior: "instant" });
+          if (treeSectionRef.current) {
+            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
           setShowRootsMan(true);
         }}
       />
 
-      {/* 3. 10일/100일 정원 업데이트 팝업 */}
       <GardenUpdatePopup
         show={gardenPopup.show}
         type={gardenPopup.type}
@@ -396,11 +700,10 @@ export default function HomePage() {
 
       <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 4 }}>{t(getGreetingKey(), lang)}</div>
+          <div style={{ fontSize: 13, color: "var(--text3)", marginBottom: 4 }}>{t(getGreetingKey(), lang)}</div>
           <div className="header-title">
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
-              // {name} placeholder를 치환한 후, "정원"/"Garten" 부분을 <em>으로 감쌈
               const full = t("home_garden_my", lang, { name });
               const emWord = lang === "de" ? "Garten" : lang === "en" ? "Garden" : "정원";
               const idx = full.lastIndexOf(emWord);
@@ -410,7 +713,6 @@ export default function HomePage() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* 다크/라이트 토글 */}
           <button
             onClick={() => {
               const html = document.documentElement;
@@ -428,85 +730,131 @@ export default function HomePage() {
           >
             {theme === "light" ? "☀️" : "🌙"}
           </button>
-          {/* 언어 선택 */}
           <div style={{ position: "relative" }}>
-          <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
-          </button>
-          {showLangPicker && (
-            <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-          )}
-          {showLangPicker && (
-            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
-              {getLanguageOptions().map(opt => (
-                <button key={opt.code} onClick={async () => {
-                  setShowLangPicker(false);
-                  await setPreferredLang(opt.code);
-                  window.location.reload();
-                }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>{opt.flag}</span>
-                  <span>{opt.nativeName}</span>
-                  {lang === opt.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
-                </button>
-              ))}
-            </div>
-          )}
+            <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
+            </button>
+            {showLangPicker && (
+              <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
+            )}
+            {showLangPicker && (
+              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+                {getLanguageOptions().map(opt => (
+                  <button key={opt.code} onClick={async () => {
+                    setShowLangPicker(false);
+                    await setPreferredLang(opt.code);
+                    window.location.reload();
+                  }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 22 }}>{opt.flag}</span>
+                    <span>{opt.nativeName}</span>
+                    {lang === opt.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
+      <div ref={nextStepSectionRef} style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">{t("home_next_step_section", lang)}</div>
+        <div className={nextStep.accent === "sage" ? "card-sage" : "card-terra"} style={{ padding: 18, borderRadius: 22 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", lineHeight: 1.35, marginBottom: 8 }}>{nextStep.title}</h2>
+          <p style={{ fontSize: 14, color: nextStep.accent === "sage" ? "var(--text2)" : "var(--terra-dark)", lineHeight: 1.7, marginBottom: nextStep.meta ? 10 : 16 }}>
+            {nextStep.sub}
+          </p>
+          {nextStep.meta && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(122,157,122,0.25)", fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 16 }}>
+              <span>📖</span>
+              <span>{nextStep.meta}</span>
+            </div>
+          )}
+          {nextStep.kind === "decision-compose" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                ref={homeDecisionInputRef}
+                type="text"
+                className="input-field"
+                value={homeDecisionInput}
+                onChange={(e) => setHomeDecisionInput(e.target.value)}
+                placeholder={t("home_next_step_decision_placeholder", lang)}
+                maxLength={120}
+                style={{ minHeight: 48 }}
+              />
+              <button
+                onClick={saveHomeDecision}
+                className="btn-primary"
+                style={{ minHeight: 48, opacity: homeDecisionInput.trim() ? 1 : 0.7 }}
+                disabled={!homeDecisionInput.trim() || savingHomeDecision}
+              >
+                {savingHomeDecision ? t("loading", lang) : t("home_next_step_decision_save", lang)}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: nextStep.secondaryLabel ? "row" : "column", gap: 10 }}>
+              <button onClick={nextStep.primaryAction} className={nextStep.accent === "sage" ? "btn-sage" : "btn-primary"} style={{ flex: 1, minHeight: 48 }}>
+                {nextStep.primaryLabel}
+                <ChevronRight size={16} />
+              </button>
+              {nextStep.secondaryLabel && nextStep.secondaryAction && (
+                <button onClick={nextStep.secondaryAction} className="btn-outline" style={{ flex: 1, minHeight: 48 }}>
+                  {nextStep.secondaryLabel}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* 오늘의 말씀 */}
+      <div ref={treeSectionRef}>
+        <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
+      </div>
+
+      <div style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">{t("home_routine_section", lang)}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {routineCards.map(({ label, done, icon, onClick }) => {
+            const bg = done ? "var(--sage-light)" : "var(--bg2)";
+            const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
+            const color = done ? "var(--sage-dark)" : "var(--text)";
+            return (
+              <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 18, padding: "15px 8px 13px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: 20, marginBottom: 8 }}>{icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
+                <div style={{ fontSize: 11, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 4 }}>{done ? t("home_routine_done", lang) : t("home_routine_open", lang)}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_verse_section", lang)}</div>
-        <div className="card-sage">
+        <div className="card-sage" style={{ borderRadius: 22, padding: 18 }}>
           {todayVerse?.verse ? (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 8 }}>{todayVerse.reference}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.4px", marginBottom: 10 }}>{todayVerse.reference}</div>
               <p className="verse-text">"{todayVerse.verse}"</p>
-              {todayVerse.message && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(122,157,122,0.2)", fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{todayVerse.message}</div>
-              )}
             </>
           ) : (
             <>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 12 }}>{t("home_verse_empty", lang)}</div>
+              <div style={{ fontSize: 14, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>{t("home_verse_empty", lang)}</div>
               <Link href="/checkin"><button className="btn-sage">{t("home_verse_btn", lang)} <ChevronRight size={16} /></button></Link>
             </>
           )}
         </div>
       </div>
 
-      {/* 추천 결단 */}
-      {todayVerse?.mission && (
-        <div style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">{t("home_recommend_section", lang)}</div>
-          <div className="card-terra">
-            <div style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.65, marginBottom: 12 }}>{todayVerse.mission}</div>
-            <button onClick={toggleAiDecision} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.decision ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.decision ? "var(--sage)" : "rgba(196,149,106,0.3)"}`, cursor: "pointer", width: "100%" }}>
-              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${todayDone.decision ? "white" : "var(--terra)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                {todayDone.decision && <Check size={12} style={{ color: "white" }} />}
-              </div>
-              <span style={{ fontSize: 12, color: todayDone.decision ? "white" : "var(--text2)", fontWeight: todayDone.decision ? 600 : 400 }}>
-                {todayDone.decision ? t("home_decision_practiced", lang) : t("home_decision_practice", lang)}
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 나의 결단 */}
       {myDecisions.length > 0 && (
-        <div style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">{t("home_my_decision", lang)}</div>
-          <div className="card">
+        <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
+          <div className="sec-label">{t("home_apply_my", lang)}</div>
+          <div className="card" style={{ borderRadius: 22, padding: 18 }}>
             {myDecisions.map((d, i) => (
-              <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "0 0 8px", width: "100%" }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-                  {d.done && <Check size={12} style={{ color: "var(--bg)" }} />}
+              <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: i === myDecisions.length - 1 ? "0" : "0 0 10px", width: "100%" }}>
+                <div style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  {d.done && <Check size={13} style={{ color: "var(--bg)" }} />}
                 </div>
-                <span style={{ fontSize: 13, color: d.done ? "var(--text3)" : "var(--text)", lineHeight: 1.5, textDecoration: d.done ? "line-through" : "none" }}>
+                <span style={{ fontSize: 14, color: d.done ? "var(--text3)" : "var(--text)", lineHeight: 1.65, textDecoration: d.done ? "line-through" : "none" }}>
                   {i + 1}. {d.text}
                 </span>
               </button>
@@ -515,50 +863,35 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 기도 체크 */}
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_prayer_section", lang)}</div>
-        <div className="card" style={{ padding: "14px 16px" }}>
-          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 12 }}>
+        <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
+          <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>
             {t("home_prayer_desc", lang)}
           </div>
-          <button
-            onClick={togglePrayer}
-            disabled={todayDone.prayer}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: todayDone.prayer ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.prayer ? "var(--sage)" : "var(--border)"}`, cursor: todayDone.prayer ? "default" : "pointer", width: "100%" }}
-          >
-            <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${todayDone.prayer ? "white" : "var(--text3)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: todayDone.prayer ? "rgba(255,255,255,0.2)" : "transparent" }}>
-              {todayDone.prayer && <Check size={12} style={{ color: "white" }} />}
-            </div>
-            <span style={{ fontSize: 12, color: todayDone.prayer ? "white" : "var(--text2)", fontWeight: todayDone.prayer ? 600 : 400 }}>
-              {todayDone.prayer ? t("home_prayer_done_msg", lang) : t("home_prayer_yes", lang)}
-            </span>
-          </button>
+          <div style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
+            {t("home_prayer_hint", lang)}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={markQuietPrayer}
+              disabled={todayDone.prayer}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 14px", background: todayDone.prayer ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.prayer ? "var(--sage)" : "var(--border)"}`, cursor: todayDone.prayer ? "default" : "pointer", flex: 1 }}
+            >
+              <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${todayDone.prayer ? "white" : "var(--text3)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: todayDone.prayer ? "rgba(255,255,255,0.2)" : "transparent" }}>
+                {todayDone.prayer && <Check size={12} style={{ color: "white" }} />}
+              </div>
+              <span style={{ fontSize: 13, color: todayDone.prayer ? "white" : "var(--text2)", fontWeight: todayDone.prayer ? 700 : 600 }}>
+                {todayDone.prayer ? t("home_prayer_done_msg", lang) : t("home_prayer_quiet_option", lang)}
+              </span>
+            </button>
+            <button onClick={openPrayerRequest} className="btn-outline" style={{ flex: 1 }}>
+              {t("home_prayer_write_option", lang)}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 오늘의 루틴 - 상태 표시만 (클릭 불가) */}
-      <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_routine_section", lang)}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[
-            { label: t("home_routine_qt", lang), done: todayDone.qt, icon: "📖" },
-            { label: t("home_routine_prayer", lang), done: todayDone.prayer, icon: "🙏" },
-            { label: t("home_routine_decision", lang), done: decisionDone, icon: "✊" },
-          ].map(({ label, done, icon }) => {
-            const bg = done ? "var(--sage-light)" : "var(--bg2)";
-            const border = done ? "rgba(122,157,122,0.3)" : "var(--border)";
-            const color = done ? "var(--sage-dark)" : "var(--text)";
-            return (
-              <div key={label} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 16, padding: "14px 8px", textAlign: "center" }}>
-                <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color }}>{label}</div>
-                <div style={{ fontSize: 9, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 2 }}>{done ? t("home_routine_done", lang) : t("home_routine_notdone", lang)}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       <BottomNav />
     </div>

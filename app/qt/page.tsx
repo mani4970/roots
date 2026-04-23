@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
+import { buildQTWriteHref } from "@/lib/qtEntry";
+import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
 
 const QT_GUIDE_KEYS: { emoji: string; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -56,11 +58,15 @@ export default function QTPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
-    const today = new Date().toISOString().split("T")[0];
-    const { data: tqt } = await supabase.from("qt_records")
-      .select("id,is_draft").eq("user_id", user.id).eq("date", today).maybeSingle();
-    setTodayDone(!!tqt && !tqt.is_draft);
-    const draftExists = !!tqt && tqt.is_draft === true;
+    const today = getLocalDateString();
+    const { data: todayRows } = await supabase.from("qt_records")
+      .select("id,is_draft")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .order("created_at", { ascending: false });
+    const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
+    const draftExists = !completedExists && !!todayRows?.some((row: any) => row.is_draft === true);
+    setTodayDone(completedExists);
     setHasDraft(draftExists);
     if (draftExists) setShowDraftPopup(true);
     const { data } = await supabase.from("qt_records").select("*")
@@ -86,7 +92,7 @@ export default function QTPage() {
   }
 
   const byYear = records.reduce((acc, r) => {
-    const year = new Date(r.date).getFullYear();
+    const year = parseLocalDateString(r.date).getFullYear();
     if (!acc[year]) acc[year] = [];
     acc[year].push(r);
     return acc;
@@ -96,27 +102,18 @@ export default function QTPage() {
 
   function startQT(mode: string) {
     setShowStartModal(false);
-    if (mode === "6step" && todaySchedule) {
-      const params = new URLSearchParams({
-        mode: "6step",
-        schedBook: todaySchedule.book,
-        schedChapter: String(todaySchedule.chapter),
-        schedStartV: String(todaySchedule.start_verse),
-        schedEndV: String(todaySchedule.end_verse),
-        translation: String(preferredTranslation),
-        ...(todaySchedule.end_chapter ? { schedEndChapter: String(todaySchedule.end_chapter) } : {}),
-      });
-      router.push(`/qt/write?${params.toString()}`);
-    } else {
-      router.push(`/qt/write?mode=${mode}&translation=${preferredTranslation}`);
-    }
+    router.push(buildQTWriteHref({
+      mode: mode as "6step" | "sunday" | "free",
+      preferredTranslation,
+      todaySchedule,
+    }));
   }
 
   async function deleteDraftAndStart() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
     setHasDraft(false);
     setShowDraftPopup(false);
@@ -245,7 +242,7 @@ export default function QTPage() {
                       <button key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
-                            {new Date(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
+                            {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
                           </p>
                           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
                             {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}

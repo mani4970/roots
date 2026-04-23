@@ -64,15 +64,16 @@ Bitte befolgen Sie diese Anweisungen genau:
 
 1. **Bibelvers**: Wählen Sie einen Vers, der genau zur heutigen Emotion passt. Zitieren Sie ihn korrekt auf Deutsch (Luther 2017 oder Einheitsübersetzung).
 
-2. **Erklärung (message)**: Erklären Sie in 2-3 Sätzen, was dieser Vers heute für jemanden mit dieser Emotion bedeutet. Beziehen Sie sich direkt auf bestimmte Wörter oder Ausdrücke im Vers.
+2. **Referenz**: Geben Sie die Referenz korrekt an.
 
-3. **Heutiger Vorsatz (mission)**: Eine konkrete, handlungsorientierte Aufgabe für heute.
-   - ✅ "Sagen Sie heute einer Person in Ihrer Familie: 'Ich bete für dich'"
-   - ✅ "Schreiben Sie vor dem Schlafengehen 3 Dinge auf, für die Sie heute dankbar sind"
-   - ❌ Keine abstrakten Aussagen wie "Beten Sie" oder "Vertrauen Sie Gott"
+Wichtig:
+- Geben Sie nur **einen** Vers und **eine** Referenz zurück.
+- Keine Erklärung.
+- Kein Vorsatz.
+- Kein zusätzlicher Text.
 
 Antworten Sie NUR im JSON-Format:
-{"verse":"Bibelvers","reference":"Buch Kapitel:Vers","message":"Erklärung","mission":"Konkreter Vorsatz"}`
+{"verse":"Bibelvers","reference":"Buch Kapitel:Vers"}`
       : isEN
       ? `You are a spiritual guide helping Christian growth.${avoidClause}
 
@@ -83,15 +84,16 @@ Follow these instructions exactly:
 
 1. **Bible verse**: Choose a verse that resonates with today's emotion. Quote it accurately (ESV or NIV).
 
-2. **Explanation (message)**: In 2-3 sentences, explain what this verse means today for someone feeling this emotion. Reference specific words from the verse.
+2. **Reference**: Provide the verse reference correctly.
 
-3. **Today's resolution (mission)**: One concrete, actionable task for today.
-   - ✅ "Tell one family member today: 'I'm praying for you'"
-   - ✅ "Before bed, write down 3 things you're grateful for today"
-   - ❌ No abstract statements like "Pray" or "Trust God"
+Important:
+- Return only **one** verse and **one** reference.
+- No explanation.
+- No recommendation or resolution.
+- No extra text.
 
 Respond ONLY in JSON format:
-{"verse":"Bible verse","reference":"Book Chapter:Verse","message":"Explanation","mission":"Concrete resolution"}`
+{"verse":"Bible verse","reference":"Book Chapter:Verse"}`
       : `당신은 크리스천의 신앙 성장을 돕는 영적 가이드입니다.${avoidClause}
 
 사용자의 오늘 감정 상태: ${emotionId}
@@ -101,33 +103,16 @@ Respond ONLY in JSON format:
 
 1. **말씀 선택**: 감정에 정확히 공명하는 성경 구절 1개. 위로이든 도전이든 오늘 이 감정에 살아있는 말씀이어야 합니다. 개역개정 기준으로 정확하게 인용하세요.
 
-2. **말씀 해설(message)**: 선택한 말씀의 특정 단어나 표현을 직접 인용하거나 연결하여, 오늘 이 감정을 가진 사람에게 이 말씀이 구체적으로 무슨 의미인지 2-3문장으로 설명하세요. 예를 들어 "말씀에서 '쉬게 하리라'고 하셨는데, 이것은..." 처럼 말씀 본문과 직접 이어지게. 따뜻하되 피상적이지 않게.
+2. **말씀 위치(reference)**: 책명, 장, 절을 정확히 적으세요.
 
-3. **오늘의 결단(mission)**: 예수님의 마음으로 오늘 하루 실제로 손발로 실천할 수 있는 구체적인 행동 1가지.
-   결단의 종류는 감정에 따라 다음 중 하나를 선택하세요:
-
-   [선언형 - 믿음을 선포하는 것] 힘들거나 두렵거나 의심이 들 때
-   - ✅ "오늘 아침 거울 앞에서 '나는 하나님의 사랑받는 자녀다!'를 5번 소리내어 외치세요"
-   - ✅ "오늘 하루 힘들 때마다 '주님이 나와 함께 계신다'를 마음속으로 3번 선포하세요"
-
-   [타인을 향한 행동 - 예수님의 마음으로] 은혜받았거나 기쁘거나 사명감이 있을 때
-   - ✅ "오늘 주변에서 힘들어 보이는 사람에게 문자 한 줄 보내세요: '기도하고 있어요, 힘내요'"
-   - ✅ "오늘 가족 중 한 명에게 이유 없이 '사랑해, 감사해'라고 말해보세요"
-   - ✅ "오늘 카페나 식당에서 직원에게 진심 어린 '감사합니다'를 눈 마주치며 전하세요"
-
-   [구체적 기도 행동] 메마르거나 외롭거나 영적으로 갈급할 때
-   - ✅ "오늘 저녁 잠들기 전, 감사한 사람 3명의 이름을 부르며 30초씩 축복 기도해보세요"
-   - ✅ "오늘 점심 식사 전 두 손 모으고 '주님, 이 음식과 오늘 하루를 주셔서 감사합니다'를 소리내어 말해보세요"
-
-   [말씀 실천 행동] 감사하거나 평안할 때
-   - ✅ "오늘 받은 이 말씀을 메모장에 적어두고 하루에 세 번 꺼내서 읽어보세요"
-   - ✅ "오늘 하루 중 하나님의 흔적이 느껴진 순간을 저녁에 한 줄 일기로 적어보세요"
-
-   ❌ 절대 금지: "기도하세요", "말씀 묵상하세요", "하나님을 신뢰하세요" 같은 추상적 표현
-   반드시 언제, 어디서, 어떻게, 무슨 말을 할지까지 구체적으로 1-2문장으로 작성하세요.
+중요:
+- 말씀 1개와 reference만 반환하세요.
+- 설명(message)은 쓰지 마세요.
+- 추천 결단(mission)은 쓰지 마세요.
+- 다른 문장은 추가하지 마세요.
 
 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
-{"verse":"말씀 내용","reference":"책명 장:절","message":"말씀 해설","mission":"오늘의 구체적 결단 행동"}`;
+{"verse":"말씀 내용","reference":"책명 장:절"}`;
 
     const msg = await client.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -139,7 +124,7 @@ JSON 형식으로만 응답하세요 (다른 텍스트 없이):
     const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
     // 필수 필드 검증
-    if (!parsed.verse || !parsed.reference || !parsed.message || !parsed.mission) {
+    if (!parsed.verse || !parsed.reference) {
       throw new Error("불완전한 응답");
     }
 
@@ -152,23 +137,17 @@ JSON 형식으로만 응답하세요 (다른 텍스트 없이):
       return NextResponse.json({
         verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
         reference: "Matthäus 11:28",
-        message: "Was auch immer Sie heute trägt – Gott möchte es gemeinsam mit Ihnen tragen. Sie müssen nicht alles alleine bewältigen.",
-        mission: "Legen Sie heute Abend vor dem Schlafen das Handy weg, schließen Sie die Augen und sagen Sie laut: 'Herr, danke für heute. Bitte sei morgen wieder bei mir.'",
       });
     }
     if (lang === "en") {
       return NextResponse.json({
         verse: "Come to me, all who labor and are heavy laden, and I will give you rest.",
         reference: "Matthew 11:28",
-        message: "Whatever burden you carry today, the Lord wants to carry it with you. You don't have to handle it all alone.",
-        mission: "Tonight before bed, put your phone down, close your eyes for 2 minutes and say aloud: 'Lord, thank you for today. Please be with me again tomorrow.'",
       });
     }
     return NextResponse.json({
       verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
       reference: "마태복음 11:28",
-      message: "오늘 하루 어떤 짐을 지고 있든, 주님이 함께 짊어지길 원하십니다. 혼자 다 감당하려 하지 않아도 괜찮아요.",
-      mission: "오늘 저녁 잠들기 전, 핸드폰을 내려놓고 딱 2분만 눈을 감고 '주님, 오늘 하루 감사합니다. 내일도 함께해 주세요'라고 소리내어 말해보세요.",
     });
   }
 }

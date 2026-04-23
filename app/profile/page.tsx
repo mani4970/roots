@@ -85,7 +85,7 @@ export default function ProfilePage() {
     setPhotoError("");
     // 5MB 제한
     if (file.size > 5 * 1024 * 1024) {
-      setPhotoError("5MB 이하 이미지만 가능해요");
+      setPhotoError(lang === "de" ? "Nur Bilder bis 5 MB sind möglich." : lang === "en" ? "Only images up to 5 MB are allowed." : "5MB 이하 이미지만 가능해요");
       return;
     }
     setUploadingPhoto(true);
@@ -96,7 +96,7 @@ export default function ProfilePage() {
     const path = `${user.id}/avatar.${ext}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
-      setPhotoError((lang === "de" ? "Upload fehlgeschlagen: " : lang === "en" ? "Upload fehlgeschlagen: " : "업로드 실패: ") + error.message);
+      setPhotoError((lang === "de" ? "Upload fehlgeschlagen: " : lang === "en" ? "Upload failed: " : "업로드 실패: ") + error.message);
       setUploadingPhoto(false);
       return;
     }
@@ -106,7 +106,7 @@ export default function ProfilePage() {
     const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
     if (dbError) {
       console.error("프로필 사진 DB 저장 실패:", dbError);
-      setPhotoError((lang === "de" ? "Foto speichern fehlgeschlagen: " : lang === "en" ? "Foto speichern fehlgeschlagen: " : "사진 저장 실패: ") + dbError.message);
+      setPhotoError((lang === "de" ? "Foto speichern fehlgeschlagen: " : lang === "en" ? "Photo save failed: " : "사진 저장 실패: ") + dbError.message);
       setUploadingPhoto(false);
       return;
     }
@@ -122,9 +122,14 @@ export default function ProfilePage() {
   }
 
   function shareApp() {
-    const text = `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com`;
+    const text =
+      lang === "de"
+        ? `🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com`
+        : lang === "en"
+          ? `🌱 Roots - rooted in the Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com`
+          : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com`;
     if (navigator.share) {
-      navigator.share({ title: "Roots 앱 초대", text });
+      navigator.share({ title: lang === "de" ? "Roots Einladung" : lang === "en" ? "Invite to Roots" : "Roots 앱 초대", text });
     } else {
       navigator.clipboard.writeText(text);
     }

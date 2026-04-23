@@ -3,6 +3,7 @@ import Image from "next/image";
 import RootsMan from "./RootsMan";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
+import { parseLocalDateString } from "@/lib/date";
 
 interface TreeGrowthProps {
   days: number;
@@ -34,7 +35,7 @@ const STAGE_DESC_KEYS: readonly TKey[] = [
 function getTreeState(days: number, lastCheckin: string | null, lang: Lang) {
   let daysSince = 0;
   if (lastCheckin) {
-    const last = new Date(lastCheckin);
+    const last = parseLocalDateString(lastCheckin);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     last.setHours(0, 0, 0, 0);

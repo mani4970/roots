@@ -96,18 +96,18 @@ function JoinContent() {
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>🌱</div>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Roots</h1>
-        <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 28 }}>말씀에 뿌리내리고, 함께 자라다</p>
+        <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 28 }}>{lang === "de" ? "Im Wort verwurzelt, gemeinsam wachsen" : lang === "en" ? "Rooted in the Word, growing together" : "말씀에 뿌리내리고, 함께 자라다"}</p>
 
         {notFound ? (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "24px", border: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 16, color: "var(--text3)" }}>😢 그룹을 찾을 수 없어요</p>
-            <button className="btn-sage" style={{ marginTop: 16 }} onClick={() => router.push("/")}>홈으로</button>
+            <p style={{ fontSize: 16, color: "var(--text3)" }}>{lang === "de" ? "😢 Gruppe nicht gefunden" : lang === "en" ? "😢 Group not found" : "😢 그룹을 찾을 수 없어요"}</p>
+            <button className="btn-sage" style={{ marginTop: 16 }} onClick={() => router.push("/")}>{lang === "de" ? "Zur Startseite" : lang === "en" ? "Go home" : "홈으로"}</button>
           </div>
         ) : joined ? (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--sage-dark)" }}>그룹에 참여했어요!</p>
-            <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 8 }}>커뮤니티로 이동 중...</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--sage-dark)" }}>{lang === "de" ? "Sie sind der Gruppe beigetreten!" : lang === "en" ? "You joined the group!" : "그룹에 참여했어요!"}</p>
+            <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 8 }}>{lang === "de" ? "Weiter zur Community..." : lang === "en" ? "Moving to Community..." : "커뮤니티로 이동 중..."}</p>
           </div>
         ) : (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
@@ -117,12 +117,12 @@ function JoinContent() {
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{groupName}</h2>
             {groupDesc && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{groupDesc}</p>}
             {memberCount > 0 && (
-              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>👥 {memberCount}명 참여 중</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>👥 {lang === "de" ? `${memberCount} Mitglieder dabei` : lang === "en" ? `${memberCount} members joined` : `${memberCount}명 참여 중`}</p>
             )}
             {!isPublic && (
               <div style={{ background: "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
                 <p style={{ fontSize: 12, color: "var(--terra-dark)", lineHeight: 1.6 }}>
-                  비공개 그룹이에요.<br />로그인 후 참여할 수 있어요.
+                  {lang === "de" ? <>Dies ist eine private Gruppe.<br />Nach dem Login können Sie beitreten.</> : lang === "en" ? <>This is a private group.<br />You can join after logging in.</> : <>비공개 그룹이에요.<br />로그인 후 참여할 수 있어요.</>}
                 </p>
               </div>
             )}
@@ -130,7 +130,7 @@ function JoinContent() {
               {joining ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Gruppe beitreten" : lang === "en" ? "Join group" : "그룹 참여하기")}
             </button>
             <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
-              Roots 계정이 없으신가요? 참여 후 가입할 수 있어요
+              {lang === "de" ? "Sie haben noch kein Roots-Konto? Nach dem Beitritt können Sie sich registrieren." : lang === "en" ? "No Roots account yet? You can sign up after joining." : "Roots 계정이 없으신가요? 참여 후 가입할 수 있어요"}
             </p>
           </div>
         )}

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
+import { parseLocalDateString } from "@/lib/date";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 
@@ -33,6 +34,18 @@ const QTR_TR: Record<string, Partial<Record<Lang, string>>> = {
   "올려드리는 기도": { de: "Abschlussgebet", en: "Closing Prayer" },
 };
 function trR(s: string, lang: Lang): string { return lang === "ko" ? s : QTR_TR[s]?.[lang] ?? s; }
+function sectionLabel(key: string, qtMode?: string, lang?: Lang): string {
+  if (key === "summary") return trR(qtMode === "sunday" ? "말씀 요약" : "본문 요약", lang || "ko");
+  const map: Record<string, string> = {
+    opening_prayer: "들어가는 기도",
+    key_verse: "붙잡은 말씀",
+    meditation: "느낌과 묵상",
+    application: "성품 (적용)",
+    decision: "행동 (결단)",
+    closing_prayer: "올려드리는 기도",
+  };
+  return trR(map[key] || key, lang || "ko");
+}
 
 function RecordContent() {
   const router = useRouter();
@@ -158,7 +171,7 @@ function RecordContent() {
 
   function copyAll() {
     if (!record) return;
-    const date = new Date(record.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+    const date = parseLocalDateString(record.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
     const decisions = record.decision
       ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
@@ -190,17 +203,17 @@ function RecordContent() {
   }
 
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>기록을 찾을 수 없어요</p></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{lang === "de" ? "Eintrag nicht gefunden" : lang === "en" ? "Record not found" : "기록을 찾을 수 없어요"}</p></div>;
 
   const isShared = sharedTargets.length > 0;
   const SECTIONS = [
-    { key: "opening_prayer", label: "들어가는 기도" },
-    { key: "summary", label: record?.qt_mode === "sunday" ? "말씀 요약" : "본문 요약" },
-    { key: "key_verse", label: "붙잡은 말씀", italic: true },
-    { key: "meditation", label: "느낌과 묵상" },
-    { key: "application", label: "성품 (적용)" },
-    { key: "decision", label: "행동 (결단)", isDecision: true },
-    { key: "closing_prayer", label: "올려드리는 기도" },
+    { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
+    { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
+    { key: "key_verse", label: sectionLabel("key_verse", record?.qt_mode, lang), italic: true },
+    { key: "meditation", label: sectionLabel("meditation", record?.qt_mode, lang) },
+    { key: "application", label: sectionLabel("application", record?.qt_mode, lang) },
+    { key: "decision", label: sectionLabel("decision", record?.qt_mode, lang), isDecision: true },
+    { key: "closing_prayer", label: sectionLabel("closing_prayer", record?.qt_mode, lang) },
   ];
 
   return (
@@ -216,7 +229,7 @@ function RecordContent() {
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
             <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              감사해요 🙏
+              {t("badge_thanks", lang)}
             </button>
           </div>
         </div>
@@ -226,7 +239,7 @@ function RecordContent() {
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
-          {new Date(record.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+          {parseLocalDateString(record.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
         {isShared && getShareLabel() && (

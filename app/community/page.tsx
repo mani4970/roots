@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
+import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
 
 const REACTIONS = [
@@ -378,7 +379,7 @@ export default function CommunityPage() {
                 <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} emoji="📖" />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "en" ? "Unknown" : "이름 없음")}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "long", day: "numeric", weekday: "short" })}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "long", day: "numeric", weekday: "short" })}</p>
                 </div>
               </div>
               <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={22} /></button>
@@ -470,7 +471,7 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : lang === "en" ? "Free Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
@@ -571,7 +572,7 @@ export default function CommunityPage() {
                           <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
                       <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
@@ -606,7 +607,7 @@ export default function CommunityPage() {
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                         </div>
                         <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" }) : ""}
+                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
                         </span>
                       </div>
                       {/* 기도 제목 */}
@@ -672,7 +673,7 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(r.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "de-DE" : "ko-KR", { month: "short", day: "numeric" })}</span>
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : lang === "en" ? "Free Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
