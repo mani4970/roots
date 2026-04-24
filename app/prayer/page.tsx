@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
@@ -20,9 +20,9 @@ const PRAYER_TEXT = {
   savedSub: { ko: "구하고 찾는 자에게 반드시 하나님이 응답하실거예요", de: "Gott wird denen antworten, die suchen und bitten", en: "God will answer those who seek and ask" },
 } as const;
 
-function pt(key: keyof typeof PRAYER_TEXT, lang: string) {
-  const entry = PRAYER_TEXT[key] as Partial<Record<string, string>>;
-  return entry[lang] ?? (lang === "fr" ? entry.en : undefined) ?? entry.ko ?? String(key);
+function pt(key: keyof typeof PRAYER_TEXT, lang: Lang) {
+  const entry = PRAYER_TEXT[key] as Partial<Record<Lang, string>> & { ko: string };
+  return entry[lang] ?? entry.en ?? entry.ko;
 }
 
 function PrayerPageContent() {
@@ -226,8 +226,8 @@ function PrayerPageContent() {
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("prayer_title", lang)}</h1>
         <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
-          {lang === "de" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : lang === "fr" ? "Write prayer requests. Ask for intercession." : lang === "en" ? "Write prayer requests. Ask for intercession." : "기도 제목을 적어보세요. 함께 중보기도를 요청하세요."}<br />
-          {lang === "de" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : lang === "fr" ? "When prayers are answered, leave a testimony." : lang === "en" ? "When prayers are answered, leave a testimony." : "기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요."}
+          {lang === "de" ? "Gebetsanliegen aufschreiben. Um Fürbitte bitten." : lang === "en" ? "Write prayer requests. Ask for intercession." : "기도 제목을 적어보세요. 함께 중보기도를 요청하세요."}<br />
+          {lang === "de" ? "Wenn Gebete erhört werden, ein Zeugnis hinterlassen." : lang === "en" ? "When prayers are answered, leave a testimony." : "기도가 응답됐을 때, 받은 은혜를 간증으로 남겨주세요."}
         </p>
 
         {/* 탭 */}
@@ -271,12 +271,12 @@ function PrayerPageContent() {
           <div style={{ textAlign: "center", padding: "52px 0" }}>
             <p style={{ fontSize: 36, marginBottom: 12 }}>{tab === "praying" ? "🙏" : "✨"}</p>
             <p style={{ color: "var(--text3)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              {tab === "praying" ? (lang === "de" ? "Keine Gebetsanliegen" : lang === "fr" ? "No prayer requests" : lang === "en" ? "No prayer requests" : "기도 제목이 없어요") : (lang === "de" ? "Noch keine erhörten Gebete" : lang === "fr" ? "No answered prayers yet" : lang === "en" ? "No answered prayers yet" : "아직 응답된 기도가 없어요")}
+              {tab === "praying" ? (lang === "de" ? "Keine Gebetsanliegen" : lang === "en" ? "No prayer requests" : "기도 제목이 없어요") : (lang === "de" ? "Noch keine erhörten Gebete" : lang === "en" ? "No answered prayers yet" : "아직 응답된 기도가 없어요")}
             </p>
             <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.6 }}>
               {tab === "praying"
-                ? (lang === "de" ? "+ drücken, um ein Anliegen zu schreiben" : lang === "fr" ? "+ Press to write a request" : lang === "en" ? "+ Press to write a request" : "+ 버튼으로 기도 제목을 적어보세요")
-                : (lang === "de" ? "Tippen Sie bei einem Gebetsanliegen auf 'Erhört'" : lang === "fr" ? "Tap 'Answered' for a prayer request." : lang === "en" ? "Tap 'Answered' for a prayer request." : "기도 중인 제목에서 '응답됐어요'를 눌러보세요")}
+                ? (lang === "de" ? "+ drücken, um ein Anliegen zu schreiben" : lang === "en" ? "+ Press to write a request" : "+ 버튼으로 기도 제목을 적어보세요")
+                : (lang === "de" ? "Tippen Sie bei einem Gebetsanliegen auf 'Erhört'" : lang === "en" ? "Tap 'Answered' for a prayer request." : "기도 중인 제목에서 '응답됐어요'를 눌러보세요")}
             </p>
           </div>
         ) : (
@@ -288,7 +288,7 @@ function PrayerPageContent() {
                 {p.is_answered && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <CheckCircle size={14} style={{ color: "var(--terra-dark)" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{lang === "de" ? "Gebet erhört! 🎉" : lang === "fr" ? "Prayer answered! 🎉" : lang === "en" ? "Prayer answered! 🎉" : "기도 응답! 🎉"}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{lang === "de" ? "Gebet erhört! 🎉" : lang === "en" ? "Prayer answered! 🎉" : "기도 응답! 🎉"}</span>
                     {p.answered_at && (
                       <span style={{ fontSize: 10, color: "var(--text3)", marginLeft: "auto" }}>
                         {new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
@@ -301,7 +301,7 @@ function PrayerPageContent() {
                 {p.visibility === "all" && !p.is_answered && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
-                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : lang === "fr" ? `🤲 Intercession · ${p.prayer_count ?? 0} praying` : lang === "en" ? `🤲 Intercession · ${p.prayer_count ?? 0} praying` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
+                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : lang === "en" ? `🤲 Intercession · ${p.prayer_count ?? 0} praying` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
                     </span>
                   </div>
                 )}
@@ -313,10 +313,10 @@ function PrayerPageContent() {
                       onChange={e => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={saveEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--sage)", color: "var(--bg)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                        <Check size={13} /> {lang === "de" ? "Speichern" : lang === "fr" ? "Save" : lang === "en" ? "Save" : "저장"}
+                        <Check size={13} /> {lang === "de" ? "Speichern" : lang === "en" ? "Save" : "저장"}
                       </button>
                       <button onClick={() => setEditId(null)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--bg3)", color: "var(--text3)", border: "1px solid var(--border)", cursor: "pointer", fontSize: 12 }}>
-                        <X size={13} /> {lang === "de" ? "Abbrechen" : lang === "fr" ? "Cancel" : lang === "en" ? "Cancel" : "취소"}
+                        <X size={13} /> {lang === "de" ? "Abbrechen" : lang === "en" ? "Cancel" : "취소"}
                       </button>
                     </div>
                   </div>
@@ -329,7 +329,7 @@ function PrayerPageContent() {
                     {/* 간증 */}
                     {p.testimony && (
                       <div style={{ background: "rgba(196,149,106,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, border: "1px solid rgba(196,149,106,0.2)" }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)", marginBottom: 4 }}>{lang === "de" ? "Zeugnis ✍️" : lang === "fr" ? "Testimony ✍️" : lang === "en" ? "Testimony ✍️" : "간증 ✍️"}</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)", marginBottom: 4 }}>{lang === "de" ? "Zeugnis ✍️" : lang === "en" ? "Testimony ✍️" : "간증 ✍️"}</p>
                         <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                       </div>
                     )}
@@ -340,16 +340,16 @@ function PrayerPageContent() {
                           <>
                             <button onClick={() => { setEditId(p.id); setEditText(p.content); }}
                               style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <Pencil size={10} /> {lang === "de" ? "Ändern" : lang === "fr" ? "Edit" : lang === "en" ? "Edit" : "수정"}
+                              <Pencil size={10} /> {lang === "de" ? "Ändern" : lang === "en" ? "Edit" : "수정"}
                             </button>
                             <button onClick={() => openAnsweredPrayer(p.id)}
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
-                              {lang === "de" ? "Erhört 🙌" : lang === "fr" ? "Answered 🙌" : lang === "en" ? "Answered 🙌" : "응답됐어요 🙌"}
+                              {lang === "de" ? "Erhört 🙌" : lang === "en" ? "Answered 🙌" : "응답됐어요 🙌"}
                             </button>
                             {p.visibility !== "all" && (
                               <button onClick={() => requestIntercession(p.id)}
                                 style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Send size={10} /> {lang === "de" ? "Fürbitte bitten" : lang === "fr" ? "Ask for intercession" : lang === "en" ? "Ask for intercession" : "중보기도 요청"}
+                                <Send size={10} /> {lang === "de" ? "Fürbitte bitten" : lang === "en" ? "Ask for intercession" : "중보기도 요청"}
                               </button>
                             )}
                           </>
@@ -371,24 +371,24 @@ function PrayerPageContent() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 45, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
-              {lang === "de" ? "Gebetserhörung teilen" : lang === "fr" ? "Share answered prayer" : lang === "en" ? "Share answered prayer" : "기도 응답 간증 나누기"}
+              {lang === "de" ? "Gebetserhörung teilen" : lang === "en" ? "Share answered prayer" : "기도 응답 간증 나누기"}
             </h2>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>
-              {lang === "de" ? "Schreiben Sie kurz auf, wie Gott geantwortet hat." : lang === "fr" ? "Write a short testimony of how God answered." : lang === "en" ? "Write a short testimony of how God answered." : "하나님이 어떻게 응답하셨는지 짧게 남겨보세요."}
+              {lang === "de" ? "Schreiben Sie kurz auf, wie Gott geantwortet hat." : lang === "en" ? "Write a short testimony of how God answered." : "하나님이 어떻게 응답하셨는지 짧게 남겨보세요."}
             </p>
             <textarea
               className="textarea-field"
               rows={4}
-              placeholder={lang === "de" ? "Gebetszeugnis schreiben..." : lang === "fr" ? "Write your testimony..." : lang === "en" ? "Write your testimony..." : "응답 간증을 적어주세요..."}
+              placeholder={lang === "de" ? "Gebetszeugnis schreiben..." : lang === "en" ? "Write your testimony..." : "응답 간증을 적어주세요..."}
               value={testimonyText}
               onChange={e => setTestimonyText(e.target.value)}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn-outline" onClick={() => { setTestimonyPrayerId(null); setTestimonyText(""); }} style={{ flex: 1 }}>
-                {lang === "de" ? "Abbrechen" : lang === "fr" ? "Cancel" : lang === "en" ? "Cancel" : "취소"}
+                {lang === "de" ? "Abbrechen" : lang === "en" ? "Cancel" : "취소"}
               </button>
               <button className="btn-sage" onClick={saveAnsweredPrayer} disabled={savingTestimony || !testimonyText.trim()} style={{ flex: 1 }}>
-                {savingTestimony ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : lang === "fr" ? "Save" : lang === "en" ? "Save" : "저장하기")}
+                {savingTestimony ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : lang === "en" ? "Save" : "저장하기")}
               </button>
             </div>
           </div>
@@ -399,15 +399,15 @@ function PrayerPageContent() {
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{lang === "de" ? "Gebetsanliegen schreiben" : lang === "fr" ? "Write prayer request" : lang === "en" ? "Write prayer request" : "기도 제목 적기"}</h2>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>{lang === "de" ? "Standardmäßig nur für Sie sichtbar." : lang === "fr" ? "Only visible to you by default." : lang === "en" ? "Only visible to you by default." : "기본적으로 나만 볼 수 있어요."}</p>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{lang === "de" ? "Gebetsanliegen schreiben" : lang === "en" ? "Write prayer request" : "기도 제목 적기"}</h2>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>{lang === "de" ? "Standardmäßig nur für Sie sichtbar." : lang === "en" ? "Only visible to you by default." : "기본적으로 나만 볼 수 있어요."}</p>
             <textarea className="textarea-field" rows={4}
-              placeholder={lang === "de" ? "Gebetsanliegen eingeben..." : lang === "fr" ? "Enter prayer requests..." : lang === "en" ? "Enter prayer requests..." : "기도 제목을 적어주세요..."}
+              placeholder={lang === "de" ? "Gebetsanliegen eingeben..." : lang === "en" ? "Enter prayer requests..." : "기도 제목을 적어주세요..."}
               value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>{lang === "de" ? "Abbrechen" : lang === "fr" ? "Cancel" : lang === "en" ? "Cancel" : "취소"}</button>
+              <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>{lang === "de" ? "Abbrechen" : lang === "en" ? "Cancel" : "취소"}</button>
               <button className="btn-sage" onClick={submit} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
-                {saving ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : lang === "fr" ? "Save" : lang === "en" ? "Save" : "저장하기")}
+                {saving ? <Loader2 size={16} className="spin" /> : (lang === "de" ? "Speichern" : lang === "en" ? "Save" : "저장하기")}
               </button>
             </div>
           </div>
