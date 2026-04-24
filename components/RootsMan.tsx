@@ -2,9 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 
 // rootsman_transparent.png: 1536x2776, 3x3 grid = 9 frames
-// Row 0 (top):    walk-left1, walk-front, walk-right1
-// Row 1 (middle): water-hold, water-tilt, water-pour
-// Row 2 (bottom): walk-left2, walk-front2, walk-right2
+// Row 1 (top)    : enter from right to left
+// Row 2 (middle) : watering
+// Row 3 (bottom) : exit back to the right
 const SHEET_W = 1536;
 const SHEET_H = 2776;
 const COLS = 3;
@@ -15,9 +15,15 @@ const RENDER_W = 72;
 const SCALE = RENDER_W / FRAME_W;
 const RENDER_H = Math.round(FRAME_H * SCALE);
 
-// Frame indices: row * 3 + col
-const WALK_FRAMES = [0, 1, 2, 6, 7, 8];
+const ENTER_FRAMES = [0, 1, 2];
 const WATER_FRAMES = [3, 4, 5];
+const EXIT_FRAMES = [6, 7, 8];
+
+// 화면 기준: 오른쪽 바깥에서 들어와서,
+// 새싹/나무를 가리지 않도록 가운데보다 오른쪽에서 멈춘다.
+const START_X = 110;
+const STOP_X = 63;
+const EXIT_X = 110;
 
 function getFramePos(frameIdx: number) {
   const col = frameIdx % COLS;
@@ -33,25 +39,31 @@ interface RootsManProps {
 
 export default function RootsMan({ trigger }: RootsManProps) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [frame, setFrame] = useState(1);
-  const [posX, setPosX] = useState(110);
-  const [flipX, setFlipX] = useState(false);
-  const [opacity, setOpacity] = useState(1);
+  const [frame, setFrame] = useState(0);
+  const [posX, setPosX] = useState(START_X);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasRun = useRef(false);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
+
     if (trigger && !hasRun.current) {
       hasRun.current = true;
-      timeoutId = setTimeout(() => startAnimation(), 50);
+      timeoutId = setTimeout(() => startAnimation(), 20);
     }
+
     if (!trigger) {
       hasRun.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
       setPhase("idle");
+      setFrame(0);
+      setPosX(START_X);
     }
-    return () => { if (timeoutId) clearTimeout(timeoutId); };
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [trigger]);
 
   function clearInv() {
@@ -60,60 +72,63 @@ export default function RootsMan({ trigger }: RootsManProps) {
 
   function startAnimation() {
     setPhase("enter");
-    setFlipX(true);
-    setOpacity(1);
-    setPosX(110);
-    setFrame(1);
+    setPosX(START_X);
+    setFrame(ENTER_FRAMES[0]);
 
-    let x = 110;
+    let x = START_X;
     let wf = 0;
     clearInv();
+
     intervalRef.current = setInterval(() => {
-      x = Math.max(38, x - 3.5);
-      wf = (wf + 1) % WALK_FRAMES.length;
+      x = Math.max(STOP_X, x - 4.2);
+      wf = (wf + 1) % ENTER_FRAMES.length;
       setPosX(x);
-      setFrame(WALK_FRAMES[wf]);
-      if (x <= 38) {
+      setFrame(ENTER_FRAMES[wf]);
+
+      if (x <= STOP_X) {
         clearInv();
-        setTimeout(() => startWatering(), 200);
+        setFrame(ENTER_FRAMES[1]);
+        setTimeout(() => startWatering(), 80);
       }
-    }, 120);
+    }, 90);
   }
 
   function startWatering() {
     setPhase("water");
-    setFlipX(false);
     let wf = 0;
     let count = 0;
     clearInv();
+
     intervalRef.current = setInterval(() => {
-      wf = (wf + 1) % WATER_FRAMES.length;
-      count++;
       setFrame(WATER_FRAMES[wf]);
-      if (count >= 18) {
+      wf = (wf + 1) % WATER_FRAMES.length;
+      count += 1;
+
+      if (count >= 9) {
         clearInv();
-        setTimeout(() => startExit(), 800);
+        setTimeout(() => startExit(), 120);
       }
-    }, 280);
+    }, 180);
   }
 
   function startExit() {
     setPhase("exit");
-    setFlipX(false);
-    let x = 38;
+    let x = STOP_X;
     let wf = 0;
     clearInv();
+
     intervalRef.current = setInterval(() => {
-      x = Math.min(115, x + 2.2);
-      wf = (wf + 1) % WALK_FRAMES.length;
+      x = Math.min(EXIT_X, x + 4.2);
       setPosX(x);
-      setFrame(WALK_FRAMES[wf]);
-      if (x >= 112) {
+      setFrame(EXIT_FRAMES[wf]);
+      wf = (wf + 1) % EXIT_FRAMES.length;
+
+      if (x >= EXIT_X) {
         clearInv();
         setPhase("done");
         hasRun.current = false;
       }
-    }, 120);
+    }, 90);
   }
 
   if (phase === "idle" || phase === "done") return null;
@@ -121,18 +136,20 @@ export default function RootsMan({ trigger }: RootsManProps) {
   const { col, row } = getFramePos(frame);
 
   return (
-    <div style={{
-      position: "absolute",
-      bottom: 0,
-      left: `${posX}%`,
-      transform: "translateX(-50%)",
-      width: RENDER_W,
-      height: RENDER_H,
-      overflow: "hidden",
-      imageRendering: "pixelated",
-      zIndex: 10,
-      opacity,
-    }}>
+    <div
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: `${posX}%`,
+        transform: "translateX(-50%)",
+        width: RENDER_W,
+        height: RENDER_H,
+        overflow: "hidden",
+        imageRendering: "pixelated",
+        zIndex: 10,
+        pointerEvents: "none",
+      }}
+    >
       <img
         src="/rootsman_transparent.png"
         alt="roots-man"
@@ -143,8 +160,6 @@ export default function RootsMan({ trigger }: RootsManProps) {
           width: SHEET_W * SCALE,
           height: SHEET_H * SCALE,
           imageRendering: "pixelated",
-          transform: flipX ? "scaleX(-1)" : "none",
-          transformOrigin: `${RENDER_W / 2}px center`,
         }}
       />
     </div>
