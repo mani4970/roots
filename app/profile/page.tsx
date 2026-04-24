@@ -122,16 +122,13 @@ export default function ProfilePage() {
   }
 
   function shareApp() {
-    const text =
-      lang === "de"
-        ? `🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com`
-        : lang === "en"
-          ? `🌱 Roots - rooted in the Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com`
-          : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com`;
+    const title = t("profile_invite_title", lang);
+    const text = t("profile_invite_text", lang);
     if (navigator.share) {
-      navigator.share({ title: lang === "de" ? "Roots Einladung" : lang === "en" ? "Invite to Roots" : "Roots 앱 초대", text });
+      navigator.share({ title, text });
     } else {
       navigator.clipboard.writeText(text);
+      alert(t("profile_invite_copied", lang));
     }
   }
 

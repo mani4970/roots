@@ -244,7 +244,7 @@ export default function HomePage() {
     if (!profile) return;
     const streak = profile?.streak_days ?? 0;
     if (profile.badge_rootsman) {
-      const badgeKey = `badge_rootsman_${streak}`;
+      const badgeKey = "badge_rootsman_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
@@ -252,7 +252,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_mose) {
-      const badgeKey = `badge_mose_${streak}`;
+      const badgeKey = "badge_mose_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
@@ -260,7 +260,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_rootsman_bible) {
-      const badgeKey = `badge_rootsman_bible_${streak}`;
+      const badgeKey = "badge_rootsman_bible_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
@@ -268,7 +268,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_david) {
-      const badgeKey = `badge_david_${streak}`;
+      const badgeKey = "badge_david_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
@@ -602,7 +602,7 @@ export default function HomePage() {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
       icon: "🙏",
-      onClick: () => router.push("/prayer"),
+      onClick: openPrayerSection,
     },
     {
       label: t("home_routine_decision", lang),
@@ -676,16 +676,14 @@ export default function HomePage() {
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
-        onGoGarden={() => {
-          setShowRootsMan(true);
+        onClose={() => {
           setShowRootsManPopup(false);
-          requestAnimationFrame(() => {
-            if (treeSectionRef.current) {
-              treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          });
+          if (treeSectionRef.current) {
+            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
+          setShowRootsMan(true);
         }}
       />
 
@@ -815,7 +813,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <div style={{ padding: "0 16px 14px" }}>
+      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
           <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>

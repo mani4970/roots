@@ -105,13 +105,6 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
       <div className="progress-bar" style={{ marginTop: 6 }}>
         <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
       </div>
-
-      <div style={{ marginTop: 8 }}>
-        <div className="streak-chip">
-          <span style={{ fontSize: 12 }}>{isAway ? "🌿" : "🔥"}</span>
-          <span>{t("tree_streak", lang, { n: days })}</span>
-        </div>
-      </div>
     </div>
   );
 }

@@ -154,6 +154,9 @@ export const T = {
   profile_spirit_fruits:{ ko: "성령의 열매",         de: "Früchte des Geistes", en: "Fruits of the Spirit" },
   profile_qt_calendar:  { ko: "큐티 현황",            de: "QT Kalender", en: "QT Calendar" },
   profile_invite:       { ko: "친구 초대하기",        de: "Freunde einladen", en: "Invite friends" },
+  profile_invite_title: { ko: "Roots 앱 초대",        de: "Roots Einladung", en: "Invite to Roots" },
+  profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in the Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
+  profile_invite_copied:{ ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
   profile_feedback:     { ko: "💬 의견 보내기",       de: "💬 Feedback senden", en: "💬 Send feedback" },
   profile_feedback_placeholder:{ ko: "의견을 입력해 주세요...", de: "Feedback eingeben...", en: "Enter feedback..." },
   profile_feedback_send:{ ko: "보내기",              de: "Senden", en: "Send" },
@@ -445,7 +448,7 @@ export const T = {
   // {n} placeholder 사용
   tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
   tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",                en: "{n}.garden" },
-  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",                en: "{n} / 10 Days" },
+  tree_progress:    { ko: "{n} / 10",               de: "{n} / 10",                    en: "{n} / 10" },
   tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} days in a row" },
   tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪" },
 
