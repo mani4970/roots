@@ -63,6 +63,9 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
+  const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
+  const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
+  const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
   const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
     show: false, type: "garden", badgeIndex: 0,
   });
@@ -88,7 +91,6 @@ export default function HomePage() {
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const [homeDecisionInput, setHomeDecisionInput] = useState("");
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
-  const [showQTChoice, setShowQTChoice] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -265,7 +267,7 @@ export default function HomePage() {
     if (!profile) return;
     const streak = profile?.streak_days ?? 0;
     if (profile.badge_rootsman) {
-      const badgeKey = `badge_rootsman_${streak}`;
+      const badgeKey = "badge_rootsman_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
@@ -273,7 +275,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_mose) {
-      const badgeKey = `badge_mose_${streak}`;
+      const badgeKey = "badge_mose_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
@@ -281,7 +283,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_rootsman_bible) {
-      const badgeKey = `badge_rootsman_bible_${streak}`;
+      const badgeKey = "badge_rootsman_bible_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
@@ -289,7 +291,7 @@ export default function HomePage() {
       }
     }
     if (profile.badge_david) {
-      const badgeKey = `badge_david_${streak}`;
+      const badgeKey = "badge_david_shown";
       if (!localStorage.getItem(badgeKey)) {
         localStorage.setItem(badgeKey, "true");
         setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
@@ -490,20 +492,27 @@ export default function HomePage() {
     }));
   }
 
-  function openHomeQTChoice() {
-    if (todayDone.qt) {
-      router.push("/qt");
-      return;
-    }
+  function openHomeQT() {
     if (homeQTState.hasDraft) {
       startHomeQT();
       return;
     }
-    if (isSunday()) {
-      startHomeQT("sunday");
+    if (todayDone.qt) {
+      router.push("/qt");
       return;
     }
-    setShowQTChoice(true);
+    if (isSunday()) {
+      setShowHomeSundayQT(true);
+      return;
+    }
+    setShowHomeQTChoice(true);
+  }
+
+  function startHomeQTFromPopup(mode: QTMode) {
+    setShowHomeQTChoice(false);
+    setShowHomeSundayQT(false);
+    setShowHomeQTGuide(false);
+    startHomeQT(mode);
   }
 
   function openDecisionSection() {
@@ -641,7 +650,7 @@ export default function HomePage() {
       label: t("home_routine_qt", lang),
       done: todayDone.qt,
       icon: "📖",
-      onClick: openHomeQTChoice,
+      onClick: openHomeQT,
     },
     {
       label: t("home_routine_prayer", lang),
@@ -684,26 +693,67 @@ export default function HomePage() {
           {toast}
         </div>
       )}
-      {showQTChoice && (
-        <div onClick={() => setShowQTChoice(false)} style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 22px" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 20, boxShadow: "0 18px 48px rgba(0,0,0,0.28)" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, marginBottom: 10 }}>
-              🌱 {t("home_qt_choice_recommended", lang)}
+
+      {(showHomeQTChoice || showHomeSundayQT) && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
+          <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
+                  {showHomeSundayQT ? t("home_qt_sunday_title", lang) : t("home_qt_choice_title", lang)}
+                </h2>
+                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>
+                  {showHomeSundayQT ? t("home_qt_sunday_sub", lang) : t("home_qt_choice_sub", lang)}
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTGuide(false); }}
+                aria-label={t("home_qt_choice_close", lang)}
+                style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", fontSize: 18, cursor: "pointer" }}
+              >
+                ×
+              </button>
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("home_qt_choice_title", lang)}</h3>
-            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.7, marginBottom: 16 }}>{t("home_qt_choice_sub", lang)}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button className="btn-sage" onClick={() => { setShowQTChoice(false); startHomeQT("6step"); }}>
-                {t("home_qt_choice_6step", lang)}
+
+            {showHomeSundayQT ? (
+              <button onClick={() => startHomeQTFromPopup("sunday")} className="btn-sage" style={{ width: "100%", minHeight: 48, marginTop: 8 }}>
+                {t("home_qt_sunday_start", lang)}
                 <ChevronRight size={16} />
               </button>
-              <button className="btn-outline" onClick={() => { setShowQTChoice(false); startHomeQT("free"); }}>
-                {t("home_qt_choice_free", lang)}
-              </button>
-              <button onClick={() => { setShowQTChoice(false); router.push("/qt"); }} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, padding: "8px 0", cursor: "pointer" }}>
-                {t("home_qt_choice_tab", lang)}
-              </button>
-            </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                <button onClick={() => startHomeQTFromPopup("6step")} className="btn-sage" style={{ width: "100%", minHeight: 48 }}>
+                  {t("home_qt_choice_6step", lang)}
+                  <ChevronRight size={16} />
+                </button>
+                <button onClick={() => startHomeQTFromPopup("free")} className="btn-outline" style={{ width: "100%", minHeight: 48 }}>
+                  {t("home_qt_choice_free", lang)}
+                </button>
+                <button onClick={() => setShowHomeQTGuide(v => !v)} style={{ background: "none", border: "none", color: "var(--sage-dark)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
+                  {t("home_qt_choice_guide", lang)}
+                </button>
+                {showHomeQTGuide && (
+                  <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 16, padding: 12, background: "var(--bg)" }}>
+                    {[
+                      ["🙏", "qt_g1_title", "qt_g1_desc"],
+                      ["📖", "qt_g2_title", "qt_g2_desc"],
+                      ["✨", "qt_g3_title", "qt_g3_desc"],
+                      ["💭", "qt_g4_title", "qt_g4_desc"],
+                      ["🌱", "qt_g5_title", "qt_g5_desc"],
+                      ["🙌", "qt_g6_title", "qt_g6_desc"],
+                    ].map(([emoji, titleKey, descKey]) => (
+                      <div key={String(titleKey)} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: titleKey === "qt_g6_title" ? "none" : "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 18 }}>{emoji}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 2 }}>{t(titleKey as any, lang)}</div>
+                          <div style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>{t(descKey as any, lang)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
