@@ -156,7 +156,7 @@ export const T = {
   profile_invite:       { ko: "친구 초대하기",        de: "Freunde einladen", en: "Invite friends" },
   profile_invite_title: { ko: "Roots 앱 초대",        de: "Roots Einladung", en: "Invite to Roots" },
   profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in the Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
-  profile_invite_copied:{ ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
+  profile_invite_copied: { ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
   profile_feedback:     { ko: "💬 의견 보내기",       de: "💬 Feedback senden", en: "💬 Send feedback" },
   profile_feedback_placeholder:{ ko: "의견을 입력해 주세요...", de: "Feedback eingeben...", en: "Enter feedback..." },
   profile_feedback_send:{ ko: "보내기",              de: "Senden", en: "Send" },

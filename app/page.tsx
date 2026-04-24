@@ -77,6 +77,7 @@ export default function HomePage() {
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
+  const prayerSectionRef = useRef<HTMLDivElement | null>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
   const [homeQTState, setHomeQTState] = useState<HomeQTState>({
     hasDraft: false,
@@ -493,6 +494,14 @@ export default function HomePage() {
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+  function openPrayerSection() {
+    if (prayerSectionRef.current) {
+      prayerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
 
   const recommendedMode = getRecommendedQTMode();
   const isSundayToday = isSunday();
