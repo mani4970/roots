@@ -415,6 +415,13 @@ export const T = {
   home_routine_done:      { ko: "완료 ✓",              de: "Erledigt ✓", en: "Done ✓" },
   home_routine_notdone:   { ko: "미완료",               de: "Offen", en: "Open" },
   home_routine_open:      { ko: "열기 →",              de: "Öffnen →", en: "Open →" },
+  home_qt_choice_title:{ ko: "오늘 큐티를 어떻게 할까요?", de: "Wie möchten Sie heute QT machen?", en: "How would you like to do QT today?" },
+  home_qt_choice_sub:{ ko: "오늘은 6단계 큐티를 추천해요. 부담된다면 자유형식으로 짧게 시작해도 좋아요.", de: "Heute empfehlen wir QT in 6 Schritten. Wenn es sich zu viel anfühlt, können Sie auch frei und kurz beginnen.", en: "We recommend the 6-step QT today. If that feels heavy, you can start with a short free-form QT." },
+  home_qt_choice_recommended:{ ko: "추천", de: "Empfohlen", en: "Recommended" },
+  home_qt_choice_6step:{ ko: "6단계 큐티 시작하기", de: "6-Schritte-QT starten", en: "Start 6-step QT" },
+  home_qt_choice_free:{ ko: "자유형식으로 큐티하기", de: "Freie QT machen", en: "Do free-form QT" },
+  home_qt_choice_tab:{ ko: "큐티 탭에서 더 보기", de: "Mehr im QT-Tab ansehen", en: "View more in QT tab" },
+  home_qt_choice_cancel:{ ko: "취소", de: "Abbrechen", en: "Cancel" },
   home_celebration_title: { ko: "오늘도 믿음의 뿌리가 깊어지고 있어요.", de: "Heute wachsen die Wurzeln Ihres Glaubens tiefer.", en: "Today, the roots of your faith are growing deeper." },
   home_celebration_sub:   { ko: "루츠맨이 정원에 물을 주고 있어요. 오늘의 성장을 확인해보세요.", de: "RootsMan gießt gerade Ihren Garten. Schauen Sie sich das heutige Wachstum an.", en: "RootsMan is watering your garden. Take a look at today's growth." },
   home_celebration_sub_prefix: { ko: "", de: "", en: "" },
@@ -451,7 +458,7 @@ export const T = {
   // {n} placeholder 사용
   tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
   tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",                en: "{n}.garden" },
-  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",                en: "{n} / 10 Days" },
+  tree_progress:    { ko: "{n} / 10",               de: "{n} / 10",                    en: "{n} / 10" },
   tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} days in a row" },
   tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪" },
 

@@ -73,10 +73,12 @@ export default function HomePage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
   const celebrationShownRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
+  const prayerSectionRef = useRef<HTMLDivElement | null>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
   const [homeQTState, setHomeQTState] = useState<HomeQTState>({
     hasDraft: false,
@@ -86,6 +88,7 @@ export default function HomePage() {
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const [homeDecisionInput, setHomeDecisionInput] = useState("");
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
+  const [showQTChoice, setShowQTChoice] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -236,10 +239,22 @@ export default function HomePage() {
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
-    if (newStreak >= 7 && !alreadyHasRootsman) badgeUpdate.badge_rootsman = true;
-    if (newStreak >= 40 && !alreadyHasMose) badgeUpdate.badge_mose = true;
-    if (newStreak >= 52 && !alreadyHasRootsmanBible) badgeUpdate.badge_rootsman_bible = true;
-    if (newStreak >= 111 && !alreadyHasDavid) badgeUpdate.badge_david = true;
+    if (newStreak >= 7 && !alreadyHasRootsman) {
+      badgeUpdate.badge_rootsman = true;
+      newlyAwardedBadgesRef.current.add("badge_rootsman");
+    }
+    if (newStreak >= 40 && !alreadyHasMose) {
+      badgeUpdate.badge_mose = true;
+      newlyAwardedBadgesRef.current.add("badge_mose");
+    }
+    if (newStreak >= 52 && !alreadyHasRootsmanBible) {
+      badgeUpdate.badge_rootsman_bible = true;
+      newlyAwardedBadgesRef.current.add("badge_rootsman_bible");
+    }
+    if (newStreak >= 111 && !alreadyHasDavid) {
+      badgeUpdate.badge_david = true;
+      newlyAwardedBadgesRef.current.add("badge_david");
+    }
     if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -475,6 +490,22 @@ export default function HomePage() {
     }));
   }
 
+  function openHomeQTChoice() {
+    if (todayDone.qt) {
+      router.push("/qt");
+      return;
+    }
+    if (homeQTState.hasDraft) {
+      startHomeQT();
+      return;
+    }
+    if (isSunday()) {
+      startHomeQT("sunday");
+      return;
+    }
+    setShowQTChoice(true);
+  }
+
   function openDecisionSection() {
     if (!hasMyDecisions) {
       if (nextStepSectionRef.current) {
@@ -490,6 +521,14 @@ export default function HomePage() {
       return;
     }
     router.push("/qt");
+  }
+
+  function openPrayerSection() {
+    if (prayerSectionRef.current) {
+      prayerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openTreeSection() {
@@ -602,13 +641,13 @@ export default function HomePage() {
       label: t("home_routine_qt", lang),
       done: todayDone.qt,
       icon: "📖",
-      onClick: () => router.push("/qt"),
+      onClick: openHomeQTChoice,
     },
     {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
       icon: "🙏",
-      onClick: () => router.push("/prayer"),
+      onClick: openPrayerSection,
     },
     {
       label: t("home_routine_decision", lang),
@@ -643,6 +682,29 @@ export default function HomePage() {
       {toast && (
         <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
           {toast}
+        </div>
+      )}
+      {showQTChoice && (
+        <div onClick={() => setShowQTChoice(false)} style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 22px" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 20, boxShadow: "0 18px 48px rgba(0,0,0,0.28)" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, marginBottom: 10 }}>
+              🌱 {t("home_qt_choice_recommended", lang)}
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("home_qt_choice_title", lang)}</h3>
+            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.7, marginBottom: 16 }}>{t("home_qt_choice_sub", lang)}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button className="btn-sage" onClick={() => { setShowQTChoice(false); startHomeQT("6step"); }}>
+                {t("home_qt_choice_6step", lang)}
+                <ChevronRight size={16} />
+              </button>
+              <button className="btn-outline" onClick={() => { setShowQTChoice(false); startHomeQT("free"); }}>
+                {t("home_qt_choice_free", lang)}
+              </button>
+              <button onClick={() => { setShowQTChoice(false); router.push("/qt"); }} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, padding: "8px 0", cursor: "pointer" }}>
+                {t("home_qt_choice_tab", lang)}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {showFirstLangPicker && (
@@ -687,14 +749,16 @@ export default function HomePage() {
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
-        onClose={() => {
-          setShowRootsManPopup(false);
-          if (treeSectionRef.current) {
-            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-          } else {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }
+        onGoGarden={() => {
           setShowRootsMan(true);
+          setShowRootsManPopup(false);
+          requestAnimationFrame(() => {
+            if (treeSectionRef.current) {
+              treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          });
         }}
       />
 
@@ -824,7 +888,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <div style={{ padding: "0 16px 14px" }}>
+      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
           <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>

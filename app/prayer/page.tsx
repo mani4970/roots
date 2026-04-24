@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import Celebration from "@/components/Celebration";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
@@ -18,9 +18,9 @@ const PRAYER_TEXT = {
   noahTitle: { ko: "노아 배지 획득! ⛵", de: "Noah-Abzeichen! ⛵", en: "Noah Badge! ⛵" },
   savedMessage: { ko: "기도 제목 저장! 🙏", de: "Gebetsanliegen gespeichert! 🙏", en: "Prayer requests saved! 🙏" },
   savedSub: { ko: "구하고 찾는 자에게 반드시 하나님이 응답하실거예요", de: "Gott wird denen antworten, die suchen und bitten", en: "God will answer those who seek and ask" },
-} as const;
+} satisfies Record<string, Partial<Record<Lang, string>> & { ko: string }>;
 
-function pt(key: keyof typeof PRAYER_TEXT, lang: "ko" | "de" | "en") {
+function pt(key: keyof typeof PRAYER_TEXT, lang: Lang) {
   return PRAYER_TEXT[key][lang] ?? PRAYER_TEXT[key].ko;
 }
 
