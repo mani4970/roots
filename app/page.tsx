@@ -73,6 +73,7 @@ export default function HomePage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
   const celebrationShownRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
@@ -231,10 +232,22 @@ export default function HomePage() {
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
-    if (newStreak >= 7 && !alreadyHasRootsman) badgeUpdate.badge_rootsman = true;
-    if (newStreak >= 40 && !alreadyHasMose) badgeUpdate.badge_mose = true;
-    if (newStreak >= 52 && !alreadyHasRootsmanBible) badgeUpdate.badge_rootsman_bible = true;
-    if (newStreak >= 111 && !alreadyHasDavid) badgeUpdate.badge_david = true;
+    if (newStreak >= 7 && !alreadyHasRootsman) {
+      badgeUpdate.badge_rootsman = true;
+      newlyAwardedBadgesRef.current.add("badge_rootsman");
+    }
+    if (newStreak >= 40 && !alreadyHasMose) {
+      badgeUpdate.badge_mose = true;
+      newlyAwardedBadgesRef.current.add("badge_mose");
+    }
+    if (newStreak >= 52 && !alreadyHasRootsmanBible) {
+      badgeUpdate.badge_rootsman_bible = true;
+      newlyAwardedBadgesRef.current.add("badge_rootsman_bible");
+    }
+    if (newStreak >= 111 && !alreadyHasDavid) {
+      badgeUpdate.badge_david = true;
+      newlyAwardedBadgesRef.current.add("badge_david");
+    }
     if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -244,37 +257,33 @@ export default function HomePage() {
   useEffect(() => {
     if (!profile) return;
     const streak = profile?.streak_days ?? 0;
-    if (profile.badge_rootsman) {
+    if (profile.badge_rootsman && newlyAwardedBadgesRef.current.has("badge_rootsman")) {
       const badgeKey = "badge_rootsman_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
-        return;
-      }
+      newlyAwardedBadgesRef.current.delete("badge_rootsman");
+      localStorage.setItem(badgeKey, "true");
+      setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+      return;
     }
-    if (profile.badge_mose) {
+    if (profile.badge_mose && newlyAwardedBadgesRef.current.has("badge_mose")) {
       const badgeKey = "badge_mose_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
-        return;
-      }
+      newlyAwardedBadgesRef.current.delete("badge_mose");
+      localStorage.setItem(badgeKey, "true");
+      setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+      return;
     }
-    if (profile.badge_rootsman_bible) {
+    if (profile.badge_rootsman_bible && newlyAwardedBadgesRef.current.has("badge_rootsman_bible")) {
       const badgeKey = "badge_rootsman_bible_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
-        return;
-      }
+      newlyAwardedBadgesRef.current.delete("badge_rootsman_bible");
+      localStorage.setItem(badgeKey, "true");
+      setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+      return;
     }
-    if (profile.badge_david) {
+    if (profile.badge_david && newlyAwardedBadgesRef.current.has("badge_david")) {
       const badgeKey = "badge_david_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
-        return;
-      }
+      newlyAwardedBadgesRef.current.delete("badge_david");
+      localStorage.setItem(badgeKey, "true");
+      setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+      return;
     }
     if (profile.badge_angel && streak > 0 && streak % 100 === 0) {
       const cycleNumber = Math.floor(streak / 100);
