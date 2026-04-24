@@ -487,13 +487,6 @@ export default function HomePage() {
     router.push("/qt");
   }
 
-  function openTreeSection() {
-    if (treeSectionRef.current) {
-      treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
   function openPrayerSection() {
     if (prayerSectionRef.current) {
       prayerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -502,6 +495,13 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openTreeSection() {
+    if (treeSectionRef.current) {
+      treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   const recommendedMode = getRecommendedQTMode();
   const isSundayToday = isSunday();
@@ -685,14 +685,16 @@ export default function HomePage() {
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
-        onClose={() => {
-          setShowRootsManPopup(false);
-          if (treeSectionRef.current) {
-            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-          } else {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }
+        onGoGarden={() => {
           setShowRootsMan(true);
+          setShowRootsManPopup(false);
+          requestAnimationFrame(() => {
+            if (treeSectionRef.current) {
+              treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          });
         }}
       />
 

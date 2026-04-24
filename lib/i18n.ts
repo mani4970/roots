@@ -100,7 +100,7 @@ export const T = {
   qt_sub:           { ko: "말씀과 함께하는 조용한 시간", de: "Stille Zeit mit Gottes Wort", en: "Quiet Time with God's Word" },
   qt_start_btn:     { ko: "오늘 큐티 시작하기",       de: "QT beginnen", en: "Start QT" },
   qt_done:          { ko: "오늘 큐티 완료!",          de: "QT erledigt!", en: "QT done!" },
-  qt_done_sub:      { ko: "말씀 앞에 앉은 당신, 수고했어요", de: "Gut gemacht!", en: "Well done!" },
+  qt_done_sub:      { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gesegnet – Sie waren beim Wort Gottes.", en: "Bless you — you were with God's Word." },
   qt_sunday:        { ko: "🙌 오늘은 주일이에요!",    de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!" },
   qt_sunday_sub:    { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT." },
   qt_today_passage: { ko: "오늘의 큐티 본문",         de: "Heutiger Abschnitt", en: "Today's passage" },
@@ -155,7 +155,7 @@ export const T = {
   profile_qt_calendar:  { ko: "큐티 현황",            de: "QT Kalender", en: "QT Calendar" },
   profile_invite:       { ko: "친구 초대하기",        de: "Freunde einladen", en: "Invite friends" },
   profile_invite_title: { ko: "Roots 앱 초대",        de: "Roots Einladung", en: "Invite to Roots" },
-  profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in the Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
+  profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - in Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in the God's Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
   profile_invite_copied: { ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
   profile_feedback:     { ko: "💬 의견 보내기",       de: "💬 Feedback senden", en: "💬 Send feedback" },
   profile_feedback_placeholder:{ ko: "의견을 입력해 주세요...", de: "Feedback eingeben...", en: "Enter feedback..." },
@@ -482,7 +482,7 @@ export const T = {
 
   // ── QT 페이지 ──
   qt_today_done:        { ko: "오늘 큐티 완료!",                     de: "QT heute erledigt!", en: "QT done today!" },
-  qt_today_done_sub:    { ko: "말씀 앞에 앉은 당신, 수고했어요",       de: "Gut gemacht – Sie waren beim Wort Gottes.", en: "Well done — you were with God's Word." },
+  qt_today_done_sub:    { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gesegnet – Sie waren beim Wort Gottes.", en: "Bless you — you were with God's Word." },
   qt_today_bible_ref:   { ko: "오늘의 큐티 본문",                     de: "Heutiger Abschnitt", en: "TODAY'S PASSAGE" },
   qt_sunday_title:      { ko: "🙌 오늘은 주일이에요!",                de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!" },
   qt_sunday_desc:       { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte die Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT." },
