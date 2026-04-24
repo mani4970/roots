@@ -15,6 +15,14 @@ const RENDER_W = 60;
 const SCALE = RENDER_W / FRAME_W;
 const RENDER_H = Math.round(FRAME_H * SCALE);
 
+// Movement positions are percentages inside the garden container.
+// The tree/sprout is centered, so RootsMan stops slightly right of center.
+const ENTER_START_X = 112;
+const WATER_X = 62;
+const EXIT_END_X = 116;
+const WALK_STEP = 3.2;
+const WALK_INTERVAL = 120;
+
 // Frame indices: row * 3 + col
 const WALK_FRAMES = [0, 1, 2, 6, 7, 8];
 const WATER_FRAMES = [3, 4, 5];
@@ -34,7 +42,7 @@ interface RootsManProps {
 export default function RootsMan({ trigger }: RootsManProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [frame, setFrame] = useState(1);
-  const [posX, setPosX] = useState(110);
+  const [posX, setPosX] = useState(ENTER_START_X);
   const [flipX, setFlipX] = useState(false);
   const [opacity, setOpacity] = useState(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,22 +70,22 @@ export default function RootsMan({ trigger }: RootsManProps) {
     setPhase("enter");
     setFlipX(true);
     setOpacity(1);
-    setPosX(110);
+    setPosX(ENTER_START_X);
     setFrame(1);
 
-    let x = 110;
+    let x = ENTER_START_X;
     let wf = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
-      x = Math.max(38, x - 3.5);
+      x = Math.max(WATER_X, x - WALK_STEP);
       wf = (wf + 1) % WALK_FRAMES.length;
       setPosX(x);
       setFrame(WALK_FRAMES[wf]);
-      if (x <= 38) {
+      if (x <= WATER_X) {
         clearInv();
         setTimeout(() => startWatering(), 200);
       }
-    }, 120);
+    }, WALK_INTERVAL);
   }
 
   function startWatering() {
@@ -100,20 +108,20 @@ export default function RootsMan({ trigger }: RootsManProps) {
   function startExit() {
     setPhase("exit");
     setFlipX(false);
-    let x = 38;
+    let x = WATER_X;
     let wf = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
-      x = Math.min(115, x + 2.2);
+      x = Math.min(EXIT_END_X, x + WALK_STEP);
       wf = (wf + 1) % WALK_FRAMES.length;
       setPosX(x);
       setFrame(WALK_FRAMES[wf]);
-      if (x >= 112) {
+      if (x >= EXIT_END_X) {
         clearInv();
         setPhase("done");
         hasRun.current = false;
       }
-    }, 120);
+    }, WALK_INTERVAL);
   }
 
   if (phase === "idle" || phase === "done") return null;
