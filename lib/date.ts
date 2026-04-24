@@ -18,7 +18,7 @@ export function getShiftedLocalDateString(days = 0, baseDate = new Date()): stri
 }
 
 export function getDateLocale(lang: Lang): string {
-  return lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR";
+  return lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
 }
 
 export function parseLocalDateString(dateStr: string): Date {

@@ -830,7 +830,7 @@ export default function HomePage() {
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
               const full = t("home_garden_my", lang, { name });
-              const emWord = lang === "de" ? "Garten" : lang === "en" ? "Garden" : "정원";
+              const emWord = lang === "de" ? "Garten" : lang === "fr" ? "Garden" : lang === "en" ? "Garden" : "정원";
               const idx = full.lastIndexOf(emWord);
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;

@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
 
     const isDE = lang === "de";
     const isEN = lang === "en";
+    const isFR = lang === "fr";
     const prompt = isDE
       ? `Sie sind ein geistlicher Begleiter für christliches Wachstum.${avoidClause}
 
@@ -74,6 +75,26 @@ Wichtig:
 
 Antworten Sie NUR im JSON-Format:
 {"verse":"Bibelvers","reference":"Buch Kapitel:Vers"}`
+      : isFR
+      ? `Vous êtes un guide spirituel pour aider la croissance chrétienne.${avoidClause}
+
+Émotion de l’utilisateur aujourd’hui : ${emotionId}
+Passages bibliques suggérés : ${hints || "Psaumes, Proverbes, Évangiles"}
+
+Veuillez suivre exactement ces instructions :
+
+1. **Verset biblique** : Choisissez un verset qui correspond à l’émotion du jour. Citez-le correctement en français (Louis Segond ou Segond 21).
+
+2. **Référence** : Donnez correctement la référence du verset.
+
+Important :
+- Retournez seulement **un** verset et **une** référence.
+- Pas d’explication.
+- Pas de recommandation ni résolution.
+- Aucun texte supplémentaire.
+
+Répondez UNIQUEMENT au format JSON :
+{"verse":"Verset biblique","reference":"Livre Chapitre:Verset"}`
       : isEN
       ? `You are a spiritual guide helping Christian growth.${avoidClause}
 
@@ -137,6 +158,12 @@ JSON 형식으로만 응답하세요 (다른 텍스트 없이):
       return NextResponse.json({
         verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
         reference: "Matthäus 11:28",
+      });
+    }
+    if (lang === "fr") {
+      return NextResponse.json({
+        verse: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
+        reference: "Matthieu 11:28",
       });
     }
     if (lang === "en") {

@@ -183,7 +183,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
 function trQT(str: string, lang: Lang): string {
   if (lang === "ko") return str;
-  return QT_WRITE_TRANSLATIONS[str]?.[lang] ?? str;
+  return QT_WRITE_TRANSLATIONS[str]?.[lang] ?? (lang === "fr" ? QT_WRITE_TRANSLATIONS[str]?.en : undefined) ?? str;
 }
 
 function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>): string {

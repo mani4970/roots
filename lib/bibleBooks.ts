@@ -12,6 +12,7 @@ const LANG_TO_BIBLE: Record<Lang, string> = {
   ko: "KO",
   de: "DE",
   en: "EN",
+  fr: "FR",
 };
 
 export const BOOK_NAMES: Record<string, string[]> = {
