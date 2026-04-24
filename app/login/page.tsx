@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
-import { useLang } from "@/lib/useLang";
+import { setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import LanguagePicker from "@/components/LanguagePicker";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
@@ -34,15 +34,18 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
+    await setPreferredLang(lang);
     router.push("/"); router.refresh();
   }
 
   async function handleGoogle() {
     setGLoading(true);
     const supabase = createClient();
+    localStorage.setItem("roots_lang", lang);
+    localStorage.setItem("roots_lang_selected", "true");
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?lang=${lang}` },
     });
   }
 

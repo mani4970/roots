@@ -20,16 +20,32 @@ export function useLang(): Lang {
   const [lang, setLang] = useState<Lang>(FALLBACK_LANG);
 
   useEffect(() => {
-    // 1. localStorage 우선
+    let storedLang: Lang | null = null;
+
+    // 1. localStorage 우선 — 로그인 전 선택한 언어를 절대 DB 기본값으로 덮어쓰지 않음
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (isLang(stored)) setLang(stored);
+      if (isLang(stored)) {
+        storedLang = stored;
+        setLang(stored);
+      }
     }
 
-    // 2. DB와 동기화 (로그인 상태일 때만)
+    // 2. 로그인 상태일 때 DB와 동기화
+    // - localStorage에 선택 언어가 있으면: 그 언어를 DB에 저장
+    // - localStorage가 없으면: DB 언어를 읽어와 localStorage에 저장
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
+
+      if (storedLang) {
+        supabase.from("profiles")
+          .update({ preferred_language: storedLang })
+          .eq("id", user.id)
+          .then(() => {});
+        return;
+      }
+
       supabase.from("profiles")
         .select("preferred_language")
         .eq("id", user.id)
@@ -39,6 +55,7 @@ export function useLang(): Lang {
             setLang(data.preferred_language);
             if (typeof window !== "undefined") {
               localStorage.setItem(STORAGE_KEY, data.preferred_language);
+              localStorage.setItem(SELECTED_FLAG, "true");
             }
           }
         });

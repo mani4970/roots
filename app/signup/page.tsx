@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
-import { useLang } from "@/lib/useLang";
+import { setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { Loader2, ChevronLeft } from "lucide-react";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
@@ -25,13 +25,17 @@ export default function SignupPage() {
     setLoading(true); setError("");
     const supabase = createClient();
     // 언어 설정도 함께 저장
-    const preferredLang = typeof window !== "undefined" ? localStorage.getItem("roots_lang") : null;
-    const { error } = await supabase.auth.signUp({
+    localStorage.setItem("roots_lang", lang);
+    localStorage.setItem("roots_lang_selected", "true");
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: nickname, preferred_language: preferredLang ?? "ko" } },
+      options: { data: { name: nickname, preferred_language: lang } },
     });
     if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
+    if (data.user) {
+      await setPreferredLang(lang);
+    }
     router.push("/"); router.refresh();
   }
 
