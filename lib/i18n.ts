@@ -536,6 +536,7 @@ export const T = {
   qt_guide_next: { ko: "다음 →",                              de: "Weiter →", en: "Next →", fr: "Suivant →" },
   qt_guide_start: { ko: "시작하기 🌱",                         de: "Loslegen 🌱", en: "Let's go 🌱", fr: "Allons-y 🌱" },
   qt_year_records:      { ko: "{year}년 · {count}개 기록", de: "{year} · {count} Aufzeichnungen", en: "{year} · {count} recordings", fr: "{year} · {count} enregistrements" },
+  qt_month_records:     { ko: "{month} · {count}개 기록", de: "{month} · {count} Aufzeichnungen", en: "{month} · {count} recordings", fr: "{month} · {count} enregistrements" },
 
   // QT 가이드 6단계
   qt_g1_title: { ko: "들어가는 기도",     de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
