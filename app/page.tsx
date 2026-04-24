@@ -676,14 +676,16 @@ export default function HomePage() {
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
-        onClose={() => {
-          setShowRootsManPopup(false);
-          if (treeSectionRef.current) {
-            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-          } else {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }
+        onGoGarden={() => {
           setShowRootsMan(true);
+          setShowRootsManPopup(false);
+          requestAnimationFrame(() => {
+            if (treeSectionRef.current) {
+              treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          });
         }}
       />
 

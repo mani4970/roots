@@ -44,7 +44,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
     let timeoutId: NodeJS.Timeout | null = null;
     if (trigger && !hasRun.current) {
       hasRun.current = true;
-      timeoutId = setTimeout(() => startAnimation(), 1200);
+      timeoutId = setTimeout(() => startAnimation(), 50);
     }
     if (!trigger) {
       hasRun.current = false;

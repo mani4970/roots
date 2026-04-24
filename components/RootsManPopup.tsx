@@ -5,7 +5,7 @@ import { t, type TKey } from "@/lib/i18n";
 interface RootsManPopupProps {
   show: boolean;
   streakDays: number;
-  onClose: () => void;
+  onGoGarden: () => void;
 }
 
 /**
@@ -23,13 +23,13 @@ function getGardenMessageKey(days: number): TKey {
   return ROOTSMAN_MSG_KEYS[stage - 1];
 }
 
-export default function RootsManPopup({ show, streakDays, onClose }: RootsManPopupProps) {
+export default function RootsManPopup({ show, streakDays, onGoGarden }: RootsManPopupProps) {
   const lang = useLang();
   if (!show) return null;
   const msg = t(getGardenMessageKey(streakDays), lang);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
         <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 36 }}>
           🧑‍🌾
@@ -43,7 +43,7 @@ export default function RootsManPopup({ show, streakDays, onClose }: RootsManPop
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
           {t("rootsman_check", lang)}
         </p>
-        <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={onGoGarden} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           {t("rootsman_btn", lang)}
         </button>
       </div>
