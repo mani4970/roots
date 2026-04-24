@@ -4,13 +4,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import LanguagePicker from "@/components/LanguagePicker";
+import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const lang = useLang();
+  const detectedLang = useLang();
+  const [selectedLang, setSelectedLang] = useState<Lang | null>(null);
+  const lang = selectedLang ?? detectedLang;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,11 +47,12 @@ export default function LoginPage() {
   }
 
   if (showLangPicker) {
-    return <LanguagePicker onSelect={() => { setShowLangPicker(false); window.location.reload(); }} />;
+    return <LanguagePicker initialLang={lang} onSelect={(nextLang) => { setSelectedLang(nextLang); setShowLangPicker(false); }} />;
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative" }}>
+      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
           <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>

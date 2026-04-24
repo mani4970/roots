@@ -4,12 +4,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { Loader2, ChevronLeft } from "lucide-react";
+import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 
 export default function SignupPage() {
   const router = useRouter();
-  const lang = useLang();
+  const detectedLang = useLang();
+  const [selectedLang, setSelectedLang] = useState<Lang | null>(null);
+  const lang = selectedLang ?? detectedLang;
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +36,8 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 40px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 40px", position: "relative" }}>
+      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
       <Link href="/login" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
       </Link>
