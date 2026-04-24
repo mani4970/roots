@@ -73,12 +73,10 @@ export default function HomePage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
-  const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
   const celebrationShownRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
-  const prayerSectionRef = useRef<HTMLDivElement | null>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
   const [homeQTState, setHomeQTState] = useState<HomeQTState>({
     hasDraft: false,
@@ -86,6 +84,16 @@ export default function HomePage() {
     todaySchedule: null,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
+  const [homeDecisionInput, setHomeDecisionInput] = useState("");
+  const [savingHomeDecision, setSavingHomeDecision] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  }
+  const nextStepSectionRef = useRef<HTMLDivElement | null>(null);
+  const homeDecisionInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasMyDecisions = myDecisions.length > 0;
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
@@ -228,22 +236,10 @@ export default function HomePage() {
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
-    if (newStreak >= 7 && !alreadyHasRootsman) {
-      badgeUpdate.badge_rootsman = true;
-      newlyAwardedBadgesRef.current.add("badge_rootsman");
-    }
-    if (newStreak >= 40 && !alreadyHasMose) {
-      badgeUpdate.badge_mose = true;
-      newlyAwardedBadgesRef.current.add("badge_mose");
-    }
-    if (newStreak >= 52 && !alreadyHasRootsmanBible) {
-      badgeUpdate.badge_rootsman_bible = true;
-      newlyAwardedBadgesRef.current.add("badge_rootsman_bible");
-    }
-    if (newStreak >= 111 && !alreadyHasDavid) {
-      badgeUpdate.badge_david = true;
-      newlyAwardedBadgesRef.current.add("badge_david");
-    }
+    if (newStreak >= 7 && !alreadyHasRootsman) badgeUpdate.badge_rootsman = true;
+    if (newStreak >= 40 && !alreadyHasMose) badgeUpdate.badge_mose = true;
+    if (newStreak >= 52 && !alreadyHasRootsmanBible) badgeUpdate.badge_rootsman_bible = true;
+    if (newStreak >= 111 && !alreadyHasDavid) badgeUpdate.badge_david = true;
     if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
     await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -253,33 +249,37 @@ export default function HomePage() {
   useEffect(() => {
     if (!profile) return;
     const streak = profile?.streak_days ?? 0;
-    if (profile.badge_rootsman && newlyAwardedBadgesRef.current.has("badge_rootsman")) {
-      const badgeKey = "badge_rootsman_shown";
-      newlyAwardedBadgesRef.current.delete("badge_rootsman");
-      localStorage.setItem(badgeKey, "true");
-      setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
-      return;
+    if (profile.badge_rootsman) {
+      const badgeKey = `badge_rootsman_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+        return;
+      }
     }
-    if (profile.badge_mose && newlyAwardedBadgesRef.current.has("badge_mose")) {
-      const badgeKey = "badge_mose_shown";
-      newlyAwardedBadgesRef.current.delete("badge_mose");
-      localStorage.setItem(badgeKey, "true");
-      setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
-      return;
+    if (profile.badge_mose) {
+      const badgeKey = `badge_mose_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+        return;
+      }
     }
-    if (profile.badge_rootsman_bible && newlyAwardedBadgesRef.current.has("badge_rootsman_bible")) {
-      const badgeKey = "badge_rootsman_bible_shown";
-      newlyAwardedBadgesRef.current.delete("badge_rootsman_bible");
-      localStorage.setItem(badgeKey, "true");
-      setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
-      return;
+    if (profile.badge_rootsman_bible) {
+      const badgeKey = `badge_rootsman_bible_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+        return;
+      }
     }
-    if (profile.badge_david && newlyAwardedBadgesRef.current.has("badge_david")) {
-      const badgeKey = "badge_david_shown";
-      newlyAwardedBadgesRef.current.delete("badge_david");
-      localStorage.setItem(badgeKey, "true");
-      setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
-      return;
+    if (profile.badge_david) {
+      const badgeKey = `badge_david_${streak}`;
+      if (!localStorage.getItem(badgeKey)) {
+        localStorage.setItem(badgeKey, "true");
+        setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+        return;
+      }
     }
     if (profile.badge_angel && streak > 0 && streak % 100 === 0) {
       const cycleNumber = Math.floor(streak / 100);
@@ -355,7 +355,7 @@ export default function HomePage() {
       source: "quiet",
     }, { onConflict: "user_id,date" });
     if (error) {
-      alert(lang === "de" ? "Das Gebet konnte nicht gespeichert werden." : lang === "en" ? "Could not save today's prayer." : "오늘의 기도를 저장하지 못했어요.");
+      showToast(t("home_prayer_save_error", lang));
       return;
     }
     setTodayDone(p => ({ ...p, prayer: true }));
@@ -367,6 +367,63 @@ export default function HomePage() {
 
   function openPrayerRequest() {
     router.push("/prayer?compose=1");
+  }
+
+  async function saveHomeDecision() {
+    const decisionText = homeDecisionInput.trim();
+    if (!decisionText || savingHomeDecision) return;
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const today = getLocalDateString();
+    setSavingHomeDecision(true);
+    try {
+      let targetRecordId = completedQtRecordId;
+
+      if (!targetRecordId) {
+        const { data: completedRow } = await supabase.from("qt_records")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .eq("is_draft", false)
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        targetRecordId = completedRow?.id ?? null;
+      }
+
+      if (!targetRecordId) {
+        router.push("/qt");
+        return;
+      }
+
+      const { error: recordError } = await supabase.from("qt_records")
+        .update({ decision: decisionText })
+        .eq("id", targetRecordId);
+      if (recordError) throw recordError;
+
+      const doneList = [false];
+      const { error: checkinError } = await supabase.from("daily_checkins").upsert({
+        user_id: user.id,
+        date: today,
+        decisions_done: JSON.stringify(doneList),
+      }, { onConflict: "user_id,date" });
+      if (checkinError) throw checkinError;
+
+      setCompletedQtRecordId(targetRecordId);
+      setMyDecisions([{ text: decisionText, done: false }]);
+      setHomeDecisionInput("");
+      requestAnimationFrame(() => {
+        applySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (error) {
+      console.error(error);
+      showToast(t("home_decision_save_error", lang));
+    } finally {
+      setSavingHomeDecision(false);
+    }
   }
 
   async function toggleMyDecision(i: number) {
@@ -420,8 +477,12 @@ export default function HomePage() {
 
   function openDecisionSection() {
     if (!hasMyDecisions) {
-      // 결단이 없으면 QT 탭으로 이동
-      router.push("/qt");
+      if (nextStepSectionRef.current) {
+        nextStepSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => homeDecisionInputRef.current?.focus(), 250);
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     if (applySectionRef.current) {
@@ -429,14 +490,6 @@ export default function HomePage() {
       return;
     }
     router.push("/qt");
-  }
-
-  function openPrayerSection() {
-    if (prayerSectionRef.current) {
-      prayerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openTreeSection() {
@@ -451,6 +504,99 @@ export default function HomePage() {
   const isSundayToday = isSunday();
   const scheduleRef = formatTodaySchedule();
 
+  const nextStep = (() => {
+    if (!todayVerse?.verse) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_checkin_title", lang),
+        sub: t("home_next_step_checkin_sub", lang),
+        primaryLabel: t("home_verse_btn", lang),
+        primaryAction: () => router.push("/checkin"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (homeQTState.hasDraft) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_draft_title", lang),
+        sub: t("home_next_step_draft_sub", lang),
+        primaryLabel: t("qt_draft_continue", lang),
+        primaryAction: () => startHomeQT(),
+        secondaryLabel: t("home_next_step_qt_secondary", lang),
+        secondaryAction: () => startHomeQT("free"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (!todayDone.qt) {
+      if (isSundayToday) {
+        return {
+        kind: "default" as const,
+          title: t("home_next_step_sunday_title", lang),
+          sub: t("home_next_step_sunday_sub", lang),
+          primaryLabel: t("home_next_step_sunday_btn", lang),
+          primaryAction: () => startHomeQT("sunday"),
+          accent: "sage" as const,
+        };
+      }
+
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_qt_title", lang),
+        sub: t("home_next_step_qt_sub", lang),
+        meta: scheduleRef,
+        primaryLabel: t("home_next_step_qt_primary", lang),
+        primaryAction: () => startHomeQT(recommendedMode),
+        secondaryLabel: t("home_next_step_qt_secondary", lang),
+        secondaryAction: () => startHomeQT("free"),
+        accent: "sage" as const,
+      };
+    }
+
+    if (!todayDone.prayer) {
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_prayer_title", lang),
+        sub: t("home_next_step_prayer_sub", lang),
+        primaryLabel: t("home_prayer_quiet_option", lang),
+        primaryAction: markQuietPrayer,
+        secondaryLabel: t("home_prayer_write_option", lang),
+        secondaryAction: openPrayerRequest,
+        accent: "terra" as const,
+      };
+    }
+
+    if (!decisionDone) {
+      if (!hasMyDecisions) {
+        return {
+          kind: "decision-compose" as const,
+          title: t("home_next_step_decision_empty_title", lang),
+          sub: t("home_next_step_decision_empty_sub", lang),
+          accent: "terra" as const,
+        };
+      }
+
+      return {
+        kind: "default" as const,
+        title: t("home_next_step_decision_title", lang),
+        sub: t("home_next_step_decision_sub", lang),
+        primaryLabel: t("home_next_step_decision_btn", lang),
+        primaryAction: openDecisionSection,
+        accent: "terra" as const,
+      };
+    }
+
+    return {
+        kind: "default" as const,
+      title: t("home_next_step_complete_title", lang),
+      sub: t("home_next_step_complete_sub", lang),
+      primaryLabel: t("home_next_step_complete_btn", lang),
+      primaryAction: openRootsManExperience,
+      accent: "sage" as const,
+    };
+  })();
+
   const routineCards = [
     {
       label: t("home_routine_qt", lang),
@@ -462,7 +608,7 @@ export default function HomePage() {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
       icon: "🙏",
-      onClick: openPrayerSection,
+      onClick: () => router.push("/prayer"),
     },
     {
       label: t("home_routine_decision", lang),
@@ -494,6 +640,11 @@ export default function HomePage() {
 
   return (
     <div className="page fade-in">
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
           await setPreferredLang(l);
@@ -536,16 +687,14 @@ export default function HomePage() {
       <RootsManPopup
         show={showRootsManPopup}
         streakDays={profile?.streak_days ?? 0}
-        onGoGarden={() => {
-          setShowRootsMan(true);
+        onClose={() => {
           setShowRootsManPopup(false);
-          requestAnimationFrame(() => {
-            if (treeSectionRef.current) {
-              treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          });
+          if (treeSectionRef.current) {
+            treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
+          setShowRootsMan(true);
         }}
       />
 
@@ -675,7 +824,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
+      <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
           <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>

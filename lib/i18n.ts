@@ -99,8 +99,9 @@ export const T = {
   qt_title:         { ko: "QT",                     de: "QT", en: "QT" },
   qt_sub:           { ko: "말씀과 함께하는 조용한 시간", de: "Stille Zeit mit Gottes Wort", en: "Quiet Time with God's Word" },
   qt_start_btn:     { ko: "오늘 큐티 시작하기",       de: "QT beginnen", en: "Start QT" },
+  qt_sunday_required:{ ko: "오늘은 주일이에요! 주일예배 큐티로 진행해주세요. 🙌", de: "Heute ist Sonntag! Bitte machen Sie eine Sonntagsgottesdienst-QT. 🙌", en: "Today is Sunday! Please do a Sunday worship QT. 🙌" },
   qt_done:          { ko: "오늘 큐티 완료!",          de: "QT erledigt!", en: "QT done!" },
-  qt_done_sub:      { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gesegnet – Sie waren beim Wort Gottes.", en: "Bless you — you were with God's Word." },
+  qt_done_sub:      { ko: "말씀 앞에 앉은 당신, 수고했어요", de: "Gut gemacht!", en: "Well done!" },
   qt_sunday:        { ko: "🙌 오늘은 주일이에요!",    de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!" },
   qt_sunday_sub:    { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT." },
   qt_today_passage: { ko: "오늘의 큐티 본문",         de: "Heutiger Abschnitt", en: "Today's passage" },
@@ -155,8 +156,8 @@ export const T = {
   profile_qt_calendar:  { ko: "큐티 현황",            de: "QT Kalender", en: "QT Calendar" },
   profile_invite:       { ko: "친구 초대하기",        de: "Freunde einladen", en: "Invite friends" },
   profile_invite_title: { ko: "Roots 앱 초대",        de: "Roots Einladung", en: "Invite to Roots" },
-  profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - in Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in the God's Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
-  profile_invite_copied: { ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
+  profile_invite_text:  { ko: "🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\nhttps://christian-roots.com", de: "🌱 Roots - im Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App, die Ihnen hilft, mit täglicher QT, Gebet und Entscheidung treu zu wachsen.\nLassen Sie uns gemeinsam anfangen! 👇\nhttps://christian-roots.com", en: "🌱 Roots - rooted in God's Word, growing together\n\nA Christian app that helps you grow faithfully through daily QT, prayer, and action.\nLet's begin together! 👇\nhttps://christian-roots.com" },
+  profile_invite_copied:{ ko: "초대 문구를 복사했어요.", de: "Einladungstext wurde kopiert.", en: "Invitation text copied." },
   profile_feedback:     { ko: "💬 의견 보내기",       de: "💬 Feedback senden", en: "💬 Send feedback" },
   profile_feedback_placeholder:{ ko: "의견을 입력해 주세요...", de: "Feedback eingeben...", en: "Enter feedback..." },
   profile_feedback_send:{ ko: "보내기",              de: "Senden", en: "Send" },
@@ -399,6 +400,8 @@ export const T = {
   home_prayer_section:    { ko: "오늘의 기도",          de: "Heutiges Gebet", en: "Today's Prayer" },
   home_prayer_desc:       { ko: "오늘의 기도를 하나님께 드려보세요.", de: "Bringen Sie Gott heute Ihr Gebet.", en: "Offer today's prayer to God." },
   home_prayer_done_msg:   { ko: "기도 완료! 🙏",        de: "Gebetet! 🙏", en: "Prayed! 🙏" },
+  home_prayer_save_error:{ ko: "오늘의 기도를 저장하지 못했어요.", de: "Das Gebet konnte nicht gespeichert werden.", en: "Could not save today's prayer." },
+  home_decision_save_error:{ ko: "결단을 저장하지 못했어요.", de: "Der Vorsatz konnte nicht gespeichert werden.", en: "Could not save the resolution." },
   home_prayer_quiet_option:{ ko: "조용히 기도했어요",    de: "Ich habe still gebetet", en: "I prayed quietly" },
   home_prayer_write_option:{ ko: "기도 제목 적어두기",   de: "Gebetsanliegen notieren", en: "Write prayer request" },
   home_prayer_hint:       { ko: "글로 남기지 않아도 괜찮아요. 오늘의 기도를 하나님께 드렸다면 충분해요.", de: "Sie mussen nichts aufschreiben. Wenn Sie Ihr heutiges Gebet Gott gebracht haben, genugt das.", en: "You do not need to write it down. If you offered today's prayer to God, that is enough." },
@@ -448,7 +451,7 @@ export const T = {
   // {n} placeholder 사용
   tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
   tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",                en: "{n}.garden" },
-  tree_progress:    { ko: "{n} / 10",               de: "{n} / 10",                    en: "{n} / 10" },
+  tree_progress:    { ko: "{n} / 10일",             de: "{n} / 10 Tage",                en: "{n} / 10 Days" },
   tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} days in a row" },
   tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪" },
 
@@ -482,7 +485,7 @@ export const T = {
 
   // ── QT 페이지 ──
   qt_today_done:        { ko: "오늘 큐티 완료!",                     de: "QT heute erledigt!", en: "QT done today!" },
-  qt_today_done_sub:    { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gesegnet – Sie waren beim Wort Gottes.", en: "Bless you — you were with God's Word." },
+  qt_today_done_sub:    { ko: "말씀 앞에 앉은 당신, 수고했어요",       de: "Gut gemacht – Sie waren beim Wort Gottes.", en: "Well done — you were with God's Word." },
   qt_today_bible_ref:   { ko: "오늘의 큐티 본문",                     de: "Heutiger Abschnitt", en: "TODAY'S PASSAGE" },
   qt_sunday_title:      { ko: "🙌 오늘은 주일이에요!",                de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!" },
   qt_sunday_desc:       { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte die Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT." },
@@ -552,7 +555,7 @@ export const T = {
 
   // ── 성경 번역본 그룹 라벨 ──
   qt_translation_ko: { ko: "한국어",   de: "Koreanisch", en: "Korean" },
-  qt_translation_en: { ko: "English",  de: "Englisch"   },
+  qt_translation_en: { ko: "English",  de: "Englisch", en: "English" },
   qt_translation_de: { ko: "Deutsch",  de: "Deutsch", en: "German"    },
   qt_translation_fr: { ko: "Français", de: "Französisch", en: "French"},
 
@@ -566,7 +569,7 @@ export const T = {
   qtw_s2_sub:      { ko: "본문을 읽고 마음에 새겨요",     de: "Den Text lesen und ins Herz aufnehmen", en: "Read the text and take it to heart" },
   qtw_s3_title:    { ko: "느낌과 묵상",                 de: "Empfinden & Meditation", en: "Reflection & Meditation" },
   qtw_s3_sub:      { ko: "이 말씀이 내게 주는 의미",     de: "Was bedeutet das Wort für mich?", en: "What does this Word mean to me?" },
-  qtw_s3_ph:       { ko: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "What does this Word say to my life today?\nWrite honestly what you feel." },
+  qtw_s3_ph:       { ko: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden." },
   qtw_s3_hint:     { ko: "정답이 없어요. 성령님의 이끄심에 맡겨봐요.", de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you." },
   qtw_s4_title:    { ko: "적용과 결단",                 de: "Anwendung & Entschluss", en: "Application & Resolution" },
   qtw_s4_sub:      { ko: "오늘 하루 어떻게 살 건가요?",   de: "Wie leben Sie heute?", en: "How will you live today?" },
@@ -652,7 +655,7 @@ export const T = {
   qtw_char_ph:             { ko: "어떤 마음가짐을 가질까요?", de: "Welche Haltung nehmen Sie ein?", en: "What attitude will you take?" },
   qtw_add_action:          { ko: "+ 행동 추가",        de: "+ Handlung hinzufügen", en: "+ Add action" },
   qtw_action_ph:           { ko: "예: 하루 한 번 말씀 묵상", de: "z. B. Einmal am Tag meditieren", en: "e.g. Meditate once a day" },
-  qtw_verse_select_hint:   { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tap a verse that touches you or write below" },
+  qtw_verse_select_hint:   { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten" },
   qtw_passage_loaded:      { ko: "본문이 준비됐어요",    de: "Abschnitt bereit", en: "Passage ready" },
 
   // 번역본 라벨

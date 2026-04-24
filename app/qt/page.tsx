@@ -51,6 +51,12 @@ export default function QTPage() {
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState(92);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -124,6 +130,11 @@ export default function QTPage() {
 
   return (
     <div className="page">
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
       {showDraftPopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
@@ -272,7 +283,7 @@ export default function QTPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button onClick={() => {
                   if (new Date().getDay() === 0) {
-                    alert(lang === "de" ? "Heute ist Sonntag! Bitte machen Sie eine Sonntagsgottesdienst-QT. 🙌" : lang === "en" ? "Today is Sunday! Please do a Sunday worship QT. 🙌" : "오늘은 주일이에요! 주일예배 큐티로 진행해주세요. 🙌");
+                    showToast(t("qt_sunday_required", lang));
                     return;
                   }
                   startQT("6step");

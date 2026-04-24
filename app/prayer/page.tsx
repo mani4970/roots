@@ -9,6 +9,21 @@ import { t } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
+const PRAYER_TEXT = {
+  savePrayerError: { ko: "기도 제목을 저장하지 못했어요.", de: "Das Gebetsanliegen konnte nicht gespeichert werden.", en: "Could not save the prayer request." },
+  editError: { ko: "수정을 저장하지 못했어요.", de: "Die Änderungen konnten nicht gespeichert werden.", en: "Could not save your changes." },
+  intercessionError: { ko: "중보기도 요청을 저장하지 못했어요.", de: "Die Fürbitte-Anfrage konnte nicht gespeichert werden.", en: "Could not save the intercession request." },
+  answeredError: { ko: "기도 응답을 저장하지 못했어요.", de: "Die Gebetserhörung konnte nicht gespeichert werden.", en: "Could not save the answered prayer." },
+  warriorTitle: { ko: "기도의 용사 배지 획득! ⚔️", de: "Gebetskrieger-Abzeichen! ⚔️", en: "Prayer Warrior Badge! ⚔️" },
+  noahTitle: { ko: "노아 배지 획득! ⛵", de: "Noah-Abzeichen! ⛵", en: "Noah Badge! ⛵" },
+  savedMessage: { ko: "기도 제목 저장! 🙏", de: "Gebetsanliegen gespeichert! 🙏", en: "Prayer requests saved! 🙏" },
+  savedSub: { ko: "구하고 찾는 자에게 반드시 하나님이 응답하실거예요", de: "Gott wird denen antworten, die suchen und bitten", en: "God will answer those who seek and ask" },
+} as const;
+
+function pt(key: keyof typeof PRAYER_TEXT, lang: "ko" | "de" | "en") {
+  return PRAYER_TEXT[key][lang] ?? PRAYER_TEXT[key].ko;
+}
+
 function PrayerPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,7 +106,7 @@ function PrayerPageContent() {
       await loadPrayers();
     } catch (error) {
       console.error("prayer submit failed", error);
-      setNotice(lang === "de" ? "Das Gebetsanliegen konnte nicht gespeichert werden." : lang === "en" ? "Could not save the prayer request." : "기도 제목을 저장하지 못했어요.");
+      setNotice(pt("savePrayerError", lang));
     } finally {
       setSaving(false);
     }
@@ -102,7 +117,7 @@ function PrayerPageContent() {
     const supabase = createClient();
     const { error } = await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
     if (error) {
-      setNotice(lang === "de" ? "Die Änderungen konnten nicht gespeichert werden." : lang === "en" ? "Could not save your changes." : "수정을 저장하지 못했어요.");
+      setNotice(pt("editError", lang));
       return;
     }
     setEditId(null); setEditText("");
@@ -115,7 +130,7 @@ function PrayerPageContent() {
     if (!user) return;
     const { error: visibilityError } = await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
     if (visibilityError) {
-      setNotice(lang === "de" ? "Die Fürbitte-Anfrage konnte nicht gespeichert werden." : lang === "en" ? "Could not save the intercession request." : "중보기도 요청을 저장하지 못했어요.");
+      setNotice(pt("intercessionError", lang));
       return;
     }
     // 기도의 용사 뱃지 체크 (중보요청 15번)
@@ -128,7 +143,7 @@ function PrayerPageContent() {
         await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
         setBadgePopup({
           img: "/prayer_warrior.png",
-          title: lang === "de" ? "Gebetskrieger-Abzeichen! ⚔️" : lang === "en" ? "Prayer Warrior Badge! ⚔️" : "기도의 용사 배지 획득! ⚔️",
+          title: pt("warriorTitle", lang),
           msg: t("badge_prayer_warrior_msg", lang),
         });
       }
@@ -147,7 +162,7 @@ function PrayerPageContent() {
         .select("badge_noah").eq("id", user.id).single();
       if (!prof?.badge_noah) {
         await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
-        setBadgePopup({ img: "/badge_noah.png", title: lang === "de" ? "Noah-Abzeichen! ⛵" : lang === "en" ? "Noah Badge! ⛵" : "노아 배지 획득! ⛵", msg: t("badge_noah_msg", lang) });
+        setBadgePopup({ img: "/badge_noah.png", title: pt("noahTitle", lang), msg: t("badge_noah_msg", lang) });
       }
     }
     const { error } = await supabase.from("prayer_items").update({
@@ -156,7 +171,7 @@ function PrayerPageContent() {
       answered_at: new Date().toISOString(),
     }).eq("id", testimonyPrayerId);
     if (error) {
-      setNotice(lang === "de" ? "Die Gebetserhörung konnte nicht gespeichert werden." : lang === "en" ? "Could not save the answered prayer." : "기도 응답을 저장하지 못했어요.");
+      setNotice(pt("answeredError", lang));
       setSavingTestimony(false);
       return;
     }
@@ -201,8 +216,8 @@ function PrayerPageContent() {
       )}
       <Celebration
         show={celebration}
-        message={lang === "de" ? "Gebetsanliegen gespeichert! 🙏" : lang === "en" ? "Prayer requests saved! 🙏" : "기도 제목 저장! 🙏"}
-        subMessage={lang === "de" ? "Gott wird denen antworten, die suchen und bitten" : lang === "en" ? "God will answer those who seek and ask" : "구하고 찾는 자에게 반드시 하나님이 응답하실거예요"}
+        message={pt("savedMessage", lang)}
+        subMessage={pt("savedSub", lang)}
         onClose={() => setCelebration(false)}
       />
 

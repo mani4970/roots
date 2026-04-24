@@ -170,12 +170,28 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?" },
   "구약":                         { de: "AT", en: "OT" },
   "신약":                         { de: "NT", en: "NT" },
+  "임시저장은 오늘 큐티에만 가능해요.": { de: "Entwürfe können nur für heute gespeichert werden.", en: "Drafts can only be saved for today." },
+  "이미 큐티 기록이 있어요": { de: "Für {date} gibt es bereits einen QT-Eintrag.", en: "A QT record already exists for {date}." },
+  "끝 장": { de: "Endkapitel", en: "End chapter" },
+  "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!" },
+  "성품": { de: "Charakter", en: "Character" },
+  "행동": { de: "Handlung", en: "action" },
+  "은 마음을 정하는 것,": { de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, " },
+  "은 손과 발로 드러나는 것이에요.": { de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet." },
 };
 
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
 function trQT(str: string, lang: Lang): string {
   if (lang === "ko") return str;
   return QT_WRITE_TRANSLATIONS[str]?.[lang] ?? str;
+}
+
+function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>): string {
+  let out = trQT(str, lang);
+  for (const [key, value] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
+  }
+  return out;
 }
 
 // 성경 66권 장별 최대 절수 데이터
@@ -214,6 +230,12 @@ function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const lang = useLang();
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  }
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
   const isResume = params.get("resume") === "true";
   // 오늘 스케줄 파라미터
@@ -621,7 +643,7 @@ function QTWriteContent() {
 
   async function saveDraft() {
     if (selectedDate !== todayStr) {
-      alert(lang === "de" ? "Entwürfe können nur für heute gespeichert werden." : lang === "en" ? "Drafts can only be saved for today." : "임시저장은 오늘 큐티에만 가능해요.");
+      showToast(trQT("임시저장은 오늘 큐티에만 가능해요.", lang));
       return;
     }
     setSaving(true);
@@ -656,7 +678,7 @@ function QTWriteContent() {
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       if (completedRecord) {
-        alert(lang === "de" ? `Für ${selectedDate} gibt es bereits einen QT-Eintrag.` : lang === "en" ? `A QT record already exists for ${selectedDate}.` : `${selectedDate} 큐티 기록이 이미 있어요!`);
+        showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }));
         setSaving(false);
         return;
       }
@@ -669,9 +691,9 @@ function QTWriteContent() {
         const { error } = await supabase.from("qt_records").insert(draftData);
         if (error) throw error;
       }
-      alert(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요 😊", lang));
+      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요 😊", lang));
     } catch (e) {
-      alert(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
+      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
     } finally {
       setSaving(false);
     }
@@ -689,13 +711,13 @@ function QTWriteContent() {
         .eq("user_id", user.id)
         .eq("date", selectedDate)
         .order("created_at", { ascending: false });
-      if (rowsError) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
 
       // 완료된 기록이 이미 있으면 막기 (draft는 통과)
-      if (completedRecord) { alert(lang === "de" ? `Für ${selectedDate} gibt es bereits einen QT-Eintrag.` : lang === "en" ? `A QT record already exists for ${selectedDate}.` : `${selectedDate} 큐티 기록이 이미 있어요!`); setSaving(false); return; }
+      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate })); setSaving(false); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
       let insertData: any = { user_id: user.id, date: selectedDate, qt_mode: mode };
@@ -732,13 +754,13 @@ function QTWriteContent() {
       if (draftRecord) {
         const { error } = await supabase.from("qt_records")
           .update({ ...insertData, is_draft: false }).eq("id", draftRecord.id);
-        if (error) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
       } else {
         const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
         if (error) {
           const { qt_mode, ...withoutMode } = insertData;
           const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
-          if (e2) { alert(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
         }
       }
 
@@ -752,6 +774,11 @@ function QTWriteContent() {
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
@@ -820,7 +847,7 @@ function QTWriteContent() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {crossChapter && (
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{lang === "de" ? "Endkapitel" : lang === "en" ? "End chapter" : "끝 장"}</label>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
                       <select value={endChapter} onChange={e => setEndChapter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
                         {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
@@ -956,6 +983,11 @@ function QTWriteContent() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
@@ -996,7 +1028,7 @@ function QTWriteContent() {
 
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>
-              {lang === "de" ? <>Vorsatz <span style={{ color: "var(--sage-dark)" }}>— Wort im Leben anwenden!</span></> : lang === "en" ? <>Resolution <span style={{ color: "var(--sage-dark)" }}>— Apply the Word to life!</span></> : <>결단 <span style={{ color: "var(--sage-dark)" }}>— 말씀을 삶에 적용해보세요!</span></>}
+              <>{trQT("결단", lang)} <span style={{ color: "var(--sage-dark)" }}>— {trQT("말씀을 삶에 적용해보세요!", lang)}</span></>
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
@@ -1030,6 +1062,11 @@ function QTWriteContent() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
@@ -1153,16 +1190,10 @@ function QTWriteContent() {
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
                   <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-                    {lang === "de" ? <>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
-                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
-                    </> : lang === "en" ? <>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Character</span> is the decision of the heart,{" "}
-                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> is shown through hands and feet.
-                    </> : <>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
-                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
-                    </>}
+                    <>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{trQT("성품", lang)}</span>{trQT("은 마음을 정하는 것,", lang)}{" "}
+                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>{trQT("행동", lang)}</span>{trQT("은 손과 발로 드러나는 것이에요.", lang)}
+                    </>
                   </p>
                 </div>
                 <div style={{ marginBottom: 10 }}>
@@ -1225,6 +1256,11 @@ function QTWriteContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>

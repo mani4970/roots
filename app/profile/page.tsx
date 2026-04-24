@@ -27,6 +27,12 @@ export default function ProfilePage() {
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -128,7 +134,7 @@ export default function ProfilePage() {
       navigator.share({ title, text });
     } else {
       navigator.clipboard.writeText(text);
-      alert(t("profile_invite_copied", lang));
+      showToast(t("profile_invite_copied", lang));
     }
   }
 
@@ -144,9 +150,9 @@ export default function ProfilePage() {
       });
       setFeedbackText("");
       setShowFeedbackModal(false);
-      alert(lang === "de" ? "Vielen Dank für Ihr Feedback! 😊" : lang === "en" ? "Thank you for your feedback! 😊" : "소중한 의견 감사해요! 😊");
+      showToast(t("profile_feedback_ok", lang));
     } catch (e) {
-      alert(lang === "de" ? "Senden fehlgeschlagen. Bitte erneut versuchen." : lang === "en" ? "Sending failed. Please try again." : "전송에 실패했어요. 다시 시도해 주세요.");
+      showToast(t("profile_feedback_fail", lang));
     }
     setSendingFeedback(false);
   }
@@ -168,7 +174,7 @@ export default function ProfilePage() {
       await supabase.auth.signOut();
       router.push("/login");
     } catch (e) {
-      alert(lang === "de" ? "Fehler beim Löschen. Bitte kontaktieren Sie cookiko313@gmail.com." : lang === "en" ? "Error deleting. Please contact cookiko313@gmail.com." : "계정 삭제 중 오류가 발생했어요. cookiko313@gmail.com 으로 문의해 주세요.");
+      showToast(t("profile_delete_error", lang));
     }
     setDeletingAccount(false);
   }
@@ -203,6 +209,11 @@ export default function ProfilePage() {
 
   return (
     <div className="page" style={{ paddingBottom: 80 }}>
+      {toast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          {toast}
+        </div>
+      )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* 프로필 사진 */}
