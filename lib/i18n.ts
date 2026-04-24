@@ -430,7 +430,7 @@ export const T = {
   home_decision_celeb_sub: { ko: "말씀을 삶으로 살아내는 당신을 축복해요 🌱", de: "Gesegnet, wer Gottes Wort im Leben umsetzt 🌱", en: "Blessed are those who live by God's Word 🌿", fr: "Béni soit celui qui vit selon la Parole de Dieu 🌿" },
 
   // "{name}의 정원" / "{name}s Garten"
-  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden" },
+  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden", fr: "Jardin de {name}" },
 
   // ── TreeGrowth 하드코딩 ──
   tree_stage_0: { ko: "씨앗 심겨졌어요",   de: "Samen gepflanzt", en: "Seed planting", fr: "Graine plantée" },
@@ -457,11 +457,11 @@ export const T = {
   tree_desc_10: { ko: "열매가 가득한 정원이에요!",      de: "Ein Garten voller Früchte!", en: "A garden full of fruit!", fr: "Un jardin plein de fruits !" },
 
   // {n} placeholder 사용
-  tree_day_count:   { ko: "{n}일째",                de: "Tag {n}",                en: "Day {n}" },
-  tree_garden_n:    { ko: "{n}번째 정원",            de: "{n}. Garten",                en: "{n}.garden" },
-  tree_progress:    { ko: "{n} / 10",               de: "{n} / 10",                    en: "{n} / 10" },
-  tree_streak:      { ko: "{n}일 연속 기록 중",       de: "{n} Tage in Folge",       en: "{n} days in a row" },
-  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪" },
+  tree_day_count:   { ko: "{n}일째", de: "Tag {n}", en: "Day {n}", fr: "Jour {n}" },
+  tree_garden_n:    { ko: "{n}번째 정원", de: "{n}. Garten", en: "{n}.garden", fr: "{n}e jardin" },
+  tree_progress:    { ko: "{n} / 10", de: "{n} / 10", en: "{n} / 10", fr: "{n} / 10" },
+  tree_streak:      { ko: "{n}일 연속 기록 중", de: "{n} Tage in Folge", en: "{n} days in a row", fr: "{n} jours de suite" },
+  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪", fr: "Cela fait {n} jours ! Reprenez la routine et enracinez-vous à nouveau 💪" },
 
   // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
   tree_sub_0: { ko: "씨앗이 심어졌어요. 오늘부터 다시 함께 자라가요!", de: "Der Samen ist gepflanzt. Heute beginnt der Weg erneut!", en: "The seed has been planted. Let's begin growing again today!", fr: "La graine est plantée. Recommençons à grandir aujourd’hui !" },

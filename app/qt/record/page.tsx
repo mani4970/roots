@@ -137,9 +137,9 @@ function RecordContent() {
             if (Object.keys(updates).length > 0) {
               await supabase.from("profiles").update(updates).eq("id", u.id);
               if (updates.badge_joseph && !prof?.badge_joseph) {
-                setBadgePopup({ img: "/badge_joseph.png", title: lang === "de" ? "Josef-Abzeichen! 🌈" : lang === "en" ? "Joseph Badge! 🌈" : "요셉 배지 획득! 🌈", msg: t("badge_joseph_msg", lang) });
+                setBadgePopup({ img: "/badge_joseph.png", title: lang === "de" ? "Josef-Abzeichen! 🌈" : lang === "fr" ? "Badge Joseph ! 🌈" : lang === "en" ? "Joseph Badge! 🌈" : "요셉 배지 획득! 🌈", msg: t("badge_joseph_msg", lang) });
               } else if (updates.badge_qt_bird) {
-                setBadgePopup({ img: "/qt_bird.png", title: lang === "de" ? "Wortüberbringer-Abzeichen! 🕊️" : lang === "en" ? "Word Carrier Badge! 🕊️" : "말씀 배달부 배지 획득! 🕊️", msg: t("badge_qt_bird_msg", lang) });
+                setBadgePopup({ img: "/qt_bird.png", title: lang === "de" ? "Wortüberbringer-Abzeichen! 🕊️" : lang === "fr" ? "Badge Porteur de la Parole ! 🕊️" : lang === "en" ? "Word Carrier Badge! 🕊️" : "말씀 배달부 배지 획득! 🕊️", msg: t("badge_qt_bird_msg", lang) });
               }
             }
           }
@@ -177,13 +177,13 @@ function RecordContent() {
       : "";
     const parts = [
       `📖 ${date} · ${translateBibleRef(record.bible_ref, lang)}`,
-      record.opening_prayer ? `\n들어가는 기도\n${record.opening_prayer}` : "",
-      record.summary ? `\n${record.qt_mode === "sunday" ? "말씀 요약" : "본문 요약"}\n${record.summary}` : "",
-      record.key_verse ? `\n붙잡은 말씀\n${record.key_verse}` : "",
-      record.meditation ? `\n느낌과 묵상\n${record.meditation}` : "",
-      (record.application || decisions) ? `\n적용과 결단\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
-      record.closing_prayer ? `\n올려드리는 기도\n${record.closing_prayer}` : "",
-      "\n\n— 말씀에 뿌리내리다, Roots",
+      record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
+      record.summary ? `\n${trR(record.qt_mode === "sunday" ? "말씀 요약" : "본문 요약", lang)}\n${record.summary}` : "",
+      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}` : "",
+      record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
+      (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
+      record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
+      (lang === "de" ? "\n\n— In Gottes Wort verwurzelt, Roots" : lang === "fr" ? "\n\n— Enraciné dans la Parole, Roots" : lang === "en" ? "\n\n— Rooted in the Word, Roots" : "\n\n— 말씀에 뿌리내리다, Roots"),
     ].filter(Boolean).join("\n");
     navigator.clipboard.writeText(parts).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
@@ -199,11 +199,11 @@ function RecordContent() {
       const g = myGroups.find(g => g.id === gId);
       if (g) labels.push(`'${g.name}'`);
     });
-    return labels.length > 0 ? (lang === "de" ? `Geteilt: ${labels.join(", ")}` : lang === "en" ? `Shared: ${labels.join(", ")}` : `${labels.join(", ")}에 공유 중`) : null;
+    return labels.length > 0 ? (lang === "de" ? `Geteilt: ${labels.join(", ")}` : lang === "fr" ? `Partagé : ${labels.join(", ")}` : lang === "en" ? `Shared: ${labels.join(", ")}` : `${labels.join(", ")}에 공유 중`) : null;
   }
 
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{lang === "de" ? "Eintrag nicht gefunden" : lang === "en" ? "Record not found" : "기록을 찾을 수 없어요"}</p></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{lang === "de" ? "Eintrag nicht gefunden" : lang === "fr" ? "Enregistrement introuvable" : lang === "en" ? "Record not found" : "기록을 찾을 수 없어요"}</p></div>;
 
   const isShared = sharedTargets.length > 0;
   const SECTIONS = [
@@ -239,7 +239,7 @@ function RecordContent() {
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
-          {parseLocalDateString(record.date).toLocaleDateString(lang === "de" ? "de-DE" : lang === "en" ? "en-US" : "ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+          {parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
         {isShared && getShareLabel() && (
@@ -319,7 +319,7 @@ function RecordContent() {
 
             {selectedTargets.length > 0 && (
               <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : lang === "en" ? "places to share" : "곳에 나누기"}
+                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : lang === "fr" ? "lieux de partage" : lang === "en" ? "places to share" : "곳에 나누기"}
               </p>
             )}
 
