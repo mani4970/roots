@@ -42,7 +42,7 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
             <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{subMessage}</p>
           </div>
         )}
-        <div style={{ marginTop: 14, fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Antippen zum Schließen" : lang === "en" ? "Tap to close" : "탭하면 닫혀요"}</div>
+        <div style={{ marginTop: 14, fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Antippen zum Schließen" : lang === "en" ? "Tap to close" : lang === "fr" ? "Appuyez pour fermer" : "탭하면 닫혀요"}</div>
       </div>
     </div>
   );

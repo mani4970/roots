@@ -124,9 +124,14 @@ export default function ProfilePage() {
   }
 
   async function logout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (e) {
+      console.error(e);
+      router.push("/login");
+    }
   }
 
   function shareApp() {

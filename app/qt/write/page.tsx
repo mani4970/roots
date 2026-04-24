@@ -1402,6 +1402,9 @@ function QTWriteContent() {
               </> : lang === "en" ? <>
                 <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Character</span> is the decision of the heart,{" "}
                 <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> is shown through hands and feet.
+              </> : lang === "fr" ? <>
+                Le <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>caractère</span> est la décision du cœur,{" "}
+                l'<span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> se manifeste par les mains et les pieds.
               </> : <>
                 <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
                 <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
