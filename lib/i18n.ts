@@ -566,7 +566,7 @@ export const T = {
   qtw_s2_sub:      { ko: "본문을 읽고 마음에 새겨요",     de: "Den Text lesen und ins Herz aufnehmen", en: "Read the text and take it to heart" },
   qtw_s3_title:    { ko: "느낌과 묵상",                 de: "Empfinden & Meditation", en: "Reflection & Meditation" },
   qtw_s3_sub:      { ko: "이 말씀이 내게 주는 의미",     de: "Was bedeutet das Wort für mich?", en: "What does this Word mean to me?" },
-  qtw_s3_ph:       { ko: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden." },
+  qtw_s3_ph:       { ko: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "What does this Word say to my life today?\nWrite honestly what you feel." },
   qtw_s3_hint:     { ko: "정답이 없어요. 성령님의 이끄심에 맡겨봐요.", de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you." },
   qtw_s4_title:    { ko: "적용과 결단",                 de: "Anwendung & Entschluss", en: "Application & Resolution" },
   qtw_s4_sub:      { ko: "오늘 하루 어떻게 살 건가요?",   de: "Wie leben Sie heute?", en: "How will you live today?" },
@@ -652,7 +652,7 @@ export const T = {
   qtw_char_ph:             { ko: "어떤 마음가짐을 가질까요?", de: "Welche Haltung nehmen Sie ein?", en: "What attitude will you take?" },
   qtw_add_action:          { ko: "+ 행동 추가",        de: "+ Handlung hinzufügen", en: "+ Add action" },
   qtw_action_ph:           { ko: "예: 하루 한 번 말씀 묵상", de: "z. B. Einmal am Tag meditieren", en: "e.g. Meditate once a day" },
-  qtw_verse_select_hint:   { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten" },
+  qtw_verse_select_hint:   { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tap a verse that touches you or write below" },
   qtw_passage_loaded:      { ko: "본문이 준비됐어요",    de: "Abschnitt bereit", en: "Passage ready" },
 
   // 번역본 라벨

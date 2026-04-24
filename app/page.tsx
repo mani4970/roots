@@ -86,10 +86,6 @@ export default function HomePage() {
     todaySchedule: null,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
-  const [homeDecisionInput, setHomeDecisionInput] = useState("");
-  const [savingHomeDecision, setSavingHomeDecision] = useState(false);
-  const nextStepSectionRef = useRef<HTMLDivElement | null>(null);
-  const homeDecisionInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasMyDecisions = myDecisions.length > 0;
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
@@ -373,63 +369,6 @@ export default function HomePage() {
     router.push("/prayer?compose=1");
   }
 
-  async function saveHomeDecision() {
-    const decisionText = homeDecisionInput.trim();
-    if (!decisionText || savingHomeDecision) return;
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = getLocalDateString();
-    setSavingHomeDecision(true);
-    try {
-      let targetRecordId = completedQtRecordId;
-
-      if (!targetRecordId) {
-        const { data: completedRow } = await supabase.from("qt_records")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("date", today)
-          .eq("is_draft", false)
-          .order("id", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        targetRecordId = completedRow?.id ?? null;
-      }
-
-      if (!targetRecordId) {
-        router.push("/qt");
-        return;
-      }
-
-      const { error: recordError } = await supabase.from("qt_records")
-        .update({ decision: decisionText })
-        .eq("id", targetRecordId);
-      if (recordError) throw recordError;
-
-      const doneList = [false];
-      const { error: checkinError } = await supabase.from("daily_checkins").upsert({
-        user_id: user.id,
-        date: today,
-        decisions_done: JSON.stringify(doneList),
-      }, { onConflict: "user_id,date" });
-      if (checkinError) throw checkinError;
-
-      setCompletedQtRecordId(targetRecordId);
-      setMyDecisions([{ text: decisionText, done: false }]);
-      setHomeDecisionInput("");
-      requestAnimationFrame(() => {
-        applySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    } catch (error) {
-      console.error(error);
-      alert(lang === "de" ? "Der Vorsatz konnte nicht gespeichert werden." : lang === "en" ? "Could not save the resolution." : "결단을 저장하지 못했어요.");
-    } finally {
-      setSavingHomeDecision(false);
-    }
-  }
-
   async function toggleMyDecision(i: number) {
     if (myDecisions[i].done) return;
     const today = getLocalDateString();
@@ -481,12 +420,8 @@ export default function HomePage() {
 
   function openDecisionSection() {
     if (!hasMyDecisions) {
-      if (nextStepSectionRef.current) {
-        nextStepSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(() => homeDecisionInputRef.current?.focus(), 250);
-        return;
-      }
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // 결단이 없으면 QT 탭으로 이동
+      router.push("/qt");
       return;
     }
     if (applySectionRef.current) {
@@ -515,99 +450,6 @@ export default function HomePage() {
   const recommendedMode = getRecommendedQTMode();
   const isSundayToday = isSunday();
   const scheduleRef = formatTodaySchedule();
-
-  const nextStep = (() => {
-    if (!todayVerse?.verse) {
-      return {
-        kind: "default" as const,
-        title: t("home_next_step_checkin_title", lang),
-        sub: t("home_next_step_checkin_sub", lang),
-        primaryLabel: t("home_verse_btn", lang),
-        primaryAction: () => router.push("/checkin"),
-        accent: "sage" as const,
-      };
-    }
-
-    if (homeQTState.hasDraft) {
-      return {
-        kind: "default" as const,
-        title: t("home_next_step_draft_title", lang),
-        sub: t("home_next_step_draft_sub", lang),
-        primaryLabel: t("qt_draft_continue", lang),
-        primaryAction: () => startHomeQT(),
-        secondaryLabel: t("home_next_step_qt_secondary", lang),
-        secondaryAction: () => startHomeQT("free"),
-        accent: "sage" as const,
-      };
-    }
-
-    if (!todayDone.qt) {
-      if (isSundayToday) {
-        return {
-        kind: "default" as const,
-          title: t("home_next_step_sunday_title", lang),
-          sub: t("home_next_step_sunday_sub", lang),
-          primaryLabel: t("home_next_step_sunday_btn", lang),
-          primaryAction: () => startHomeQT("sunday"),
-          accent: "sage" as const,
-        };
-      }
-
-      return {
-        kind: "default" as const,
-        title: t("home_next_step_qt_title", lang),
-        sub: t("home_next_step_qt_sub", lang),
-        meta: scheduleRef,
-        primaryLabel: t("home_next_step_qt_primary", lang),
-        primaryAction: () => startHomeQT(recommendedMode),
-        secondaryLabel: t("home_next_step_qt_secondary", lang),
-        secondaryAction: () => startHomeQT("free"),
-        accent: "sage" as const,
-      };
-    }
-
-    if (!todayDone.prayer) {
-      return {
-        kind: "default" as const,
-        title: t("home_next_step_prayer_title", lang),
-        sub: t("home_next_step_prayer_sub", lang),
-        primaryLabel: t("home_prayer_quiet_option", lang),
-        primaryAction: markQuietPrayer,
-        secondaryLabel: t("home_prayer_write_option", lang),
-        secondaryAction: openPrayerRequest,
-        accent: "terra" as const,
-      };
-    }
-
-    if (!decisionDone) {
-      if (!hasMyDecisions) {
-        return {
-          kind: "decision-compose" as const,
-          title: t("home_next_step_decision_empty_title", lang),
-          sub: t("home_next_step_decision_empty_sub", lang),
-          accent: "terra" as const,
-        };
-      }
-
-      return {
-        kind: "default" as const,
-        title: t("home_next_step_decision_title", lang),
-        sub: t("home_next_step_decision_sub", lang),
-        primaryLabel: t("home_next_step_decision_btn", lang),
-        primaryAction: openDecisionSection,
-        accent: "terra" as const,
-      };
-    }
-
-    return {
-        kind: "default" as const,
-      title: t("home_next_step_complete_title", lang),
-      sub: t("home_next_step_complete_sub", lang),
-      primaryLabel: t("home_next_step_complete_btn", lang),
-      primaryAction: openRootsManExperience,
-      accent: "sage" as const,
-    };
-  })();
 
   const routineCards = [
     {
