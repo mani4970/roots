@@ -14,6 +14,7 @@ type PwaInstallPromptProps = {
   onClose?: () => void;
   variant?: "modal" | "inline";
   source?: "onboarding" | "routine" | "profile";
+  forceShow?: boolean;
 };
 
 function isStandaloneMode() {
@@ -37,6 +38,7 @@ export default function PwaInstallPrompt({
   onClose,
   variant = "modal",
   source = "profile",
+  forceShow = false,
 }: PwaInstallPromptProps) {
   const lang = useLang();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -44,6 +46,10 @@ export default function PwaInstallPrompt({
   const [showSteps, setShowSteps] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (show) setDismissed(false);
+  }, [show]);
 
   useEffect(() => {
     setInstalled(isStandaloneMode());
@@ -72,7 +78,7 @@ export default function PwaInstallPrompt({
     };
   }, [onClose]);
 
-  if (!show || installed || dismissed) return null;
+  if (!show || (!forceShow && installed) || dismissed) return null;
 
   const isModal = variant === "modal";
   const titleKey =

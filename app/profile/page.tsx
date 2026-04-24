@@ -451,6 +451,7 @@ export default function ProfilePage() {
       <PwaInstallPrompt
         show={showPwaInstallPrompt}
         source="profile"
+        forceShow
         onClose={() => setShowPwaInstallPrompt(false)}
       />
 
