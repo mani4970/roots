@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showPwaInstallPrompt, setShowPwaInstallPrompt] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -420,6 +422,14 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* 홈 화면 추가 */}
+      <div style={{ padding: "10px 16px 0" }}>
+        <button onClick={() => setShowPwaInstallPrompt(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
+          <span style={{ fontSize: 15 }}>📲</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("pwa_profile_button", lang)}</span>
+        </button>
+      </div>
+
       {/* 피드백 버튼 */}
       <div style={{ padding: "10px 16px 0" }}>
         <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
@@ -437,6 +447,12 @@ export default function ProfilePage() {
 
       <div style={{ height: 80 }} />
       <BottomNav />
+
+      <PwaInstallPrompt
+        show={showPwaInstallPrompt}
+        source="profile"
+        onClose={() => setShowPwaInstallPrompt(false)}
+      />
 
       {/* 피드백 모달 */}
       {showFeedbackModal && (

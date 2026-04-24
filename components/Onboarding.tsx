@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 export default function Onboarding({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(0);

@@ -7,6 +7,7 @@ import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
@@ -66,6 +67,7 @@ export default function HomePage() {
   const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
   const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
+  const [showPwaInstallPrompt, setShowPwaInstallPrompt] = useState(false);
   const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
     show: false, type: "garden", badgeIndex: 0,
   });
@@ -336,6 +338,19 @@ export default function HomePage() {
   function openRootsManExperience() {
     setShowRootsMan(false);
     setShowRootsManPopup(true);
+  }
+
+  function isPwaInstalled() {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia?.("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+  }
+
+  function maybeShowPwaInstallPromptAfterRoutine() {
+    if (typeof window === "undefined") return;
+    if (isPwaInstalled()) return;
+    if (localStorage.getItem("pwa_prompt_after_first_routine") === "true") return;
+    localStorage.setItem("pwa_prompt_after_first_routine", "true");
+    window.setTimeout(() => setShowPwaInstallPrompt(true), 900);
   }
 
   function closeCelebration() {
@@ -694,6 +709,12 @@ export default function HomePage() {
         </div>
       )}
 
+      <PwaInstallPrompt
+        show={showPwaInstallPrompt}
+        source="routine"
+        onClose={() => setShowPwaInstallPrompt(false)}
+      />
+
       {(showHomeQTChoice || showHomeSundayQT) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
           <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)" }}>
@@ -808,6 +829,7 @@ export default function HomePage() {
             } else {
               window.scrollTo({ top: 0, behavior: "smooth" });
             }
+            maybeShowPwaInstallPromptAfterRoutine();
           });
         }}
       />
