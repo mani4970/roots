@@ -756,56 +756,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div ref={nextStepSectionRef} style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_next_step_section", lang)}</div>
-        <div className={nextStep.accent === "sage" ? "card-sage" : "card-terra"} style={{ padding: 18, borderRadius: 22 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", lineHeight: 1.35, marginBottom: 8 }}>{nextStep.title}</h2>
-          <p style={{ fontSize: 14, color: nextStep.accent === "sage" ? "var(--text2)" : "var(--terra-dark)", lineHeight: 1.7, marginBottom: nextStep.meta ? 10 : 16 }}>
-            {nextStep.sub}
-          </p>
-          {nextStep.meta && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(122,157,122,0.25)", fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 16 }}>
-              <span>📖</span>
-              <span>{nextStep.meta}</span>
-            </div>
-          )}
-          {nextStep.kind === "decision-compose" ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <input
-                ref={homeDecisionInputRef}
-                type="text"
-                className="input-field"
-                value={homeDecisionInput}
-                onChange={(e) => setHomeDecisionInput(e.target.value)}
-                placeholder={t("home_next_step_decision_placeholder", lang)}
-                maxLength={120}
-                style={{ minHeight: 48 }}
-              />
-              <button
-                onClick={saveHomeDecision}
-                className="btn-primary"
-                style={{ minHeight: 48, opacity: homeDecisionInput.trim() ? 1 : 0.7 }}
-                disabled={!homeDecisionInput.trim() || savingHomeDecision}
-              >
-                {savingHomeDecision ? t("loading", lang) : t("home_next_step_decision_save", lang)}
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: nextStep.secondaryLabel ? "row" : "column", gap: 10 }}>
-              <button onClick={nextStep.primaryAction} className={nextStep.accent === "sage" ? "btn-sage" : "btn-primary"} style={{ flex: 1, minHeight: 48 }}>
-                {nextStep.primaryLabel}
-                <ChevronRight size={16} />
-              </button>
-              {nextStep.secondaryLabel && nextStep.secondaryAction && (
-                <button onClick={nextStep.secondaryAction} className="btn-outline" style={{ flex: 1, minHeight: 48 }}>
-                  {nextStep.secondaryLabel}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
       <div ref={treeSectionRef}>
         <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
       </div>

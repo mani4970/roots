@@ -1,33 +1,41 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
-// rootsman_transparent.png: 2000x1091, 6프레임
-// 프레임 순서 (왼쪽부터):
-// 0: 물주기1(물 나옴)  1: 물주기2(물 접음)
-// 2: 서있기  3: 걷기1  4: 서있기2  5: 걷기2
-const TOTAL_W = 2000;
-const FRAME_H = 1091;
-const FRAME_W = TOTAL_W / 6; // 333.33px
-const RENDER_W = 72; // 화면에 표시할 크기
+// rootsman_transparent.png: 1536x2776, 3x3 grid = 9 frames
+// Row 0 (top):    walk-left1, walk-front, walk-right1
+// Row 1 (middle): water-hold, water-tilt, water-pour
+// Row 2 (bottom): walk-left2, walk-front2, walk-right2
+const SHEET_W = 1536;
+const SHEET_H = 2776;
+const COLS = 3;
+const ROWS = 3;
+const FRAME_W = SHEET_W / COLS; // 512
+const FRAME_H = SHEET_H / ROWS; // ~925
+const RENDER_W = 72;
 const SCALE = RENDER_W / FRAME_W;
 const RENDER_H = Math.round(FRAME_H * SCALE);
 
-// 걷기 프레임: 오른쪽→왼쪽 방향(뒤집기), 프레임 3,4,5,2 반복
-const WALK_FRAMES = [3, 4, 5, 2];
-// 물주기 프레임: 0, 1 반복
-const WATER_FRAMES = [0, 1];
+// Frame indices: row * 3 + col
+const WALK_FRAMES = [0, 1, 2, 6, 7, 8];
+const WATER_FRAMES = [3, 4, 5];
+
+function getFramePos(frameIdx: number) {
+  const col = frameIdx % COLS;
+  const row = Math.floor(frameIdx / COLS);
+  return { col, row };
+}
 
 type Phase = "idle" | "enter" | "water" | "exit" | "done";
 
 interface RootsManProps {
-  trigger: boolean; // true가 되면 애니메이션 시작
+  trigger: boolean;
 }
 
 export default function RootsMan({ trigger }: RootsManProps) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [frame, setFrame] = useState(3);
-  const [posX, setPosX] = useState(110); // vw 단위 (110 = 화면 밖 오른쪽)
-  const [flipX, setFlipX] = useState(false); // true = 반전(왼쪽 방향)
+  const [frame, setFrame] = useState(1);
+  const [posX, setPosX] = useState(110);
+  const [flipX, setFlipX] = useState(false);
   const [opacity, setOpacity] = useState(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasRun = useRef(false);
@@ -51,12 +59,11 @@ export default function RootsMan({ trigger }: RootsManProps) {
   }
 
   function startAnimation() {
-    // 1. 오른쪽에서 걸어 들어오기 (왼쪽 방향으로 걷기 = flipX true)
     setPhase("enter");
     setFlipX(true);
     setOpacity(1);
     setPosX(110);
-    setFrame(3);
+    setFrame(1);
 
     let x = 110;
     let wf = 0;
@@ -68,7 +75,6 @@ export default function RootsMan({ trigger }: RootsManProps) {
       setFrame(WALK_FRAMES[wf]);
       if (x <= 38) {
         clearInv();
-        // 2. 물주기 시작
         setTimeout(() => startWatering(), 200);
       }
     }, 120);
@@ -76,7 +82,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
 
   function startWatering() {
     setPhase("water");
-    setFlipX(false); // 오른쪽 방향으로 물주기
+    setFlipX(false);
     let wf = 0;
     let count = 0;
     clearInv();
@@ -84,7 +90,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
       wf = (wf + 1) % WATER_FRAMES.length;
       count++;
       setFrame(WATER_FRAMES[wf]);
-      if (count >= 20) { // 10번 반복
+      if (count >= 18) {
         clearInv();
         setTimeout(() => startExit(), 800);
       }
@@ -92,7 +98,6 @@ export default function RootsMan({ trigger }: RootsManProps) {
   }
 
   function startExit() {
-    // 3. 오른쪽으로 걸어서 퇴장 (오른쪽 방향 = flipX false)
     setPhase("exit");
     setFlipX(false);
     let x = 38;
@@ -106,12 +111,14 @@ export default function RootsMan({ trigger }: RootsManProps) {
       if (x >= 112) {
         clearInv();
         setPhase("done");
-        hasRun.current = false; // 다음에 다시 쓸 수 있도록
+        hasRun.current = false;
       }
     }, 120);
   }
 
   if (phase === "idle" || phase === "done") return null;
+
+  const { col, row } = getFramePos(frame);
 
   return (
     <div style={{
@@ -131,10 +138,10 @@ export default function RootsMan({ trigger }: RootsManProps) {
         alt="roots-man"
         style={{
           position: "absolute",
-          top: 0,
-          left: -frame * FRAME_W * SCALE,
-          width: TOTAL_W * SCALE,
-          height: FRAME_H * SCALE,
+          top: -row * FRAME_H * SCALE,
+          left: -col * FRAME_W * SCALE,
+          width: SHEET_W * SCALE,
+          height: SHEET_H * SCALE,
           imageRendering: "pixelated",
           transform: flipX ? "scaleX(-1)" : "none",
           transformOrigin: `${RENDER_W / 2}px center`,
