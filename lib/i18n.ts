@@ -102,7 +102,7 @@ export const T = {
   qt_start_btn: { ko: "오늘 큐티 시작하기",       de: "QT beginnen", en: "Start QT", fr: "Commencer le QT" },
     qt_sunday_required:{ ko: "오늘은 주일이에요! 주일예배 큐티로 진행해주세요. 🙌", de: "Heute ist Sonntag! Bitte machen Sie eine Sonntagsgottesdienst-QT. 🙌", en: "Today is Sunday! Please do a Sunday worship QT. 🙌", fr: "Aujourd’hui, c’est dimanche ! Veuillez faire le QT du culte dominical. 🙌" },
   qt_done: { ko: "오늘 큐티 완료!",          de: "QT erledigt!", en: "QT done!", fr: "QT terminé !" },
-  qt_done_sub: { ko: "말씀 앞에 앉은 당신, 수고했어요", de: "Gut gemacht!", en: "Well done!", fr: "Bravo d’être resté devant la Parole." },
+  qt_done_sub: { ko: "말씀 앞에 앉은 당신, 수고했어요", de: "Gut gemacht!", en: "Well done!", fr: "Soyez béni(e) !" },
   qt_sunday: { ko: "🙌 오늘은 주일이에요!",    de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!", fr: "🙌 Aujourd’hui, c’est dimanche !" },
   qt_sunday_sub: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
   qt_today_passage: { ko: "오늘의 큐티 본문",         de: "Heutiger Abschnitt", en: "Today's passage", fr: "Passage du jour" },
@@ -514,7 +514,7 @@ export const T = {
   qt_guide_prev: { ko: "← 이전",                              de: "← Zurück", en: "← Back", fr: "← Retour" },
   qt_guide_next: { ko: "다음 →",                              de: "Weiter →", en: "Next →", fr: "Suivant →" },
   qt_guide_start: { ko: "시작하기 🌱",                         de: "Loslegen 🌱", en: "Let's go 🌱", fr: "Allons-y 🌱" },
-  qt_year_records:      { ko: "{year}년 · {count}개 기록",            de: "{year} · {count} Aufzeichnungen", en: "{year} · {count} recordings" },
+  qt_year_records:      { ko: "{year}년 · {count}개 기록", de: "{year} · {count} Aufzeichnungen", en: "{year} · {count} recordings", fr: "{year} · {count} enregistrements" },
 
   // QT 가이드 6단계
   qt_g1_title: { ko: "들어가는 기도",     de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
