@@ -486,16 +486,16 @@ export const T = {
 
   // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
   tree_sub_0: { ko: "씨앗이 심어졌어요. 오늘부터 다시 함께 자라가요!", de: "Der Samen ist gepflanzt. Heute beginnt der Weg erneut!", en: "The seed has been planted. Let's begin growing again today!", fr: "La graine est plantée. Recommençons à grandir aujourd’hui !" },
-  tree_sub_10: { ko: "1일부터 10일까지, 작은 순종이 뿌리를 내리고 있어요.", de: "Tag 1 bis 10: Kleine Schritte schlagen Wurzeln.", en: "Days 1–10: small acts of faith are taking root.", fr: "Jours 1–10 : de petits actes de foi prennent racine." },
-  tree_sub_20: { ko: "11일부터 20일까지, 새싹이 또렷하게 자라나고 있어요.", de: "Tag 11 bis 20: Der Spross wächst sichtbar.", en: "Days 11–20: the new sprout is growing clearly.", fr: "Jours 11–20 : la nouvelle pousse grandit clairement." },
-  tree_sub_30: { ko: "21일부터 30일까지, 뿌리와 줄기가 함께 단단해지고 있어요.", de: "Tag 21 bis 30: Wurzeln und Stamm werden stärker.", en: "Days 21–30: roots and stem are growing stronger together.", fr: "Jours 21–30 : les racines et la tige se fortifient ensemble." },
-  tree_sub_40: { ko: "31일부터 40일까지, 가지가 뻗으며 생명이 넓어지고 있어요.", de: "Tag 31 bis 40: Die Äste breiten sich aus.", en: "Days 31–40: branches are stretching out with life.", fr: "Jours 31–40 : les branches s’étendent avec vie." },
-  tree_sub_50: { ko: "41일부터 50일까지, 나무가 눈에 띄게 자라고 있어요.", de: "Tag 41 bis 50: Der Baum wächst sichtbar weiter.", en: "Days 41–50: the tree is growing noticeably.", fr: "Jours 41–50 : l’arbre grandit visiblement." },
-  tree_sub_60: { ko: "51일부터 60일까지, 정원이 더 풍성해지고 있어요.", de: "Tag 51 bis 60: Der Garten wird reicher.", en: "Days 51–60: the garden is becoming fuller.", fr: "Jours 51–60 : le jardin devient plus abondant." },
-  tree_sub_70: { ko: "61일부터 70일까지, 쉼과 그늘을 주는 나무로 자라가고 있어요.", de: "Tag 61 bis 70: Der Baum schenkt Ruhe und Schatten.", en: "Days 61–70: the tree is growing into a place of shade and rest.", fr: "Jours 61–70 : l’arbre devient un lieu d’ombre et de repos." },
-  tree_sub_80: { ko: "71일부터 80일까지, 열매를 준비하는 계절로 들어가고 있어요.", de: "Tag 71 bis 80: Es ist Zeit, Frucht vorzubereiten.", en: "Days 71–80: you are entering a season of preparing fruit.", fr: "Jours 71–80 : vous entrez dans une saison de préparation du fruit." },
-  tree_sub_90: { ko: "81일부터 90일까지, 정원이 거의 완성되어 가고 있어요.", de: "Tag 81 bis 90: Der Garten ist fast vollendet.", en: "Days 81–90: the garden is almost complete.", fr: "Jours 81–90 : le jardin est presque complet." },
-  tree_sub_100: { ko: "91일부터 100일까지, 성령의 열매를 맺을 준비가 되었어요.", de: "Tag 91 bis 100: Sie sind bereit, Frucht des Geistes zu tragen.", en: "Days 91–100: you are ready to bear the fruit of the Spirit.", fr: "Jours 91–100 : vous êtes prêt à porter le fruit de l’Esprit." },
+  tree_sub_10: { ko: "작은 순종이 뿌리를 내리고 있어요.", de: "Kleine Schritte schlagen Wurzeln.", en: "Small acts of faith are taking root.", fr: "De petits actes de foi prennent racine." },
+  tree_sub_20: { ko: "새싹이 또렷하게 자라나고 있어요.", de: "Der Spross wächst sichtbar.", en: "The new sprout is growing clearly.", fr: "La nouvelle pousse grandit clairement." },
+  tree_sub_30: { ko: "뿌리와 줄기가 함께 단단해지고 있어요.", de: "Wurzeln und Stamm werden stärker.", en: "Roots and stem are growing stronger together.", fr: "Les racines et la tige se fortifient ensemble." },
+  tree_sub_40: { ko: "믿음의 가지가 생명력 있게 뻗어나가고 있어요.", de: "Die Zweige des Glaubens strecken sich voller Leben aus.", en: "Branches of faith are stretching out with life.", fr: "Les branches de la foi s’étendent avec vie." },
+  tree_sub_50: { ko: "나무가 눈에 띄게 자라나고 있어요.", de: "Der Baum wächst sichtbar.", en: "The tree is growing visibly.", fr: "L’arbre grandit visiblement." },
+  tree_sub_60: { ko: "정원이 더 풍성해지고 있어요.", de: "Der Garten wird reicher und voller.", en: "The garden is becoming more abundant.", fr: "Le jardin devient plus abondant." },
+  tree_sub_70: { ko: "믿음의 나무가 쉼을 주는 그늘이 되어가고 있어요.", de: "Der Baum des Glaubens wird zu einem Ort der Ruhe.", en: "The tree of faith is becoming a place of shade and rest.", fr: "L’arbre de foi devient un lieu d’ombre et de repos." },
+  tree_sub_80: { ko: "열매를 준비하는 계절로 들어가고 있어요.", de: "Sie treten in eine Zeit ein, in der Frucht vorbereitet wird.", en: "You are entering a season of preparing fruit.", fr: "Vous entrez dans une saison de préparation du fruit." },
+  tree_sub_90: { ko: "정원이 거의 완성되어가고 있어요.", de: "Der Garten ist fast vollständig.", en: "The garden is almost complete.", fr: "Le jardin est presque complet." },
+  tree_sub_100: { ko: "성령의 열매를 맺을 준비가 되었어요.", de: "Sie sind bereit, Frucht des Geistes zu tragen.", en: "You are ready to bear the fruit of the Spirit.", fr: "Vous êtes prêt à porter le fruit de l’Esprit." },
 
   // ── RootsManPopup ──
   rootsman_title: { ko: "루츠맨이 물을 주고 있어요",     de: "RootsMan gießt den Garten", en: "RootsMan is watering the garden", fr: "RootsMan arrose le jardin" },

@@ -19,11 +19,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       emoji: "💭",
       title: t("onboarding_title2", lang),
       desc: t("onboarding_desc2", lang),
-      sub: lang === "de"
-        ? "Nicht \"Bitte beten\" – sondern:\n\"Heute mittags 5 Minuten, Handy weglegen und mit Gott reden.\"\nKonkrete Handlungen."
-        : lang === "en"
-        ? "Not \'please pray\' but:\n\'Today at lunch, 5 min, put your phone down and talk to God.\'\nConcrete actions."
-        : "\"기도하세요\"가 아니라\n\"오늘 점심 5분, 핸드폰 내려놓고 주님께 말 걸어보세요\"처럼\n손발로 할 수 있는 것들이에요.",
+      sub: null,
     },
     {
       emoji: "📖",
@@ -53,11 +49,14 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       emoji: "🌳",
       title: t("onboarding_title5", lang),
       desc: t("onboarding_desc5", lang),
-      sub: lang === "de"
-        ? "Konsequenz ist das Wichtigste.\nFangen Sie heute an! 🌱"
-        : lang === "en"
-        ? "Consistency is key.\nStart today! 🌱"
-        : "꾸준히 하는 게 핵심이에요.\n오늘부터 시작해봐요! 🌱",
+      sub: t("onboarding_desc5_sub", lang),
+    },
+    {
+      emoji: "📲",
+      title: t("pwa_onboarding_title", lang),
+      desc: t("pwa_onboarding_desc", lang),
+      sub: null,
+      pwa: true,
     },
   ];
 
@@ -82,16 +81,25 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
             <div key={i} style={{ width: i === page ? 20 : 6, height: 6, borderRadius: 3, background: i === page ? "var(--sage)" : "var(--border)", transition: "all 0.3s" }} />
           ))}
         </div>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>{slide.emoji}</div>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 14, lineHeight: 1.3 }}>
-          {slide.title}
-        </h2>
-        <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.85, whiteSpace: "pre-line", marginBottom: slide.sub ? 14 : 32 }}>
-          {slide.desc}
-        </p>
+        {!slide.pwa && (
+          <>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>{slide.emoji}</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 14, lineHeight: 1.3 }}>
+              {slide.title}
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.85, whiteSpace: "pre-line", marginBottom: slide.sub ? 14 : 32 }}>
+              {slide.desc}
+            </p>
+          </>
+        )}
         {slide.sub && (
           <div style={{ background: "var(--bg3)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border)", marginBottom: 28 }}>
             <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, whiteSpace: "pre-line" }}>{slide.sub}</p>
+          </div>
+        )}
+        {slide.pwa && (
+          <div style={{ marginBottom: 18, textAlign: "left" }}>
+            <PwaInstallPrompt variant="inline" source="onboarding" forceShow />
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

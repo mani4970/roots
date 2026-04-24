@@ -81,6 +81,8 @@ export default function PwaInstallPrompt({
   if (!show || (!forceShow && installed) || dismissed) return null;
 
   const isModal = variant === "modal";
+  const shouldShowManualSteps = source === "profile" || showSteps || !deferredPrompt;
+  const shouldShowActionButtons = source !== "profile";
   const titleKey =
     source === "routine"
       ? "pwa_after_routine_title"
@@ -159,7 +161,7 @@ export default function PwaInstallPrompt({
         )}
       </div>
 
-      {(showSteps || !deferredPrompt) && (
+      {shouldShowManualSteps && (
         <div style={{ marginTop: 14, border: "1px solid var(--border)", background: "var(--bg)", borderRadius: 16, padding: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{manualTitle}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -175,22 +177,24 @@ export default function PwaInstallPrompt({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: isModal ? "column" : "row", gap: 8, marginTop: 14 }}>
-        <button
-          onClick={handleInstallClick}
-          className="btn-sage"
-          style={{ flex: 1, minHeight: 44, fontSize: 13 }}
-        >
-          {deferredPrompt ? t("pwa_install_button", lang) : t("pwa_steps_button", lang)}
-        </button>
-        <button
-          onClick={closePrompt}
-          className="btn-outline"
-          style={{ flex: isModal ? "unset" : 0.75, minHeight: 44, fontSize: 13 }}
-        >
-          {t("pwa_later", lang)}
-        </button>
-      </div>
+      {shouldShowActionButtons && (
+        <div style={{ display: "flex", flexDirection: isModal ? "column" : "row", gap: 8, marginTop: 14 }}>
+          <button
+            onClick={handleInstallClick}
+            className="btn-sage"
+            style={{ flex: 1, minHeight: 44, fontSize: 13 }}
+          >
+            {deferredPrompt ? t("pwa_install_button", lang) : t("pwa_steps_button", lang)}
+          </button>
+          <button
+            onClick={closePrompt}
+            className="btn-outline"
+            style={{ flex: isModal ? "unset" : 0.75, minHeight: 44, fontSize: 13 }}
+          >
+            {t("pwa_later", lang)}
+          </button>
+        </div>
+      )}
     </div>
   );
 
