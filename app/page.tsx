@@ -266,49 +266,38 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!profile) return;
+    const newly = newlyAwardedBadgesRef.current;
     const streak = profile?.streak_days ?? 0;
-    if (profile.badge_rootsman) {
-      const badgeKey = "badge_rootsman_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
-        return;
-      }
+
+    // 이번 세션에서 새로 획득한 뱃지만 팝업 (newlyAwardedBadgesRef에 있는 것만)
+    if (newly.has("badge_rootsman")) {
+      newly.delete("badge_rootsman");
+      setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+      return;
     }
-    if (profile.badge_mose) {
-      const badgeKey = "badge_mose_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
-        return;
-      }
+    if (newly.has("badge_mose")) {
+      newly.delete("badge_mose");
+      setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+      return;
     }
-    if (profile.badge_rootsman_bible) {
-      const badgeKey = "badge_rootsman_bible_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
-        return;
-      }
+    if (newly.has("badge_rootsman_bible")) {
+      newly.delete("badge_rootsman_bible");
+      setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+      return;
     }
-    if (profile.badge_david) {
-      const badgeKey = "badge_david_shown";
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
-        return;
-      }
+    if (newly.has("badge_david")) {
+      newly.delete("badge_david");
+      setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+      return;
     }
-    if (profile.badge_angel && streak > 0 && streak % 100 === 0) {
-      const cycleNumber = Math.floor(streak / 100);
-      const badgeKey = `badge_angel_cycle_${cycleNumber}`;
-      if (!localStorage.getItem(badgeKey)) {
-        localStorage.setItem(badgeKey, "true");
-        setGardenPopup({ show: true, type: "badge", badgeIndex: (cycleNumber - 1) % 9 });
-        return;
-      }
+    if (newly.has("badge_angel")) {
+      newly.delete("badge_angel");
+      const cycleNumber = Math.max(1, Math.floor(streak / 100));
+      setGardenPopup({ show: true, type: "badge", badgeIndex: (cycleNumber - 1) % 9 });
+      return;
     }
 
+    // 정원 단계 변경 팝업 (10일마다)
     const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
       const gardenKey = `garden_shown_${streak}`;
@@ -619,7 +608,7 @@ export default function HomePage() {
 
       {(showHomeQTChoice || showHomeSundayQT) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
-          <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)" }}>
+          <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
@@ -632,7 +621,7 @@ export default function HomePage() {
               <button
                 onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTGuide(false); }}
                 aria-label={t("home_qt_choice_close", lang)}
-                style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", fontSize: 18, cursor: "pointer" }}
+                style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, border: "none", background: "none", color: "var(--text3)", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 ×
               </button>

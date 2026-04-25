@@ -112,7 +112,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 에러 메시지 / alert
   "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
   "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert! Sie können später weitermachen 😊", en: "Saved as draft! Continue later 😊", fr: "Brouillon enregistré ! Vous pourrez continuer plus tard 😊" },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert!\nSie können später weitermachen 😊", en: "Saved as draft!\nContinue later 😊", fr: "Brouillon enregistré !\nVous pourrez continuer plus tard 😊" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
   // UI 문자열
@@ -304,7 +304,6 @@ function QTWriteContent() {
   const [selectedVerseNums, setSelectedVerseNums] = useState<number[]>([]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
   const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
-  const [keyVerseExpanded, setKeyVerseExpanded] = useState(false); // 묵상 단계에서 붙잡은 말씀 더보기
 
   // 큐티 작성
   const [cur, setCur] = useState(0);
@@ -1254,12 +1253,6 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   const canNext6val = canNext6();
-  const keyVerseText = keyVerse.trim();
-  const KEY_VERSE_PREVIEW_LIMIT = 180;
-  const keyVerseIsLong = keyVerseText.length > KEY_VERSE_PREVIEW_LIMIT;
-  const keyVerseDisplayText = keyVerseExpanded || !keyVerseIsLong
-    ? keyVerseText
-    : `${keyVerseText.slice(0, KEY_VERSE_PREVIEW_LIMIT)}...`;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
@@ -1447,27 +1440,6 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
           <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
-          {step6.id === "meditation" && keyVerseText && (
-            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <BookOpen size={14} style={{ color: "var(--sage-dark)" }} />
-                  <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)" }}>{trQT("붙잡은 말씀", lang)}</p>
-                </div>
-                {keyVerseIsLong && (
-                  <button
-                    onClick={() => setKeyVerseExpanded(v => !v)}
-                    style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-                  >
-                    {keyVerseExpanded ? <><ChevronUp size={13} />{trQT("접기", lang)}</> : <><ChevronDown size={13} />{trQT("더보기", lang)}</>}
-                  </button>
-                )}
-              </div>
-              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.65, whiteSpace: "pre-line", fontStyle: "italic" }}>
-                “{keyVerseDisplayText}”
-              </p>
-            </div>
-          )}
           <textarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
         </div>
       )}
