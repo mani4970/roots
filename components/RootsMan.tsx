@@ -2,9 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 
 // rootsman_transparent.png: 1536x2776, 3x3 grid = 9 frames
-// Row 0 (top):    walk-left1, walk-front, walk-right1
-// Row 1 (middle): water-hold, water-tilt, water-pour
-// Row 2 (bottom): walk-left2, walk-front2, walk-right2
+// Row 0 (top):    enter frames (right to left)
+// Row 1 (middle): watering frames
+// Row 2 (bottom): exit frames (left to right)
 const SHEET_W = 1536;
 const SHEET_H = 2776;
 const COLS = 3;
@@ -15,17 +15,16 @@ const RENDER_W = 60;
 const SCALE = RENDER_W / FRAME_W;
 const RENDER_H = Math.round(FRAME_H * SCALE);
 
-// Movement positions are percentages inside the garden container.
-// The tree/sprout is centered, so RootsMan stops slightly right of center.
 const ENTER_START_X = 112;
 const WATER_X = 62;
 const EXIT_END_X = 116;
 const WALK_STEP = 3.2;
 const WALK_INTERVAL = 120;
 
-// Frame indices: row * 3 + col
-const WALK_FRAMES = [0, 1, 2, 6, 7, 8];
-const WATER_FRAMES = [3, 4, 5];
+// 각 행을 독립적으로 사용 — 행 간 점프 없음
+const ENTER_FRAMES = [0, 1, 2]; // Row 0 only
+const WATER_FRAMES = [3, 4, 5]; // Row 1 only
+const EXIT_FRAMES = [6, 7, 8];  // Row 2 only
 
 function getFramePos(frameIdx: number) {
   const col = frameIdx % COLS;
@@ -71,16 +70,16 @@ export default function RootsMan({ trigger }: RootsManProps) {
     setFlipX(true);
     setOpacity(1);
     setPosX(ENTER_START_X);
-    setFrame(1);
+    setFrame(ENTER_FRAMES[0]);
 
     let x = ENTER_START_X;
     let wf = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
       x = Math.max(WATER_X, x - WALK_STEP);
-      wf = (wf + 1) % WALK_FRAMES.length;
+      wf = (wf + 1) % ENTER_FRAMES.length;
       setPosX(x);
-      setFrame(WALK_FRAMES[wf]);
+      setFrame(ENTER_FRAMES[wf]);
       if (x <= WATER_X) {
         clearInv();
         setTimeout(() => startWatering(), 200);
@@ -113,9 +112,9 @@ export default function RootsMan({ trigger }: RootsManProps) {
     clearInv();
     intervalRef.current = setInterval(() => {
       x = Math.min(EXIT_END_X, x + WALK_STEP);
-      wf = (wf + 1) % WALK_FRAMES.length;
+      wf = (wf + 1) % EXIT_FRAMES.length;
       setPosX(x);
-      setFrame(WALK_FRAMES[wf]);
+      setFrame(EXIT_FRAMES[wf]);
       if (x >= EXIT_END_X) {
         clearInv();
         setPhase("done");
