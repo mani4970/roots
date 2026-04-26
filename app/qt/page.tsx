@@ -42,18 +42,20 @@ export default function QTPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [loading, setLoading] = useState(true);
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const [expandedYear, setExpandedYear] = useState<number | null>(currentYear);
-  const [expandedMonths, setExpandedMonths] = useState<Record<number, number | null>>({ [currentYear]: currentMonth });
+  const [expandedYear, setExpandedYear] = useState<number | null>(new Date().getFullYear());
   const [showStartModal, setShowStartModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPopup, setShowDraftPopup] = useState(false);
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
-  const [preferredTranslation, setPreferredTranslation] = useState(92);
+  const [preferredTranslation, setPreferredTranslation] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("roots_default_translation");
+      if (saved) return parseInt(saved);
+    }
+    return 92;
+  });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -96,50 +98,19 @@ export default function QTPage() {
 
     const { data: prof } = await supabase.from("profiles")
       .select("preferred_translation").eq("id", user.id).single();
-    if (prof?.preferred_translation) setPreferredTranslation(prof.preferred_translation);
+    if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); localStorage.setItem("roots_default_translation", String(prof.preferred_translation)); }
 
     setLoading(false);
   }
 
-  const dateLocale = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
-  const recordsByYearMonth = records.reduce((acc, r) => {
-    const d = parseLocalDateString(r.date);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    if (!acc[year]) acc[year] = {};
-    if (!acc[year][month]) acc[year][month] = [];
-    acc[year][month].push(r);
+  const byYear = records.reduce((acc, r) => {
+    const year = parseLocalDateString(r.date).getFullYear();
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(r);
     return acc;
-  }, {} as Record<number, Record<number, any[]>>);
-  const years = Object.keys(recordsByYearMonth).map(Number).sort((a, b) => b - a);
+  }, {} as Record<number, any[]>);
+  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
   const currentGuide = QT_GUIDE_KEYS[guidePage];
-
-  function getMonthsForYear(year: number) {
-    return Object.keys(recordsByYearMonth[year] ?? {}).map(Number).sort((a, b) => b - a);
-  }
-
-  function getYearRecordCount(year: number) {
-    return getMonthsForYear(year).reduce((sum, month) => sum + (recordsByYearMonth[year]?.[month]?.length ?? 0), 0);
-  }
-
-  function getMonthName(year: number, month: number) {
-    return new Date(year, month - 1, 1).toLocaleDateString(dateLocale, { month: "long" });
-  }
-
-  function toggleYear(year: number) {
-    setExpandedYear(prev => {
-      const next = prev === year ? null : year;
-      if (next === year && !expandedMonths[year]) {
-        const months = getMonthsForYear(year);
-        setExpandedMonths(prevMonths => ({ ...prevMonths, [year]: months[0] ?? null }));
-      }
-      return next;
-    });
-  }
-
-  function toggleMonth(year: number, month: number) {
-    setExpandedMonths(prev => ({ ...prev, [year]: prev[year] === month ? null : month }));
-  }
 
   function startQT(mode: string) {
     setShowStartModal(false);
@@ -160,6 +131,8 @@ export default function QTPage() {
     setShowDraftPopup(false);
     setShowStartModal(true);
   }
+
+  const dateLocale = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
 
   return (
     <div className="page">
@@ -272,57 +245,35 @@ export default function QTPage() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {years.map(year => {
-              const months = getMonthsForYear(year);
-              const isYearOpen = expandedYear === year;
-              return (
-                <div key={year} style={{ border: "1px solid var(--border)", borderRadius: 18, background: "var(--bg2)", overflow: "hidden" }}>
-                  <button onClick={() => toggleYear(year)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "14px 16px" }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: isYearOpen ? "var(--sage-dark)" : "var(--text)" }}>
-                      {t("qt_year_records", lang, { year, count: getYearRecordCount(year) })}
-                    </span>
-                    <ChevronDown size={16} style={{ color: "var(--text3)", transform: isYearOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                  </button>
-                  {isYearOpen && (
-                    <div style={{ borderTop: "1px solid var(--border)", padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
-                      {months.map(month => {
-                        const monthRecords = recordsByYearMonth[year]?.[month] ?? [];
-                        const isMonthOpen = expandedMonths[year] === month;
-                        return (
-                          <div key={`${year}-${month}`} style={{ borderRadius: 14, background: "var(--bg)", border: "1px solid rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                            <button onClick={() => toggleMonth(year, month)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "12px 12px" }}>
-                              <span style={{ fontSize: 13, fontWeight: 750, color: isMonthOpen ? "var(--sage-dark)" : "var(--text2)" }}>
-                                {t("qt_month_records", lang, { month: getMonthName(year, month), count: monthRecords.length })}
-                              </span>
-                              <ChevronDown size={14} style={{ color: "var(--text3)", transform: isMonthOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                            </button>
-                            {isMonthOpen && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 10px 10px" }}>
-                                {monthRecords.map((r: any) => (
-                                  <button key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
-                                    <div style={{ flex: 1 }}>
-                                      <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
-                                        {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
-                                      </p>
-                                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
-                                        {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
-                                      </p>
-                                      {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"</p>}
-                                      {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
-                                    </div>
-                                    <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {years.map(year => (
+              <div key={year}>
+                <button onClick={() => setExpandedYear(expandedYear === year ? null : year)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "0 2px", marginBottom: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: expandedYear === year ? "var(--sage-dark)" : "var(--text2)" }}>
+                    {t("qt_year_records", lang, { year, count: byYear[year].length })}
+                  </span>
+                  <ChevronDown size={14} style={{ color: "var(--text3)", transform: expandedYear === year ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                </button>
+                {expandedYear === year && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {byYear[year].map((r: any) => (
+                      <button key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
+                            {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
+                          </p>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
+                            {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
+                          </p>
+                          {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"</p>}
+                          {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
+                        </div>
+                        <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

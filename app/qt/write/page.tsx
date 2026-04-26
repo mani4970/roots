@@ -252,7 +252,14 @@ function QTWriteContent() {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const translationParam = params.get("translation");
-  const [selectedTranslation, setSelectedTranslation] = useState(translationParam ? parseInt(translationParam) : 92);
+  const [selectedTranslation, setSelectedTranslation] = useState(() => {
+    if (translationParam) return parseInt(translationParam);
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("roots_default_translation");
+      if (saved) return parseInt(saved);
+    }
+    return 92;
+  });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
   const [mode, setMode] = useState<"6step" | "sunday" | "free">(() => {

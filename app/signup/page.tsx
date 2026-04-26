@@ -30,7 +30,7 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: nickname, preferred_language: lang } },
+      options: { data: { name: nickname, preferred_language: lang, preferred_translation: (() => { const d: Record<string,number> = { ko:92, de:97, en:80, fr:26 }; return d[lang] ?? 92; })() } },
     });
     if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
     if (data.user) {

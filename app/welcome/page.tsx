@@ -29,7 +29,7 @@ const TEXTS: Record<Lang, {
 }> = {
   ko: {
     tagline: "말씀에 뿌리내리고, 함께 자라다",
-    desc: "매일의 영적습관 혼자서 어려우셨나요?\n이제 루츠와 함께 해보세요!\n\n겨자씨 한 알이 자라, 공중의 새들이 깃들이는 나무가 되기까지 100일 루틴을 시작해보세요.\n하나님과 매일 말씀과 기도로 동행하기를 소원하는 여러분을 축복합니다!",
+    desc: "매일의 영적습관 혼자서 어려우셨나요?\n이제 루츠와 함께 해보세요!\n\n겨자씨 한 알이 자라, 공중의 새들이 깃들이는 나무가 되기까지\n100일 루틴을 시작해보세요.\n하나님과 매일 말씀과 기도로 동행하기를 소원하는 여러분을 축복합니다!",
     f1t: "큐티 (Quiet Time)", f1s: "6단계로 말씀을 깊이 묵상하고 삶에 적용해요.\n자유형식과 주일예배 큐티도 지원해요",
     f2t: "기도", f2s: "기도 제목을 기록하고, 응답되면 간증으로 남겨요.\n오늘의 말씀도 매일 받아볼 수 있어요",
     f3t: "나의 정원", f3s: "매일 루틴을 완료하면 나무가 자라고,\n100일마다 성령의 열매를 맺어요",
@@ -40,7 +40,7 @@ const TEXTS: Record<Lang, {
   },
   de: {
     tagline: "In Gottes Wort verwurzelt, gemeinsam wachsen",
-    desc: "Fällt es Ihnen schwer, alleine eine geistliche Routine zu halten?\nVersuchen Sie es jetzt mit Roots!\n\nStarten Sie die 100-Tage-Routine — vom Senfkorn zum Baum, in dem die Vögel nisten.\nWir segnen alle, die sich danach sehnen, täglich mit Gottes Wort und Gebet zu leben!",
+    desc: "Fällt es Ihnen schwer, alleine eine geistliche Routine zu halten?\nVersuchen Sie es jetzt mit Roots!\n\nStarten Sie die 100-Tage-Routine\n— vom Senfkorn zum Baum, in dem die Vögel nisten.\nWir segnen alle, die sich danach sehnen,\ntäglich mit Gottes Wort und Gebet zu leben!",
     f1t: "Stille Zeit", f1s: "Gottes Wort in 6 Schritten meditieren und im Alltag anwenden.\nFreie Form und Sonntagsgottesdienst werden auch unterstützt",
     f2t: "Gebet", f2s: "Gebetsanliegen aufschreiben und bei Erhörung ein Zeugnis hinterlassen.\nTägliche Bibelverse empfangen",
     f3t: "Mein Garten", f3s: "Tägliche Routine lässt Ihren Baum wachsen —\nalle 100 Tage eine Frucht des Geistes",
@@ -51,7 +51,7 @@ const TEXTS: Record<Lang, {
   },
   en: {
     tagline: "Rooted in God's Word, Growing Together",
-    desc: "Struggling to keep a daily spiritual habit on your own?\nTry it with Roots!\n\nStart the 100-day routine — from a mustard seed to a tree where birds come to nest.\nWe bless everyone who longs to walk with God daily through His Word and prayer!",
+    desc: "Struggling to keep a daily spiritual habit on your own?\nTry it with Roots!\n\nStart the 100-day routine\n— from a mustard seed to a tree where birds come to nest.\nWe bless everyone who longs to walk with God\ndaily through His Word and prayer!",
     f1t: "Quiet Time", f1s: "Meditate on God's Word in 6 steps and apply it to your life.\nFree-form and Sunday worship QT also supported",
     f2t: "Prayer", f2s: "Record prayer requests and leave testimonies when answered.\nReceive a daily Bible verse tailored to your heart",
     f3t: "My Garden", f3s: "Complete daily routines to grow your tree —\nearn a fruit of the Spirit every 100 days",
@@ -62,7 +62,7 @@ const TEXTS: Record<Lang, {
   },
   fr: {
     tagline: "Enracinés dans la Parole, grandissons ensemble",
-    desc: "Difficile de maintenir une habitude spirituelle seul(e) ?\nEssayez avec Roots !\n\nCommencez la routine de 100 jours — d'une graine de moutarde à un arbre où les oiseaux viennent nicher.\nNous bénissons tous ceux qui désirent marcher chaque jour avec Dieu dans Sa Parole et la prière !",
+    desc: "Difficile de maintenir une habitude spirituelle seul(e) ?\nEssayez avec Roots !\n\nCommencez la routine de 100 jours\n— d'une graine de moutarde à un arbre où les oiseaux viennent nicher.\nNous bénissons tous ceux qui désirent marcher chaque jour\navec Dieu dans Sa Parole et la prière !",
     f1t: "Méditation (Quiet Time)", f1s: "Méditez la Parole de Dieu en 6 étapes et appliquez-la dans votre vie.\nForme libre et culte du dimanche aussi",
     f2t: "Prière", f2s: "Notez vos sujets de prière et témoignez des prières exaucées.\nRecevez un verset biblique quotidien",
     f3t: "Mon Jardin", f3s: "Complétez vos routines pour faire grandir votre arbre —\nun fruit de l'Esprit tous les 100 jours",
