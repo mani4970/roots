@@ -117,7 +117,7 @@ export default function HomePage() {
     }
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    if (!user) { router.push("/welcome"); return; }
 
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {

@@ -34,8 +34,12 @@ export async function GET(request: Request) {
     if (isLang(selectedLang)) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 }
         await supabase.from("profiles")
-          .update({ preferred_language: selectedLang })
+          .update({
+            preferred_language: selectedLang,
+            preferred_translation: LANG_DEFAULT_TRANSLATION[selectedLang],
+          })
           .eq("id", user.id)
       }
     }
