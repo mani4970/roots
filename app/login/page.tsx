@@ -7,7 +7,7 @@ import { setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import LanguagePicker from "@/components/LanguagePicker";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,6 +35,14 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
+    // preferred_translation도 갱신
+    const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
+    const trId = defaultTr[lang] ?? 92;
+    localStorage.setItem("roots_default_translation", String(trId));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").update({ preferred_translation: trId, preferred_language: lang }).eq("id", user.id);
+    }
     router.push("/"); router.refresh();
   }
 
@@ -43,6 +51,8 @@ export default function LoginPage() {
     const supabase = createClient();
     localStorage.setItem("roots_lang", lang);
     localStorage.setItem("roots_lang_selected", "true");
+    const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
+    localStorage.setItem("roots_default_translation", String(defaultTr[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?lang=${lang}` },
@@ -56,6 +66,9 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative" }}>
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
+      <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 20, left: 20 }}>
+        <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+      </Link>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
           <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
@@ -101,10 +114,7 @@ export default function LoginPage() {
           {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}
         </button>
 
-        <p style={{ textAlign: "center", marginTop: 20, color: "var(--text3)", fontSize: 14 }}>
-          {t("login_no_account", lang)}{" "}
-          <Link href="/signup" style={{ color: "var(--sage-dark)", fontWeight: 600 }}>{t("login_signup_link", lang)}</Link>
-        </p>
+
       </div>
     </div>
   );

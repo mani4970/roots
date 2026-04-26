@@ -290,6 +290,8 @@ function QTWriteContent() {
 
   // 주일예배 말씀 선택 step
   const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
+  const [pageReady, setPageReady] = useState(false);
+  const [passageOpen, setPassageOpen] = useState(false);
 
   // 장 변경 시 절 범위 초과 자동 조정
   function handleChapterChange(newChapter: string) {
@@ -326,6 +328,7 @@ function QTWriteContent() {
   // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
   useEffect(() => {
     const loadSchedulePassage = async () => {
+      setPageReady(true);
       if (!hasSchedule || isResume || mode !== "6step") return;
       try {
         const bookName = schedBook!;
@@ -398,7 +401,8 @@ function QTWriteContent() {
     };
 
     const loadDraft = async () => {
-      if (!isResume) return; // 이어쓰기 모드일 때만 로드
+      setPageReady(true);
+    if (!isResume) return; // 이어쓰기 모드일 때만 로드
       if (selectedDate !== todayStr) {
         resetDraftState();
         return;
@@ -778,6 +782,8 @@ function QTWriteContent() {
   }
 
   // ─── 말씀 선택 화면 (6step & free) ───
+  if (!pageReady) return <div style={{ minHeight: "100vh", background: "var(--bg)" }} />;
+
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
@@ -1092,19 +1098,21 @@ function QTWriteContent() {
         {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
         {!step.isSermonInfo && bibleRef && passageVerses.length > 0 && (
           <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
-            <details style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
-              <summary style={{ padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
+              <button onClick={() => setPassageOpen(v => !v)} style={{ width: "100%", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "none", border: "none" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
-                <span style={{ fontSize: 10, color: "var(--text3)" }}>▼ {trQT("더보기", lang)}</span>
-              </summary>
-              <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
-                {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, marginTop: 4 }}>
-                    <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
-                  </p>
-                ))}
-              </div>
-            </details>
+                <span style={{ fontSize: 10, color: "var(--text3)" }}>{passageOpen ? `▲ ${trQT("접기", lang)}` : `▼ ${trQT("더보기", lang)}`}</span>
+              </button>
+              {passageOpen && (
+                <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
+                  {passageVerses.map(v => (
+                    <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, marginTop: 4 }}>
+                      <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

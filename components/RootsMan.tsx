@@ -22,7 +22,7 @@ const WALK_STEP = 3.2;
 const WALK_INTERVAL = 120;
 
 // 각 행을 독립적으로 사용 — 행 간 점프 없음
-const ENTER_FRAMES = [0, 1, 2]; // Row 0 only
+const ENTER_FRAMES = [0, 1, 2, 1]; // Row 0 ping-pong (0→1→2→1→0...)
 const WATER_FRAMES = [3, 4, 5]; // Row 1 only
 const EXIT_FRAMES = [6, 7, 8];  // Row 2 only
 
