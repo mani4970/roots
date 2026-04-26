@@ -102,7 +102,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "말씀 요약": { de: "Zusammenfassung", en: "Summary", fr: "Résumé de la Parole" },
   "설교 말씀을 내 말로 요약해요": { de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words", fr: "Résumez le sermon avec vos propres mots" },
   "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words...", fr: "Résumez le message principal du sermon avec vos propres mots..." },
-  "설교자가 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words.", fr: "Reformulez avec vos mots le message central transmis par le prédicateur." },
+  "목사님이 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Pastors in eigene Worte fassen.", en: "Put the pastor's core message in your own words.", fr: "Reformulez avec vos mots le message central transmis par le pasteur." },
   "깨달음과 결단": { de: "Erkenntnis & Entschluss", en: "Insight & Resolution", fr: "Compréhension et décision" },
   "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word", fr: "Ce que la Parole m’enseigne et ma décision" },
   "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out.", fr: "Écrivez ce que vous avez compris par la Parole et la décision que vous voulez vivre." },
@@ -702,9 +702,9 @@ function QTWriteContent() {
         const { error } = await supabase.from("qt_records").insert(draftData);
         if (error) throw error;
       }
-      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요 😊", lang));
+      showToast(trQT("임시저장 됐어요!\n나중에 이어쓸 수 있어요 😊", lang));
     } catch (e) {
-      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
+      showToast(trQT("임시저장에 실패했어요.\n다시 시도해주세요.", lang));
     } finally {
       setSaving(false);
     }
