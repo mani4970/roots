@@ -265,11 +265,15 @@
 }
 
 .sectionSub {
-  margin: -8px 28px 16px;
+  margin: -8px auto 16px;
+  max-width: 310px;
+  padding: 0 28px;
   font-size: 12px;
   color: var(--text2);
   line-height: 1.65;
   word-break: keep-all;
+  text-align: center;
+  white-space: pre-line;
 }
 
 /* ── BADGES ── */
