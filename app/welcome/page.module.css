@@ -24,8 +24,8 @@
 /* ── LANG BAR ── */
 .langBar {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 72px;
+  right: 28px;
   z-index: 20;
 }
 .langBtn {

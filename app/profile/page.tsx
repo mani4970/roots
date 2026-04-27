@@ -39,7 +39,7 @@ export default function ProfilePage() {
   async function load() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    if (!user) { router.push("/welcome"); return; }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
@@ -125,10 +125,10 @@ export default function ProfilePage() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      router.push("/login");
+      router.push("/welcome");
     } catch (e) {
       console.error(e);
-      router.push("/login");
+      router.push("/welcome");
     }
   }
 
@@ -177,7 +177,7 @@ export default function ProfilePage() {
         supabase.from("profiles").delete().eq("id", user.id),
       ]);
       await supabase.auth.signOut();
-      router.push("/login");
+      router.push("/welcome");
     } catch (e) {
       showToast(t("profile_delete_error", lang));
     }

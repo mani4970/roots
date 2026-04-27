@@ -62,7 +62,7 @@ export default function SignupPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 40px", position: "relative" }}>
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
-      <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32 }}>
+      <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32, position: "absolute", top: 20, left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 24 }}>
