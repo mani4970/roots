@@ -1,7 +1,8 @@
-/* ── CSS VARIABLES ── */
-/* Add these to your globals.css:
+/* ── FONTS ── */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Gowun+Dodum&display=swap');
 
-:root {
+/* ── CSS VARIABLES ── */
+:global(:root) {
   --cream:    #F6F0E6;
   --cream2:   #EDE5D4;
   --forest:   #1D3A28;
@@ -14,8 +15,6 @@
   --text2:    #4A6555;
   --text3:    #7A9080;
 }
-
-*/
 
 /* ── LAYOUT ── */
 .page {
