@@ -22,6 +22,8 @@ export default function ProfilePage() {
   const [qtShareCount, setQtShareCount] = useState(0);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [userEmail, setUserEmail] = useState("");
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [sendingFeedback, setSendingFeedback] = useState(false);
@@ -40,6 +42,7 @@ export default function ProfilePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/welcome"); return; }
+    setUserEmail(user.email ?? "");
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
@@ -160,6 +163,24 @@ export default function ProfilePage() {
       showToast(t("profile_feedback_fail", lang));
     }
     setSendingFeedback(false);
+  }
+
+  async function sendPasswordResetEmail() {
+    if (!userEmail) {
+      showToast(lang === "de" ? "Keine E-Mail-Adresse gefunden." : lang === "fr" ? "Adresse e-mail introuvable." : lang === "en" ? "No email address found." : "이메일 주소를 찾을 수 없어요.");
+      return;
+    }
+    setSendingPasswordReset(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      showToast(lang === "de" ? "E-Mail zum Ändern des Passworts gesendet." : lang === "fr" ? "E-mail de changement de mot de passe envoyé." : lang === "en" ? "Password change email sent." : "비밀번호 변경 이메일을 보냈어요.");
+    } catch (e) {
+      showToast(lang === "de" ? "E-Mail konnte nicht gesendet werden." : lang === "fr" ? "Impossible d’envoyer l’e-mail." : lang === "en" ? "Could not send email." : "이메일을 보내지 못했어요.");
+    }
+    setSendingPasswordReset(false);
   }
 
   async function deleteAccount() {
@@ -432,6 +453,74 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* 계정 관리 */}
+      <div style={{ padding: "10px 16px 0" }}>
+        <div className="sec-label">{lang === "de" ? "Kontoverwaltung" : lang === "fr" ? "Gestion du compte" : lang === "en" ? "Account management" : "계정 관리"}</div>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <button
+            onClick={() => { setEditingName(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            style={{ width: "100%", padding: "14px 16px", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+          >
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "de" ? "Name ändern" : lang === "fr" ? "Modifier le nom" : lang === "en" ? "Edit nickname" : "닉네임 변경"}</p>
+              <p style={{ fontSize: 11, color: "var(--text3)" }}>{profile?.name ?? userEmail}</p>
+            </div>
+            <Pencil size={15} style={{ color: "var(--text3)" }} />
+          </button>
+
+          <button
+            onClick={() => { setPhotoError(""); fileRef.current?.click(); }}
+            disabled={uploadingPhoto}
+            style={{ width: "100%", padding: "14px 16px", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+          >
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "de" ? "Profilfoto ändern" : lang === "fr" ? "Modifier la photo" : lang === "en" ? "Change profile photo" : "프로필 사진 변경"}</p>
+              <p style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Bild bis 5 MB" : lang === "fr" ? "Image jusqu’à 5 Mo" : lang === "en" ? "Image up to 5 MB" : "5MB 이하 이미지"}</p>
+            </div>
+            {uploadingPhoto ? <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} /> : <Camera size={15} style={{ color: "var(--text3)" }} />}
+          </button>
+
+          <button
+            onClick={sendPasswordResetEmail}
+            disabled={sendingPasswordReset}
+            style={{ width: "100%", padding: "14px 16px", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+          >
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "de" ? "Passwort ändern" : lang === "fr" ? "Changer le mot de passe" : lang === "en" ? "Change password" : "비밀번호 변경"}</p>
+              <p style={{ fontSize: 11, color: "var(--text3)" }}>{userEmail || (lang === "de" ? "Per E-Mail" : lang === "fr" ? "Par e-mail" : lang === "en" ? "By email" : "이메일로 변경")}</p>
+            </div>
+            {sendingPasswordReset ? <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} /> : <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>}
+          </button>
+
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{ width: "100%", padding: "14px 16px", background: "transparent", border: "none", color: "#E05050", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+            >
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "de" ? "Konto löschen" : lang === "fr" ? "Supprimer le compte" : lang === "en" ? "Delete account" : "계정 탈퇴"}</p>
+                <p style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Daten dauerhaft entfernen" : lang === "fr" ? "Supprimer définitivement les données" : lang === "en" ? "Permanently remove data" : "계정과 데이터를 영구 삭제"}</p>
+              </div>
+              <span style={{ fontSize: 18, color: "#E05050" }}>›</span>
+            </button>
+          ) : (
+            <div style={{ padding: "14px 16px", background: "rgba(224,80,80,0.06)" }}>
+              <p style={{ fontSize: 12, color: "#E05050", marginBottom: 10, lineHeight: 1.6 }}>
+                {lang === "de" ? "Möchten Sie dieses Konto wirklich löschen? Alle Daten werden dauerhaft entfernt." : lang === "fr" ? "Voulez-vous vraiment supprimer ce compte ? Toutes les données seront supprimées définitivement." : lang === "en" ? "Do you really want to delete this account? All data will be permanently removed." : "정말 탈퇴하시겠어요? 모든 큐티 기록과 기도 제목이 영구 삭제됩니다."}
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
+                  {lang === "de" ? "Abbrechen" : lang === "fr" ? "Annuler" : lang === "en" ? "Cancel" : "취소"}
+                </button>
+                <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "#E05050", border: "none", borderRadius: 10, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  {deletingAccount ? t("profile_deleting", lang) : t("profile_delete_confirm_btn", lang)}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 법적/지원 링크 */}
       <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
         <a href="/impressum" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_impressum", lang)}</a>
@@ -465,29 +554,7 @@ export default function ProfilePage() {
               {sendingFeedback ? t("profile_feedback_sending", lang) : t("profile_feedback_send", lang)}
             </button>
 
-            {/* 계정 관리 */}
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 16, paddingTop: 14 }}>
-              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, textAlign: "center" }}>{lang === "de" ? "Kontoverwaltung" : lang === "fr" ? "Gestion du compte" : lang === "en" ? "Account management" : "계정 관리"}</p>
-              {!showDeleteConfirm ? (
-                <button onClick={() => setShowDeleteConfirm(true)} style={{ width: "100%", padding: "9px", background: "none", border: "1px solid rgba(224,80,80,0.3)", borderRadius: 10, color: "#E05050", fontSize: 12, cursor: "pointer" }}>
-                  {lang === "de" ? "Konto löschen" : lang === "fr" ? "Supprimer le compte" : lang === "en" ? "Delete account" : "계정 탈퇴"}
-                </button>
-              ) : (
-                <div>
-                  <p style={{ fontSize: 12, color: "#E05050", textAlign: "center", marginBottom: 10, lineHeight: 1.6 }}>
-                    {lang === "de" ? "Wirklich löschen?" : lang === "fr" ? "Voulez-vous vraiment supprimer ?" : lang === "en" ? "Really delete?" : "정말 탈퇴하시겠어요?"}<br />{lang === "de" ? "Alle Daten werden dauerhaft entfernt." : lang === "fr" ? "Toutes les données seront supprimées définitivement." : lang === "en" ? "All data will be permanently removed." : "모든 큐티 기록, 기도 제목이 영구 삭제돼요."}
-                  </p>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
-                      취소
-                    </button>
-                    <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "#E05050", border: "none", borderRadius: 10, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                      {deletingAccount ? t("profile_deleting", lang) : t("profile_delete_confirm_btn", lang)}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+
           </div>
         </div>
       )}
