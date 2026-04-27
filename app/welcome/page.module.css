@@ -1,25 +1,11 @@
-/* ── FONTS ── */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Gowun+Dodum&display=swap');
 
+/* ── FONTS ── */
 /* ── CSS VARIABLES ── */
-:global(:root) {
-  --cream:    #F6F0E6;
-  --cream2:   #EDE5D4;
-  --forest:   #1D3A28;
-  --green:    #3D6B4F;
-  --green-lt: #D4E6D9;
-  --terra:    #C4724E;
-  --terra-lt: #F5DDD2;
-  --gold:     #B89A5C;
-  --text:     #1D3A28;
-  --text2:    #4A6555;
-  --text3:    #7A9080;
-}
-
 /* ── LAYOUT ── */
 .page {
-  background: var(--cream);
-  color: var(--text);
+  background: #F6F0E6;
+  color: #1D3A28;
   font-family: 'Gowun Dodum', sans-serif;
   min-height: 100vh;
   display: flex;
@@ -31,7 +17,7 @@
   width: 100%;
   max-width: 390px;
   min-height: 100vh;
-  background: var(--cream);
+  background: #F6F0E6;
   overflow-x: hidden;
   position: relative;
 }
@@ -50,23 +36,23 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1.5px solid var(--green-lt);
+  border: 1.5px solid #D4E6D9;
   background: rgba(246, 240, 230, 0.85);
   backdrop-filter: blur(8px);
-  color: var(--green);
+  color: #3D6B4F;
   font-family: 'Gowun Dodum', sans-serif;
   font-size: 12px;
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.langBtn:hover { border-color: var(--green); }
+.langBtn:hover { border-color: #3D6B4F; }
 .langDropdown {
   position: absolute;
   right: 0;
   top: 42px;
   width: 160px;
-  background: var(--cream);
-  border: 1.5px solid var(--cream2);
+  background: #F6F0E6;
+  border: 1.5px solid #EDE5D4;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(30, 60, 40, 0.12);
@@ -81,16 +67,16 @@
   border: none;
   font-family: 'Gowun Dodum', sans-serif;
   font-size: 13px;
-  color: var(--text2);
+  color: #4A6555;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
 }
-.langOpt:hover { background: var(--green-lt); }
+.langOpt:hover { background: #D4E6D9; }
 .langOptActive {
-  color: var(--forest);
+  color: #1D3A28;
   font-weight: 700;
-  background: var(--green-lt);
+  background: #D4E6D9;
 }
 
 /* ── HERO ── */
@@ -102,7 +88,7 @@
 .heroBg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--green-lt) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #D4E6D9 0%, transparent 70%);
   pointer-events: none;
 }
 .ring {
@@ -115,7 +101,7 @@
   font-family: 'Noto Serif KR', serif;
   font-size: 52px;
   font-weight: 900;
-  color: var(--forest);
+  color: #1D3A28;
   letter-spacing: -2px;
   line-height: 0.95;
   margin-bottom: 6px;
@@ -126,7 +112,7 @@
   font-family: 'Noto Serif KR', serif;
   font-size: 14px;
   font-weight: 400;
-  color: var(--text2);
+  color: #4A6555;
   letter-spacing: 0.5px;
   margin-bottom: 20px;
   line-height: 1.7;
@@ -140,13 +126,13 @@
 }
 .heroDesc {
   font-size: 13px;
-  color: var(--text2);
+  color: #4A6555;
   line-height: 2;
   max-width: 300px;
   animation: fadeUp 0.55s 0.14s ease both;
 }
 .heroDescStrong {
-  color: var(--forest);
+  color: #1D3A28;
   font-weight: 700;
 }
 
@@ -154,7 +140,7 @@
 .growthSection {
   margin: 28px 20px 0;
   border-radius: 22px;
-  background: var(--forest);
+  background: #1D3A28;
   overflow: hidden;
   position: relative;
 }
@@ -172,7 +158,7 @@
   font-family: 'Noto Serif KR', serif;
   font-size: 18px;
   font-weight: 700;
-  color: var(--cream);
+  color: #F6F0E6;
   line-height: 1.45;
   margin-bottom: 4px;
 }
@@ -269,7 +255,7 @@
   align-items: center;
   gap: 12px;
   margin: 28px 28px 16px;
-  color: var(--text3);
+  color: #7A9080;
   font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -278,7 +264,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--cream2);
+  background: #EDE5D4;
 }
 
 /* ── BADGES ── */
@@ -295,7 +281,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 2px solid var(--cream2);
+  border: 2px solid #EDE5D4;
   background: white;
   display: flex;
   align-items: center;
@@ -313,8 +299,8 @@
 .featBig {
   border-radius: 20px;
   padding: 22px 22px 18px;
-  background: var(--forest);
-  color: var(--cream);
+  background: #1D3A28;
+  color: #F6F0E6;
   position: relative;
   overflow: hidden;
 }
@@ -345,21 +331,21 @@
 .featSm {
   border-radius: 20px;
   padding: 18px 16px;
-  background: var(--cream2);
+  background: #EDE5D4;
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
-.featSmTerra { background: var(--terra-lt); }
+.featSmTerra { background: #F5DDD2; }
 .featSmTitle {
   font-family: 'Noto Serif KR', serif;
   font-size: 14px;
   font-weight: 700;
-  color: var(--forest);
+  color: #1D3A28;
   margin-bottom: 5px;
 }
 .featSmSub {
   font-size: 11px;
   line-height: 1.7;
-  color: var(--text2);
+  color: #4A6555;
   white-space: pre-line;
 }
 
@@ -367,7 +353,7 @@
 .verseBlock {
   margin: 24px 20px 0;
   padding: 28px 24px;
-  background: var(--terra-lt);
+  background: #F5DDD2;
   border-radius: 20px;
   border: 1px solid rgba(196, 114, 78, 0.15);
   text-align: center;
@@ -387,7 +373,7 @@
 }
 .verseRef {
   font-size: 10px;
-  color: var(--terra);
+  color: #C4724E;
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 12px;
@@ -396,7 +382,7 @@
 .verseText {
   font-family: 'Noto Serif KR', serif;
   font-size: 14px;
-  color: var(--forest);
+  color: #1D3A28;
   line-height: 2;
   white-space: pre-line;
 }
@@ -412,8 +398,8 @@
   width: 100%;
   height: 54px;
   border-radius: 16px;
-  background: var(--forest);
-  color: var(--cream);
+  background: #1D3A28;
+  color: #F6F0E6;
   border: none;
   font-family: 'Gowun Dodum', sans-serif;
   font-size: 15px;
@@ -432,18 +418,18 @@
   height: 48px;
   border-radius: 16px;
   background: transparent;
-  color: var(--green);
-  border: 1.5px solid var(--green-lt);
+  color: #3D6B4F;
+  border: 1.5px solid #D4E6D9;
   font-family: 'Gowun Dodum', sans-serif;
   font-size: 14px;
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.btnOutline:hover { border-color: var(--green); }
+.btnOutline:hover { border-color: #3D6B4F; }
 .footerNote {
   text-align: center;
   font-size: 10px;
-  color: var(--text3);
+  color: #7A9080;
   padding: 4px 0 36px;
   letter-spacing: 1px;
 }
