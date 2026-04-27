@@ -18,11 +18,12 @@ const RENDER_H = Math.round(FRAME_H * SCALE);
 const ENTER_START_X = 112;
 const WATER_X = 62;
 const EXIT_END_X = 116;
-const WALK_STEP = 3.2;
-const WALK_INTERVAL = 120;
+const WALK_STEP = 1.15;
+const WALK_INTERVAL = 45;
+const FRAME_TICK = 3;
 
 // 각 행을 독립적으로 사용 — 행 간 점프 없음
-const ENTER_FRAMES = [0, 1, 2, 1]; // Row 0 ping-pong (0→1→2→1→0...)
+const ENTER_FRAMES = [0, 1, 2]; // Row 0 only — sprite already enters right to left
 const WATER_FRAMES = [3, 4, 5]; // Row 1 only
 const EXIT_FRAMES = [6, 7, 8];  // Row 2 only
 
@@ -67,17 +68,19 @@ export default function RootsMan({ trigger }: RootsManProps) {
 
   function startAnimation() {
     setPhase("enter");
-    setFlipX(true);
+    setFlipX(false);
     setOpacity(1);
     setPosX(ENTER_START_X);
     setFrame(ENTER_FRAMES[0]);
 
     let x = ENTER_START_X;
     let wf = 0;
+    let tick = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
       x = Math.max(WATER_X, x - WALK_STEP);
-      wf = (wf + 1) % ENTER_FRAMES.length;
+      tick++;
+      if (tick % FRAME_TICK === 0) wf = (wf + 1) % ENTER_FRAMES.length;
       setPosX(x);
       setFrame(ENTER_FRAMES[wf]);
       if (x <= WATER_X) {
@@ -109,10 +112,12 @@ export default function RootsMan({ trigger }: RootsManProps) {
     setFlipX(false);
     let x = WATER_X;
     let wf = 0;
+    let tick = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
       x = Math.min(EXIT_END_X, x + WALK_STEP);
-      wf = (wf + 1) % EXIT_FRAMES.length;
+      tick++;
+      if (tick % FRAME_TICK === 0) wf = (wf + 1) % EXIT_FRAMES.length;
       setPosX(x);
       setFrame(EXIT_FRAMES[wf]);
       if (x >= EXIT_END_X) {

@@ -296,6 +296,7 @@ function QTWriteContent() {
   // 장 변경 시 절 범위 초과 자동 조정
   function handleChapterChange(newChapter: string) {
     setChapter(newChapter);
+    setEndChapter(newChapter);
     const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
     const allLocalBooks = [...(BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"])];
     const idx = allLocalBooks.indexOf(book);
@@ -324,6 +325,26 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
+
+  function buildSundayBibleRef(title: string, refs: string[]) {
+    const cleanTitle = title.trim();
+    const cleanRefs = refs.filter(Boolean).join(", ");
+    if (!cleanTitle && !cleanRefs) return "";
+    if (cleanRefs) return `설교: ${cleanTitle} (${cleanRefs})`;
+    return `설교: ${cleanTitle}`;
+  }
+
+  function parseSundayBibleRef(raw?: string | null) {
+    const text = String(raw ?? "").trim();
+    if (!text.startsWith("설교:")) return { title: "", refs: text ? [text] : [] };
+    const body = text.replace(/^설교:\s*/, "").trim();
+    const match = body.match(/^(.*?)(?:\s*\((.*)\))?$/);
+    const title = (match?.[1] ?? "").trim();
+    const refsText = (match?.[2] ?? "").trim();
+    const refs = refsText ? refsText.split(/\s*,\s*/).filter(Boolean) : [];
+    return { title, refs };
+  }
+
 
   // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
   useEffect(() => {
@@ -394,6 +415,8 @@ function QTWriteContent() {
       setCur(0);
       setFreeText("");
       setPassages([]);
+      setEndChapter("1");
+      setCrossChapter(false);
       setBibleStep("select");
       setSundayBibleStep("select");
       setSermonTitle("");
@@ -428,8 +451,31 @@ function QTWriteContent() {
       resetDraftState();
 
       // 기존 draft 데이터 복원
+      const sundayDraft = draft.qt_mode === "sunday" ? parseSundayBibleRef(draft.bible_ref) : null;
       if (draft.qt_mode) setMode(draft.qt_mode);
-      if (draft.bible_ref) setBibleRef(draft.bible_ref);
+      if (sundayDraft) {
+        setSermonTitle(sundayDraft.title);
+        const [mainRef, ...extraRefs] = sundayDraft.refs;
+        if (mainRef) {
+          setBibleRef(mainRef);
+          setBibleStep("done");
+          setSundayBibleStep("done");
+        }
+        if (extraRefs.length > 0) {
+          setPassages(extraRefs.map(ref => ({
+            book: "",
+            chapter: "",
+            startV: "",
+            endV: "",
+            endChapter: "",
+            cross: ref.includes("-") && ref.includes(":"),
+            verses: [],
+            ref,
+          })));
+        }
+      } else if (draft.bible_ref) {
+        setBibleRef(draft.bible_ref);
+      }
       if (draft.key_verse) {
         setKeyVerse(draft.key_verse);
         setBibleStep("done");
@@ -445,7 +491,8 @@ function QTWriteContent() {
       }
 
       // 말씀 본문 재로드 (bible_ref가 있으면)
-      if (draft.bible_ref) {
+      const refForReload = sundayDraft?.refs?.[0] ?? draft.bible_ref;
+      if (refForReload) {
         try {
           // 약어 → 전체 이름 역변환 맵
           const SHORT_TO_FULL: Record<string, string> = {
@@ -466,25 +513,40 @@ function QTWriteContent() {
             "요삼":"요한삼서","유":"유다서","계":"요한계시록",
           };
 
-          const ref = draft.bible_ref;
-          // "창 1:1-10" 또는 "창세기 1:1-10" 둘 다 파싱
-          const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+          const ref = refForReload;
+          // "창 1:1-10", "창 1:1-2:3", "창세기 1:1-10" 지원
+          const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/);
           if (match) {
-            const [, abbr, chap, sv, ev] = match;
-            // 약어면 전체이름으로 변환, 이미 전체이름이면 그대로
+            const [, abbr, chap, sv, evChap, ev] = match;
             const bookName = SHORT_TO_FULL[abbr] ?? abbr;
+            const finalEndChapter = evChap ?? chap;
+            const finalEndVerse = ev ?? sv;
             setBook(bookName);
             setChapter(chap);
             setStartV(sv);
-            setEndV(ev ?? sv);
-            // API로 절 내용 재로드
-            const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev ?? sv}`);
-            const data = await res.json();
-            if (data.verses && data.verses.length > 0) {
-              setPassageVerses(data.verses);
-              setBibleStep("done");
-              setSundayBibleStep("done");
+            setEndChapter(finalEndChapter);
+            setEndV(finalEndVerse);
+            setCrossChapter(finalEndChapter !== chap);
+
+            if (finalEndChapter !== chap) {
+              const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+              const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+              const idx = allLocalBooks.indexOf(bookName);
+              const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
+              const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
+              const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+              const d1 = await r1.json();
+              const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+              const d2 = await r2.json();
+              const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
+              if (verses.length > 0) setPassageVerses(verses);
+            } else {
+              const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+              const data = await res.json();
+              if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
             }
+            setBibleStep("done");
+            setSundayBibleStep("done");
           }
         } catch (e) {
           // 말씀 로드 실패해도 나머지 데이터는 복원됨
@@ -505,7 +567,7 @@ function QTWriteContent() {
     if (!bibleRef || passageVerses.length === 0) return;
     setLoadingBible(true);
     try {
-      if (crossChapter && endChapter !== chapter) {
+      if (endChapter !== chapter) {
         const allKo = [...OT_BOOKS, ...NT_BOOKS];
         const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
         const koBook = (() => { const i=allLoc.indexOf(book); return i>=0?allKo[i]:book; })();
@@ -531,7 +593,7 @@ function QTWriteContent() {
       let allVerses: {num:number;text:string}[] = [];
       let refStr = "";
 
-      if (crossChapter && endChapter !== chapter) {
+      if (endChapter !== chapter) {
         // 장 넘어가는 경우: 시작장 끝까지 + 끝장 처음부터
         const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
         const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
@@ -571,7 +633,7 @@ function QTWriteContent() {
       const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
       let vers: {num:number;text:string}[] = [];
       let refStr = "";
-      if (crossChapter && endChapter !== chapter) {
+      if (endChapter !== chapter) {
         const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
         const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await r1.json();
@@ -589,6 +651,7 @@ function QTWriteContent() {
         setPassages(prev => [...prev, newP]);
         // 첫 번째 말씀이 없으면 메인으로도 설정
         if (!bibleRef) { setPassageVerses(vers); setBibleRef(refStr); setBibleStep("done"); setSundayBibleStep("done"); }
+        if (mode === "sunday") setSundayBibleStep("done");
       }
     } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
     setLoadingBible(false);
@@ -664,13 +727,15 @@ function QTWriteContent() {
       if (!user) { router.push("/login"); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
+      const sundayRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
+      const draftBibleRef = mode === "sunday" ? buildSundayBibleRef(sermonTitle, sundayRefs) : bibleRef;
       const draftData: any = {
         user_id: user.id,
         date: selectedDate,
         qt_mode: mode,
         is_draft: true,
         current_step: cur,
-        bible_ref: bibleRef,
+        bible_ref: draftBibleRef,
         key_verse: keyVerse,
         opening_prayer: answers.opening_prayer ?? "",
         summary: answers.summary ?? "",
@@ -737,10 +802,10 @@ function QTWriteContent() {
         insertData = { ...insertData, bible_ref: bibleRef, key_verse: keyVerse, meditation: freeText, decision: decisionText };
       } else if (mode === "sunday") {
         // 말씀 ref: 메인 + 추가 말씀 합치기
-        const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean).join(", ");
+        const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
         insertData = {
           ...insertData,
-          bible_ref: allRefs ? `설교: ${sermonTitle} (${allRefs})` : `설교: ${sermonTitle}`,
+          bible_ref: buildSundayBibleRef(sermonTitle, allRefs),
           opening_prayer: answers.opening_prayer ?? "",
           summary: answers.summary ?? "",
           meditation: answers.meditation ?? "",
@@ -1158,37 +1223,74 @@ function QTWriteContent() {
                     const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
                     const maxChapter = chaptersData.length || 150;
                     const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
-                    const maxEndV = chaptersData[parseInt(chapter)-1] ?? 176;
+                    const maxEndV = chaptersData[parseInt(endChapter)-1] ?? 176;
                     return (
-                      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                        <select className="input-field" value={chapter} onChange={e => { setChapter(e.target.value); setStartV("1"); setEndV("1"); }} style={{ flex: 1 }}>
-                          {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                        </select>
-                        <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} style={{ flex: 1 }}>
-                          {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                        </select>
-                        <span style={{ alignSelf: "center", color: "var(--text3)" }}>~</span>
-                        <select className="input-field" value={endV} onChange={e => setEndV(e.target.value)} style={{ flex: 1 }}>
-                          {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                        </select>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                        <div>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("시작 장", lang)}</label>
+                          <select className="input-field" value={chapter} onChange={e => { handleChapterChange(e.target.value); setStartV("1"); setEndV("1"); }} style={{ padding: "12px 8px" }}>
+                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("시작 절", lang)}</label>
+                          <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
+                            {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("끝 장", lang)}</label>
+                          <select className="input-field" value={endChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); }} style={{ padding: "12px 8px" }}>
+                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("끝 절", lang)}</label>
+                          <select className="input-field" value={endV} onChange={e => setEndV(e.target.value)} style={{ padding: "12px 8px" }}>
+                            {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </div>
                       </div>
                     );
                   })()}
-                  <button onClick={loadSundayPassage} disabled={loadingBible} className="btn-primary" style={{ marginBottom: 8 }}>
-                    {loadingBible ? trQT("불러오는 중...", lang) : `📖 ${trQT("말씀 불러오기", lang)}`}
+                  <button onClick={bibleRef ? addPassage : loadSundayPassage} disabled={loadingBible} className="btn-primary" style={{ marginBottom: 8 }}>
+                    {loadingBible ? trQT("불러오는 중...", lang) : bibleRef ? <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</> : `📖 ${trQT("말씀 불러오기", lang)}`}
                   </button>
+                  {passages.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+                      {passages.map((p, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
+                          <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {p.ref}</span>
+                          <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
                 </div>
               ) : (
                 <div className="card-sage" style={{ padding: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
-                    <button onClick={() => { setSundayBibleStep("select"); setPassageVerses([]); setBibleRef(""); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => { setSundayBibleStep("select"); }} style={{ fontSize: 11, color: "var(--sage-dark)", background: "none", border: "none", cursor: "pointer" }}>{trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</button>
+                      <button onClick={() => { setSundayBibleStep("select"); setPassageVerses([]); setBibleRef(""); setPassages([]); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
+                    </div>
                   </div>
                   <p style={{ fontSize: 12, color: "var(--text2)", marginTop: 6, lineHeight: 1.7, fontStyle: "italic" }}>
                     {passageVerses.slice(0, 2).map(v => `${v.num} ${v.text}`).join(" ")}
                     {passageVerses.length > 2 ? "..." : ""}
                   </p>
+                  {passages.length > 0 && (
+                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                      {passages.map((p, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: "7px 10px", border: "1px solid rgba(122,157,122,0.18)" }}>
+                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>+ {p.ref}</span>
+                          <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={13}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
