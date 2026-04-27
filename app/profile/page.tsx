@@ -2,7 +2,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
@@ -24,7 +23,6 @@ export default function ProfilePage() {
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showPwaInstallPrompt, setShowPwaInstallPrompt] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -270,7 +268,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge 🔥" : lang === "fr" ? "jours de suite 🔥" : lang === "en" ? "days in a row 🔥" : "일 연속 기록 중 🔥"}</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge" : lang === "fr" ? "jours de suite" : lang === "en" ? "days in a row" : "일 연속"}</p>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
@@ -427,44 +425,34 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* 홈 화면 추가 */}
-      <div style={{ padding: "10px 16px 0" }}>
-        <button onClick={() => setShowPwaInstallPrompt(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
-          <span style={{ fontSize: 15 }}>📲</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("pwa_profile_button", lang)}</span>
-        </button>
-      </div>
-
       {/* 피드백 버튼 */}
       <div style={{ padding: "10px 16px 0" }}>
         <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
-          <span style={{ fontSize: 14 }}>💬</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{lang === "de" ? "Feedback senden" : lang === "fr" ? "Envoyer un avis" : lang === "en" ? "Send feedback" : "의견 보내기"}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("profile_feedback", lang)}</span>
         </button>
       </div>
 
-      {/* 법적 링크 */}
-      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 16 }}>
+      {/* 법적/지원 링크 */}
+      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
         <a href="/impressum" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_impressum", lang)}</a>
         <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
         <a href="/privacy" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_privacy", lang)}</a>
+        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
+        <a href="/terms" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_terms", lang)}</a>
+        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
+        <a href="/support" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_support", lang)}</a>
+        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
+        <a href="/account-deletion" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_account_deletion", lang)}</a>
       </div>
 
       <div style={{ height: 80 }} />
       <BottomNav />
 
-      <PwaInstallPrompt
-        show={showPwaInstallPrompt}
-        source="profile"
-        forceShow
-        onClose={() => setShowPwaInstallPrompt(false)}
-      />
-
       {/* 피드백 모달 */}
       {showFeedbackModal && (
         <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{lang === "de" ? "💬 Feedback senden" : lang === "fr" ? "💬 Envoyer un avis" : lang === "en" ? "💬 Send feedback" : "💬 의견 보내기"}</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("profile_feedback_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{lang === "de" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : lang === "fr" ? "Remarques, idées ou encouragements — tout est bienvenu !" : lang === "en" ? "Criticism, ideas or encouragement — all welcome!" : "불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!"}</p>
             <textarea
               value={feedbackText}

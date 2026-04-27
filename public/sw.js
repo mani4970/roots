@@ -1,5 +1,5 @@
 const CACHE_NAME = "roots-v3";
-const STATIC_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
+const STATIC_ASSETS = ["/manifest.json", "/app-icon-roots-192.png", "/app-icon-roots-512.png", "/roots-logo-transparent-160.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -24,7 +24,6 @@ self.addEventListener("fetch", (event) => {
   if (
     event.request.method !== "GET" ||
     url.hostname.includes("supabase.co") ||
-    url.hostname.includes("anthropic.com") ||
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/_next/")
   ) {

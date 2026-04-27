@@ -7,7 +7,6 @@ import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
-import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
@@ -67,7 +66,6 @@ export default function HomePage() {
   const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
   const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
-  const [showPwaInstallPrompt, setShowPwaInstallPrompt] = useState(false);
   const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
     show: false, type: "garden", badgeIndex: 0,
   });
@@ -334,19 +332,6 @@ export default function HomePage() {
     setShowRootsManPopup(true);
   }
 
-  function isPwaInstalled() {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia?.("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
-  }
-
-  function maybeShowPwaInstallPromptAfterRoutine() {
-    if (typeof window === "undefined") return;
-    if (isPwaInstalled()) return;
-    if (localStorage.getItem("pwa_prompt_after_first_routine") === "true") return;
-    localStorage.setItem("pwa_prompt_after_first_routine", "true");
-    window.setTimeout(() => setShowPwaInstallPrompt(true), 900);
-  }
-
   function closeCelebration() {
     const launchRootsMan = celebration.launchRootsMan;
     const next = celebrationQueueRef.current.shift();
@@ -578,18 +563,17 @@ export default function HomePage() {
     },
   ];
 
-  // 정원 성장 팝업과 루틴 완료/루츠맨 팝업이 동시에 겹치지 않도록 표시만 제어합니다.
-  // 상태는 유지되므로 앞 팝업이 닫히면 정원 성장 팝업이 이어서 표시될 수 있습니다.
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
-      <svg width="80" height="100" viewBox="0 0 80 100" fill="none">
-        <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M40 65 Q25 55 22 40 Q35 42 40 55" fill="#7A9D7A" opacity="0.85"/>
-        <path d="M40 58 Q55 48 58 33 Q45 35 40 48" fill="#5C8A58" opacity="0.85"/>
-        <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
-      </svg>
+      <img
+        src="/roots-logo-transparent-160.png"
+        alt="Roots sprout"
+        width={82}
+        height={82}
+        style={{ objectFit: "contain" }}
+      />
       <div style={{ textAlign: "center" }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
         <p style={{ fontSize: 13, color: "var(--text3)" }}>{t("home_loading_sub", lang)}</p>
@@ -609,12 +593,6 @@ export default function HomePage() {
           {toast}
         </div>
       )}
-
-      <PwaInstallPrompt
-        show={showPwaInstallPrompt}
-        source="routine"
-        onClose={() => setShowPwaInstallPrompt(false)}
-      />
 
       {(showHomeQTChoice || showHomeSundayQT) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
@@ -730,7 +708,6 @@ export default function HomePage() {
             } else {
               window.scrollTo({ top: 0, behavior: "smooth" });
             }
-            maybeShowPwaInstallPromptAfterRoutine();
           });
         }}
       />

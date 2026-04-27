@@ -70,12 +70,13 @@ export default function LoginPage() {
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
-          <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M40 65 Q25 55 22 40 Q35 42 40 55" fill="#7A9D7A" opacity="0.85"/>
-          <path d="M40 58 Q55 48 58 33 Q45 35 40 48" fill="#5C8A58" opacity="0.85"/>
-          <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
-        </svg>
+<img
+          src="/roots-logo-transparent-160.png"
+          alt="Roots sprout"
+          width={72}
+          height={72}
+          style={{ objectFit: "contain", marginBottom: 14 }}
+        />
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
         <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("home_loading_sub", lang)}</p>
       </div>

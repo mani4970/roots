@@ -65,8 +65,17 @@ export default function SignupPage() {
       <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
       </Link>
-      <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("signup_title", lang)}</h1>
-      <p style={{ color: "var(--text3)", fontSize: 13, marginBottom: 32 }}>{t("signup_sub", lang)}</p>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <img
+          src="/roots-logo-transparent-160.png"
+          alt="Roots sprout"
+          width={76}
+          height={76}
+          style={{ objectFit: "contain", marginBottom: 10 }}
+        />
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("signup_title", lang)}</h1>
+        <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("signup_sub", lang)}</p>
+      </div>
 
       {/* 구글 가입 */}
       <button onClick={handleGoogle} disabled={gLoading} style={{ width: "100%", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 500, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, cursor: "pointer" }}>

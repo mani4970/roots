@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       <section style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>2. 정보 사용 목적</h2>
         <ul style={{ fontSize: 13, color: "var(--text2)", lineHeight: 2, paddingLeft: 20 }}>
-          <li>서비스 제공 및 개인화 (맞춤 말씀, 결단 추천)</li>
+          <li>서비스 제공 및 개인화 (감정/상태에 맞는 말씀 제공)</li>
           <li>커뮤니티 기능 (공유 시 다른 사용자에게 표시)</li>
           <li>서비스 개선 및 오류 수정</li>
         </ul>
