@@ -31,6 +31,7 @@ const TEXTS: Record<Lang, {
   growthTitle: string;
   growthSub: string;
   badgeLabel: string;
+  badgeSub: string;
   badgeNames: string[];
   f1t: string; f1s: string;
   f2t: string; f2s: string;
@@ -40,17 +41,18 @@ const TEXTS: Record<Lang, {
   footer: string; footer2: string;
 }> = {
   ko: {
-    tagline: "말씀에 뿌리내리는 하루",
+    tagline: "매일 말씀과 동행하는 삶, 루츠와 함께",
     descParts: [
-      "오늘 마음에 맞는 말씀을 받고,",
-      "QT와 기도를 차분히 이어가며,",
+      "오늘 감정과 상태에 맞는 말씀을 받고,",
+      "매일 QT와 기도를 통해 하나님과 동행하며",
       "믿음의 뿌리를 깊이 내려보세요.",
     ],
     growthEyebrow: "나의 정원",
     growthTitle: "하루의 루틴이\n조용히 자라납니다",
-    growthSub: "100일마다 성령의 열매 배지를 받습니다.",
-    badgeLabel: "성령의 열매",
-    badgeNames: ["사랑", "화평", "희락", "양선", "친절", "절제"],
+    growthSub: "100일의 여정마다 성령의 열매 배지를 받습니다.",
+    badgeLabel: "성령의 열매와 신앙의 결실",
+    badgeSub: "성령의 열매뿐 아니라 신앙의 결실을 이룰 때마다 배지를 받으며 즐겁게 영적 습관을 형성해 나가요.",
+    badgeNames: ["사랑", "희락", "화평", "오래 참음", "자비", "양선", "충성", "온유", "절제"],
     f1t: "큐티",
     f1s: "6단계, 자유형식, 주일예배 QT를\n상황에 맞게 기록합니다.",
     f2t: "기도",
@@ -74,8 +76,9 @@ const TEXTS: Record<Lang, {
     growthEyebrow: "My Garden",
     growthTitle: "Small daily rhythms\nbecome deep roots",
     growthSub: "Every 100 days, receive a Fruit of the Spirit badge.",
-    badgeLabel: "Fruits of the Spirit",
-    badgeNames: ["Love", "Peace", "Joy", "Goodness", "Kindness", "Self-Control"],
+    badgeLabel: "Fruits of the Spirit and faith milestones",
+    badgeSub: "As your faith bears fruit, you collect badges and build a joyful spiritual habit step by step.",
+    badgeNames: ["Love", "Joy", "Peace", "Patience", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"],
     f1t: "Quiet Time",
     f1s: "Use a 6-step guide, free writing,\nor Sunday worship notes.",
     f2t: "Prayer",
@@ -99,8 +102,9 @@ const TEXTS: Record<Lang, {
     growthEyebrow: "Mein Garten",
     growthTitle: "Kleine tägliche Schritte\nwerden zu tiefen Wurzeln",
     growthSub: "Alle 100 Tage erhalten Sie eine Frucht des Geistes.",
-    badgeLabel: "Früchte des Geistes",
-    badgeNames: ["Liebe", "Friede", "Freude", "Güte", "Freundl.", "Selbstbeh."],
+    badgeLabel: "Früchte des Geistes und Glaubensschritte",
+    badgeSub: "Wenn Ihr Glaube Frucht trägt, sammeln Sie Abzeichen und formen Schritt für Schritt eine Freude an geistlichen Gewohnheiten.",
+    badgeNames: ["Liebe", "Freude", "Friede", "Geduld", "Freundlichkeit", "Güte", "Treue", "Sanftmut", "Selbstbeherrschung"],
     f1t: "Stille Zeit",
     f1s: "6-Schritte-Guide, freies Schreiben\nund Notizen zum Sonntagsgottesdienst.",
     f2t: "Gebet",
@@ -124,8 +128,9 @@ const TEXTS: Record<Lang, {
     growthEyebrow: "Mon jardin",
     growthTitle: "De petits pas quotidiens\ndeviennent des racines profondes",
     growthSub: "Tous les 100 jours, recevez un fruit de l’Esprit.",
-    badgeLabel: "Fruits de l'Esprit",
-    badgeNames: ["Amour", "Paix", "Joie", "Bonté", "Douceur", "Maîtrise"],
+    badgeLabel: "Fruits de l’Esprit et étapes de foi",
+    badgeSub: "À chaque fruit porté dans la foi, vous recevez des badges et construisez avec joie une habitude spirituelle.",
+    badgeNames: ["Amour", "Joie", "Paix", "Patience", "Bienveillance", "Bonté", "Fidélité", "Douceur", "Maîtrise"],
     f1t: "Méditation",
     f1s: "Méditez la Parole en 6 étapes\net appliquez-la dans votre vie.\nForme libre & culte du dimanche",
     f2t: "Prière",
@@ -196,7 +201,7 @@ function IconLeaf() {
 
 // ── Badge image ───────────────────────────────────────────────────
 
-const FRUIT_FILE_KEYS = ["love", "peace", "joy", "goodness", "kindness", "patience"] as const;
+const FRUIT_FILE_KEYS = ["love", "joy", "peace", "patience", "kindness", "goodness", "faithfulness", "gentleness", "self_control"] as const;
 
 function BadgeImage({ fileKey, label }: { fileKey: string; label: string }) {
   return (
@@ -403,6 +408,7 @@ export default function WelcomePage() {
 
         {/* ── Badges ── */}
         <div className={styles.sectionLabel}>{tx.badgeLabel}</div>
+        <div className={styles.sectionSub}>{tx.badgeSub}</div>
         <div className={styles.badgesSection}>
           <div className={styles.badgesRow}>
             {FRUIT_FILE_KEYS.map((key, i) => (

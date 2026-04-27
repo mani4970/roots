@@ -264,6 +264,14 @@
   background: var(--border);
 }
 
+.sectionSub {
+  margin: -8px 28px 16px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
 /* ── BADGES ── */
 .badgesSection {
   padding: 0 20px;
