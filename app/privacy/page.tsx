@@ -43,7 +43,7 @@ export default function PrivacyPage() {
         </p>
         <ul style={{ fontSize: 13, color: "var(--text2)", lineHeight: 2, paddingLeft: 20, marginTop: 8 }}>
           <li><strong>Supabase</strong> — 데이터베이스 및 인증 (미국/EU 서버)</li>
-          <li><strong>Anthropic Claude API</strong> — AI 말씀 및 결단 생성</li>
+          <li><strong>Bible API</strong> — 선택한 감정/상태에 맞는 성경 본문 불러오기</li>
           <li><strong>Google OAuth</strong> — 구글 계정 로그인 (선택사항)</li>
         </ul>
         <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.8, marginTop: 8 }}>

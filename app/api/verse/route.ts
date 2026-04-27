@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import {
   formatKoReference,
-  getDefaultTranslationId,
   pickEmotionVerseRef,
   type EmotionVerseRef,
 } from "@/lib/emotionVerseRefs";

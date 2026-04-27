@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 function ResultContent() {
   const params = useSearchParams();
@@ -38,9 +39,7 @@ function ResultContent() {
         if (!user) return;
 
         const today = getLocalDateString();
-        const translationId = Number(localStorage.getItem("roots_default_translation") ?? (
-          lang === "de" ? 97 : lang === "en" ? 80 : lang === "fr" ? 26 : 92
-        ));
+        const translationId = Number(localStorage.getItem("roots_default_translation") ?? getDefaultTranslationId(lang));
 
         // 오늘 이미 같은 언어/번역본의 말씀이 있으면 API 호출 없이 기존 말씀 사용
         const { data: existing } = await supabase
@@ -52,7 +51,11 @@ function ResultContent() {
 
         const existingVerse = existing?.verse_text ?? existing?.verse;
         const existingReference = existing?.verse_reference ?? existing?.reference;
-        const sameLang = !existing?.verse_lang || existing.verse_lang === lang;
+        const legacyKoreanMismatch =
+          !existing?.verse_lang &&
+          lang !== "ko" &&
+          /[가-힣]/.test(String(existingVerse ?? ""));
+        const sameLang = !legacyKoreanMismatch && (!existing?.verse_lang || existing.verse_lang === lang);
         const sameTranslation = !existing?.verse_translation_id || Number(existing.verse_translation_id) === translationId;
 
         if (existingVerse && sameLang && sameTranslation) {

@@ -2,9 +2,21 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { isLang, FALLBACK_LANG, type Lang } from "@/lib/i18n";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 const STORAGE_KEY = "roots_lang";
 const SELECTED_FLAG = "roots_lang_selected";
+const TRANSLATION_STORAGE_KEY = "roots_default_translation";
+
+export function saveLangLocally(lang: Lang): number {
+  const translationId = getDefaultTranslationId(lang);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, lang);
+    localStorage.setItem(SELECTED_FLAG, "true");
+    localStorage.setItem(TRANSLATION_STORAGE_KEY, String(translationId));
+  }
+  return translationId;
+}
 
 /**
  * 현재 사용자의 언어 설정을 불러오는 훅
@@ -39,8 +51,12 @@ export function useLang(): Lang {
       if (!user) return;
 
       if (storedLang) {
+        const translationId = getDefaultTranslationId(storedLang);
+        if (typeof window !== "undefined" && !localStorage.getItem(TRANSLATION_STORAGE_KEY)) {
+          localStorage.setItem(TRANSLATION_STORAGE_KEY, String(translationId));
+        }
         supabase.from("profiles")
-          .update({ preferred_language: storedLang })
+          .update({ preferred_language: storedLang, preferred_translation: translationId })
           .eq("id", user.id)
           .then(() => {});
         return;
@@ -56,6 +72,9 @@ export function useLang(): Lang {
             if (typeof window !== "undefined") {
               localStorage.setItem(STORAGE_KEY, data.preferred_language);
               localStorage.setItem(SELECTED_FLAG, "true");
+              if (!localStorage.getItem(TRANSLATION_STORAGE_KEY)) {
+                localStorage.setItem(TRANSLATION_STORAGE_KEY, String(getDefaultTranslationId(data.preferred_language)));
+              }
             }
           }
         });
@@ -70,14 +89,13 @@ export function useLang(): Lang {
  * 로그인 안 된 상태에서도 localStorage는 반영됨
  */
 export async function setPreferredLang(lang: Lang): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, lang);
-    localStorage.setItem(SELECTED_FLAG, "true");
-  }
+  const translationId = saveLangLocally(lang);
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    await supabase.from("profiles").update({ preferred_language: lang }).eq("id", user.id);
+    await supabase.from("profiles")
+      .update({ preferred_language: lang, preferred_translation: translationId })
+      .eq("id", user.id);
   }
 }
 

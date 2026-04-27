@@ -578,6 +578,10 @@ export default function HomePage() {
     },
   ];
 
+  // 정원 성장 팝업과 루틴 완료/루츠맨 팝업이 동시에 겹치지 않도록 표시만 제어합니다.
+  // 상태는 유지되므로 앞 팝업이 닫히면 정원 성장 팝업이 이어서 표시될 수 있습니다.
+  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
       <svg width="80" height="100" viewBox="0 0 80 100" fill="none">
@@ -732,7 +736,7 @@ export default function HomePage() {
       />
 
       <GardenUpdatePopup
-        show={gardenPopup.show}
+        show={showGardenUpdatePopup}
         type={gardenPopup.type}
         streakDays={profile?.streak_days ?? 0}
         badgeIndex={gardenPopup.badgeIndex}

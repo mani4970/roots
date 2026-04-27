@@ -2,18 +2,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
+import { saveLangLocally } from "@/lib/useLang";
 import styles from "./page.module.css";
 
 // ── Types & constants ──────────────────────────────────────────────
 
 type Lang = "ko" | "en" | "de" | "fr";
-
-const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
-  ko: 92,
-  de: 97,
-  en: 80,
-  fr: 26,
-};
 
 const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
   { code: "ko", flag: "🇰🇷", name: "한국어" },
@@ -278,18 +273,16 @@ export default function WelcomePage() {
   function selectLang(code: Lang) {
     setLang(code);
     setShowDropdown(false);
-    localStorage.setItem("roots_lang", code);
+    saveLangLocally(code);
   }
 
   function goSignup() {
-    localStorage.setItem("roots_lang", lang);
-    localStorage.setItem("roots_default_translation", String(LANG_DEFAULT_TRANSLATION[lang]));
+    saveLangLocally(lang);
     router.push("/signup");
   }
 
   function goLogin() {
-    localStorage.setItem("roots_lang", lang);
-    localStorage.setItem("roots_default_translation", String(LANG_DEFAULT_TRANSLATION[lang]));
+    saveLangLocally(lang);
     router.push("/login");
   }
 

@@ -1,5 +1,3 @@
-import type { Lang } from "@/lib/i18n";
-
 export type EmotionVerseRef = {
   id: string;
   emotionKey: string;
@@ -325,22 +323,8 @@ export type EmotionKey = keyof typeof EMOTION_VERSE_REFS;
 
 export const DEFAULT_EMOTION_KEY: EmotionKey = "tired";
 
-export const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
-  ko: 92,
-  de: 97,
-  en: 80,
-  fr: 26,
-};
-
 export function isEmotionKey(value: unknown): value is EmotionKey {
   return typeof value === "string" && value in EMOTION_VERSE_REFS;
-}
-
-export function getDefaultTranslationId(lang: Lang | string | undefined): number {
-  if (lang === "de" || lang === "en" || lang === "fr" || lang === "ko") {
-    return LANG_DEFAULT_TRANSLATION[lang];
-  }
-  return LANG_DEFAULT_TRANSLATION.ko;
 }
 
 function hashString(input: string): number {

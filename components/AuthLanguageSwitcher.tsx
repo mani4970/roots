@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getLanguageOptions, isLang, type Lang } from "@/lib/i18n";
-import { markLangSelected } from "@/lib/useLang";
+import { saveLangLocally } from "@/lib/useLang";
 
 interface AuthLanguageSwitcherProps {
   value: Lang;
@@ -26,8 +26,7 @@ export default function AuthLanguageSwitcher({ value, onChange }: AuthLanguageSw
 
   function selectLanguage(next: Lang) {
     if (!isLang(next)) return;
-    localStorage.setItem("roots_lang", next);
-    markLangSelected();
+    saveLangLocally(next);
     onChange(next);
     setOpen(false);
   }
