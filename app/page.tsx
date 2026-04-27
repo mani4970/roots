@@ -144,9 +144,15 @@ export default function HomePage() {
 
     const today = getLocalDateString();
     const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,reference")
+      .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
-    if (ci) setTodayVerse(ci);
+    if (ci) {
+      setTodayVerse({
+        ...ci,
+        verse: ci.verse_text ?? ci.verse,
+        reference: ci.verse_reference ?? ci.reference,
+      });
+    }
 
     const { data: qtRecords } = await supabase.from("qt_records")
       .select("id,is_draft,decision")

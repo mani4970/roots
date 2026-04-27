@@ -12,6 +12,7 @@ function ResultContent() {
   const router = useRouter();
   const lang = useLang();
   const emotions = params.get("emotions")?.split(",") ?? [];
+  const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,21 +38,29 @@ function ResultContent() {
         if (!user) return;
 
         const today = getLocalDateString();
+        const translationId = Number(localStorage.getItem("roots_default_translation") ?? (
+          lang === "de" ? 97 : lang === "en" ? 80 : lang === "fr" ? 26 : 92
+        ));
 
-        // 오늘 이미 말씀이 있으면 API 호출 없이 기존 말씀 사용
-        // 단, 언어가 다르면 (한국어 말씀인데 독일어 사용자) 새로 요청
+        // 오늘 이미 같은 언어/번역본의 말씀이 있으면 API 호출 없이 기존 말씀 사용
         const { data: existing } = await supabase
           .from("daily_checkins")
-          .select("verse,reference")
+          .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id")
           .eq("user_id", user.id)
           .eq("date", today)
           .maybeSingle();
 
-        const isKoreanVerse = existing?.verse && /[가-힣]/.test(existing.verse);
-        const langMismatch = lang !== "ko" && isKoreanVerse;
+        const existingVerse = existing?.verse_text ?? existing?.verse;
+        const existingReference = existing?.verse_reference ?? existing?.reference;
+        const sameLang = !existing?.verse_lang || existing.verse_lang === lang;
+        const sameTranslation = !existing?.verse_translation_id || Number(existing.verse_translation_id) === translationId;
 
-        if (existing?.verse && !langMismatch) {
-          setResult(existing);
+        if (existingVerse && sameLang && sameTranslation) {
+          setResult({
+            ...existing,
+            verse: existingVerse,
+            reference: existingReference,
+          });
           setLoading(false);
           return;
         }
@@ -60,7 +69,7 @@ function ResultContent() {
         const yesterday = getShiftedLocalDateString(-1);
         const { data: prevDay } = await supabase
           .from("daily_checkins")
-          .select("verse,reference")
+          .select("verse,reference,verse_reference,verse_ref_id")
           .eq("user_id", user.id)
           .eq("date", yesterday)
           .maybeSingle();
@@ -70,34 +79,66 @@ function ResultContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emotions,
-            prevVerse: prevDay?.verse ?? null,
-            prevReference: prevDay?.reference ?? null,
+            emotionKey: selectedEmotion,
+            userId: user.id,
+            date: today,
             lang,
+            translationId,
+            prevVerseRefId: prevDay?.verse_ref_id ?? null,
+            prevReference: prevDay?.verse_reference ?? prevDay?.reference ?? null,
           }),
         });
+
+        if (!res.ok) throw new Error("Verse API failed");
         const data = await res.json();
         setResult(data);
 
-        // 저장 (오늘 처음이므로 insert)
+        const reference = data.reference;
+        const verse = data.verse;
+
         await supabase.from("daily_checkins").upsert({
           user_id: user.id,
           date: today,
           emotions,
-          verse: data.verse,
-          reference: data.reference,
+          emotion_key: data.emotion_key ?? selectedEmotion,
+          verse_ref_id: data.verse_id ?? data.verseRefId,
+          verse_book: data.book,
+          verse_start_chapter: data.start_chapter,
+          verse_start_verse: data.start_verse,
+          verse_end_chapter: data.end_chapter,
+          verse_end_verse: data.end_verse,
+          verse_translation_id: data.translation_id ?? translationId,
+          verse_lang: data.verse_lang ?? lang,
+          verse_reference: reference,
+          verse_text: verse,
+          // 기존 화면/쿼리 호환용
+          verse,
+          reference,
         }, { onConflict: "user_id,date" });
 
       } catch {
         setResult({
-          verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
-          reference: "마태복음 11:28",
+          verse: lang === "de"
+            ? "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken."
+            : lang === "fr"
+            ? "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos."
+            : lang === "en"
+            ? "Come to me, all who labor and are heavy laden, and I will give you rest."
+            : "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
+          reference: lang === "de"
+            ? "Matthäus 11:28"
+            : lang === "fr"
+            ? "Matthieu 11:28"
+            : lang === "en"
+            ? "Matthew 11:28"
+            : "마태복음 11:28",
         });
       } finally {
         setLoading(false);
       }
     }
     loadVerse();
-  }, [langReady]);
+  }, [langReady, lang, selectedEmotion]);
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>

@@ -1,12 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Gowun+Dodum&display=swap');
+/* ── FONT ── */
+/* Pretendard is loaded globally via globals.css */
 
-/* ── FONTS ── */
-/* ── CSS VARIABLES ── */
 /* ── LAYOUT ── */
 .page {
-  background: #F6F0E6;
-  color: #1D3A28;
-  font-family: 'Gowun Dodum', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -17,7 +16,7 @@
   width: 100%;
   max-width: 390px;
   min-height: 100vh;
-  background: #F6F0E6;
+  background: var(--bg);
   overflow-x: hidden;
   position: relative;
 }
@@ -36,26 +35,26 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1.5px solid #D4E6D9;
-  background: rgba(246, 240, 230, 0.85);
+  border: 1.5px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
-  color: #3D6B4F;
-  font-family: 'Gowun Dodum', sans-serif;
+  color: var(--sage-dark);
+  font-family: 'Pretendard', sans-serif;
   font-size: 12px;
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.langBtn:hover { border-color: #3D6B4F; }
+.langBtn:hover { border-color: var(--sage); }
 .langDropdown {
   position: absolute;
   right: 0;
   top: 42px;
   width: 160px;
-  background: #F6F0E6;
-  border: 1.5px solid #EDE5D4;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(30, 60, 40, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 .langOpt {
   width: 100%;
@@ -65,18 +64,18 @@
   padding: 11px 14px;
   background: none;
   border: none;
-  font-family: 'Gowun Dodum', sans-serif;
+  font-family: 'Pretendard', sans-serif;
   font-size: 13px;
-  color: #4A6555;
+  color: var(--text2);
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
 }
-.langOpt:hover { background: #D4E6D9; }
+.langOpt:hover { background: var(--sage-light); }
 .langOptActive {
-  color: #1D3A28;
+  color: var(--sage-dark);
   font-weight: 700;
-  background: #D4E6D9;
+  background: var(--sage-light);
 }
 
 /* ── HERO ── */
@@ -88,20 +87,20 @@
 .heroBg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, #D4E6D9 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--sage-light) 0%, transparent 70%);
   pointer-events: none;
 }
 .ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(61, 107, 79, 0.12);
+  border: 1px solid var(--border);
   pointer-events: none;
 }
 .heroTitle {
-  font-family: 'Noto Serif KR', serif;
+  font-family: 'Pretendard', sans-serif;
   font-size: 52px;
   font-weight: 900;
-  color: #1D3A28;
+  color: var(--text);
   letter-spacing: -2px;
   line-height: 0.95;
   margin-bottom: 6px;
@@ -109,11 +108,10 @@
   animation: fadeUp 0.5s ease both;
 }
 .heroTitleSub {
-  font-family: 'Noto Serif KR', serif;
   font-size: 14px;
-  font-weight: 400;
-  color: #4A6555;
-  letter-spacing: 0.5px;
+  font-weight: 500;
+  color: var(--text2);
+  letter-spacing: 0.3px;
   margin-bottom: 20px;
   line-height: 1.7;
   animation: fadeUp 0.55s 0.07s ease both;
@@ -126,13 +124,13 @@
 }
 .heroDesc {
   font-size: 13px;
-  color: #4A6555;
+  color: var(--text2);
   line-height: 2;
   max-width: 300px;
   animation: fadeUp 0.55s 0.14s ease both;
 }
 .heroDescStrong {
-  color: #1D3A28;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -155,10 +153,9 @@
   margin-bottom: 8px;
 }
 .growthTitle {
-  font-family: 'Noto Serif KR', serif;
   font-size: 18px;
   font-weight: 700;
-  color: #F6F0E6;
+  color: var(--bg);
   line-height: 1.45;
   margin-bottom: 4px;
 }
@@ -207,7 +204,6 @@
   border: 1px solid rgba(212, 230, 217, 0.2);
 }
 .dayBadgeNum {
-  font-family: 'Noto Serif KR', serif;
   font-size: 15px;
   font-weight: 900;
   color: #d4e6d9;
@@ -255,8 +251,9 @@
   align-items: center;
   gap: 12px;
   margin: 28px 28px 16px;
-  color: #7A9080;
+  color: var(--text3);
   font-size: 11px;
+  font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -264,7 +261,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #EDE5D4;
+  background: var(--border);
 }
 
 /* ── BADGES ── */
@@ -281,8 +278,8 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 2px solid #EDE5D4;
-  background: white;
+  border: 2px solid var(--border);
+  background: var(--bg2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -300,7 +297,7 @@
   border-radius: 20px;
   padding: 22px 22px 18px;
   background: #1D3A28;
-  color: #F6F0E6;
+  color: var(--bg);
   position: relative;
   overflow: hidden;
 }
@@ -312,7 +309,6 @@
 }
 .featIcon { margin-bottom: 12px; }
 .featTitle {
-  font-family: 'Noto Serif KR', serif;
   font-size: 17px;
   font-weight: 700;
   margin-bottom: 7px;
@@ -331,21 +327,20 @@
 .featSm {
   border-radius: 20px;
   padding: 18px 16px;
-  background: #EDE5D4;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: var(--bg3);
+  border: 1px solid var(--border);
 }
-.featSmTerra { background: #F5DDD2; }
+.featSmTerra { background: var(--terra-light); }
 .featSmTitle {
-  font-family: 'Noto Serif KR', serif;
   font-size: 14px;
   font-weight: 700;
-  color: #1D3A28;
+  color: var(--text);
   margin-bottom: 5px;
 }
 .featSmSub {
   font-size: 11px;
   line-height: 1.7;
-  color: #4A6555;
+  color: var(--text2);
   white-space: pre-line;
 }
 
@@ -353,18 +348,17 @@
 .verseBlock {
   margin: 24px 20px 0;
   padding: 28px 24px;
-  background: #F5DDD2;
+  background: var(--terra-light);
   border-radius: 20px;
-  border: 1px solid rgba(196, 114, 78, 0.15);
+  border: 1px solid var(--border);
   text-align: center;
   position: relative;
   overflow: hidden;
 }
 .verseQuote {
   position: absolute;
-  font-family: 'Noto Serif KR', serif;
   font-size: 120px;
-  color: rgba(196, 114, 78, 0.08);
+  color: rgba(0, 0, 0, 0.05);
   line-height: 1;
   top: -10px;
   left: 10px;
@@ -373,16 +367,15 @@
 }
 .verseRef {
   font-size: 10px;
-  color: #C4724E;
+  color: var(--terra);
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 12px;
   font-weight: 700;
 }
 .verseText {
-  font-family: 'Noto Serif KR', serif;
   font-size: 14px;
-  color: #1D3A28;
+  color: var(--text);
   line-height: 2;
   white-space: pre-line;
 }
@@ -398,11 +391,12 @@
   width: 100%;
   height: 54px;
   border-radius: 16px;
-  background: #1D3A28;
-  color: #F6F0E6;
+  background: var(--sage);
+  color: var(--bg);
   border: none;
-  font-family: 'Gowun Dodum', sans-serif;
+  font-family: 'Pretendard', sans-serif;
   font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   letter-spacing: 0.3px;
   transition: opacity 0.2s, transform 0.1s;
@@ -412,24 +406,25 @@
   gap: 8px;
 }
 .btnPrimary:hover { opacity: 0.88; }
-.btnPrimary:active { transform: scale(0.99); }
+.btnPrimary:active { transform: scale(0.99); opacity: 0.8; }
 .btnOutline {
   width: 100%;
   height: 48px;
   border-radius: 16px;
   background: transparent;
-  color: #3D6B4F;
-  border: 1.5px solid #D4E6D9;
-  font-family: 'Gowun Dodum', sans-serif;
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+  font-family: 'Pretendard', sans-serif;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.btnOutline:hover { border-color: #3D6B4F; }
+.btnOutline:hover { border-color: var(--sage); }
 .footerNote {
   text-align: center;
   font-size: 10px;
-  color: #7A9080;
+  color: var(--text3);
   padding: 4px 0 36px;
   letter-spacing: 1px;
 }
