@@ -2,9 +2,19 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Roots — 영적 루틴 앱",
-  description: "Roots — In Gottes Wort verwurzelt, gemeinsam wachsen | 말씀에 뿌리내리고, 함께 자라다",
+  title: "Roots",
+  description: "매일 말씀과 동행하는 삶, 루츠와 함께",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/app-icon-roots-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [
+      { url: "/app-icon-roots-180.png", sizes: "180x180" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -17,6 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/app-icon-roots-180.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
