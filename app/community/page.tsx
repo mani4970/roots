@@ -361,9 +361,7 @@ export default function CommunityPage() {
             </button>
           );
         })}
-        {total > 0 && (
-          <span style={{ fontSize: 11, color: "var(--text3)", alignSelf: "center", marginLeft: 2 }}>{lang === "de" ? `Gesamt: ${total}` : lang === "fr" ? `Total: ${total}` : lang === "en" ? `Total: ${total}` : `총 ${total}개`}</span>
-        )}
+
       </div>
     );
   }
