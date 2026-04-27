@@ -1,251 +1,478 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { LANG_META, type Lang, t } from "@/lib/i18n";
-import { markLangSelected } from "@/lib/useLang";
+import styles from "./page.module.css";
+
+// ── Types & constants ──────────────────────────────────────────────
+
+type Lang = "ko" | "en" | "de" | "fr";
 
 const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
-  ko: 92,  // 개역개정
-  de: 97,  // Hoffnung für Alle
-  en: 80,  // NIV
-  fr: 26,  // Louis Segond
+  ko: 92,
+  de: 97,
+  en: 80,
+  fr: 26,
 };
 
 const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
   { code: "ko", flag: "🇰🇷", name: "한국어" },
-  { code: "de", flag: "🇩🇪", name: "Deutsch" },
   { code: "en", flag: "🇬🇧", name: "English" },
+  { code: "de", flag: "🇩🇪", name: "Deutsch" },
   { code: "fr", flag: "🇫🇷", name: "Français" },
 ];
 
+// tree1 = Day 0, tree2 = Day 10, ..., tree11 = Day 100
+const STAGE_DAYS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+const MILESTONES = [0, 25, 50, 75, 100];
+
+
+// ── Translations ───────────────────────────────────────────────────
+
 const TEXTS: Record<Lang, {
-  tagline: string; desc: string;
-  f1t: string; f1s: string; f2t: string; f2s: string;
-  f3t: string; f3s: string; f4t: string; f4s: string;
-  verse_ref: string; verse_text: string;
-  badge_label: string;
-  btn_start: string; btn_login: string; footer: string;
+  tagline: string;
+  descParts: [string, string, string];
+  growthEyebrow: string;
+  growthTitle: string;
+  growthSub: string;
+  badgeLabel: string;
+  badgeNames: string[];
+  f1t: string; f1s: string;
+  f2t: string; f2s: string;
+  f3t: string; f3s: string;
+  verseRef: string; verse: string;
+  btnStart: string; btnLogin: string;
+  footer: string; footer2: string;
 }> = {
   ko: {
     tagline: "말씀에 뿌리내리고, 함께 자라다",
-    desc: "매일의 영적습관 혼자서 어려우셨나요?\n이제 루츠와 함께 해보세요!\n\n겨자씨 한 알이 자라, 공중의 새들이 깃들이는 나무가 되기까지\n100일 루틴을 시작해보세요.\n하나님과 매일 말씀과 기도로 동행하기를 소원하는 여러분을 축복합니다!",
-    f1t: "큐티 (Quiet Time)", f1s: "6단계로 말씀을 깊이 묵상하고 삶에 적용해요.\n자유형식과 주일예배 큐티도 지원해요",
-    f2t: "기도", f2s: "기도 제목을 기록하고, 응답되면 간증으로 남겨요.\n오늘의 말씀도 매일 받아볼 수 있어요",
-    f3t: "나의 정원", f3s: "매일 루틴을 완료하면 나무가 자라고,\n100일마다 성령의 열매 뱃지를 받아요",
-    f4t: "커뮤니티", f4s: "서로 중보기도하고, 큐티를 나누며,\n주님 안에서 형제 자매들과 함께 성장해요",
-    verse_ref: "빌립보서 4:4", verse_text: "\"주 안에서 항상 기뻐하라\n내가 다시 말하노니 기뻐하라\"",
-    badge_label: "성령의 열매",
-    btn_start: "시작하기 →", btn_login: "이미 계정이 있어요", footer: "무료 · 광고 없음",
-  },
-  de: {
-    tagline: "In Gottes Wort verwurzelt, gemeinsam wachsen",
-    desc: "Fällt es Ihnen schwer, alleine eine geistliche Routine zu halten?\nVersuchen Sie es jetzt mit Roots!\n\nStarten Sie die 100-Tage-Routine\n— vom Senfkorn zum Baum, in dem die Vögel nisten.\nWir segnen alle, die sich danach sehnen,\ntäglich mit Gottes Wort und Gebet zu leben!",
-    f1t: "Stille Zeit", f1s: "Gottes Wort in 6 Schritten meditieren und im Alltag anwenden.\nFreie Form und Sonntagsgottesdienst werden auch unterstützt",
-    f2t: "Gebet", f2s: "Gebetsanliegen aufschreiben und bei Erhörung ein Zeugnis hinterlassen.\nTägliche Bibelverse empfangen",
-    f3t: "Mein Garten", f3s: "Tägliche Routine lässt Ihren Baum wachsen —\nalle 100 Tage eine Frucht des Geistes",
-    f4t: "Gemeinde", f4s: "Füreinander beten, Stille Zeiten teilen und\nals Geschwister im Herrn gemeinsam wachsen",
-    verse_ref: "Philipper 4,4", verse_text: "\"Freuet euch in dem Herrn allewege,\nund abermals sage ich: Freuet euch!\"",
-    badge_label: "Früchte des Geistes",
-    btn_start: "Jetzt starten →", btn_login: "Ich habe bereits ein Konto", footer: "Kostenlos · Keine Werbung",
+    descParts: [
+      "매일의 영적 습관, 혼자서 어려우셨나요?",
+      "겨자씨 한 알이 자라 나무가 되기까지,",
+      "루츠와 함께 시작해 보세요.",
+    ],
+    growthEyebrow: "나의 정원",
+    growthTitle: "매일 루틴을 완료하면\n나무가 자라요",
+    growthSub: "100일을 완료하면 성령의 열매 뱃지를 받아요",
+    badgeLabel: "성령의 열매",
+    badgeNames: ["사랑", "화평", "희락", "양선", "친절", "절제"],
+    f1t: "큐티",
+    f1s: "6단계로 말씀을 깊이 묵상하고\n삶에 적용해요. 자유형식과\n주일예배 큐티도 지원해요",
+    f2t: "기도",
+    f2s: "기도 제목을 기록하고\n응답되면 간증으로 남겨요",
+    f3t: "커뮤니티",
+    f3s: "서로 중보기도하고, 큐티를 나누며\n형제 자매들과 함께 성장해요",
+    verseRef: "시편 1:1–2",
+    verse: "복 있는 사람은 오직 여호와의\n율법을 즐거워하여 그의 율법을\n주야로 묵상하는도다",
+    btnStart: "시작하기",
+    btnLogin: "이미 계정이 있어요",
+    footer: "무료",
+    footer2: "광고 없음",
   },
   en: {
     tagline: "Rooted in God's Word, Growing Together",
-    desc: "Struggling to keep a daily spiritual habit on your own?\nTry it with Roots!\n\nStart the 100-day routine\n— from a mustard seed to a tree where birds come to nest.\nWe bless everyone who longs to walk with God\ndaily through His Word and prayer!",
-    f1t: "Quiet Time", f1s: "Meditate on God's Word in 6 steps and apply it to your life.\nFree-form and Sunday worship QT also supported",
-    f2t: "Prayer", f2s: "Record prayer requests and leave testimonies when answered.\nReceive a daily Bible verse tailored to your heart",
-    f3t: "My Garden", f3s: "Complete daily routines to grow your tree —\nearn a fruit of the Spirit every 100 days",
-    f4t: "Community", f4s: "Pray for one another, share Quiet Times,\nand grow together as brothers and sisters in the Lord",
-    verse_ref: "Philippians 4:4", verse_text: "\"Rejoice in the Lord always.\nI will say it again: Rejoice!\"",
-    badge_label: "Fruits of the Spirit",
-    btn_start: "Get Started →", btn_login: "I already have an account", footer: "Free · No Ads",
+    descParts: [
+      "Struggling to keep a daily spiritual habit on your own?",
+      "From a mustard seed to a sheltering tree —",
+      "start your journey with Roots.",
+    ],
+    growthEyebrow: "My Garden",
+    growthTitle: "Complete your daily routine\nand watch your tree grow",
+    growthSub: "Finish 100 days and earn a Fruit of the Spirit badge",
+    badgeLabel: "Fruits of the Spirit",
+    badgeNames: ["Love", "Peace", "Joy", "Goodness", "Kindness", "Self-Control"],
+    f1t: "Quiet Time",
+    f1s: "Meditate in 6 steps and apply\nGod's Word to your daily life.\nFree-form & Sunday worship supported",
+    f2t: "Prayer",
+    f2s: "Record prayer requests and\nleave testimonies when answered",
+    f3t: "Community",
+    f3s: "Pray for one another, share Quiet Times,\nand grow together in the Lord",
+    verseRef: "Psalm 1:1–2",
+    verse: "Blessed is the one whose delight\nis in the law of the LORD,\nand who meditates on his law day and night.",
+    btnStart: "Get Started",
+    btnLogin: "I already have an account",
+    footer: "Free",
+    footer2: "No Ads",
+  },
+  de: {
+    tagline: "In Gottes Wort verwurzelt, gemeinsam wachsen",
+    descParts: [
+      "Fällt es Ihnen schwer, alleine eine geistliche Routine zu halten?",
+      "Vom Senfkorn zum Baum, in dem die Vögel nisten —",
+      "starten Sie mit Roots.",
+    ],
+    growthEyebrow: "Mein Garten",
+    growthTitle: "Tägliche Routine lässt\nIhren Baum wachsen",
+    growthSub: "Nach 100 Tagen erhalten Sie eine Frucht des Geistes",
+    badgeLabel: "Früchte des Geistes",
+    badgeNames: ["Liebe", "Friede", "Freude", "Güte", "Freundl.", "Selbstbeh."],
+    f1t: "Stille Zeit",
+    f1s: "Gottes Wort in 6 Schritten meditieren\nund im Alltag anwenden.\nFreie Form & Sonntagsgottesdienst",
+    f2t: "Gebet",
+    f2s: "Gebetsanliegen aufschreiben und\nbei Erhörung ein Zeugnis hinterlassen",
+    f3t: "Gemeinde",
+    f3s: "Füreinander beten, Stille Zeiten teilen\nund als Geschwister im Herrn wachsen",
+    verseRef: "Psalm 1,1–2",
+    verse: "Wohl dem, der Lust hat am Gesetz\ndes HERRN und über sein Gesetz\nnachsinnt Tag und Nacht.",
+    btnStart: "Jetzt starten",
+    btnLogin: "Ich habe bereits ein Konto",
+    footer: "Kostenlos",
+    footer2: "Keine Werbung",
   },
   fr: {
     tagline: "Enracinés dans la Parole, grandissons ensemble",
-    desc: "Difficile de maintenir une habitude spirituelle seul(e) ?\nEssayez avec Roots !\n\nCommencez la routine de 100 jours\n— d'une graine de moutarde à un arbre où les oiseaux viennent nicher.\nNous bénissons tous ceux qui désirent marcher chaque jour\navec Dieu dans Sa Parole et la prière !",
-    f1t: "Méditation (Quiet Time)", f1s: "Méditez la Parole de Dieu en 6 étapes et appliquez-la dans votre vie.\nForme libre et culte du dimanche aussi",
-    f2t: "Prière", f2s: "Notez vos sujets de prière et témoignez des prières exaucées.\nRecevez un verset biblique quotidien",
-    f3t: "Mon Jardin", f3s: "Complétez vos routines pour faire grandir votre arbre —\nun fruit de l'Esprit tous les 100 jours",
-    f4t: "Communauté", f4s: "Priez les uns pour les autres, partagez vos méditations\net grandissez ensemble en tant que frères et sœurs dans le Seigneur",
-    verse_ref: "Philippiens 4:4", verse_text: "\"Réjouissez-vous toujours dans le Seigneur ;\nje le répète, réjouissez-vous !\"",
-    badge_label: "Fruits de l'Esprit",
-    btn_start: "Commencer →", btn_login: "J'ai déjà un compte", footer: "Gratuit · Sans publicité",
+    descParts: [
+      "Difficile de maintenir une habitude spirituelle seul(e) ?",
+      "D'une graine de moutarde à un arbre où les oiseaux nichent —",
+      "commencez avec Roots.",
+    ],
+    growthEyebrow: "Mon Jardin",
+    growthTitle: "Complétez votre routine\net regardez votre arbre grandir",
+    growthSub: "Terminez 100 jours et recevez un fruit de l'Esprit",
+    badgeLabel: "Fruits de l'Esprit",
+    badgeNames: ["Amour", "Paix", "Joie", "Bonté", "Douceur", "Maîtrise"],
+    f1t: "Méditation",
+    f1s: "Méditez la Parole en 6 étapes\net appliquez-la dans votre vie.\nForme libre & culte du dimanche",
+    f2t: "Prière",
+    f2s: "Notez vos sujets de prière et\ntémoignez des prières exaucées",
+    f3t: "Communauté",
+    f3s: "Priez les uns pour les autres, partagez\nles méditations et grandissez ensemble",
+    verseRef: "Psaume 1:1–2",
+    verse: "Heureux l'homme qui trouve son plaisir\ndans la loi de l'Éternel,\net qui la médite jour et nuit !",
+    btnStart: "Commencer",
+    btnLogin: "J'ai déjà un compte",
+    footer: "Gratuit",
+    footer2: "Sans publicité",
   },
 };
 
-function NL({ text }: { text: string }) {
-  return <>{text.split("\n").map((line, i) => <span key={i}>{i > 0 && <br />}{line}</span>)}</>;
+// ── SVG Icons ──────────────────────────────────────────────────────
+
+function IconBook() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="12" y1="7" x2="16" y2="7" />
+      <line x1="12" y1="11" x2="16" y2="11" />
+    </svg>
+  );
 }
+
+function IconPrayer() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 11V8a6 6 0 0 0-12 0v3" />
+      <path d="M6 11h12l1 8H5l1-8z" />
+      <line x1="12" y1="11" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function IconPeople() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function IconArrow() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function IconLeaf() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <path d="M16 28 Q14 20 16 12" stroke="#3D6B4F" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 18 Q8 14 7 6 Q16 7 16 16" fill="#3D6B4F" opacity={0.7} />
+      <path d="M16 14 Q24 10 25 2 Q16 3 16 12" fill="#1D3A28" opacity={0.6} />
+    </svg>
+  );
+}
+
+// ── Badge image ───────────────────────────────────────────────────
+
+const FRUIT_FILE_KEYS = ["love", "peace", "joy", "goodness", "kindness", "patience"] as const;
+
+function BadgeImage({ fileKey, label }: { fileKey: string; label: string }) {
+  return (
+    <Image
+      src={`/badge_${fileKey}.png`}
+      alt={label}
+      width={44}
+      height={44}
+      style={{ borderRadius: "50%", objectFit: "cover" }}
+    />
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────
 
 export default function WelcomePage() {
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("ko");
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const tx = TEXTS[lang];
-  const currentLangMeta = LANG_LIST.find(l => l.code === lang)!;
+  const [showDropdown, setShowDropdown] = useState(false);
 
+  // Tree animation state
+  const [treeStage, setTreeStage] = useState(1); // 1–11
+  const [displayDay, setDisplayDay] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const tx = TEXTS[lang];
+  const currentLangMeta = LANG_LIST.find((l) => l.code === lang)!;
+
+  // Restore saved lang
   useEffect(() => {
-    // 이미 언어 선택한 적 있으면 그 언어로
     const stored = localStorage.getItem("roots_lang");
     if (stored && ["ko", "de", "en", "fr"].includes(stored)) {
       setLang(stored as Lang);
     }
   }, []);
 
+  // Animate day counter
+  const animateDay = useCallback((from: number, to: number) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const duration = 700;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setDisplayDay(Math.round(from + (to - from) * ease));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // Tree stage cycling
+  useEffect(() => {
+    setTreeStage(1);
+    setDisplayDay(0);
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setTreeStage((prev) => {
+        const next = prev >= 11 ? 1 : prev + 1;
+        const fromDay = STAGE_DAYS[prev - 1];
+        const toDay = STAGE_DAYS[next - 1];
+        animateDay(fromDay, toDay);
+        return next;
+      });
+    }, 1600);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [animateDay]);
+
   function selectLang(code: Lang) {
     setLang(code);
-    setShowLangDropdown(false);
-    // 언어 저장 (앱 전체에 적용됨)
+    setShowDropdown(false);
     localStorage.setItem("roots_lang", code);
-    markLangSelected();
   }
 
   function goSignup() {
-    // 언어 + 기본 성경 번역 저장
     localStorage.setItem("roots_lang", lang);
     localStorage.setItem("roots_default_translation", String(LANG_DEFAULT_TRANSLATION[lang]));
-    markLangSelected();
     router.push("/signup");
   }
 
   function goLogin() {
     localStorage.setItem("roots_lang", lang);
     localStorage.setItem("roots_default_translation", String(LANG_DEFAULT_TRANSLATION[lang]));
-    markLangSelected();
     router.push("/login");
   }
 
-  const features = [
-    { icon: "📖", title: tx.f1t, sub: tx.f1s, color: "sage" },
-    { icon: "🙏", title: tx.f2t, sub: tx.f2s, color: "terra" },
-    { icon: "🌱", title: tx.f3t, sub: tx.f3s, color: "sage" },
-    { icon: "🤝", title: tx.f4t, sub: tx.f4s, color: "blue" },
-  ];
-
-  const badges = ["badge_love", "badge_peace", "badge_joy", "badge_goodness", "badge_kindness", "badge_patience"];
+  const progressPct = ((treeStage - 1) / 10) * 100;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", position: "relative" }}>
-      {/* 언어 선택 드롭다운 */}
-      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 30 }}>
-        <button
-          onClick={() => setShowLangDropdown(v => !v)}
-          style={{
-            display: "flex", alignItems: "center", gap: 7,
-            height: 36, padding: "0 12px", borderRadius: 999,
-            border: "1px solid var(--border)", background: "rgba(255,255,255,0.64)",
-            color: "var(--text)", fontSize: 13, fontWeight: 700,
-            boxShadow: "0 6px 18px rgba(0,0,0,0.05)", cursor: "pointer",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <span style={{ fontSize: 16 }}>{currentLangMeta.flag}</span>
-          <span>{lang.toUpperCase()}</span>
-        </button>
+    <div className={styles.page}>
+      <div className={styles.phone}>
 
-        {showLangDropdown && (
-          <>
-            <div onClick={() => setShowLangDropdown(false)} style={{ position: "fixed", inset: 0, zIndex: 29 }} />
-            <div style={{
-              position: "absolute", right: 0, top: 44, width: 178,
-              background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18,
-              padding: 6, boxShadow: "0 14px 38px rgba(0,0,0,0.14)", zIndex: 31,
-            }}>
-              {LANG_LIST.map(opt => (
-                <button
-                  key={opt.code}
-                  onClick={() => selectLang(opt.code)}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 9,
-                    border: "none", borderRadius: 12, padding: "10px",
-                    background: opt.code === lang ? "var(--sage-light)" : "transparent",
-                    color: opt.code === lang ? "var(--sage-dark)" : "var(--text)",
-                    cursor: "pointer", textAlign: "left", fontSize: 13,
-                    fontWeight: opt.code === lang ? 800 : 600,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{opt.flag}</span>
-                  <span>{opt.name}</span>
-                </button>
-              ))}
+        {/* ── Lang bar ── */}
+        <div className={styles.langBar}>
+          <button className={styles.langBtn} onClick={() => setShowDropdown((v) => !v)}>
+            <span>{currentLangMeta.flag}</span>
+            <span>{lang.toUpperCase()}</span>
+          </button>
+          {showDropdown && (
+            <>
+              <div
+                onClick={() => setShowDropdown(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 19 }}
+              />
+              <div className={styles.langDropdown} style={{ zIndex: 21 }}>
+                {LANG_LIST.map((opt) => (
+                  <button
+                    key={opt.code}
+                    className={`${styles.langOpt} ${opt.code === lang ? styles.langOptActive : ""}`}
+                    onClick={() => selectLang(opt.code)}
+                  >
+                    <span>{opt.flag}</span>
+                    <span>{opt.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Hero ── */}
+        <div className={styles.hero}>
+          <div className={styles.heroBg} />
+          <div className={styles.ring} style={{ width: 300, height: 300, top: -120, right: -100 }} />
+          <div className={styles.ring} style={{ width: 180, height: 180, top: -40, right: 30 }} />
+
+          <h1 className={styles.heroTitle}>
+            Roots
+            <span className={styles.sproutInline}>
+              <IconLeaf />
+            </span>
+          </h1>
+          <p className={styles.heroTitleSub}>{tx.tagline}</p>
+          <p className={styles.heroDesc}>
+            {tx.descParts[0]}
+            <br />
+            {tx.descParts[1]}
+            <br />
+            <strong className={styles.heroDescStrong}>{tx.descParts[2]}</strong>
+          </p>
+        </div>
+
+        {/* ── Tree growth section ── */}
+        <div className={styles.growthSection}>
+          <div className={styles.growthHeader}>
+            <div className={styles.growthEyebrow}>{tx.growthEyebrow}</div>
+            <div className={styles.growthTitle} style={{ whiteSpace: "pre-line" }}>
+              {tx.growthTitle}
             </div>
-          </>
-        )}
-      </div>
+            <div className={styles.growthSub}>{tx.growthSub}</div>
+          </div>
 
-      {/* Hero */}
-      <div style={{ background: "linear-gradient(180deg, var(--sage-light) 0%, var(--bg) 100%)", padding: "52px 28px 28px", textAlign: "center" }}>
-        {/* 새싹 SVG */}
-        <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
-          <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M40 65 Q25 55 22 40 Q35 42 40 55" fill="#7A9D7A" opacity="0.85"/>
-          <path d="M40 58 Q55 48 58 33 Q45 35 40 48" fill="#5C8A58" opacity="0.85"/>
-          <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
-        </svg>
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 40, fontWeight: 900, color: "var(--text)", letterSpacing: -1.5, marginBottom: 10 }}>Roots</h1>
-        <p style={{ fontSize: 14, color: "var(--sage-dark)", fontWeight: 700, marginBottom: 16, lineHeight: 1.5 }}>{tx.tagline}</p>
-        <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.9, whiteSpace: "pre-line" }}>{tx.desc}</p>
-      </div>
+          {/* Tree frames — crossfade */}
+          <div className={styles.treeStage}>
+            {Array.from({ length: 11 }, (_, i) => (
+              <div
+                key={i + 1}
+                className={`${styles.treeFrame} ${treeStage === i + 1 ? styles.treeFrameVisible : ""}`}
+              >
+                <Image
+                  src={`/tree${i + 1}.png`}
+                  alt={`tree stage ${i + 1}`}
+                  fill
+                  className={styles.treeFrameImg}
+                  style={{ objectFit: "cover", imageRendering: "pixelated" }}
+                  priority={i === 0}
+                />
+              </div>
+            ))}
 
-      {/* 정원 이미지 */}
-      <div style={{ margin: "0 20px", borderRadius: 20, overflow: "hidden", border: "1px solid var(--border)" }}>
-        <Image src="/tree11.png" alt="Garden" width={800} height={300} style={{ width: "100%", height: 155, objectFit: "cover", imageRendering: "pixelated" }} />
-      </div>
-
-      {/* 구분선 */}
-      <div style={{ width: 40, height: 2, background: "var(--beige)", margin: "22px auto", borderRadius: 2 }} />
-
-      {/* 기능 소개 */}
-      <div style={{ padding: "0 22px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {features.map((f, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 14px", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0,
-              background: f.color === "sage" ? "var(--sage-light)" : f.color === "terra" ? "var(--terra-light)" : "rgba(122,157,200,0.15)",
-            }}>{f.icon}</div>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{f.title}</p>
-              <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6, whiteSpace: "pre-line" }}>{f.sub}</p>
+            {/* Day badge overlay */}
+            <div className={styles.dayBadge}>
+              <span className={styles.dayBadgeNum}>Day {displayDay}</span>
+              <span className={styles.dayBadgeLabel}>/ 100</span>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* 말씀 미리보기 */}
-      <div style={{ margin: "20px 22px 0", padding: 20, background: "var(--sage-light)", borderRadius: 16, textAlign: "center", border: "1px solid rgba(122,157,122,0.2)" }}>
-        <p style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 700, letterSpacing: 1.5, marginBottom: 8 }}>{tx.verse_ref}</p>
-        <p style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: "var(--text)", lineHeight: 1.9, fontStyle: "italic", whiteSpace: "pre-line" }}>{tx.verse_text}</p>
-      </div>
-
-      {/* 성령의 열매 */}
-      <div style={{ padding: "20px 22px 0", textAlign: "center" }}>
-        <p style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: 2, fontWeight: 600, marginBottom: 10 }}>{tx.badge_label}</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-          {badges.map(b => (
-            <div key={b} style={{ width: 42, height: 42, borderRadius: "50%", border: "2px solid var(--border)", overflow: "hidden" }}>
-              <Image src={`/${b}.png`} alt="" width={42} height={42} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {/* Progress bar */}
+          <div className={styles.growthProgress}>
+            <div className={styles.progressBarTrack}>
+              <div className={styles.progressBarFill} style={{ width: `${progressPct}%` }} />
             </div>
-          ))}
+            <div className={styles.progressMilestones}>
+              {MILESTONES.map((m) => (
+                <span
+                  key={m}
+                  className={`${styles.milestone} ${STAGE_DAYS[treeStage - 1] >= m ? styles.milestonePassed : ""}`}
+                >
+                  Day {m}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* CTA 버튼 */}
-      <div style={{ padding: "22px 22px 10px" }}>
-        <button onClick={goSignup} className="btn-primary" style={{ width: "100%", minHeight: 52, fontSize: 16, borderRadius: 14 }}>
-          {tx.btn_start}
-        </button>
-        <button onClick={goLogin} style={{
-          width: "100%", padding: 15, background: "transparent", color: "var(--sage-dark)",
-          border: "1.5px solid var(--sage)", borderRadius: 14, fontSize: 14, fontWeight: 600,
-          cursor: "pointer", marginTop: 10,
-        }}>
-          {tx.btn_login}
-        </button>
-      </div>
+        {/* ── Badges ── */}
+        <div className={styles.sectionLabel}>{tx.badgeLabel}</div>
+        <div className={styles.badgesSection}>
+          <div className={styles.badgesRow}>
+            {FRUIT_FILE_KEYS.map((key, i) => (
+              <div key={key} className={styles.badgePh}>
+                <BadgeImage fileKey={key} label={tx.badgeNames[i]} />
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* Footer */}
-      <div style={{ textAlign: "center", padding: "14px 22px 32px" }}>
-        <p style={{ fontSize: 10, color: "var(--text3)" }}>{tx.footer}</p>
+        {/* ── Features ── */}
+        <div className={styles.sectionLabel} style={{ marginTop: 28 }}>
+          {lang === "ko" ? "기능" : lang === "de" ? "Funktionen" : lang === "fr" ? "Fonctions" : "Features"}
+        </div>
+        <div className={styles.features}>
+          {/* Big: Quiet Time */}
+          <div className={styles.featBig}>
+            <svg className={styles.featBigBg} width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="55" fill="white" />
+            </svg>
+            <div className={styles.featIcon} style={{ color: "var(--cream)" }}>
+              <IconBook />
+            </div>
+            <div className={styles.featTitle}>{tx.f1t}</div>
+            <div className={styles.featSub}>{tx.f1s}</div>
+          </div>
+
+          {/* Row: Prayer + Community */}
+          <div className={styles.featRow}>
+            <div className={`${styles.featSm} ${styles.featSmTerra}`}>
+              <div className={styles.featIcon} style={{ color: "var(--terra)" }}>
+                <IconPrayer />
+              </div>
+              <div className={styles.featSmTitle}>{tx.f2t}</div>
+              <div className={styles.featSmSub}>{tx.f2s}</div>
+            </div>
+            <div className={styles.featSm}>
+              <div className={styles.featIcon} style={{ color: "var(--green)" }}>
+                <IconPeople />
+              </div>
+              <div className={styles.featSmTitle}>{tx.f3t}</div>
+              <div className={styles.featSmSub}>{tx.f3s}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Verse ── */}
+        <div className={styles.verseBlock}>
+          <div className={styles.verseQuote}>&ldquo;</div>
+          <div className={styles.verseRef}>{tx.verseRef}</div>
+          <div className={styles.verseText}>{tx.verse}</div>
+        </div>
+
+        {/* ── CTA ── */}
+        <div className={styles.footerCta}>
+          <button className={styles.btnPrimary} onClick={goSignup}>
+            {tx.btnStart} <IconArrow />
+          </button>
+          <button className={styles.btnOutline} onClick={goLogin}>
+            {tx.btnLogin}
+          </button>
+        </div>
+
+        <div className={styles.footerNote}>
+          {tx.footer}
+          <span className={styles.footerDot}>·</span>
+          {tx.footer2}
+        </div>
+
       </div>
     </div>
   );

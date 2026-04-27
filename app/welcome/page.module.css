@@ -1,0 +1,460 @@
+/* ── CSS VARIABLES ── */
+/* Add these to your globals.css:
+
+:root {
+  --cream:    #F6F0E6;
+  --cream2:   #EDE5D4;
+  --forest:   #1D3A28;
+  --green:    #3D6B4F;
+  --green-lt: #D4E6D9;
+  --terra:    #C4724E;
+  --terra-lt: #F5DDD2;
+  --gold:     #B89A5C;
+  --text:     #1D3A28;
+  --text2:    #4A6555;
+  --text3:    #7A9080;
+}
+
+*/
+
+/* ── LAYOUT ── */
+.page {
+  background: var(--cream);
+  color: var(--text);
+  font-family: 'Gowun Dodum', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.phone {
+  width: 100%;
+  max-width: 390px;
+  min-height: 100vh;
+  background: var(--cream);
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── LANG BAR ── */
+.langBar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+}
+.langBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--green-lt);
+  background: rgba(246, 240, 230, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--green);
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.langBtn:hover { border-color: var(--green); }
+.langDropdown {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  width: 160px;
+  background: var(--cream);
+  border: 1.5px solid var(--cream2);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(30, 60, 40, 0.12);
+}
+.langOpt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.langOpt:hover { background: var(--green-lt); }
+.langOptActive {
+  color: var(--forest);
+  font-weight: 700;
+  background: var(--green-lt);
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 64px 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+.heroBg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--green-lt) 0%, transparent 70%);
+  pointer-events: none;
+}
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(61, 107, 79, 0.12);
+  pointer-events: none;
+}
+.heroTitle {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--forest);
+  letter-spacing: -2px;
+  line-height: 0.95;
+  margin-bottom: 6px;
+  position: relative;
+  animation: fadeUp 0.5s ease both;
+}
+.heroTitleSub {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text2);
+  letter-spacing: 0.5px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+  animation: fadeUp 0.55s 0.07s ease both;
+}
+.sproutInline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+  transform: translateY(-4px);
+}
+.heroDesc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 2;
+  max-width: 300px;
+  animation: fadeUp 0.55s 0.14s ease both;
+}
+.heroDescStrong {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+/* ── TREE GROWTH ── */
+.growthSection {
+  margin: 28px 20px 0;
+  border-radius: 22px;
+  background: var(--forest);
+  overflow: hidden;
+  position: relative;
+}
+.growthHeader {
+  padding: 20px 22px 14px;
+}
+.growthEyebrow {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(212, 230, 217, 0.6);
+  margin-bottom: 8px;
+}
+.growthTitle {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cream);
+  line-height: 1.45;
+  margin-bottom: 4px;
+}
+.growthSub {
+  font-size: 12px;
+  color: rgba(212, 230, 217, 0.65);
+  line-height: 1.7;
+}
+.treeStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  background: #7bbfd4;
+}
+.treeFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.55s ease;
+  pointer-events: none;
+}
+.treeFrameVisible {
+  opacity: 1;
+}
+.treeFrameImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  display: block;
+}
+.dayBadge {
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  background: rgba(29, 58, 40, 0.72);
+  backdrop-filter: blur(4px);
+  border-radius: 999px;
+  padding: 5px 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(212, 230, 217, 0.2);
+}
+.dayBadgeNum {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 15px;
+  font-weight: 900;
+  color: #d4e6d9;
+  letter-spacing: -0.5px;
+  min-width: 52px;
+  transition: opacity 0.3s;
+}
+.dayBadgeLabel {
+  font-size: 10px;
+  color: rgba(212, 230, 217, 0.6);
+  letter-spacing: 1px;
+}
+.growthProgress {
+  padding: 12px 22px 20px;
+}
+.progressBarTrack {
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.progressBarFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #8dc49a, #d4e6d9);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.progressMilestones {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+}
+.milestone {
+  font-size: 9px;
+  color: rgba(212, 230, 217, 0.4);
+  letter-spacing: 0.3px;
+}
+.milestonePassed {
+  color: rgba(212, 230, 217, 0.75);
+}
+
+/* ── SECTION LABEL ── */
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 28px 16px;
+  color: var(--text3);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.sectionLabel::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--cream2);
+}
+
+/* ── BADGES ── */
+.badgesSection {
+  padding: 0 20px;
+}
+.badgesRow {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badgePh {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--cream2);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── FEATURES ── */
+.features {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.featBig {
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  background: var(--forest);
+  color: var(--cream);
+  position: relative;
+  overflow: hidden;
+}
+.featBigBg {
+  position: absolute;
+  bottom: -20px;
+  right: -10px;
+  opacity: 0.07;
+}
+.featIcon { margin-bottom: 12px; }
+.featTitle {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+.featSub {
+  font-size: 12px;
+  line-height: 1.8;
+  opacity: 0.75;
+  white-space: pre-line;
+}
+.featRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.featSm {
+  border-radius: 20px;
+  padding: 18px 16px;
+  background: var(--cream2);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+.featSmTerra { background: var(--terra-lt); }
+.featSmTitle {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--forest);
+  margin-bottom: 5px;
+}
+.featSmSub {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text2);
+  white-space: pre-line;
+}
+
+/* ── VERSE ── */
+.verseBlock {
+  margin: 24px 20px 0;
+  padding: 28px 24px;
+  background: var(--terra-lt);
+  border-radius: 20px;
+  border: 1px solid rgba(196, 114, 78, 0.15);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.verseQuote {
+  position: absolute;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 120px;
+  color: rgba(196, 114, 78, 0.08);
+  line-height: 1;
+  top: -10px;
+  left: 10px;
+  pointer-events: none;
+  user-select: none;
+}
+.verseRef {
+  font-size: 10px;
+  color: var(--terra);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+.verseText {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 14px;
+  color: var(--forest);
+  line-height: 2;
+  white-space: pre-line;
+}
+
+/* ── FOOTER CTA ── */
+.footerCta {
+  padding: 28px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.btnPrimary {
+  width: 100%;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--forest);
+  color: var(--cream);
+  border: none;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: opacity 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btnPrimary:hover { opacity: 0.88; }
+.btnPrimary:active { transform: scale(0.99); }
+.btnOutline {
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--green);
+  border: 1.5px solid var(--green-lt);
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.btnOutline:hover { border-color: var(--green); }
+.footerNote {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text3);
+  padding: 4px 0 36px;
+  letter-spacing: 1px;
+}
+.footerDot {
+  margin: 0 6px;
+  opacity: 0.4;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
