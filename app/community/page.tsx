@@ -645,11 +645,11 @@ export default function CommunityPage() {
                           }}
                           style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 20 }}
                         >
-                          <span style={{ fontSize: 18, transition: "transform 0.2s", transform: localStorage.getItem(`prayer_liked_${p.id}`) ? "scale(1.1)" : "scale(1)" }}>
-                            <Heart size={17} fill={localStorage.getItem(`prayer_liked_${p.id}`) ? "currentColor" : "none"} />
+                          <span style={{ fontSize: 18, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: localStorage.getItem(`prayer_liked_${p.id}`) ? "scale(1.1)" : "scale(1)" }}>
+                            <Heart size={17} strokeWidth={1.9} fill={localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "none"} />
                           </span>
                           {(p.like_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 12, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "var(--terra)" : "var(--text3)", fontWeight: 600 }}>
+                            <span style={{ fontSize: 12, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
                               {p.like_count}
                             </span>
                           )}
