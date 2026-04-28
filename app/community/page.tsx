@@ -289,17 +289,12 @@ export default function CommunityPage() {
       return;
     }
 
-    // 카운트 증가
+    // 카운트 증가: DB 함수가 실제 로그 개수 기준으로 prayer_count를 동기화합니다.
+    // RLS 보안을 위해 클라이언트에서 prayer_items.prayer_count를 직접 update하지 않습니다.
     const { error: rpcError } = await supabase.rpc("increment_prayer_count", { prayer_id: id });
-    let newCount = 0;
-    if (rpcError) {
-      const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
-      newCount = (cur?.prayer_count ?? 0) + 1;
-      await supabase.from("prayer_items").update({ prayer_count: newCount }).eq("id", id);
-    } else {
-      const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
-      newCount = cur?.prayer_count ?? 1;
-    }
+    if (rpcError) console.error("기도 카운트 동기화 실패:", rpcError);
+    const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+    const newCount = cur?.prayer_count ?? 1;
 
     setPrayedIds(prev => [...prev, id]);
     localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify([...prayedIds, id]));

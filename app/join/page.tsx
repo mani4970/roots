@@ -25,47 +25,75 @@ function JoinContent() {
       if (!groupId) { setNotFound(true); setLoading(false); return; }
       const supabase = createClient();
 
-      // 공개 그룹이면 로그인 없이 조회 가능
-      const { data: pub } = await supabase.from("groups")
-        .select("*").eq("id", groupId).eq("is_public", true).maybeSingle();
-      if (pub) {
-        setGroupName(pub.name);
-        setGroupDesc(pub.description ?? "");
-        setIsPublic(true);
-        const { count } = await supabase.from("group_members")
-          .select("*", { count: "exact", head: true }).eq("group_id", groupId);
-        setMemberCount(count ?? 0);
+      async function loadWithExistingPolicies() {
+        // 공개 그룹이면 로그인 없이 조회 가능
+        const { data: pub } = await supabase.from("groups")
+          .select("*").eq("id", groupId).eq("is_public", true).maybeSingle();
+        if (pub) {
+          setGroupName(pub.name);
+          setGroupDesc(pub.description ?? "");
+          setIsPublic(true);
+          const { count } = await supabase.from("group_members")
+            .select("*", { count: "exact", head: true }).eq("group_id", groupId);
+          setMemberCount(count ?? 0);
+          return;
+        }
+
+        // 비공개 그룹: 로그인 여부 확인
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          // 비로그인 → 그룹 이름 없이 로그인 유도
+          setGroupName(lang === "de" ? "Private Gruppe" : lang === "fr" ? "Private group" : lang === "en" ? "Private group" : "비공개 그룹");
+          setIsPublic(false);
+          return;
+        }
+
+        // 로그인됨 → 비공개 그룹 조회 시도
+        const { data: priv } = await supabase.from("groups")
+          .select("*").eq("id", groupId).maybeSingle();
+        if (priv) {
+          setGroupName(priv.name);
+          setGroupDesc(priv.description ?? "");
+          setIsPublic(false);
+          const { count } = await supabase.from("group_members")
+            .select("*", { count: "exact", head: true }).eq("group_id", groupId);
+          setMemberCount(count ?? 0);
+        } else {
+          setNotFound(true);
+        }
+      }
+
+      const { data: invite, error: inviteError } = await supabase
+        .rpc("get_group_invite", { p_group_id: groupId })
+        .maybeSingle();
+
+      if (!inviteError && invite) {
+        setGroupName(invite.name);
+        setGroupDesc(invite.description ?? "");
+        setIsPublic(invite.is_public);
+        setMemberCount(invite.member_count ?? 0);
         setLoading(false);
         return;
       }
 
-      // 비공개 그룹: 로그인 여부 확인
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // 비로그인 → 그룹 이름 없이 로그인 유도
-        setGroupName(lang === "de" ? "Private Gruppe" : lang === "fr" ? "Private group" : lang === "en" ? "Private group" : "비공개 그룹");
-        setIsPublic(false);
+      if (!inviteError) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setGroupName(lang === "de" ? "Private Gruppe" : lang === "fr" ? "Private group" : lang === "en" ? "Private group" : "비공개 그룹");
+          setIsPublic(false);
+        } else {
+          setNotFound(true);
+        }
         setLoading(false);
         return;
       }
 
-      // 로그인됨 → 비공개 그룹 조회 시도
-      const { data: priv } = await supabase.from("groups")
-        .select("*").eq("id", groupId).maybeSingle();
-      if (priv) {
-        setGroupName(priv.name);
-        setGroupDesc(priv.description ?? "");
-        setIsPublic(false);
-        const { count } = await supabase.from("group_members")
-          .select("*", { count: "exact", head: true }).eq("group_id", groupId);
-        setMemberCount(count ?? 0);
-      } else {
-        setNotFound(true);
-      }
+      // SQL 패치 적용 전 배포되어도 기존 초대 링크 흐름이 깨지지 않도록 fallback 유지
+      await loadWithExistingPolicies();
       setLoading(false);
     }
     load();
-  }, [groupId]);
+  }, [groupId, lang]);
 
   async function join() {
     setJoining(true);
