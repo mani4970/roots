@@ -87,6 +87,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart.", fr: "Court, c’est très bien. Une prière avec un cœur ouvert." },
   "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "What does this word mean for my life? Write honestly about your feelings.", fr: "Que dit cette Parole dans ma vie aujourd’hui ?\\nÉcrivez honnêtement ce que vous ressentez." },
   "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you.", fr: "Il n’y a pas de bonne réponse unique. Laissez-vous guider par le Saint-Esprit." },
+  "붙잡은 말씀으로 묵상해요": { de: "Mit dem Schlüsselvers meditieren", en: "Reflect with your key verse", fr: "Méditer avec le verset clé" },
+  "이 말씀을 붙들고 느낌과 묵상을 적어보세요.": { de: "Halten Sie dieses Wort fest und schreiben Sie Ihre Gedanken auf.", en: "Hold on to this verse and write your reflection.", fr: "Appuyez-vous sur cette Parole et écrivez votre méditation." },
   "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the decision of the heart, action is shown through hands and feet.", fr: "Le caractère est la décision du cœur ; l’action se voit par les mains et les pieds." },
   "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält...", en: "Hold on to the Word and pray...", fr: "Priez en vous appuyant sur la Parole..." },
   "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen.", en: "Bring the Word and resolution before God once more.", fr: "Présentez encore une fois la Parole et votre décision devant Dieu." },
@@ -1557,6 +1559,28 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
           <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
+
+          {step6.id === "meditation" && keyVerse.trim() && (
+            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 6 }}>
+                {trQT("붙잡은 말씀으로 묵상해요", lang)}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {keyVerse.split("\n").filter(line => line.trim()).map((line, idx) => {
+                  const match = line.trim().match(/^(\S+)\s+(.*)$/);
+                  const num = match?.[1] ?? "";
+                  const body = match?.[2] ?? line.trim();
+                  return (
+                    <p key={`${idx}-${line}`} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7 }}>
+                      {num && <span style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", marginRight: 6 }}>{num}</span>}
+                      {body}
+                    </p>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <textarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
         </div>
       )}
