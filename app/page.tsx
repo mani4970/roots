@@ -16,7 +16,7 @@ import { getLanguageOptions, LANG_META } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
@@ -546,19 +546,19 @@ export default function HomePage() {
     {
       label: t("home_routine_qt", lang),
       done: todayDone.qt,
-      icon: "📖",
+      icon: <BookOpen size={20} strokeWidth={1.9} />,
       onClick: openHomeQT,
     },
     {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
-      icon: "🙏",
+      icon: <HandHeart size={20} strokeWidth={1.9} />,
       onClick: openPrayerSection,
     },
     {
       label: t("home_routine_decision", lang),
       done: decisionDone,
-      icon: "✊",
+      icon: <CheckCircle2 size={20} strokeWidth={1.9} />,
       onClick: openDecisionSection,
     },
   ];
@@ -635,15 +635,15 @@ export default function HomePage() {
                 {showHomeQTGuide && (
                   <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 16, padding: 12, background: "var(--bg)" }}>
                     {[
-                      ["🙏", "qt_g1_title", "qt_g1_desc"],
-                      ["📖", "qt_g2_title", "qt_g2_desc"],
-                      ["✨", "qt_g3_title", "qt_g3_desc"],
-                      ["💭", "qt_g4_title", "qt_g4_desc"],
-                      ["🌱", "qt_g5_title", "qt_g5_desc"],
-                      ["🙌", "qt_g6_title", "qt_g6_desc"],
-                    ].map(([emoji, titleKey, descKey]) => (
+                      [<HandHeart key="g1" size={17} strokeWidth={1.9} />, "qt_g1_title", "qt_g1_desc"],
+                      [<BookOpen key="g2" size={17} strokeWidth={1.9} />, "qt_g2_title", "qt_g2_desc"],
+                      [<Sparkles key="g3" size={17} strokeWidth={1.9} />, "qt_g3_title", "qt_g3_desc"],
+                      [<MessageCircle key="g4" size={17} strokeWidth={1.9} />, "qt_g4_title", "qt_g4_desc"],
+                      [<Leaf key="g5" size={17} strokeWidth={1.9} />, "qt_g5_title", "qt_g5_desc"],
+                      [<CheckCircle2 key="g6" size={17} strokeWidth={1.9} />, "qt_g6_title", "qt_g6_desc"],
+                    ].map(([iconNode, titleKey, descKey]) => (
                       <div key={String(titleKey)} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: titleKey === "qt_g6_title" ? "none" : "1px solid var(--border)" }}>
-                        <div style={{ fontSize: 18 }}>{emoji}</div>
+                        <div style={{ width: 26, height: 26, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--sage-dark)", background: "var(--sage-light)", flexShrink: 0 }}>{iconNode}</div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 2 }}>{t(titleKey as any, lang)}</div>
                           <div style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>{t(descKey as any, lang)}</div>
@@ -794,7 +794,7 @@ export default function HomePage() {
             const color = done ? "var(--sage-dark)" : "var(--text)";
             return (
               <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 18, padding: "15px 8px 13px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: 20, marginBottom: 8 }}>{icon}</div>
+                <div style={{ width: 36, height: 36, borderRadius: 14, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", color, background: done ? "rgba(122,157,122,0.13)" : "var(--bg3)" }}>{icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
                 <div style={{ fontSize: 11, color: done ? "var(--sage-dark)" : "var(--text3)", marginTop: 4 }}>{done ? t("home_routine_done", lang) : t("home_routine_open", lang)}</div>
               </button>

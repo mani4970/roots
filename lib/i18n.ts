@@ -42,9 +42,9 @@ export const T = {
   home_qt_btn: { ko: "큐티하기",                     de: "Stille Zeit", en: "Quiet Time", fr: "Faire le QT" },
   home_qt_done: { ko: "큐티 완료",                    de: "Stille Zeit ✓", en: "QT done ✓", fr: "QT terminé ✓" },
   home_prayer_title: { ko: "오늘 잠깐이라도 기도하셨나요?",  de: "Haben Sie heute gebetet?", en: "Did you pray today?", fr: "Avez-vous prié aujourd’hui, même brièvement ?" },
-  home_prayer_yes: { ko: "네, 기도했어요 🙏",             de: "Ja, ich habe gebetet 🙏", en: "Yes, I prayed 🙏", fr: "Oui, j’ai prié 🙏" },
+  home_prayer_yes: { ko: "네, 기도했어요",             de: "Ja, ich habe gebetet", en: "Yes, I prayed", fr: "Oui, j’ai prié" },
   home_prayer_later: { ko: "나중에",                       de: "Später", en: "Later", fr: "Plus tard" },
-  home_prayer_done: { ko: "기도 완료 🙏",                 de: "Gebetet 🙏", en: "Prayed 🙏", fr: "Prière terminée 🙏" },
+  home_prayer_done: { ko: "기도 완료",                 de: "Gebetet", en: "Prayed", fr: "Prière terminée" },
   home_decision_title: { ko: "오늘의 결단",                  de: "Heutiger Vorsatz", en: "Today's resolution", fr: "Décision du jour" },
   home_decision_done: { ko: "결단 완료 ✓",                  de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓" },
   home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision" },
@@ -100,10 +100,10 @@ export const T = {
   qt_title: { ko: "QT",                     de: "QT", en: "QT", fr: "QT" },
   qt_sub: { ko: "말씀과 함께하는 조용한 시간", de: "Stille Zeit mit Gottes Wort", en: "Quiet Time with God's Word", fr: "Un temps calme avec la Parole de Dieu" },
   qt_start_btn: { ko: "오늘 큐티 시작하기",       de: "QT beginnen", en: "Start QT", fr: "Commencer le QT" },
-    qt_sunday_required:{ ko: "오늘은 주일이에요! 주일예배 큐티로 진행해주세요. 🙌", de: "Heute ist Sonntag! Bitte machen Sie eine Sonntagsgottesdienst-QT. 🙌", en: "Today is Sunday! Please do a Sunday worship QT. 🙌", fr: "Aujourd’hui, c’est dimanche ! Veuillez faire le QT du culte dominical. 🙌" },
+    qt_sunday_required:{ ko: "오늘은 주일이에요. 주일예배 QT로 진행해주세요.", de: "Heute ist Sonntag. Bitte machen Sie eine Sonntagsgottesdienst-QT.", en: "Today is Sunday. Please do a Sunday worship QT.", fr: "Aujourd’hui, c’est dimanche. Veuillez faire le QT du culte dominical." },
   qt_done: { ko: "오늘 큐티 완료!",          de: "QT erledigt!", en: "QT done!", fr: "QT terminé !" },
   qt_done_sub: { ko: "말씀 앞에 앉은 당신, 축복해요", de: "Gott segne dich!", en: "God bless you!", fr: "que Dieu te bénisse!" },
-  qt_sunday: { ko: "🙌 오늘은 주일이에요!",    de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!", fr: "🙌 Aujourd’hui, c’est dimanche !" },
+  qt_sunday: { ko: "오늘은 주일이에요!",    de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !" },
   qt_sunday_sub: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
   qt_today_passage: { ko: "오늘의 큐티 본문",         de: "Heutiger Abschnitt", en: "Today's passage", fr: "Passage du jour" },
   qt_records: { ko: "지난 큐티 기록",           de: "Frühere QTs", en: "Past QTs", fr: "QT précédents" },
@@ -134,7 +134,7 @@ export const T = {
 
   // ── 기도 탭 ──
   prayer_title: { ko: "기도",                   de: "Gebet", en: "Prayer", fr: "Prière" },
-  prayer_tab_praying: { ko: "기도 중",                de: "Im Gebet", en: "Praying 🙏", fr: "En prière 🙏" },
+  prayer_tab_praying: { ko: "기도 중",                de: "Im Gebet", en: "Praying", fr: "En prière" },
   prayer_tab_answered: { ko: "기도 응답",              de: "Erhörtes Gebet", en: "Answered ✨", fr: "Exaucées ✨" },
   prayer_add: { ko: "+ 기도 제목 추가",        de: "+ Gebetsanliegen hinzufügen", en: "+ Add prayer request", fr: "+ Ajouter un sujet de prière" },
   prayer_placeholder: { ko: "기도 제목을 입력하세요...", de: "Gebetsanliegen eingeben...", en: "Enter prayer request...", fr: "Saisissez un sujet de prière..." },
@@ -203,7 +203,7 @@ export const T = {
   weekday_sat: { ko: "토", de: "Sa", en: "Sat", fr: "Sam" },
 
   // ── 뱃지 ──
-  badge_thanks: { ko: "감사해요 🙏",             de: "Danke 🙏", en: "Thank you 🙏", fr: "Merci 🙏" },
+  badge_thanks: { ko: "감사해요",             de: "Danke", en: "Thank you", fr: "Merci" },
   badge_rootsman_title: { ko: "루츠맨",              de: "Rootsman", en: "Rootsman", fr: "Rootsman" },
   badge_rootsman_desc: { ko: "7일 큐티",            de: "7 Tage", en: "7 days", fr: "7 jours" },
   badge_mose_title: { ko: "모세",                de: "Mose", en: "Moses", fr: "Moïse" },
@@ -243,7 +243,7 @@ export const T = {
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
   badge_popup_mose: { ko: "모세 배지 획득! 🪄",          de: "Mose-Abzeichen! 🪄", en: "Moses Badge! 🪄", fr: "Badge Moïse ! 🪄" },
-  badge_popup_rootsman_bible: { ko: "루츠맨 성경 배지 획득! 📖",     de: "Rootsman Bibel-Abzeichen! 📖", en: "Rootsman Bible Badge! 📖", fr: "Badge Bible Rootsman ! 📖" },
+  badge_popup_rootsman_bible: { ko: "루츠맨 성경 배지 획득!",     de: "Rootsman Bibel-Abzeichen!", en: "Rootsman Bible Badge!", fr: "Badge Bible Rootsman !" },
   badge_popup_david: { ko: "다윗 배지 획득! 🗡️",          de: "David-Abzeichen! 🗡️", en: "David Badge! 🗡️", fr: "Badge David ! 🗡️" },
   badge_popup_angel: { ko: "천사 배지 획득! 👼",           de: "Engel-Abzeichen! 👼", en: "Angel Badge! 👼", fr: "Badge Ange ! 👼" },
   badge_popup_joseph: { ko: "요셉 배지 획득! 🌈",           de: "Josef-Abzeichen! 🌈", en: "Joseph Badge! 🌈", fr: "Badge Joseph ! 🌈" },
@@ -296,19 +296,19 @@ export const T = {
   welcome_back_30_sub: { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!", fr: "La Parole vous attendait.\\nRevenez et continuez à grandir !" },
   welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!" },
   welcome_back_14_sub: { ko: "괜찮아요, 언제든 돌아오면 돼요.\n오늘부터 다시 함께 자라요!", de: "Kein Problem, Sie können immer zurückkommen.\nFangen wir heute wieder an!", en: "No problem, you can always come back.\nLet's start fresh today!", fr: "Pas de problème, vous pouvez toujours revenir.\\nRecommençons aujourd’hui !" },
-  welcome_back_7_sub: { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 힘내봐요 💪", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine 💪", en: "Your tree has been waiting.\nLet's continue with the routine!", fr: "Your tree has been waiting.\\nLet's continue with the routine!" },
+  welcome_back_7_sub: { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 다시 시작해봐요.", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine.", en: "Your tree has been waiting.\nLet's continue with the routine!", fr: "Your tree has been waiting.\\nLet's continue with the routine!" },
   welcome_back_1_sub: { ko: "괜찮아요! 오늘 다시 시작해봐요.\n조금씩 꾸준히가 중요해요 🌱", de: "Kein Problem! Fangen wir heute neu an.\nKleine Schritte zählen 🌱", en: "No problem! Let's start fresh.\nSmall steps count too!", fr: "No problem! Let's start fresh.\\nSmall steps count too!" },
 
   // ── 가든 팝업 ──
   garden_check_btn: { ko: "정원 확인하러 가기 🌿",     de: "Garten ansehen 🌿", en: "Check garden 🌿", fr: "Voir le jardin 🌿" },
   badge_check_btn: { ko: "배지 확인하기 🌟",          de: "Abzeichen ansehen 🌟", en: "View badge 🌟", fr: "Voir le badge 🌟" },
-  spirit_fruit_title: { ko: "성령의 열매 획득! 🎉",      de: "Frucht des Geistes erhalten! 🎉", en: "Fruit of the Spirit received! 🎉", fr: "Fruit de l’Esprit reçu ! 🎉" },
+  spirit_fruit_title: { ko: "성령의 열매 획득!",      de: "Frucht des Geistes erhalten!", en: "Fruit of the Spirit received!", fr: "Fruit de l’Esprit reçu !" },
   spirit_fruit_sub: { ko: "100일 동안 말씀에 뿌리내린 당신에게\n하나님이 주시는 열매예요!", de: "100 Tage in Gottes Wort –\ndas ist Ihre Frucht von Gott!", en: "100 days in God's Word –\nthis is your fruit from God!", fr: "100 jours dans la Parole de Dieu —\\nvoici le fruit que Dieu vous donne !" },
   spirit_fruit_profile: { ko: "프로필에서 확인할 수 있어요 ✨", de: "Im Profil ansehen ✨", en: "View in profile ✨", fr: "Visible dans le profil ✨" },
-  garden_badge_title: { ko: "성령의 열매 획득! 🎉",       de: "Frucht des Geistes erhalten! 🎉", en: "Fruit of the Spirit received! 🎉", fr: "Fruit de l’Esprit reçu ! 🎉" },
+  garden_badge_title: { ko: "성령의 열매 획득!",       de: "Frucht des Geistes erhalten!", en: "Fruit of the Spirit received!", fr: "Fruit de l’Esprit reçu !" },
   garden_badge_100days: { ko: "100일 동안 말씀에 뿌리내린 당신에게\n하나님이 주시는 열매예요!", de: "100 Tage in Gottes Wort verwurzelt –\ndas ist Ihre Frucht von Gott!", en: "100 days rooted in God's Word –\nthis is your fruit from above!", fr: "100 jours enraciné dans la Parole de Dieu —\\nvoici le fruit d’en haut !" },
   garden_badge_profile: { ko: "프로필에서 확인할 수 있어요 ✨",  de: "Im Profil ansehen ✨", en: "View in profile ✨", fr: "Visible dans le profil ✨" },
-  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째 🔥", de: "Der Garten wurde aktualisiert! Tag {n} 🔥", en: "The garden has been updated! Day {n} 🔥" },
+  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째", de: "Der Garten wurde aktualisiert! Tag {n}", en: "The garden has been updated! Day {n}" },
 
   // 성령의 열매 이름
   fruit_love: { ko: "사랑",    de: "Liebe", en: "Love", fr: "Amour" },
@@ -378,7 +378,7 @@ export const T = {
   // ── 앱 공통 ──
   app_loading_sub: { ko: "말씀에 뿌리내리고, 함께 자라다", de: "In Gottes Wort verwurzelt, gemeinsam wachsen", en: "Rooted in God's Word, growing together", fr: "Enraciné dans la Parole de Dieu, grandir ensemble" },
   home_loading_sub: { ko: "말씀에 뿌리내리고, 함께 자라다", de: "In Gottes Wort verwurzelt, gemeinsam wachsen", en: "Rooted in God's Word, growing together", fr: "Enraciné dans la Parole de Dieu, grandir ensemble" },
-  home_badge_thanks: { ko: "감사해요 🙏",                    de: "Danke 🙏", en: "Thank you 🙏", fr: "Merci 🙏" },
+  home_badge_thanks: { ko: "감사해요",                    de: "Danke", en: "Thank you", fr: "Merci" },
 
   // ── 홈 화면 하드코딩 수정용 ──
   home_greeting_morning: { ko: "좋은 아침이에요 ☀️",  de: "Guten Morgen ☀️", en: "Good morning", fr: "Bonjour ☀️" },
@@ -414,7 +414,7 @@ export const T = {
   home_next_step_complete_sub: { ko: "루츠맨이 정원에 물을 주고 있어요. 정원에서 오늘의 성장을 확인해보세요.", de: "RootsMan gießt gerade Ihren Garten. Sehen Sie sich das heutige Wachstum an.", en: "RootsMan is watering your garden. Take a look at today's growth.", fr: "RootsMan arrose votre jardin. Regardez la croissance d’aujourd’hui." },
   home_next_step_complete_btn: { ko: "정원 보기",             de: "Garten ansehen", en: "View garden", fr: "Voir le jardin" },
   home_recommend_section: { ko: "오늘의 추천 결단",     de: "Empfohlener Vorsatz", en: "Recommended resolution", fr: "Décision recommandée" },
-  home_decision_practiced: { ko: "결단 실천 완료! 🎉",    de: "Vorsatz umgesetzt! 🎉", en: "Resolution practiced! 🎉", fr: "Décision vécue ! 🎉" },
+  home_decision_practiced: { ko: "결단 실천 완료!",    de: "Vorsatz umgesetzt!", en: "Resolution practiced!", fr: "Décision vécue !" },
   home_decision_practice: { ko: "오늘 이 결단을 실천했어요", de: "Ich habe diesen Vorsatz umgesetzt", en: "I practiced this resolution today", fr: "J’ai vécu cette décision aujourd’hui" },
   home_my_decision: { ko: "오늘 나의 결단",       de: "Meine heutigen Vorsätze", en: "My resolutions today", fr: "Mes décisions du jour" },
   home_apply_section: { ko: "오늘의 적용",          de: "Heutige Anwendung", en: "Today's application", fr: "Application du jour" },
@@ -422,13 +422,13 @@ export const T = {
   home_apply_my: { ko: "내가 적은 결단",        de: "Meine notierten Vorsätze", en: "My written resolutions", fr: "Mes décisions écrites" },
   home_prayer_section: { ko: "오늘의 기도",          de: "Heutiges Gebet", en: "Today's Prayer", fr: "Prière du jour" },
   home_prayer_desc: { ko: "오늘의 기도를 하나님께 드려보세요.", de: "Bringen Sie Gott heute Ihr Gebet.", en: "Offer today's prayer to God.", fr: "Offrez la prière d’aujourd’hui à Dieu." },
-  home_prayer_done_msg: { ko: "기도 완료! 🙏",        de: "Gebetet! 🙏", en: "Prayed! 🙏", fr: "Prière faite ! 🙏" },
+  home_prayer_done_msg: { ko: "기도 완료!",        de: "Gebetet!", en: "Prayed!", fr: "Prière faite !" },
   home_prayer_save_error: { ko: "오늘의 기도를 저장하지 못했어요.", de: "Das Gebet konnte nicht gespeichert werden.", en: "Could not save today's prayer.", fr: "Impossible d’enregistrer la prière du jour." },
   home_decision_save_error: { ko: "결단을 저장하지 못했어요.", de: "Der Vorsatz konnte nicht gespeichert werden.", en: "Could not save the resolution.", fr: "Impossible d’enregistrer la décision." },
   home_prayer_quiet_option: { ko: "조용히 기도했어요",    de: "Ich habe still gebetet", en: "I prayed quietly", fr: "J’ai prié en silence" },
   home_prayer_write_option: { ko: "기도 제목 적어두기",   de: "Gebetsanliegen notieren", en: "Write prayer request", fr: "Écrire un sujet de prière" },
   home_prayer_hint: { ko: "글로 남기지 않아도 괜찮아요. 오늘의 기도를 하나님께 드렸다면 충분해요.", de: "Sie mussen nichts aufschreiben. Wenn Sie Ihr heutiges Gebet Gott gebracht haben, genugt das.", en: "You do not need to write it down. If you offered today's prayer to God, that is enough.", fr: "Vous n’avez pas besoin de l’écrire. Si vous avez offert la prière du jour à Dieu, cela suffit." },
-  home_prayer_quiet_celeb: { ko: "오늘의 기도를\n하나님께 드렸어요 🙏", de: "Sie haben Ihr heutiges Gebet Gott gebracht 🙏", en: "You offered today's prayer to God 🙏", fr: "Vous avez offert la prière du jour à Dieu 🙏" },
+  home_prayer_quiet_celeb: { ko: "오늘의 기도를\n하나님께 드렸어요", de: "Sie haben Ihr heutiges Gebet Gott gebracht", en: "You offered today's prayer to God", fr: "Vous avez offert la prière du jour à Dieu" },
   home_prayer_quiet_celeb_sub: { ko: "구하고 찾는 자에게\n하나님이 반드시 응답하실거예요!", de: "Gott wird denen, die bitten und suchen, gewiss antworten!", en: "God will surely answer those who ask and seek!", fr: "Dieu répondra assurément à ceux qui demandent et cherchent!" },
   home_prayer_yes_btn: { ko: "네, 오늘 기도했어요",    de: "Ja, ich habe heute gebetet", en: "Yes, I prayed today", fr: "Oui, j’ai prié aujourd’hui" },
   home_routine_section: { ko: "오늘의 루틴",          de: "Heutige Routine", en: "Today's routine", fr: "Routine du jour" },
@@ -444,13 +444,13 @@ export const T = {
     home_qt_choice_free: { ko: "자유형식으로 큐티하기", de: "Freie QT machen", en: "Do free-form QT", fr: "Faire un QT libre" },
     home_qt_choice_guide:{ ko: "6단계 가이드 보기", de: "6-Schritte-Anleitung ansehen", en: "View 6-step guide", fr: "Voir le guide des 6 étapes" },
     home_qt_choice_close:{ ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
-    home_qt_sunday_title:{ ko: "오늘은 주일이에요 🙌", de: "Heute ist Sonntag 🙌", en: "Today is Sunday 🙌", fr: "Aujourd’hui, c’est dimanche 🙌" },
+    home_qt_sunday_title:{ ko: "오늘은 주일이에요", de: "Heute ist Sonntag", en: "Today is Sunday", fr: "Aujourd’hui, c’est dimanche" },
     home_qt_sunday_sub:  { ko: "주일예배 말씀으로 QT를 진행해요.", de: "Machen Sie heute QT mit der Predigt und dem Bibeltext des Gottesdienstes.", en: "Use today’s worship sermon and passage for QT.", fr: "Faites votre QT avec le message et le passage du culte." },
     home_qt_sunday_start:{ ko: "주일예배 QT 시작하기", de: "Sonntagsgottesdienst-QT starten", en: "Start Sunday worship QT", fr: "Commencer le QT du culte dominical" },
   home_celebration_title: { ko: "오늘도 믿음의 뿌리가 깊어지고 있어요.", de: "Heute wachsen die Wurzeln Ihres Glaubens tiefer.", en: "Today, the roots of your faith are growing deeper.", fr: "Aujourd’hui, les racines de votre foi s’approfondissent." },
   home_celebration_sub: { ko: "루츠맨이 정원에 물을 주고 있어요. 오늘의 성장을 확인해보세요.", de: "RootsMan gießt gerade Ihren Garten. Schauen Sie sich das heutige Wachstum an.", en: "RootsMan is watering your garden. Take a look at today's growth.", fr: "RootsMan arrose votre jardin. Regardez la croissance du jour." },
   home_celebration_sub_prefix: { ko: "", de: "", en: "", fr: "" },
-  home_decision_celeb: { ko: "결단 실천 완료! ✊",     de: "Vorsatz umgesetzt! ✊", en: "Resolution complete! ✊", fr: "Décision accomplie ! ✊" },
+  home_decision_celeb: { ko: "결단 실천 완료!",     de: "Vorsatz umgesetzt!", en: "Resolution complete!", fr: "Décision accomplie !" },
   home_decision_celeb_sub: { ko: "말씀을 삶으로 살아내는 당신을 축복해요 🌱", de: "Gesegnet, wer Gottes Wort im Leben umsetzt 🌱", en: "Blessed are those who live by God's Word 🌿", fr: "Béni soit celui qui vit selon la Parole de Dieu 🌿" },
 
   // "{name}의 정원" / "{name}s Garten"
@@ -485,7 +485,7 @@ export const T = {
   tree_garden_n:    { ko: "{n}번째 정원", de: "{n}. Garten", en: "{n}.garden", fr: "{n}e jardin" },
   tree_progress:    { ko: "{n} / 10", de: "{n} / 10", en: "{n} / 10", fr: "{n} / 10" },
   tree_streak:      { ko: "{n}일 연속 기록 중", de: "{n} Tage in Folge", en: "{n} days in a row", fr: "{n} jours de suite" },
-  tree_away_msg:    { ko: "{n}일 만이에요! 오늘 루틴으로 다시 뿌리내려봐요 💪", de: "{n} Tage her! Starten Sie die Routine und kommen Sie zurück 💪", en: "It's been {n} days! Start the routine and come back. 💪", fr: "Cela fait {n} jours ! Reprenez la routine et enracinez-vous à nouveau 💪" },
+  tree_away_msg:    { ko: "{n}일 만이에요. 오늘 루틴으로 다시 뿌리내려봐요.", de: "{n} Tage her. Starten Sie die Routine und kommen Sie zurück.", en: "It's been {n} days. Start the routine and come back.", fr: "Cela fait {n} jours. Reprenez la routine et enracinez-vous à nouveau." },
 
   // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
   tree_sub_0: { ko: "씨앗이 심어졌어요. 오늘부터 다시 함께 자라가요!", de: "Der Samen ist gepflanzt. Heute beginnt der Weg erneut!", en: "The seed has been planted. Let's begin growing again today!", fr: "La graine est plantée. Recommençons à grandir aujourd’hui !" },
@@ -507,9 +507,9 @@ export const T = {
   rootsman_msg_1: { ko: "씨앗이 땅속에서 뿌리를 내리기 시작했어요.", de: "Der Samen beginnt, Wurzeln zu schlagen.", en: "RootsMan is watering your seed today! 💧", fr: "RootsMan arrose votre graine aujourd’hui ! 💧" },
   rootsman_msg_2: { ko: "새싹이 조금씩 고개를 내밀고 있어요.",       de: "Ein kleiner Sprössling zeigt sich.", en: "Your sprout gets love today! 🌱", fr: "Votre pousse reçoit de l’amour aujourd’hui ! 🌱" },
   rootsman_msg_3: { ko: "묘목이 햇빛을 향해 자라고 있어요.",         de: "Der Setzling wächst zum Licht.", en: "Growing well! RootsMan is cheering you on! 🌿", fr: "Elle grandit bien ! RootsMan vous encourage ! 🌿" },
-  rootsman_msg_4: { ko: "가지가 뻗어나가고 뿌리가 깊어지고 있어요.", de: "Die Äste breiten sich aus, die Wurzeln vertiefen sich.", en: "Your tree is getting stronger! 💪", fr: "Votre arbre devient plus fort ! 💪" },
+  rootsman_msg_4: { ko: "가지가 뻗어나가고 뿌리가 깊어지고 있어요.", de: "Die Äste breiten sich aus, die Wurzeln vertiefen sich.", en: "Your tree is getting stronger!", fr: "Votre arbre devient plus fort !" },
   rootsman_msg_5: { ko: "나무가 든든하게 자라나고 있어요.",          de: "Der Baum wächst kräftig heran.", en: "Beautiful growth! Keep going! 🌳", fr: "Belle croissance ! Continuez ! 🌳" },
-  rootsman_msg_6: { ko: "말씀에 점점 더 깊이 뿌리를 내리고 있어요.", de: "Die Verwurzelung in Gottes Wort wird tiefer.", en: "RootsMan is smiling at your garden! 😊", fr: "RootsMan sourit à votre jardin ! 😊" },
+  rootsman_msg_6: { ko: "말씀에 점점 더 깊이 뿌리를 내리고 있어요.", de: "Die Verwurzelung in Gottes Wort wird tiefer.", en: "RootsMan is smiling at your garden!", fr: "RootsMan sourit à votre jardin !" },
   rootsman_msg_7: { ko: "열매를 맺어가고 있어요. 계속 나아가요!",    de: "Früchte wachsen heran. Weiter so!", en: "Leaves are spreading! 🍃", fr: "Les feuilles s’étendent ! 🍃" },
   rootsman_msg_8: { ko: "새들이 날아와 쉬어갈 만큼 자랐어요.",      de: "Der Baum ist groß genug für Vögel.", en: "Fruit is almost ready! 🍎", fr: "Le fruit est presque prêt ! 🍎" },
   rootsman_msg_9: { ko: "아름다운 정원이 거의 완성되어 가요!",      de: "Ein wunderschöner Garten entsteht!", en: "Your garden shines! ✨", fr: "Votre jardin brille ! ✨" },
@@ -519,7 +519,7 @@ export const T = {
   qt_today_done: { ko: "오늘 큐티 완료!",                     de: "QT heute erledigt!", en: "QT done today!", fr: "QT terminé aujourd’hui !" },
   qt_today_done_sub: { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gott segne dich – Sie waren beim Wort Gottes.", en: "God bless you — you were with God's Word.", fr: "que Dieu te bénisse — vous étiez avec la Parole de Dieu." },
   qt_today_bible_ref: { ko: "오늘의 큐티 본문",                     de: "Heutiger Abschnitt", en: "TODAY'S PASSAGE", fr: "PASSAGE DU JOUR" },
-  qt_sunday_title: { ko: "🙌 오늘은 주일이에요!",                de: "🙌 Heute ist Sonntag!", en: "🙌 Today is Sunday!", fr: "🙌 Aujourd’hui, c’est dimanche !" },
+  qt_sunday_title: { ko: "오늘은 주일이에요!",                de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !" },
   qt_sunday_desc: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte die Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
   qt_today_start: { ko: "오늘 큐티 시작하기",                   de: "Heutige QT beginnen", en: "Start today's QT", fr: "Commencer le QT du jour" },
   qt_past_records: { ko: "지난 큐티 기록",                       de: "Frühere QTs", en: "Recordings", fr: "Enregistrements" },
@@ -648,7 +648,7 @@ export const T = {
   qtw_err_load_passage: { ko: "본문을 불러오지 못했어요.",       de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
 
   // 저장 / 임시저장
-  qtw_draft_saved: { ko: "임시저장됐어요! 나중에 이어쓸 수 있어요 😊", de: "Als Entwurf gespeichert! Sie können später weitermachen 😊", en: "Saved as draft! Continue later 😊", fr: "Enregistré comme brouillon ! Continuez plus tard 😊" },
+  qtw_draft_saved: { ko: "임시저장됐어요! 나중에 이어쓸 수 있어요", de: "Als Entwurf gespeichert! Sie können später weitermachen", en: "Saved as draft! Continue later", fr: "Enregistré comme brouillon ! Continuez plus tard" },
   qtw_draft_failed: { ko: "임시저장에 실패했어요. 다시 시도해주세요.", de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
   qtw_save_failed: { ko: "저장에 실패했어요. 다시 시도해주세요.", de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
 

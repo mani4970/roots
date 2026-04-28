@@ -6,7 +6,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
-import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save, Lightbulb } from "lucide-react";
 
 const OT_BOOKS = ["창세기","출애굽기","레위기","민수기","신명기","여호수아","사사기","룻기","사무엘상","사무엘하","열왕기상","열왕기하","역대상","역대하","에스라","느헤미야","에스더","욥기","시편","잠언","전도서","아가","이사야","예레미야","예레미야애가","에스겔","다니엘","호세아","요엘","아모스","오바댜","요나","미가","나훔","하박국","스바냐","학개","스가랴","말라기"];
 const NT_BOOKS = ["마태복음","마가복음","누가복음","요한복음","사도행전","로마서","고린도전서","고린도후서","갈라디아서","에베소서","빌립보서","골로새서","데살로니가전서","데살로니가후서","디모데전서","디모데후서","디도서","빌레몬서","히브리서","야고보서","베드로전서","베드로후서","요한일서","요한이서","요한삼서","유다서","요한계시록"];
@@ -114,7 +114,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 에러 메시지 / alert
   "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
   "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요 😊": { de: "Als Entwurf gespeichert!\nSie können später weitermachen 😊", en: "Saved as draft!\nContinue later 😊", fr: "Brouillon enregistré !\nVous pourrez continuer plus tard 😊" },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert!\nSie können später weitermachen", en: "Saved as draft!\nContinue later", fr: "Brouillon enregistré !\nVous pourrez continuer plus tard" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
   // UI 문자열
@@ -139,11 +139,11 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "접기": { de: "Weniger", en: "Less", fr: "Réduire" },
   "다음 단계 →": { de: "Nächster Schritt →", en: "Next Step →", fr: "Étape suivante →" },
   "← 이전": { de: "← Zurück", en: "← Back", fr: "← Retour" },
-  "💾 임시저장하고 나중에 이어쓰기": { de: "💾 Als Entwurf speichern", en: "💾 Save as draft", fr: "💾 Enregistrer comme brouillon" },
+  "임시저장하고 나중에 이어쓰기": { de: "Als Entwurf speichern", en: "Save as draft", fr: "Enregistrer comme brouillon" },
   "성품 (마음의 결심)": { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)", fr: "Caractère (décision du cœur)" },
   "행동 (구체적인 실천)": { de: "Handlung (konkretes Tun)", en: "Action (concrete practice)", fr: "Action (pratique concrète)" },
   "행동 추가하기": { de: "Handlung hinzufügen", en: "Add action", fr: "Ajouter une action" },
-  "💡 절을 탭하면 붙잡은 말씀에 추가돼요": { de: "💡 Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "💡 Tap a verse to add it as key verse", fr: "💡 Touchez un verset pour l’ajouter au verset clé" },
+  "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé" },
   "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage" },
   "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé" },
   "(위 절 탭하면 자동 추가)": { de: "(Vers oben antippen)", en: "(Tap verse above)", fr: "(Touchez un verset ci-dessus pour l’ajouter)" },
@@ -710,7 +710,7 @@ function QTWriteContent() {
   const dateLabel = (d: string) => {
     const date = new Date(d + "T12:00:00");
     const day = trQT(["일", "월", "화", "수", "목", "금", "토"][date.getDay()], lang);
-    return `${d} (${day})${d === todayStr ? ` ${trQT("· 오늘", lang)}` : ""}${isSunday(d) ? " 🙌" : ""}`;
+    return `${d} (${day})${d === todayStr ? ` ${trQT("· 오늘", lang)}` : ""}`;
   };
   const dateOptions = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - i);
@@ -769,7 +769,7 @@ function QTWriteContent() {
         const { error } = await supabase.from("qt_records").insert(draftData);
         if (error) throw error;
       }
-      showToast(trQT("임시저장 됐어요!\n나중에 이어쓸 수 있어요 😊", lang));
+      showToast(trQT("임시저장 됐어요!\n나중에 이어쓸 수 있어요", lang));
     } catch (e) {
       showToast(trQT("임시저장에 실패했어요.\n다시 시도해주세요.", lang));
     } finally {
@@ -876,11 +876,11 @@ function QTWriteContent() {
           {/* 날짜 + 번역본 */}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowDatePicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-              <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>📅 {selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+              <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}><Calendar size={13} /> {selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
             </button>
             <button onClick={() => setShowTranslationPicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-              <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {translationName}</span>
+              <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {translationName}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
             </button>
           </div>
@@ -962,7 +962,7 @@ function QTWriteContent() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {passages.map((p, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
-                  <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {p.ref}</span>
+                  <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
                   <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
                 </div>
               ))}
@@ -1256,13 +1256,13 @@ function QTWriteContent() {
                     );
                   })()}
                   <button onClick={bibleRef ? addPassage : loadSundayPassage} disabled={loadingBible} className="btn-primary" style={{ marginBottom: 8 }}>
-                    {loadingBible ? trQT("불러오는 중...", lang) : bibleRef ? <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</> : `📖 ${trQT("말씀 불러오기", lang)}`}
+                    {loadingBible ? trQT("불러오는 중...", lang) : bibleRef ? <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</> : <><BookOpen size={16} /> {trQT("말씀 불러오기", lang)}</>}
                   </button>
                   {passages.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
                       {passages.map((p, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
-                          <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}>📖 {p.ref}</span>
+                          <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
                           <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
                         </div>
                       ))}
@@ -1362,7 +1362,7 @@ function QTWriteContent() {
           </div>
           {/* 임시저장 버튼 */}
           <button onClick={saveDraft} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            {trQT("💾 임시저장하고 나중에 이어쓰기", lang)}
+            {trQT("임시저장하고 나중에 이어쓰기", lang)}
           </button>
         </div>
       </div>
@@ -1477,7 +1477,7 @@ function QTWriteContent() {
           {passageVerses.length > 0 && (
             <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>📖 {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
@@ -1488,7 +1488,7 @@ function QTWriteContent() {
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("💡 절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
+              <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
             </div>
           )}
 
@@ -1603,7 +1603,7 @@ function QTWriteContent() {
           disabled={saving || selectedDate !== todayStr}
           style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
-          {trQT("💾 임시저장하고 나중에 이어쓰기", lang)}
+          {trQT("임시저장하고 나중에 이어쓰기", lang)}
         </button>
       </div>
     </div>

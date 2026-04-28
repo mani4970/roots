@@ -2,6 +2,7 @@
 import { useLang } from "@/lib/useLang";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { Sparkles } from "lucide-react";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -33,7 +34,7 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
         </div>
       )}
       <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "36px 28px", background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", margin: "0 28px", maxWidth: 340 }}>
-        <div style={{ fontSize: 56, marginBottom: 14 }}>🎉</div>
+        <div style={{ width: 58, height: 58, borderRadius: 22, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--sage-light)", color: "var(--sage-dark)" }}><Sparkles size={30} strokeWidth={1.8} /></div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 10, lineHeight: 1.3 }}>
           {message ?? "완료!"}
         </h2>

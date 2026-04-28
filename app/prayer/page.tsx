@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, HandHeart, Sparkles } from "lucide-react";
 
 const PRAYER_TEXT = {
   savePrayerError: { ko: "기도 제목을 저장하지 못했어요.", de: "Das Gebetsanliegen konnte nicht gespeichert werden.", en: "Could not save the prayer request.", fr: "Impossible d’enregistrer le sujet de prière."  },
@@ -16,7 +16,7 @@ const PRAYER_TEXT = {
   answeredError: { ko: "기도 응답을 저장하지 못했어요.", de: "Die Gebetserhörung konnte nicht gespeichert werden.", en: "Could not save the answered prayer.", fr: "Impossible d’enregistrer la prière exaucée."  },
   warriorTitle: { ko: "기도의 용사 배지 획득! ⚔️", de: "Gebetskrieger-Abzeichen! ⚔️", en: "Prayer Warrior Badge! ⚔️", fr: "Badge Guerrier de prière ! ⚔️"  },
   noahTitle: { ko: "노아 배지 획득! ⛵", de: "Noah-Abzeichen! ⛵", en: "Noah Badge! ⛵", fr: "Badge Noé ! ⛵"  },
-  savedMessage: { ko: "기도 제목 저장! 🙏", de: "Gebetsanliegen gespeichert! 🙏", en: "Prayer requests saved! 🙏", fr: "Sujets de prière enregistrés ! 🙏"  },
+  savedMessage: { ko: "기도 제목 저장!", de: "Gebetsanliegen gespeichert!", en: "Prayer requests saved!", fr: "Sujets de prière enregistrés !"  },
   savedSub: { ko: "구하고 찾는 자에게 반드시 하나님이 응답하실거예요", de: "Gott wird denen antworten, die suchen und bitten", en: "God will answer those who seek and ask", fr: "Dieu répondra à ceux qui cherchent et demandent"  },
 } as const;
 
@@ -233,8 +233,8 @@ function PrayerPageContent() {
         {/* 탭 */}
         <div style={{ display: "flex", gap: 0 }}>
           {[
-            { key: "praying", label: t("prayer_tab_praying", lang), count: prayingList.length, icon: "🙏" },
-            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: "✨" },
+            { key: "praying", label: t("prayer_tab_praying", lang), count: prayingList.length, icon: <HandHeart size={14} /> },
+            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: <Sparkles size={14} /> },
           ].map(({ key, label, count, icon }) => (
             <button
               key={key}
@@ -247,7 +247,7 @@ function PrayerPageContent() {
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}
             >
-              <span style={{ fontSize: 14 }}>{icon}</span>
+              <span style={{ display: "flex", color: tab === key ? "var(--sage-dark)" : "var(--text3)" }}>{icon}</span>
               <span style={{ fontSize: 13, fontWeight: tab === key ? 700 : 400, color: tab === key ? "var(--sage-dark)" : "var(--text3)" }}>
                 {label}
               </span>
@@ -269,7 +269,7 @@ function PrayerPageContent() {
           </div>
         ) : currentList.length === 0 ? (
           <div style={{ textAlign: "center", padding: "52px 0" }}>
-            <p style={{ fontSize: 36, marginBottom: 12 }}>{tab === "praying" ? "🙏" : "✨"}</p>
+            <div style={{ color: "var(--text3)", marginBottom: 12, display: "flex", justifyContent: "center" }}>{tab === "praying" ? <HandHeart size={36} /> : <Sparkles size={36} />}</div>
             <p style={{ color: "var(--text3)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
               {tab === "praying" ? (lang === "de" ? "Keine Gebetsanliegen" : lang === "fr" ? "Aucun sujet de prière" : lang === "en" ? "No prayer requests" : "기도 제목이 없어요") : (lang === "de" ? "Noch keine erhörten Gebete" : lang === "fr" ? "Aucune prière exaucée pour l’instant" : lang === "en" ? "No answered prayers yet" : "아직 응답된 기도가 없어요")}
             </p>
@@ -288,7 +288,7 @@ function PrayerPageContent() {
                 {p.is_answered && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <CheckCircle size={14} style={{ color: "var(--terra-dark)" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{lang === "de" ? "Gebet erhört! 🎉" : lang === "fr" ? "Prière exaucée ! 🎉" : lang === "en" ? "Prayer answered! 🎉" : "기도 응답! 🎉"}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{lang === "de" ? "Gebet erhört!" : lang === "fr" ? "Prière exaucée !" : lang === "en" ? "Prayer answered!" : "기도 응답!"}</span>
                     {p.answered_at && (
                       <span style={{ fontSize: 10, color: "var(--text3)", marginLeft: "auto" }}>
                         {new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
@@ -301,7 +301,7 @@ function PrayerPageContent() {
                 {p.visibility === "all" && !p.is_answered && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
-                      {lang === "de" ? `🤲 Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : lang === "fr" ? `🤲 Demande d’intercession · ${p.prayer_count ?? 0} en prière` : lang === "en" ? `🤲 Intercession · ${p.prayer_count ?? 0} praying` : `🤲 중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
+                      {lang === "de" ? `Fürbittenaufruf · ${p.prayer_count ?? 0} beten mit` : lang === "fr" ? `Demande d’intercession · ${p.prayer_count ?? 0} en prière` : lang === "en" ? `Intercession · ${p.prayer_count ?? 0} praying` : `중보기도 요청 중 · ${p.prayer_count ?? 0}명 기도 중`}
                     </span>
                   </div>
                 )}
@@ -344,7 +344,7 @@ function PrayerPageContent() {
                             </button>
                             <button onClick={() => openAnsweredPrayer(p.id)}
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
-                              {lang === "de" ? "Erhört 🙌" : lang === "fr" ? "Exaucée 🙌" : lang === "en" ? "Answered 🙌" : "응답됐어요 🙌"}
+                              {lang === "de" ? "Erhört" : lang === "fr" ? "Exaucée" : lang === "en" ? "Answered" : "응답됐어요"}
                             </button>
                             {p.visibility !== "all" && (
                               <button onClick={() => requestIntercession(p.id)}

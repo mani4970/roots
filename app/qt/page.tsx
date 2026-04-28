@@ -8,16 +8,25 @@ import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTWriteHref } from "@/lib/qtEntry";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X } from "lucide-react";
+import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine } from "lucide-react";
 
-const QT_GUIDE_KEYS: { emoji: string; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
-  { emoji: "🙏", titleKey: "qt_g1_title", descKey: "qt_g1_desc", exKey: "qt_g1_ex" },
-  { emoji: "📖", titleKey: "qt_g2_title", descKey: "qt_g2_desc", exKey: "qt_g2_ex" },
-  { emoji: "✨", titleKey: "qt_g3_title", descKey: "qt_g3_desc", exKey: "qt_g3_ex" },
-  { emoji: "💭", titleKey: "qt_g4_title", descKey: "qt_g4_desc", exKey: "qt_g4_ex" },
-  { emoji: "🌱", titleKey: "qt_g5_title", descKey: "qt_g5_desc", exKey: "qt_g5_ex" },
-  { emoji: "🙌", titleKey: "qt_g6_title", descKey: "qt_g6_desc", exKey: "qt_g6_ex" },
+const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
+  { icon: "prayer", titleKey: "qt_g1_title", descKey: "qt_g1_desc", exKey: "qt_g1_ex" },
+  { icon: "book", titleKey: "qt_g2_title", descKey: "qt_g2_desc", exKey: "qt_g2_ex" },
+  { icon: "sparkles", titleKey: "qt_g3_title", descKey: "qt_g3_desc", exKey: "qt_g3_ex" },
+  { icon: "reflect", titleKey: "qt_g4_title", descKey: "qt_g4_desc", exKey: "qt_g4_ex" },
+  { icon: "leaf", titleKey: "qt_g5_title", descKey: "qt_g5_desc", exKey: "qt_g5_ex" },
+  { icon: "complete", titleKey: "qt_g6_title", descKey: "qt_g6_desc", exKey: "qt_g6_ex" },
 ];
+
+function QTGuideIcon({ icon, size = 20 }: { icon: typeof QT_GUIDE_KEYS[number]["icon"]; size?: number }) {
+  if (icon === "prayer") return <HandHeart size={size} strokeWidth={1.9} />;
+  if (icon === "book") return <BookOpen size={size} strokeWidth={1.9} />;
+  if (icon === "sparkles") return <Sparkles size={size} strokeWidth={1.9} />;
+  if (icon === "reflect") return <MessageCircle size={size} strokeWidth={1.9} />;
+  if (icon === "leaf") return <Leaf size={size} strokeWidth={1.9} />;
+  return <CheckCircle2 size={size} strokeWidth={1.9} />;
+}
 
 const TRANSLATIONS_BY_GROUP: { groupKey: TKey; items: { id: number; name: string }[] }[] = [
   { groupKey: "qt_translation_ko", items: [
@@ -145,7 +154,7 @@ export default function QTPage() {
       {showDraftPopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📖</div>
+            <BookOpen size={38} style={{ color: "var(--sage)", marginBottom: 12 }} />
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -198,7 +207,7 @@ export default function QTPage() {
       <div style={{ padding: "16px 16px 0" }}>
         {todayDone ? (
           <div className="card-sage" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 24 }}>✅</span>
+            <CheckCircle2 size={24} />
             <div>
               <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
               <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
@@ -241,7 +250,7 @@ export default function QTPage() {
           </div>
         ) : records.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <p style={{ fontSize: 32, marginBottom: 10 }}>📖</p>
+            <BookOpen size={32} style={{ color: "var(--text3)", marginBottom: 10 }} />
             <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("qt_no_records_simple", lang)}</p>
           </div>
         ) : (
@@ -299,7 +308,7 @@ export default function QTPage() {
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border)" : "1px solid var(--sage)", background: isSundayToday ? "var(--bg3)" : "var(--sage-light)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
               >
-                <span style={{ fontSize: 28 }}>📖</span>
+                <BookOpen size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--text3)" : "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_6step_desc", lang)}</p>
@@ -313,14 +322,14 @@ export default function QTPage() {
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--sage)" : "1px solid var(--border)", background: isSundayToday ? "var(--sage-light)" : "var(--bg3)", cursor: isSundayToday ? "pointer" : "not-allowed", textAlign: "left", opacity: isSundayToday ? 1 : 0.6 }}
               >
-                <span style={{ fontSize: 28 }}>🙌</span>
+                <HandHeart size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--sage-dark)" : "var(--text3)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_sunday_desc", lang)}</p>
                 </div>
               </button>
               <button onClick={() => startQT("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
-                <span style={{ fontSize: 28 }}>✏️</span>
+                <PenLine size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_free_desc", lang)}</p>
@@ -350,7 +359,7 @@ export default function QTPage() {
             </div>
             <div style={{ padding: "18px 20px 20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <span style={{ fontSize: 28 }}>{currentGuide.emoji}</span>
+                <span style={{ color: "var(--sage-dark)", display: "flex" }}><QTGuideIcon icon={currentGuide.icon} size={28} /></span>
                 <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>{guidePage + 1} · {t(currentGuide.titleKey, lang)}</h2>
               </div>
               <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.75, marginBottom: 12 }}>{t(currentGuide.descKey, lang)}</p>

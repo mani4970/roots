@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
-import { Loader2, Pencil, Check, X, Camera, Share2, Settings } from "lucide-react";
+import { Loader2, Pencil, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -305,7 +305,7 @@ export default function ProfilePage() {
         <div className="sec-label">{lang === "de" ? "Glaubensweg" : lang === "fr" ? "Parcours de foi" : lang === "en" ? "Faith Journey" : "신앙 여정"}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
-            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: "🙏" },
+            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <HandHeart size={18} /> },
             { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, icon: "✨" },
             { label: t("profile_qt_share", lang), value: qtShareCount, icon: "🤝" },
           ].map(s => (

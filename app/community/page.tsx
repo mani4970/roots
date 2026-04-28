@@ -7,21 +7,29 @@ import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2 } from "lucide-react";
 
 const REACTIONS = [
-  { id: "bless", label: "축복해요", label_de: "Gesegnet", label_en: "Blessed", label_fr: "Béni", icon: "🙏" },
-  { id: "cheer", label: "응원해요", label_de: "Ermutigung", label_en: "Encouraged", label_fr: "Encouragé", icon: "💪" },
-  { id: "pray", label: "함께기도해요", label_de: "Gemeinsam beten", label_en: "Praying together", label_fr: "Prière ensemble", icon: "✨" },
+  { id: "bless", label: "축복해요", label_de: "Gesegnet", label_en: "Blessed", label_fr: "Béni" },
+  { id: "cheer", label: "응원해요", label_de: "Ermutigung", label_en: "Encouraged", label_fr: "Encouragé" },
+  { id: "pray", label: "함께기도해요", label_de: "Gemeinsam beten", label_en: "Praying together", label_fr: "Prière ensemble" },
 ];
+
+function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
+  const color = selected ? "var(--sage-dark)" : "currentColor";
+  if (id === "bless") return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
+  if (id === "cheer") return <Heart size={14} strokeWidth={1.9} style={{ color }} />;
+  return <HandHeart size={14} strokeWidth={1.9} style={{ color }} />;
+}
 
 const APP_URL = "https://christian-roots.com";
 
-function Avatar({ url, name, size = 28, emoji = "🙏" }: { url?: string; name?: string; size?: number; emoji?: string }) {
+function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number; emoji?: string }) {
   if (url) return <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
+  const initial = (name?.trim()?.[0] ?? "R").toUpperCase();
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontSize: size * 0.4 }}>{emoji}</span>
+      <span style={{ fontSize: size * 0.36, fontWeight: 800, color: "var(--sage-dark)" }}>{initial}</span>
     </div>
   );
 }
@@ -355,7 +363,7 @@ export default function CommunityPage() {
           const isSelected = myRx === reaction.id;
           return (
             <button key={reaction.id} onClick={() => onReact(qtId, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 11px", borderRadius: 20, border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 12, color: isSelected ? "var(--sage-dark)" : "var(--text3)", fontWeight: isSelected ? 700 : 400, transition: "all 0.15s" }}>
-              <span style={{ fontSize: 14 }}>{reaction.icon}</span>
+              <ReactionIcon id={reaction.id} selected={isSelected} />
               <span>{lang === "de" ? reaction.label_de : lang === "fr" ? reaction.label_fr : lang === "en" ? reaction.label_en : reaction.label}</span>
               {count > 0 && <span style={{ fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--text2)", marginLeft: 2 }}>{count}</span>}
             </button>
@@ -374,7 +382,7 @@ export default function CommunityPage() {
           <div style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", width: "100%", maxWidth: 480, padding: "24px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} emoji="📖" />
+                <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "fr" ? "Inconnu" : lang === "en" ? "Unknown" : "이름 없음")}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "long", day: "numeric", weekday: "short" })}</p>
@@ -457,7 +465,7 @@ export default function CommunityPage() {
               <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
             ) : groupQts.length === 0 ? (
               <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
-                <p style={{ fontSize: 24, marginBottom: 8 }}>📖</p>
+                <BookOpen size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
                 <p style={{ fontSize: 13, color: "var(--text3)" }}>{lang === "de" ? "Noch keine geteilten QTs in dieser Gruppe" : lang === "fr" ? "Aucun QT partagé dans ce groupe pour l’instant" : lang === "en" ? "No shared QTs in this group yet" : "아직 이 그룹에 나눈 큐티가 없어요"}</p>
               </div>
             ) : (
@@ -466,7 +474,7 @@ export default function CommunityPage() {
                   <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "fr" ? "Inconnu" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
@@ -502,7 +510,7 @@ export default function CommunityPage() {
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
             <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              {lang === "de" ? "Danke 🙏" : lang === "fr" ? "Merci 🙏" : lang === "en" ? "Thank you 🙏" : "감사해요 🙏"}
+              {lang === "de" ? "Danke" : lang === "fr" ? "Merci" : lang === "en" ? "Thank you" : "감사해요"}
             </button>
           </div>
         </div>
@@ -536,7 +544,7 @@ export default function CommunityPage() {
             {/* 기도 중 / 응답됐어요 서브탭 */}
             <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
               {[
-                { key: "praying", label: lang === "de" ? "Im Gebet 🙏" : lang === "fr" ? "En prière 🙏" : lang === "en" ? "Praying 🙏" : "기도 중 🙏", count: prayers.length },
+                { key: "praying", label: lang === "de" ? "Im Gebet" : lang === "fr" ? "En prière" : lang === "en" ? "Praying" : "기도 중", count: prayers.length },
                 { key: "answered", label: lang === "de" ? "Erhört ✨" : lang === "fr" ? "Exaucées ✨" : lang === "en" ? "Answered ✨" : "응답됐어요 ✨", count: answeredPrayers.length },
               ].map(({ key, label, count }) => (
                 <button
@@ -558,7 +566,7 @@ export default function CommunityPage() {
             {prayerTab === "praying" && (
               prayers.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0" }}>
-                  <p style={{ fontSize: 32, marginBottom: 10 }}>🙏</p>
+                  <HandHeart size={30} style={{ color: "var(--text3)", marginBottom: 10 }} />
                   <p style={{ color: "var(--text3)", fontSize: 14 }}>{lang === "de" ? "Noch keine Fürbitten" : lang === "fr" ? "Aucune demande d’intercession pour l’instant" : lang === "en" ? "No intercession requests yet" : "아직 중보기도 요청이 없어요"}</p>
                 </div>
               ) : (
@@ -574,7 +582,7 @@ export default function CommunityPage() {
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
                       <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
-                        <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? "✅" : "🙏"}</span>
+                        <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
                           {prayedIds.includes(p.id)
                             ? (lang === "de" ? `Gebetet${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : lang === "fr" ? `J'ai prié${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : lang === "en" ? `Prayed${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}` : ""}` : `기도했어요${(p.prayer_count ?? 0) > 0 ? ` · ${p.prayer_count}명` : ""}`)
@@ -613,18 +621,18 @@ export default function CommunityPage() {
                       {/* 간증 */}
                       {p.testimony && (
                         <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{lang === "de" ? "🙌 Gebetszeugnis" : lang === "fr" ? "🙌 Témoignage de prière" : lang === "en" ? "🙌 Prayer testimony" : "🙌 기도 응답 간증"}</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{lang === "de" ? "Gebetszeugnis" : lang === "fr" ? "Témoignage de prière" : lang === "en" ? "Prayer testimony" : "기도 응답 간증"}</p>
                           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                         </div>
                       )}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{lang === "de" ? "✅ Erhört" : lang === "fr" ? "✅ Exaucée" : lang === "en" ? "✅ Answered" : "✅ 응답됨"}</span>
+                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{lang === "de" ? "Erhört" : lang === "fr" ? "Exaucée" : lang === "en" ? "Answered" : "응답됨"}</span>
                           {(p.prayer_count ?? 0) > 0 && (
                             <span style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? `· ${p.prayer_count} haben mitgebetet` : lang === "fr" ? `· ${p.prayer_count} ont prié ensemble` : lang === "en" ? `· ${p.prayer_count} prayed together` : `· ${p.prayer_count}명이 함께 기도했어요`}</span>
                           )}
                         </div>
-                        {/* ❤️ 좋아요 */}
+                        {/* 좋아요 */}
                         <button
                           onClick={async () => {
                             const key = `prayer_liked_${p.id}`;
@@ -638,7 +646,7 @@ export default function CommunityPage() {
                           style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 20 }}
                         >
                           <span style={{ fontSize: 18, transition: "transform 0.2s", transform: localStorage.getItem(`prayer_liked_${p.id}`) ? "scale(1.1)" : "scale(1)" }}>
-                            {localStorage.getItem(`prayer_liked_${p.id}`) ? "❤️" : "🤍"}
+                            <Heart size={17} fill={localStorage.getItem(`prayer_liked_${p.id}`) ? "currentColor" : "none"} />
                           </span>
                           {(p.like_count ?? 0) > 0 && (
                             <span style={{ fontSize: 12, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "var(--terra)" : "var(--text3)", fontWeight: 600 }}>
@@ -659,7 +667,7 @@ export default function CommunityPage() {
             <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>{lang === "de" ? "In der Gemeinde geteilte QTs" : lang === "fr" ? "QT partagés dans la communauté" : lang === "en" ? "QTs shared in the community" : "전체 커뮤니티에 공유된 큐티예요"}</p>
             {qtShares.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <p style={{ fontSize: 32, marginBottom: 10 }}>📖</p>
+                <BookOpen size={30} style={{ color: "var(--text3)", marginBottom: 10 }} />
                 <p style={{ color: "var(--text3)", fontSize: 14 }}>{lang === "de" ? "Noch keine geteilten QTs" : lang === "fr" ? "Aucun QT partagé pour l’instant" : lang === "en" ? "No shared QTs yet" : "아직 나눈 큐티가 없어요"}</p>
               </div>
             ) : (
@@ -668,7 +676,7 @@ export default function CommunityPage() {
                   <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} emoji="📖" />
+                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "fr" ? "Inconnu" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
                       <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
