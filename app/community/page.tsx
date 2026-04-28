@@ -60,6 +60,9 @@ export default function CommunityPage() {
   // 중보기도
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
 
+  // 기도 응답 좋아요: user_id + prayer_id 기준으로 1회만 허용
+  const [likedPrayerIds, setLikedPrayerIds] = useState<string[]>([]);
+
   // 큐티 반응: { [qtId]: { bless: 3, cheer: 1, pray: 2 } }
   const [qtReactionCounts, setQtReactionCounts] = useState<Record<string, Record<string, number>>>({});
   // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
@@ -136,7 +139,27 @@ export default function CommunityPage() {
         .order("answered_at", { ascending: false });
       if (answered) {
         const profMap2 = await fetchProfiles(supabase, answered);
-        setAnsweredPrayers(answered.map((r: any) => ({ ...r, profiles: profMap2[r.user_id] ?? null })));
+        const answeredIds = answered.map((r: any) => r.id);
+        let likeCounts: Record<string, number> = {};
+        let myLikedIds: string[] = [];
+
+        if (answeredIds.length > 0) {
+          const { data: likes } = await supabase
+            .from("prayer_likes")
+            .select("prayer_id,user_id")
+            .in("prayer_id", answeredIds);
+
+          (likes ?? []).forEach((like: any) => {
+            likeCounts[like.prayer_id] = (likeCounts[like.prayer_id] ?? 0) + 1;
+            if (like.user_id === user.id) myLikedIds.push(like.prayer_id);
+          });
+        }
+
+        setLikedPrayerIds(myLikedIds);
+        setAnsweredPrayers(answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })));
+      } else {
+        setLikedPrayerIds([]);
+        setAnsweredPrayers([]);
       }
 
     } else if (tab === "qt") {
@@ -635,21 +658,26 @@ export default function CommunityPage() {
                         {/* 좋아요 */}
                         <button
                           onClick={async () => {
-                            const key = `prayer_liked_${p.id}`;
-                            const alreadyLiked = localStorage.getItem(key);
-                            if (alreadyLiked) return; // 중복 방지
-                            localStorage.setItem(key, "true");
-                            const newCount = (p.like_count ?? 0) + 1;
-                            await createClient().from("prayer_items").update({ like_count: newCount }).eq("id", p.id);
-                            setAnsweredPrayers(prev => prev.map(ap => ap.id === p.id ? { ...ap, like_count: newCount } : ap));
+                            if (!userId || likedPrayerIds.includes(p.id)) return;
+                            const supabase = createClient();
+                            const { error } = await supabase
+                              .from("prayer_likes")
+                              .insert({ prayer_id: p.id, user_id: userId });
+
+                            // 23505 = unique violation. 이미 누른 경우에는 화면만 동기화합니다.
+                            if (error && error.code !== "23505") return;
+
+                            setLikedPrayerIds(prev => prev.includes(p.id) ? prev : [...prev, p.id]);
+                            setAnsweredPrayers(prev => prev.map(ap => ap.id === p.id ? { ...ap, like_count: Math.max(ap.like_count ?? 0, (p.like_count ?? 0) + 1) } : ap));
                           }}
-                          style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 20 }}
+                          disabled={likedPrayerIds.includes(p.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: likedPrayerIds.includes(p.id) ? "default" : "pointer", padding: "4px 8px", borderRadius: 20 }}
                         >
-                          <span style={{ fontSize: 18, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: localStorage.getItem(`prayer_liked_${p.id}`) ? "scale(1.1)" : "scale(1)" }}>
-                            <Heart size={17} strokeWidth={1.9} fill={localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "none"} />
+                          <span style={{ fontSize: 18, color: likedPrayerIds.includes(p.id) ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: likedPrayerIds.includes(p.id) ? "scale(1.1)" : "scale(1)" }}>
+                            <Heart size={17} strokeWidth={1.9} fill={likedPrayerIds.includes(p.id) ? "#E05050" : "none"} />
                           </span>
                           {(p.like_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 12, color: localStorage.getItem(`prayer_liked_${p.id}`) ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
+                            <span style={{ fontSize: 12, color: likedPrayerIds.includes(p.id) ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
                               {p.like_count}
                             </span>
                           )}
