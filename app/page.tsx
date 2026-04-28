@@ -53,6 +53,21 @@ type HomeQTState = {
   todaySchedule: QTSchedule | null;
 };
 
+function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return fallback;
+
+    return fallback.map((fallbackValue, index) =>
+      typeof parsed[index] === "boolean" ? parsed[index] : fallbackValue
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -190,9 +205,8 @@ export default function HomePage() {
       const decisions = completedQt.decision.split("\n").filter((d: string) => d.trim());
       const { data: dc } = await supabase.from("daily_checkins")
         .select("decisions_done").eq("user_id", user.id).eq("date", today).maybeSingle();
-      const doneList: boolean[] = dc?.decisions_done
-        ? JSON.parse(dc.decisions_done)
-        : decisions.map(() => false);
+      const defaultDoneList = decisions.map(() => false);
+      const doneList = parseDecisionDoneList(dc?.decisions_done, defaultDoneList);
       setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
     } else {
       setMyDecisions([]);
