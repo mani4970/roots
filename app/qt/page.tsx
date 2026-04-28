@@ -133,6 +133,7 @@ export default function QTPage() {
   }
 
   const dateLocale = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
+  const isSundayToday = new Date().getDay() === 0;
 
   return (
     <div className="page">
@@ -287,23 +288,34 @@ export default function QTPage() {
             </div>
             <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => {
-                  if (new Date().getDay() === 0) {
+              <button
+                disabled={isSundayToday}
+                onClick={() => {
+                  if (isSundayToday) {
                     showToast(t("qt_sunday_required", lang));
                     return;
                   }
                   startQT("6step");
-                }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: new Date().getDay() === 0 ? "1px solid var(--border)" : "1px solid var(--sage)", background: new Date().getDay() === 0 ? "var(--bg3)" : "var(--sage-light)", cursor: "pointer", textAlign: "left", opacity: new Date().getDay() === 0 ? 0.6 : 1 }}>
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border)" : "1px solid var(--sage)", background: isSundayToday ? "var(--bg3)" : "var(--sage-light)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
+              >
                 <span style={{ fontSize: 28 }}>📖</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: new Date().getDay() === 0 ? "var(--text3)" : "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--text3)" : "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_6step_desc", lang)}</p>
                 </div>
               </button>
-              <button onClick={() => startQT("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: new Date().getDay() === 0 ? "1px solid var(--sage)" : "1px solid var(--border)", background: new Date().getDay() === 0 ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button
+                disabled={!isSundayToday}
+                onClick={() => {
+                  if (!isSundayToday) return;
+                  startQT("sunday");
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--sage)" : "1px solid var(--border)", background: isSundayToday ? "var(--sage-light)" : "var(--bg3)", cursor: isSundayToday ? "pointer" : "not-allowed", textAlign: "left", opacity: isSundayToday ? 1 : 0.6 }}
+              >
                 <span style={{ fontSize: 28 }}>🙌</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: new Date().getDay() === 0 ? "var(--sage-dark)" : "var(--text)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--sage-dark)" : "var(--text3)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_sunday_desc", lang)}</p>
                 </div>
               </button>
