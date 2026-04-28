@@ -245,7 +245,7 @@ export default function ProfilePage() {
         <button
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
           aria-label={lang === "de" ? "Kontoeinstellungen" : lang === "fr" ? "Paramètres du compte" : lang === "en" ? "Account settings" : "계정 설정"}
-          style={{ position: "absolute", top: 18, right: 18, width: 36, height: 36, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}
+          style={{ position: "absolute", top: 72, right: 20, width: 36, height: 36, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}
         >
           <Settings size={17} />
         </button>
