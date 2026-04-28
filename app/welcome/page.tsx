@@ -1,8 +1,7 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { saveLangLocally } from "@/lib/useLang";
 import styles from "./page.module.css";
 
@@ -17,10 +16,6 @@ const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
   { code: "fr", flag: "🇫🇷", name: "Français" },
 ];
 
-// tree1 = Day 0, tree2 = Day 10, ..., tree11 = Day 100
-const STAGE_DAYS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-const MILESTONES = [0, 25, 50, 75, 100];
-
 
 // ── Translations ───────────────────────────────────────────────────
 
@@ -30,6 +25,8 @@ const TEXTS: Record<Lang, {
   growthEyebrow: string;
   growthTitle: string;
   growthSub: string;
+  growthStart: string;
+  growthEnd: string;
   badgeLabel: string;
   badgeSub: string;
   badgeNames: string[];
@@ -48,8 +45,10 @@ const TEXTS: Record<Lang, {
       "믿음의 뿌리를 깊이 내려보세요.",
     ],
     growthEyebrow: "나의 정원",
-    growthTitle: "하루의 루틴이\n조용히 자라납니다",
-    growthSub: "100일의 여정마다 성령의 열매 배지를 받습니다.",
+    growthTitle: "100일 동안 자라는\n나의 정원",
+    growthSub: "매일 QT와 기도를 통해 영적 습관을 쌓아가면,\n100일 후 말씀의 뿌리가 깊게 심겨지고\n열매를 맺는 아름다운 나의 정원이 됩니다.",
+    growthStart: "시작",
+    growthEnd: "100일 후",
     badgeLabel: "성령의 열매와 신앙의 결실",
     badgeSub: "성령의 열매뿐 아니라 신앙의 결실을 이룰 때마다 배지를 받으며\n즐겁게 영적 습관을 형성해 나가요.",
     badgeNames: ["사랑", "희락", "화평", "오래 참음", "자비", "양선", "충성", "온유", "절제"],
@@ -74,8 +73,10 @@ const TEXTS: Record<Lang, {
       "and let quiet roots grow deeper.",
     ],
     growthEyebrow: "My Garden",
-    growthTitle: "Small daily rhythms\nbecome deep roots",
-    growthSub: "Every 100 days, receive a Fruit of the Spirit badge.",
+    growthTitle: "A garden that grows\nfor 100 days",
+    growthSub: "As you build a spiritual habit through daily QT and prayer,\nafter 100 days the roots of the Word are planted deeply\nand become a beautiful garden that bears fruit.",
+    growthStart: "Start",
+    growthEnd: "After 100 days",
     badgeLabel: "Fruits of the Spirit and faith milestones",
     badgeSub: "As your faith bears fruit, you collect badges and build a joyful spiritual habit step by step.",
     badgeNames: ["Love", "Joy", "Peace", "Patience", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"],
@@ -100,8 +101,10 @@ const TEXTS: Record<Lang, {
       "und lassen Sie stille Wurzeln wachsen.",
     ],
     growthEyebrow: "Mein Garten",
-    growthTitle: "Kleine tägliche Schritte\nwerden zu tiefen Wurzeln",
-    growthSub: "Alle 100 Tage erhalten Sie eine Frucht des Geistes.",
+    growthTitle: "Ein Garten, der\n100 Tage wächst",
+    growthSub: "Wenn Sie durch tägliche QT und Gebet eine geistliche Gewohnheit aufbauen,\nwerden nach 100 Tagen die Wurzeln des Wortes tief eingepflanzt\nund Ihr Garten trägt schöne Frucht.",
+    growthStart: "Start",
+    growthEnd: "Nach 100 Tagen",
     badgeLabel: "Früchte des Geistes und Glaubensschritte",
     badgeSub: "Wenn Ihr Glaube Frucht trägt, sammeln Sie Abzeichen und formen Schritt für Schritt eine Freude an geistlichen Gewohnheiten.",
     badgeNames: ["Liebe", "Freude", "Friede", "Geduld", "Freundlichkeit", "Güte", "Treue", "Sanftmut", "Selbstbeherrschung"],
@@ -126,8 +129,10 @@ const TEXTS: Record<Lang, {
       "et laissez les racines grandir en silence.",
     ],
     growthEyebrow: "Mon jardin",
-    growthTitle: "De petits pas quotidiens\ndeviennent des racines profondes",
-    growthSub: "Tous les 100 jours, recevez un fruit de l’Esprit.",
+    growthTitle: "Un jardin qui grandit\npendant 100 jours",
+    growthSub: "En cultivant une habitude spirituelle par le QT et la prière chaque jour,\naprès 100 jours les racines de la Parole s’enfoncent profondément\net deviennent un beau jardin qui porte du fruit.",
+    growthStart: "Début",
+    growthEnd: "Après 100 jours",
     badgeLabel: "Fruits de l’Esprit et étapes de foi",
     badgeSub: "À chaque fruit porté dans la foi, vous recevez des badges et construisez avec joie une habitude spirituelle.",
     badgeNames: ["Amour", "Joie", "Paix", "Patience", "Bienveillance", "Bonté", "Fidélité", "Douceur", "Maîtrise"],
@@ -222,12 +227,6 @@ export default function WelcomePage() {
   const [lang, setLang] = useState<Lang>("ko");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Tree animation state
-  const [treeStage, setTreeStage] = useState(1); // 1–11
-  const [displayDay, setDisplayDay] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rafRef = useRef<number | null>(null);
-
   const tx = TEXTS[lang];
   const currentLangMeta = LANG_LIST.find((l) => l.code === lang)!;
 
@@ -238,42 +237,6 @@ export default function WelcomePage() {
       setLang(stored as Lang);
     }
   }, []);
-
-  // Animate day counter
-  const animateDay = useCallback((from: number, to: number) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const duration = 700;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      setDisplayDay(Math.round(from + (to - from) * ease));
-      if (t < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  // Tree stage cycling
-  useEffect(() => {
-    setTreeStage(1);
-    setDisplayDay(0);
-
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setTreeStage((prev) => {
-        const next = prev >= 11 ? 1 : prev + 1;
-        const fromDay = STAGE_DAYS[prev - 1];
-        const toDay = STAGE_DAYS[next - 1];
-        animateDay(fromDay, toDay);
-        return next;
-      });
-    }, 1600);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [animateDay]);
 
   function selectLang(code: Lang) {
     setLang(code);
@@ -291,7 +254,6 @@ export default function WelcomePage() {
     router.push("/login");
   }
 
-  const progressPct = ((treeStage - 1) / 10) * 100;
 
   return (
     <div className={styles.page}>
@@ -363,45 +325,35 @@ export default function WelcomePage() {
             <div className={styles.growthSub}>{tx.growthSub}</div>
           </div>
 
-          {/* Tree frames — crossfade */}
-          <div className={styles.treeStage}>
-            {Array.from({ length: 11 }, (_, i) => (
-              <div
-                key={i + 1}
-                className={`${styles.treeFrame} ${treeStage === i + 1 ? styles.treeFrameVisible : ""}`}
-              >
+          {/* Tree start → 100 days */}
+          <div className={styles.growthCompare}>
+            <div className={styles.growthTreeCard}>
+              <div className={styles.growthTreeImage}>
                 <Image
-                  src={`/tree${i + 1}.png`}
-                  alt={`tree stage ${i + 1}`}
+                  src="/tree1.png"
+                  alt={tx.growthStart}
                   fill
                   className={styles.treeFrameImg}
                   style={{ objectFit: "cover", imageRendering: "pixelated" }}
-                  priority={i === 0}
+                  priority
                 />
               </div>
-            ))}
-
-            {/* Day badge overlay */}
-            <div className={styles.dayBadge}>
-              <span className={styles.dayBadgeNum}>Day {displayDay}</span>
-              <span className={styles.dayBadgeLabel}>/ 100</span>
+              <div className={styles.growthTreeLabel}>{tx.growthStart}</div>
             </div>
-          </div>
 
-          {/* Progress bar */}
-          <div className={styles.growthProgress}>
-            <div className={styles.progressBarTrack}>
-              <div className={styles.progressBarFill} style={{ width: `${progressPct}%` }} />
-            </div>
-            <div className={styles.progressMilestones}>
-              {MILESTONES.map((m) => (
-                <span
-                  key={m}
-                  className={`${styles.milestone} ${STAGE_DAYS[treeStage - 1] >= m ? styles.milestonePassed : ""}`}
-                >
-                  Day {m}
-                </span>
-              ))}
+            <div className={styles.growthArrow}>→</div>
+
+            <div className={styles.growthTreeCard}>
+              <div className={styles.growthTreeImage}>
+                <Image
+                  src="/tree11.png"
+                  alt={tx.growthEnd}
+                  fill
+                  className={styles.treeFrameImg}
+                  style={{ objectFit: "cover", imageRendering: "pixelated" }}
+                />
+              </div>
+              <div className={styles.growthTreeLabel}>{tx.growthEnd}</div>
             </div>
           </div>
         </div>
