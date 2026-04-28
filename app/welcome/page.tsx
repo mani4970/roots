@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveLangLocally } from "@/lib/useLang";
+import { storageGet } from "@/lib/clientStorage";
 import styles from "./page.module.css";
 
 // ── Types & constants ──────────────────────────────────────────────
@@ -232,7 +233,7 @@ export default function WelcomePage() {
 
   // Restore saved lang
   useEffect(() => {
-    const stored = localStorage.getItem("roots_lang");
+    const stored = storageGet("roots_lang");
     if (stored && ["ko", "de", "en", "fr"].includes(stored)) {
       setLang(stored as Lang);
     }

@@ -8,6 +8,7 @@ import { t, type Lang } from "@/lib/i18n";
 import LanguagePicker from "@/components/LanguagePicker";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { Loader2, ChevronLeft } from "lucide-react";
+import { storageGet, storageSet } from "@/lib/clientStorage";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!localStorage.getItem("roots_lang_selected")) {
+    if (!storageGet("roots_lang_selected")) {
       setShowLangPicker(true);
     }
   }, []);
@@ -38,7 +39,7 @@ export default function LoginPage() {
     // preferred_translation도 갱신
     const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
     const trId = defaultTr[lang] ?? 92;
-    localStorage.setItem("roots_default_translation", String(trId));
+    storageSet("roots_default_translation", String(trId));
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("profiles").update({ preferred_translation: trId, preferred_language: lang }).eq("id", user.id);
@@ -49,10 +50,10 @@ export default function LoginPage() {
   async function handleGoogle() {
     setGLoading(true);
     const supabase = createClient();
-    localStorage.setItem("roots_lang", lang);
-    localStorage.setItem("roots_lang_selected", "true");
+    storageSet("roots_lang", lang);
+    storageSet("roots_lang_selected", "true");
     const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
-    localStorage.setItem("roots_default_translation", String(defaultTr[lang] ?? 92));
+    storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?lang=${lang}` },

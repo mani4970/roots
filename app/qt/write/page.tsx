@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { storageGet } from "@/lib/clientStorage";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -257,7 +258,7 @@ function QTWriteContent() {
   const [selectedTranslation, setSelectedTranslation] = useState(() => {
     if (translationParam) return parseInt(translationParam);
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("roots_default_translation");
+      const saved = storageGet("roots_default_translation");
       if (saved) return parseInt(saved);
     }
     return 92;

@@ -18,6 +18,7 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { storageGet, storageSet } from "@/lib/clientStorage";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -107,7 +108,7 @@ export default function HomePage() {
 
   async function load() {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("roots_theme");
+      const saved = storageGet("roots_theme");
       if (saved === "light") {
         document.documentElement.setAttribute("data-theme", "light");
         setTheme("light");
@@ -132,8 +133,8 @@ export default function HomePage() {
         const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
         const missedDays = Math.max(0, diffDays - 1);
         const welcomeKey = `welcome_back_${getLocalDateString()}`;
-        if (missedDays >= 1 && !localStorage.getItem(welcomeKey)) {
-          localStorage.setItem(welcomeKey, "true");
+        if (missedDays >= 1 && !storageGet(welcomeKey)) {
+          storageSet(welcomeKey, "true");
           setWelcomeBackDays(missedDays);
           setShowWelcomeBack(true);
         }
@@ -199,23 +200,23 @@ export default function HomePage() {
 
     setTodayDone({ qt: !!completedQt, prayer: prayerChecked });
 
-    if (localStorage.getItem(`celebrated_${today}`)) {
+    if (storageGet(`celebrated_${today}`)) {
       celebrationShownRef.current = true;
     }
     if (isFirstLaunch()) {
       setShowFirstLangPicker(true);
     }
-    if (!localStorage.getItem("onboarding_done")) { setShowOnboarding(true); }
+    if (!storageGet("onboarding_done")) { setShowOnboarding(true); }
     setLoading(false);
   }
 
   useEffect(() => {
-    const onboardingDone = localStorage.getItem("onboarding_done");
+    const onboardingDone = storageGet("onboarding_done");
     if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
       const today = getLocalDateString();
-      if (!localStorage.getItem(`celebrated_${today}`)) {
+      if (!storageGet(`celebrated_${today}`)) {
         celebrationShownRef.current = true;
-        localStorage.setItem(`celebrated_${today}`, "true");
+        storageSet(`celebrated_${today}`, "true");
         updateStreak(today);
         enqueueCelebration({
           message: t("home_celebration_title", lang),
@@ -305,8 +306,8 @@ export default function HomePage() {
     const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
       const gardenKey = `garden_shown_${streak}`;
-      if (!localStorage.getItem(gardenKey)) {
-        localStorage.setItem(gardenKey, "true");
+      if (!storageGet(gardenKey)) {
+        storageSet(gardenKey, "true");
         setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
       }
     }
@@ -455,7 +456,7 @@ export default function HomePage() {
         });
       }
     }
-    if (!celebrationShownRef.current && !localStorage.getItem(`celebrated_${today}`)) {
+    if (!celebrationShownRef.current && !storageGet(`celebrated_${today}`)) {
       enqueueCelebration({ message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
     }
   }
@@ -744,10 +745,10 @@ export default function HomePage() {
               const isLight = html.getAttribute("data-theme") === "light";
               if (isLight) {
                 html.removeAttribute("data-theme");
-                localStorage.setItem("roots_theme", "dark");
+                storageSet("roots_theme", "dark");
               } else {
                 html.setAttribute("data-theme", "light");
-                localStorage.setItem("roots_theme", "light");
+                storageSet("roots_theme", "light");
               }
               setTheme(isLight ? "dark" : "light");
             }}

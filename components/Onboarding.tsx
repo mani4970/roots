@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
+import { storageSet } from "@/lib/clientStorage";
 
 export default function Onboarding({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(0);
@@ -62,7 +63,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
   const isLast = page === SLIDES.length - 1;
 
   function neverShow() {
-    localStorage.setItem("onboarding_done", "true");
+    storageSet("onboarding_done", "true");
     onClose();
   }
 

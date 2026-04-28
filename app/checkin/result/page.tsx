@@ -7,6 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
+import { storageGet } from "@/lib/clientStorage";
 
 function ResultContent() {
   const params = useSearchParams();
@@ -21,7 +22,7 @@ function ResultContent() {
   const [langReady, setLangReady] = useState(false);
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("roots_lang");
+      const stored = storageGet("roots_lang");
       if (stored && stored !== "ko") {
         // useLang이 아직 "ko"인데 stored는 "de" → 기다림
         if (lang !== stored) return;
@@ -39,7 +40,7 @@ function ResultContent() {
         if (!user) return;
 
         const today = getLocalDateString();
-        const translationId = Number(localStorage.getItem("roots_default_translation") ?? getDefaultTranslationId(lang));
+        const translationId = Number(storageGet("roots_default_translation") ?? getDefaultTranslationId(lang));
 
         // 오늘 이미 같은 언어/번역본의 말씀이 있으면 API 호출 없이 기존 말씀 사용
         const { data: existing } = await supabase

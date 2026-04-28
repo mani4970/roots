@@ -7,6 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
+import { storageSetJson } from "@/lib/clientStorage";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2 } from "lucide-react";
 
 const REACTIONS = [
@@ -122,7 +123,7 @@ export default function CommunityPage() {
       .select("prayer_id").eq("user_id", user.id);
     const dbPrayed = (prayLogs ?? []).map((r: any) => r.prayer_id);
     setPrayedIds(dbPrayed);
-    localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify(dbPrayed));
+    storageSetJson(`comm_prayed_${user.id}`, dbPrayed);
 
     if (tab === "prayer") {
       // 기도 중 (미응답)
@@ -297,7 +298,7 @@ export default function CommunityPage() {
     const newCount = cur?.prayer_count ?? 1;
 
     setPrayedIds(prev => [...prev, id]);
-    localStorage.setItem(`comm_prayed_${user.id}`, JSON.stringify([...prayedIds, id]));
+    storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
 
     // 바울 뱃지 체크 (함께 기도 30번)

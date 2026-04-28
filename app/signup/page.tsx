@@ -7,6 +7,7 @@ import { setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { Loader2, ChevronLeft } from "lucide-react";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
+import { storageSet } from "@/lib/clientStorage";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -23,10 +24,10 @@ export default function SignupPage() {
   async function handleGoogle() {
     setGLoading(true);
     const supabase = createClient();
-    localStorage.setItem("roots_lang", lang);
-    localStorage.setItem("roots_lang_selected", "true");
+    storageSet("roots_lang", lang);
+    storageSet("roots_lang_selected", "true");
     const d: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
-    localStorage.setItem("roots_default_translation", String(d[lang] ?? 92));
+    storageSet("roots_default_translation", String(d[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?lang=${lang}` },
@@ -39,8 +40,8 @@ export default function SignupPage() {
     setLoading(true); setError("");
     const supabase = createClient();
     // 언어 설정도 함께 저장
-    localStorage.setItem("roots_lang", lang);
-    localStorage.setItem("roots_lang_selected", "true");
+    storageSet("roots_lang", lang);
+    storageSet("roots_lang_selected", "true");
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

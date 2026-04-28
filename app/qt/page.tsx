@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
+import { storageGet, storageSet } from "@/lib/clientStorage";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
@@ -60,7 +61,7 @@ export default function QTPage() {
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("roots_default_translation");
+      const saved = storageGet("roots_default_translation");
       if (saved) return parseInt(saved);
     }
     return 92;
@@ -107,7 +108,7 @@ export default function QTPage() {
 
     const { data: prof } = await supabase.from("profiles")
       .select("preferred_translation").eq("id", user.id).single();
-    if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); localStorage.setItem("roots_default_translation", String(prof.preferred_translation)); }
+    if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); storageSet("roots_default_translation", String(prof.preferred_translation)); }
 
     setLoading(false);
   }
@@ -375,7 +376,7 @@ export default function QTPage() {
               {guidePage < QT_GUIDE_KEYS.length - 1 ? (
                 <button onClick={() => setGuidePage(p => p + 1)} className="btn-sage" style={{ flex: 2 }}>{t("qt_guide_next", lang)}</button>
               ) : (
-                <button onClick={() => { localStorage.setItem("qt_guide_done", "true"); setShowGuideModal(false); setShowStartModal(true); }} className="btn-sage" style={{ flex: 2 }}>
+                <button onClick={() => { storageSet("qt_guide_done", "true"); setShowGuideModal(false); setShowStartModal(true); }} className="btn-sage" style={{ flex: 2 }}>
                   {t("qt_guide_start", lang)}
                 </button>
               )}
