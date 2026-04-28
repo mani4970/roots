@@ -12,6 +12,30 @@ function normalizeLang(value: unknown): Lang {
   return value === "de" || value === "en" || value === "fr" || value === "ko" ? value : "ko";
 }
 
+function normalizeTranslationId(value: unknown, lang: Lang): number {
+  const fallback = getDefaultTranslationId(lang);
+
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= 9999) {
+    return value;
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 9999) return parsed;
+  }
+
+  return fallback;
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeEmotionKey(value: unknown): string | null {
+  if (Array.isArray(value)) return normalizeOptionalString(value[0]);
+  return normalizeOptionalString(value);
+}
+
 async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, translationId: number) {
   if (refItem.startChapter === refItem.endChapter) {
     const url = new URL("/api/bible", origin);
@@ -90,17 +114,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    lang = normalizeLang(body.lang);
-    const emotions = body.emotions;
-    const emotionKey = Array.isArray(emotions) ? emotions[0] : emotions;
-    const translationId = Number(body.translationId ?? body.translation_id ?? getDefaultTranslationId(lang));
+    lang = normalizeLang(body?.lang);
+    const emotionKey = normalizeEmotionKey(body?.emotions);
+    const translationId = normalizeTranslationId(body?.translationId ?? body?.translation_id, lang);
 
     const picked = pickEmotionVerseRef({
       emotionKey,
-      userId: body.userId ?? body.user_id ?? null,
-      date: body.date ?? null,
-      prevVerseRefId: body.prevVerseRefId ?? body.prev_verse_ref_id ?? null,
-      prevReference: body.prevReference ?? body.prev_reference ?? null,
+      userId: normalizeOptionalString(body?.userId ?? body?.user_id),
+      date: normalizeOptionalString(body?.date),
+      prevVerseRefId: normalizeOptionalString(body?.prevVerseRefId ?? body?.prev_verse_ref_id),
+      prevReference: normalizeOptionalString(body?.prevReference ?? body?.prev_reference),
     });
 
     const koReference = formatKoReference(picked);

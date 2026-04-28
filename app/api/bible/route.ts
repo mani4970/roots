@@ -54,67 +54,120 @@ const BOOK_MAP_FR: Record<string, number> = {
 };
 
 function getBookNum(book: string): number | null {
-  return BOOK_MAP_KO[book] ?? BOOK_MAP_EN[book] ?? BOOK_MAP_DE[book] ?? BOOK_MAP_FR[book] ?? null;
+  const normalized = book.trim();
+  return BOOK_MAP_KO[normalized] ?? BOOK_MAP_EN[normalized] ?? BOOK_MAP_DE[normalized] ?? BOOK_MAP_FR[normalized] ?? null;
 }
-// 책 번호 약어 (reference 표시용)
-const BOOK_SHORT: Record<string, string> = {
-  "창세기": "창", "출애굽기": "출", "레위기": "레", "민수기": "민", "신명기": "신",
-  "여호수아": "수", "사사기": "삿", "룻기": "룻", "사무엘상": "삼상", "사무엘하": "삼하",
-  "열왕기상": "왕상", "열왕기하": "왕하", "역대상": "대상", "역대하": "대하", "에스라": "스",
-  "느헤미야": "느", "에스더": "에", "욥기": "욥", "시편": "시", "잠언": "잠",
-  "전도서": "전", "아가": "아", "이사야": "사", "예레미야": "렘", "예레미야애가": "애",
-  "에스겔": "겔", "다니엘": "단", "호세아": "호", "요엘": "욜", "아모스": "암",
-  "오바댜": "옵", "요나": "욘", "미가": "미", "나훔": "나", "하박국": "합",
-  "스바냐": "습", "학개": "학", "스가랴": "슥", "말라기": "말",
-  "마태복음": "마", "마가복음": "막", "누가복음": "눅", "요한복음": "요",
-  "사도행전": "행", "로마서": "롬", "고린도전서": "고전", "고린도후서": "고후",
-  "갈라디아서": "갈", "에베소서": "엡", "빌립보서": "빌", "골로새서": "골",
-  "데살로니가전서": "살전", "데살로니가후서": "살후", "디모데전서": "딤전", "디모데후서": "딤후",
-  "디도서": "딛", "빌레몬서": "몬", "히브리서": "히", "야고보서": "약",
-  "베드로전서": "벧전", "베드로후서": "벧후", "요한일서": "요일", "요한이서": "요이",
-  "요한삼서": "요삼", "유다서": "유", "요한계시록": "계",
-};
 
 const API_BASE = "https://bible.asher.design/api/v1";
+const MAX_VERSE = 176;
+const MAX_VERSE_RANGE = 176;
+const FETCH_TIMEOUT_MS = 10_000;
+
+type VerseApiItem = {
+  verse?: number | string;
+  text?: string;
+};
+
+function parsePositiveInteger(value: string | null, fallback: number): number | null {
+  if (value == null || value === "") return fallback;
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+function buildBibleApiUrl(params: {
+  translationId: number;
+  bookNum: number;
+  chapter: number;
+  startVerse: number;
+  endVerse: number;
+}) {
+  const url = new URL("verse.php", `${API_BASE}/`);
+  url.searchParams.set("translation", String(params.translationId));
+  url.searchParams.set("book", String(params.bookNum));
+  url.searchParams.set("chapter", String(params.chapter));
+  url.searchParams.set("verse", String(params.startVerse));
+
+  if (params.endVerse > params.startVerse) {
+    url.searchParams.set("verse_to", String(params.endVerse));
+  }
+
+  return url.toString();
+}
+
+async function fetchWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      next: { revalidate: 86400 },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const book = searchParams.get("book") ?? "요한복음";
-  const chapter = searchParams.get("chapter") ?? "3";
-  const startVerse = parseInt(searchParams.get("startVerse") ?? "16");
-  const endVerse = parseInt(searchParams.get("endVerse") ?? String(startVerse));
-  const translationId = searchParams.get("translation") ?? "92"; // 기본: 개역개정
+  const book = (searchParams.get("book") ?? "요한복음").trim();
+  const chapter = parsePositiveInteger(searchParams.get("chapter"), 3);
+  const startVerse = parsePositiveInteger(searchParams.get("startVerse"), 16);
+  const endVerse = parsePositiveInteger(searchParams.get("endVerse"), startVerse ?? 16);
+  const translationId = parsePositiveInteger(searchParams.get("translation"), 92);
+
+  if (!book) return jsonError("책 이름이 비어 있어요.", 400);
+  if (chapter == null || chapter > 150) return jsonError("장 번호가 올바르지 않아요.", 400);
+  if (startVerse == null || startVerse > MAX_VERSE) return jsonError("시작 절 번호가 올바르지 않아요.", 400);
+  if (endVerse == null || endVerse > MAX_VERSE) return jsonError("끝 절 번호가 올바르지 않아요.", 400);
+  if (translationId == null || translationId > 9999) return jsonError("번역본 ID가 올바르지 않아요.", 400);
+  if (endVerse < startVerse) return jsonError("끝 절은 시작 절보다 작을 수 없어요.", 400);
+  if (endVerse - startVerse + 1 > MAX_VERSE_RANGE) return jsonError("요청한 본문 범위가 너무 길어요.", 400);
 
   const bookNum = getBookNum(book);
   if (!bookNum) {
-    return NextResponse.json({ error: `책 이름을 찾을 수 없어요: ${book}` }, { status: 400 });
+    return jsonError(`책 이름을 찾을 수 없어요: ${book}`, 400);
   }
 
   try {
-    let url = `${API_BASE}/verse.php?translation=${translationId}&book=${bookNum}&chapter=${chapter}&verse=${startVerse}`;
-    if (endVerse > startVerse) url += `&verse_to=${endVerse}`;
+    const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
+    const res = await fetchWithTimeout(url);
 
-    const res = await fetch(url, { next: { revalidate: 86400 } });
-    const json = await res.json();
-
-    if (!json.ok || !json.data?.gospel) {
-      return NextResponse.json({ error: "본문을 불러올 수 없어요." }, { status: 404 });
+    if (!res.ok) {
+      return jsonError("본문을 불러올 수 없어요.", 404);
     }
 
-    const verses = json.data.gospel.map((v: any) => ({
-      num: v.verse,
-      text: v.text,
-    }));
+    const json = await res.json();
+
+    if (!json?.ok || !Array.isArray(json.data?.gospel)) {
+      return jsonError("본문을 불러올 수 없어요.", 404);
+    }
+
+    const verses = json.data.gospel
+      .map((v: VerseApiItem) => ({
+        num: Number(v.verse),
+        text: String(v.text ?? "").trim(),
+      }))
+      .filter((v: { num: number; text: string }) => Number.isFinite(v.num) && v.text);
+
+    if (verses.length === 0) {
+      return jsonError("본문을 불러올 수 없어요.", 404);
+    }
 
     const reference = endVerse > startVerse
       ? `${book} ${chapter}:${startVerse}-${endVerse}`
       : `${book} ${chapter}:${startVerse}`;
 
-    const fullText = verses.map((v: any) => `${v.num} ${v.text}`).join("\n");
+    const fullText = verses.map((v: { num: number; text: string }) => `${v.num} ${v.text}`).join("\n");
 
-    return NextResponse.json({ text: fullText, verses, reference, version: translationId });
+    return NextResponse.json({ text: fullText, verses, reference, version: String(translationId) });
 
   } catch (e) {
-    return NextResponse.json({ error: "네트워크 오류가 발생했어요" }, { status: 500 });
+    return jsonError("네트워크 오류가 발생했어요", 500);
   }
 }
