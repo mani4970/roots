@@ -187,23 +187,24 @@ export default function ProfilePage() {
   async function deleteAccount() {
     setDeletingAccount(true);
     try {
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Account deletion failed");
+      }
+
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      // 사용자 데이터 삭제
-      await Promise.all([
-        supabase.from("qt_records").delete().eq("user_id", user.id),
-        supabase.from("prayer_items").delete().eq("user_id", user.id),
-        supabase.from("daily_checkins").delete().eq("user_id", user.id),
-        supabase.from("user_prayer_logs").delete().eq("user_id", user.id),
-        supabase.from("profiles").delete().eq("id", user.id),
-      ]);
       await supabase.auth.signOut();
       router.push("/welcome");
     } catch (e) {
+      console.error(e);
       showToast(t("profile_delete_error", lang));
+    } finally {
+      setDeletingAccount(false);
     }
-    setDeletingAccount(false);
   }
 
   function renderCalendar() {

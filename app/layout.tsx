@@ -37,7 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#7A9D7A" />
         <script dangerouslySetInnerHTML={{
           __html: `
-            (function(){var t=localStorage.getItem('roots_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();
+            (function(){
+              try {
+                var t = localStorage.getItem('roots_theme');
+                if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+              } catch (e) {}
+            })();
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').catch(function(err) {

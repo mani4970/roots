@@ -29,3 +29,32 @@ Kept for now:
 - public/manifest.json, updated to use the uploaded sprout icon assets.
 - public/sw.js, updated to cache the new icon assets.
 - markLangSelected in lib/useLang.ts because components/LanguagePicker.tsx still uses it.
+
+## Phase 45 account deletion hardening
+
+Implemented a server-side account deletion route:
+- app/api/account/delete/route.ts
+
+Profile deletion now calls the server route instead of deleting only a few client-side rows:
+- app/profile/page.tsx
+
+The route uses the logged-in Supabase session to identify the user, then uses the server-only service role key to delete:
+- avatar files in the avatars bucket
+- prayer likes/logs related to the user and the user's prayers
+- QT reactions related to the user and the user's QT records
+- daily prayer completions
+- daily check-ins
+- feedback linked to the user
+- group memberships and groups created by the user
+- prayer items
+- QT records
+- profile row
+- Supabase Auth user
+
+Required production environment variable:
+- SUPABASE_SERVICE_ROLE_KEY
+
+Important:
+- SUPABASE_SERVICE_ROLE_KEY must stay server-only.
+- Do not prefix it with NEXT_PUBLIC_.
+- See .env.example.

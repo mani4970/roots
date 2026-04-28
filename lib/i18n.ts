@@ -269,27 +269,6 @@ export const T = {
   onboarding_start: { ko: "시작하기 🌱",               de: "Loslegen 🌱", en: "Start →", fr: "Commencer →" },
   onboarding_skip: { ko: "건너뛰기",                  de: "Überspringen", en: "Skip", fr: "Passer" },
 
-  // ── PWA 홈 화면 추가 안내 ──
-  pwa_title: { ko: "Roots를 홈 화면에 추가하세요 🌱", de: "Roots zum Home-Bildschirm hinzufügen 🌱", en: "Add Roots to your home screen 🌱", fr: "Ajoutez Roots à l’écran d’accueil 🌱" },
-  pwa_desc: { ko: "앱처럼 바로 열고, 매일 말씀·기도·결단 루틴을 이어갈 수 있어요.", de: "Öffnen Sie Roots wie eine App und bleiben Sie täglich bei Wort, Gebet und Entscheidung.", en: "Open Roots like an app and keep your daily Word, prayer, and decision routine.", fr: "Ouvrez Roots comme une application et gardez votre routine quotidienne : Parole, prière et décision." },
-  pwa_onboarding_title: { ko: "홈 화면에 추가해보세요", de: "Zum Home-Bildschirm hinzufügen", en: "Add it to your home screen", fr: "Ajoutez-le à l’écran d’accueil" },
-  pwa_onboarding_desc: { ko: "매일 루틴을 잊지 않도록 Roots를 앱처럼 열 수 있어요.", de: "So können Sie Roots wie eine App öffnen und Ihre tägliche Routine leichter behalten.", en: "Open Roots like an app so your daily routine stays close.", fr: "Ouvrez Roots comme une application pour garder votre routine quotidienne à portée de main." },
-  pwa_after_routine_title: { ko: "매일 루틴을 더 쉽게 이어가세요", de: "Führen Sie Ihre tägliche Routine noch leichter fort", en: "Keep your daily routine easier", fr: "Continuez plus facilement votre routine quotidienne" },
-  pwa_after_routine_desc: { ko: "Roots를 홈 화면에 추가하면 내일도 바로 말씀·기도·결단을 시작할 수 있어요.", de: "Wenn Roots auf dem Home-Bildschirm liegt, können Sie morgen direkt mit Wort, Gebet und Entscheidung beginnen.", en: "Add Roots to your home screen so tomorrow’s Word, prayer, and decision are one tap away.", fr: "Ajoutez Roots à l’écran d’accueil pour retrouver demain la Parole, la prière et la décision en un geste." },
-  pwa_install_button: { ko: "홈 화면에 추가하기", de: "Zum Home-Bildschirm hinzufügen", en: "Add to home screen", fr: "Ajouter à l’écran d’accueil" },
-  pwa_steps_button: { ko: "추가 방법 보기", de: "Anleitung anzeigen", en: "Show how to add", fr: "Voir comment l’ajouter" },
-  pwa_later: { ko: "나중에", de: "Später", en: "Later", fr: "Plus tard" },
-  pwa_ios_title: { ko: "iPhone에서 추가하는 방법", de: "Auf dem iPhone hinzufügen", en: "How to add on iPhone", fr: "Ajouter sur iPhone" },
-  pwa_ios_step1: { ko: "Safari 하단의 공유 버튼을 눌러주세요.", de: "Tippen Sie unten in Safari auf Teilen.", en: "Tap the Share button at the bottom of Safari.", fr: "Touchez le bouton Partager en bas de Safari." },
-  pwa_ios_step2: { ko: "‘홈 화면에 추가’를 선택해주세요.", de: "Wählen Sie „Zum Home-Bildschirm“.", en: "Choose “Add to Home Screen.”", fr: "Choisissez « Sur l’écran d’accueil »." },
-  pwa_ios_step3: { ko: "‘추가’를 누르면 Roots가 앱처럼 열려요.", de: "Tippen Sie auf „Hinzufügen“ – dann öffnet sich Roots wie eine App.", en: "Tap “Add,” and Roots will open like an app.", fr: "Touchez « Ajouter » : Roots s’ouvrira comme une application." },
-  pwa_android_title: { ko: "홈 화면에 추가하는 방법", de: "Auf dem Home-Bildschirm hinzufügen", en: "How to add to home screen", fr: "Ajouter à l’écran d’accueil" },
-  pwa_android_step1: { ko: "브라우저 메뉴(⋮)를 눌러주세요.", de: "Tippen Sie im Browser auf das Menü (⋮).", en: "Tap the browser menu (⋮).", fr: "Touchez le menu du navigateur (⋮)." },
-  pwa_android_step2: { ko: "‘앱 설치’ 또는 ‘홈 화면에 추가’를 선택해주세요.", de: "Wählen Sie „App installieren“ oder „Zum Home-Bildschirm hinzufügen“.", en: "Choose “Install app” or “Add to Home screen.”", fr: "Choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil »." },
-  pwa_android_step3: { ko: "추가하면 Roots를 앱처럼 바로 열 수 있어요.", de: "Danach können Sie Roots wie eine App öffnen.", en: "Once added, you can open Roots like an app.", fr: "Une fois ajouté, vous pourrez ouvrir Roots comme une application." },
-  pwa_profile_button: { ko: "Roots를 홈 화면에 추가하기", de: "Roots zum Home-Bildschirm hinzufügen", en: "Add Roots to home screen", fr: "Ajouter Roots à l’écran d’accueil" },
-
-
   // ── 복귀 팝업 ──
   welcome_back_btn: { ko: "오늘 루틴 시작하기 🌱",   de: "Routine starten 🌱", en: "Start fresh today", fr: "Recommencer aujourd’hui" },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!", fr: "Ça fait longtemps !" },
