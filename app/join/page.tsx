@@ -6,6 +6,13 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { Loader2 } from "lucide-react";
 
+type GroupInvite = {
+  name: string;
+  description: string | null;
+  is_public: boolean;
+  member_count: number | null;
+};
+
 function JoinContent() {
   const router = useRouter();
   const lang = useLang();
@@ -63,9 +70,10 @@ function JoinContent() {
         }
       }
 
-      const { data: invite, error: inviteError } = await supabase
+      const { data: inviteRow, error: inviteError } = await supabase
         .rpc("get_group_invite", { p_group_id: groupId })
         .maybeSingle();
+      const invite = inviteRow as unknown as GroupInvite | null;
 
       if (!inviteError && invite) {
         setGroupName(invite.name);
