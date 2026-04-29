@@ -24,32 +24,14 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     {
       emoji: "📖",
       title: t("onboarding_title3", lang),
-      desc: lang === "de"
-        ? "① Eröffnungsgebet\n② Zusammenfassung\n③ Schlüsselvers\n④ Empfinden & Meditation\n⑤ Anwendung & Entschluss\n⑥ Abschlussgebet"
-        : lang === "en"
-        ? "① Opening Prayer\n② Summary\n③ Key Verse\n④ Reflection & Meditation\n⑤ Application & Resolution\n⑥ Closing Prayer"
-        : lang === "fr"
-        ? "① Prière d'ouverture\n② Résumé\n③ Verset clé\n④ Réflexion & méditation\n⑤ Application & décision\n⑥ Prière finale"
-        : "① 들어가는 기도\n② 본문 요약\n③ 붙잡은 말씀\n④ 느낌과 묵상\n⑤ 적용과 결단\n⑥ 올려드리는 기도",
-      sub: lang === "de"
-        ? "Auch für Anfänger geeignet.\nJeder Schritt wird erklärt."
-        : lang === "en"
-        ? "Suitable for beginners.\nEach step is guided."
-        : lang === "fr"
-        ? "Adapté aux débutants.\nChaque étape est guidée."
-        : "처음이어도 괜찮아요.\n각 단계마다 안내가 있어서 혼자서도 충분히 할 수 있어요.",
+      desc: t("onboarding_desc3", lang),
+      sub: t("onboarding_desc3_sub", lang),
     },
     {
       emoji: "🙏",
       title: t("onboarding_title4", lang),
       desc: t("onboarding_desc4", lang),
-      sub: lang === "de"
-        ? "Im Gebet → Erhörtes Gebet\nGottes Wirken aufzeichnen."
-        : lang === "en"
-        ? "Praying → Answered prayer\nRecord God's work."
-        : lang === "fr"
-        ? "En prière → Prière exaucée\nNotez l'œuvre de Dieu."
-        : "기도 중 → 기도 응답으로\n하나님의 일하심을 기록해가요.",
+      sub: t("onboarding_desc4_sub", lang),
     },
     {
       emoji: "🌳",
