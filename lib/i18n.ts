@@ -35,6 +35,10 @@ export const T = {
     nav_community:  { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté" },
     nav_profile:    { ko: "프로필",   de: "Profil", en: "Profile", fr: "Profil" },
 
+  // ── Celebration ──
+  celebration_default_done: { ko: "완료!", de: "Geschafft!", en: "Done!", fr: "Terminé !" },
+  celebration_tap_to_close: { ko: "탭하면 닫혀요", de: "Antippen zum Schließen", en: "Tap to close", fr: "Appuyez pour fermer" },
+
   // ── 홈 ──
   home_title: { ko: "오늘 루틴",                    de: "Heute", en: "Today", fr: "Aujourd’hui" },
   home_checkin_btn: { ko: "오늘의 말씀 받기",              de: "Tagesvers erhalten", en: "Get today's verse", fr: "Recevoir le verset du jour" },

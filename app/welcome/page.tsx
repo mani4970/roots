@@ -31,6 +31,7 @@ const TEXTS: Record<Lang, {
   badgeLabel: string;
   badgeSub: string;
   badgeNames: string[];
+  featuresLabel: string;
   f1t: string; f1s: string;
   f2t: string; f2s: string;
   f3t: string; f3s: string;
@@ -53,6 +54,7 @@ const TEXTS: Record<Lang, {
     badgeLabel: "성령의 열매와 신앙의 결실",
     badgeSub: "성령의 열매뿐 아니라 신앙의 결실을 이룰 때마다 배지를 받으며\n즐겁게 영적 습관을 형성해 나가요.",
     badgeNames: ["사랑", "희락", "화평", "오래 참음", "자비", "양선", "충성", "온유", "절제"],
+    featuresLabel: "기능",
     f1t: "큐티",
     f1s: "6단계, 자유형식, 주일예배 QT를\n상황에 맞게 기록합니다.",
     f2t: "기도",
@@ -81,6 +83,7 @@ const TEXTS: Record<Lang, {
     badgeLabel: "Fruits of the Spirit and faith milestones",
     badgeSub: "As your faith bears fruit, you collect badges and build a joyful spiritual habit step by step.",
     badgeNames: ["Love", "Joy", "Peace", "Patience", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"],
+    featuresLabel: "Features",
     f1t: "Quiet Time",
     f1s: "Use a 6-step guide, free writing,\nor Sunday worship notes.",
     f2t: "Prayer",
@@ -109,6 +112,7 @@ const TEXTS: Record<Lang, {
     badgeLabel: "Früchte des Geistes und Glaubensschritte",
     badgeSub: "Wenn Ihr Glaube Frucht trägt, sammeln Sie Abzeichen und formen Schritt für Schritt eine Freude an geistlichen Gewohnheiten.",
     badgeNames: ["Liebe", "Freude", "Friede", "Geduld", "Freundlichkeit", "Güte", "Treue", "Sanftmut", "Selbstbeherrschung"],
+    featuresLabel: "Funktionen",
     f1t: "Stille Zeit",
     f1s: "6-Schritte-Guide, freies Schreiben\nund Notizen zum Sonntagsgottesdienst.",
     f2t: "Gebet",
@@ -137,6 +141,7 @@ const TEXTS: Record<Lang, {
     badgeLabel: "Fruits de l’Esprit et étapes de foi",
     badgeSub: "À chaque fruit porté dans la foi, vous recevez des badges et construisez avec joie une habitude spirituelle.",
     badgeNames: ["Amour", "Joie", "Paix", "Patience", "Bienveillance", "Bonté", "Fidélité", "Douceur", "Maîtrise"],
+    featuresLabel: "Fonctions",
     f1t: "Méditation",
     f1s: "Méditez la Parole en 6 étapes\net appliquez-la dans votre vie.\nForme libre & culte du dimanche",
     f2t: "Prière",
@@ -374,7 +379,7 @@ export default function WelcomePage() {
 
         {/* ── Features ── */}
         <div className={styles.sectionLabel} style={{ marginTop: 28 }}>
-          {lang === "ko" ? "기능" : lang === "de" ? "Funktionen" : lang === "fr" ? "Fonctions" : "Features"}
+          {tx.featuresLabel}
         </div>
         <div className={styles.features}>
           {/* Big: Quiet Time */}
