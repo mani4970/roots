@@ -7,7 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { storageSetJson } from "@/lib/clientStorage";
+import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle } from "lucide-react";
 
 const REACTIONS = [
@@ -41,6 +41,26 @@ function sortGroupsForDisplay(groups: any[]) {
     if (!!a.hasNewQt !== !!b.hasNewQt) return a.hasNewQt ? -1 : 1;
     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
   });
+}
+
+function favoriteCacheKey(userId: string) {
+  return `roots_group_favorites_${userId}`;
+}
+
+function readFavoriteCache(userId: string): string[] {
+  return storageGetJson<string[]>(favoriteCacheKey(userId), []);
+}
+
+function writeFavoriteCache(userId: string, groupIds: string[]) {
+  storageSetJson(favoriteCacheKey(userId), Array.from(new Set(groupIds)));
+}
+
+function updateFavoriteCache(userId: string, groupId: string, isFavorite: boolean) {
+  const current = readFavoriteCache(userId);
+  const next = isFavorite
+    ? Array.from(new Set([...current, groupId]))
+    : current.filter((id) => id !== groupId);
+  writeFavoriteCache(userId, next);
 }
 
 function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number; emoji?: string }) {
@@ -201,20 +221,34 @@ export default function CommunityPage() {
 
     } else {
       let memberRows: any[] = [];
-      const { data: fullMemberRows, error: fullMemberError } = await supabase.from("group_members")
-        .select("group_id,is_favorite,last_seen_qt_at,created_at").eq("user_id", user.id);
+      const favoriteCache = readFavoriteCache(user.id);
 
-      if (fullMemberError) {
-        console.warn("group_members preference columns are not available yet:", fullMemberError.message);
-        const { data: fallbackRows } = await supabase.from("group_members")
-          .select("group_id").eq("user_id", user.id);
-        memberRows = fallbackRows ?? [];
+      const { data: preferenceRows, error: preferenceError } = await supabase.rpc("get_my_group_preferences");
+
+      if (preferenceError) {
+        console.warn("그룹 선호도 RPC 조회 실패. 기존 조회로 fallback:", preferenceError.message);
+        const { data: fullMemberRows, error: fullMemberError } = await supabase.from("group_members")
+          .select("group_id,is_favorite,last_seen_qt_at,created_at").eq("user_id", user.id);
+
+        if (fullMemberError) {
+          console.warn("group_members preference columns are not available yet:", fullMemberError.message);
+          const { data: fallbackRows } = await supabase.from("group_members")
+            .select("group_id").eq("user_id", user.id);
+          memberRows = fallbackRows ?? [];
+        } else {
+          memberRows = fullMemberRows ?? [];
+        }
       } else {
-        memberRows = fullMemberRows ?? [];
+        memberRows = preferenceRows ?? [];
       }
 
       const memberMap: Record<string, any> = {};
-      memberRows.forEach((row: any) => { memberMap[row.group_id] = row; });
+      memberRows.forEach((row: any) => {
+        memberMap[row.group_id] = {
+          ...row,
+          is_favorite: !!row.is_favorite || favoriteCache.includes(row.group_id),
+        };
+      });
       const myGroupIds = memberRows.map((r: any) => r.group_id);
 
       const { data: publicGroups } = await supabase.from("groups")
@@ -263,6 +297,7 @@ export default function CommunityPage() {
 
   async function loadGroupDetail(group: any) {
     const openedAt = new Date().toISOString();
+    const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, last_seen_qt_at: openedAt });
     setLoadingGroupQts(true);
     const supabase = createClient();
@@ -272,7 +307,11 @@ export default function CommunityPage() {
       .order("created_at", { ascending: false }).limit(30);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
-      const withProfs = data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null }));
+      const withProfs = data.map((r: any) => ({
+        ...r,
+        profiles: profMap[r.user_id] ?? null,
+        isUnreadInGroup: isLaterThan(r.created_at, previousSeenAt),
+      }));
       setGroupQts(withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
@@ -281,9 +320,14 @@ export default function CommunityPage() {
       setMyQtReactions(prev => ({ ...prev, ...mine }));
 
       if (group.isMember) {
-        const { error } = await supabase.rpc("mark_group_qt_seen", { p_group_id: group.id });
-        if (error) console.warn("그룹 큐티 읽음 처리 실패:", error.message);
-        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, last_seen_qt_at: openedAt } : g)));
+        const { data: seenRows, error } = await supabase.rpc("mark_group_qt_seen_v2", { p_group_id: group.id });
+        if (error) {
+          console.warn("그룹 큐티 읽음 처리 실패:", error.message);
+          const { error: oldError } = await supabase.rpc("mark_group_qt_seen", { p_group_id: group.id });
+          if (oldError) console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
+        }
+        const persistedSeenAt = Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at ? seenRows[0].last_seen_qt_at : openedAt;
+        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, last_seen_qt_at: persistedSeenAt } : g)));
       }
     }
     setLoadingGroupQts(false);
@@ -434,28 +478,25 @@ export default function CommunityPage() {
     applyFavoriteState(nextFavorite);
 
     const supabase = createClient();
-    const { error } = await supabase.rpc("set_group_favorite", { p_group_id: group.id, p_is_favorite: nextFavorite });
+    const { data: savedRows, error } = await supabase.rpc("set_group_favorite_v2", { p_group_id: group.id, p_is_favorite: nextFavorite });
 
     if (error) {
-      console.warn("즐겨찾기 저장 실패:", error.message);
-      applyFavoriteState(previousFavorite);
-      setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
-      return;
+      console.warn("즐겨찾기 저장 v2 실패. 기존 RPC로 fallback:", error.message);
+      const { error: legacyError } = await supabase.rpc("set_group_favorite", { p_group_id: group.id, p_is_favorite: nextFavorite });
+      if (legacyError) {
+        console.warn("즐겨찾기 저장 실패:", legacyError.message);
+        applyFavoriteState(previousFavorite);
+        updateFavoriteCache(userId, group.id, previousFavorite);
+        setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
+        return;
+      }
     }
 
-    // 저장 후 DB 값을 다시 읽어서 PWA 재실행 후에도 유지될 실제 상태와 화면을 맞춥니다.
-    const { data: savedPreference, error: readError } = await supabase
-      .from("group_members")
-      .select("is_favorite")
-      .eq("group_id", group.id)
-      .eq("user_id", userId)
-      .maybeSingle();
+    const persistedFavorite = Array.isArray(savedRows) && typeof savedRows[0]?.is_favorite === "boolean"
+      ? savedRows[0].is_favorite
+      : nextFavorite;
 
-    if (readError) {
-      console.warn("즐겨찾기 저장 확인 실패:", readError.message);
-    }
-
-    const persistedFavorite = typeof savedPreference?.is_favorite === "boolean" ? savedPreference.is_favorite : nextFavorite;
+    updateFavoriteCache(userId, group.id, persistedFavorite);
     applyFavoriteState(persistedFavorite);
     setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
   }
@@ -474,6 +515,7 @@ export default function CommunityPage() {
     setShowLeaveConfirm(false);
     const leftGroupId = selectedGroup.id;
     const wasPublic = !!selectedGroup.is_public;
+    updateFavoriteCache(userId, leftGroupId, false);
     setSelectedGroup(null);
     setGroupQts([]);
     setDetailQt(null);
@@ -647,7 +689,14 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "fr" ? "Inconnu" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {r.isUnreadInGroup && (
+                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                            {communityLabel(lang, { ko: "안 읽음", de: "Ungelesen", en: "Unread", fr: "Non lu" })}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                      </div>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : lang === "fr" ? "Méditation libre" : lang === "en" ? "Free Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
@@ -898,7 +947,14 @@ export default function CommunityPage() {
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (lang === "de" ? "Unbekannt" : lang === "fr" ? "Inconnu" : lang === "en" ? "Unknown" : "이름 없음")}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {r.isUnreadInGroup && (
+                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                            {communityLabel(lang, { ko: "안 읽음", de: "Ungelesen", en: "Unread", fr: "Non lu" })}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                      </div>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (lang === "de" ? "Freie Meditation" : lang === "fr" ? "Méditation libre" : lang === "en" ? "Free Meditation" : "자유 묵상")}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
