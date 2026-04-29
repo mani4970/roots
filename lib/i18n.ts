@@ -94,6 +94,8 @@ export const T = {
   result_mission: { ko: "",         de: "", en: "", fr: "" },
   result_home_btn: { ko: "홈에서 확인하기 →",        de: "Zur Startseite →", en: "Go to Home →", fr: "Voir sur l’accueil →" },
   result_home_sub: { ko: "홈에서 오늘의 말씀을 확인할 수 있어요", de: "Sie können den heutigen Vers auf der Startseite sehen", en: "You can view today's verse on the home screen", fr: "Vous pouvez voir le verset du jour sur l’écran d’accueil" },
+  result_fallback_verse: { ko: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라", de: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.", en: "Come to me, all who labor and are heavy laden, and I will give you rest.", fr: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos." },
+  result_fallback_reference: { ko: "마태복음 11:28", de: "Matthäus 11:28", en: "Matthew 11:28", fr: "Matthieu 11:28" },
   back: { ko: "돌아가기",                de: "Zurück", en: "Back", fr: "Retour" },
 
   // ── 커뮤니티 ──

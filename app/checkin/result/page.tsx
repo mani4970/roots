@@ -122,20 +122,8 @@ function ResultContent() {
 
       } catch {
         setResult({
-          verse: lang === "de"
-            ? "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken."
-            : lang === "fr"
-            ? "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos."
-            : lang === "en"
-            ? "Come to me, all who labor and are heavy laden, and I will give you rest."
-            : "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
-          reference: lang === "de"
-            ? "Matthäus 11:28"
-            : lang === "fr"
-            ? "Matthieu 11:28"
-            : lang === "en"
-            ? "Matthew 11:28"
-            : "마태복음 11:28",
+          verse: t("result_fallback_verse", lang),
+          reference: t("result_fallback_reference", lang),
         });
       } finally {
         setLoading(false);
