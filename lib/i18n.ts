@@ -546,6 +546,7 @@ export const T = {
 
   // "{name}의 정원" / "{name}s Garten"
   home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden", fr: "Jardin de {name}" },
+  home_garden_keyword: { ko: "정원", de: "Garten", en: "garden", fr: "Jardin" },
 
   // ── TreeGrowth 하드코딩 ──
   tree_stage_0: { ko: "씨앗 심겨졌어요",   de: "Samen gepflanzt", en: "Seed planting", fr: "Graine plantée" },

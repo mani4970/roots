@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -12,8 +12,7 @@ import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
-import { getLanguageOptions, LANG_META } from "@/lib/i18n";
-import { t } from "@/lib/i18n";
+import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
@@ -649,19 +648,19 @@ export default function HomePage() {
                 </button>
                 {showHomeQTGuide && (
                   <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 16, padding: 12, background: "var(--bg)" }}>
-                    {[
+                    {([
                       [<HandHeart key="g1" size={17} strokeWidth={1.9} />, "qt_g1_title", "qt_g1_desc"],
                       [<BookOpen key="g2" size={17} strokeWidth={1.9} />, "qt_g2_title", "qt_g2_desc"],
                       [<Sparkles key="g3" size={17} strokeWidth={1.9} />, "qt_g3_title", "qt_g3_desc"],
                       [<MessageCircle key="g4" size={17} strokeWidth={1.9} />, "qt_g4_title", "qt_g4_desc"],
                       [<Leaf key="g5" size={17} strokeWidth={1.9} />, "qt_g5_title", "qt_g5_desc"],
                       [<CheckCircle2 key="g6" size={17} strokeWidth={1.9} />, "qt_g6_title", "qt_g6_desc"],
-                    ].map(([iconNode, titleKey, descKey]) => (
+                    ] satisfies Array<[ReactNode, TKey, TKey]>).map(([iconNode, titleKey, descKey]) => (
                       <div key={String(titleKey)} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: titleKey === "qt_g6_title" ? "none" : "1px solid var(--border)" }}>
                         <div style={{ width: 26, height: 26, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--sage-dark)", background: "var(--sage-light)", flexShrink: 0 }}>{iconNode}</div>
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 2 }}>{t(titleKey as any, lang)}</div>
-                          <div style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>{t(descKey as any, lang)}</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 2 }}>{t(titleKey, lang)}</div>
+                          <div style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>{t(descKey, lang)}</div>
                         </div>
                       </div>
                     ))}
@@ -745,7 +744,7 @@ export default function HomePage() {
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
               const full = t("home_garden_my", lang, { name });
-              const emWord = lang === "de" ? "Garten" : lang === "fr" ? "Jardin" : lang === "en" ? "Garden" : "정원";
+              const emWord = t("home_garden_keyword", lang);
               const idx = full.lastIndexOf(emWord);
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;
