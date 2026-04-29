@@ -1516,19 +1516,12 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-              {lang === "de" ? <>
-                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Charakter</span> ist die Entscheidung des Herzens,{" "}
-                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>Handlung</span> wird mit Händen und Füßen sichtbar.
-              </> : lang === "en" ? <>
-                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>Character</span> is the decision of the heart,{" "}
-                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> is shown through hands and feet.
-              </> : lang === "fr" ? <>
-                Le <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>caractère</span> est la décision du cœur,{" "}
-                l'<span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>action</span> se manifeste par les mains et les pieds.
-              </> : <>
-                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>성품</span>은 마음을 정하는 것,{" "}
-                <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>행동</span>은 손과 발로 드러나는 것이에요.
-              </>}
+              {t("qtw_decision_hint_prefix", lang)}
+              <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{t("qtw_decision_hint_character", lang)}</span>
+              {t("qtw_decision_hint_middle", lang)}
+              {lang === "fr" ? "l'" : ""}
+              <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>{t("qtw_decision_hint_action", lang)}</span>
+              {t("qtw_decision_hint_suffix", lang)}
             </p>
           </div>
           <div>

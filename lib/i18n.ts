@@ -783,6 +783,11 @@ export const T = {
   qtw_add_action: { ko: "+ 행동 추가",        de: "+ Handlung hinzufügen", en: "+ Add action", fr: "+ Ajouter une action" },
   qtw_action_ph: { ko: "예: 하루 한 번 말씀 묵상", de: "z. B. Einmal am Tag meditieren", en: "e.g. Meditate once a day", fr: "ex. Méditer une fois par jour" },
   qtw_verse_select_hint: { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", fr: "Touchez un verset marquant ou écrivez-le ci-dessous" },
+  qtw_decision_hint_character: { ko: "성품", de: "Charakter", en: "Character", fr: "caractère" },
+  qtw_decision_hint_prefix: { ko: "", de: "", en: "", fr: "Le " },
+  qtw_decision_hint_middle: { ko: "은 마음을 정하는 것, ", de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
+  qtw_decision_hint_action: { ko: "행동", de: "Handlung", en: "action", fr: "action" },
+  qtw_decision_hint_suffix: { ko: "은 손과 발로 드러나는 것이에요.", de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
   qtw_passage_loaded: { ko: "본문이 준비됐어요",    de: "Abschnitt bereit", en: "Passage ready", fr: "Passage prêt" },
 
   // 번역본 라벨
