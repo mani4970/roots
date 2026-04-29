@@ -99,6 +99,7 @@ export default function CommunityPage() {
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
@@ -419,19 +420,44 @@ export default function CommunityPage() {
 
   async function toggleFavoriteGroup(group: any, event?: any) {
     event?.stopPropagation?.();
-    if (!userId || !group.isMember) return;
+    if (!userId || !group.isMember || favoriteSavingIds.includes(group.id)) return;
 
-    const nextFavorite = !group.isFavorite;
-    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: nextFavorite } : g)));
-    if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: nextFavorite }));
+    const previousFavorite = !!group.isFavorite;
+    const nextFavorite = !previousFavorite;
+
+    const applyFavoriteState = (value: boolean) => {
+      setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: value } : g)));
+      if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: value }));
+    };
+
+    setFavoriteSavingIds(prev => prev.includes(group.id) ? prev : [...prev, group.id]);
+    applyFavoriteState(nextFavorite);
 
     const supabase = createClient();
     const { error } = await supabase.rpc("set_group_favorite", { p_group_id: group.id, p_is_favorite: nextFavorite });
+
     if (error) {
       console.warn("즐겨찾기 저장 실패:", error.message);
-      setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: !nextFavorite } : g)));
-      if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: !nextFavorite }));
+      applyFavoriteState(previousFavorite);
+      setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
+      return;
     }
+
+    // 저장 후 DB 값을 다시 읽어서 PWA 재실행 후에도 유지될 실제 상태와 화면을 맞춥니다.
+    const { data: savedPreference, error: readError } = await supabase
+      .from("group_members")
+      .select("is_favorite")
+      .eq("group_id", group.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (readError) {
+      console.warn("즐겨찾기 저장 확인 실패:", readError.message);
+    }
+
+    const persistedFavorite = typeof savedPreference?.is_favorite === "boolean" ? savedPreference.is_favorite : nextFavorite;
+    applyFavoriteState(persistedFavorite);
+    setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
   }
 
   async function leaveSelectedGroup() {
@@ -564,8 +590,9 @@ export default function CommunityPage() {
             {selectedGroup.isMember && (
               <button
                 onClick={(e) => toggleFavoriteGroup(selectedGroup, e)}
+                disabled={favoriteSavingIds.includes(selectedGroup.id)}
                 aria-label={communityLabel(lang, { ko: "즐겨찾기", de: "Favorit", en: "Favorite", fr: "Favori" })}
-                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(selectedGroup.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(selectedGroup.id) ? 0.65 : 1 }}
               >
                 <Star size={16} strokeWidth={1.9} fill={selectedGroup.isFavorite ? "currentColor" : "transparent"} />
               </button>
@@ -902,8 +929,9 @@ export default function CommunityPage() {
                   {g.isMember && (
                     <button
                       onClick={(e) => toggleFavoriteGroup(g, e)}
+                      disabled={favoriteSavingIds.includes(g.id)}
                       aria-label={communityLabel(lang, { ko: "즐겨찾기", de: "Favorit", en: "Favorite", fr: "Favori" })}
-                      style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: g.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: g.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                      style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: g.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: g.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(g.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(g.id) ? 0.65 : 1, flexShrink: 0 }}
                     >
                       <Star size={16} strokeWidth={1.9} fill={g.isFavorite ? "currentColor" : "transparent"} />
                     </button>
