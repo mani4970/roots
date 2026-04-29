@@ -8,7 +8,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageSetJson } from "@/lib/clientStorage";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle } from "lucide-react";
 
 const REACTIONS = [
   { id: "bless", label: "축복해요", label_de: "Gesegnet", label_en: "Blessed", label_fr: "Béni" },
@@ -98,6 +98,7 @@ export default function CommunityPage() {
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [detailQt, setDetailQt] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
@@ -435,14 +436,6 @@ export default function CommunityPage() {
 
   async function leaveSelectedGroup() {
     if (!selectedGroup?.id || !userId || leavingGroup) return;
-    const ok = window.confirm(communityLabel(lang, {
-      ko: `\"${selectedGroup.name}\" 그룹에서 나가시겠어요?`,
-      de: `Möchten Sie die Gruppe „${selectedGroup.name}“ verlassen?`,
-      en: `Leave the group "${selectedGroup.name}"?`,
-      fr: `Quitter le groupe « ${selectedGroup.name} » ?`,
-    }));
-    if (!ok) return;
-
     setLeavingGroup(true);
     const supabase = createClient();
     const { error } = await supabase.rpc("leave_group", { p_group_id: selectedGroup.id });
@@ -452,6 +445,7 @@ export default function CommunityPage() {
       return;
     }
 
+    setShowLeaveConfirm(false);
     const leftGroupId = selectedGroup.id;
     const wasPublic = !!selectedGroup.is_public;
     setSelectedGroup(null);
@@ -599,7 +593,7 @@ export default function CommunityPage() {
 
           {selectedGroup.isMember && (
             <button
-              onClick={leaveSelectedGroup}
+              onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingGroup}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "11px", borderRadius: 14, border: "1px solid rgba(196,106,106,0.25)", background: "rgba(196,106,106,0.08)", color: "#B35F5F", cursor: leavingGroup ? "default" : "pointer", fontSize: 12, fontWeight: 700 }}
             >
@@ -640,6 +634,50 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
+        {showLeaveConfirm && selectedGroup && (
+          <div
+            onClick={() => !leavingGroup && setShowLeaveConfirm(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 220, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid rgba(196,106,106,0.25)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}
+            >
+              <div style={{ width: 48, height: 48, borderRadius: 999, background: "rgba(196,106,106,0.10)", color: "#B35F5F", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <AlertTriangle size={23} strokeWidth={1.9} />
+              </div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
+                {communityLabel(lang, { ko: "그룹에서 나갈까요?", de: "Gruppe verlassen?", en: "Leave this group?", fr: "Quitter ce groupe ?" })}
+              </h2>
+              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 18 }}>
+                {communityLabel(lang, {
+                  ko: `"${selectedGroup.name}" 그룹에서 나가면 이 그룹의 새 글 알림과 즐겨찾기가 해제돼요. 다시 참여하려면 초대 링크가 필요할 수 있어요.`,
+                  de: `Wenn Sie „${selectedGroup.name}“ verlassen, werden Favorit und neue Beiträge für diese Gruppe zurückgesetzt. Für den erneuten Beitritt kann ein Einladungslink nötig sein.`,
+                  en: `If you leave "${selectedGroup.name}", its favorite status and new-post notice will be removed. You may need an invite link to join again.`,
+                  fr: `Si vous quittez « ${selectedGroup.name} », le favori et l’indication des nouveaux posts seront retirés. Un lien d’invitation peut être nécessaire pour rejoindre à nouveau.`,
+                })}
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setShowLeaveConfirm(false)}
+                  disabled={leavingGroup}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
+                  {communityLabel(lang, { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler" })}
+                </button>
+                <button
+                  onClick={leaveSelectedGroup}
+                  disabled={leavingGroup}
+                  style={{ flex: 1, border: "none", borderRadius: 14, background: "rgba(196,106,106,0.14)", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: leavingGroup ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  {leavingGroup ? <Loader2 size={15} className="spin" /> : <LogOut size={15} />}
+                  {communityLabel(lang, { ko: "나가기", de: "Verlassen", en: "Leave", fr: "Quitter" })}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
         <BottomNav />
       </div>
