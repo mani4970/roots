@@ -577,6 +577,13 @@ export const T = {
   join_invite: { ko: "그룹 초대",        de: "Gruppeneinladung", en: "Group invitation", fr: "Invitation au groupe" },
   join_private_invite: { ko: "🔒 비공개 그룹 초대", de: "🔒 Private Gruppeneinladung", en: "🔒 Private group invitation", fr: "🔒 Invitation à un groupe privé" },
   join_btn: { ko: "그룹 참여하기",     de: "Gruppe beitreten", en: "Join group", fr: "Rejoindre le groupe" },
+  join_not_found: { ko: "😢 그룹을 찾을 수 없어요", de: "😢 Gruppe nicht gefunden", en: "😢 Group not found", fr: "😢 Groupe introuvable" },
+  join_home: { ko: "홈으로", de: "Zur Startseite", en: "Go home", fr: "Retour à l’accueil" },
+  join_success: { ko: "그룹에 참여했어요!", de: "Sie sind der Gruppe beigetreten!", en: "You joined the group!", fr: "Vous avez rejoint le groupe !" },
+  join_moving_community: { ko: "커뮤니티로 이동 중...", de: "Weiter zur Community...", en: "Moving to Community...", fr: "Redirection vers la communauté..." },
+  join_members_joined: { ko: "{count}명 참여 중", de: "{count} Mitglieder dabei", en: "{count} members joined", fr: "{count} membres" },
+  join_private_notice: { ko: "비공개 그룹이에요.\n로그인 후 참여할 수 있어요.", de: "Dies ist eine private Gruppe.\nNach dem Login können Sie beitreten.", en: "This is a private group.\nYou can join after logging in.", fr: "Ceci est un groupe privé.\nVous pouvez le rejoindre après connexion." },
+  join_no_account_hint: { ko: "Roots 계정이 없으신가요? 참여 후 가입할 수 있어요", de: "Sie haben noch kein Roots-Konto? Nach dem Beitritt können Sie sich registrieren.", en: "No Roots account yet? You can sign up after joining.", fr: "Vous n’avez pas encore de compte Roots ? Vous pourrez vous inscrire après avoir rejoint le groupe." },
 
   // ── 성경 번역본 그룹 라벨 ──
     qt_translation_ko: { ko: "한국어",   de: "Koreanisch", en: "Korean", fr: "Coréen" },
