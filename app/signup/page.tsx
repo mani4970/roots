@@ -26,7 +26,7 @@ export default function SignupPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const d: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
+    const d: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(d[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -42,16 +42,16 @@ export default function SignupPage() {
     // 언어 설정도 함께 저장
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: nickname, preferred_language: lang, preferred_translation: (() => { const d: Record<string,number> = { ko:92, de:97, en:80, fr:26 }; return d[lang] ?? 92; })() } },
+      options: { data: { name: nickname, preferred_language: lang, preferred_translation: defaultTr[lang] ?? 92 } },
     });
     if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
     if (data.user) {
       await setPreferredLang(lang);
       // profiles 테이블에 직접 preferred_translation 저장
-      const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
       await supabase.from("profiles").update({
         preferred_translation: defaultTr[lang] ?? 92,
         preferred_language: lang,
@@ -62,14 +62,14 @@ export default function SignupPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 40px", position: "relative" }}>
-      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
+      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
       <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32, position: "absolute", top: 20, left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <img
           src="/roots-logo-transparent-160.png"
-          alt="Roots sprout"
+          alt={t("auth_logo_alt", lang)}
           width={76}
           height={76}
           style={{ objectFit: "contain", marginBottom: 10 }}
@@ -104,11 +104,11 @@ export default function SignupPage() {
         </div>
         <div>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_email_label", lang)}</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-field" />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("auth_email_placeholder", lang)} className="input-field" />
         </div>
         <div>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("signup_password", lang)}</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field" />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" />
         </div>
         {error && <p style={{ color: "#E05050", fontSize: 12 }}>{error}</p>}
         <button onClick={handleSignup} disabled={loading || !nickname || !email || !password} className="btn-primary" style={{ marginTop: 8 }}>

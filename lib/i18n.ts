@@ -441,6 +441,10 @@ export const T = {
   // ── 로그인/회원가입 ──
   login_title: { ko: "다시 돌아오셨군요!",         de: "Willkommen zurück!", en: "Welcome to Roots 🌱", fr: "Bienvenue sur Roots 🌱" },
   login_sub: { ko: "Roots와 함께 오늘도 말씀에 뿌리내려요", de: "Mit Roots täglich in Gottes Wort verwurzeln", en: "Rooted in God's Word, growing together", fr: "Enraciné dans la Parole de Dieu, grandir ensemble" },
+  auth_logo_alt: { ko: "Roots 새싹 로고", de: "Roots-Spross-Logo", en: "Roots sprout logo", fr: "Logo de pousse Roots" },
+  auth_language_aria: { ko: "언어 선택", de: "Sprache auswählen", en: "Choose language", fr: "Choisir la langue" },
+  auth_email_placeholder: { ko: "example@email.com", de: "beispiel@email.com", en: "example@email.com", fr: "exemple@email.com" },
+  auth_password_placeholder: { ko: "비밀번호", de: "Passwort", en: "Password", fr: "Mot de passe" },
   login_google_btn: { ko: "Google로 계속하기",          de: "Mit Google fortfahren", en: "Continue with Google", fr: "Continuer avec Google" },
   login_or_email: { ko: "또는 이메일로",             de: "oder per E-Mail", en: "or by email", fr: "ou par e-mail" },
   login_email_label: { ko: "이메일",                   de: "E-Mail", en: "Email", fr: "E-mail" },

@@ -7,9 +7,10 @@ import { saveLangLocally } from "@/lib/useLang";
 interface AuthLanguageSwitcherProps {
   value: Lang;
   onChange: (lang: Lang) => void;
+  ariaLabel?: string;
 }
 
-export default function AuthLanguageSwitcher({ value, onChange }: AuthLanguageSwitcherProps) {
+export default function AuthLanguageSwitcher({ value, onChange, ariaLabel = "Choose language" }: AuthLanguageSwitcherProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const options = getLanguageOptions();
@@ -36,7 +37,7 @@ export default function AuthLanguageSwitcher({ value, onChange }: AuthLanguageSw
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        aria-label="Choose language"
+        aria-label={ariaLabel}
         style={{
           display: "flex",
           alignItems: "center",

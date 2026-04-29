@@ -37,7 +37,7 @@ export default function LoginPage() {
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
     // preferred_translation도 갱신
-    const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     const trId = defaultTr[lang] ?? 92;
     storageSet("roots_default_translation", String(trId));
     const { data: { user } } = await supabase.auth.getUser();
@@ -52,7 +52,7 @@ export default function LoginPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const defaultTr: Record<string,number> = { ko:92, de:97, en:80, fr:26 };
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -66,20 +66,20 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative" }}>
-      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} />
+      <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
       <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 20, left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
 <img
           src="/roots-logo-transparent-160.png"
-          alt="Roots sprout"
+          alt={t("auth_logo_alt", lang)}
           width={72}
           height={72}
           style={{ objectFit: "contain", marginBottom: 14 }}
         />
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-        <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("home_loading_sub", lang)}</p>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>{t("login_title", lang)}</h1>
+        <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("login_sub", lang)}</p>
       </div>
 
       <div style={{ width: "100%", maxWidth: 360 }}>
@@ -103,11 +103,11 @@ export default function LoginPage() {
 
         <div style={{ marginBottom: 10 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_email_label", lang)}</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-field" style={{ fontSize: 16 }} />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("auth_email_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_password_label", lang)}</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
         </div>
 
         {error && <p style={{ color: "#E05050", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{error}</p>}
