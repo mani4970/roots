@@ -8,7 +8,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { t } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageSetJson } from "@/lib/clientStorage";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut } from "lucide-react";
 
 const REACTIONS = [
   { id: "bless", label: "축복해요", label_de: "Gesegnet", label_en: "Blessed", label_fr: "Béni" },
@@ -24,6 +24,24 @@ function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
 }
 
 const APP_URL = "https://christian-roots.com";
+
+function communityLabel(lang: string, labels: { ko: string; de: string; en: string; fr: string }) {
+  return lang === "de" ? labels.de : lang === "fr" ? labels.fr : lang === "en" ? labels.en : labels.ko;
+}
+
+function isLaterThan(left?: string | null, right?: string | null) {
+  if (!left) return false;
+  if (!right) return true;
+  return new Date(left).getTime() > new Date(right).getTime();
+}
+
+function sortGroupsForDisplay(groups: any[]) {
+  return [...groups].sort((a, b) => {
+    if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
+    if (!!a.hasNewQt !== !!b.hasNewQt) return a.hasNewQt ? -1 : 1;
+    return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+  });
+}
 
 function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number; emoji?: string }) {
   if (url) return <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
@@ -79,6 +97,7 @@ export default function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
+  const [leavingGroup, setLeavingGroup] = useState(false);
   const [detailQt, setDetailQt] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, [tab]);
@@ -179,9 +198,22 @@ export default function CommunityPage() {
       }
 
     } else {
-      const { data: memberRows } = await supabase.from("group_members")
-        .select("group_id").eq("user_id", user.id);
-      const myGroupIds = (memberRows ?? []).map((r: any) => r.group_id);
+      let memberRows: any[] = [];
+      const { data: fullMemberRows, error: fullMemberError } = await supabase.from("group_members")
+        .select("group_id,is_favorite,last_seen_qt_at,created_at").eq("user_id", user.id);
+
+      if (fullMemberError) {
+        console.warn("group_members preference columns are not available yet:", fullMemberError.message);
+        const { data: fallbackRows } = await supabase.from("group_members")
+          .select("group_id").eq("user_id", user.id);
+        memberRows = fallbackRows ?? [];
+      } else {
+        memberRows = fullMemberRows ?? [];
+      }
+
+      const memberMap: Record<string, any> = {};
+      memberRows.forEach((row: any) => { memberMap[row.group_id] = row; });
+      const myGroupIds = memberRows.map((r: any) => r.group_id);
 
       const { data: publicGroups } = await supabase.from("groups")
         .select("*").eq("is_public", true).order("created_at", { ascending: false });
@@ -196,17 +228,40 @@ export default function CommunityPage() {
       const all = [...(publicGroups ?? []), ...myPrivateGroups];
       const unique = all.filter((g, i, arr) => arr.findIndex(x => x.id === g.id) === i);
       const withMeta = await Promise.all(unique.map(async (g) => {
+        const memberMeta = memberMap[g.id];
+        const isMember = !!memberMeta;
         const { count } = await supabase.from("group_members")
           .select("*", { count: "exact", head: true }).eq("group_id", g.id);
-        return { ...g, member_count: count ?? 0, isMember: myGroupIds.includes(g.id) };
+
+        let latestQtAt: string | null = null;
+        if (isMember) {
+          const { data: latestQt } = await supabase.from("qt_records")
+            .select("created_at")
+            .ilike("visibility", `%group_${g.id}%`)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          latestQtAt = latestQt?.created_at ?? null;
+        }
+
+        return {
+          ...g,
+          member_count: count ?? 0,
+          isMember,
+          isFavorite: !!memberMeta?.is_favorite,
+          last_seen_qt_at: memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null,
+          latest_qt_at: latestQtAt,
+          hasNewQt: isMember && isLaterThan(latestQtAt, memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null),
+        };
       }));
-      setGroups(withMeta);
+      setGroups(sortGroupsForDisplay(withMeta));
     }
     setLoading(false);
   }
 
   async function loadGroupDetail(group: any) {
-    setSelectedGroup(group);
+    const openedAt = new Date().toISOString();
+    setSelectedGroup({ ...group, hasNewQt: false, last_seen_qt_at: openedAt });
     setLoadingGroupQts(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -222,6 +277,12 @@ export default function CommunityPage() {
       const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
       setQtReactionCounts(prev => ({ ...prev, ...counts }));
       setMyQtReactions(prev => ({ ...prev, ...mine }));
+
+      if (group.isMember) {
+        const { error } = await supabase.rpc("mark_group_qt_seen", { p_group_id: group.id });
+        if (error) console.warn("그룹 큐티 읽음 처리 실패:", error.message);
+        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, last_seen_qt_at: openedAt } : g)));
+      }
     }
     setLoadingGroupQts(false);
   }
@@ -350,8 +411,57 @@ export default function CommunityPage() {
     if (!userId) return;
     const supabase = createClient();
     await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
-    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 } : g));
-    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1 }));
+    const joinedAt = new Date().toISOString();
+    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false } : g)));
+    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false }));
+  }
+
+  async function toggleFavoriteGroup(group: any, event?: any) {
+    event?.stopPropagation?.();
+    if (!userId || !group.isMember) return;
+
+    const nextFavorite = !group.isFavorite;
+    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: nextFavorite } : g)));
+    if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: nextFavorite }));
+
+    const supabase = createClient();
+    const { error } = await supabase.rpc("set_group_favorite", { p_group_id: group.id, p_is_favorite: nextFavorite });
+    if (error) {
+      console.warn("즐겨찾기 저장 실패:", error.message);
+      setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: !nextFavorite } : g)));
+      if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: !nextFavorite }));
+    }
+  }
+
+  async function leaveSelectedGroup() {
+    if (!selectedGroup?.id || !userId || leavingGroup) return;
+    const ok = window.confirm(communityLabel(lang, {
+      ko: `\"${selectedGroup.name}\" 그룹에서 나가시겠어요?`,
+      de: `Möchten Sie die Gruppe „${selectedGroup.name}“ verlassen?`,
+      en: `Leave the group "${selectedGroup.name}"?`,
+      fr: `Quitter le groupe « ${selectedGroup.name} » ?`,
+    }));
+    if (!ok) return;
+
+    setLeavingGroup(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("leave_group", { p_group_id: selectedGroup.id });
+    if (error) {
+      console.warn("그룹 나가기 실패:", error.message);
+      setLeavingGroup(false);
+      return;
+    }
+
+    const leftGroupId = selectedGroup.id;
+    const wasPublic = !!selectedGroup.is_public;
+    setSelectedGroup(null);
+    setGroupQts([]);
+    setDetailQt(null);
+    setGroups(prev => sortGroupsForDisplay(prev
+      .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
+      .filter(g => wasPublic || g.id !== leftGroupId)
+    ));
+    setLeavingGroup(false);
   }
 
   function copyInviteLink(groupId: string) {
@@ -457,6 +567,15 @@ export default function CommunityPage() {
             <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: selectedGroup.is_public ? "var(--sage-light)" : "var(--bg3)", color: selectedGroup.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${selectedGroup.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
               {selectedGroup.is_public ? (lang === "de" ? "Öffentlich" : lang === "fr" ? "Public" : lang === "en" ? "Public" : "공개") : (lang === "de" ? "Privat" : lang === "fr" ? "Privé" : lang === "en" ? "Private" : "비공개")}
             </span>
+            {selectedGroup.isMember && (
+              <button
+                onClick={(e) => toggleFavoriteGroup(selectedGroup, e)}
+                aria-label={communityLabel(lang, { ko: "즐겨찾기", de: "Favorit", en: "Favorite", fr: "Favori" })}
+                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <Star size={16} strokeWidth={1.9} fill={selectedGroup.isFavorite ? "currentColor" : "transparent"} />
+              </button>
+            )}
           </div>
           {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
           <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{lang === "de" ? `👥 ${selectedGroup.member_count} Mitglieder` : lang === "fr" ? `👥 ${selectedGroup.member_count} membres` : lang === "en" ? `👥 ${selectedGroup.member_count} members` : `👥 ${selectedGroup.member_count}명 참여 중`}</p>
@@ -477,6 +596,17 @@ export default function CommunityPage() {
               <Share2 size={13} />{lang === "de" ? "Einladen" : lang === "fr" ? "Inviter" : lang === "en" ? "Invite" : "초대"}
             </button>
           </div>
+
+          {selectedGroup.isMember && (
+            <button
+              onClick={leaveSelectedGroup}
+              disabled={leavingGroup}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "11px", borderRadius: 14, border: "1px solid rgba(196,106,106,0.25)", background: "rgba(196,106,106,0.08)", color: "#B35F5F", cursor: leavingGroup ? "default" : "pointer", fontSize: 12, fontWeight: 700 }}
+            >
+              {leavingGroup ? <Loader2 size={14} className="spin" /> : <LogOut size={14} />}
+              {communityLabel(lang, { ko: "그룹 나가기", de: "Gruppe verlassen", en: "Leave group", fr: "Quitter le groupe" })}
+            </button>
+          )}
 
           <div style={{ marginTop: 8 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>{lang === "de" ? "Gruppen-QT-Austausch" : lang === "fr" ? "Partage QT du groupe" : lang === "en" ? "Group QT exchange" : "그룹 큐티 나눔"}</p>
@@ -730,13 +860,27 @@ export default function CommunityPage() {
               </div>
             ) : (
               groups.map(g => (
-                <button key={g.id} onClick={() => loadGroupDetail(g)} style={{ width: "100%", textAlign: "left", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                <div key={g.id} onClick={() => loadGroupDetail(g)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") loadGroupDetail(g); }} style={{ width: "100%", textAlign: "left", background: g.hasNewQt ? "rgba(122,157,122,0.08)" : "var(--bg2)", border: `1px solid ${g.hasNewQt ? "rgba(122,157,122,0.35)" : "var(--border)"}`, borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                  {g.isMember && (
+                    <button
+                      onClick={(e) => toggleFavoriteGroup(g, e)}
+                      aria-label={communityLabel(lang, { ko: "즐겨찾기", de: "Favorit", en: "Favorite", fr: "Favori" })}
+                      style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: g.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: g.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <Star size={16} strokeWidth={1.9} fill={g.isFavorite ? "currentColor" : "transparent"} />
+                    </button>
+                  )}
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{g.name}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.is_public ? "var(--sage-light)" : "var(--bg3)", color: g.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
                         {g.is_public ? (lang === "de" ? "Öffentlich" : lang === "fr" ? "Public" : lang === "en" ? "Public" : "공개") : (lang === "de" ? "Privat" : lang === "fr" ? "Privé" : lang === "en" ? "Private" : "비공개")}
                       </span>
+                      {g.hasNewQt && (
+                        <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)" }}>
+                          {communityLabel(lang, { ko: "새 글", de: "Neu", en: "New", fr: "Nouveau" })}
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                       <Users size={11} style={{ color: "var(--text3)" }} />
@@ -745,7 +889,7 @@ export default function CommunityPage() {
                     </div>
                   </div>
                   <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
-                </button>
+                </div>
               ))
             )}
           </div>
