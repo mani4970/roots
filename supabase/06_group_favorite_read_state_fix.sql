@@ -1,7 +1,6 @@
--- Roots group favorite and unread state fix
--- Run this in Supabase SQL Editor before deploying the matching app/community/page.tsx patch.
--- It adds RPCs that read and write the signed-in user's group preferences through
--- security-definer functions, so the PWA does not depend on broad group_members SELECT policies.
+-- Roots group favorite and unread state fix - corrected version
+-- Fixes environments where public.group_members has no created_at column.
+-- Run this in Supabase SQL Editor, then keep/deploy the matching app/community/page.tsx patch.
 
 begin;
 
@@ -12,6 +11,8 @@ alter table public.group_members
   add column if not exists last_seen_qt_at timestamptz not null default now();
 
 -- Read only the current user's group preference rows.
+-- Note: created_at is returned as NULL for compatibility with the current app code,
+-- because some Roots databases do not have group_members.created_at.
 create or replace function public.get_my_group_preferences()
 returns table (
   group_id uuid,
@@ -28,7 +29,7 @@ as $$
     gm.group_id,
     coalesce(gm.is_favorite, false) as is_favorite,
     gm.last_seen_qt_at,
-    gm.created_at
+    null::timestamptz as created_at
   from public.group_members gm
   where gm.user_id = auth.uid();
 $$;
