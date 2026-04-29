@@ -10,10 +10,10 @@ import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle } from "lucide-react";
 
-const REACTIONS = [
-  { id: "bless", label: "축복해요", label_de: "Gesegnet", label_en: "Blessed", label_fr: "Béni" },
-  { id: "cheer", label: "응원해요", label_de: "Ermutigung", label_en: "Encouraged", label_fr: "Encouragé" },
-  { id: "pray", label: "함께기도해요", label_de: "Gemeinsam beten", label_en: "Praying together", label_fr: "Prière ensemble" },
+const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
+  { id: "bless", labelKey: "community_reaction_bless" },
+  { id: "cheer", labelKey: "community_reaction_cheer" },
+  { id: "pray", labelKey: "community_reaction_pray" },
 ];
 
 function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
@@ -69,14 +69,14 @@ function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: 
   );
 }
 
-const SECTIONS = [
-  { key: "opening_prayer", label: "들어가는 기도", label_de: "Eröffnungsgebet", label_en: "Opening Prayer", label_fr: "Prière d’ouverture" },
-  { key: "summary", label: "본문 요약", label_de: "Zusammenfassung", label_en: "Summary", label_fr: "Résumé" },
-  { key: "key_verse", label: "붙잡은 말씀", label_de: "Schlüsselvers", label_en: "Key Verse", label_fr: "Verset clé", italic: true },
-  { key: "meditation", label: "느낌과 묵상", label_de: "Empfinden & Meditation", label_en: "Reflection & Meditation", label_fr: "Réflexion & méditation" },
-  { key: "application", label: "성품 (적용)", label_de: "Charakter (Anwendung)", label_en: "Character (Application)", label_fr: "Caractère (application)" },
-  { key: "decision", label: "행동 (결단)", label_de: "Handlung (Entschluss)", label_en: "Action (Resolution)", label_fr: "Action (décision)", isDecision: true },
-  { key: "closing_prayer", label: "올려드리는 기도", label_de: "Abschlussgebet", label_en: "Closing Prayer", label_fr: "Prière finale" },
+const SECTIONS: { key: string; labelKey: TKey; sundayLabelKey?: TKey; italic?: boolean; isDecision?: boolean }[] = [
+  { key: "opening_prayer", labelKey: "community_qt_section_opening_prayer" },
+  { key: "summary", labelKey: "community_qt_section_summary", sundayLabelKey: "community_qt_section_sermon_summary" },
+  { key: "key_verse", labelKey: "community_qt_section_key_verse", italic: true },
+  { key: "meditation", labelKey: "community_qt_section_meditation" },
+  { key: "application", labelKey: "community_qt_section_application" },
+  { key: "decision", labelKey: "community_qt_section_decision", isDecision: true },
+  { key: "closing_prayer", labelKey: "community_qt_section_closing_prayer" },
 ];
 
 export default function CommunityPage() {
@@ -431,7 +431,7 @@ export default function CommunityPage() {
           .select("id").eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
           await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
-          setBadgePopup({ img: "/badge_paul.png", title: lang === "de" ? "Paulus-Abzeichen! 📜" : lang === "fr" ? "Badge Paul ! 📜" : lang === "en" ? "Paul Badge! 📜" : "바울 배지 획득! 📜", msg: t("badge_paul_msg", lang) });
+          setBadgePopup({ img: "/badge_paul.png", title: c("community_badge_paul_title"), msg: t("badge_paul_msg", lang) });
         }
       }
     } catch (e) {}
@@ -452,7 +452,7 @@ export default function CommunityPage() {
             .select("id").eq("created_by", user.id);
           if ((myGroups?.length ?? 0) === 0) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_peter.png", title: lang === "de" ? "Petrus-Abzeichen! 🐟" : lang === "fr" ? "Badge Pierre ! 🐟" : lang === "en" ? "Peter Badge! 🐟" : "베드로 배지 획득! 🐟", msg: t("badge_peter_msg", lang) });
+            setBadgePopup({ img: "/badge_peter.png", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
           }
         }
       }
@@ -545,14 +545,15 @@ export default function CommunityPage() {
   }
 
   function shareInvite(group: any) {
-    const text = lang === "de" ? `🌱 Roots - Einladung zur Gruppe ${group.name}!\n\nEine christliche App zum Verwurzeln in Gottes Wort.\nKomm dazu 👇\n${APP_URL}/join?group=${group.id}` : lang === "fr" ? `🌱 Roots - Invitation to group ${group.name}!\n\nA Christian app to root yourself in God's Word.\nJoin us 👇\n${APP_URL}/join?group=${group.id}` : lang === "en" ? `🌱 Roots - Invitation to group ${group.name}!\n\nA Christian app to root yourself in God's Word.\nJoin us 👇\n${APP_URL}/join?group=${group.id}` : `🌱 Roots - ${group.name} 그룹에 초대합니다!\n\n말씀에 뿌리내리고, 함께 자라는 크리스천 앱이에요.\n함께해요 👇\n${APP_URL}/join?group=${group.id}`;
-    if (navigator.share) navigator.share({ title: `Roots - ${group.name}`, text });
+    const inviteUrl = `${APP_URL}/join?group=${group.id}`;
+    const text = c("community_group_invite_share_text", { name: group.name, url: inviteUrl });
+    if (navigator.share) navigator.share({ title: c("community_group_invite_share_title", { name: group.name }), text });
     else copyInviteLink(group.id);
   }
 
   function shareApp() {
-    const text = lang === "de" ? `🌱 Roots - In Gottes Wort verwurzelt, gemeinsam wachsen\n\nEine christliche App mit Stille Zeit, Gebet und Vorsätzen.\nMach mit! 👇\n${APP_URL}` : lang === "fr" ? `🌱 Roots - Enraciné dans la Parole, grandir ensemble\n\nUne application chrétienne avec QT, prière et décisions.\nRejoignez-nous ! 👇\n${APP_URL}` : lang === "en" ? `🌱 Roots - Rooted in God's Word, growing together\n\nA Christian app with Quiet Time, Prayer and Resolutions.\nJoin us! 👇\n${APP_URL}` : `🌱 Roots - 말씀에 뿌리내리고, 함께 자라다\n\n매일 큐티, 기도, 결단으로 나무를 키우는 크리스천 앱이에요.\n같이 시작해요! 👇\n${APP_URL}`;
-    if (navigator.share) navigator.share({ title: lang === "de" ? "Roots-Einladung" : lang === "fr" ? "Invitation Roots" : lang === "en" ? "Roots-Einladung" : "Roots 앱 초대", text });
+    const text = c("community_app_invite_share_text", { url: APP_URL });
+    if (navigator.share) navigator.share({ title: c("community_app_invite_share_title"), text });
     else navigator.clipboard.writeText(text);
   }
 
@@ -569,7 +570,7 @@ export default function CommunityPage() {
           return (
             <button key={reaction.id} onClick={() => onReact(qtId, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 11px", borderRadius: 20, border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 12, color: isSelected ? "var(--sage-dark)" : "var(--text3)", fontWeight: isSelected ? 700 : 400, transition: "all 0.15s" }}>
               <ReactionIcon id={reaction.id} selected={isSelected} />
-              <span>{lang === "de" ? reaction.label_de : lang === "fr" ? reaction.label_fr : lang === "en" ? reaction.label_en : reaction.label}</span>
+              <span>{c(reaction.labelKey)}</span>
               {count > 0 && <span style={{ fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--text2)", marginLeft: 2 }}>{count}</span>}
             </button>
           );
@@ -602,9 +603,9 @@ export default function CommunityPage() {
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).sort((a, b) => { if (r.qt_mode === "sunday") { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); } return 0; }).map((s) => { const { key, label: rawLabel, label_de: rawLabelDe, label_en: rawLabelEn, label_fr: rawLabelFr, italic, isDecision } = s; const isSundaySummary = key === "summary" && r.qt_mode === "sunday"; const label = isSundaySummary ? "말씀 요약" : rawLabel; const label_de = isSundaySummary ? "Predigtzusammenfassung" : rawLabelDe; const label_en = isSundaySummary ? "Sermon Summary" : rawLabelEn; const label_fr = isSundaySummary ? "Résumé du message" : rawLabelFr; return (
+              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).sort((a, b) => { if (r.qt_mode === "sunday") { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); } return 0; }).map(({ key, labelKey, sundayLabelKey, italic, isDecision }) => { const displayLabelKey = key === "summary" && r.qt_mode === "sunday" && sundayLabelKey ? sundayLabelKey : labelKey; return (
                 <div key={key}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{lang === "de" ? label_de : lang === "fr" ? (label_fr ?? label_en) : lang === "en" ? label_en : label}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{c(displayLabelKey)}</p>
                   {isDecision ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {r[key].split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
@@ -629,7 +630,7 @@ export default function CommunityPage() {
     );
   }
 
-  const TABS = [{ id: "prayer", label: t("community_tab_prayer", lang) }, { id: "qt", label: t("community_tab_qt", lang) }, { id: "group", label: t("community_tab_group", lang) }];
+  const TABS: { id: typeof tab; label: string }[] = [{ id: "prayer", label: c("community_tab_prayer") }, { id: "qt", label: c("community_tab_qt") }, { id: "group", label: c("community_tab_group") }];
 
   if (selectedGroup) {
     return (
@@ -800,7 +801,7 @@ export default function CommunityPage() {
         </div>
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginTop: 12 }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", borderBottom: tab === t.id ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, color: tab === t.id ? "var(--sage-dark)" : "var(--text3)" }}>
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", borderBottom: tab === t.id ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, color: tab === t.id ? "var(--sage-dark)" : "var(--text3)" }}>
               {t.label}
             </button>
           ))}
@@ -815,13 +816,13 @@ export default function CommunityPage() {
           <>
             {/* 기도 중 / 응답됐어요 서브탭 */}
             <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
-              {[
-                { key: "praying", label: c("community_prayer_tab_praying"), count: prayers.length },
-                { key: "answered", label: c("community_prayer_tab_answered"), count: answeredPrayers.length },
-              ].map(({ key, label, count }) => (
+              {([
+                { key: "praying" as const, label: c("community_prayer_tab_praying"), count: prayers.length },
+                { key: "answered" as const, label: c("community_prayer_tab_answered"), count: answeredPrayers.length },
+              ]).map(({ key, label, count }) => (
                 <button
                   key={key}
-                  onClick={() => setPrayerTab(key as any)}
+                  onClick={() => setPrayerTab(key)}
                   style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: prayerTab === key ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                 >
                   <span style={{ fontSize: 13, fontWeight: prayerTab === key ? 700 : 400, color: prayerTab === key ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
