@@ -657,8 +657,6 @@ export const T = {
 
   // ── QT record ──
   qt_record_all: { ko: "전체 커뮤니티", de: "Gesamte Gemeinde", en: "Entire community", fr: "Toute la communauté" },
-  qt_record_copied: { ko: "복사됨! ✓",    de: "Kopiert! ✓", en: "Copied! ✓", fr: "Copié ! ✓" },
-  qt_record_copy_all: { ko: "전체 복사",     de: "Alles kopieren", en: "Copy all", fr: "Tout copier" },
   qt_record_public: { ko: "공개 그룹",     de: "Öffentliche Gruppe", en: "Public group", fr: "Groupe public" },
   qt_record_private: { ko: "비공개 그룹",    de: "Private Gruppe", en: "Private group", fr: "Groupe privé" },
   qt_record_opening: { ko: "들어가는 기도",  de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
