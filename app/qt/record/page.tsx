@@ -3,37 +3,42 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t, type Lang } from "@/lib/i18n";
+import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 
-// QT Record 전용 번역 매핑
-const QTR_TR: Record<string, Partial<Record<Lang, string>>> = {
-  "돌아가기": { de: "Zurück", en: "Go back", fr: "Retour" },
-  "전체 복사": { de: "Alles kopieren", en: "Copy all", fr: "Tout copier" },
-  "복사됨! ✓": { de: "Kopiert! ✓", en: "Copied! ✓", fr: "Copié ! ✓" },
-  "나누기": { de: "Teilen", en: "Share", fr: "Partager" },
-  "공유 중 (수정)": { de: "Geteilt (ändern)", en: "Shared (edit)", fr: "Partagé (modifier)" },
-  "취소": { de: "Abbrechen", en: "Cancel", fr: "Annuler" },
-  "큐티 나누기": { de: "Stille Zeit teilen", en: "Share Quiet Time", fr: "Partager le QT" },
-  "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": { de: "Gleichzeitig an mehrere Orte teilen (Mehrfachauswahl)", en: "Share to multiple places at once", fr: "Vous pouvez partager à plusieurs endroits à la fois (sélection multiple)" },
-  "전체 커뮤니티": { de: "Gesamte Gemeinde", en: "Entire Community", fr: "Toute la communauté" },
-  "모든 Roots 사용자에게 공개": { de: "Für alle Roots-Nutzer sichtbar", en: "Visible to all Roots users", fr: "Visible pour tous les utilisateurs de Roots" },
-  "내 그룹": { de: "Meine Gruppen", en: "My Groups", fr: "Mes groupes" },
-  "공개 그룹": { de: "Öffentliche Gruppe", en: "Public group", fr: "Groupe public" },
-  "비공개 그룹": { de: "Private Gruppe", en: "Private group", fr: "Groupe privé" },
-  "그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!": { de: "Keine Gruppen. Erstellen Sie eine in der Gemeinde!", en: "No groups. Create one in Community!", fr: "Aucun groupe. Créez-en un dans la communauté !" },
-  "들어가는 기도": { de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
-  "본문 요약": { de: "Zusammenfassung", en: "Summary", fr: "Résumé du passage" },
-  "붙잡은 말씀": { de: "Schlüsselvers", en: "Key Verse", fr: "Verset clé" },
-  "느낌과 묵상": { de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Réflexion et méditation" },
-  "성품 (적용)": { de: "Charakter (Anwendung)", en: "Character (Application)", fr: "Caractère (application)" },
-  "행동 (결단)": { de: "Handlung (Entschluss)", en: "Action (Resolution)", fr: "Action (décision)" },
-  "올려드리는 기도": { de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+// QT Record 전용 라벨 매핑
+const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
+  "돌아가기": "qt_record_back",
+  "전체 복사": "qt_record_copy_all",
+  "복사됨! ✓": "qt_record_copied",
+  "나누기": "qt_record_share",
+  "공유 중 (수정)": "qt_record_shared_edit",
+  "취소": "qt_record_cancel",
+  "큐티 나누기": "qt_record_share_title",
+  "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": "qt_record_share_sub",
+  "전체 커뮤니티": "qt_record_share_all",
+  "모든 Roots 사용자에게 공개": "qt_record_share_all_sub",
+  "내 그룹": "qt_record_my_groups",
+  "공개 그룹": "qt_record_public_group",
+  "비공개 그룹": "qt_record_private_group",
+  "그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!": "qt_record_no_groups",
+  "들어가는 기도": "qt_record_section_opening_prayer",
+  "본문 요약": "qt_record_section_summary",
+  "말씀 요약": "qt_record_section_sermon_summary",
+  "붙잡은 말씀": "qt_record_section_key_verse",
+  "느낌과 묵상": "qt_record_section_meditation",
+  "성품 (적용)": "qt_record_section_application",
+  "적용과 결단": "qt_record_section_application_decision",
+  "행동 (결단)": "qt_record_section_decision",
+  "올려드리는 기도": "qt_record_section_closing_prayer",
 };
-function trR(s: string, lang: Lang): string { return lang === "ko" ? s : QTR_TR[s]?.[lang] ?? s; }
+function trR(s: string, lang: Lang): string {
+  const key = QT_RECORD_LABEL_KEYS[s];
+  return key ? t(key, lang) : s;
+}
 function sectionLabel(key: string, qtMode?: string, lang?: Lang): string {
   if (key === "summary") return trR(qtMode === "sunday" ? "말씀 요약" : "본문 요약", lang || "ko");
   const map: Record<string, string> = {
@@ -137,9 +142,9 @@ function RecordContent() {
             if (Object.keys(updates).length > 0) {
               await supabase.from("profiles").update(updates).eq("id", u.id);
               if (updates.badge_joseph && !prof?.badge_joseph) {
-                setBadgePopup({ img: "/badge_joseph.png", title: lang === "de" ? "Josef-Abzeichen! 🌈" : lang === "fr" ? "Badge Joseph ! 🌈" : lang === "en" ? "Joseph Badge! 🌈" : "요셉 배지 획득! 🌈", msg: t("badge_joseph_msg", lang) });
+                setBadgePopup({ img: "/badge_joseph.png", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
               } else if (updates.badge_qt_bird) {
-                setBadgePopup({ img: "/qt_bird.png", title: lang === "de" ? "Wortüberbringer-Abzeichen! 🕊️" : lang === "fr" ? "Badge Porteur de la Parole ! 🕊️" : lang === "en" ? "Word Carrier Badge! 🕊️" : "말씀 배달부 배지 획득! 🕊️", msg: t("badge_qt_bird_msg", lang) });
+                setBadgePopup({ img: "/qt_bird.png", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
               }
             }
           }
@@ -183,7 +188,7 @@ function RecordContent() {
       record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
-      (lang === "de" ? "\n\n— In Gottes Wort verwurzelt, Roots" : lang === "fr" ? "\n\n— Enraciné dans la Parole, Roots" : lang === "en" ? "\n\n— Rooted in the Word, Roots" : "\n\n— 말씀에 뿌리내리다, Roots"),
+      `\n\n${t("qt_record_copy_signature", lang)}`,
     ].filter(Boolean).join("\n");
     navigator.clipboard.writeText(parts).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
@@ -199,11 +204,11 @@ function RecordContent() {
       const g = myGroups.find(g => g.id === gId);
       if (g) labels.push(`'${g.name}'`);
     });
-    return labels.length > 0 ? (lang === "de" ? `Geteilt: ${labels.join(", ")}` : lang === "fr" ? `Partagé : ${labels.join(", ")}` : lang === "en" ? `Shared: ${labels.join(", ")}` : `${labels.join(", ")}에 공유 중`) : null;
+    return labels.length > 0 ? t("qt_record_shared_label", lang, { labels: labels.join(", ") }) : null;
   }
 
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{lang === "de" ? "Eintrag nicht gefunden" : lang === "fr" ? "Enregistrement introuvable" : lang === "en" ? "Record not found" : "기록을 찾을 수 없어요"}</p></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p></div>;
 
   const isShared = sharedTargets.length > 0;
   const SECTIONS = [
@@ -319,7 +324,7 @@ function RecordContent() {
 
             {selectedTargets.length > 0 && (
               <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {selectedTargets.length} {lang === "de" ? "Orte zum Teilen" : lang === "fr" ? "lieux de partage" : lang === "en" ? "places to share" : "곳에 나누기"}
+                {t("qt_record_selected_count", lang, { count: selectedTargets.length })}
               </p>
             )}
 
