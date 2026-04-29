@@ -4,8 +4,51 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type TKey } from "@/lib/i18n";
 import { Loader2, Pencil, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
+
+const PROFILE_WEEKDAY_KEYS = [
+  "weekday_sun",
+  "weekday_mon",
+  "weekday_tue",
+  "weekday_wed",
+  "weekday_thu",
+  "weekday_fri",
+  "weekday_sat",
+] as const satisfies readonly TKey[];
+
+const PROFILE_MONTH_LOCALE = {
+  ko: "ko-KR",
+  de: "de-DE",
+  en: "en-US",
+  fr: "fr-FR",
+} as const;
+
+const FAITH_BADGES = [
+  { key: "badge_rootsman", img: "/badge_rootsman.png", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
+  { key: "badge_mose", img: "/badge_mose.png", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
+  { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", titleKey: "badge_rootsman_bible_title", descKey: "badge_rootsman_bible_desc" },
+  { key: "badge_david", img: "/badge_david.png", titleKey: "badge_david_title", descKey: "badge_david_desc" },
+  { key: "badge_noah", img: "/badge_noah.png", titleKey: "badge_noah_title", descKey: "badge_noah_desc" },
+  { key: "badge_joseph", img: "/badge_joseph.png", titleKey: "badge_joseph_title", descKey: "badge_joseph_desc" },
+  { key: "badge_prayer_warrior", img: "/prayer_warrior.png", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
+  { key: "badge_paul", img: "/badge_paul.png", titleKey: "badge_paul_title", descKey: "badge_paul_desc" },
+  { key: "badge_peter", img: "/badge_peter.png", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
+  { key: "badge_qt_bird", img: "/qt_bird.png", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
+  { key: "badge_angel", img: "/angel.png", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
+] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
+
+const SPIRIT_FRUIT_BADGES = [
+  { name: "Love", descKey: "fruit_love", fruit: "🍎" },
+  { name: "Peace", descKey: "fruit_peace", fruit: "🍉" },
+  { name: "Joy", descKey: "fruit_joy", fruit: "🍌" },
+  { name: "Goodness", descKey: "fruit_goodness", fruit: "🍊" },
+  { name: "Kindness", descKey: "fruit_kindness", fruit: "🍒" },
+  { name: "Patience", descKey: "fruit_patience", fruit: "🍍" },
+  { name: "Faithfulness", descKey: "fruit_faithful", fruit: "🍇" },
+  { name: "Gentleness", descKey: "fruit_gentle", fruit: "🍋" },
+  { name: "Self-Control", descKey: "fruit_selfctrl", fruit: "🍓" },
+] as const satisfies readonly { name: string; descKey: TKey; fruit: string }[];
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -95,7 +138,7 @@ export default function ProfilePage() {
     setPhotoError("");
     // 5MB 제한
     if (file.size > 5 * 1024 * 1024) {
-      setPhotoError(lang === "de" ? "Nur Bilder bis 5 MB sind möglich." : lang === "fr" ? "Seules les images jusqu’à 5 Mo sont autorisées." : lang === "en" ? "Only images up to 5 MB are allowed." : "5MB 이하 이미지만 가능해요");
+      setPhotoError(t("profile_photo_size_error", lang));
       return;
     }
     setUploadingPhoto(true);
@@ -106,7 +149,7 @@ export default function ProfilePage() {
     const path = `${user.id}/avatar.${ext}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
-      setPhotoError((lang === "de" ? "Upload fehlgeschlagen: " : lang === "fr" ? "Échec du téléversement : " : lang === "en" ? "Upload failed: " : "업로드 실패: ") + error.message);
+      setPhotoError(`${t("profile_upload_fail", lang)}: ${error.message}`);
       setUploadingPhoto(false);
       return;
     }
@@ -116,7 +159,7 @@ export default function ProfilePage() {
     const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
     if (dbError) {
       console.error("프로필 사진 DB 저장 실패:", dbError);
-      setPhotoError((lang === "de" ? "Foto speichern fehlgeschlagen: " : lang === "fr" ? "Échec de l’enregistrement de la photo : " : lang === "en" ? "Photo save failed: " : "사진 저장 실패: ") + dbError.message);
+      setPhotoError(`${t("profile_save_fail", lang)}: ${dbError.message}`);
       setUploadingPhoto(false);
       return;
     }
@@ -168,7 +211,7 @@ export default function ProfilePage() {
 
   async function sendPasswordResetEmail() {
     if (!userEmail) {
-      showToast(lang === "de" ? "Keine E-Mail-Adresse gefunden." : lang === "fr" ? "Adresse e-mail introuvable." : lang === "en" ? "No email address found." : "이메일 주소를 찾을 수 없어요.");
+      showToast(t("profile_email_missing", lang));
       return;
     }
     setSendingPasswordReset(true);
@@ -177,9 +220,9 @@ export default function ProfilePage() {
       await supabase.auth.resetPasswordForEmail(userEmail, {
         redirectTo: `${window.location.origin}/login`,
       });
-      showToast(lang === "de" ? "E-Mail zum Ändern des Passworts gesendet." : lang === "fr" ? "E-mail de changement de mot de passe envoyé." : lang === "en" ? "Password change email sent." : "비밀번호 변경 이메일을 보냈어요.");
+      showToast(t("profile_password_reset_sent", lang));
     } catch (e) {
-      showToast(lang === "de" ? "E-Mail konnte nicht gesendet werden." : lang === "fr" ? "Impossible d’envoyer l’e-mail." : lang === "en" ? "Could not send email." : "이메일을 보내지 못했어요.");
+      showToast(t("profile_password_reset_fail", lang));
     }
     setSendingPasswordReset(false);
   }
@@ -245,7 +288,7 @@ export default function ProfilePage() {
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
-          aria-label={lang === "de" ? "Kontoeinstellungen" : lang === "fr" ? "Paramètres du compte" : lang === "en" ? "Account settings" : "계정 설정"}
+          aria-label={t("profile_account_settings", lang)}
           style={{ position: "absolute", top: 72, right: 20, width: 36, height: 36, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}
         >
           <Settings size={17} />
@@ -255,7 +298,7 @@ export default function ProfilePage() {
           <div style={{ position: "relative", flexShrink: 0 }}>
             <div style={{ width: 68, height: 68, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="프로필" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={profile.avatar_url} alt={t("nav_profile", lang)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <span style={{ fontSize: 26 }}>🌱</span>
               )}
@@ -292,10 +335,10 @@ export default function ProfilePage() {
               </div>
             ) : (
               <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {profile?.name ?? (lang === "de" ? "Nutzer" : lang === "fr" ? "Utilisateur" : lang === "en" ? "User" : "성도")}
+                {profile?.name ?? t("profile_default_name", lang)}
               </h1>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {lang === "de" ? "Tage in Folge" : lang === "fr" ? "jours de suite" : lang === "en" ? "days in a row" : "일 연속"}</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {t("profile_streak", lang)}</p>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
@@ -303,7 +346,7 @@ export default function ProfilePage() {
 
       {/* 신앙 여정 통계 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">{lang === "de" ? "Glaubensweg" : lang === "fr" ? "Parcours de foi" : lang === "en" ? "Faith Journey" : "신앙 여정"}</div>
+        <div className="sec-label">{t("profile_faith_journey", lang)}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
             { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <HandHeart size={18} /> },
@@ -321,7 +364,7 @@ export default function ProfilePage() {
 
       {/* 신앙의 결실 뱃지 - 가로 스크롤 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">{lang === "de" ? "Glaubensfrüchte" : lang === "fr" ? "Badges de foi" : lang === "en" ? "Faith Badges" : "신앙의 결실"}</div>
+        <div className="sec-label">{t("profile_faith_fruits", lang)}</div>
         <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
           {/* 좌우 화살표 */}
           <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
@@ -329,19 +372,7 @@ export default function ProfilePage() {
           <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
             style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>›</button>
           <div id="badge-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
-            {[
-              { key: "badge_rootsman", img: "/badge_rootsman.png", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
-              { key: "badge_mose", img: "/badge_mose.png", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
-              { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", titleKey: "badge_rootsman_bible_title", descKey: "badge_rootsman_bible_desc" },
-              { key: "badge_david", img: "/badge_david.png", titleKey: "badge_david_title", descKey: "badge_david_desc" },
-              { key: "badge_noah", img: "/badge_noah.png", titleKey: "badge_noah_title", descKey: "badge_noah_desc" },
-              { key: "badge_joseph", img: "/badge_joseph.png", titleKey: "badge_joseph_title", descKey: "badge_joseph_desc" },
-              { key: "badge_prayer_warrior", img: "/prayer_warrior.png", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
-              { key: "badge_paul", img: "/badge_paul.png", titleKey: "badge_paul_title", descKey: "badge_paul_desc" },
-              { key: "badge_peter", img: "/badge_peter.png", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
-              { key: "badge_qt_bird", img: "/qt_bird.png", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
-              { key: "badge_angel", img: "/angel.png", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
-            ].sort((a, b) => {
+            {[...FAITH_BADGES].sort((a, b) => {
               const aEarned = profile?.[a.key] ? 1 : 0;
               const bEarned = profile?.[b.key] ? 1 : 0;
               return bEarned - aEarned;
@@ -350,11 +381,11 @@ export default function ProfilePage() {
               return (
                 <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
                   <div style={{ width: 68, height: 68, marginBottom: 6 }}>
-                    <img src={b.img} alt={t(b.titleKey as any, lang)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{t(b.titleKey as any, lang)}</div>
-                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey as any, lang)}</div>
-                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{lang === "de" ? "✓ Erhalten" : lang === "fr" ? "✓ Obtenu" : lang === "en" ? "✓ Earned" : "✓ 획득"}</div>}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{t(b.titleKey, lang)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
+                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                 </div>
               );
             })}
@@ -362,25 +393,15 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* {lang === "de" ? "Früchte des Geistes" : lang === "fr" ? "Fruits de l’Esprit" : lang === "en" ? "Fruits of the Spirit" : "성령의 열매"} 배지 */}
+      {/* 성령의 열매 배지 */}
       {(() => {
         const streak = profile?.streak_days ?? 0;
         const earnedCount = Math.min(Math.floor(streak / 100), 9);
-        const BADGES = [
-          { name: "Love", desc: lang === "de" ? "Liebe" : lang === "fr" ? "Amour" : lang === "en" ? "Love" : "사랑", fruit: "🍎" },
-          { name: "Peace", desc: lang === "de" ? "Frieden" : lang === "fr" ? "Paix" : lang === "en" ? "Peace" : "화평", fruit: "🍉" },
-          { name: "Joy", desc: lang === "de" ? "Freude" : lang === "fr" ? "Joie" : lang === "en" ? "Joy" : "희락", fruit: "🍌" },
-          { name: "Goodness", desc: lang === "de" ? "Güte" : lang === "fr" ? "Bonté" : lang === "en" ? "Goodness" : "양선", fruit: "🍊" },
-          { name: "Kindness", desc: lang === "de" ? "Freundlichkeit" : lang === "fr" ? "Bienveillance" : lang === "en" ? "Kindness" : "자비", fruit: "🍒" },
-          { name: "Patience", desc: lang === "de" ? "Geduld" : lang === "fr" ? "Patience" : lang === "en" ? "Patience" : "오래참음", fruit: "🍍" },
-          { name: "Faithfulness", desc: lang === "de" ? "Treue" : lang === "fr" ? "Fidélité" : lang === "en" ? "Faithfulness" : "충성", fruit: "🍇" },
-          { name: "Gentleness", desc: lang === "de" ? "Sanftmut" : lang === "fr" ? "Douceur" : lang === "en" ? "Gentleness" : "온유", fruit: "🍋" },
-          { name: "Self-Control", desc: lang === "de" ? "Selbstbeherrschung" : lang === "fr" ? "Maîtrise de soi" : lang === "en" ? "Self-Control" : "절제", fruit: "🍓" },
-        ];
+        const BADGES = SPIRIT_FRUIT_BADGES;
         return (
           <div style={{ padding: "14px 16px 0" }}>
             <div className="sec-label">
-              {lang === "de" ? "Früchte des Geistes" : lang === "fr" ? "Fruits de l’Esprit" : lang === "en" ? "Fruits of the Spirit" : "성령의 열매"}
+              {t("profile_spirit_fruits", lang)}
               <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
             </div>
             <div className="card">
@@ -403,15 +424,15 @@ export default function ProfilePage() {
                         />
                       </div>
                       <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)" }}>{b.name}</div>
-                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 1 }}>{b.desc}</div>
-                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{lang === "de" ? "✓ Erhalten" : lang === "fr" ? "✓ Obtenu" : lang === "en" ? "✓ Earned" : "✓ 획득"}</div>}
+                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 1 }}>{t(b.descKey, lang)}</div>
+                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                     </div>
                   );
                 })}
               </div>
               {earnedCount === 0 && (
                 <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
-                  {lang === "de" ? "Nach 100 Tagen erhalten Sie die erste Frucht 🌱" : lang === "fr" ? "Après 100 jours, vous recevez le premier fruit 🌱" : lang === "en" ? "After 100 days you receive the first fruit 🌱" : "100일을 채우면 첫 번째 열매를 받아요 🌱"}
+                  {t("profile_spirit_fruit_first_hint", lang)}
                 </p>
               )}
             </div>
@@ -422,14 +443,17 @@ export default function ProfilePage() {
       {/* 큐티 현황 달력 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
-          {lang === "de" ? `QT im ${new Date().toLocaleDateString("de-DE", {month:"long"})}` : lang === "fr" ? `QT en ${new Date().toLocaleDateString("fr-FR", {month:"long"})}` : lang === "en" ? `QT in ${new Date().toLocaleDateString("en-US", {month:"long"})}` : `${new Date().getMonth() + 1}월 큐티 현황`}
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{lang === "de" ? " Tage" : lang === "fr" ? " jours" : lang === "en" ? " Days" : "일"}</span>
+          {t("profile_qt_month_label", lang, { month: new Date().toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { month: "long" }) })}
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{t("profile_qt_days_suffix", lang)}</span>
         </div>
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-            {(lang === "de" ? ["So","Mo","Di","Mi","Do","Fr","Sa"] : lang === "fr" ? ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"] : lang === "en" ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] : ["일","월","화","수","목","금","토"]).map(d => (
-              <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
-            ))}
+            {PROFILE_WEEKDAY_KEYS.map(key => {
+              const d = t(key, lang);
+              return (
+              <div key={key} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
+              );
+            })}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
             {renderCalendar()}
@@ -440,7 +464,7 @@ export default function ProfilePage() {
       {/* 로그아웃 */}
       <div style={{ padding: "4px 16px 0" }}>
         <button onClick={logout} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 14, background: "none", border: "1px solid var(--border)", cursor: "pointer" }}>
-          <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>{lang === "de" ? "Abmelden" : lang === "fr" ? "Se déconnecter" : lang === "en" ? "Log out" : "로그아웃"}</span>
+          <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>{t("profile_logout", lang)}</span>
         </button>
       </div>
 
@@ -448,7 +472,7 @@ export default function ProfilePage() {
       <div style={{ padding: "14px 16px 0" }}>
         <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
           <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{lang === "de" ? "Freunde einladen" : lang === "fr" ? "Inviter des amis" : lang === "en" ? "Invite friends" : "친구 초대하기"}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{t("profile_invite", lang)}</span>
         </button>
       </div>
 
@@ -481,7 +505,7 @@ export default function ProfilePage() {
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "22px 18px 18px", width: "100%", maxWidth: 390, boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{lang === "de" ? "Kontoeinstellungen" : lang === "fr" ? "Paramètres du compte" : lang === "en" ? "Account settings" : "계정 설정"}</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{t("profile_account_settings", lang)}</h3>
                 <p style={{ fontSize: 11, color: "var(--text3)" }}>{userEmail}</p>
               </div>
               <button onClick={() => setShowSettingsModal(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)" }}>
@@ -495,7 +519,7 @@ export default function ProfilePage() {
                 value={newName}
                 onChange={e => setNewName(e.target.value.slice(0, 20))}
                 maxLength={20}
-                placeholder={lang === "de" ? "Name" : lang === "fr" ? "Nom" : lang === "en" ? "Nickname" : "닉네임"}
+                placeholder={t("profile_name_placeholder", lang)}
                 style={{ flex: 1, minWidth: 0, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "11px 12px", color: "var(--text)", fontSize: 13, outline: "none" }}
               />
               <button
@@ -503,7 +527,7 @@ export default function ProfilePage() {
                 disabled={savingName || !newName.trim()}
                 style={{ padding: "11px 13px", background: "var(--sage)", border: "none", borderRadius: 12, color: "var(--bg)", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: !newName.trim() ? 0.55 : 1 }}
               >
-                {savingName ? <Loader2 size={13} className="spin" /> : (lang === "de" ? "Speichern" : lang === "fr" ? "Enregistrer" : lang === "en" ? "Save" : "저장")}
+                {savingName ? <Loader2 size={13} className="spin" /> : t("profile_save", lang)}
               </button>
             </div>
 
@@ -513,8 +537,8 @@ export default function ProfilePage() {
               style={{ width: "100%", padding: "13px 14px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
             >
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "de" ? "Passwort ändern" : lang === "fr" ? "Changer le mot de passe" : lang === "en" ? "Change password" : "비밀번호 변경"}</p>
-                <p style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Wir senden Ihnen eine E-Mail." : lang === "fr" ? "Nous vous enverrons un e-mail." : lang === "en" ? "We will send you an email." : "비밀번호 변경 이메일을 보내드려요."}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t("profile_change_password", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_password_email_hint", lang)}</p>
               </div>
               {sendingPasswordReset ? <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} /> : <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>}
             </button>
@@ -525,19 +549,19 @@ export default function ProfilePage() {
                 style={{ width: "100%", padding: "13px 14px", background: "transparent", border: "1px solid rgba(224,80,80,0.34)", borderRadius: 14, color: "#E05050", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{lang === "de" ? "Konto löschen" : lang === "fr" ? "Supprimer le compte" : lang === "en" ? "Delete account" : "계정 탈퇴"}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{lang === "de" ? "Daten dauerhaft entfernen" : lang === "fr" ? "Supprimer définitivement les données" : lang === "en" ? "Permanently remove data" : "계정과 데이터를 영구 삭제"}</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("profile_delete", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_delete_hint", lang)}</p>
                 </div>
                 <span style={{ fontSize: 18, color: "#E05050" }}>›</span>
               </button>
             ) : (
               <div style={{ padding: "13px 14px", background: "rgba(224,80,80,0.06)", border: "1px solid rgba(224,80,80,0.26)", borderRadius: 14 }}>
                 <p style={{ fontSize: 12, color: "#E05050", marginBottom: 10, lineHeight: 1.6 }}>
-                  {lang === "de" ? "Möchten Sie dieses Konto wirklich löschen? Alle Daten werden dauerhaft entfernt." : lang === "fr" ? "Voulez-vous vraiment supprimer ce compte ? Toutes les données seront supprimées définitivement." : lang === "en" ? "Do you really want to delete this account? All data will be permanently removed." : "정말 탈퇴하시겠어요? 모든 큐티 기록과 기도 제목이 영구 삭제됩니다."}
+                  {t("profile_delete_confirm", lang)}
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
-                    {lang === "de" ? "Abbrechen" : lang === "fr" ? "Annuler" : lang === "en" ? "Cancel" : "취소"}
+                    {t("profile_delete_cancel", lang)}
                   </button>
                   <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "#E05050", border: "none", borderRadius: 10, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                     {deletingAccount ? t("profile_deleting", lang) : t("profile_delete_confirm_btn", lang)}
@@ -554,7 +578,7 @@ export default function ProfilePage() {
         <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("profile_feedback_title", lang)}</h3>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{lang === "de" ? "Kritik, Ideen oder Ermutigung – alles willkommen!" : lang === "fr" ? "Remarques, idées ou encouragements — tout est bienvenu !" : lang === "en" ? "Criticism, ideas or encouragement — all welcome!" : "불편한 점, 개선 아이디어, 격려의 말씀 뭐든 환영해요!"}</p>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{t("profile_feedback_sub", lang)}</p>
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
