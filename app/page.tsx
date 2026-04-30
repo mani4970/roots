@@ -560,19 +560,19 @@ export default function HomePage() {
     {
       label: t("home_routine_qt", lang),
       done: todayDone.qt,
-      icon: <img src="/icon-qt.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
+      icon: <img src="/icon-qt.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
       onClick: openHomeQT,
     },
     {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
-      icon: <img src="/icon-pray.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
+      icon: <img src="/icon-pray.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
       onClick: openPrayerSection,
     },
     {
       label: t("home_routine_decision", lang),
       done: decisionDone,
-      icon: <img src="/icon-decision.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
+      icon: <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
       onClick: openDecisionSection,
     },
   ];
@@ -809,7 +809,7 @@ export default function HomePage() {
             const subColor = done ? "var(--terra-dark)" : "var(--text3)";
             return (
               <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 18, padding: "15px 8px 13px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ width: 36, height: 36, borderRadius: 14, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", color, background: done ? "rgba(196,149,106,0.14)" : "var(--bg3)" }}>{icon}</div>
+                <div style={{ width: 44, height: 44, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", color }}>{icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
                 <div style={{ fontSize: 11, color: subColor, marginTop: 4 }}>{done ? t("home_routine_done", lang) : t("home_routine_open", lang)}</div>
               </button>
