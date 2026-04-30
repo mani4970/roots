@@ -855,6 +855,10 @@ export const T = {
 
 export type TKey = keyof typeof T;
 
+const FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
+  fr: "en",
+};
+
 /**
  * 번역 함수 — 플레이스홀더 `{name}` 치환 지원
  *
@@ -870,7 +874,7 @@ export type TKey = keyof typeof T;
  */
 export function t(key: TKey, lang: Lang = FALLBACK_LANG, vars?: Record<string, string | number>): string {
   const entry = T[key] as Translation;
-  const fallbackLang: Lang = lang === "fr" ? "en" : FALLBACK_LANG;
+  const fallbackLang: Lang = FALLBACK_LANG_BY_LANG[lang] ?? FALLBACK_LANG;
   let str = entry[lang] ?? entry[fallbackLang] ?? entry[FALLBACK_LANG] ?? String(key);
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {

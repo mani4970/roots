@@ -8,7 +8,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTWriteHref } from "@/lib/qtEntry";
-import { getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -142,7 +142,7 @@ export default function QTPage() {
     setShowStartModal(true);
   }
 
-  const dateLocale = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
+  const dateLocale = getDateLocale(lang);
   const isSundayToday = new Date().getDay() === 0;
 
   return (

@@ -7,9 +7,10 @@ export const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
   fr: 26, // Louis Segond
 };
 
+function hasDefaultTranslation(lang: Lang | string | undefined | null): lang is Lang {
+  return typeof lang === "string" && lang in LANG_DEFAULT_TRANSLATION;
+}
+
 export function getDefaultTranslationId(lang: Lang | string | undefined | null): number {
-  if (lang === "ko" || lang === "de" || lang === "en" || lang === "fr") {
-    return LANG_DEFAULT_TRANSLATION[lang];
-  }
-  return LANG_DEFAULT_TRANSLATION.ko;
+  return hasDefaultTranslation(lang) ? LANG_DEFAULT_TRANSLATION[lang] : LANG_DEFAULT_TRANSLATION.ko;
 }

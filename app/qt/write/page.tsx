@@ -185,10 +185,15 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "은 손과 발로 드러나는 것이에요.": { de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
 };
 
+const QT_WRITE_FALLBACK_LANG_BY_LANG: Partial<Record<Lang, keyof TranslationEntry>> = {
+  fr: "en",
+};
+
 /** QT Write 전용 번역 함수 — 매핑에 없는 문자열은 원본 그대로 반환 */
 function trQT(str: string, lang: Lang): string {
-  if (lang === "ko") return str;
-  return QT_WRITE_TRANSLATIONS[str]?.[lang] ?? (lang === "fr" ? QT_WRITE_TRANSLATIONS[str]?.en : undefined) ?? str;
+  const entry = QT_WRITE_TRANSLATIONS[str];
+  const fallbackLang = QT_WRITE_FALLBACK_LANG_BY_LANG[lang];
+  return entry?.[lang] ?? (fallbackLang ? entry?.[fallbackLang] : undefined) ?? str;
 }
 
 function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>): string {

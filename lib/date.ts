@@ -17,8 +17,15 @@ export function getShiftedLocalDateString(days = 0, baseDate = new Date()): stri
   return getLocalDateString(addLocalDays(baseDate, days));
 }
 
+const DATE_LOCALE_BY_LANG: Record<Lang, string> = {
+  ko: "ko-KR",
+  de: "de-DE",
+  en: "en-US",
+  fr: "fr-FR",
+};
+
 export function getDateLocale(lang: Lang): string {
-  return lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : "ko-KR";
+  return DATE_LOCALE_BY_LANG[lang] ?? DATE_LOCALE_BY_LANG.ko;
 }
 
 export function parseLocalDateString(dateStr: string): Date {

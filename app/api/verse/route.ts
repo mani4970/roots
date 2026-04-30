@@ -83,29 +83,27 @@ async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, trans
     .join("\n");
 }
 
-function fallbackVerse(lang: Lang) {
-  if (lang === "de") {
-    return {
-      verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
-      reference: "Matthäus 11:28",
-    };
-  }
-  if (lang === "fr") {
-    return {
-      verse: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
-      reference: "Matthieu 11:28",
-    };
-  }
-  if (lang === "en") {
-    return {
-      verse: "Come to me, all who labor and are heavy laden, and I will give you rest.",
-      reference: "Matthew 11:28",
-    };
-  }
-  return {
+const FALLBACK_VERSE_BY_LANG: Record<Lang, { verse: string; reference: string }> = {
+  ko: {
     verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
     reference: "마태복음 11:28",
-  };
+  },
+  de: {
+    verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
+    reference: "Matthäus 11:28",
+  },
+  en: {
+    verse: "Come to me, all who labor and are heavy laden, and I will give you rest.",
+    reference: "Matthew 11:28",
+  },
+  fr: {
+    verse: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
+    reference: "Matthieu 11:28",
+  },
+};
+
+function fallbackVerse(lang: Lang) {
+  return FALLBACK_VERSE_BY_LANG[lang] ?? FALLBACK_VERSE_BY_LANG.ko;
 }
 
 export async function POST(req: NextRequest) {

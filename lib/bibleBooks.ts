@@ -34,7 +34,6 @@ export const BOOK_NAMES: Record<string, string[]> = {
  *   translateBibleRef("누가복음 10:1-24", "de")  → "Lukas 10:1-24"
  */
 export function translateBookName(koName: string, lang: Lang): string {
-  if (lang === "ko") return koName;
   const bibleLang = LANG_TO_BIBLE[lang] ?? "KO";
   const koBooks = BOOK_NAMES["KO"];
   const targetBooks = BOOK_NAMES[bibleLang];
