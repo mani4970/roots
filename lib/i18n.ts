@@ -354,7 +354,7 @@ export const T = {
   badge_paul_msg: { ko: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!", de: "Wie Paulus – der die Gemeinde liebt und für sie betet!", en: "30 prayers in the community — like Paul's letters!", fr: "30 prières dans la communauté — comme les lettres de Paul !" },
   badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Steadfast like Peter, the rock!", fr: "Solide comme Pierre, le rocher !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
-  badge_angel_msg: { ko: "1000일 동안 다시 돌아오고, 계속 걸어온 당신을 축복합니다.", de: "1000 Tage lang zurückgekehrt und weitergegangen – gesegnet seien Sie.", en: "1000 days of returning and continuing — you are blessed.", fr: "1000 jours à revenir et continuer — soyez béni." },
+  badge_angel_msg: { ko: "1000일 동안 하루 루틴을 이어온 당신을 축복합니다.", de: "Gesegnet seien Sie für 1000 Tage täglicher Routine.", en: "1000 daily routine days! What a faithful journey.", fr: "1000 jours de routine quotidienne ! Quel chemin fidèle." },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -457,4 +457,439 @@ export const T = {
   signup_title: { ko: "시작하기",                 de: "Loslegen", en: "Join Roots 🌱", fr: "Rejoindre Roots 🌱" },
   signup_sub: { ko: "오늘부터 말씀에 뿌리내려요 🌱", de: "Ab heute in Gottes Wort verwurzeln 🌱", en: "Root yourself in God's Word from today 🌱", fr: "Enracinez-vous dans la Parole de Dieu dès aujourd’hui 🌱" },
   signup_nickname: { ko: "닉네임",                   de: "Nickname", en: "Nickname", fr: "Pseudo" },
-  signup_n
+  signup_nickname_ph: { ko: "사용하실 닉네임을 입력해주세요", de: "Geben Sie einen Nickname ein", en: "Enter a nickname", fr: "Entrez un pseudo" },
+  signup_password: { ko: "비밀번호 (6자 이상)",        de: "Passwort (mind. 6 Zeichen)", en: "Password (min. 6 characters)", fr: "Mot de passe (min. 6 caractères)" },
+  signup_btn: { ko: "시작하기",                 de: "Loslegen", en: "Sign up", fr: "S’inscrire" },
+  signup_loading: { ko: "가입 중...",               de: "Wird registriert...", en: "Registering...", fr: "Inscription..." },
+  signup_error: { ko: "회원가입에 실패했어요. 다시 시도해주세요.", de: "Registrierung fehlgeschlagen. Bitte erneut versuchen.", en: "Sign-up failed. Please try again.", fr: "Échec de l’inscription. Veuillez réessayer." },
+  signup_pw_error: { ko: "비밀번호는 6자 이상이어야 해요", de: "Passwort muss mindestens 6 Zeichen haben", en: "Password must be at least 6 characters", fr: "Le mot de passe doit contenir au moins 6 caractères" },
+  signup_back: { ko: "로그인으로",               de: "Zurück zur Anmeldung", en: "Back to login", fr: "Retour à la connexion" },
+
+  // ── 공통 ──
+  save: { ko: "저장",    de: "Speichern", en: "Save", fr: "Enregistrer" },
+  cancel: { ko: "취소",    de: "Abbrechen", en: "Cancel", fr: "Annuler" },
+  close: { ko: "닫기",    de: "Schließen", en: "Close", fr: "Fermer" },
+  delete: { ko: "삭제",    de: "Löschen", en: "Delete", fr: "Supprimer" },
+  edit: { ko: "수정",    de: "Bearbeiten", en: "Edit", fr: "Modifier" },
+  confirm: { ko: "확인",    de: "Bestätigen", en: "Confirm", fr: "Confirmer" },
+  loading: { ko: "로딩 중...", de: "Lädt...", en: "Loading...", fr: "Chargement..." },
+
+  // ── 앱 공통 ──
+  app_loading_sub: { ko: "말씀에 뿌리내리고, 함께 자라다", de: "In Gottes Wort verwurzelt, gemeinsam wachsen", en: "Rooted in God's Word, growing together", fr: "Enraciné dans la Parole de Dieu, grandir ensemble" },
+  home_loading_sub: { ko: "말씀에 뿌리내리고, 함께 자라다", de: "In Gottes Wort verwurzelt, gemeinsam wachsen", en: "Rooted in God's Word, growing together", fr: "Enraciné dans la Parole de Dieu, grandir ensemble" },
+  home_badge_thanks: { ko: "감사해요",                    de: "Danke", en: "Thank you", fr: "Merci" },
+
+  // ── 홈 화면 하드코딩 수정용 ──
+  home_greeting_morning: { ko: "좋은 아침이에요 ☀️",  de: "Guten Morgen ☀️", en: "Good morning", fr: "Bonjour ☀️" },
+  home_greeting_afternoon: { ko: "좋은 오후예요 🌤️",    de: "Guten Nachmittag 🌤️", en: "Good afternoon", fr: "Bon après-midi 🌤️" },
+  home_greeting_evening: { ko: "좋은 저녁이에요 🌅",   de: "Guten Abend 🌅", en: "Good evening", fr: "Bonsoir 🌅" },
+  home_greeting_night: { ko: "좋은 밤이에요 🌙",     de: "Gute Nacht 🌙", en: "Good night 🌙", fr: "Bonne nuit 🌙" },
+  home_verse_section: { ko: "오늘의 말씀",          de: "Tagesvers", en: "Today's verse", fr: "Verset du jour" },
+  home_verse_empty: { ko: "오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요 🌿", de: "Wählen Sie Ihre Stimmung und erhalten Sie einen passenden Vers 🌿", en: "Choose your mood and receive a matching verse 🌿", fr: "Choisissez votre humeur et recevez un verset adapté 🌿" },
+  home_verse_btn: { ko: "오늘의 말씀 받기",     de: "Tagesvers erhalten", en: "Get today's verse", fr: "Recevoir le verset du jour" },
+  home_next_step_section: { ko: "오늘의 한 걸음",       de: "Ihr nächster Schritt", en: "Your next step", fr: "Votre prochaine étape" },
+  home_next_step_checkin_title: { ko: "오늘의 말씀부터 받아보세요", de: "Starten Sie mit dem heutigen Vers", en: "Start with today's verse", fr: "Commencez par le verset du jour" },
+  home_next_step_checkin_sub: { ko: "지금 마음 상태로 말씀과 결단을 먼저 받아보면 오늘 QT가 훨씬 쉬워져요.", de: "Wählen Sie zuerst Ihre heutige Stimmung. Dann wird Ihre QT viel leichter beginnen.", en: "Start with today's mood so your verse and resolution can guide today's QT.", fr: "Commencez avec votre état intérieur actuel : le verset et la décision guideront votre QT d’aujourd’hui." },
+  home_next_step_draft_title: { ko: "작성 중인 QT가 있어요", de: "Sie haben eine begonnene QT", en: "You have a QT in progress", fr: "Un QT est en cours" },
+  home_next_step_draft_sub: { ko: "큐티 탭으로 가지 않아도 홈에서 바로 이어서 쓸 수 있어요.", de: "Sie können direkt von der Startseite aus weiterschreiben.", en: "You can resume it right here without going into the QT tab.", fr: "Vous pouvez le reprendre directement ici sans entrer dans l’onglet QT." },
+  home_next_step_qt_title: { ko: "오늘 QT를 시작해보세요", de: "Beginnen Sie heute Ihre QT", en: "Start today's QT", fr: "Commencez le QT d’aujourd’hui" },
+  home_next_step_qt_sub: { ko: "오늘은 6단계 QT를 기본으로 추천해요. 부담되면 자유형식으로 시작해도 괜찮아요.", de: "Heute empfehlen wir die 6-Schritte-QT. Wenn es zu viel wirkt, können Sie frei beginnen.", en: "Today we recommend the 6-step QT. If that feels heavy, you can start with the free format.", fr: "Aujourd’hui, nous recommandons le QT en 6 étapes. Si cela vous semble lourd, commencez en format libre." },
+  home_next_step_sunday_title: { ko: "오늘은 주일예배 QT로 묵상해보세요", de: "Heute ist Sonntagsgottesdienst-QT dran", en: "Today is for Sunday worship QT", fr: "Aujourd’hui, méditez avec le QT du culte dominical" },
+  home_next_step_sunday_sub: { ko: "예배 말씀과 설교를 가지고 오늘 받은 은혜를 정리해보세요.", de: "Nehmen Sie die Predigt und den Bibeltext mit in Ihre heutige Meditation.", en: "Use today's sermon and passage to reflect on what you received in worship.", fr: "Utilisez le message et le passage du culte pour mettre en ordre la grâce reçue." },
+  home_next_step_qt_primary: { ko: "6단계로 시작",          de: "Mit 6 Schritten starten", en: "Start with 6 steps", fr: "Commencer en 6 étapes" },
+  home_next_step_qt_secondary: { ko: "자유형식으로 시작",      de: "Frei beginnen", en: "Start free-form", fr: "Commencer librement" },
+  home_next_step_sunday_btn: { ko: "주일예배 QT 시작",      de: "Sonntags-QT starten", en: "Start Sunday worship QT", fr: "Commencer le QT du culte" },
+  home_next_step_prayer_title: { ko: "오늘의 기도를 드려보세요", de: "Nehmen Sie sich heute Zeit zum Gebet", en: "Offer today's prayer", fr: "Offrez la prière du jour" },
+  home_next_step_prayer_sub: { ko: "글로 남기지 않아도 괜찮아요. 조용히 기도하거나, 필요한 경우 기도 제목을 적어두세요.", de: "Sie müssen nichts aufschreiben. Beten Sie still oder notieren Sie bei Bedarf ein Gebetsanliegen.", en: "You do not have to write anything down. Pray quietly, or save a prayer request if you need to.", fr: "Vous n’avez pas besoin d’écrire. Priez en silence ou notez un sujet de prière si nécessaire." },
+  home_next_step_prayer_btn: { ko: "기도 기록하러 가기",     de: "Zum Gebet", en: "Go to prayer", fr: "Noter la prière" },
+  home_next_step_decision_empty_title: { ko: "아직 오늘 결단을 정하지 못하셨나요?", de: "Haben Sie Ihren heutigen Vorsatz noch nicht festgelegt?", en: "Have you not chosen today's resolution yet?", fr: "N’avez-vous pas encore choisi votre décision du jour ?" },
+  home_next_step_decision_empty_sub: { ko: "간단한 결단이라도 적어보고, 실행한 뒤 체크해보세요.", de: "Notieren Sie auch einen kleinen Vorsatz und haken Sie ihn nach der Umsetzung ab.", en: "Write down even a simple resolution, then check it off after you live it out.", fr: "Écrivez même une petite décision, puis cochez-la après l’avoir vécue." },
+  home_next_step_decision_placeholder: { ko: "예: 오늘 감사 한 가지를 꼭 전하기", de: "z. B. Heute bewusst einen Dank aussprechen", en: "e.g. Share one word of gratitude today", fr: "ex. Partager aujourd’hui une parole de gratitude" },
+  home_next_step_decision_save: { ko: "결단 저장하기", de: "Vorsatz speichern", en: "Save resolution", fr: "Enregistrer la décision" },
+  home_next_step_decision_title: { ko: "오늘의 적용을 실천해보세요", de: "Leben Sie die heutige Anwendung", en: "Practice today's application", fr: "Vivez l’application d’aujourd’hui" },
+  home_next_step_decision_sub: { ko: "말씀을 읽었다면 이제 삶으로 이어갈 차례예요. 오늘의 적용을 체크해보세요.", de: "Wenn Sie das Wort gelesen haben, ist jetzt die Umsetzung dran. Prüfen Sie Ihre heutige Anwendung.", en: "If you have read the Word, now is the time to live it out. Check today's application.", fr: "Si vous avez lu la Parole, il est temps de la vivre. Cochez l’application du jour." },
+  home_next_step_decision_btn: { ko: "오늘의 적용 보기",       de: "Heutige Anwendung ansehen", en: "View today's application", fr: "Voir l’application du jour" },
+  home_next_step_complete_title: { ko: "오늘도 믿음의 뿌리가 깊어지고 있어요.", de: "Heute wachsen die Wurzeln Ihres Glaubens tiefer.", en: "Today, the roots of your faith are growing deeper.", fr: "Aujourd’hui, les racines de votre foi s’approfondissent." },
+  home_next_step_complete_sub: { ko: "루츠맨이 정원에 물을 주고 있어요. 정원에서 오늘의 성장을 확인해보세요.", de: "RootsMan gießt gerade Ihren Garten. Sehen Sie sich das heutige Wachstum an.", en: "RootsMan is watering your garden. Take a look at today's growth.", fr: "RootsMan arrose votre jardin. Regardez la croissance d’aujourd’hui." },
+  home_next_step_complete_btn: { ko: "정원 보기",             de: "Garten ansehen", en: "View garden", fr: "Voir le jardin" },
+  home_recommend_section: { ko: "오늘의 추천 결단",     de: "Empfohlener Vorsatz", en: "Recommended resolution", fr: "Décision recommandée" },
+  home_decision_practiced: { ko: "결단 실천 완료!",    de: "Vorsatz umgesetzt!", en: "Resolution practiced!", fr: "Décision vécue !" },
+  home_decision_practice: { ko: "오늘 이 결단을 실천했어요", de: "Ich habe diesen Vorsatz umgesetzt", en: "I practiced this resolution today", fr: "J’ai vécu cette décision aujourd’hui" },
+  home_my_decision: { ko: "오늘 나의 결단",       de: "Meine heutigen Vorsätze", en: "My resolutions today", fr: "Mes décisions du jour" },
+  home_apply_section: { ko: "오늘의 적용",          de: "Heutige Anwendung", en: "Today's application", fr: "Application du jour" },
+  home_apply_ai: { ko: "추천 적용",            de: "Empfohlene Anwendung", en: "Recommended application", fr: "Application recommandée" },
+  home_apply_my: { ko: "내가 적은 결단",        de: "Meine notierten Vorsätze", en: "My written resolutions", fr: "Mes décisions écrites" },
+  home_prayer_section: { ko: "오늘의 기도",          de: "Heutiges Gebet", en: "Today's Prayer", fr: "Prière du jour" },
+  home_prayer_desc: { ko: "오늘의 기도를 하나님께 드려보세요.", de: "Bringen Sie Gott heute Ihr Gebet.", en: "Offer today's prayer to God.", fr: "Offrez la prière d’aujourd’hui à Dieu." },
+  home_prayer_done_msg: { ko: "기도 완료!",        de: "Gebetet!", en: "Prayed!", fr: "Prière faite !" },
+  home_prayer_save_error: { ko: "오늘의 기도를 저장하지 못했어요.", de: "Das Gebet konnte nicht gespeichert werden.", en: "Could not save today's prayer.", fr: "Impossible d’enregistrer la prière du jour." },
+  home_decision_save_error: { ko: "결단을 저장하지 못했어요.", de: "Der Vorsatz konnte nicht gespeichert werden.", en: "Could not save the resolution.", fr: "Impossible d’enregistrer la décision." },
+  home_prayer_quiet_option: { ko: "조용히 기도했어요",    de: "Ich habe still gebetet", en: "I prayed quietly", fr: "J’ai prié en silence" },
+  home_prayer_write_option: { ko: "기도 제목 적어두기",   de: "Gebetsanliegen notieren", en: "Write prayer request", fr: "Écrire un sujet de prière" },
+  home_prayer_hint: { ko: "글로 남기지 않아도 괜찮아요. 오늘의 기도를 하나님께 드렸다면 충분해요.", de: "Sie mussen nichts aufschreiben. Wenn Sie Ihr heutiges Gebet Gott gebracht haben, genugt das.", en: "You do not need to write it down. If you offered today's prayer to God, that is enough.", fr: "Vous n’avez pas besoin de l’écrire. Si vous avez offert la prière du jour à Dieu, cela suffit." },
+  home_prayer_quiet_celeb: { ko: "오늘의 기도를\n하나님께 드렸어요", de: "Sie haben Ihr heutiges Gebet Gott gebracht", en: "You offered today's prayer to God", fr: "Vous avez offert la prière du jour à Dieu" },
+  home_prayer_quiet_celeb_sub: { ko: "구하고 찾는 자에게\n하나님이 반드시 응답하실거예요!", de: "Gott wird denen, die bitten und suchen, gewiss antworten!", en: "God will surely answer those who ask and seek!", fr: "Dieu répondra assurément à ceux qui demandent et cherchent!" },
+  home_prayer_yes_btn: { ko: "네, 오늘 기도했어요",    de: "Ja, ich habe heute gebetet", en: "Yes, I prayed today", fr: "Oui, j’ai prié aujourd’hui" },
+  home_routine_section: { ko: "오늘의 루틴",          de: "Heutige Routine", en: "Today's routine", fr: "Routine du jour" },
+    home_routine_qt:        { ko: "큐티",                 de: "QT", en: "QT", fr: "QT" },
+    home_routine_prayer:    { ko: "기도",                 de: "Gebet", en: "Prayer", fr: "Prière" },
+    home_routine_decision:  { ko: "결단",                 de: "Vorsatz", en: "Resolution", fr: "Décision" },
+  home_routine_done: { ko: "완료 ✓",              de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓" },
+  home_routine_notdone: { ko: "미완료",               de: "Offen", en: "Open", fr: "Ouvert" },
+  home_routine_open: { ko: "열기 →",              de: "Öffnen →", en: "Open →", fr: "Ouvrir →" },
+    home_qt_choice_title:{ ko: "오늘 QT를 어떻게 할까요?", de: "Wie möchten Sie heute QT machen?", en: "How would you like to do QT today?", fr: "Comment voulez-vous faire votre QT aujourd’hui ?" },
+    home_qt_choice_sub:  { ko: "오늘은 6단계 큐티를 추천해요. 부담된다면 자유형식으로 짧게 시작해도 괜찮아요.", de: "Heute empfehlen wir die 6-Schritte-QT. Wenn es zu viel ist, können Sie auch frei und kurz beginnen.", en: "We recommend the 6-step QT today. If that feels too much, you can start briefly in free form.", fr: "Nous recommandons le QT en 6 étapes aujourd’hui. Si cela vous semble trop lourd, vous pouvez commencer simplement en format libre." },
+    home_qt_choice_6step:{ ko: "6단계 큐티 시작하기", de: "6-Schritte-QT beginnen", en: "Start 6-step QT", fr: "Commencer le QT en 6 étapes" },
+    home_qt_choice_free: { ko: "자유형식으로 큐티하기", de: "Freie QT machen", en: "Do free-form QT", fr: "Faire un QT libre" },
+    home_qt_choice_guide:{ ko: "6단계 가이드 보기", de: "6-Schritte-Anleitung ansehen", en: "View 6-step guide", fr: "Voir le guide des 6 étapes" },
+    home_qt_choice_close:{ ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
+    home_qt_sunday_title:{ ko: "오늘은 주일이에요", de: "Heute ist Sonntag", en: "Today is Sunday", fr: "Aujourd’hui, c’est dimanche" },
+    home_qt_sunday_sub:  { ko: "주일예배 말씀으로 QT를 진행해요.", de: "Machen Sie heute QT mit der Predigt und dem Bibeltext des Gottesdienstes.", en: "Use today’s worship sermon and passage for QT.", fr: "Faites votre QT avec le message et le passage du culte." },
+    home_qt_sunday_start:{ ko: "주일예배 QT 시작하기", de: "Sonntagsgottesdienst-QT starten", en: "Start Sunday worship QT", fr: "Commencer le QT du culte dominical" },
+  home_celebration_title: { ko: "오늘도 믿음의 뿌리가 깊어지고 있어요.", de: "Heute wachsen die Wurzeln Ihres Glaubens tiefer.", en: "Today, the roots of your faith are growing deeper.", fr: "Aujourd’hui, les racines de votre foi s’approfondissent." },
+  home_celebration_sub: { ko: "루츠맨이 정원에 물을 주고 있어요. 오늘의 성장을 확인해보세요.", de: "RootsMan gießt gerade Ihren Garten. Schauen Sie sich das heutige Wachstum an.", en: "RootsMan is watering your garden. Take a look at today's growth.", fr: "RootsMan arrose votre jardin. Regardez la croissance du jour." },
+  home_celebration_sub_prefix: { ko: "", de: "", en: "", fr: "" },
+  home_decision_celeb: { ko: "결단 실천 완료!",     de: "Vorsatz umgesetzt!", en: "Resolution complete!", fr: "Décision accomplie !" },
+  home_decision_celeb_sub: { ko: "말씀을 삶으로 살아내는 당신을 축복해요 🌱", de: "Gesegnet, wer Gottes Wort im Leben umsetzt 🌱", en: "Blessed are those who live by God's Word 🌿", fr: "Béni soit celui qui vit selon la Parole de Dieu 🌿" },
+
+  // "{name}의 정원" / "{name}s Garten"
+  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden", fr: "Jardin de {name}" },
+  home_garden_keyword: { ko: "정원", de: "Garten", en: "garden", fr: "Jardin" },
+
+  // ── TreeGrowth 하드코딩 ──
+  tree_stage_0: { ko: "씨앗 심겨졌어요",   de: "Samen gepflanzt", en: "Seed planting", fr: "Graine plantée" },
+  tree_stage_1: { ko: "씨앗",            de: "Samen", en: "Taking root", fr: "Prend racine" },
+  tree_stage_2: { ko: "새싹",            de: "Sprössling", en: "Reaching for light", fr: "Cherche la lumière" },
+  tree_stage_3: { ko: "묘목",            de: "Setzling", en: "Sprout appears", fr: "La pousse apparaît" },
+  tree_stage_4: { ko: "성장 중",          de: "Wachsend", en: "Growing strong", fr: "Grandit avec force" },
+  tree_stage_5: { ko: "나무",            de: "Baum", en: "Branches spread", fr: "Les branches s’étendent" },
+  tree_stage_6: { ko: "열매 맺음",        de: "Früchte", en: "Leaves unfold", fr: "Les feuilles se déploient" },
+  tree_stage_7: { ko: "정원 시작",        de: "Gartenstart", en: "Bearing fruit", fr: "Porte du fruit" },
+  tree_stage_8: { ko: "정원 성장",        de: "Garten wächst", en: "Full bloom", fr: "Pleine floraison" },
+  tree_stage_9: { ko: "정원 완성 🏆",     de: "Garten vollendet 🏆", en: "Garden blooming", fr: "Jardin en fleurs" },
+  tree_stage_10: { ko: "풍성한 정원 🌳",    de: "Üppiger Garten 🌳", en: "Garden complete", fr: "Jardin complet" },
+  tree_desc_0: { ko: "겨자씨가 땅에 심겨졌어요",       de: "Ein Senfkorn wurde gesät", en: "A mustard seed was planted", fr: "Une graine de moutarde a été plantée" },
+  tree_desc_1: { ko: "겨자씨가 땅에 심겨졌어요",       de: "Ein Senfkorn wurde gesät", en: "A mustard seed was planted", fr: "Une graine de moutarde a été plantée" },
+  tree_desc_2: { ko: "고개를 들고 햇빛을 찾아요",     de: "Es streckt sich zum Licht", en: "Reaching for the light", fr: "Elle cherche la lumière" },
+  tree_desc_3: { ko: "뿌리를 단단히 내리고 있어요",    de: "Die Wurzeln greifen tief", en: "Roots growing deep", fr: "Les racines s’enfoncent" },
+  tree_desc_4: { ko: "가지가 뻗어나가고 있어요",      de: "Die Äste breiten sich aus", en: "Branches spreading out", fr: "Les branches s’étendent" },
+  tree_desc_5: { ko: "든든하게 자라나고 있어요",       de: "Kräftig wächst er heran", en: "Growing strong and tall", fr: "Elle grandit avec force" },
+  tree_desc_6: { ko: "새들이 날아와 깃들었어요",       de: "Vögel nisten in den Zweigen", en: "Birds nest in the branches", fr: "Les oiseaux nichent dans les branches" },
+  tree_desc_7: { ko: "새 씨앗이 뿌려졌어요",          de: "Neue Samen wurden gesät", en: "New seeds have been sown", fr: "De nouvelles graines ont été semées" },
+  tree_desc_8: { ko: "이웃 나무가 자라고 있어요",      de: "Nachbarbäume wachsen", en: "Neighboring trees are growing", fr: "Les arbres voisins grandissent" },
+  tree_desc_9: { ko: "아름다운 정원이 완성됐어요!",    de: "Ein wunderschöner Garten!", en: "A beautiful garden!", fr: "Un beau jardin !" },
+  tree_desc_10: { ko: "열매가 가득한 정원이에요!",      de: "Ein Garten voller Früchte!", en: "A garden full of fruit!", fr: "Un jardin plein de fruits !" },
+
+  // {n} placeholder 사용
+  tree_day_count:   { ko: "{n}일째", de: "Tag {n}", en: "Day {n}", fr: "Jour {n}" },
+  tree_garden_n:    { ko: "{n}번째 정원", de: "{n}. Garten", en: "{n}.garden", fr: "{n}e jardin" },
+  tree_progress:    { ko: "{n} / 10", de: "{n} / 10", en: "{n} / 10", fr: "{n} / 10" },
+  tree_streak:      { ko: "{n}일 연속 기록 중", de: "{n} Tage in Folge", en: "{n} days in a row", fr: "{n} jours de suite" },
+  tree_away_msg:    { ko: "{n}일 만이에요. 오늘 루틴으로 다시 뿌리내려봐요.", de: "{n} Tage her. Starten Sie die Routine und kommen Sie zurück.", en: "It's been {n} days. Start the routine and come back.", fr: "Cela fait {n} jours. Reprenez la routine et enracinez-vous à nouveau." },
+
+  // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
+  tree_sub_0: { ko: "씨앗이 심어졌어요. 오늘부터 다시 함께 자라가요!", de: "Der Samen ist gepflanzt. Heute beginnt der Weg erneut!", en: "The seed has been planted. Let's begin growing again today!", fr: "La graine est plantée. Recommençons à grandir aujourd’hui !" },
+  tree_sub_10: { ko: "작은 순종이 뿌리를 내리고 있어요.", de: "Kleine Schritte schlagen Wurzeln.", en: "Small acts of faith are taking root.", fr: "De petits actes de foi prennent racine." },
+  tree_sub_20: { ko: "새싹이 또렷하게 자라나고 있어요.", de: "Der Spross wächst sichtbar.", en: "The new sprout is growing clearly.", fr: "La nouvelle pousse grandit clairement." },
+  tree_sub_30: { ko: "뿌리와 줄기가 함께 단단해지고 있어요.", de: "Wurzeln und Stamm werden stärker.", en: "Roots and stem are growing stronger together.", fr: "Les racines et la tige se fortifient ensemble." },
+  tree_sub_40: { ko: "믿음의 가지가 생명력 있게 뻗어나가고 있어요.", de: "Die Zweige des Glaubens strecken sich voller Leben aus.", en: "Branches of faith are stretching out with life.", fr: "Les branches de la foi s’étendent avec vie." },
+  tree_sub_50: { ko: "나무가 눈에 띄게 자라나고 있어요.", de: "Der Baum wächst sichtbar.", en: "The tree is growing visibly.", fr: "L’arbre grandit visiblement." },
+  tree_sub_60: { ko: "정원이 더 풍성해지고 있어요.", de: "Der Garten wird reicher und voller.", en: "The garden is becoming more abundant.", fr: "Le jardin devient plus abondant." },
+  tree_sub_70: { ko: "믿음의 나무가 쉼을 주는 그늘이 되어가고 있어요.", de: "Der Baum des Glaubens wird zu einem Ort der Ruhe.", en: "The tree of faith is becoming a place of shade and rest.", fr: "L’arbre de foi devient un lieu d’ombre et de repos." },
+  tree_sub_80: { ko: "열매를 준비하는 계절로 들어가고 있어요.", de: "Sie treten in eine Zeit ein, in der Frucht vorbereitet wird.", en: "You are entering a season of preparing fruit.", fr: "Vous entrez dans une saison de préparation du fruit." },
+  tree_sub_90: { ko: "정원이 거의 완성되어가고 있어요.", de: "Der Garten ist fast vollständig.", en: "The garden is almost complete.", fr: "Le jardin est presque complet." },
+  tree_sub_100: { ko: "성령의 열매를 맺을 준비가 되었어요.", de: "Sie sind bereit, Frucht des Geistes zu tragen.", en: "You are ready to bear the fruit of the Spirit.", fr: "Vous êtes prêt à porter le fruit de l’Esprit." },
+
+  // ── RootsManPopup ──
+  rootsman_title: { ko: "루츠맨이 물을 주고 있어요",     de: "RootsMan gießt den Garten", en: "RootsMan is watering the garden", fr: "RootsMan arrose le jardin" },
+  rootsman_check: { ko: "정원을 확인해보세요 🌱",       de: "Schauen Sie sich den Garten an 🌱", en: "Check the garden 🌱", fr: "Regardez le jardin 🌱" },
+  rootsman_btn: { ko: "정원 보러 가기",              de: "Zum Garten", en: "Go to garden", fr: "Aller au jardin" },
+  rootsman_msg_1: { ko: "씨앗이 땅속에서 뿌리를 내리기 시작했어요.", de: "Der Samen beginnt, Wurzeln zu schlagen.", en: "RootsMan is watering your seed today! 💧", fr: "RootsMan arrose votre graine aujourd’hui ! 💧" },
+  rootsman_msg_2: { ko: "새싹이 조금씩 고개를 내밀고 있어요.",       de: "Ein kleiner Sprössling zeigt sich.", en: "Your sprout gets love today! 🌱", fr: "Votre pousse reçoit de l’amour aujourd’hui ! 🌱" },
+  rootsman_msg_3: { ko: "묘목이 햇빛을 향해 자라고 있어요.",         de: "Der Setzling wächst zum Licht.", en: "Growing well! RootsMan is cheering you on! 🌿", fr: "Elle grandit bien ! RootsMan vous encourage ! 🌿" },
+  rootsman_msg_4: { ko: "가지가 뻗어나가고 뿌리가 깊어지고 있어요.", de: "Die Äste breiten sich aus, die Wurzeln vertiefen sich.", en: "Your tree is getting stronger!", fr: "Votre arbre devient plus fort !" },
+  rootsman_msg_5: { ko: "나무가 든든하게 자라나고 있어요.",          de: "Der Baum wächst kräftig heran.", en: "Beautiful growth! Keep going! 🌳", fr: "Belle croissance ! Continuez ! 🌳" },
+  rootsman_msg_6: { ko: "말씀에 점점 더 깊이 뿌리를 내리고 있어요.", de: "Die Verwurzelung in Gottes Wort wird tiefer.", en: "RootsMan is smiling at your garden!", fr: "RootsMan sourit à votre jardin !" },
+  rootsman_msg_7: { ko: "열매를 맺어가고 있어요. 계속 나아가요!",    de: "Früchte wachsen heran. Weiter so!", en: "Leaves are spreading! 🍃", fr: "Les feuilles s’étendent ! 🍃" },
+  rootsman_msg_8: { ko: "새들이 날아와 쉬어갈 만큼 자랐어요.",      de: "Der Baum ist groß genug für Vögel.", en: "Fruit is almost ready! 🍎", fr: "Le fruit est presque prêt ! 🍎" },
+  rootsman_msg_9: { ko: "아름다운 정원이 거의 완성되어 가요!",      de: "Ein wunderschöner Garten entsteht!", en: "Your garden shines! ✨", fr: "Votre jardin brille ! ✨" },
+  rootsman_msg_10: { ko: "풍성한 정원이 완성되어 가고 있어요! 🌳",    de: "Ein üppiger Garten nimmt Gestalt an! 🌳", en: "What an amazing garden! 🏆", fr: "Quel jardin magnifique ! 🏆" },
+
+  // ── QT 페이지 ──
+  qt_today_done: { ko: "오늘 큐티 완료!",                     de: "QT heute erledigt!", en: "QT done today!", fr: "QT terminé aujourd’hui !" },
+  qt_today_done_sub: { ko: "말씀 앞에 앉은 당신, 축복해요",       de: "Gott segne dich – Sie waren beim Wort Gottes.", en: "God bless you — you were with God's Word.", fr: "que Dieu te bénisse — vous étiez avec la Parole de Dieu." },
+  qt_today_bible_ref: { ko: "오늘의 큐티 본문",                     de: "Heutiger Abschnitt", en: "TODAY'S PASSAGE", fr: "PASSAGE DU JOUR" },
+  qt_sunday_title: { ko: "오늘은 주일이에요!",                de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !" },
+  qt_sunday_desc: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte die Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
+  qt_today_start: { ko: "오늘 큐티 시작하기",                   de: "Heutige QT beginnen", en: "Start today's QT", fr: "Commencer le QT du jour" },
+  qt_past_records: { ko: "지난 큐티 기록",                       de: "Frühere QTs", en: "Recordings", fr: "Enregistrements" },
+  qt_no_records_simple: { ko: "아직 큐티 기록이 없어요",               de: "Noch keine Aufzeichnungen", en: "No recordings yet", fr: "Aucun enregistrement pour l’instant" },
+  qt_how_title: { ko: "어떻게 큐티할까요?",                    de: "Wie möchten Sie QT machen?", en: "How would you like to do QT?", fr: "Comment voulez-vous faire votre QT ?" },
+  qt_how_sub: { ko: "형식을 선택하면 바로 시작돼요",         de: "Wählen Sie ein Format", en: "Choose a format", fr: "Choisissez un format" },
+  qt_mode_6step_title: { ko: "6단계 큐티",                           de: "6-Schritte QT", en: "6-Step QT", fr: "QT en 6 étapes" },
+  qt_mode_6step_desc: { ko: "들어가는 기도 → 본문 → 붙잡은 말씀\n→ 묵상 → 결단 → 마침 기도", de: "Eröffnungsgebet → Text → Schlüsselvers\n→ Meditation → Entschluss → Abschlussgebet", en: "Opening Prayer → Text → Key Verse\n→ Meditation → Resolution → Closing Prayer", fr: "Prière d’ouverture → Texte → Verset clé\\n→ Méditation → Décision → Prière finale" },
+  qt_mode_sunday_title: { ko: "주일예배 큐티",                        de: "Sonntagsgottesdienst", en: "Sunday Worship", fr: "Culte du dimanche" },
+  qt_mode_sunday_desc: { ko: "설교 요약 + 붙잡은 말씀 + 결단\n일요일에 자동으로 추천돼요", de: "Predigtzusammenfassung + Schlüsselvers + Entschluss\nSonntags automatisch empfohlen", en: "Sermon summary + Key verse + Resolution\nAutomatically recommended on Sundays", fr: "Résumé du sermon + Verset clé + Décision\\nRecommandé automatiquement le dimanche" },
+  qt_mode_free_title: { ko: "자유 형식",                           de: "Freie Form", en: "Free Form", fr: "Format libre" },
+  qt_mode_free_desc: { ko: "다른 큐티책을 쓰거나 자유롭게\n묵상을 적고 싶을 때", de: "Wenn Sie ein eigenes Andachtsbuch verwenden\noder frei meditieren möchten", en: "When using your own devotional book\nor want to meditate freely", fr: "Quand vous utilisez un autre livret de méditation\\nou souhaitez méditer librement" },
+  qt_guide_btn: { ko: "큐티 6단계 가이드 보기",                de: "6-Schritte-Anleitung ansehen", en: "View 6-step guide", fr: "Voir le guide QT en 6 étapes" },
+  qt_guide_step_label: { ko: "큐티 가이드",                          de: "Anleitung", en: "Guide", fr: "Guide" },
+  qt_guide_example: { ko: "예시",                                de: "Beispiel", en: "Example", fr: "Exemple" },
+  qt_guide_prev: { ko: "← 이전",                              de: "← Zurück", en: "← Back", fr: "← Retour" },
+  qt_guide_next: { ko: "다음 →",                              de: "Weiter →", en: "Next →", fr: "Suivant →" },
+  qt_guide_start: { ko: "시작하기 🌱",                         de: "Loslegen 🌱", en: "Let's go 🌱", fr: "Allons-y 🌱" },
+  qt_year_records:      { ko: "{year}년 · {count}개 기록", de: "{year} · {count} Aufzeichnungen", en: "{year} · {count} recordings", fr: "{year} · {count} enregistrements" },
+  qt_month_records:     { ko: "{month} · {count}개 기록", de: "{month} · {count} Aufzeichnungen", en: "{month} · {count} recordings", fr: "{month} · {count} enregistrements" },
+
+  // QT 가이드 6단계
+  qt_g1_title: { ko: "들어가는 기도",     de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
+  qt_g1_desc: { ko: "하나님께 나아가기 위한 접속 스위치. 스위치 ON 하면 하나님의 빛과 생명 에너지가 우리에게 흘러들어오기 시작!", de: "Der Startschalter, um zu Gott zu kommen. Wenn der Schalter an ist, beginnen Gottes Licht und Lebenskraft in uns zu fließen!", en: "The switch to come before God. When the switch turns on, the radio works. Prayer is that switch.", fr: "Le commutateur pour venir devant Dieu. Quand il est allumé, la radio fonctionne. La prière est ce commutateur." },
+  qt_g1_ex: { ko: "주님, 제 눈을 열어 주님의 말씀을 보게 해 주세요. 제 귀를 열어 듣게 해 주세요. 제 마음을 열어 말씀을 받게 해 주세요. 예수님의 이름으로 기도합니다. 아멘", de: "Herr, öffne meine Augen, damit ich dein Wort sehe. Öffne meine Ohren, damit ich höre. Öffne mein Herz, damit ich dein Wort empfange. Im Namen Jesu, Amen.", en: "Lord, open my eyes to see your Word. Open my ears to hear your voice. Open my heart to receive today's message.", fr: "Seigneur, ouvre mes yeux pour voir ta Parole. Ouvre mes oreilles pour entendre ta voix. Ouvre mon cœur pour recevoir le message d’aujourd’hui." },
+  qt_g2_title: { ko: "본문 요약",         de: "Textzusammenfassung", en: "Text Summary", fr: "Résumé du texte" },
+  qt_g2_desc: { ko: "두 번 정도 반복해서 읽고 그 내용을 자신의 말로, 자신의 표현으로 요약!", de: "Lesen Sie den Text zweimal und fassen Sie ihn in eigenen Worten zusammen!", en: "Read the text twice and summarize it in your own words. Write briefly what the text is about.", fr: "Lisez le texte deux fois et résumez-le avec vos propres mots." },
+  qt_g2_ex: { ko: "예) 바울이 빌립보 교인들에게 어떤 상황에서도 기뻐하라고 권면하며, 걱정 대신 기도로 하나님께 아뢰면 평강이 임한다고 말한다.", de: "z. B. Paulus ermahnt die Philipper, sich in allen Umständen zu freuen, und sagt: Wer statt sich zu sorgen betet, empfängt Gottes Frieden.", en: "e.g. Paul urges the Philippians to rejoice in all circumstances and not to worry but to bring everything to God in prayer.", fr: "ex. Paul exhorte les Philippiens à se réjouir en toute circonstance et à présenter toute chose à Dieu dans la prière." },
+  qt_g3_title: { ko: "붙잡은 말씀",       de: "Schlüsselvers", en: "Key verse", fr: "Verset clé" },
+  qt_g3_desc: { ko: "말씀을 읽을 때, 말씀이 우리를 스캔합니다. 우리 마음 밭에 뿌려질 말씀의 씨앗이 있는 부분에서 멈춥니다. 그곳을 붙잡으면 됩니다.", de: "Beim Lesen scannt das Wort uns. Es hält dort an, wo der Same für unser Herz liegt. Dort halten wir fest.", en: "As you read, the Word scans us. It stops where the seed of faith needs to fall.", fr: "Quand nous lisons, la Parole nous sonde. Elle s’arrête là où la semence de foi doit tomber." },
+  qt_g3_ex: { ko: "예) \"아무것도 염려하지 말고 다만 모든 일에 기도와 간구로... 너희 구할 것을 감사함으로 하나님께 아뢰라\" (빌 4:6)", de: "z. B. \"Sorgt euch um nichts, sondern lasst in allen Dingen eure Bitten in Gebet und Flehen mit Danksagung vor Gott kundwerden.\" (Phil 4,6)", en: "e.g. \"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.\" (Phil 4:6)", fr: "ex. « Ne vous inquiétez de rien ; mais en toute chose faites connaître vos besoins à Dieu par des prières... » (Ph 4.6)" },
+  qt_g4_title: { ko: "느낌과 묵상",       de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Réflexion & méditation" },
+  qt_g4_desc: { ko: "말씀은 살아계신 생명의 주로부터 옵니다. 철저하게 개인적으로, 맞춤형으로 옵니다. 물음표가 아닌 느낌표를 두고, 순종의 마음을 품고 성령님의 이끄심에 맡겨봅시다!", de: "Das Wort kommt vom lebendigen Herrn des Lebens. Es kommt ganz persönlich, maßgeschneidert. Setzen Sie Ausrufezeichen statt Fragezeichen, seien Sie gehorsam und lassen Sie sich vom Heiligen Geist leiten!", en: "The Word comes from the living Lord of life. It comes to the very spot where I am today.", fr: "La Parole vient du Seigneur vivant. Elle rejoint précisément l’endroit où je suis aujourd’hui." },
+  qt_g4_ex: { ko: "예) 요즘 취업 걱정에 잠 못 드는데, 주님이 오늘 이 말씀으로 '나한테 가져와'라고 하시는 것 같았다.", de: "z. B. Ich kann vor Jobsorgen nicht schlafen, und heute sagt der Herr mir durch dieses Wort: 'Bring es zu mir.'", en: "e.g. I can't sleep because of job worries, and today the Word says 'Do not be anxious.' The Lord tells me not to worry but to pray and trust Him.", fr: "ex. Je n’arrive pas à dormir à cause de mes inquiétudes, et aujourd’hui la Parole me dit : « Ne t’inquiète pas. »" },
+  qt_g5_title: { ko: "적용과 결단",       de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Application & décision" },
+  qt_g5_desc: { ko: "적용과 결단은 말씀이 나의 성품이 되는 가장 중요한 단계. 성품은 마음을 정하는 것이고, 행동은 손과 발로 하나님의 능력이 드러나게 하는 것입니다.", de: "Anwendung und Entschluss sind der wichtigste Schritt, damit das Wort zu meinem Charakter wird. Charakter ist die Entscheidung des Herzens, Handlung zeigt Gottes Kraft mit Händen und Füßen.", en: "Application and resolution are the most important steps for the Word to take root in daily life.", fr: "L’application et la décision sont les étapes où la Parole prend racine dans la vie quotidienne." },
+  qt_g5_ex: { ko: "성품: 모든 일에 먼저 기도하고 긍정적으로 생각하겠습니다.\n행동: 주신 말씀 친구들과 나누기 / 자기 전에 기도하기", de: "Charakter: Ich werde bei allem zuerst beten und positiv denken.\nHandlung: Das Wort mit Freunden teilen / Vor dem Schlafen beten", en: "Character: I will pray first and think positively about everything.\nAction: Tonight I will write 3 things I'm grateful for and pray about tomorrow's worries.", fr: "Caractère : Je prierai d’abord et penserai positivement.\\nAction : Ce soir, j’écrirai trois sujets de gratitude." },
+  qt_g6_title: { ko: "올려드리는 기도",    de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+  qt_g6_desc: { ko: "주신 말씀과 받은 은혜에 대한 감사와 영광을, 묵상과 결단을 간결하게 다시 하나님께 올려드립니다.", de: "Danken Sie Gott für das empfangene Wort und die Gnade, und bringen Sie Meditation und Entschluss kurz vor Gott.", en: "Thank God for the Word received and ask for grace to live it out today.", fr: "Remerciez Dieu pour la Parole reçue et demandez la grâce de la vivre aujourd’hui." },
+  qt_g6_ex: { ko: "예) 주님, 오늘 염려를 기도로 바꾸라는 말씀 감사해요. 오늘 하루 말씀대로 살게 도와주세요. 예수님 이름으로 기도합니다. 아멘", de: "z. B. Herr, danke für das Wort, Sorgen in Gebet zu verwandeln. Hilf mir heute, nach deinem Wort zu leben. Im Namen Jesu, Amen.", en: "e.g. Lord, thank you for the Word to turn worries into prayer. Help me lay my job worries at your feet tonight.", fr: "ex. Seigneur, merci pour cette Parole qui transforme mes inquiétudes en prière. Aide-moi à vivre selon ta Parole aujourd’hui." },
+
+  // ── 언어 선택 화면 ──
+  lang_picker_title: { ko: "언어를 선택해주세요",     de: "Sprache wählen", en: "Choose language", fr: "Choisissez la langue" },
+  lang_picker_sub: { ko: "Please select your language", de: "Please select your language", en: "Please select your language", fr: "Veuillez sélectionner votre langue" },
+  lang_continue: { ko: "계속하기",              de: "Weiter", en: "Next", fr: "Suivant" },
+
+  // ── QT record ──
+  qt_record_all: { ko: "전체 커뮤니티", de: "Gesamte Gemeinde", en: "Entire community", fr: "Toute la communauté" },
+  qt_record_public: { ko: "공개 그룹",     de: "Öffentliche Gruppe", en: "Public group", fr: "Groupe public" },
+  qt_record_private: { ko: "비공개 그룹",    de: "Private Gruppe", en: "Private group", fr: "Groupe privé" },
+  qt_record_opening: { ko: "들어가는 기도",  de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
+  qt_record_summary: { ko: "본문 요약",     de: "Zusammenfassung", en: "Summary", fr: "Résumé" },
+  qt_record_keyverse: { ko: "붙잡은 말씀",   de: "Schlüsselvers", en: "Key verse", fr: "Verset clé" },
+  qt_record_meditation: { ko: "느낌과 묵상",   de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Réflexion & méditation" },
+  qt_record_application: { ko: "성품 (적용)",   de: "Charakter (Anwendung)", en: "Character (Application)", fr: "Caractère (application)" },
+  qt_record_decision: { ko: "행동 (결단)",   de: "Handlung (Entschluss)", en: "Action (Resolution)", fr: "Action (décision)" },
+  qt_record_closing: { ko: "올려드리는 기도", de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+
+  // ── Join ──
+  join_private: { ko: "비공개 그룹",      de: "Private Gruppe", en: "Private group", fr: "Groupe privé" },
+  join_invite: { ko: "그룹 초대",        de: "Gruppeneinladung", en: "Group invitation", fr: "Invitation au groupe" },
+  join_private_invite: { ko: "🔒 비공개 그룹 초대", de: "🔒 Private Gruppeneinladung", en: "🔒 Private group invitation", fr: "🔒 Invitation à un groupe privé" },
+  join_btn: { ko: "그룹 참여하기",     de: "Gruppe beitreten", en: "Join group", fr: "Rejoindre le groupe" },
+  join_not_found: { ko: "😢 그룹을 찾을 수 없어요", de: "😢 Gruppe nicht gefunden", en: "😢 Group not found", fr: "😢 Groupe introuvable" },
+  join_home: { ko: "홈으로", de: "Zur Startseite", en: "Go home", fr: "Retour à l’accueil" },
+  join_success: { ko: "그룹에 참여했어요!", de: "Sie sind der Gruppe beigetreten!", en: "You joined the group!", fr: "Vous avez rejoint le groupe !" },
+  join_moving_community: { ko: "커뮤니티로 이동 중...", de: "Weiter zur Community...", en: "Moving to Community...", fr: "Redirection vers la communauté..." },
+  join_members_joined: { ko: "{count}명 참여 중", de: "{count} Mitglieder dabei", en: "{count} members joined", fr: "{count} membres" },
+  join_private_notice: { ko: "비공개 그룹이에요.\n로그인 후 참여할 수 있어요.", de: "Dies ist eine private Gruppe.\nNach dem Login können Sie beitreten.", en: "This is a private group.\nYou can join after logging in.", fr: "Ceci est un groupe privé.\nVous pouvez le rejoindre après connexion." },
+  join_no_account_hint: { ko: "Roots 계정이 없으신가요? 참여 후 가입할 수 있어요", de: "Sie haben noch kein Roots-Konto? Nach dem Beitritt können Sie sich registrieren.", en: "No Roots account yet? You can sign up after joining.", fr: "Vous n’avez pas encore de compte Roots ? Vous pourrez vous inscrire après avoir rejoint le groupe." },
+
+  // ── 성경 번역본 그룹 라벨 ──
+    qt_translation_ko: { ko: "한국어",   de: "Koreanisch", en: "Korean", fr: "Coréen" },
+    qt_translation_en: { ko: "English",  de: "Englisch", en: "English", fr: "Anglais" },
+    qt_translation_de: { ko: "Deutsch",  de: "Deutsch", en: "German", fr: "Allemand" },
+  qt_translation_fr: { ko: "Français", de: "Französisch", en: "French", fr: "Français" },
+
+  // ── QT Write 페이지 ──
+  // 6단계 제목 / 부제목 / placeholder / hint
+  qtw_s1_title: { ko: "들어가는 기도",               de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
+  qtw_s1_sub: { ko: "말씀 앞에 나아가기 전 기도",    de: "Gebet vor dem Wort", en: "Prayer before the Word", fr: "Prière avant la Parole" },
+  qtw_s1_ph: { ko: "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your Word today...\nOpen my eyes, ears and heart.", fr: "Seigneur, je viens devant ta Parole aujourd’hui...\\nOuvre mes yeux, mes oreilles et mon cœur." },
+  qtw_s1_hint: { ko: "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.", de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart.", fr: "Court, c’est très bien. Une prière avec un cœur ouvert." },
+  qtw_s2_title: { ko: "본문 요약 & 붙잡은 말씀",      de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé" },
+  qtw_s2_sub: { ko: "본문을 읽고 마음에 새겨요",     de: "Den Text lesen und ins Herz aufnehmen", en: "Read the text and take it to heart", fr: "Lisez le texte et gardez-le dans votre cœur" },
+  qtw_s3_title: { ko: "느낌과 묵상",                 de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Réflexion & méditation" },
+  qtw_s3_sub: { ko: "이 말씀이 내게 주는 의미",     de: "Was bedeutet das Wort für mich?", en: "What does this Word mean to me?", fr: "Que signifie cette Parole pour moi ?" },
+  qtw_s3_ph: { ko: "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.", de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", fr: "Que dit cette Parole dans ma vie ?\\nÉcrivez honnêtement ce que vous ressentez." },
+  qtw_s3_hint: { ko: "정답이 없어요. 성령님의 이끄심에 맡겨봐요.", de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you.", fr: "Il n’y a pas de bonne réponse unique. Laissez-vous guider par le Saint-Esprit." },
+  qtw_s4_title: { ko: "적용과 결단",                 de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Application & décision" },
+  qtw_s4_sub: { ko: "오늘 하루 어떻게 살 건가요?",   de: "Wie leben Sie heute?", en: "How will you live today?", fr: "Comment allez-vous vivre aujourd’hui ?" },
+  qtw_s4_hint: { ko: "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.", de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the heart's decision, action is shown through hands and feet.", fr: "Le caractère est la décision du cœur ; l’action se voit par les mains et les pieds." },
+  qtw_s5_title: { ko: "올려드리는 기도",              de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+  qtw_s5_sub: { ko: "말씀으로 드리는 기도",         de: "Gebet mit dem Wort", en: "Prayer with the Word", fr: "Prière avec la Parole" },
+  qtw_s5_ph: { ko: "말씀을 붙들고 기도를 올려드려요...", de: "Gebet, das das Wort festhält...", en: "Prayer holding on to the Word...", fr: "Prière en s’appuyant sur la Parole..." },
+  qtw_s5_hint: { ko: "말씀과 결단을 간결하게 다시 하나님께 올려드려요.", de: "Wort und Entschluss noch einmal kurz vor Gott bringen.", en: "Bring the Word and resolution before God once more.", fr: "Présentez encore une fois la Parole et votre décision devant Dieu." },
+
+  // 진행바 6칸 라벨
+  qtw_bar1: { ko: "들어가는 기도", de: "Eröffnung", en: "Opening", fr: "Ouverture" },
+  qtw_bar2: { ko: "본문 요약",    de: "Zusammenf.", en: "Summary", fr: "Résumé" },
+  qtw_bar3: { ko: "붙잡은 말씀",  de: "Schlüsselvers", en: "Key verse", fr: "Verset clé" },
+  qtw_bar4: { ko: "느낌과 묵상", de: "Meditation", en: "Meditation", fr: "Méditation" },
+  qtw_bar5: { ko: "적용과 결단", de: "Entschluss", en: "Resolution", fr: "Décision" },
+  qtw_bar6: { ko: "올려드리는 기도", de: "Abschluss", en: "Closing", fr: "Clôture" },
+
+  // 주일예배 단계
+  qtw_sun_s0_title: { ko: "설교 정보",           de: "Predigt-Info", en: "Sermon info", fr: "Infos du sermon" },
+  qtw_sun_s0_sub: { ko: "설교 제목과 본문 말씀을 적어요", de: "Titel und Bibelstelle der Predigt", en: "Sermon title and passage", fr: "Titre du sermon et passage biblique" },
+  qtw_sun_s1_title: { ko: "들어가는 기도",        de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
+  qtw_sun_s1_sub: { ko: "예배 전 마음을 준비해요", de: "Herz vorbereiten vor dem Gottesdienst", en: "Prepare your heart before worship", fr: "Préparez votre cœur avant le culte" },
+  qtw_sun_s1_ph: { ko: "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come to worship today...\nOpen my eyes, ears and heart.", fr: "Seigneur, je viens au culte aujourd’hui...\\nOuvre mes yeux, mes oreilles et mon cœur." },
+  qtw_sun_s1_hint: { ko: "예배 전 마음을 열고 주님께 나아가는 기도예요.", de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with open heart before worship.", fr: "Une prière avec un cœur ouvert avant le culte." },
+  qtw_sun_s2_title: { ko: "말씀 요약",           de: "Zusammenfassung", en: "Summary", fr: "Résumé" },
+  qtw_sun_s2_sub: { ko: "설교 말씀을 내 말로 요약해요", de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words", fr: "Résumez le sermon avec vos propres mots" },
+  qtw_sun_s2_ph: { ko: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words...", fr: "Résumez le message principal avec vos propres mots..." },
+  qtw_sun_s2_hint: { ko: "설교자가 전한 핵심 메시지를 나의 말로 정리해요.", de: "Die Kernbotschaft des Predigers in eigene Worte fassen.", en: "Put the preacher's core message in your own words.", fr: "Exprimez avec vos propres mots le message central du prédicateur." },
+  qtw_sun_s3_title: { ko: "깨달음과 결단",       de: "Erkenntnis & Entschluss", en: "Insight & Resolution", fr: "Compréhension & décision" },
+  qtw_sun_s3_sub: { ko: "말씀이 내게 주는 깨달음과 결단", de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word", fr: "Ce que la Parole m’apprend et ma décision" },
+  qtw_sun_s3_hint: { ko: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out.", fr: "Ce que vous avez compris et comment vous allez le vivre." },
+  qtw_sun_s4_title: { ko: "올려드리는 기도",     de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+  qtw_sun_s4_sub: { ko: "예배의 마무리 기도",   de: "Abschlussgebet des Gottesdienstes", en: "Closing prayer of worship", fr: "Prière de clôture du culte" },
+  qtw_sun_s4_ph: { ko: "오늘 받은 은혜와 결단을 하나님께 올려드려요...", de: "Die empfangene Gnade und den Entschluss vor Gott bringen...", en: "Bring today's grace and resolution before God...", fr: "Présentez à Dieu la grâce reçue et votre décision..." },
+  qtw_sun_s4_hint: { ko: "받은 말씀과 결단을 하나님께 올려드려요.", de: "Das Wort und den Entschluss Gott darbringen.", en: "Offer the Word and resolution to God.", fr: "Offrez à Dieu la Parole et votre décision." },
+
+  // 말씀 선택
+  qtw_find_passage: { ko: "오늘의 말씀 찾기",              de: "Heutigen Abschnitt suchen", en: "Find today's passage", fr: "Trouver le passage du jour" },
+  qtw_find_passage_opt: { ko: "오늘의 말씀 찾기 (선택)",        de: "Heutigen Abschnitt suchen (optional)", en: "Find today's passage (optional)", fr: "Trouver le passage du jour (optionnel)" },
+  qtw_today: { ko: "오늘",                         de: "Heute", en: "Today", fr: "Aujourd’hui" },
+  qtw_cross_chapter: { ko: "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)", de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)", en: "Cross-chapter (e.g. 9:25 – 10:6)", fr: "Passage sur deux chapitres (ex. 9.25 – 10.6)" },
+  qtw_err_verse_range: { ko: "끝 절이 시작 절보다 작아요",       de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
+  qtw_err_load_passage: { ko: "본문을 불러오지 못했어요.",       de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
+
+  // 저장 / 임시저장
+  qtw_draft_saved: { ko: "임시저장됐어요! 나중에 이어쓸 수 있어요", de: "Als Entwurf gespeichert! Sie können später weitermachen", en: "Saved as draft! Continue later", fr: "Enregistré comme brouillon ! Continuez plus tard" },
+  qtw_draft_failed: { ko: "임시저장에 실패했어요. 다시 시도해주세요.", de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
+  qtw_save_failed: { ko: "저장에 실패했어요. 다시 시도해주세요.", de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
+
+  // 자유형식 placeholder
+  qtw_free_ph: { ko: "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse...", en: "Write freely about the Word, your thoughts and insights...", fr: "Écrivez librement sur la Parole, vos pensées et vos découvertes..." },
+
+  // 주일예배 입력 placeholder
+  qtw_sermon_title_ph: { ko: "예: 두려워하지 말라",           de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. Ne crains pas" },
+  qtw_sermon_ref_ph: { ko: "예: 이사야 41:10 / 요한복음 3:16", de: "z. B. Jesaja 41,10 / Johannes 3,16", en: "e.g. Isaiah 41:10 / John 3:16", fr: "ex. Ésaïe 41.10 / Jean 3.16" },
+  qtw_meditation_ph_sun: { ko: "개인적이고 솔직하게 써보세요...", de: "Persönlich und ehrlich schreiben...", en: "Write personally and honestly...", fr: "Écrivez personnellement et honnêtement..." },
+  qtw_app_ph_short: { ko: "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", de: "Welche Haltung nehmen Sie vor diesem Wort ein?", en: "What attitude will you take before this Word?", fr: "Quelle attitude allez-vous adopter devant cette Parole ?" },
+
+  // 주일 단계 라벨들 & 필드
+  qtw_sermon_title_label: { ko: "설교 제목",         de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon" },
+  qtw_sermon_ref_label: { ko: "본문 말씀",         de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique" },
+
+  // 6단계 본문 요약 입력
+  qtw_summary_ph: { ko: "본문 내용을 자신의 말로 요약해보세요...", de: "Fassen Sie den Text in eigenen Worten zusammen...", en: "Summarize the text in your own words...", fr: "Résumez le texte avec vos propres mots..." },
+  qtw_keyverse_ph: { ko: "마음에 와닿은 구절을 적거나 위에서 선택하세요...", de: "Schreiben Sie den berührenden Vers oder wählen Sie oben...", en: "Write the touching verse or select above...", fr: "Écrivez le verset qui vous touche ou sélectionnez-le ci-dessus..." },
+  qtw_application_ph: { ko: "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", de: "Welche Haltung nehmen Sie vor diesem Wort ein?", en: "What attitude will you take before this Word?", fr: "Quelle attitude allez-vous adopter devant cette Parole ?" },
+
+  // 단계 라벨
+  qtw_step_label: { ko: "단계",              de: "Schritt", en: "Step", fr: "Étape" },
+  qtw_character_label: { ko: "성품",              de: "Charakter", en: "Character", fr: "Caractère" },
+  qtw_action_label: { ko: "행동",              de: "Handlung", en: "Action", fr: "Action" },
+
+  // 저장 버튼
+  qtw_save_btn: { ko: "저장하기",          de: "Speichern", en: "Save", fr: "Enregistrer" },
+  qtw_saving: { ko: "저장 중...",        de: "Wird gespeichert...", en: "Saving...", fr: "Enregistrement..." },
+  qtw_save_draft: { ko: "임시저장",          de: "Als Entwurf", en: "Save as draft", fr: "Enregistrer comme brouillon" },
+  qtw_next_step: { ko: "다음 단계 →",       de: "Nächster Schritt →", en: "Next step →", fr: "Étape suivante →" },
+  qtw_prev_step: { ko: "← 이전",            de: "← Zurück", en: "← Back", fr: "← Retour" },
+
+  // 주일예배 UI에 있는 기타 요소들 (section label / badge label 등)
+  qtw_character_section: { ko: "성품 (Be) — 마음의 결심", de: "Charakter — Haltung des Herzens", en: "Character — Heart's attitude", fr: "Caractère — attitude du cœur" },
+  qtw_action_section: { ko: "행동 (Do) — 손과 발",    de: "Handlung — Hände und Füße", en: "Action — Hands and feet", fr: "Action — mains et pieds" },
+  qtw_char_ph: { ko: "어떤 마음가짐을 가질까요?", de: "Welche Haltung nehmen Sie ein?", en: "What attitude will you take?", fr: "Quelle attitude adopterez-vous ?" },
+  qtw_add_action: { ko: "+ 행동 추가",        de: "+ Handlung hinzufügen", en: "+ Add action", fr: "+ Ajouter une action" },
+  qtw_action_ph: { ko: "예: 하루 한 번 말씀 묵상", de: "z. B. Einmal am Tag meditieren", en: "e.g. Meditate once a day", fr: "ex. Méditer une fois par jour" },
+  qtw_verse_select_hint: { ko: "마음에 와닿은 구절을 탭하거나 아래에 직접 적으세요", de: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", en: "Tippen Sie einen berührenden Vers an oder schreiben Sie unten", fr: "Touchez un verset marquant ou écrivez-le ci-dessous" },
+  qtw_decision_hint_character: { ko: "성품", de: "Charakter", en: "Character", fr: "caractère" },
+  qtw_decision_hint_prefix: { ko: "", de: "", en: "", fr: "Le " },
+  qtw_decision_hint_middle: { ko: "은 마음을 정하는 것, ", de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
+  qtw_decision_hint_action: { ko: "행동", de: "Handlung", en: "action", fr: "action" },
+  qtw_decision_hint_action_article: { ko: "", de: "", en: "", fr: "l'" },
+  qtw_decision_hint_suffix: { ko: "은 손과 발로 드러나는 것이에요.", de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
+  qtw_passage_loaded: { ko: "본문이 준비됐어요",    de: "Abschnitt bereit", en: "Passage ready", fr: "Passage prêt" },
+
+  // 번역본 라벨
+  qtw_translation_label: { ko: "번역본",            de: "Übersetzung", en: "Translation", fr: "Traduction" },
+  qtw_change_translation: { ko: "번역본 변경",        de: "Übersetzung ändern", en: "Change translation", fr: "Changer de traduction" },
+
+  // 요일 (짧은 형태)
+  qtw_wd_0: { ko: "일", de: "So", en: "Sun", fr: "Dim" },
+  qtw_wd_1: { ko: "월", de: "Mo", en: "Mon", fr: "Lun" },
+  qtw_wd_2: { ko: "화", de: "Di", en: "Tue", fr: "Mar" },
+  qtw_wd_3: { ko: "수", de: "Mi", en: "Wed", fr: "Mer" },
+  qtw_wd_4: { ko: "목", de: "Do", en: "Thu", fr: "Jeu" },
+  qtw_wd_5: { ko: "금", de: "Fr", en: "Fri", fr: "Ven" },
+  qtw_wd_6: { ko: "토", de: "Sa", en: "Sat", fr: "Sam" },
+
+  // ── 큐티 완료 / 기록 ──
+  qt_complete_title: { ko: "큐티 완료!", de: "QT abgeschlossen!", en: "QT complete!", fr: "QT terminé !" },
+  qt_complete_sub: { ko: "오늘도 말씀 앞에 앉았어요.", de: "Heute waren Sie vor Gottes Wort.", en: "Today, you sat before the Word.", fr: "Aujourd’hui, vous vous êtes assis devant la Parole." },
+  qt_complete_blessing: { ko: "오늘 하루 하나님과 동행할 당신을 축복합니다 ✨", de: "Gottes Segen für Ihren heutigen Weg ✨", en: "Blessings as you walk with God today ✨", fr: "Soyez béni(e) dans votre marche avec Dieu aujourd’hui ✨" },
+  qt_complete_go_qt: { ko: "큐티 탭으로", de: "Zum QT-Tab", en: "Go to QT", fr: "Aller au QT" },
+  qt_complete_go_home: { ko: "홈으로", de: "Zur Startseite", en: "Home", fr: "Accueil" },
+  qt_record_back: { ko: "돌아가기", de: "Zurück", en: "Go back", fr: "Retour" },
+  qt_record_copy_all: { ko: "전체 복사", de: "Alles kopieren", en: "Copy all", fr: "Tout copier" },
+  qt_record_copied: { ko: "복사됨! ✓", de: "Kopiert! ✓", en: "Copied! ✓", fr: "Copié ! ✓" },
+  qt_record_share: { ko: "나누기", de: "Teilen", en: "Share", fr: "Partager" },
+  qt_record_shared_edit: { ko: "공유 중 (수정)", de: "Geteilt (ändern)", en: "Shared (edit)", fr: "Partagé (modifier)" },
+  qt_record_cancel: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler" },
+  qt_record_share_title: { ko: "큐티 나누기", de: "Stille Zeit teilen", en: "Share Quiet Time", fr: "Partager le QT" },
+  qt_record_share_sub: { ko: "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", de: "Gleichzeitig an mehrere Orte teilen (Mehrfachauswahl)", en: "Share to multiple places at once", fr: "Vous pouvez partager à plusieurs endroits à la fois (sélection multiple)" },
+  qt_record_share_all: { ko: "전체 커뮤니티", de: "Gesamte Gemeinde", en: "Entire Community", fr: "Toute la communauté" },
+  qt_record_share_all_sub: { ko: "모든 Roots 사용자에게 공개", de: "Für alle Roots-Nutzer sichtbar", en: "Visible to all Roots users", fr: "Visible pour tous les utilisateurs de Roots" },
+  qt_record_my_groups: { ko: "내 그룹", de: "Meine Gruppen", en: "My Groups", fr: "Mes groupes" },
+  qt_record_public_group: { ko: "공개 그룹", de: "Öffentliche Gruppe", en: "Public group", fr: "Groupe public" },
+  qt_record_private_group: { ko: "비공개 그룹", de: "Private Gruppe", en: "Private group", fr: "Groupe privé" },
+  qt_record_no_groups: { ko: "그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", de: "Keine Gruppen. Erstellen Sie eine in der Gemeinde!", en: "No groups. Create one in Community!", fr: "Aucun groupe. Créez-en un dans la communauté !" },
+  qt_record_section_opening_prayer: { ko: "들어가는 기도", de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
+  qt_record_section_summary: { ko: "본문 요약", de: "Zusammenfassung", en: "Summary", fr: "Résumé du passage" },
+  qt_record_section_sermon_summary: { ko: "말씀 요약", de: "Predigtzusammenfassung", en: "Sermon summary", fr: "Résumé du message" },
+  qt_record_section_key_verse: { ko: "붙잡은 말씀", de: "Schlüsselvers", en: "Key Verse", fr: "Verset clé" },
+  qt_record_section_meditation: { ko: "느낌과 묵상", de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Réflexion et méditation" },
+  qt_record_section_application: { ko: "성품 (적용)", de: "Charakter (Anwendung)", en: "Character (Application)", fr: "Caractère (application)" },
+  qt_record_section_application_decision: { ko: "적용과 결단", de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Application & décision" },
+  qt_record_section_decision: { ko: "행동 (결단)", de: "Handlung (Entschluss)", en: "Action (Resolution)", fr: "Action (décision)" },
+  qt_record_section_closing_prayer: { ko: "올려드리는 기도", de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+  qt_record_badge_joseph_title: { ko: "요셉 배지 획득! 🌈", de: "Josef-Abzeichen! 🌈", en: "Joseph Badge! 🌈", fr: "Badge Joseph ! 🌈" },
+  qt_record_badge_qt_bird_title: { ko: "말씀 배달부 배지 획득! 🕊️", de: "Wortüberbringer-Abzeichen! 🕊️", en: "Word Carrier Badge! 🕊️", fr: "Badge Porteur de la Parole ! 🕊️" },
+  qt_record_copy_signature: { ko: "— 말씀에 뿌리내리다, Roots", de: "— In Gottes Wort verwurzelt, Roots", en: "— Rooted in the Word, Roots", fr: "— Enraciné dans la Parole, Roots" },
+  qt_record_shared_label: { ko: "{labels}에 공유 중", de: "Geteilt: {labels}", en: "Shared: {labels}", fr: "Partagé : {labels}" },
+  qt_record_not_found: { ko: "기록을 찾을 수 없어요", de: "Eintrag nicht gefunden", en: "Record not found", fr: "Enregistrement introuvable" },
+  qt_record_selected_count: { ko: "{count}곳에 나누기", de: "{count} Orte zum Teilen", en: "{count} places to share", fr: "{count} lieux de partage" },
+
+} as const satisfies Record<string, Translation>;
+
+export type TKey = keyof typeof T;
+
+const FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
+  fr: "en",
+};
+
+/**
+ * 번역 함수 — 플레이스홀더 `{name}` 치환 지원
+ *
+ * Fallback 전략:
+ * 1. 요청한 언어 번역이 있으면 사용
+ * 2. 없으면 FALLBACK_LANG ("ko") 사용 → 새 언어 점진적 추가 가능
+ * 3. 그것도 없으면 키 자체 반환 (개발 중 누락 발견용)
+ *
+ * @example
+ *   t("home_greeting_morning", "de")              // "Guten Morgen ☀️"
+ *   t("home_garden_my", "de", { name: "Anna" })   // "Annas Garten"
+ *   t("tree_streak", "ko", { n: 7 })              // "7일 연속 기록 중"
+ */
+export function t(key: TKey, lang: Lang = FALLBACK_LANG, vars?: Record<string, string | number>): string {
+  const entry = T[key] as Translation;
+  const fallbackLang: Lang = FALLBACK_LANG_BY_LANG[lang] ?? FALLBACK_LANG;
+  let str = entry[lang] ?? entry[fallbackLang] ?? entry[FALLBACK_LANG] ?? String(key);
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      str = str.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+    }
+  }
+  return str;
+}
+
+/** 타입 가드: 주어진 값이 지원되는 언어인지 확인 (DB/localStorage 값 검증용) */
+export function isLang(x: unknown): x is Lang {
+  return typeof x === "string" && (SUPPORTED_LANGS as readonly string[]).includes(x);
+}
+
+/** 지원 언어 목록을 UI 선택지 형태로 반환 */
+export function getLanguageOptions() {
+  return SUPPORTED_LANGS.map(code => ({ code, ...LANG_META[code] }));
+}

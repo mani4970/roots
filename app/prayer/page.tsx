@@ -146,15 +146,6 @@ function PrayerPageContent() {
     setSavingTestimony(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    // 노아 뱃지 체크 (첫 기도 응답)
-    if (user) {
-      const { data: prof } = await supabase.from("profiles")
-        .select("badge_noah").eq("id", user.id).single();
-      if (!prof?.badge_noah) {
-        await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
-        setBadgePopup({ img: "/badge_noah.png", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
-      }
-    }
     const { error } = await supabase.from("prayer_items").update({
       is_answered: true,
       testimony: testimonyText.trim(),
@@ -164,6 +155,15 @@ function PrayerPageContent() {
       setNotice(c("prayer_error_answered"));
       setSavingTestimony(false);
       return;
+    }
+    // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
+    if (user) {
+      const { data: prof } = await supabase.from("profiles")
+        .select("badge_noah").eq("id", user.id).single();
+      if (!prof?.badge_noah) {
+        await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
+        setBadgePopup({ img: "/badge_noah.png", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+      }
     }
     setTestimonyPrayerId(null);
     setTestimonyText("");

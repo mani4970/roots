@@ -122,34 +122,33 @@ function RecordContent() {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
       setSharedTargets(selectedTargets);
       // 말씀 배달부 + 요셉 뱃지 체크
-      if (selectedTargets.includes("all")) {
-        try {
-          const { data: { user: u } } = await supabase.auth.getUser();
-          if (u) {
-            const { data: prof } = await supabase.from("profiles")
-              .select("badge_qt_bird, badge_joseph").eq("id", u.id).single();
-            const { data: shares } = await supabase.from("qt_records")
-              .select("id").eq("user_id", u.id).eq("is_draft", false)
-              .not("visibility", "is", null).neq("visibility", "private");
-            const shareCount = (shares?.length ?? 0);
-            const updates: any = {};
-            if (!prof?.badge_joseph && shareCount >= 1) {
-              updates.badge_joseph = true;
-            }
-            if (!prof?.badge_qt_bird && shareCount >= 30) {
-              updates.badge_qt_bird = true;
-            }
-            if (Object.keys(updates).length > 0) {
-              await supabase.from("profiles").update(updates).eq("id", u.id);
-              if (updates.badge_joseph && !prof?.badge_joseph) {
-                setBadgePopup({ img: "/badge_joseph.png", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
-              } else if (updates.badge_qt_bird) {
-                setBadgePopup({ img: "/qt_bird.png", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
-              }
+      // 전체 공개뿐 아니라 그룹 나눔도 QT 나눔으로 인정합니다.
+      try {
+        const { data: { user: u } } = await supabase.auth.getUser();
+        if (u) {
+          const { data: prof } = await supabase.from("profiles")
+            .select("badge_qt_bird, badge_joseph").eq("id", u.id).single();
+          const { data: shares } = await supabase.from("qt_records")
+            .select("id").eq("user_id", u.id).eq("is_draft", false)
+            .not("visibility", "is", null).neq("visibility", "private");
+          const shareCount = (shares?.length ?? 0);
+          const updates: any = {};
+          if (!prof?.badge_joseph && shareCount >= 1) {
+            updates.badge_joseph = true;
+          }
+          if (!prof?.badge_qt_bird && shareCount >= 30) {
+            updates.badge_qt_bird = true;
+          }
+          if (Object.keys(updates).length > 0) {
+            await supabase.from("profiles").update(updates).eq("id", u.id);
+            if (updates.badge_joseph && !prof?.badge_joseph) {
+              setBadgePopup({ img: "/badge_joseph.png", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
+            } else if (updates.badge_qt_bird) {
+              setBadgePopup({ img: "/qt_bird.png", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
             }
           }
-        } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
-      }
+        }
+      } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
     }
     setSharing(false);
     setShowShareModal(false);

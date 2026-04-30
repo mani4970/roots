@@ -224,29 +224,26 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    const onboardingDone = storageGet("onboarding_done");
-    if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
-      const today = getLocalDateString();
-      if (!storageGet(`celebrated_${today}`)) {
-        celebrationShownRef.current = true;
-
-        void (async () => {
+    const runCelebrationFlow = async () => {
+      const onboardingDone = storageGet("onboarding_done");
+      if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
+        const today = getLocalDateString();
+        if (!storageGet(`celebrated_${today}`)) {
           const updated = await updateStreak(today);
-
-          if (!updated) {
-            celebrationShownRef.current = false;
-            return;
+          if (updated) {
+            celebrationShownRef.current = true;
+            storageSet(`celebrated_${today}`, "true");
+            enqueueCelebration({
+              message: t("home_celebration_title", lang),
+              subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
+              launchRootsMan: true,
+            });
           }
-
-          storageSet(`celebrated_${today}`, "true");
-          enqueueCelebration({
-            message: t("home_celebration_title", lang),
-            subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
-            launchRootsMan: true,
-          });
-        })();
+        }
       }
-    }
+    };
+
+    runCelebrationFlow();
   }, [allDone, loading]);
 
   async function updateStreak(today: string): Promise<boolean> {
@@ -257,8 +254,7 @@ export default function HomePage() {
       .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
     if (!p) return false;
     const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
-    if (lastCheckinDate === today) return true;
-
+    if (lastCheckinDate === today) return false;
     // Roots intentionally keeps the streak when a user returns after a break.
     // Returning is welcomed and the routine continues instead of resetting to zero.
     let newStreak = p.last_checkin ? (p.streak_days ?? 0) + 1 : 1;
@@ -288,17 +284,12 @@ export default function HomePage() {
       badgeUpdate.badge_david = true;
       newlyAwardedBadgesRef.current.add("badge_david");
     }
-    if (newStreak >= 100 && newStreak <= 900 && newStreak % 100 === 0) {
-      newlyAwardedBadgesRef.current.add(`fruit_badge_${Math.floor(newStreak / 100) - 1}`);
-    }
     if (newStreak >= 1000 && !alreadyHasAngel) {
       badgeUpdate.badge_angel = true;
       newlyAwardedBadgesRef.current.add("badge_angel");
     }
-
     const { error } = await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     if (error) return false;
-
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (newProfile) setProfile(newProfile);
     return true;
@@ -330,17 +321,20 @@ export default function HomePage() {
       setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
       return;
     }
-    const fruitBadgeKey = Array.from(newly).find((key) => key.startsWith("fruit_badge_"));
-    if (fruitBadgeKey) {
-      newly.delete(fruitBadgeKey);
-      const badgeIndex = Number(fruitBadgeKey.replace("fruit_badge_", ""));
-      setGardenPopup({ show: true, type: "badge", badgeIndex: Number.isFinite(badgeIndex) ? badgeIndex : 0 });
-      return;
-    }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
       setBadgePopup({ img: "/angel.png", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return;
+    }
+
+    // 성령의 열매 배지 팝업 (100일, 200일, ... 900일)
+    if (streak >= 100 && streak <= 900 && streak % 100 === 0) {
+      const fruitKey = `fruit_badge_shown_${streak}`;
+      if (!storageGet(fruitKey)) {
+        storageSet(fruitKey, "true");
+        setGardenPopup({ show: true, type: "badge", badgeIndex: Math.floor(streak / 100) - 1 });
+        return;
+      }
     }
 
     // 정원 단계 변경 팝업 (10일마다)

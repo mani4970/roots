@@ -441,7 +441,14 @@ export default function CommunityPage() {
     if (!groupName.trim() || !userId) return;
     setSavingGroup(true);
     const supabase = createClient();
-    // 베드로 뱃지 체크 (첫 그룹 만들기)
+    const { data: newGroup, error } = await supabase.from("groups").insert({
+      name: groupName.trim(), description: groupDesc.trim() || null,
+      is_public: isPublic, created_by: userId,
+    }).select().single();
+    if (error || !newGroup) { setSavingGroup(false); return; }
+    const { error: memberError } = await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
+    if (memberError) { setSavingGroup(false); return; }
+    // 베드로 뱃지는 그룹 생성과 멤버 등록이 성공한 뒤에만 지급합니다.
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -450,19 +457,13 @@ export default function CommunityPage() {
         if (!prof?.badge_peter) {
           const { data: myGroups } = await supabase.from("groups")
             .select("id").eq("created_by", user.id);
-          if ((myGroups?.length ?? 0) === 0) {
+          if ((myGroups?.length ?? 0) === 1) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
             setBadgePopup({ img: "/badge_peter.png", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
           }
         }
       }
     } catch (e) {}
-    const { data: newGroup, error } = await supabase.from("groups").insert({
-      name: groupName.trim(), description: groupDesc.trim() || null,
-      is_public: isPublic, created_by: userId,
-    }).select().single();
-    if (error || !newGroup) { setSavingGroup(false); return; }
-    await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
     loadData();
   }
