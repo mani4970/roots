@@ -367,11 +367,11 @@ export default function ProfilePage() {
         <div className="sec-label">{t("profile_faith_fruits", lang)}</div>
         <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
           {/* 좌우 화살표 */}
-          <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
+          <button onClick={() => { const el = document.getElementById("faith-badge-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
             style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>‹</button>
-          <button onClick={() => { const el = document.getElementById("badge-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
+          <button onClick={() => { const el = document.getElementById("faith-badge-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
             style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>›</button>
-          <div id="badge-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
+          <div id="faith-badge-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
             {[...FAITH_BADGES].sort((a, b) => {
               const aEarned = profile?.[a.key] ? 1 : 0;
               const bEarned = profile?.[b.key] ? 1 : 0;
@@ -404,27 +404,31 @@ export default function ProfilePage() {
               {t("profile_spirit_fruits", lang)}
               <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
             </div>
-            <div className="card">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, justifyItems: "center" }}>
+            <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
+              {/* 좌우 화살표 */}
+              <button
+                onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
+                style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
+              >‹</button>
+              <button
+                onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
+                style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
+              >›</button>
+              <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
                 {BADGES.map((b, i) => {
                   const earned = i < earnedCount;
                   return (
-                    <div key={b.name} style={{
-                      display: "flex", flexDirection: "column",
-                      alignItems: "center", justifyContent: "center",
-                      textAlign: "center", width: "100%",
-                      opacity: earned ? 1 : 0.3,
-                    }}>
+                    <div key={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
                       {/* 배지 이미지만, 테두리 없이 */}
-                      <div style={{ width: 72, height: 72, margin: "0 auto 6px" }}>
+                      <div style={{ width: 68, height: 68, marginBottom: 6 }}>
                         <img
                           src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`}
                           alt={b.name}
                           style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         />
                       </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)" }}>{b.name}</div>
-                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 1 }}>{t(b.descKey, lang)}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{b.name}</div>
+                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
                       {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                     </div>
                   );
