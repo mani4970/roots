@@ -354,8 +354,13 @@ function QTWriteContent() {
   // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
   useEffect(() => {
     const loadSchedulePassage = async () => {
-      setPageReady(true);
-      if (!hasSchedule || isResume || mode !== "6step") return;
+      // resume=true일 때는 draft 복원이 끝날 때까지 빈 화면을 유지해
+      // 기본 말씀 선택 화면이 잠깐 보이는 flicker를 막는다.
+      if (isResume) return;
+      if (!hasSchedule || mode !== "6step") {
+        setPageReady(true);
+        return;
+      }
       try {
         const bookName = schedBook!;
         const chap = schedChapter!;
@@ -398,6 +403,8 @@ function QTWriteContent() {
         }
       } catch (e) {
         // 스케줄 로드 실패해도 수동 선택 가능
+      } finally {
+        setPageReady(true);
       }
     };
     loadSchedulePassage();
@@ -429,16 +436,22 @@ function QTWriteContent() {
     };
 
     const loadDraft = async () => {
-      setPageReady(true);
-    if (!isResume) return; // 이어쓰기 모드일 때만 로드
+      if (!isResume) {
+        if (!hasSchedule) setPageReady(true);
+        return;
+      } // 이어쓰기 모드일 때만 로드
       if (selectedDate !== todayStr) {
         resetDraftState();
+        setPageReady(true);
         return;
       }
       const { createClient: cc } = await import("@/lib/supabase");
       const supabase = cc();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setPageReady(true);
+        return;
+      }
       const { data: drafts, error } = await supabase.from("qt_records")
         .select("*")
         .eq("user_id", user.id)
@@ -446,10 +459,14 @@ function QTWriteContent() {
         .eq("is_draft", true)
         .order("created_at", { ascending: false })
         .limit(1);
-      if (error) return;
+      if (error) {
+        setPageReady(true);
+        return;
+      }
       const draft = drafts?.[0];
       if (!draft) {
         resetDraftState();
+        setPageReady(true);
         return;
       }
 
@@ -561,6 +578,7 @@ function QTWriteContent() {
       // 저장된 단계로 이동
       const savedStep = draft.current_step ?? 0;
       if (savedStep > 0) setCur(savedStep);
+      setPageReady(true);
     }
     loadDraft();
   }, [isResume, selectedDate]);
