@@ -115,7 +115,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 에러 메시지 / alert
   "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
   "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert!\nSie können später weitermachen", en: "Saved as draft!\nContinue later", fr: "Brouillon enregistré !\nVous pourrez continuer plus tard" },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert! Sie können später weitermachen", en: "Saved as draft! Continue later", fr: "Brouillon enregistré ! Vous pourrez continuer plus tard" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
   // UI 문자열
@@ -177,6 +177,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "이미 큐티 기록이 있어요": { de: "Für {date} gibt es bereits einen QT-Eintrag.", en: "A QT record already exists for {date}." },
   "끝 장": { de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin" },
   "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !" },
+  "결단": { de: "Entschluss", en: "Resolution", fr: "Décision" },
+  "말씀 추가하기 (여러 본문일 경우)": { de: "Abschnitt hinzufügen (bei mehreren Texten)", en: "Add passage (for multiple passages)", fr: "Ajouter un passage (si plusieurs passages)" },
   "성품": { de: "Charakter", en: "Character", fr: "Caractère" },
   "행동": { de: "Handlung", en: "action", fr: "Action" },
   "은 마음을 정하는 것,": { de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
@@ -770,9 +772,9 @@ function QTWriteContent() {
         const { error } = await supabase.from("qt_records").insert(draftData);
         if (error) throw error;
       }
-      showToast(trQT("임시저장 됐어요!\n나중에 이어쓸 수 있어요", lang));
+      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang));
     } catch (e) {
-      showToast(trQT("임시저장에 실패했어요.\n다시 시도해주세요.", lang));
+      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
     } finally {
       setSaving(false);
     }
@@ -856,7 +858,7 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
           {toast}
         </div>
       )}
@@ -954,7 +956,7 @@ function QTWriteContent() {
           {/* 말씀 추가 버튼 */}
           {(bibleRef || passages.length > 0) && (
             <button onClick={addPassage} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              <Plus size={14} /> 말씀 추가하기 (여러 본문일 경우)
+              <Plus size={14} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}
             </button>
           )}
 
@@ -1065,7 +1067,7 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
           {toast}
         </div>
       )}
@@ -1144,7 +1146,7 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
           {toast}
         </div>
       )}
@@ -1377,7 +1379,7 @@ function QTWriteContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
           {toast}
         </div>
       )}
@@ -1519,7 +1521,7 @@ function QTWriteContent() {
               {t("qtw_decision_hint_prefix", lang)}
               <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{t("qtw_decision_hint_character", lang)}</span>
               {t("qtw_decision_hint_middle", lang)}
-              {lang === "fr" ? "l'" : ""}
+              {t("qtw_decision_hint_action_article", lang)}
               <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>{t("qtw_decision_hint_action", lang)}</span>
               {t("qtw_decision_hint_suffix", lang)}
             </p>

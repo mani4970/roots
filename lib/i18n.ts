@@ -798,6 +798,7 @@ export const T = {
   qtw_decision_hint_prefix: { ko: "", de: "", en: "", fr: "Le " },
   qtw_decision_hint_middle: { ko: "은 마음을 정하는 것, ", de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
   qtw_decision_hint_action: { ko: "행동", de: "Handlung", en: "action", fr: "action" },
+  qtw_decision_hint_action_article: { ko: "", de: "", en: "", fr: "l'" },
   qtw_decision_hint_suffix: { ko: "은 손과 발로 드러나는 것이에요.", de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
   qtw_passage_loaded: { ko: "본문이 준비됐어요",    de: "Abschnitt bereit", en: "Passage ready", fr: "Passage prêt" },
 
