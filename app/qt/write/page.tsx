@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { storageGet } from "@/lib/clientStorage";
+import { storageGet, storageSet } from "@/lib/clientStorage";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -75,6 +75,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 6단계 제목/부제목
   "들어가는 기도": { de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
   "말씀 앞에 나아가기 전 기도": { de: "Gebet vor dem Wort", en: "Prayer before the Word", fr: "Prière avant la Parole" },
+  "본문 글씨": { de: "Bibeltext", en: "Bible text", fr: "Texte biblique" },
   "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé" },
   "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur" },
   "느낌과 묵상": { de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Méditation" },
@@ -241,6 +242,48 @@ function QTWriteContent() {
   const params = useSearchParams();
   const lang = useLang();
   const [toast, setToast] = useState<string | null>(null);
+  const BIBLE_TEXT_SIZES = [16, 18, 20, 22] as const;
+  const [bibleTextSizeIndex, setBibleTextSizeIndex] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = storageGet("roots_qt_bible_text_size_index");
+    const parsed = saved ? Number.parseInt(saved, 10) : 1;
+    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), BIBLE_TEXT_SIZES.length - 1) : 1;
+  });
+  const bibleTextFontSize = BIBLE_TEXT_SIZES[bibleTextSizeIndex];
+
+  function changeBibleTextSize(delta: number) {
+    setBibleTextSizeIndex(prev => {
+      const next = Math.min(Math.max(prev + delta, 0), BIBLE_TEXT_SIZES.length - 1);
+      storageSet("roots_qt_bible_text_size_index", String(next));
+      return next;
+    });
+  }
+
+  function BibleTextSizeControl() {
+    return (
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", whiteSpace: "nowrap" }}>{trQT("본문 글씨", lang)}</span>
+        <button
+          type="button"
+          onClick={() => changeBibleTextSize(-1)}
+          disabled={bibleTextSizeIndex === 0}
+          aria-label="Decrease Bible text size"
+          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
+        >
+          A-
+        </button>
+        <button
+          type="button"
+          onClick={() => changeBibleTextSize(1)}
+          disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
+          aria-label="Increase Bible text size"
+          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
+        >
+          A+
+        </button>
+      </div>
+    );
+  }
 
   function showToast(message: string) {
     setToast(message);
@@ -1107,14 +1150,16 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
-            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+            <div>
+              <BibleTextSizeControl />
+              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
                 <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
                 {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, marginBottom: 2 }}>
+                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text)", lineHeight: 1.75, marginBottom: 2 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
                   </p>
                 ))}
@@ -1124,6 +1169,7 @@ function QTWriteContent() {
                   {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
                 </button>
               )}
+              </div>
             </div>
           )}
 
@@ -1191,6 +1237,7 @@ function QTWriteContent() {
         {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
         {!step.isSermonInfo && bibleRef && passageVerses.length > 0 && (
           <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
+            <BibleTextSizeControl />
             <div style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
               <button onClick={() => setPassageOpen(v => !v)} style={{ width: "100%", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "none", border: "none" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
@@ -1199,7 +1246,7 @@ function QTWriteContent() {
               {passageOpen && (
                 <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
                   {passageVerses.map(v => (
-                    <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, marginTop: 4 }}>
+                    <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.75, marginTop: 4 }}>
                       <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
                     </p>
                   ))}
@@ -1416,7 +1463,9 @@ function QTWriteContent() {
 
         {/* 말씀 미리보기 */}
         {bibleRef && (
-          <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
+          <div>
+            <BibleTextSizeControl />
+            <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
@@ -1446,20 +1495,21 @@ function QTWriteContent() {
               </div>
             </div>
             {!versePreviewExpanded && (
-              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic" }}>
+              <p style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
                 {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
               </p>
             )}
             {versePreviewExpanded && passageVerses.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
+                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.7 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>
                     {v.text}
                   </p>
                 ))}
               </div>
             )}
+            </div>
           </div>
         )}
 
@@ -1501,7 +1551,9 @@ function QTWriteContent() {
 
           {/* 본문 전체 보기 (스케줄로 로드된 경우) */}
           {passageVerses.length > 0 && (
-            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+            <div>
+              <BibleTextSizeControl />
+              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
               </div>
@@ -1509,12 +1561,13 @@ function QTWriteContent() {
                 {passageVerses.map(v => (
                   <button key={v.num} onClick={() => selectVerse(String(v.text), typeof v.num === "number" ? v.num : 0)} style={{ textAlign: "left", background: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                    <span style={{ fontSize: 13, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.6, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
+                    <span style={{ fontSize: bibleTextFontSize, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
                     {selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
                   </button>
                 ))}
               </div>
               <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
+              </div>
             </div>
           )}
 
