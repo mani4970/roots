@@ -224,39 +224,31 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    const runCelebrationFlow = async () => {
-      const onboardingDone = storageGet("onboarding_done");
-      if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
-        const today = getLocalDateString();
-        if (!storageGet(`celebrated_${today}`)) {
-          const updated = await updateStreak(today);
-          if (updated) {
-            celebrationShownRef.current = true;
-            storageSet(`celebrated_${today}`, "true");
-            enqueueCelebration({
-              message: t("home_celebration_title", lang),
-              subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
-              launchRootsMan: true,
-            });
-          }
-        }
+    const onboardingDone = storageGet("onboarding_done");
+    if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
+      const today = getLocalDateString();
+      if (!storageGet(`celebrated_${today}`)) {
+        celebrationShownRef.current = true;
+        storageSet(`celebrated_${today}`, "true");
+        updateStreak(today);
+        enqueueCelebration({
+          message: t("home_celebration_title", lang),
+          subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
+          launchRootsMan: true,
+        });
       }
-    };
-
-    runCelebrationFlow();
+    }
   }, [allDone, loading]);
 
-  async function updateStreak(today: string): Promise<boolean> {
+  async function updateStreak(today: string) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return;
     const { data: p } = await supabase.from("profiles")
       .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
-    if (!p) return false;
+    if (!p) return;
     const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
-    if (lastCheckinDate === today) return false;
-    // Roots intentionally keeps the streak when a user returns after a break.
-    // Returning is welcomed and the routine continues instead of resetting to zero.
+    if (lastCheckinDate === today) return;
     let newStreak = p.last_checkin ? (p.streak_days ?? 0) + 1 : 1;
     const alreadyHasAngel = p.badge_angel ?? false;
     const alreadyHasRootsman = p.badge_rootsman ?? false;
@@ -284,15 +276,10 @@ export default function HomePage() {
       badgeUpdate.badge_david = true;
       newlyAwardedBadgesRef.current.add("badge_david");
     }
-    if (newStreak >= 1000 && !alreadyHasAngel) {
-      badgeUpdate.badge_angel = true;
-      newlyAwardedBadgesRef.current.add("badge_angel");
-    }
-    const { error } = await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
-    if (error) return false;
+    if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
+    await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (newProfile) setProfile(newProfile);
-    return true;
   }
 
   useEffect(() => {
@@ -323,18 +310,9 @@ export default function HomePage() {
     }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
-      setBadgePopup({ img: "/angel.png", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
+      const cycleNumber = Math.max(1, Math.floor(streak / 100));
+      setGardenPopup({ show: true, type: "badge", badgeIndex: (cycleNumber - 1) % 9 });
       return;
-    }
-
-    // 성령의 열매 배지 팝업 (100일, 200일, ... 900일)
-    if (streak >= 100 && streak <= 900 && streak % 100 === 0) {
-      const fruitKey = `fruit_badge_shown_${streak}`;
-      if (!storageGet(fruitKey)) {
-        storageSet(fruitKey, "true");
-        setGardenPopup({ show: true, type: "badge", badgeIndex: Math.floor(streak / 100) - 1 });
-        return;
-      }
     }
 
     // 정원 단계 변경 팝업 (10일마다)
@@ -582,19 +560,19 @@ export default function HomePage() {
     {
       label: t("home_routine_qt", lang),
       done: todayDone.qt,
-      icon: <BookOpen size={20} strokeWidth={1.9} />,
+      icon: <img src="/icon-qt.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
       onClick: openHomeQT,
     },
     {
       label: t("home_routine_prayer", lang),
       done: todayDone.prayer,
-      icon: <HandHeart size={20} strokeWidth={1.9} />,
+      icon: <img src="/icon-pray.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
       onClick: openPrayerSection,
     },
     {
       label: t("home_routine_decision", lang),
       done: decisionDone,
-      icon: <CheckCircle2 size={20} strokeWidth={1.9} />,
+      icon: <img src="/icon-decision.webp" alt="" width={20} height={20} style={{ objectFit: "contain" }} />,
       onClick: openDecisionSection,
     },
   ];
