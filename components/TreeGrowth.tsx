@@ -53,9 +53,12 @@ function getTreeState(days: number, lastCheckin: string | null, lang: Lang) {
   };
 }
 
+const NIGHT_START_HOUR = 19;
+const NIGHT_END_HOUR = 6;
+
 function isNightTime() {
   const h = new Date().getHours();
-  return h >= 20 || h < 5;
+  return h >= NIGHT_START_HOUR || h < NIGHT_END_HOUR;
 }
 
 export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
