@@ -185,7 +185,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "은 손과 발로 드러나는 것이에요.": { de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
 };
 
-const QT_WRITE_FALLBACK_LANG_BY_LANG: Partial<Record<Lang, keyof TranslationEntry>> = {
+const QT_WRITE_FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
   fr: "en",
 };
 
