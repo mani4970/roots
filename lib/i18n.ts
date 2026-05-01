@@ -183,13 +183,13 @@ export const T = {
   qt_sunday_sub: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
   qt_today_passage: { ko: "오늘의 큐티 본문",         de: "Heutiger Abschnitt", en: "Today's passage", fr: "Passage du jour" },
   qt_records: { ko: "지난 큐티 기록",           de: "Frühere QTs", en: "Past QTs", fr: "QT précédents" },
-  qt_no_records: { ko: "아직 큐티 기록이 없어요.\n오늘 첫 큐티를 시작해보세요! 🌱", de: "Noch keine Aufzeichnungen.\nStarten Sie heute Ihre erste QT! 🌱", en: "No recordings yet.\nStart your first QT today! 🌱", fr: "Aucun QT enregistré pour l’instant.\nCommencez votre premier QT aujourd’hui ! 🌱" },
+  qt_no_records: { ko: "아직 큐티 기록이 없어요.\n오늘 첫 큐티를 시작해보세요! 🌱", de: "Noch keine Aufzeichnungen.\nStarten Sie heute Ihre erste QT! 🌱", en: "No recordings yet.\nStart your first QT today! 🌱", fr: "Aucun QT enregistré pour l’instant.\\nCommencez votre premier QT aujourd’hui ! 🌱" },
   qt_mode_6step: { ko: "6단계 큐티",              de: "6-Schritte", en: "6-Step", fr: "6 étapes" },
   qt_mode_sunday: { ko: "주일예배 큐티",            de: "Sonntagsgottesdienst", en: "Sunday Worship", fr: "Culte du dimanche" },
   qt_mode_free: { ko: "자유형식 큐티",            de: "Freie Form", en: "Free", fr: "Libre" },
   qt_mode_select: { ko: "오늘 큐티 방식을 선택해주세요", de: "Bitte Methode wählen", en: "Choose a method", fr: "Choisissez une méthode" },
   qt_draft_title: { ko: "이어서 할까요?",           de: "Weiter machen?", en: "Continue?", fr: "Continuer ?" },
-  qt_draft_sub: { ko: "작성 중인 큐티가 있어요.\n이어서 하시겠어요?", de: "Es gibt eine unvollständige QT.\nMöchten Sie weitermachen?", en: "There is an incomplete QT.\nWould you like to continue?", fr: "Un QT est en cours.\nVoulez-vous continuer ?" },
+  qt_draft_sub: { ko: "작성 중인 큐티가 있어요.\n이어서 하시겠어요?", de: "Es gibt eine unvollständige QT.\nMöchten Sie weitermachen?", en: "There is an incomplete QT.\nWould you like to continue?", fr: "Un QT est en cours.\\nVoulez-vous continuer ?" },
   qt_draft_continue: { ko: "이어서 하기",              de: "Fortfahren", en: "Continue", fr: "Continuer" },
   qt_draft_new: { ko: "처음부터 새로 하기",        de: "Neu beginnen", en: "Start new", fr: "Recommencer" },
   qt_draft_later: { ko: "나중에 할게요",            de: "Später", en: "Later", fr: "Plus tard" },
@@ -341,7 +341,7 @@ export const T = {
   badge_qt_bird_title: { ko: "말씀 배달부",          de: "Wortüberbringer", en: "Word Carrier", fr: "Porteur de la Parole" },
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
-  badge_angel_desc: { ko: "1000일 하루 루틴 완주",      de: "1000 Routinetage abgeschlossen", en: "Completed 1000 daily routine days", fr: "1000 jours de routine accomplis" },
+  badge_angel_desc: { ko: "100일 루틴 완주로 받은 성령의 열매 배지",      de: "Abzeichen für 100 erfüllte Routinetage", en: "Fruit of the Spirit badge for completing a 100-day routine cycle", fr: "Badge du fruit de l’Esprit pour un cycle de routine de 100 jours" },
 
   // 뱃지 팝업 메시지
   badge_rootsman_msg: { ko: "7일간 말씀과 함께한 당신, Roots의 진짜 시작이에요!", de: "7 Tage mit Gottes Wort – ein echter Anfang bei Roots!", en: "7 days in a row! RootsMan is walking with you!", fr: "7 jours de suite ! RootsMan marche avec vous !" },
@@ -354,7 +354,7 @@ export const T = {
   badge_paul_msg: { ko: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!", de: "Wie Paulus – der die Gemeinde liebt und für sie betet!", en: "30 prayers in the community — like Paul's letters!", fr: "30 prières dans la communauté — comme les lettres de Paul !" },
   badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Steadfast like Peter, the rock!", fr: "Solide comme Pierre, le rocher !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
-  badge_angel_msg: { ko: "1000일 동안 하루 루틴을 이어온 당신을 축복합니다.", de: "Gesegnet seien Sie für 1000 Tage täglicher Routine.", en: "1000 daily routine days! What a faithful journey.", fr: "1000 jours de routine quotidienne ! Quel chemin fidèle." },
+  badge_angel_msg: { ko: "성령의 열매 9가지를 다 모은 당신을 축복합니다.", de: "Gesegnet, der alle 9 Früchte des Geistes gesammelt hat.", en: "900 days! All 9 fruits of the Spirit!", fr: "900 jours ! Les 9 fruits de l’Esprit !" },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -484,7 +484,7 @@ export const T = {
   home_greeting_afternoon: { ko: "좋은 오후예요 🌤️",    de: "Guten Nachmittag 🌤️", en: "Good afternoon", fr: "Bon après-midi 🌤️" },
   home_greeting_evening: { ko: "좋은 저녁이에요 🌅",   de: "Guten Abend 🌅", en: "Good evening", fr: "Bonsoir 🌅" },
   home_greeting_night: { ko: "좋은 밤이에요 🌙",     de: "Gute Nacht 🌙", en: "Good night 🌙", fr: "Bonne nuit 🌙" },
-  home_verse_section: { ko: "오늘의 말씀",          de: "Tagesvers", en: "Today's verse", fr: "Verset du jour" },
+  home_verse_section: { ko: "오늘 내게 주신 말씀",          de: "Wort für mich heute", en: "The Word given to me today", fr: "Parole pour moi aujourd’hui" },
   home_verse_empty: { ko: "오늘의 감정을 선택하면 맞춤 말씀을 받을 수 있어요 🌿", de: "Wählen Sie Ihre Stimmung und erhalten Sie einen passenden Vers 🌿", en: "Choose your mood and receive a matching verse 🌿", fr: "Choisissez votre humeur et recevez un verset adapté 🌿" },
   home_verse_btn: { ko: "오늘의 말씀 받기",     de: "Tagesvers erhalten", en: "Get today's verse", fr: "Recevoir le verset du jour" },
   home_next_step_section: { ko: "오늘의 한 걸음",       de: "Ihr nächster Schritt", en: "Your next step", fr: "Votre prochaine étape" },

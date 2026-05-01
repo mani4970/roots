@@ -555,6 +555,17 @@ function QTWriteContent() {
       if (draft.key_verse) {
         setKeyVerse(draft.key_verse);
         setBibleStep("done");
+        // keyVerse 형식: "1 본문...\n2 다른본문..." — 각 줄 첫 단어가 절 번호
+        // 본문에서 클릭한 흔적(selectedVerseNums)도 함께 복원해야
+        // 사용자가 다시 클릭했을 때 중복 추가되지 않음
+        const restoredNums = String(draft.key_verse)
+          .split("\n")
+          .map((line: string) => {
+            const m = line.match(/^(\d+)\s/);
+            return m ? parseInt(m[1], 10) : null;
+          })
+          .filter((n: number | null): n is number => n !== null);
+        if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
       }
       if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
       if (draft.summary) setAnswers(p => ({ ...p, summary: draft.summary }));
@@ -739,9 +750,14 @@ function QTWriteContent() {
       setSelectedVerseNums(prev => prev.filter(n => n !== num));
       setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${num} `)).join("\n").trim());
     } else {
+      // 안전장치: keyVerse에 이미 같은 절 번호로 시작하는 줄이 있다면 중복 방지.
+      // (예: draft 복원 후 selectedVerseNums가 비어있는 상태로 다시 클릭한 경우)
+      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${num} `));
       setSelectedVerseNums(prev => [...prev, num]);
-      const line = `${num} ${verseText}`;
-      setKeyVerse(prev => prev ? prev + "\n" + line : line);
+      if (!alreadyInKeyVerse) {
+        const line = `${num} ${verseText}`;
+        setKeyVerse(prev => prev ? prev + "\n" + line : line);
+      }
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
     }
   }
