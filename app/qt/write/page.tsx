@@ -976,22 +976,23 @@ function QTWriteContent() {
                 : "var(--bg2)",
             color: toast.kind === "info" ? "var(--text)" : "#fff",
             border: toast.kind === "info" ? "1px solid var(--border)" : "none",
-            borderRadius: 14,
-            padding: "13px 18px",
+            borderRadius: 12,
+            padding: "11px 16px",
             fontSize: 14,
             fontWeight: 700,
             boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
-            maxWidth: "calc(100vw - 32px)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
+            maxWidth: "calc(100vw - 16px)",
+            width: "max-content",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
             animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
             {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
           </span>
-          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
+          <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1216,22 +1217,23 @@ function QTWriteContent() {
                 : "var(--bg2)",
             color: toast.kind === "info" ? "var(--text)" : "#fff",
             border: toast.kind === "info" ? "1px solid var(--border)" : "none",
-            borderRadius: 14,
-            padding: "13px 18px",
+            borderRadius: 12,
+            padding: "11px 16px",
             fontSize: 14,
             fontWeight: 700,
             boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
-            maxWidth: "calc(100vw - 32px)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
+            maxWidth: "calc(100vw - 16px)",
+            width: "max-content",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
             animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
             {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
           </span>
-          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
+          <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1329,22 +1331,23 @@ function QTWriteContent() {
                 : "var(--bg2)",
             color: toast.kind === "info" ? "var(--text)" : "#fff",
             border: toast.kind === "info" ? "1px solid var(--border)" : "none",
-            borderRadius: 14,
-            padding: "13px 18px",
+            borderRadius: 12,
+            padding: "11px 16px",
             fontSize: 14,
             fontWeight: 700,
             boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
-            maxWidth: "calc(100vw - 32px)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
+            maxWidth: "calc(100vw - 16px)",
+            width: "max-content",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
             animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
             {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
           </span>
-          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
+          <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1594,22 +1597,23 @@ function QTWriteContent() {
                 : "var(--bg2)",
             color: toast.kind === "info" ? "var(--text)" : "#fff",
             border: toast.kind === "info" ? "1px solid var(--border)" : "none",
-            borderRadius: 14,
-            padding: "13px 18px",
+            borderRadius: 12,
+            padding: "11px 16px",
             fontSize: 14,
             fontWeight: 700,
             boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
-            maxWidth: "calc(100vw - 32px)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
+            maxWidth: "calc(100vw - 16px)",
+            width: "max-content",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
             animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>
             {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
           </span>
-          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
+          <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1653,14 +1657,14 @@ function QTWriteContent() {
               </div>
             </div>
             {!versePreviewExpanded && (
-              <p style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
+              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
                 {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
               </p>
             )}
             {versePreviewExpanded && passageVerses.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.7 }}>
+                  <p key={v.num} style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.7 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>
                     {v.text}
                   </p>
@@ -1710,10 +1714,29 @@ function QTWriteContent() {
           {/* 본문 전체 보기 (스케줄로 로드된 경우) */}
           {passageVerses.length > 0 && (
             <div>
-              <BibleTextSizeControl />
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => changeBibleTextSize(-1)}
+                    disabled={bibleTextSizeIndex === 0}
+                    aria-label="Decrease Bible text size"
+                    style={{ minWidth: 26, height: 24, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 6px" }}
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeBibleTextSize(1)}
+                    disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
+                    aria-label="Increase Bible text size"
+                    style={{ minWidth: 26, height: 24, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 6px" }}
+                  >
+                    A+
+                  </button>
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
