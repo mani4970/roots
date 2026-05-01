@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { storageGet, storageSet } from "@/lib/clientStorage";
+import { storageGet } from "@/lib/clientStorage";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -75,7 +75,6 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 6단계 제목/부제목
   "들어가는 기도": { de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
   "말씀 앞에 나아가기 전 기도": { de: "Gebet vor dem Wort", en: "Prayer before the Word", fr: "Prière avant la Parole" },
-  "본문 글씨": { de: "Bibeltext", en: "Bible text", fr: "Texte biblique" },
   "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé" },
   "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur" },
   "느낌과 묵상": { de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Méditation" },
@@ -116,9 +115,9 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   // 에러 메시지 / alert
   "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
   "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert! Sie können später weitermachen", en: "Saved as draft! Continue later", fr: "Brouillon enregistré ! Vous pourrez continuer plus tard" },
-  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Entwurf konnte nicht gespeichert werden. Bitte erneut versuchen.", en: "Draft save failed. Please try again.", fr: "Échec de l’enregistrement du brouillon. Veuillez réessayer." },
-  "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Bitte erneut versuchen.", en: "Save failed. Please try again.", fr: "Échec de l’enregistrement. Veuillez réessayer." },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert", en: "Saved as draft", fr: "Brouillon enregistré" },
+  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
+  "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   // UI 문자열
   "오늘": { de: "Heute", en: "Today", fr: "Aujourd’hui" },
   "오늘의 말씀 찾기": { de: "Heutigen Abschnitt finden", en: "Find today's passage", fr: "Trouver le passage du jour" },
@@ -174,8 +173,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?", fr: "Qu’est-ce que Dieu m’a dit aujourd’hui à travers le sermon ?" },
   "구약": { de: "AT", en: "OT", fr: "Ancien Testament" },
   "신약": { de: "NT", en: "NT", fr: "Nouveau Testament" },
-  "임시저장은 오늘 큐티에만 가능해요.": { de: "Entwürfe können nur für heute gespeichert werden.", en: "Drafts can only be saved for today.", fr: "Les brouillons ne peuvent être enregistrés que pour le QT d’aujourd’hui." },
-  "이미 큐티 기록이 있어요": { de: "Für {date} gibt es bereits einen QT-Eintrag.", en: "A QT record already exists for {date}." },
+  "임시저장은 오늘 큐티에만 가능해요.": { de: "Entwürfe nur für heute", en: "Drafts only for today's QT", fr: "Brouillons : QT du jour seulement" },
+  "이미 큐티 기록이 있어요": { de: "QT für {date} vorhanden", en: "QT exists for {date}", fr: "QT existant pour le {date}" },
   "끝 장": { de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin" },
   "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !" },
   "결단": { de: "Entschluss", en: "Resolution", fr: "Décision" },
@@ -241,53 +240,17 @@ function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const lang = useLang();
-  const [toast, setToast] = useState<string | null>(null);
-  const BIBLE_TEXT_SIZES = [16, 18, 20, 22] as const;
-  const [bibleTextSizeIndex, setBibleTextSizeIndex] = useState(() => {
-    if (typeof window === "undefined") return 1;
-    const saved = storageGet("roots_qt_bible_text_size_index");
-    const parsed = saved ? Number.parseInt(saved, 10) : 1;
-    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), BIBLE_TEXT_SIZES.length - 1) : 1;
-  });
-  const bibleTextFontSize = BIBLE_TEXT_SIZES[bibleTextSizeIndex];
+  const [toast, setToast] = useState<{ message: string; kind: "success" | "error" | "info" } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
-  function changeBibleTextSize(delta: number) {
-    setBibleTextSizeIndex(prev => {
-      const next = Math.min(Math.max(prev + delta, 0), BIBLE_TEXT_SIZES.length - 1);
-      storageSet("roots_qt_bible_text_size_index", String(next));
-      return next;
-    });
-  }
-
-  function BibleTextSizeControl() {
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", whiteSpace: "nowrap" }}>{trQT("본문 글씨", lang)}</span>
-        <button
-          type="button"
-          onClick={() => changeBibleTextSize(-1)}
-          disabled={bibleTextSizeIndex === 0}
-          aria-label="Decrease Bible text size"
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
-        >
-          A-
-        </button>
-        <button
-          type="button"
-          onClick={() => changeBibleTextSize(1)}
-          disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
-          aria-label="Increase Bible text size"
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
-        >
-          A+
-        </button>
-      </div>
-    );
-  }
-
-  function showToast(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 2400);
+  function showToast(message: string, kind: "success" | "error" | "info" = "info") {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToast({ message, kind });
+    // 에러는 더 오래 보여줘야 사용자가 인지 가능
+    const duration = kind === "error" ? 4000 : 2800;
+    toastTimerRef.current = window.setTimeout(() => setToast(null), duration);
   }
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
   const isResume = params.get("resume") === "true";
@@ -788,13 +751,28 @@ function QTWriteContent() {
 
   async function saveDraft() {
     if (selectedDate !== todayStr) {
-      showToast(trQT("임시저장은 오늘 큐티에만 가능해요.", lang));
+      showToast(trQT("임시저장은 오늘 큐티에만 가능해요.", lang), "info");
       return;
     }
     setSaving(true);
+
+    // Supabase 호출이 매달리는 경우를 대비한 타임아웃 헬퍼.
+    // 네트워크 끊김·세션 만료·CORS 등으로 응답이 안 올 때, 사용자가 페이지를 떠나기 전에
+    // 명확한 실패 토스트가 뜨도록 강제로 throw 한다.
+    const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> =>
+      new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          reject(new Error(`[saveDraft timeout] ${label} (${ms}ms)`));
+        }, ms);
+        Promise.resolve(promise).then(
+          (v) => { window.clearTimeout(timer); resolve(v); },
+          (e) => { window.clearTimeout(timer); reject(e); }
+        );
+      });
+
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 6000, "auth.getUser");
       if (!user) { router.push("/login"); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
@@ -816,31 +794,45 @@ function QTWriteContent() {
         closing_prayer: answers.closing_prayer ?? "",
       };
 
-      const { data: rows, error: rowsError } = await supabase.from("qt_records")
-        .select("id,is_draft,created_at")
-        .eq("user_id", user.id)
-        .eq("date", selectedDate)
-        .order("created_at", { ascending: false });
+      const { data: rows, error: rowsError } = await withTimeout(
+        supabase.from("qt_records")
+          .select("id,is_draft,created_at")
+          .eq("user_id", user.id)
+          .eq("date", selectedDate)
+          .order("created_at", { ascending: false }),
+        8000,
+        "select existing rows"
+      );
       if (rowsError) throw rowsError;
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       if (completedRecord) {
-        showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }));
+        showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info");
         setSaving(false);
         return;
       }
 
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
       if (draftRecord) {
-        const { error } = await supabase.from("qt_records").update(draftData).eq("id", draftRecord.id);
+        const { error } = await withTimeout(
+          supabase.from("qt_records").update(draftData).eq("id", draftRecord.id),
+          8000,
+          "update draft"
+        );
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("qt_records").insert(draftData);
+        const { error } = await withTimeout(
+          supabase.from("qt_records").insert(draftData),
+          8000,
+          "insert draft"
+        );
         if (error) throw error;
       }
-      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang));
+      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
     } catch (e) {
-      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang));
+      // 디버깅을 위한 상세 로그 — 사용자가 다음에 같은 문제 보고할 때 콘솔에서 즉시 추적 가능
+      console.error("[saveDraft] failed:", e);
+      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
     } finally {
       setSaving(false);
     }
@@ -858,13 +850,13 @@ function QTWriteContent() {
         .eq("user_id", user.id)
         .eq("date", selectedDate)
         .order("created_at", { ascending: false });
-      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
 
       // 완료된 기록이 이미 있으면 막기 (draft는 통과)
-      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate })); setSaving(false); return; }
+      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info"); setSaving(false); return; }
 
       const decisionText = decisions.filter(d => d.trim()).join("\n");
       let insertData: any = { user_id: user.id, date: selectedDate, qt_mode: mode };
@@ -901,13 +893,13 @@ function QTWriteContent() {
       if (draftRecord) {
         const { error } = await supabase.from("qt_records")
           .update({ ...insertData, is_draft: false }).eq("id", draftRecord.id);
-        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
       } else {
         const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
         if (error) {
           const { qt_mode, ...withoutMode } = insertData;
           const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
-          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang)); setSaving(false); return; }
+          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
         }
       }
 
@@ -924,8 +916,39 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
-          {toast}
+        <div
+          role={toast.kind === "error" ? "alert" : "status"}
+          aria-live={toast.kind === "error" ? "assertive" : "polite"}
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 300,
+            background:
+              toast.kind === "success"
+                ? "var(--sage)"
+                : toast.kind === "error"
+                ? "#C44A4A"
+                : "var(--bg2)",
+            color: toast.kind === "info" ? "var(--text)" : "#fff",
+            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+            borderRadius: 14,
+            padding: "13px 18px",
+            fontSize: 14,
+            fontWeight: 700,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+            maxWidth: "calc(100vw - 32px)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+            {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1133,8 +1156,39 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
-          {toast}
+        <div
+          role={toast.kind === "error" ? "alert" : "status"}
+          aria-live={toast.kind === "error" ? "assertive" : "polite"}
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 300,
+            background:
+              toast.kind === "success"
+                ? "var(--sage)"
+                : toast.kind === "error"
+                ? "#C44A4A"
+                : "var(--bg2)",
+            color: toast.kind === "info" ? "var(--text)" : "#fff",
+            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+            borderRadius: 14,
+            padding: "13px 18px",
+            fontSize: 14,
+            fontWeight: 700,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+            maxWidth: "calc(100vw - 32px)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+            {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1150,16 +1204,14 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
-            <div>
-              <BibleTextSizeControl />
-              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
                 <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
                 {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text)", lineHeight: 1.75, marginBottom: 2 }}>
+                  <p key={v.num} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, marginBottom: 2 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
                   </p>
                 ))}
@@ -1169,7 +1221,6 @@ function QTWriteContent() {
                   {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
                 </button>
               )}
-              </div>
             </div>
           )}
 
@@ -1215,8 +1266,39 @@ function QTWriteContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
-          {toast}
+        <div
+          role={toast.kind === "error" ? "alert" : "status"}
+          aria-live={toast.kind === "error" ? "assertive" : "polite"}
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 300,
+            background:
+              toast.kind === "success"
+                ? "var(--sage)"
+                : toast.kind === "error"
+                ? "#C44A4A"
+                : "var(--bg2)",
+            color: toast.kind === "info" ? "var(--text)" : "#fff",
+            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+            borderRadius: 14,
+            padding: "13px 18px",
+            fontSize: 14,
+            fontWeight: 700,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+            maxWidth: "calc(100vw - 32px)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+            {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
         </div>
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1237,7 +1319,6 @@ function QTWriteContent() {
         {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
         {!step.isSermonInfo && bibleRef && passageVerses.length > 0 && (
           <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
-            <BibleTextSizeControl />
             <div style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
               <button onClick={() => setPassageOpen(v => !v)} style={{ width: "100%", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "none", border: "none" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
@@ -1246,7 +1327,7 @@ function QTWriteContent() {
               {passageOpen && (
                 <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
                   {passageVerses.map(v => (
-                    <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.75, marginTop: 4 }}>
+                    <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, marginTop: 4 }}>
                       <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
                     </p>
                   ))}
@@ -1449,8 +1530,39 @@ function QTWriteContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "11px 22px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", width: "max-content", maxWidth: "calc(100vw - 24px)", overflow: "hidden", textOverflow: "ellipsis", textAlign: "center" }}>
-          {toast}
+        <div
+          role={toast.kind === "error" ? "alert" : "status"}
+          aria-live={toast.kind === "error" ? "assertive" : "polite"}
+          style={{
+            position: "fixed",
+            bottom: 88,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 300,
+            background:
+              toast.kind === "success"
+                ? "var(--sage)"
+                : toast.kind === "error"
+                ? "#C44A4A"
+                : "var(--bg2)",
+            color: toast.kind === "info" ? "var(--text)" : "#fff",
+            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+            borderRadius: 14,
+            padding: "13px 18px",
+            fontSize: 14,
+            fontWeight: 700,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+            maxWidth: "calc(100vw - 32px)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            animation: "qtToastIn 220ms cubic-bezier(0.2,0.8,0.2,1)",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1.4, flexShrink: 0 }}>
+            {toast.kind === "success" ? "✓" : toast.kind === "error" ? "✗" : "ℹ"}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.4, wordBreak: "keep-all" }}>{toast.message}</span>
         </div>
       )}
       <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -1463,9 +1575,7 @@ function QTWriteContent() {
 
         {/* 말씀 미리보기 */}
         {bibleRef && (
-          <div>
-            <BibleTextSizeControl />
-            <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
+          <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
@@ -1495,21 +1605,20 @@ function QTWriteContent() {
               </div>
             </div>
             {!versePreviewExpanded && (
-              <p style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
+              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5, fontStyle: "italic" }}>
                 {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
               </p>
             )}
             {versePreviewExpanded && passageVerses.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.7 }}>
+                  <p key={v.num} style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>
                     {v.text}
                   </p>
                 ))}
               </div>
             )}
-            </div>
           </div>
         )}
 
@@ -1551,9 +1660,7 @@ function QTWriteContent() {
 
           {/* 본문 전체 보기 (스케줄로 로드된 경우) */}
           {passageVerses.length > 0 && (
-            <div>
-              <BibleTextSizeControl />
-              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+            <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
               </div>
@@ -1561,13 +1668,12 @@ function QTWriteContent() {
                 {passageVerses.map(v => (
                   <button key={v.num} onClick={() => selectVerse(String(v.text), typeof v.num === "number" ? v.num : 0)} style={{ textAlign: "left", background: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                    <span style={{ fontSize: bibleTextFontSize, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
+                    <span style={{ fontSize: 13, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.6, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
                     {selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
                   </button>
                 ))}
               </div>
               <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
-              </div>
             </div>
           )}
 
