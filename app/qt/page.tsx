@@ -289,7 +289,7 @@ export default function QTPage() {
                 <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{t("qt_sunday_desc", lang)}</p>
               </div>
             )}
-            <button onClick={() => setShowStartModal(true)} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => { if (hasDraft) { setShowDraftPopup(true); } else { setShowStartModal(true); } }} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={18} /> {t("qt_today_start", lang)}
             </button>
           </div>
