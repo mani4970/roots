@@ -1623,7 +1623,6 @@ function QTWriteContent() {
         {/* 말씀 미리보기 */}
         {bibleRef && (
           <div>
-            <BibleTextSizeControl />
             <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
