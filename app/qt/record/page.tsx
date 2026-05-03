@@ -206,8 +206,8 @@ function RecordContent() {
       }
       const translatedRefs = refsText ? translateBibleRef(refsText, lang) : "";
       headerLine = translatedRefs
-        ? `📖 ${dateStr} · ${translatedRefs}\n${trR("제목", lang)}:\n${title}`
-        : `📖 ${dateStr}\n${trR("제목", lang)}:\n${title}`;
+        ? `📖 ${dateStr} · ${translatedRefs}\n${trR("제목", lang)}: ${title}`
+        : `📖 ${dateStr}\n${trR("제목", lang)}: ${title}`;
     } else {
       headerLine = `📖 ${dateStr} · ${translateBibleRef(record.bible_ref, lang)}`;
     }
