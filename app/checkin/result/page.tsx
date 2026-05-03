@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ChevronLeft, Loader2, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -18,7 +18,6 @@ function ResultContent() {
   const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const verseCardRef = useRef<HTMLDivElement>(null);
 
   // lang이 localStorage에서 확정될 때까지 대기
   const [langReady, setLangReady] = useState(false);
@@ -161,7 +160,7 @@ function ResultContent() {
         </div>
 
         {/* 말씀 카드 */}
-        <div ref={verseCardRef} className="card-sage">
+        <div className="card-sage">
           <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
             {result?.reference}
           </p>
@@ -179,8 +178,8 @@ function ResultContent() {
         </p>
       </div>
 
-      {/* 하트 콘페티 - 한 번만 재생 */}
-      <HeartBurst originRef={verseCardRef} count={50} />
+      {/* 하트 콘페티 - 4곳에서 순차 폭발, 한 번만 재생 */}
+      <HeartBurst />
     </div>
   );
 }
