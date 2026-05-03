@@ -1,13 +1,14 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { ChevronLeft, Loader2, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { storageGet } from "@/lib/clientStorage";
+import HeartBurst from "@/components/HeartBurst";
 
 function ResultContent() {
   const params = useSearchParams();
@@ -17,6 +18,7 @@ function ResultContent() {
   const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const verseCardRef = useRef<HTMLDivElement>(null);
 
   // lang이 localStorage에서 확정될 때까지 대기
   const [langReady, setLangReady] = useState(false);
@@ -140,7 +142,7 @@ function ResultContent() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }} className="fade-in">
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40, position: "relative" }} className="fade-in">
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -150,8 +152,16 @@ function ResultContent() {
       </div>
 
       <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* 축복 메시지 카드 */}
+        <div style={{ background: "rgba(122,157,122,0.12)", border: "1px solid rgba(122,157,122,0.25)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <Heart size={16} style={{ color: "var(--sage)", flexShrink: 0, marginTop: 2 }} fill="var(--sage)" />
+          <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.55, margin: 0, fontWeight: 500 }}>
+            {t('result_blessing', lang)}
+          </p>
+        </div>
+
         {/* 말씀 카드 */}
-        <div className="card-sage">
+        <div ref={verseCardRef} className="card-sage">
           <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
             {result?.reference}
           </p>
@@ -168,6 +178,9 @@ function ResultContent() {
           {t('result_home_sub', lang)}
         </p>
       </div>
+
+      {/* 하트 콘페티 - 한 번만 재생 */}
+      <HeartBurst originRef={verseCardRef} count={50} />
     </div>
   );
 }

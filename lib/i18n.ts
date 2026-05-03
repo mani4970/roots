@@ -95,6 +95,7 @@ export const T = {
   result_loading: { ko: "마음에 맞는 말씀을 찾고 있어요...", de: "Vers wird gesucht...", en: "Finding your verse...", fr: "Nous cherchons un verset pour votre cœur..." },
   result_title: { ko: "오늘의 말씀",             de: "Tagesvers", en: "Today's Verse", fr: "Verset du jour" },
   result_sub: { ko: "현재 감정과 상태에 맞는 말씀이에요", de: "Ein Vers passend zu Ihrem heutigen Herzen", en: "A verse for your current heart and state", fr: "Un verset adapté à votre cœur et à votre état actuel" },
+  result_blessing: { ko: "오늘 이 말씀을 붙잡고 하나님과 승리하는 하루 되시길 축복해요", de: "Mögen Sie heute mit diesem Wort an Gottes Hand einen siegreichen Tag erleben", en: "May you hold onto this word today and walk a victorious day with God", fr: "Que cette parole vous accompagne aujourd’hui pour une journée victorieuse avec Dieu" },
   result_mission: { ko: "",         de: "", en: "", fr: "" },
   result_home_btn: { ko: "홈에서 확인하기 →",        de: "Zur Startseite →", en: "Go to Home →", fr: "Voir sur l’accueil →" },
   result_home_sub: { ko: "홈에서 오늘의 말씀을 확인할 수 있어요", de: "Sie können den heutigen Vers auf der Startseite sehen", en: "You can view today's verse on the home screen", fr: "Vous pouvez voir le verset du jour sur l’écran d’accueil" },
