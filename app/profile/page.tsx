@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
-import { Loader2, Pencil, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
+import { Loader2, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
 
 const PROFILE_WEEKDAY_KEYS = [
   "weekday_sun",
@@ -163,7 +163,6 @@ export default function ProfilePage() {
       setUploadingPhoto(false);
       return;
     }
-    console.log("프로필 사진 저장 성공:", urlWithTs);
     setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
     setUploadingPhoto(false);
   }
