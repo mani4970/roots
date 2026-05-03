@@ -760,6 +760,7 @@ export const T = {
   qt_record_section_application_decision: { ko: "적용과 결단", de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Application & décision" },
   qt_record_section_decision: { ko: "행동 (결단)", de: "Handlung (Entschluss)", en: "Action (Resolution)", fr: "Action (décision)" },
   qt_record_section_closing_prayer: { ko: "올려드리는 기도", de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
+  qt_record_sermon_title_label: { ko: "제목", de: "Titel", en: "Title", fr: "Titre" },
   qt_record_badge_joseph_title: { ko: "요셉 배지 획득! 🌈", de: "Josef-Abzeichen! 🌈", en: "Joseph Badge! 🌈", fr: "Badge Joseph ! 🌈" },
   qt_record_badge_qt_bird_title: { ko: "말씀 배달부 배지 획득! 🕊️", de: "Wortüberbringer-Abzeichen! 🕊️", en: "Word Carrier Badge! 🕊️", fr: "Badge Porteur de la Parole ! 🕊️" },
   qt_record_copy_signature: { ko: "— 말씀에 뿌리내리다, Roots", de: "— In Gottes Wort verwurzelt, Roots", en: "— Rooted in the Word, Roots", fr: "— Enraciné dans la Parole, Roots" },

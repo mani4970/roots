@@ -168,7 +168,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "말씀 없이 자유롭게 작성하기": { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage", fr: "Écrire librement sans passage" },
   "큐티할 말씀을 먼저 선택해요": { de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage" },
   "다시 선택": { de: "Neu wählen", en: "Reselect", fr: "Choisir à nouveau" },
-  "설교 제목": { de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon" },
+  "설교 제목": { ko: "제목", de: "Titel", en: "Title", fr: "Titre" },
   "본문 말씀": { de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique" },
   "깨달음 (말씀이 내게 주는 것)": { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)", fr: "Compréhension (ce que la Parole me donne)" },
   "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?", fr: "Qu’est-ce que Dieu m’a dit aujourd’hui à travers le sermon ?" },
@@ -232,7 +232,7 @@ const BAR_LABELS_6 = ["들어가는 기도", "본문 요약", "붙잡은 말씀"
 const STEPS_SUNDAY = [
   { id: "sermon_info", title: "설교 정보", subtitle: "설교 제목과 본문 말씀을 적어요", isSermonInfo: true },
   { id: "opening_prayer", title: "들어가는 기도", subtitle: "예배 전 마음을 준비해요", placeholder: "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.", hint: "예배 전 마음을 열고 주님께 나아가는 기도예요." },
-  { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "설교자가 전한 핵심 메시지를 나의 말로 정리해요." },
+  { id: "summary", title: "말씀 요약", subtitle: "설교 말씀을 내 말로 요약해요", placeholder: "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...", hint: "목사님이 전한 핵심 메시지를 나의 말로 정리해요." },
   { id: "meditation", title: "깨달음과 결단", subtitle: "말씀이 내게 주는 깨달음과 결단", placeholder: "", hint: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", isDecision: true },
   { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜와 결단을 하나님께 올려드려요...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },
 ];
@@ -1386,10 +1386,26 @@ function QTWriteContent() {
           <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
             <BibleTextSizeControl />
             <div style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
-              <button onClick={() => setPassageOpen(v => !v)} style={{ width: "100%", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "none", border: "none" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
-                <span style={{ fontSize: 10, color: "var(--text3)" }}>{passageOpen ? `▲ ${trQT("접기", lang)}` : `▼ ${trQT("더보기", lang)}`}</span>
-              </button>
+              <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
+                <select
+                  value={selectedTranslation}
+                  onChange={async e => {
+                    const newId = parseInt(e.target.value);
+                    setSelectedTranslation(newId);
+                    await reloadPassageWithTranslation(newId);
+                  }}
+                  style={{ fontSize: 10, color: "var(--sage-dark)", background: "rgba(122,157,122,0.15)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}
+                >
+                  {ALL_TRANSLATIONS.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
+                <button onClick={() => setPassageOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 10, flexShrink: 0 }}>
+                  {passageOpen ? `▲ ${trQT("접기", lang)}` : `▼ ${trQT("더보기", lang)}`}
+                </button>
+              </div>
               {passageOpen && (
                 <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
                   {passageVerses.map(v => (

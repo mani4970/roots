@@ -34,6 +34,7 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "적용과 결단": "qt_record_section_application_decision",
   "행동 (결단)": "qt_record_section_decision",
   "올려드리는 기도": "qt_record_section_closing_prayer",
+  "제목": "qt_record_sermon_title_label",
 };
 function trR(s: string, lang: Lang): string {
   const key = QT_RECORD_LABEL_KEYS[s];
@@ -175,20 +176,66 @@ function RecordContent() {
 
   function copyAll() {
     if (!record) return;
-    const date = parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+    const isSunday = record.qt_mode === "sunday";
+    // 한국어 + 주일예배일 때 날짜 끝에 "주일" 추가 (예: "2026년 5월 3일 주일")
+    const dateObj = parseLocalDateString(record.date);
+    const dateStrBase = dateObj.toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" });
+    const dateStr = isSunday && lang === "ko"
+      ? `${dateStrBase} 주일`
+      : isSunday
+        ? dateStrBase
+        : dateObj.toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" });
     const decisions = record.decision
       ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
-    const parts = [
-      `📖 ${date} · ${translateBibleRef(record.bible_ref, lang)}`,
+
+    // 주일예배 본문 형식: "설교: <제목> (<참조>)"
+    // 복사 시: 첫 줄에 날짜 · 참조, 둘째 줄에 "제목: \n<제목>" 형태로
+    let headerLine: string;
+    if (isSunday) {
+      const raw = String(record.bible_ref ?? "").trim();
+      let title = "";
+      let refsText = "";
+      if (raw.startsWith("설교:")) {
+        const body = raw.replace(/^설교:\s*/, "").trim();
+        const match = body.match(/^(.*?)(?:\s*\((.*)\))?$/);
+        title = (match?.[1] ?? "").trim();
+        refsText = (match?.[2] ?? "").trim();
+      } else {
+        refsText = raw;
+      }
+      const translatedRefs = refsText ? translateBibleRef(refsText, lang) : "";
+      headerLine = translatedRefs
+        ? `📖 ${dateStr} · ${translatedRefs}\n${trR("제목", lang)}:\n${title}`
+        : `📖 ${dateStr}\n${trR("제목", lang)}:\n${title}`;
+    } else {
+      headerLine = `📖 ${dateStr} · ${translateBibleRef(record.bible_ref, lang)}`;
+    }
+
+    // 주일예배: 화면 표시 순서대로 복사 (들어가는 기도 → 느낌과 묵상 → 적용과 결단 → 올려드리는 기도 → 말씀 요약)
+    // 6단계: 기존 순서 유지 (들어가는 기도 → 본문 요약 → 붙잡은 말씀 → 느낌과 묵상 → 적용과 결단 → 올려드리는 기도)
+    const sundayParts = [
+      headerLine,
       record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
-      record.summary ? `\n${trR(record.qt_mode === "sunday" ? "말씀 요약" : "본문 요약", lang)}\n${record.summary}` : "",
+      record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
+      (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
+      record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
+      record.summary ? `\n${trR("말씀 요약", lang)}\n${record.summary}` : "",
+      `\n\n${t("qt_record_copy_signature", lang)}`,
+    ];
+
+    const sixStepParts = [
+      headerLine,
+      record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
+      record.summary ? `\n${trR("본문 요약", lang)}\n${record.summary}` : "",
       record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}` : "",
       record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
       `\n\n${t("qt_record_copy_signature", lang)}`,
-    ].filter(Boolean).join("\n");
+    ];
+
+    const parts = (isSunday ? sundayParts : sixStepParts).filter(Boolean).join("\n");
     navigator.clipboard.writeText(parts).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
     });
