@@ -200,21 +200,27 @@ export default function QTPage() {
 
 
   function startCatchUp(mode: "6step" | "free") {
+    const targetDate = catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0];
+    if (!targetDate) {
+      showToast(t("qt_catchup_no_dates", lang));
+      return;
+    }
     setShowCatchUpModal(false);
     const params = new URLSearchParams({
       mode,
-      date: catchUpDate,
+      date: targetDate,
       catchup: "true",
       translation: String(preferredTranslation),
     });
     router.push(`/qt/write?${params.toString()}`);
   }
 
+  const completedRecordDates = new Set(records.map(r => r.date));
   const catchUpDateOptions = Array.from({ length: 60 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (i + 1));
     return getLocalDateString(d);
-  });
+  }).filter(d => !completedRecordDates.has(d));
 
   const dateLocale = getDateLocale(lang);
   const isSundayToday = new Date().getDay() === 0;
@@ -415,21 +421,27 @@ export default function QTPage() {
             <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
-            <select value={catchUpDate} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
-              {catchUpDateOptions.map(d => (
-                <option key={d} value={d}>{parseLocalDateString(d).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</option>
-              ))}
-            </select>
+            {catchUpDateOptions.length > 0 ? (
+              <select value={catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0]} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
+                {catchUpDateOptions.map(d => (
+                  <option key={d} value={d}>{parseLocalDateString(d).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</option>
+                ))}
+              </select>
+            ) : (
+              <div style={{ padding: "14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
+                {t("qt_catchup_no_dates", lang)}
+              </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <BookOpen size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_6step_desc", lang)}</p>
                 </div>
               </button>
-              <button onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <PenLine size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>

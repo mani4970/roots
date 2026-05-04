@@ -39,16 +39,16 @@ const FAITH_BADGES = [
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
 const SPIRIT_FRUIT_BADGES = [
-  { name: "Love", descKey: "fruit_love", fruit: "🍎" },
-  { name: "Peace", descKey: "fruit_peace", fruit: "🍉" },
-  { name: "Joy", descKey: "fruit_joy", fruit: "🍌" },
-  { name: "Goodness", descKey: "fruit_goodness", fruit: "🍊" },
-  { name: "Kindness", descKey: "fruit_kindness", fruit: "🍒" },
-  { name: "Patience", descKey: "fruit_patience", fruit: "🍍" },
-  { name: "Faithfulness", descKey: "fruit_faithful", fruit: "🍇" },
-  { name: "Gentleness", descKey: "fruit_gentle", fruit: "🍋" },
-  { name: "Self-Control", descKey: "fruit_selfctrl", fruit: "🍓" },
-] as const satisfies readonly { name: string; descKey: TKey; fruit: string }[];
+  { key: "badge_love", name: "Love", descKey: "fruit_love", fruit: "🍎" },
+  { key: "badge_peace", name: "Peace", descKey: "fruit_peace", fruit: "🍉" },
+  { key: "badge_joy", name: "Joy", descKey: "fruit_joy", fruit: "🍌" },
+  { key: "badge_goodness", name: "Goodness", descKey: "fruit_goodness", fruit: "🍊" },
+  { key: "badge_kindness", name: "Kindness", descKey: "fruit_kindness", fruit: "🍒" },
+  { key: "badge_patience", name: "Patience", descKey: "fruit_patience", fruit: "🍍" },
+  { key: "badge_faithfulness", name: "Faithfulness", descKey: "fruit_faithful", fruit: "🍇" },
+  { key: "badge_gentleness", name: "Gentleness", descKey: "fruit_gentle", fruit: "🍋" },
+  { key: "badge_self_control", name: "Self-Control", descKey: "fruit_selfctrl", fruit: "🍓" },
+] as const satisfies readonly { key: string; name: string; descKey: TKey; fruit: string }[];
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -394,9 +394,8 @@ export default function ProfilePage() {
 
       {/* 성령의 열매 배지 */}
       {(() => {
-        const streak = profile?.streak_days ?? 0;
-        const earnedCount = Math.min(Math.floor(streak / 100), 9);
         const BADGES = SPIRIT_FRUIT_BADGES;
+        const earnedCount = BADGES.filter(b => profile?.[b.key]).length;
         return (
           <div style={{ padding: "14px 16px 0" }}>
             <div className="sec-label">
@@ -415,7 +414,7 @@ export default function ProfilePage() {
               >›</button>
               <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
                 {BADGES.map((b, i) => {
-                  const earned = i < earnedCount;
+                  const earned = profile?.[b.key] ?? false;
                   return (
                     <div key={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
                       {/* 배지 이미지만, 테두리 없이 */}

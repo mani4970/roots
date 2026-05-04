@@ -65,7 +65,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
   const lang = useLang();
   const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin, lang);
   const isNight = isNightTime();
-  const imgSrc = isNight ? `/dark${img}.png` : `/tree${img}.png`;
+  const imgSrc = isNight ? `/dark${img}.webp` : `/tree${img}.webp`;
   const isAway = daysSince >= 3;
 
   const dayInCycle = cycleDay % 10 === 0 && cycleDay > 0 ? 10 : cycleDay % 10;

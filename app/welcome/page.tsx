@@ -336,7 +336,7 @@ export default function WelcomePage() {
             <div className={styles.growthTreeCard}>
               <div className={styles.growthTreeImage}>
                 <Image
-                  src="/tree1.png"
+                  src="/tree1.webp"
                   alt={tx.growthStart}
                   fill
                   className={styles.treeFrameImg}
@@ -352,7 +352,7 @@ export default function WelcomePage() {
             <div className={styles.growthTreeCard}>
               <div className={styles.growthTreeImage}>
                 <Image
-                  src="/tree11.png"
+                  src="/tree11.webp"
                   alt={tx.growthEnd}
                   fill
                   className={styles.treeFrameImg}

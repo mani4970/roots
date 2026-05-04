@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
-// rootsman_transparent.png: 1536x2776, 3x3 grid = 9 frames
+// rootsman_transparent.webp: 1536x2776, 3x3 grid = 9 frames
 // Row 0 (top):    enter frames (right to left)
 // Row 1 (middle): watering frames
 // Row 2 (bottom): exit frames (left to right)
@@ -146,7 +146,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
       opacity,
     }}>
       <img
-        src="/rootsman_transparent.png"
+        src="/rootsman_transparent.webp"
         alt="roots-man"
         style={{
           position: "absolute",

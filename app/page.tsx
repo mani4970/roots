@@ -248,7 +248,7 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     const { data: p } = await supabase.from("profiles")
-      .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
+      .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose, badge_love, badge_peace, badge_joy, badge_goodness, badge_kindness, badge_patience, badge_faithfulness, badge_gentleness, badge_self_control").eq("id", user.id).single();
     if (!p) return false;
     const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
     if (lastCheckinDate === today) return true;
@@ -265,6 +265,17 @@ export default function HomePage() {
       total_days: (p.total_days ?? 0) + 1,
       last_checkin: today,
     };
+    const spiritFruitBadgeColumns = [
+      "badge_love",
+      "badge_peace",
+      "badge_joy",
+      "badge_goodness",
+      "badge_kindness",
+      "badge_patience",
+      "badge_faithfulness",
+      "badge_gentleness",
+      "badge_self_control",
+    ] as const;
     if (newStreak >= 7 && !alreadyHasRootsman) {
       badgeUpdate.badge_rootsman = true;
       newlyAwardedBadgesRef.current.add("badge_rootsman");
@@ -286,7 +297,11 @@ export default function HomePage() {
         ? Math.floor(newStreak / 100) - 1
         : null;
     if (fruitBadgeIndex !== null) {
-      newlyAwardedBadgesRef.current.add(`fruit_badge_${fruitBadgeIndex}`);
+      const fruitBadgeColumn = spiritFruitBadgeColumns[fruitBadgeIndex];
+      if (fruitBadgeColumn && !p[fruitBadgeColumn]) {
+        badgeUpdate[fruitBadgeColumn] = true;
+        newlyAwardedBadgesRef.current.add(`fruit_badge_${fruitBadgeIndex}`);
+      }
     }
     if (newStreak >= 1000 && !alreadyHasAngel) {
       badgeUpdate.badge_angel = true;
@@ -340,6 +355,7 @@ export default function HomePage() {
     }
 
     // 정원 단계 변경 팝업 (10일마다)
+    // Roots의 streak_days는 연속 출석이 아니라 누적 루틴 완료일입니다.
     const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
       const gardenKey = `garden_shown_${streak}`;
