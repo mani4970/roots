@@ -378,12 +378,12 @@ export default function ProfilePage() {
             }).map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
-                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
-                  <div style={{ width: 68, height: 68, marginBottom: 6 }}>
+                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76 }}>
+                  <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)" }}>
                     <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{t(b.titleKey, lang)}</div>
-                  <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{t(b.titleKey, lang)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
                   {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                 </div>
               );
@@ -416,17 +416,17 @@ export default function ProfilePage() {
                 {BADGES.map((b, i) => {
                   const earned = profile?.[b.key] ?? false;
                   return (
-                    <div key={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", opacity: earned ? 1 : 0.3, flexShrink: 0, width: 76 }}>
-                      {/* 배지 이미지만, 테두리 없이 */}
-                      <div style={{ width: 68, height: 68, marginBottom: 6 }}>
+                    <div key={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76 }}>
+                      {/* 미획득 상태에서도 이름/설명은 읽기 쉽게 유지하고, 배지 이미지만 흐릿하게 표시 */}
+                      <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)" }}>
                         <img
                           src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`}
                           alt={b.name}
                           style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         />
                       </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text3)", lineHeight: 1.3 }}>{b.name}</div>
-                      <div style={{ fontSize: 9, color: "var(--text3)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
+                      <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
                       {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                     </div>
                   );
