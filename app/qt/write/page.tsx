@@ -301,7 +301,7 @@ function QTWriteContent() {
         }}
         aria-label={trQT("번역본", lang)}
         style={compact
-          ? { fontSize: 10, color: "var(--sage-dark)", background: "rgba(122,157,122,0.15)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontWeight: 600, flexShrink: 0 }
+          ? { maxWidth: 86, fontSize: 9, color: "var(--sage-dark)", background: "rgba(122,157,122,0.15)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 999, padding: "2px 4px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }
           : { width: "100%", fontSize: 13, color: "var(--text)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontWeight: 600, marginBottom: 8 }
         }
       >
@@ -1762,18 +1762,18 @@ function QTWriteContent() {
           {passageVerses.length > 0 && (
             <div>
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
                 <BibleTranslationSelect compact />
                 {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
-                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", whiteSpace: "nowrap" }}>{trQT("본문 글씨", lang)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={() => changeBibleTextSize(-1)}
                     disabled={bibleTextSizeIndex === 0}
                     aria-label="Decrease Bible text size"
-                    style={{ minWidth: 26, height: 24, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 6px" }}
+                    title={trQT("본문 글씨", lang)}
+                    style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 5px" }}
                   >
                     A-
                   </button>
@@ -1782,7 +1782,8 @@ function QTWriteContent() {
                     onClick={() => changeBibleTextSize(1)}
                     disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
                     aria-label="Increase Bible text size"
-                    style={{ minWidth: 26, height: 24, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 6px" }}
+                    title={trQT("본문 글씨", lang)}
+                    style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 5px" }}
                   >
                     A+
                   </button>
