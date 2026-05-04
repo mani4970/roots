@@ -45,25 +45,45 @@ export default function RootsMan({ trigger }: RootsManProps) {
   const [posX, setPosX] = useState(ENTER_START_X);
   const [flipX, setFlipX] = useState(false);
   const [opacity, setOpacity] = useState(1);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasRun = useRef(false);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
     if (trigger && !hasRun.current) {
       hasRun.current = true;
-      timeoutId = setTimeout(() => startAnimation(), 1200);
+      scheduleTimeout(() => startAnimation(), 1200);
     }
     if (!trigger) {
       hasRun.current = false;
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      clearTimers();
+      clearInv();
       setPhase("idle");
     }
-    return () => { if (timeoutId) clearTimeout(timeoutId); };
+    return () => {
+      clearTimers();
+      clearInv();
+    };
   }, [trigger]);
 
   function clearInv() {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }
+
+  function clearTimers() {
+    timeoutRefs.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutRefs.current = [];
+  }
+
+  function scheduleTimeout(callback: () => void, delay: number) {
+    const timeoutId = setTimeout(() => {
+      timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId);
+      callback();
+    }, delay);
+    timeoutRefs.current.push(timeoutId);
   }
 
   function startAnimation() {
@@ -85,7 +105,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
       setFrame(ENTER_FRAMES[wf]);
       if (x <= WATER_X) {
         clearInv();
-        setTimeout(() => startWatering(), 200);
+        scheduleTimeout(() => startWatering(), 200);
       }
     }, WALK_INTERVAL);
   }
@@ -102,7 +122,7 @@ export default function RootsMan({ trigger }: RootsManProps) {
       setFrame(WATER_FRAMES[wf]);
       if (count >= 18) {
         clearInv();
-        setTimeout(() => startExit(), 800);
+        scheduleTimeout(() => startExit(), 800);
       }
     }, 280);
   }

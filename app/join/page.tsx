@@ -26,11 +26,13 @@ function JoinContent() {
   const [groupDesc, setGroupDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       if (!groupId) { setNotFound(true); setLoading(false); return; }
       const supabase = createClient();
+      try {
 
       async function loadWithExistingPolicies() {
         // 공개 그룹이면 로그인 없이 조회 가능
@@ -99,26 +101,39 @@ function JoinContent() {
       // SQL 패치 적용 전 배포되어도 기존 초대 링크 흐름이 깨지지 않도록 fallback 유지
       await loadWithExistingPolicies();
       setLoading(false);
+      } catch (error) {
+        console.error("join invite load failed", error);
+        setErrorMessage(t("join_error_load", lang));
+        setLoading(false);
+      }
     }
     load();
   }, [groupId, lang]);
 
   async function join() {
     setJoining(true);
+    setErrorMessage(null);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push(`/login?redirect=/join?group=${groupId}`);
-      return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push(`/login?redirect=/join?group=${groupId}`);
+        return;
+      }
+      const { data: existing } = await supabase.from("group_members")
+        .select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
+      if (!existing) {
+        const { error } = await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id });
+        if (error) throw error;
+      }
+      setJoined(true);
+      setTimeout(() => router.push("/community"), 2000);
+    } catch (error) {
+      console.error("join group failed", error);
+      setErrorMessage(t("join_error_submit", lang));
+    } finally {
+      setJoining(false);
     }
-    const { data: existing } = await supabase.from("group_members")
-      .select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
-    if (!existing) {
-      await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id });
-    }
-    setJoined(true);
-    setJoining(false);
-    setTimeout(() => router.push("/community"), 2000);
   }
 
   if (loading) return (
@@ -134,6 +149,11 @@ function JoinContent() {
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Roots</h1>
         <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 28 }}>{t("home_loading_sub", lang)}</p>
 
+        {errorMessage && (
+          <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(196,149,106,0.22)", marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: "var(--terra-dark)", lineHeight: 1.6 }}>{errorMessage}</p>
+          </div>
+        )}
         {notFound ? (
           <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "24px", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: 16, color: "var(--text3)" }}>{t("join_not_found", lang)}</p>

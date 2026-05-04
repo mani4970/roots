@@ -69,36 +69,49 @@ function RecordContent() {
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     async function load() {
       if (!id) return;
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
-      if (data) {
-        setRecord(data);
-        // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
-        const v = data.visibility ?? "private";
-        if (v !== "private") {
-          setSharedTargets(v.split(",").filter(Boolean));
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
+        if (data) {
+          setRecord(data);
+          // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
+          const v = data.visibility ?? "private";
+          if (v !== "private") {
+            setSharedTargets(v.split(",").filter(Boolean));
+          }
         }
-      }
-      // 내가 속한 그룹 — Supabase에서 로드
-      if (user) {
-        const { data: memberRows } = await supabase.from("group_members")
-          .select("group_id").eq("user_id", user.id);
-        const gIds = (memberRows ?? []).map((r: any) => r.group_id);
-        if (gIds.length > 0) {
-          const { data: groupData } = await supabase.from("groups")
-            .select("id, name, is_public").in("id", gIds);
-          setMyGroups(groupData ?? []);
+        // 내가 속한 그룹 — Supabase에서 로드
+        if (user) {
+          const { data: memberRows } = await supabase.from("group_members")
+            .select("group_id").eq("user_id", user.id);
+          const gIds = (memberRows ?? []).map((r: any) => r.group_id);
+          if (gIds.length > 0) {
+            const { data: groupData } = await supabase.from("groups")
+              .select("id, name, is_public").in("id", gIds);
+            setMyGroups(groupData ?? []);
+          }
         }
+      } catch (error) {
+        console.error("qt record load failed", error);
+        setNotice(t("qt_record_error_load", lang));
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
-  }, [id]);
+  }, [id, lang]);
 
   function toggleTarget(target: string) {
     setSelectedTargets(prev =>
@@ -110,16 +123,18 @@ function RecordContent() {
     if (selectedTargets.length === 0) return;
     setSharing(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    // visibility: "all,group_xxx,group_yyy" 형태로 저장
-    // 단 "all"이 있으면 그룹도 포함해서 쉼표로 합치기
-    const newVisibility = selectedTargets.join(",");
-    const { error, data } = await supabase.from("qt_records")
-      .update({ visibility: newVisibility })
-      .eq("id", id)
-      .eq("user_id", user?.id)
-      .select();
-    if (!error && data && data.length > 0) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      // visibility: "all,group_xxx,group_yyy" 형태로 저장
+      // 단 "all"이 있으면 그룹도 포함해서 쉼표로 합치기
+      const newVisibility = selectedTargets.join(",");
+      const { error, data } = await supabase.from("qt_records")
+        .update({ visibility: newVisibility })
+        .eq("id", id)
+        .eq("user_id", user?.id)
+        .select();
+      if (error) throw error;
+      if (data && data.length > 0) {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
       setSharedTargets(selectedTargets);
       // 말씀 배달부 + 요셉 뱃지 체크
@@ -150,21 +165,30 @@ function RecordContent() {
           }
         }
       } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
+      }
+      setShowShareModal(false);
+    } catch (error) {
+      console.error("qt share failed", error);
+      setNotice(t("qt_record_error_share", lang));
+    } finally {
+      setSharing(false);
     }
-    setSharing(false);
-    setShowShareModal(false);
   }
 
   async function unshare() {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("qt_records")
-      .update({ visibility: "private" })
-      .eq("id", id)
-      .eq("user_id", user?.id);
-    if (!error) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("qt_records")
+        .update({ visibility: "private" })
+        .eq("id", id)
+        .eq("user_id", user?.id);
+      if (error) throw error;
       setRecord((r: any) => ({ ...r, visibility: "private" }));
       setSharedTargets([]);
+    } catch (error) {
+      console.error("qt unshare failed", error);
+      setNotice(t("qt_record_error_share", lang));
     }
   }
 
@@ -269,6 +293,11 @@ function RecordContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
+      {notice && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
+          {notice}
+        </div>
+      )}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>

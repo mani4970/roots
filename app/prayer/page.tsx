@@ -53,16 +53,22 @@ function PrayerPageContent() {
   async function loadPrayers() {
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
-    setUserId(user.id);
-    const { data } = await supabase
-      .from("prayer_items")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (data) setPrayers(data);
-    setLoading(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+      setUserId(user.id);
+      const { data } = await supabase
+        .from("prayer_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setPrayers(data);
+    } catch (error) {
+      console.error("prayer load failed", error);
+      setNotice(c("network_error_retry"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function submit() {
@@ -105,71 +111,86 @@ function PrayerPageContent() {
   async function saveEdit() {
     if (!editText.trim() || !editId) return;
     const supabase = createClient();
-    const { error } = await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
-    if (error) {
+    try {
+      const { error } = await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
+      if (error) {
+        setNotice(c("prayer_error_edit"));
+        return;
+      }
+      setEditId(null); setEditText("");
+      loadPrayers();
+    } catch (error) {
+      console.error("prayer edit failed", error);
       setNotice(c("prayer_error_edit"));
-      return;
     }
-    setEditId(null); setEditText("");
-    loadPrayers();
   }
 
   async function requestIntercession(id: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error: visibilityError } = await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
-    if (visibilityError) {
-      setNotice(c("prayer_error_intercession"));
-      return;
-    }
-    // 기도의 용사 뱃지 체크 (중보요청 15번)
-    const { data: prof } = await supabase.from("profiles")
-      .select("badge_prayer_warrior").eq("id", user.id).single();
-    if (!prof?.badge_prayer_warrior) {
-      const { data: shared } = await supabase.from("prayer_items")
-        .select("id").eq("user_id", user.id).eq("visibility", "all");
-      if ((shared?.length ?? 0) >= 15) {
-        await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
-        setBadgePopup({
-          img: "/prayer_warrior.png",
-          title: c("prayer_badge_warrior_popup"),
-          msg: t("badge_prayer_warrior_msg", lang),
-        });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error: visibilityError } = await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
+      if (visibilityError) {
+        setNotice(c("prayer_error_intercession"));
+        return;
       }
+      // 기도의 용사 뱃지 체크 (중보요청 15번)
+      const { data: prof } = await supabase.from("profiles")
+        .select("badge_prayer_warrior").eq("id", user.id).single();
+      if (!prof?.badge_prayer_warrior) {
+        const { data: shared } = await supabase.from("prayer_items")
+          .select("id").eq("user_id", user.id).eq("visibility", "all");
+        if ((shared?.length ?? 0) >= 15) {
+          await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
+          setBadgePopup({
+            img: "/prayer_warrior.png",
+            title: c("prayer_badge_warrior_popup"),
+            msg: t("badge_prayer_warrior_msg", lang),
+          });
+        }
+      }
+      loadPrayers();
+    } catch (error) {
+      console.error("intercession request failed", error);
+      setNotice(c("prayer_error_intercession"));
     }
-    loadPrayers();
   }
 
   async function saveAnsweredPrayer() {
     if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
     setSavingTestimony(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("prayer_items").update({
-      is_answered: true,
-      testimony: testimonyText.trim(),
-      answered_at: new Date().toISOString(),
-    }).eq("id", testimonyPrayerId);
-    if (error) {
-      setNotice(c("prayer_error_answered"));
-      setSavingTestimony(false);
-      return;
-    }
-    // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
-    if (user) {
-      const { data: prof } = await supabase.from("profiles")
-        .select("badge_noah").eq("id", user.id).single();
-      if (!prof?.badge_noah) {
-        await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
-        setBadgePopup({ img: "/badge_noah.png", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("prayer_items").update({
+        is_answered: true,
+        testimony: testimonyText.trim(),
+        answered_at: new Date().toISOString(),
+      }).eq("id", testimonyPrayerId);
+      if (error) {
+        setNotice(c("prayer_error_answered"));
+        return;
       }
+      // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
+      if (user) {
+        const { data: prof } = await supabase.from("profiles")
+          .select("badge_noah").eq("id", user.id).single();
+        if (!prof?.badge_noah) {
+          await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
+          setBadgePopup({ img: "/badge_noah.png", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+        }
+      }
+      setTestimonyPrayerId(null);
+      setTestimonyText("");
+      await loadPrayers();
+      setTab("answered");
+    } catch (error) {
+      console.error("answered prayer save failed", error);
+      setNotice(c("prayer_error_answered"));
+    } finally {
+      setSavingTestimony(false);
     }
-    setTestimonyPrayerId(null);
-    setTestimonyText("");
-    setSavingTestimony(false);
-    await loadPrayers();
-    setTab("answered");
   }
 
   function openAnsweredPrayer(id: string) {

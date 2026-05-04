@@ -122,39 +122,44 @@ export default function QTPage() {
 
   async function load() {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
-    const today = getLocalDateString();
-    const { data: todayRows } = await supabase.from("qt_records")
-      .select("id,is_draft")
-      .eq("user_id", user.id)
-      .eq("date", today)
-      .order("created_at", { ascending: false });
-    const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
-    const draftExists = !completedExists && !!todayRows?.some((row: any) => row.is_draft === true);
-    setTodayDone(completedExists);
-    setHasDraft(draftExists);
-    if (draftExists) setShowDraftPopup(true);
-    const { data } = await supabase.from("qt_records").select("*")
-      .eq("user_id", user.id).eq("is_draft", false)
-      .order("date", { ascending: false });
-    if (data) setRecords(data);
-
-    const todayDate = new Date();
-    if (todayDate.getDay() !== 0) {
-      const { data: sched } = await supabase
-        .from("qt_schedule")
-        .select("book,chapter,start_verse,end_verse,end_chapter,title")
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+      const today = getLocalDateString();
+      const { data: todayRows } = await supabase.from("qt_records")
+        .select("id,is_draft")
+        .eq("user_id", user.id)
         .eq("date", today)
-        .maybeSingle();
-      if (sched) setTodaySchedule(sched);
+        .order("created_at", { ascending: false });
+      const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
+      const draftExists = !completedExists && !!todayRows?.some((row: any) => row.is_draft === true);
+      setTodayDone(completedExists);
+      setHasDraft(draftExists);
+      if (draftExists) setShowDraftPopup(true);
+      const { data } = await supabase.from("qt_records").select("*")
+        .eq("user_id", user.id).eq("is_draft", false)
+        .order("date", { ascending: false });
+      if (data) setRecords(data);
+
+      const todayDate = new Date();
+      if (todayDate.getDay() !== 0) {
+        const { data: sched } = await supabase
+          .from("qt_schedule")
+          .select("book,chapter,start_verse,end_verse,end_chapter,title")
+          .eq("date", today)
+          .maybeSingle();
+        if (sched) setTodaySchedule(sched);
+      }
+
+      const { data: prof } = await supabase.from("profiles")
+        .select("preferred_translation").eq("id", user.id).single();
+      if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); storageSet("roots_default_translation", String(prof.preferred_translation)); }
+    } catch (error) {
+      console.error("qt load failed", error);
+      showToast(t("qt_error_load", lang));
+    } finally {
+      setLoading(false);
     }
-
-    const { data: prof } = await supabase.from("profiles")
-      .select("preferred_translation").eq("id", user.id).single();
-    if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); storageSet("roots_default_translation", String(prof.preferred_translation)); }
-
-    setLoading(false);
   }
 
   const byYear = records.reduce((acc, r) => {
@@ -189,13 +194,19 @@ export default function QTPage() {
 
   async function deleteDraftAndStart() {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const today = getLocalDateString();
-    await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
-    setHasDraft(false);
-    setShowDraftPopup(false);
-    setShowStartModal(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const today = getLocalDateString();
+      const { error } = await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
+      if (error) throw error;
+      setHasDraft(false);
+      setShowDraftPopup(false);
+      setShowStartModal(true);
+    } catch (error) {
+      console.error("qt draft delete failed", error);
+      showToast(t("qt_error_draft_delete", lang));
+    }
   }
 
 
@@ -270,8 +281,16 @@ export default function QTPage() {
                         setPreferredTranslation(tr.id);
                         setShowTranslationPicker(false);
                         const supabase = createClient();
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (user) await supabase.from("profiles").update({ preferred_translation: tr.id }).eq("id", user.id);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (user) {
+                            const { error } = await supabase.from("profiles").update({ preferred_translation: tr.id }).eq("id", user.id);
+                            if (error) throw error;
+                          }
+                        } catch (error) {
+                          console.error("preferred translation save failed", error);
+                          showToast(t("qt_error_translation_save", lang));
+                        }
                       }} style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: preferredTranslation === tr.id ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 12, color: preferredTranslation === tr.id ? "var(--sage-dark)" : "var(--text)", fontWeight: preferredTranslation === tr.id ? 700 : 400 }}>
                         {tr.name} {preferredTranslation === tr.id ? "✓" : ""}
                       </button>
