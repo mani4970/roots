@@ -138,6 +138,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "· 오늘": { de: "· Heute", en: "· Today", fr: "· Aujourd’hui" },
   // 버튼 / 라벨
   "나가기": { de: "Zurück", en: "Exit", fr: "Sortir" },
+  "이전": { de: "Zurück", en: "Back", fr: "Retour" },
   "더보기": { de: "Mehr", en: "More", fr: "Voir plus" },
   "접기": { de: "Weniger", en: "Less", fr: "Réduire" },
   "다음 단계 →": { de: "Nächster Schritt →", en: "Next Step →", fr: "Étape suivante →" },
@@ -280,6 +281,33 @@ function QTWriteContent() {
           disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
           aria-label="Increase Bible text size"
           style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
+        >
+          A+
+        </button>
+      </div>
+    );
+  }
+
+  function CompactBibleTextSizeButtons() {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => changeBibleTextSize(-1)}
+          disabled={bibleTextSizeIndex === 0}
+          aria-label="Decrease Bible text size"
+          title={trQT("본문 글씨", lang)}
+          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 5px" }}
+        >
+          A-
+        </button>
+        <button
+          type="button"
+          onClick={() => changeBibleTextSize(1)}
+          disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
+          aria-label="Increase Bible text size"
+          title={trQT("본문 글씨", lang)}
+          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 5px" }}
         >
           A+
         </button>
@@ -599,7 +627,10 @@ function QTWriteContent() {
       }
       if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
       if (draft.summary) setAnswers(p => ({ ...p, summary: draft.summary }));
-      if (draft.meditation) setAnswers(p => ({ ...p, meditation: draft.meditation }));
+      if (draft.meditation) {
+        if (draft.qt_mode === "free") setFreeText(draft.meditation);
+        else setAnswers(p => ({ ...p, meditation: draft.meditation }));
+      }
       if (draft.application) setAnswers(p => ({ ...p, application: draft.application }));
       if (draft.closing_prayer) setAnswers(p => ({ ...p, closing_prayer: draft.closing_prayer }));
       if (draft.decision) {
@@ -704,6 +735,20 @@ function QTWriteContent() {
       }
     } catch (e) { /* 로드 실패 무시 */ }
     setLoadingBible(false);
+  }
+
+  function resetFreePassageSelection() {
+    setBibleStep("select");
+    setPassageVerses([]);
+    setBibleRef("");
+    setPassages([]);
+    setKeyVerse("");
+    setSelectedVerseNums([]);
+    setPassageExpanded(false);
+    setVersePreviewExpanded(false);
+    setFreeText("");
+    setDecisions([""]);
+    setBibleError("");
   }
 
   async function loadPassage() {
@@ -878,12 +923,12 @@ function QTWriteContent() {
         current_step: cur,
         bible_ref: draftBibleRef,
         key_verse: keyVerse,
-        opening_prayer: answers.opening_prayer ?? "",
-        summary: answers.summary ?? "",
-        meditation: answers.meditation ?? "",
-        application: answers.application ?? "",
+        opening_prayer: mode === "free" ? "" : (answers.opening_prayer ?? ""),
+        summary: mode === "free" ? "" : (answers.summary ?? ""),
+        meditation: mode === "free" ? freeText : (answers.meditation ?? ""),
+        application: mode === "free" ? "" : (answers.application ?? ""),
         decision: decisionText,
-        closing_prayer: answers.closing_prayer ?? "",
+        closing_prayer: mode === "free" ? "" : (answers.closing_prayer ?? ""),
       };
 
       const { data: rows, error: rowsError } = await withTimeout(
@@ -1287,8 +1332,8 @@ function QTWriteContent() {
       )}
         <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
+            <button onClick={hasPassage ? resetFreePassageSelection : () => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{hasPassage ? trQT("이전", lang) : trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
@@ -1299,11 +1344,12 @@ function QTWriteContent() {
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
             <div>
-              <BibleTextSizeControl />
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
-                <button onClick={() => setBibleStep("select")} style={{ fontSize: 10, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
+                <BibleTranslationSelect compact />
+                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
+                <CompactBibleTextSizeButtons />
               </div>
               <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
                 {passageVerses.map(v => (
@@ -1347,9 +1393,12 @@ function QTWriteContent() {
           </div>
         </div>
 
-        <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+        <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
           <button onClick={save} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
             {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
+          </button>
+          <button onClick={saveDraft} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+            {trQT("임시저장하고 나중에 이어쓰기", lang)}
           </button>
         </div>
       </div>
