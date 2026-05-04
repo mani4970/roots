@@ -525,7 +525,7 @@ export const T = {
   home_prayer_quiet_celeb: { ko: "오늘의 기도를\n하나님께 드렸어요", de: "Sie haben Ihr heutiges Gebet Gott gebracht", en: "You offered today's prayer to God", fr: "Vous avez offert la prière du jour à Dieu" },
   home_prayer_quiet_celeb_sub: { ko: "구하고 찾는 자에게\n하나님이 반드시 응답하실거예요!", de: "Gott wird denen, die bitten und suchen, gewiss antworten!", en: "God will surely answer those who ask and seek!", fr: "Dieu répondra assurément à ceux qui demandent et cherchent!" },
   home_prayer_yes_btn: { ko: "네, 오늘 기도했어요",    de: "Ja, ich habe heute gebetet", en: "Yes, I prayed today", fr: "Oui, j’ai prié aujourd’hui" },
-  home_routine_section: { ko: "오늘의 루틴",          de: "Heutige Routine", en: "Today's routine", fr: "Routine du jour" },
+  home_routine_section: { ko: "오늘의 루틴을 완료하면 나무가 자라요", de: "Wenn Sie die heutige Routine abschließen, wächst Ihr Baum", en: "Complete today’s routine to grow your tree", fr: "Terminez la routine du jour pour faire grandir votre arbre" },
     home_routine_qt:        { ko: "큐티",                 de: "QT", en: "QT", fr: "QT" },
     home_routine_prayer:    { ko: "기도",                 de: "Gebet", en: "Prayer", fr: "Prière" },
     home_routine_decision:  { ko: "결단",                 de: "Vorsatz", en: "Resolution", fr: "Décision" },
