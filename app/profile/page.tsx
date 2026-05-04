@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
-import { Loader2, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
+import { Loader2, Check, X, Camera, Share2, Settings } from "lucide-react";
 
 const PROFILE_WEEKDAY_KEYS = [
   "weekday_sun",
@@ -348,12 +348,12 @@ export default function ProfilePage() {
         <div className="sec-label">{t("profile_faith_journey", lang)}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
-            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <HandHeart size={18} /> },
-            { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, icon: "✨" },
-            { label: t("profile_qt_share", lang), value: qtShareCount, icon: "🤝" },
+            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <img src="/icon-prayer-request.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
+            { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, icon: <img src="/icon-prayer-answered.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
+            { label: t("profile_qt_share", lang), value: qtShareCount, icon: <img src="/icon-qt-share.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
           ].map(s => (
             <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
+              <div style={{ height: 38, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.icon}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 4 }}>{s.value}</div>
               <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
             </div>
