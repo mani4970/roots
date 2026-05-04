@@ -32,9 +32,7 @@ function JoinContent() {
     async function load() {
       if (!groupId) { setNotFound(true); setLoading(false); return; }
       const supabase = createClient();
-      try {
-
-      async function loadWithExistingPolicies() {
+      const loadWithExistingPolicies = async () => {
         // 공개 그룹이면 로그인 없이 조회 가능
         const { data: pub } = await supabase.from("groups")
           .select("*").eq("id", groupId).eq("is_public", true).maybeSingle();
@@ -70,9 +68,10 @@ function JoinContent() {
         } else {
           setNotFound(true);
         }
-      }
+      };
 
-      const { data: inviteRow, error: inviteError } = await supabase
+      try {
+        const { data: inviteRow, error: inviteError } = await supabase
         .rpc("get_group_invite", { p_group_id: groupId })
         .maybeSingle();
       const invite = inviteRow as unknown as GroupInvite | null;
