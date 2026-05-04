@@ -454,6 +454,8 @@ function QTWriteContent() {
         setChapter(chap);
         setStartV(sv);
         setEndV(ev);
+        setEndChapter(evChap ?? chap);
+        setCrossChapter(Boolean(evChap && evChap !== chap));
 
         let allVerses: {num: number; text: string}[] = [];
         let refStr = "";
@@ -683,16 +685,17 @@ function QTWriteContent() {
     if (!bibleRef || passageVerses.length === 0) return;
     setLoadingBible(true);
     try {
-      if (endChapter !== chapter) {
+      const effectiveEndChapter = crossChapter ? endChapter : chapter;
+      if (crossChapter && effectiveEndChapter !== chapter) {
         const allKo = [...OT_BOOKS, ...NT_BOOKS];
         const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
         const koBook = (() => { const i=allLoc.indexOf(book); return i>=0?allKo[i]:book; })();
         const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
         const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await r1.json();
-        const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
         const d2 = await r2.json();
-        const allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${endChapter}:${v.num}`}))];
+        const allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${effectiveEndChapter}:${v.num}`}))];
         if (allVerses.length > 0) setPassageVerses(allVerses);
       } else {
         const res = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
@@ -709,18 +712,19 @@ function QTWriteContent() {
       let allVerses: {num:number;text:string}[] = [];
       let refStr = "";
 
-      if (endChapter !== chapter) {
+      const effectiveEndChapter = crossChapter ? endChapter : chapter;
+      if (crossChapter && effectiveEndChapter !== chapter) {
         // 장 넘어가는 경우: 시작장 끝까지 + 끝장 처음부터
         const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
         const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
         const res1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await res1.json();
-        const res2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const res2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
         const d2 = await res2.json();
         const v1 = (d1.verses??[]).map((v:any)=>({...v, num: `${chapter}:${v.num}`}));
-        const v2 = (d2.verses??[]).map((v:any)=>({...v, num: `${endChapter}:${v.num}`}));
+        const v2 = (d2.verses??[]).map((v:any)=>({...v, num: `${effectiveEndChapter}:${v.num}`}));
         allVerses = [...v1, ...v2];
-        refStr = `${book} ${chapter}:${startV}-${endChapter}:${endV}`;
+        refStr = `${book} ${chapter}:${startV}-${effectiveEndChapter}:${endV}`;
       } else {
         if (parseInt(endV) < parseInt(startV)) { setBibleError(trQT("끝 절이 시작 절보다 작아요", lang)); setLoadingBible(false); return; }
         const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
@@ -749,14 +753,15 @@ function QTWriteContent() {
       const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
       let vers: {num:number;text:string}[] = [];
       let refStr = "";
-      if (endChapter !== chapter) {
+      const effectiveEndChapter = crossChapter ? endChapter : chapter;
+      if (crossChapter && effectiveEndChapter !== chapter) {
         const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
         const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await r1.json();
-        const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${endChapter}&startVerse=1&endVerse=${endV}`);
+        const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
         const d2 = await r2.json();
-        vers = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${endChapter}:${v.num}`}))];
-        refStr = `${book} ${chapter}:${startV}-${endChapter}:${endV}`;
+        vers = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${effectiveEndChapter}:${v.num}`}))];
+        refStr = `${book} ${chapter}:${startV}-${effectiveEndChapter}:${endV}`;
       } else {
         const r = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
         const d = await r.json();
@@ -1465,7 +1470,7 @@ function QTWriteContent() {
                   <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("번역본", lang)}</label>
                   <BibleTranslationSelect />
                   {/* 성경 책 선택 */}
-                  <select className="input-field" value={book} onChange={e => { setBook(e.target.value); setChapter("1"); setStartV("1"); setEndV("1"); }} style={{ marginBottom: 8 }}>
+                  <select className="input-field" value={book} onChange={e => { setBook(e.target.value); setChapter("1"); setStartV("1"); setEndV("1"); setEndChapter("1"); setCrossChapter(false); }} style={{ marginBottom: 8 }}>
                     {[{ label: trQT("구약", lang), books: OT_BOOKS_LOCAL }, { label: trQT("신약", lang), books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
                       <optgroup key={label} label={label}>
                         {books.map(b => <option key={b} value={b}>{b}</option>)}
@@ -1679,7 +1684,7 @@ function QTWriteContent() {
         </div>
 
         {/* 말씀 미리보기 */}
-        {bibleRef && (
+        {bibleRef && !step6.isPassageStep && (
           <div>
             <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
             {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
@@ -1759,6 +1764,8 @@ function QTWriteContent() {
               <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)} · {translationName}</p>
+                <BibleTranslationSelect compact />
+                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", whiteSpace: "nowrap" }}>{trQT("본문 글씨", lang)}</span>
                   <button
