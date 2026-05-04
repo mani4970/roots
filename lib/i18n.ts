@@ -380,6 +380,8 @@ export const T = {
 
   // ── 복귀 팝업 ──
   welcome_back_btn: { ko: "오늘 루틴 시작하기 🌱",   de: "Routine starten 🌱", en: "Start fresh today", fr: "Recommencer aujourd’hui" },
+  welcome_back_fixed_title: { ko: "다시 돌아왔군요! 축복해요! 🤍", de: "Sie sind zurück! Segen für Sie! 🤍", en: "You're back! Blessings! 🤍", fr: "Vous êtes de retour ! Soyez béni(e) ! 🤍" },
+  welcome_back_fixed_sub: { ko: "하나님과 매일 동행하며,\n말씀에 깊게 뿌리내려봐요.", de: "Gehen Sie jeden Tag mit Gott,\nund verwurzeln Sie sich tief in seinem Wort.", en: "Walk with God every day,\nand root yourself deeply in His Word.", fr: "Marchez chaque jour avec Dieu,\net enracinez-vous profondément dans sa Parole." },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!", fr: "Ça fait longtemps !" },
   welcome_back_30_sub: { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!", fr: "La Parole vous attendait.\\nRevenez et continuez à grandir !" },
   welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!", fr: "Cela fait {n} jours !" },
@@ -615,6 +617,12 @@ export const T = {
   qt_sunday_title: { ko: "오늘은 주일이에요!",                de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !" },
   qt_sunday_desc: { ko: "6단계 큐티 대신 주일예배 큐티를 진행해 주세요.", de: "Bitte die Sonntagsgottesdienst-QT durchführen.", en: "Please do a Sunday worship QT.", fr: "Veuillez faire un QT du culte dominical." },
   qt_today_start: { ko: "오늘 큐티 시작하기",                   de: "Heutige QT beginnen", en: "Start today's QT", fr: "Commencer le QT du jour" },
+  qt_catchup_start: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
+  qt_catchup_title: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
+  qt_catchup_sub: { ko: "기록 보완용이에요. 오늘 루틴과 streak에는 영향을 주지 않아요.", de: "Nur zur Ergänzung Ihrer Aufzeichnungen. Die heutige Routine und der Streak bleiben unverändert.", en: "This only completes your record. It does not affect today's routine or your streak.", fr: "Cela complète seulement votre historique. Cela n’influence pas la routine du jour ni votre série." },
+  qt_catchup_date_label: { ko: "날짜 선택", de: "Datum auswählen", en: "Choose a date", fr: "Choisir une date" },
+  qt_catchup_6step_desc: { ko: "선택한 날짜의 본문을 불러와 6단계로 기록해요.", de: "Lädt den Abschnitt des ausgewählten Datums und führt durch 6 Schritte.", en: "Loads that date's passage and records it in 6 steps.", fr: "Charge le passage de cette date et l’enregistre en 6 étapes." },
+  qt_catchup_free_desc: { ko: "스케줄 본문을 자동으로 불러오지 않고, 일반 자유형식처럼 본문을 직접 선택해 기록해요.", de: "Lädt den Planabschnitt nicht automatisch. Wählen Sie den Bibeltext wie im freien QT selbst aus.", en: "Does not auto-load the scheduled passage. Choose the Bible passage yourself, like regular free QT.", fr: "Ne charge pas automatiquement le passage prévu. Choisissez vous-même le texte biblique, comme dans le QT libre." },
   qt_past_records: { ko: "지난 큐티 기록",                       de: "Frühere QTs", en: "Recordings", fr: "Enregistrements" },
   qt_no_records_simple: { ko: "아직 큐티 기록이 없어요",               de: "Noch keine Aufzeichnungen", en: "No recordings yet", fr: "Aucun enregistrement pour l’instant" },
   qt_how_title: { ko: "어떻게 큐티할까요?",                    de: "Wie möchten Sie QT machen?", en: "How would you like to do QT?", fr: "Comment voulez-vous faire votre QT ?" },

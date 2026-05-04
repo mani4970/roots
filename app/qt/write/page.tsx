@@ -353,6 +353,7 @@ function QTWriteContent() {
   }
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
   const isResume = params.get("resume") === "true";
+  const isCatchUp = params.get("catchup") === "true";
   // 오늘 스케줄 파라미터
   const schedBook = params.get("schedBook");
   const schedChapter = params.get("schedChapter");
@@ -384,7 +385,9 @@ function QTWriteContent() {
     return isSunday(initialDate) ? "sunday" : "6step";
   });
 
-  // 말씀 선택 (6step, free) - 스케줄 있으면 바로 "done"으로 시작
+  // 말씀 선택 (6step, free)
+  // - 6단계: 오늘 스케줄/지난 날짜 스케줄이 있으면 본문을 자동 로드한다.
+  // - 자유형식: 지난 큐티라도 qt_schedule을 자동 로드하지 않고, 일반 자유형식처럼 사용자가 직접 본문을 선택한다.
   const [bibleStep, setBibleStep] = useState<"select" | "done">(hasSchedule ? "done" : "select");
   const currentLang = TRANSLATION_LANG[selectedTranslation] ?? "KO";
   const currentBookNames = BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"];
@@ -461,22 +464,69 @@ function QTWriteContent() {
   }
 
 
-  // 스케줄 자동 말씀 로드 (이어쓰기 아닐 때 + 스케줄 있을 때)
+  // 스케줄 자동 말씀 로드
+  // - 오늘 6단계 QT: URL로 전달된 오늘 스케줄 사용
+  // - 지난 큐티 6단계: 선택한 날짜의 qt_schedule을 다시 조회해서 기록 보완용으로 로드
+  // - 자유형식 지난 큐티: qt_schedule 자동 로드 없이 일반 자유형식처럼 수동 본문 선택으로 시작
   useEffect(() => {
     const loadSchedulePassage = async () => {
       // resume=true일 때는 draft 복원이 끝날 때까지 빈 화면을 유지해
       // 기본 말씀 선택 화면이 잠깐 보이는 flicker를 막는다.
       if (isResume) return;
-      if (!hasSchedule || mode !== "6step") {
+      if (mode !== "6step") {
         setPageReady(true);
         return;
       }
+
+      let schedule: {
+        book: string;
+        chapter: string;
+        startVerse: string;
+        endVerse: string;
+        endChapter: string | null;
+      } | null = null;
+
+      if (hasSchedule) {
+        schedule = {
+          book: schedBook!,
+          chapter: schedChapter!,
+          startVerse: schedStartV!,
+          endVerse: schedEndV!,
+          endChapter: schedEndChapter,
+        };
+      } else if (isCatchUp) {
+        try {
+          const supabase = createClient();
+          const { data: sched } = await supabase
+            .from("qt_schedule")
+            .select("book,chapter,start_verse,end_verse,end_chapter")
+            .eq("date", selectedDate)
+            .maybeSingle();
+          if (sched) {
+            schedule = {
+              book: sched.book,
+              chapter: String(sched.chapter),
+              startVerse: String(sched.start_verse),
+              endVerse: String(sched.end_verse),
+              endChapter: sched.end_chapter ? String(sched.end_chapter) : null,
+            };
+          }
+        } catch {
+          // 지난 날짜 스케줄 조회 실패 시 수동 선택 화면으로 진입
+        }
+      }
+
+      if (!schedule) {
+        setPageReady(true);
+        return;
+      }
+
       try {
-        const bookName = schedBook!;
-        const chap = schedChapter!;
-        const sv = schedStartV!;
-        const ev = schedEndV!;
-        const evChap = schedEndChapter;
+        const bookName = schedule.book;
+        const chap = schedule.chapter;
+        const sv = schedule.startVerse;
+        const ev = schedule.endVerse;
+        const evChap = schedule.endChapter;
 
         setBook(bookName);
         setChapter(chap);

@@ -9,7 +9,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTWriteHref } from "@/lib/qtEntry";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine } from "lucide-react";
+import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
   { icon: "prayer", titleKey: "qt_g1_title", descKey: "qt_g1_desc", exKey: "qt_g1_ex" },
@@ -99,6 +99,9 @@ export default function QTPage() {
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPopup, setShowDraftPopup] = useState(false);
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return getLocalDateString(d); })();
+  const [showCatchUpModal, setShowCatchUpModal] = useState(false);
+  const [catchUpDate, setCatchUpDate] = useState(yesterday);
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState(() => {
     if (typeof window !== "undefined") {
@@ -195,6 +198,24 @@ export default function QTPage() {
     setShowStartModal(true);
   }
 
+
+  function startCatchUp(mode: "6step" | "free") {
+    setShowCatchUpModal(false);
+    const params = new URLSearchParams({
+      mode,
+      date: catchUpDate,
+      catchup: "true",
+      translation: String(preferredTranslation),
+    });
+    router.push(`/qt/write?${params.toString()}`);
+  }
+
+  const catchUpDateOptions = Array.from({ length: 60 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (i + 1));
+    return getLocalDateString(d);
+  });
+
   const dateLocale = getDateLocale(lang);
   const isSundayToday = new Date().getDay() === 0;
 
@@ -260,12 +281,17 @@ export default function QTPage() {
 
       <div style={{ padding: "16px 16px 0" }}>
         {todayDone ? (
-          <div className="card-sage" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <CheckCircle2 size={24} />
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
-              <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="card-sage" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <CheckCircle2 size={24} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
+              </div>
             </div>
+            <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
+            </button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -291,6 +317,9 @@ export default function QTPage() {
             )}
             <button onClick={() => { if (hasDraft) { setShowDraftPopup(true); } else { setShowStartModal(true); } }} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={18} /> {t("qt_today_start", lang)}
+            </button>
+            <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
             </button>
           </div>
         )}
@@ -375,6 +404,42 @@ export default function QTPage() {
           </div>
         )}
       </div>
+
+      {showCatchUpModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
+              <button onClick={() => setShowCatchUpModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
+
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
+            <select value={catchUpDate} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
+              {catchUpDateOptions.map(d => (
+                <option key={d} value={d}>{parseLocalDateString(d).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", textAlign: "left" }}>
+                <BookOpen size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_6step_desc", lang)}</p>
+                </div>
+              </button>
+              <button onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                <PenLine size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_free_desc", lang)}</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showStartModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
