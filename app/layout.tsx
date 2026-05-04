@@ -43,8 +43,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
               } catch (e) {}
             })();
+            var isCapacitorApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
+                if (isCapacitorApp) {
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    registrations.forEach(function(registration) {
+                      registration.unregister();
+                    });
+                  }).catch(function(err) {
+                    console.log('SW cleanup failed:', err);
+                  });
+                  return;
+                }
+
                 navigator.serviceWorker.register('/sw.js').catch(function(err) {
                   console.log('SW registration failed:', err);
                 });
