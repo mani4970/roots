@@ -248,7 +248,7 @@ export const T = {
 
   // ── 프로필 ──
   profile_faith_journey: { ko: "신앙 여정",           de: "Glaubensweg", en: "Faith Journey", fr: "Parcours de foi" },
-  profile_faith_fruits: { ko: "신앙의 결실",         de: "Glaubensfrüchte", en: "Faith Badges", fr: "Badges de foi" },
+  profile_faith_fruits: { ko: "신앙의 결실",         de: "Glaubensfrüchte", en: "Fruits of Faith", fr: "Fruits de la foi" },
   profile_spirit_fruits: { ko: "성령의 열매",         de: "Früchte des Geistes", en: "Fruits of the Spirit", fr: "Fruits de l’Esprit" },
   profile_qt_calendar: { ko: "큐티 현황",            de: "QT Kalender", en: "QT Calendar", fr: "Calendrier QT" },
   profile_invite: { ko: "친구 초대하기",        de: "Freunde einladen", en: "Invite friends", fr: "Inviter des amis" },
@@ -334,7 +334,7 @@ export const T = {
   badge_qt_bird_title: { ko: "말씀 배달부",          de: "Wortüberbringer", en: "Word Carrier", fr: "Porteur de la Parole" },
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
-  badge_angel_desc: { ko: "100일 루틴 완주로 받은 성령의 열매 배지",      de: "Abzeichen für 100 erfüllte Routinetage", en: "Fruit of the Spirit badge for completing a 100-day routine cycle", fr: "Badge du fruit de l’Esprit pour un cycle de routine de 100 jours" },
+  badge_angel_desc: { ko: "1000일 하루 루틴 완주",      de: "1000 Routinetage abgeschlossen", en: "Completed 1000 daily routine days", fr: "1000 jours de routine quotidienne accomplis" },
 
   // 뱃지 팝업 메시지
   badge_rootsman_msg: { ko: "7일간 말씀과 함께한 당신, Roots의 진짜 시작이에요!", de: "7 Tage mit Gottes Wort – ein echter Anfang bei Roots!", en: "7 days in a row! RootsMan is walking with you!", fr: "7 jours de suite ! RootsMan marche avec vous !" },
@@ -347,7 +347,7 @@ export const T = {
   badge_paul_msg: { ko: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!", de: "Wie Paulus – der die Gemeinde liebt und für sie betet!", en: "30 prayers in the community — like Paul's letters!", fr: "30 prières dans la communauté — comme les lettres de Paul !" },
   badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Steadfast like Peter, the rock!", fr: "Solide comme Pierre, le rocher !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
-  badge_angel_msg: { ko: "성령의 열매 9가지를 다 모은 당신을 축복합니다.", de: "Gesegnet, der alle 9 Früchte des Geistes gesammelt hat.", en: "900 days! All 9 fruits of the Spirit!", fr: "900 jours ! Les 9 fruits de l’Esprit !" },
+  badge_angel_msg: { ko: "1000일 동안 쉬지 않고 하나님과 말씀으로 매일 동행하며 승리한 당신을 축복합니다", de: "1000 Tage lang sind Sie ohne Unterbrechung täglich mit Gott und seinem Wort gegangen und haben überwunden. Segen für Sie.", en: "Blessings on you for walking with God and His Word every day for 1000 days without stopping and overcoming in victory.", fr: "Soyez béni(e) pour avoir marché chaque jour avec Dieu et sa Parole pendant 1000 jours sans vous arrêter, et pour avoir vaincu." },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -382,7 +382,7 @@ export const T = {
   welcome_back_btn: { ko: "오늘 루틴 시작하기 🌱",   de: "Routine starten 🌱", en: "Start fresh today", fr: "Recommencer aujourd’hui" },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!", fr: "Ça fait longtemps !" },
   welcome_back_30_sub: { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!", fr: "La Parole vous attendait.\\nRevenez et continuez à grandir !" },
-  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!" },
+  welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!", fr: "Cela fait {n} jours !" },
   welcome_back_14_sub: { ko: "괜찮아요, 언제든 돌아오면 돼요.\n오늘부터 다시 함께 자라요!", de: "Kein Problem, Sie können immer zurückkommen.\nFangen wir heute wieder an!", en: "No problem, you can always come back.\nLet's start fresh today!", fr: "Pas de problème, vous pouvez toujours revenir.\\nRecommençons aujourd’hui !" },
   welcome_back_7_sub: { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 다시 시작해봐요.", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine.", en: "Your tree has been waiting.\nLet's continue with the routine!", fr: "Your tree has been waiting.\\nLet's continue with the routine!" },
   welcome_back_1_sub: { ko: "괜찮아요! 오늘 다시 시작해봐요.\n조금씩 꾸준히가 중요해요 🌱", de: "Kein Problem! Fangen wir heute neu an.\nKleine Schritte zählen 🌱", en: "No problem! Let's start fresh.\nSmall steps count too!", fr: "No problem! Let's start fresh.\\nSmall steps count too!" },
@@ -396,7 +396,7 @@ export const T = {
   garden_badge_title: { ko: "성령의 열매 획득!",       de: "Frucht des Geistes erhalten!", en: "Fruit of the Spirit received!", fr: "Fruit de l’Esprit reçu !" },
   garden_badge_100days: { ko: "100일 동안 말씀에 뿌리내린 당신에게\n하나님이 주시는 열매예요!", de: "100 Tage in Gottes Wort verwurzelt –\ndas ist Ihre Frucht von Gott!", en: "100 days rooted in God's Word –\nthis is your fruit from above!", fr: "100 jours enraciné dans la Parole de Dieu —\\nvoici le fruit d’en haut !" },
   garden_badge_profile: { ko: "프로필에서 확인할 수 있어요 ✨",  de: "Im Profil ansehen ✨", en: "View in profile ✨", fr: "Visible dans le profil ✨" },
-  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째", de: "Der Garten wurde aktualisiert! Tag {n}", en: "The garden has been updated! Day {n}" },
+  garden_updated_day:   { ko: "정원이 업데이트됐어요! {n}일째", de: "Der Garten wurde aktualisiert! Tag {n}", en: "The garden has been updated! Day {n}", fr: "Le jardin a été mis à jour ! Jour {n}" },
 
   // 성령의 열매 이름
   fruit_love: { ko: "사랑",    de: "Liebe", en: "Love", fr: "Amour" },

@@ -228,27 +228,32 @@ export default function HomePage() {
     if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
       const today = getLocalDateString();
       if (!storageGet(`celebrated_${today}`)) {
-        celebrationShownRef.current = true;
-        storageSet(`celebrated_${today}`, "true");
-        updateStreak(today);
-        enqueueCelebration({
-          message: t("home_celebration_title", lang),
-          subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
-          launchRootsMan: true,
-        });
+        void (async () => {
+          const updated = await updateStreak(today);
+          if (!updated) return;
+          celebrationShownRef.current = true;
+          storageSet(`celebrated_${today}`, "true");
+          enqueueCelebration({
+            message: t("home_celebration_title", lang),
+            subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
+            launchRootsMan: true,
+          });
+        })();
       }
     }
   }, [allDone, loading]);
 
-  async function updateStreak(today: string) {
+  async function updateStreak(today: string): Promise<boolean> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
     const { data: p } = await supabase.from("profiles")
       .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose").eq("id", user.id).single();
-    if (!p) return;
+    if (!p) return false;
     const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
-    if (lastCheckinDate === today) return;
+    if (lastCheckinDate === today) return true;
+    // Roots intentionally keeps the streak when a user returns after a break.
+    // Returning is welcomed and the routine continues instead of resetting to zero.
     let newStreak = p.last_checkin ? (p.streak_days ?? 0) + 1 : 1;
     const alreadyHasAngel = p.badge_angel ?? false;
     const alreadyHasRootsman = p.badge_rootsman ?? false;
@@ -276,10 +281,22 @@ export default function HomePage() {
       badgeUpdate.badge_david = true;
       newlyAwardedBadgesRef.current.add("badge_david");
     }
-    if (newStreak >= 100 && !alreadyHasAngel) badgeUpdate.badge_angel = true;
-    await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
+    const fruitBadgeIndex =
+      newStreak % 100 === 0 && newStreak >= 100 && newStreak <= 900
+        ? Math.floor(newStreak / 100) - 1
+        : null;
+    if (fruitBadgeIndex !== null) {
+      newlyAwardedBadgesRef.current.add(`fruit_badge_${fruitBadgeIndex}`);
+    }
+    if (newStreak >= 1000 && !alreadyHasAngel) {
+      badgeUpdate.badge_angel = true;
+      newlyAwardedBadgesRef.current.add("badge_angel");
+    }
+    const { error } = await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
+    if (error) return false;
     const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (newProfile) setProfile(newProfile);
+    return true;
   }
 
   useEffect(() => {
@@ -308,10 +325,17 @@ export default function HomePage() {
       setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
       return;
     }
+    for (let i = 0; i < 9; i++) {
+      const key = `fruit_badge_${i}`;
+      if (newly.has(key)) {
+        newly.delete(key);
+        setGardenPopup({ show: true, type: "badge", badgeIndex: i });
+        return;
+      }
+    }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
-      const cycleNumber = Math.max(1, Math.floor(streak / 100));
-      setGardenPopup({ show: true, type: "badge", badgeIndex: (cycleNumber - 1) % 9 });
+      setBadgePopup({ img: "/angel.png", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return;
     }
 
