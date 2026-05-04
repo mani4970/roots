@@ -9,6 +9,7 @@ import LanguagePicker from "@/components/LanguagePicker";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { storageGet, storageSet } from "@/lib/clientStorage";
+import { getOAuthRedirectTo } from "@/lib/authRedirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function LoginPage() {
     storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?lang=${lang}` },
+      options: { redirectTo: getOAuthRedirectTo(lang) },
     });
   }
 
