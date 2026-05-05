@@ -78,6 +78,18 @@ function RecordContent() {
   }, [notice]);
 
   useEffect(() => {
+    if (!showShareModal) return;
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [showShareModal]);
+
+  useEffect(() => {
     async function load() {
       if (!id) return;
       const supabase = createClient();
@@ -345,18 +357,22 @@ function RecordContent() {
       </div>
 
       {/* 나누기 모달 */}
-      {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{trR("큐티 나누기", lang)}</h2>
-              <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
-            </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>{trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}</p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+      {/* 나누기 모달 */}
+      {showShareModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", maxHeight: "min(720px, calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))", display: "flex", flexDirection: "column", boxShadow: "0 18px 52px rgba(0,0,0,0.28)", overflow: "hidden" }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{trR("큐티 나누기", lang)}</h2>
+                <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}</p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
               {/* 전체 커뮤니티 */}
-              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
                 <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>{trR("전체 커뮤니티", lang)}</p>
@@ -370,12 +386,12 @@ function RecordContent() {
               {/* 내 그룹들 */}
               {myGroups.length > 0 && (
                 <>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>{trR("내 그룹", lang)}</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{trR("내 그룹", lang)}</p>
                   {myGroups.map(g => {
                     const key = `group_${g.id}`;
                     const isSelected = selectedTargets.includes(key);
                     return (
-                      <button key={g.id} onClick={() => toggleTarget(key)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                      <button key={g.id} onClick={() => toggleTarget(key)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
                         <Lock size={20} style={{ color: isSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
@@ -397,17 +413,19 @@ function RecordContent() {
               )}
             </div>
 
-            {selectedTargets.length > 0 && (
-              <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {t("qt_record_selected_count", lang, { count: selectedTargets.length })}
-              </p>
-            )}
+            <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>
+              {selectedTargets.length > 0 && (
+                <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
+                  {t("qt_record_selected_count", lang, { count: selectedTargets.length })}
+                </p>
+              )}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>{trR("취소", lang)}</button>
-              <button onClick={doShare} disabled={sharing || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
-                {sharing ? <Loader2 size={16} className="spin" /> : `${trR("나누기", lang)}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>{trR("취소", lang)}</button>
+                <button onClick={doShare} disabled={sharing || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
+                  {sharing ? <Loader2 size={16} className="spin" /> : `${trR("나누기", lang)}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
+                </button>
+              </div>
             </div>
           </div>
         </div>

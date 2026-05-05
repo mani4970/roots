@@ -56,6 +56,18 @@ function PrayerPageContent() {
     }
   }, [searchParams, router]);
 
+  useEffect(() => {
+    if (!showShareModal) return;
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [showShareModal]);
+
   function visibilityTargets(visibility?: string | null) {
     return (visibility ?? "private")
       .split(",")
@@ -522,10 +534,9 @@ function PrayerPageContent() {
         )}
       </div>
 
-
       {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 46, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))", overflow: "hidden" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 24, padding: "20px 18px 16px", border: "1px solid var(--border)", maxHeight: "calc(100dvh - 32px - env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", boxShadow: "0 -12px 40px rgba(0,0,0,0.22)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", maxHeight: "min(720px, calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))", display: "flex", flexDirection: "column", boxShadow: "0 18px 52px rgba(0,0,0,0.28)", overflow: "hidden" }}>
             <div style={{ flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{c("prayer_intercession_share_title")}</h2>
@@ -534,8 +545,8 @@ function PrayerPageContent() {
               <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("prayer_intercession_share_sub")}</p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2 }}>
-              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
                 <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>{c("prayer_intercession_share_all")}</p>
@@ -548,12 +559,12 @@ function PrayerPageContent() {
 
               {myGroups.length > 0 && (
                 <>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>{c("prayer_intercession_my_groups")}</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{c("prayer_intercession_my_groups")}</p>
                   {myGroups.map(group => {
                     const target = `group_${group.id}`;
                     const selected = selectedTargets.includes(target);
                     return (
-                      <button key={group.id} onClick={() => toggleTarget(target)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                      <button key={group.id} onClick={() => toggleTarget(target)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
                         <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: selected ? "var(--sage-dark)" : "var(--text)" }}>{group.name}</p>
