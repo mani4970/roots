@@ -74,6 +74,7 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
 
   function showToast(message: string) {
     setToast(message);
@@ -284,6 +285,39 @@ export default function ProfilePage() {
           {toast}
         </div>
       )}
+
+      {selectedBadge && (
+        <div
+          onClick={() => setSelectedBadge(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 330, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+          >
+            <button
+              onClick={() => setSelectedBadge(null)}
+              aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ width: 148, height: 148, margin: "0 auto 14px", borderRadius: 28, background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+              <img
+                src={selectedBadge.img}
+                alt={selectedBadge.title}
+                style={{ width: "122px", height: "122px", objectFit: "contain", opacity: selectedBadge.earned ? 1 : 0.42, filter: selectedBadge.earned ? "none" : "grayscale(0.2)" }}
+              />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
+            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 12 }}>{selectedBadge.desc}</p>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, padding: "7px 12px", background: selectedBadge.earned ? "rgba(232,197,71,0.14)" : "var(--bg3)", border: selectedBadge.earned ? "1px solid rgba(232,197,71,0.32)" : "1px solid var(--border)", color: selectedBadge.earned ? "rgba(232,197,71,0.95)" : "var(--text3)", fontSize: 11, fontWeight: 800 }}>
+              {selectedBadge.earned ? t("profile_badge_earned", lang) : lang === "ko" ? "아직 미획득" : lang === "de" ? "Noch nicht erhalten" : lang === "fr" ? "Pas encore obtenu" : "Not earned yet"}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
@@ -378,14 +412,22 @@ export default function ProfilePage() {
             }).map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
-                <div key={b.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 96 }}>
-                  <div style={{ width: 88, height: 88, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)" }}>
-                    <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <button
+                  key={b.key}
+                  onClick={() => setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned })}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 96, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div style={{ width: 88, height: 88, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                    <img
+                      src={b.img}
+                      alt={t(b.titleKey, lang)}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }}
+                    />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{t(b.titleKey, lang)}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
                   {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -416,9 +458,13 @@ export default function ProfilePage() {
                 {BADGES.map((b, i) => {
                   const earned = profile?.[b.key] ?? false;
                   return (
-                    <div key={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76 }}>
+                    <button
+                      key={b.name}
+                      onClick={() => setSelectedBadge({ img: `/badge_${b.name.toLowerCase().replace("-","_")}.webp`, title: b.name, desc: t(b.descKey, lang), earned })}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                    >
                       {/* 미획득 상태에서도 이름/설명은 읽기 쉽게 유지하고, 배지 이미지만 흐릿하게 표시 */}
-                      <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)" }}>
+                      <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
                         <img
                           src={`/badge_${b.name.toLowerCase().replace("-","_")}.webp`}
                           alt={b.name}
@@ -428,7 +474,7 @@ export default function ProfilePage() {
                       <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
                       <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
                       {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
