@@ -118,6 +118,11 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
   "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
   "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert", en: "Saved as draft", fr: "Brouillon enregistré" },
+  "자동 임시저장 중...": { de: "Automatisches Speichern...", en: "Auto-saving...", fr: "Enregistrement automatique..." },
+  "자동 임시저장됨": { de: "Automatisch gespeichert", en: "Auto-saved", fr: "Enregistré automatiquement" },
+  "자동 임시저장됨 · {time}": { de: "Automatisch gespeichert · {time}", en: "Auto-saved · {time}", fr: "Enregistré automatiquement · {time}" },
+  "작성 내용은 자동으로 임시저장돼요": { de: "Ihre Eingaben werden automatisch als Entwurf gespeichert", en: "Your writing is auto-saved as a draft", fr: "Votre texte est enregistré automatiquement comme brouillon" },
+  "자동 임시저장 실패 · 수동 임시저장을 눌러주세요": { de: "Automatisches Speichern fehlgeschlagen · Bitte manuell speichern", en: "Auto-save failed · Please save manually", fr: "Échec de l’enregistrement automatique · Enregistrez manuellement" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   // UI 문자열
@@ -238,6 +243,29 @@ const STEPS_SUNDAY = [
   { id: "meditation", title: "깨달음과 결단", subtitle: "말씀이 내게 주는 깨달음과 결단", placeholder: "", hint: "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.", isDecision: true },
   { id: "closing_prayer", title: "올려드리는 기도", subtitle: "예배의 마무리 기도", placeholder: "오늘 받은 은혜와 결단을 하나님께 올려드려요...", hint: "받은 말씀과 결단을 하나님께 올려드려요.", isLast: true },
 ];
+
+type QTWriteMode = "6step" | "sunday" | "free";
+type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
+type DraftSnapshot = {
+  selectedDate: string;
+  mode: QTWriteMode;
+  currentStep: number;
+  bibleRef: string;
+  keyVerse: string;
+  answers: Record<string, string>;
+  decisions: string[];
+  freeText: string;
+  sermonTitle: string;
+  passageRefs: string[];
+};
+type SaveDraftOptions = {
+  silent?: boolean;
+  markSaving?: boolean;
+  snapshot?: DraftSnapshot;
+  signature?: string;
+};
+
+const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
 
 function QTWriteContent() {
   const router = useRouter();
@@ -378,7 +406,7 @@ function QTWriteContent() {
   });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
-  const [mode, setMode] = useState<"6step" | "sunday" | "free">(() => {
+  const [mode, setMode] = useState<QTWriteMode>(() => {
     if (initMode === "free") return "free";
     if (initMode === "sunday") return "sunday";
     if (initMode === "6step") return "6step";
@@ -439,6 +467,12 @@ function QTWriteContent() {
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
   const [freeText, setFreeText] = useState("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState("");
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const autoSavingRef = useRef(false);
+  const queuedAutoSaveRef = useRef<{ snapshot: DraftSnapshot; signature: string } | null>(null);
+  const lastAutoSaveSignatureRef = useRef("");
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
@@ -895,6 +929,81 @@ function QTWriteContent() {
   function removeDecision(i: number) { setDecisions(p => p.filter((_, idx) => idx !== i)); }
   function updateDecision(i: number, val: string) { setDecisions(p => p.map((d, idx) => idx === i ? val : d)); }
 
+  function getDraftSnapshot(): DraftSnapshot {
+    return {
+      selectedDate,
+      mode,
+      currentStep: cur,
+      bibleRef,
+      keyVerse,
+      answers,
+      decisions,
+      freeText,
+      sermonTitle,
+      passageRefs: passages.map(p => p.ref).filter(Boolean),
+    };
+  }
+
+  function hasDraftContent(snapshot: DraftSnapshot) {
+    return Boolean(
+      snapshot.bibleRef.trim() ||
+      snapshot.keyVerse.trim() ||
+      snapshot.freeText.trim() ||
+      snapshot.sermonTitle.trim() ||
+      snapshot.passageRefs.length > 0 ||
+      Object.values(snapshot.answers).some(value => value.trim()) ||
+      snapshot.decisions.some(value => value.trim())
+    );
+  }
+
+  function getDraftSignature(snapshot: DraftSnapshot) {
+    return JSON.stringify(snapshot);
+  }
+
+  function buildDraftData(userId: string, snapshot: DraftSnapshot) {
+    const decisionText = snapshot.decisions.filter(d => d.trim()).join("\n");
+    const sundayRefs = [snapshot.bibleRef, ...snapshot.passageRefs].filter(Boolean);
+    const draftBibleRef = snapshot.mode === "sunday" ? buildSundayBibleRef(snapshot.sermonTitle, sundayRefs) : snapshot.bibleRef;
+
+    return {
+      user_id: userId,
+      date: snapshot.selectedDate,
+      qt_mode: snapshot.mode,
+      is_draft: true,
+      current_step: snapshot.currentStep,
+      bible_ref: draftBibleRef,
+      key_verse: snapshot.keyVerse,
+      opening_prayer: snapshot.mode === "free" ? "" : (snapshot.answers.opening_prayer ?? ""),
+      summary: snapshot.mode === "free" ? "" : (snapshot.answers.summary ?? ""),
+      meditation: snapshot.mode === "free" ? snapshot.freeText : (snapshot.answers.meditation ?? ""),
+      application: snapshot.mode === "free" ? "" : (snapshot.answers.application ?? ""),
+      decision: decisionText,
+      closing_prayer: snapshot.mode === "free" ? "" : (snapshot.answers.closing_prayer ?? ""),
+    };
+  }
+
+  function autoSaveStatusText() {
+    if (autoSaveStatus === "saving") return trQT("자동 임시저장 중...", lang);
+    if (autoSaveStatus === "saved") {
+      return lastAutoSavedAt
+        ? trQTVars("자동 임시저장됨 · {time}", lang, { time: lastAutoSavedAt })
+        : trQT("자동 임시저장됨", lang);
+    }
+    if (autoSaveStatus === "error") return trQT("자동 임시저장 실패 · 수동 임시저장을 눌러주세요", lang);
+    return trQT("작성 내용은 자동으로 임시저장돼요", lang);
+  }
+
+  function renderAutoSaveStatus() {
+    if (selectedDate !== todayStr) return null;
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: autoSaveStatus === "error" ? "var(--terra-dark)" : "var(--text3)", fontSize: 11 }}>
+        {autoSaveStatus === "saving" ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
+        <span>{autoSaveStatusText()}</span>
+      </div>
+    );
+  }
+
   // 6단계 canNext
   function canNext6(): boolean {
     const step = STEPS_6[cur];
@@ -936,12 +1045,29 @@ function QTWriteContent() {
     return getLocalDateString(d);
   });
 
-  async function saveDraft() {
-    if (selectedDate !== todayStr) {
-      showToast(trQT("임시저장은 오늘 큐티에만 가능해요.", lang), "info");
-      return;
+  async function saveDraft(options: SaveDraftOptions = {}) {
+    const silent = options.silent ?? false;
+    const markSaving = options.markSaving ?? true;
+    const snapshot = options.snapshot ?? getDraftSnapshot();
+    const signature = options.signature ?? getDraftSignature(snapshot);
+
+    if (snapshot.selectedDate !== todayStr) {
+      if (!silent) showToast(trQT("임시저장은 오늘 큐티에만 가능해요.", lang), "info");
+      return false;
     }
-    setSaving(true);
+
+    if (!hasDraftContent(snapshot)) return false;
+
+    if (!markSaving && autoSavingRef.current) {
+      queuedAutoSaveRef.current = { snapshot, signature };
+      return false;
+    }
+
+    if (markSaving) setSaving(true);
+    else {
+      autoSavingRef.current = true;
+      setAutoSaveStatus("saving");
+    }
 
     // Supabase 호출이 매달리는 경우를 대비한 타임아웃 헬퍼.
     // 네트워크 끊김·세션 만료·CORS 등으로 응답이 안 올 때, 사용자가 페이지를 떠나기 전에
@@ -960,32 +1086,19 @@ function QTWriteContent() {
     try {
       const supabase = createClient();
       const { data: { user } } = await withTimeout(supabase.auth.getUser(), 6000, "auth.getUser");
-      if (!user) { router.push("/login"); return; }
+      if (!user) {
+        if (!silent) router.push("/login");
+        else setAutoSaveStatus("error");
+        return false;
+      }
 
-      const decisionText = decisions.filter(d => d.trim()).join("\n");
-      const sundayRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
-      const draftBibleRef = mode === "sunday" ? buildSundayBibleRef(sermonTitle, sundayRefs) : bibleRef;
-      const draftData: any = {
-        user_id: user.id,
-        date: selectedDate,
-        qt_mode: mode,
-        is_draft: true,
-        current_step: cur,
-        bible_ref: draftBibleRef,
-        key_verse: keyVerse,
-        opening_prayer: mode === "free" ? "" : (answers.opening_prayer ?? ""),
-        summary: mode === "free" ? "" : (answers.summary ?? ""),
-        meditation: mode === "free" ? freeText : (answers.meditation ?? ""),
-        application: mode === "free" ? "" : (answers.application ?? ""),
-        decision: decisionText,
-        closing_prayer: mode === "free" ? "" : (answers.closing_prayer ?? ""),
-      };
+      const draftData = buildDraftData(user.id, snapshot);
 
       const { data: rows, error: rowsError } = await withTimeout(
         supabase.from("qt_records")
           .select("id,is_draft,created_at")
           .eq("user_id", user.id)
-          .eq("date", selectedDate)
+          .eq("date", snapshot.selectedDate)
           .order("created_at", { ascending: false }),
         8000,
         "select existing rows"
@@ -994,15 +1107,14 @@ function QTWriteContent() {
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       if (completedRecord) {
-        showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info");
-        setSaving(false);
-        return;
+        if (!silent) showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: snapshot.selectedDate }), "info");
+        return false;
       }
 
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
       if (draftRecord) {
         const { error } = await withTimeout(
-          supabase.from("qt_records").update(draftData).eq("id", draftRecord.id),
+          supabase.from("qt_records").update(draftData).eq("id", draftRecord.id).eq("is_draft", true),
           8000,
           "update draft"
         );
@@ -1015,17 +1127,77 @@ function QTWriteContent() {
         );
         if (error) throw error;
       }
-      showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
+
+      lastAutoSaveSignatureRef.current = signature;
+      if (silent) {
+        setAutoSaveStatus("saved");
+        setLastAutoSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      } else {
+        showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
+        setAutoSaveStatus("saved");
+        setLastAutoSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      }
+      return true;
     } catch (e) {
       // 디버깅을 위한 상세 로그 — 사용자가 다음에 같은 문제 보고할 때 콘솔에서 즉시 추적 가능
       console.error("[saveDraft] failed:", e);
-      showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+      if (silent) setAutoSaveStatus("error");
+      else showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+      return false;
     } finally {
-      setSaving(false);
+      if (markSaving) setSaving(false);
+      else {
+        autoSavingRef.current = false;
+        const queued = queuedAutoSaveRef.current;
+        if (queued && queued.signature !== lastAutoSaveSignatureRef.current) {
+          queuedAutoSaveRef.current = null;
+          autoSaveTimerRef.current = window.setTimeout(() => {
+            void saveDraft({ silent: true, markSaving: false, snapshot: queued.snapshot, signature: queued.signature });
+          }, 600);
+        }
+      }
     }
   }
 
+  useEffect(() => {
+    if (!pageReady || selectedDate !== todayStr) return;
+
+    const snapshot = getDraftSnapshot();
+    if (!hasDraftContent(snapshot)) {
+      setAutoSaveStatus("idle");
+      return;
+    }
+
+    const signature = getDraftSignature(snapshot);
+    if (signature === lastAutoSaveSignatureRef.current) return;
+
+    setAutoSaveStatus(prev => prev === "error" ? "error" : "idle");
+
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      void saveDraft({ silent: true, markSaving: false, snapshot, signature });
+    }, QT_AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
+
   async function save() {
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    queuedAutoSaveRef.current = null;
     setSaving(true);
     try {
       const supabase = createClient();
@@ -1447,9 +1619,10 @@ function QTWriteContent() {
           <button onClick={save} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
             {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
           </button>
-          <button onClick={saveDraft} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+          <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
             {trQT("임시저장하고 나중에 이어쓰기", lang)}
           </button>
+          {renderAutoSaveStatus()}
         </div>
       </div>
     );
@@ -1723,9 +1896,10 @@ function QTWriteContent() {
             )}
           </div>
           {/* 임시저장 버튼 */}
-          <button onClick={saveDraft} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
             {trQT("임시저장하고 나중에 이어쓰기", lang)}
           </button>
+          {renderAutoSaveStatus()}
         </div>
       </div>
     );
@@ -2002,12 +2176,13 @@ function QTWriteContent() {
         </div>
         {/* 임시저장 버튼 */}
         <button
-          onClick={saveDraft}
+          onClick={() => saveDraft()}
           disabled={saving || selectedDate !== todayStr}
-          style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}
         >
           {trQT("임시저장하고 나중에 이어쓰기", lang)}
         </button>
+        {renderAutoSaveStatus()}
       </div>
     </div>
   );
