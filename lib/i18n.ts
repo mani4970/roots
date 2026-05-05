@@ -207,9 +207,9 @@ export const T = {
   // ── 기도 탭 ──
   prayer_title: { ko: "기도",                   de: "Gebet", en: "Prayer", fr: "Prière" },
   prayer_tab_praying: { ko: "기도 중",                de: "Im Gebet", en: "Praying", fr: "En prière" },
-  prayer_tab_mine: { ko: "나의 기도",                  de: "Meine Gebete", en: "My Prayers", fr: "Mes prières" },
-  prayer_tab_answered: { ko: "기도 응답",              de: "Erhörtes Gebet", en: "Answered", fr: "Prières exaucées" },
-  prayer_tab_intercession: { ko: "중보 기도 중",        de: "In Fürbitte", en: "Interceding", fr: "En intercession" },
+  prayer_tab_mine: { ko: "나의 기도",                  de: "Meine Gebete", en: "My prayers", fr: "Mes prières" },
+  prayer_tab_answered: { ko: "기도 응답",              de: "Erhört", en: "Answered", fr: "Exaucées" },
+  prayer_tab_intercession: { ko: "중보 기도 중",        de: "Fürbitte", en: "Interceding", fr: "Intercession" },
   prayer_add: { ko: "+ 기도 제목 추가",        de: "+ Gebetsanliegen hinzufügen", en: "+ Add prayer request", fr: "+ Ajouter un sujet de prière" },
   prayer_placeholder: { ko: "기도 제목을 입력하세요...", de: "Gebetsanliegen eingeben...", en: "Enter prayer request...", fr: "Saisissez un sujet de prière..." },
   prayer_save: { ko: "저장",                   de: "Speichern", en: "Save", fr: "Enregistrer" },

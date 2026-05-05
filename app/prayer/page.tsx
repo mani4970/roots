@@ -363,29 +363,28 @@ function PrayerPageContent() {
         {/* 탭 */}
         <div style={{ display: "flex", gap: 0 }}>
           {([
-            { key: "mine", label: t("prayer_tab_mine", lang), count: myPrayingList.length, icon: "/icon-prayer-request.webp" },
-            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: "/icon-prayer-answered.webp" },
-            { key: "intercession", label: t("prayer_tab_intercession", lang), count: intercessionPrayers.length, icon: "/icon-pray.webp" },
-          ] as const).map(({ key, label, count, icon }) => {
+            { key: "mine", label: t("prayer_tab_mine", lang), count: myPrayingList.length },
+            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length },
+            { key: "intercession", label: t("prayer_tab_intercession", lang), count: intercessionPrayers.length },
+          ] as const).map(({ key, label, count }) => {
             const active = tab === key;
             return (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 style={{
-                  flex: 1, padding: "10px 0 12px",
+                  flex: 1, minWidth: 0, padding: "10px 0 12px",
                   background: "none", border: "none",
                   borderBottom: active ? `2px solid ${tabAccentColor(key)}` : "2px solid transparent",
                   cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
                 }}
               >
-                <img src={icon} alt="" style={{ width: 19, height: 19, objectFit: "contain", opacity: active ? 1 : 0.48 }} />
-                <span style={{ fontSize: 12, fontWeight: active ? 700 : 400, color: active ? tabAccentColor(key) : "var(--text3)", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 400, color: active ? tabAccentColor(key) : "var(--text3)", whiteSpace: "nowrap", minWidth: 0 }}>
                   {label}
                 </span>
                 {count > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? tabAccentBg(key) : "var(--border)", borderRadius: 20, padding: "1px 6px", minWidth: 18, textAlign: "center" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? tabAccentBg(key) : "var(--border)", borderRadius: 20, padding: "1px 6px", minWidth: 18, textAlign: "center", flexShrink: 0 }}>
                     {count}
                   </span>
                 )}
