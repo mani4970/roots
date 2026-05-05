@@ -338,7 +338,7 @@ export const T = {
   badge_paul_title: { ko: "바울",                de: "Paulus", en: "Paul", fr: "Paul" },
   badge_paul_desc: { ko: "함께기도 30회",        de: "30 gemeinsame Gebete", en: "30 community prayers", fr: "30 prières communautaires" },
   badge_peter_title: { ko: "베드로",              de: "Petrus", en: "Peter", fr: "Pierre" },
-  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "Rock of faith", fr: "Rocher de foi" },
+  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "First group created", fr: "premier groupe créé" },
   badge_qt_bird_title: { ko: "말씀 배달부",          de: "Wortüberbringer", en: "Word Carrier", fr: "Porteur de la Parole" },
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
