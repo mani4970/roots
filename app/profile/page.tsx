@@ -293,7 +293,7 @@ export default function ProfilePage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 330, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
           >
             <button
               onClick={() => setSelectedBadge(null)}
@@ -302,11 +302,11 @@ export default function ProfilePage() {
             >
               ×
             </button>
-            <div style={{ width: 148, height: 148, margin: "0 auto 14px", borderRadius: 28, background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <div style={{ margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <img
                 src={selectedBadge.img}
                 alt={selectedBadge.title}
-                style={{ width: "122px", height: "122px", objectFit: "contain", opacity: selectedBadge.earned ? 1 : 0.42, filter: selectedBadge.earned ? "none" : "grayscale(0.2)" }}
+                style={{ width: "168px", height: "168px", objectFit: "contain", opacity: selectedBadge.earned ? 1 : 0.42, filter: selectedBadge.earned ? "none" : "grayscale(0.2)" }}
               />
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
