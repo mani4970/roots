@@ -525,15 +525,17 @@ function PrayerPageContent() {
 
 
       {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 46, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{c("prayer_intercession_share_title")}</h2>
-              <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 46, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 24, padding: "20px 18px 16px", border: "1px solid var(--border)", maxHeight: "calc(100dvh - 32px - env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", boxShadow: "0 -12px 40px rgba(0,0,0,0.22)" }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{c("prayer_intercession_share_title")}</h2>
+                <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("prayer_intercession_share_sub")}</p>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 16 }}>{c("prayer_intercession_share_sub")}</p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2 }}>
               <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
                 <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
@@ -574,17 +576,19 @@ function PrayerPageContent() {
               )}
             </div>
 
-            {selectedTargets.length > 0 && (
-              <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                {c("prayer_intercession_selected_count", { count: selectedTargets.length })}
-              </p>
-            )}
+            <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>
+              {selectedTargets.length > 0 && (
+                <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
+                  {c("prayer_intercession_selected_count", { count: selectedTargets.length })}
+                </p>
+              )}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} className="btn-outline" style={{ flex: 1 }}>{c("prayer_cancel")}</button>
-              <button onClick={saveIntercessionTargets} disabled={sharingIntercession || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
-                {sharingIntercession ? <Loader2 size={16} className="spin" /> : `${c("prayer_intercession_share_action")}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} className="btn-outline" style={{ flex: 1 }}>{c("prayer_cancel")}</button>
+                <button onClick={saveIntercessionTargets} disabled={sharingIntercession || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
+                  {sharingIntercession ? <Loader2 size={16} className="spin" /> : `${c("prayer_intercession_share_action")}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
+                </button>
+              </div>
             </div>
           </div>
         </div>
