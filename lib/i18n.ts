@@ -338,7 +338,7 @@ export const T = {
   badge_paul_title: { ko: "바울",                de: "Paulus", en: "Paul", fr: "Paul" },
   badge_paul_desc: { ko: "함께기도 30회",        de: "30 gemeinsame Gebete", en: "30 community prayers", fr: "30 prières communautaires" },
   badge_peter_title: { ko: "베드로",              de: "Petrus", en: "Peter", fr: "Pierre" },
-  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "Rock of faith", fr: "Rocher de foi" },
+  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "First group created", fr: "Premier groupe créé" },
   badge_qt_bird_title: { ko: "말씀 배달부",          de: "Wortüberbringer", en: "Word Carrier", fr: "Porteur de la Parole" },
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
@@ -353,7 +353,7 @@ export const T = {
   badge_joseph_msg: { ko: "요셉의 꿈처럼, 당신의 나눔이 누군가에게 소망이 돼요!", de: "Wie Josefs Traum – Ihr Teilen gibt anderen Hoffnung!", en: "You shared your QT for the first time!", fr: "Vous avez partagé votre QT pour la première fois !" },
   badge_prayer_warrior_msg: { ko: "기도제목을 15번 나누며 함께 기도하도록 초대한 당신을 축복합니다!", de: "Sie haben 15 Gebetsanliegen geteilt und andere zum Mitbeten eingeladen. Gesegnet seien Sie!", en: "You shared 15 prayer requests and invited others to pray with you. Blessings on you!", fr: "Vous avez partagé 15 sujets de prière et invité d’autres personnes à prier avec vous. Soyez béni(e) !" },
   badge_paul_msg: { ko: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!", de: "Wie Paulus – der die Gemeinde liebt und für sie betet!", en: "30 prayers in the community — like Paul's letters!", fr: "30 prières dans la communauté — comme les lettres de Paul !" },
-  badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Steadfast like Peter, the rock!", fr: "Solide comme Pierre, le rocher !" },
+  badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Like Peter, a fisher of people, may your group bear even greater fruit!", fr: "Comme Pierre, pêcheur d’hommes, que votre groupe porte encore plus de fruit !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
   badge_angel_msg: { ko: "1000일 누적 루틴 완료! 다시 돌아올 때마다 하나님과 말씀으로 동행한 당신을 축복합니다", de: "1000 Routinetage insgesamt geschafft – jedes Zurückkommen zählt. Gottes Segen für Ihren Weg mit seinem Wort.", en: "1000 cumulative routine days completed — every return matters. Blessings as you keep walking with God and His Word.", fr: "1000 jours de routine cumulés accomplis — chaque retour compte. Soyez béni(e) dans votre marche avec Dieu et sa Parole." },
 
