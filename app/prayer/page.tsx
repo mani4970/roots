@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock } from "lucide-react";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -32,6 +32,11 @@ function PrayerPageContent() {
   const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
   const [testimonyText, setTestimonyText] = useState("");
   const [savingTestimony, setSavingTestimony] = useState(false);
+  const [myGroups, setMyGroups] = useState<any[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePrayerId, setSharePrayerId] = useState<string | null>(null);
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  const [sharingIntercession, setSharingIntercession] = useState(false);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -50,6 +55,29 @@ function PrayerPageContent() {
       router.replace("/prayer");
     }
   }, [searchParams, router]);
+
+  function visibilityTargets(visibility?: string | null) {
+    return (visibility ?? "private")
+      .split(",")
+      .map(target => target.trim())
+      .filter(target => target && target !== "private");
+  }
+
+  function isSharedVisibility(visibility?: string | null) {
+    return visibilityTargets(visibility).length > 0;
+  }
+
+  function toggleTarget(target: string) {
+    setSelectedTargets(prev =>
+      prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
+    );
+  }
+
+  function openIntercessionShare(prayer: any) {
+    setSharePrayerId(prayer.id);
+    setSelectedTargets(visibilityTargets(prayer.visibility));
+    setShowShareModal(true);
+  }
 
   async function fetchProfiles(supabase: any, rows: any[]) {
     const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
@@ -72,6 +100,21 @@ function PrayerPageContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
+
+      const { data: memberRows } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+      const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
+      if (groupIds.length > 0) {
+        const { data: groupData } = await supabase
+          .from("groups")
+          .select("id, name, is_public")
+          .in("id", groupIds);
+        setMyGroups(groupData ?? []);
+      } else {
+        setMyGroups([]);
+      }
 
       const { data } = await supabase
         .from("prayer_items")
@@ -166,23 +209,34 @@ function PrayerPageContent() {
     }
   }
 
-  async function requestIntercession(id: string) {
+  async function saveIntercessionTargets() {
+    if (!sharePrayerId || selectedTargets.length === 0 || sharingIntercession) return;
+    setSharingIntercession(true);
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { error: visibilityError } = await supabase.from("prayer_items").update({ visibility: "all" }).eq("id", id);
+
+      const newVisibility = selectedTargets.join(",");
+      const { error: visibilityError } = await supabase
+        .from("prayer_items")
+        .update({ visibility: newVisibility })
+        .eq("id", sharePrayerId)
+        .eq("user_id", user.id);
       if (visibilityError) {
         setNotice(c("prayer_error_intercession"));
         return;
       }
+
       // 기도의 용사 뱃지 체크 (중보요청 15번)
+      // 전체 공개와 그룹 공유 모두 중보기도 요청으로 인정합니다.
       const { data: prof } = await supabase.from("profiles")
         .select("badge_prayer_warrior").eq("id", user.id).single();
       if (!prof?.badge_prayer_warrior) {
         const { data: shared } = await supabase.from("prayer_items")
-          .select("id").eq("user_id", user.id).eq("visibility", "all");
-        if ((shared?.length ?? 0) >= 15) {
+          .select("id, visibility").eq("user_id", user.id);
+        const sharedCount = (shared ?? []).filter((row: any) => isSharedVisibility(row.visibility)).length;
+        if (sharedCount >= 15) {
           await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
           setBadgePopup({
             img: "/prayer_warrior.webp",
@@ -191,10 +245,16 @@ function PrayerPageContent() {
           });
         }
       }
-      loadPrayers();
+
+      setShowShareModal(false);
+      setSharePrayerId(null);
+      setSelectedTargets([]);
+      await loadPrayers();
     } catch (error) {
       console.error("intercession request failed", error);
       setNotice(c("prayer_error_intercession"));
+    } finally {
+      setSharingIntercession(false);
     }
   }
 
@@ -296,7 +356,8 @@ function PrayerPageContent() {
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("prayer_title", lang)}</h1>
         <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
           {c("prayer_sub_line1")}<br />
-          {c("prayer_sub_line2")}
+          {c("prayer_sub_line2")}<br />
+          {c("prayer_sub_line3")}
         </p>
 
         {/* 탭 */}
@@ -387,7 +448,7 @@ function PrayerPageContent() {
                 )}
 
                 {/* 중보기도 요청 중 */}
-                {p.visibility === "all" && !p.is_answered && tab !== "intercession" && (
+                {isSharedVisibility(p.visibility) && !p.is_answered && tab !== "intercession" && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
                       {c("prayer_intercession_badge", { count: p.prayer_count ?? 0 })}
@@ -443,12 +504,10 @@ function PrayerPageContent() {
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
                               {c("prayer_answered_cta")}
                             </button>
-                            {p.visibility !== "all" && (
-                              <button onClick={() => requestIntercession(p.id)}
-                                style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Send size={10} /> {c("prayer_request_intercession")}
-                              </button>
-                            )}
+                            <button onClick={() => openIntercessionShare(p)}
+                              style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                              <Send size={10} /> {c(isSharedVisibility(p.visibility) ? "prayer_edit_intercession_share" : "prayer_request_intercession")}
+                            </button>
                           </>
                         )}
                       </div>
@@ -463,6 +522,73 @@ function PrayerPageContent() {
           </div>
         )}
       </div>
+
+
+      {showShareModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 46, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{c("prayer_intercession_share_title")}</h2>
+              <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 16 }}>{c("prayer_intercession_share_sub")}</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>{c("prayer_intercession_share_all")}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{c("prayer_intercession_share_all_sub")}</p>
+                </div>
+                <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {selectedTargets.includes("all") && <Check size={12} style={{ color: "white" }} />}
+                </div>
+              </button>
+
+              {myGroups.length > 0 && (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4 }}>{c("prayer_intercession_my_groups")}</p>
+                  {myGroups.map(group => {
+                    const target = `group_${group.id}`;
+                    const selected = selectedTargets.includes(target);
+                    return (
+                      <button key={group.id} onClick={() => toggleTarget(target)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                        <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: selected ? "var(--sage-dark)" : "var(--text)" }}>{group.name}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{group.is_public ? c("prayer_intercession_public_group") : c("prayer_intercession_private_group")}</p>
+                        </div>
+                        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {selected && <Check size={12} style={{ color: "white" }} />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {myGroups.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>
+                  {c("prayer_intercession_no_groups")}
+                </p>
+              )}
+            </div>
+
+            {selectedTargets.length > 0 && (
+              <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
+                {c("prayer_intercession_selected_count", { count: selectedTargets.length })}
+              </p>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }} className="btn-outline" style={{ flex: 1 }}>{c("prayer_cancel")}</button>
+              <button onClick={saveIntercessionTargets} disabled={sharingIntercession || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
+                {sharingIntercession ? <Loader2 size={16} className="spin" /> : `${c("prayer_intercession_share_action")}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {testimonyPrayerId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 45, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>

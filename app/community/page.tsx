@@ -112,7 +112,10 @@ export default function CommunityPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
+  const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
+  const [groupDetailTab, setGroupDetailTab] = useState<"qt" | "prayer">("qt");
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
+  const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
@@ -183,7 +186,7 @@ export default function CommunityPage() {
     if (tab === "prayer") {
       // 기도 중 (미응답)
       const { data } = await supabase.from("prayer_items")
-        .select("*").eq("visibility", "all").eq("is_answered", false)
+        .select("*").ilike("visibility", "%all%").eq("is_answered", false)
         .order("created_at", { ascending: false });
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
@@ -191,7 +194,7 @@ export default function CommunityPage() {
       }
       // 응답됨 (간증 있는 것)
       const { data: answered } = await supabase.from("prayer_items")
-        .select("*").eq("visibility", "all").eq("is_answered", true)
+        .select("*").ilike("visibility", "%all%").eq("is_answered", true)
         .order("answered_at", { ascending: false });
       if (answered) {
         const profMap2 = await fetchProfiles(supabase, answered);
@@ -310,10 +313,12 @@ export default function CommunityPage() {
   }
 
   async function loadGroupDetail(group: any) {
+    setGroupDetailTab("qt");
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, last_seen_qt_at: openedAt });
     setLoadingGroupQts(true);
+    setLoadingGroupPrayers(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase.from("qt_records")
@@ -344,6 +349,28 @@ export default function CommunityPage() {
         setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, last_seen_qt_at: persistedSeenAt } : g)));
       }
     }
+
+
+    if (user) {
+      const { data: prayerRows } = await supabase.from("prayer_items")
+        .select("*")
+        .ilike("visibility", `%group_${group.id}%`)
+        .order("is_answered", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (prayerRows) {
+        const prayerProfMap = await fetchProfiles(supabase, prayerRows);
+        setGroupPrayers(prayerRows.map((row: any) => ({
+          ...row,
+          profiles: prayerProfMap[row.user_id] ?? null,
+        })));
+      } else {
+        setGroupPrayers([]);
+      }
+    } else {
+      setGroupPrayers([]);
+    }
+    setLoadingGroupPrayers(false);
     setLoadingGroupQts(false);
   }
 
@@ -421,6 +448,8 @@ export default function CommunityPage() {
     setPrayedIds(prev => [...prev, id]);
     storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
     setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
+    setGroupPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
+    setAnsweredPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
 
     // 바울 뱃지 체크 (함께 기도 30번)
     try {
@@ -533,6 +562,8 @@ export default function CommunityPage() {
     updateFavoriteCache(userId, leftGroupId, false);
     setSelectedGroup(null);
     setGroupQts([]);
+    setGroupPrayers([]);
+    setGroupDetailTab("qt");
     setDetailQt(null);
     setGroups(prev => sortGroupsForDisplay(prev
       .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
@@ -637,7 +668,7 @@ export default function CommunityPage() {
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-          <button onClick={() => { setSelectedGroup(null); setGroupQts([]); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+          <button onClick={() => { setSelectedGroup(null); setGroupQts([]); setGroupPrayers([]); setGroupDetailTab("qt"); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -688,41 +719,116 @@ export default function CommunityPage() {
           )}
 
           <div style={{ marginTop: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>{c("community_group_qt_exchange")}</p>
-            {loadingGroupQts ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
-            ) : groupQts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
-                <BookOpen size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
-                <p style={{ fontSize: 13, color: "var(--text3)" }}>{c("community_no_group_qts")}</p>
-              </div>
+            <div style={{ display: "flex", marginBottom: 14, borderBottom: "1px solid var(--border)" }}>
+              {[
+                { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
+                { key: "prayer" as const, label: c("community_group_tab_prayer"), count: groupPrayers.length },
+              ].map(({ key, label, count }) => {
+                const active = groupDetailTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setGroupDetailTab(key)}
+                    style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                    {count > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px" }}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {groupDetailTab === "qt" ? (
+              loadingGroupQts ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
+              ) : groupQts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
+                  <BookOpen size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
+                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{c("community_no_group_qts")}</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {groupQts.map(r => (
+                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {r.isUnreadInGroup && (
+                            <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                              {c("community_unread")}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
+                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                      <div onClick={e => e.stopPropagation()}>
+                        <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                      </div>
+                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {groupQts.map(r => (
-                  <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
+              loadingGroupPrayers ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
+              ) : groupPrayers.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
+                  <HandHeart size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
+                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{c("community_no_group_prayers")}</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {groupPrayers.map(p => (
+                    <div key={p.id} className="card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        {r.isUnreadInGroup && (
-                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
-                            {c("community_unread")}
+
+                      {p.is_answered && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                          <CheckCircle2 size={14} style={{ color: "var(--terra-dark)" }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)" }}>{c("community_answered")}</span>
+                          {(p.prayer_count ?? 0) > 0 && (
+                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{answeredPrayerCountText(p.prayer_count ?? 0)}</span>
+                          )}
+                        </div>
+                      )}
+
+                      <p style={{ fontSize: 13, lineHeight: 1.6, color: p.is_answered ? "var(--text2)" : "var(--text)", marginBottom: 12, whiteSpace: "pre-line", textDecoration: p.is_answered ? "line-through" : "none", opacity: p.is_answered ? 0.72 : 1 }}>{p.content}</p>
+
+                      {p.testimony && (
+                        <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{c("community_prayer_testimony")}</p>
+                          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
+                        </div>
+                      )}
+
+                      {!p.is_answered && (
+                        <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
+                          <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
+                            {prayerActionText(p, prayedIds.includes(p.id))}
                           </span>
-                        )}
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                      </div>
+                        </button>
+                      )}
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                    <div onClick={e => e.stopPropagation()}>
-                      <ReactionButtons qtId={r.id} onReact={reactToQT} />
-                    </div>
-                    <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>

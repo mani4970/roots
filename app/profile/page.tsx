@@ -103,7 +103,7 @@ export default function ProfilePage() {
     if (qt) setQtRecords(qt);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     if (prayers) {
-      const sharedCount = prayers.filter((p: any) => p.visibility === "all").length;
+      const sharedCount = prayers.filter((p: any) => p.visibility && p.visibility !== "private").length;
       setPrayerStats({
         total: prayers.length,
         answered: prayers.filter((p: any) => p.is_answered).length,
