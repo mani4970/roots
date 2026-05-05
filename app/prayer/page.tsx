@@ -7,9 +7,9 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, HandHeart, Sparkles } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check } from "lucide-react";
 
-type PrayerTab = "praying" | "answered";
+type PrayerTab = "mine" | "answered" | "intercession";
 
 
 function PrayerPageContent() {
@@ -18,6 +18,7 @@ function PrayerPageContent() {
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
+  const [intercessionPrayers, setIntercessionPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ function PrayerPageContent() {
   const [celebration, setCelebration] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [tab, setTab] = useState<PrayerTab>("praying");
+  const [tab, setTab] = useState<PrayerTab>("mine");
   const [notice, setNotice] = useState<string | null>(null);
   const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
   const [testimonyText, setTestimonyText] = useState("");
@@ -44,11 +45,25 @@ function PrayerPageContent() {
 
   useEffect(() => {
     if (searchParams.get("compose") === "1") {
-      setTab("praying");
+      setTab("mine");
       setShowForm(true);
       router.replace("/prayer");
     }
   }, [searchParams, router]);
+
+  async function fetchProfiles(supabase: any, rows: any[]) {
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    if (userIds.length === 0) return {};
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url")
+      .in("id", userIds);
+
+    const profileMap: Record<string, any> = {};
+    (data ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
+    return profileMap;
+  }
 
   async function loadPrayers() {
     setLoading(true);
@@ -57,12 +72,38 @@ function PrayerPageContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
+
       const { data } = await supabase
         .from("prayer_items")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (data) setPrayers(data);
+
+      const { data: logs } = await supabase
+        .from("user_prayer_logs")
+        .select("prayer_id")
+        .eq("user_id", user.id);
+
+      const prayerIds = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
+      if (prayerIds.length === 0) {
+        setIntercessionPrayers([]);
+      } else {
+        const { data: intercessionData } = await supabase
+          .from("prayer_items")
+          .select("*")
+          .in("id", prayerIds)
+          .order("is_answered", { ascending: true })
+          .order("created_at", { ascending: false });
+
+        if (intercessionData) {
+          const profileMap = await fetchProfiles(supabase, intercessionData);
+          setIntercessionPrayers(intercessionData.map((row: any) => ({
+            ...row,
+            profiles: profileMap[row.user_id] ?? null,
+          })));
+        }
+      }
     } catch (error) {
       console.error("prayer load failed", error);
       setNotice(c("network_error_retry"));
@@ -198,9 +239,27 @@ function PrayerPageContent() {
     setTestimonyText("");
   }
 
-  const prayingList = prayers.filter(p => !p.is_answered);
+  const myPrayingList = prayers.filter(p => !p.is_answered);
   const answeredList = prayers.filter(p => p.is_answered);
-  const currentList = tab === "praying" ? prayingList : answeredList;
+  const currentList = tab === "mine" ? myPrayingList : tab === "answered" ? answeredList : intercessionPrayers;
+  const emptyIconSrc = tab === "mine" ? "/icon-prayer-request.webp" : tab === "answered" ? "/icon-prayer-answered.webp" : "/icon-pray.webp";
+  const emptyTitle = tab === "mine" ? c("prayer_empty_mine_title") : tab === "answered" ? c("prayer_empty_answered_title") : c("prayer_empty_intercession_title");
+  const emptySub = tab === "mine" ? c("prayer_empty_mine_sub") : tab === "answered" ? c("prayer_empty_answered_sub") : c("prayer_empty_intercession_sub");
+
+  function tabAccentColor(key: PrayerTab) {
+    if (key === "intercession") return "var(--terra-dark)";
+    return "var(--sage-dark)";
+  }
+
+  function tabAccentBg(key: PrayerTab) {
+    if (key === "intercession") return "var(--terra-dark)";
+    return "var(--sage)";
+  }
+
+  function profileName(prayer: any) {
+    if (prayer.is_anonymous) return c("prayer_intercession_anonymous");
+    return prayer.profiles?.name || c("prayer_intercession_anonymous");
+  }
 
   return (
     <div className="page">
@@ -243,31 +302,35 @@ function PrayerPageContent() {
         {/* 탭 */}
         <div style={{ display: "flex", gap: 0 }}>
           {([
-            { key: "praying", label: t("prayer_tab_praying", lang), count: prayingList.length, icon: <HandHeart size={14} /> },
-            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: <Sparkles size={14} /> },
-          ] as const).map(({ key, label, count, icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              style={{
-                flex: 1, padding: "10px 0 12px",
-                background: "none", border: "none",
-                borderBottom: tab === key ? "2px solid var(--sage)" : "2px solid transparent",
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              <span style={{ display: "flex", color: tab === key ? "var(--sage-dark)" : "var(--text3)" }}>{icon}</span>
-              <span style={{ fontSize: 13, fontWeight: tab === key ? 700 : 400, color: tab === key ? "var(--sage-dark)" : "var(--text3)" }}>
-                {label}
-              </span>
-              {count > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: tab === key ? "var(--bg)" : "var(--text3)", background: tab === key ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px", minWidth: 20, textAlign: "center" }}>
-                  {count}
+            { key: "mine", label: t("prayer_tab_mine", lang), count: myPrayingList.length, icon: "/icon-prayer-request.webp" },
+            { key: "answered", label: t("prayer_tab_answered", lang), count: answeredList.length, icon: "/icon-prayer-answered.webp" },
+            { key: "intercession", label: t("prayer_tab_intercession", lang), count: intercessionPrayers.length, icon: "/icon-pray.webp" },
+          ] as const).map(({ key, label, count, icon }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{
+                  flex: 1, padding: "10px 0 12px",
+                  background: "none", border: "none",
+                  borderBottom: active ? `2px solid ${tabAccentColor(key)}` : "2px solid transparent",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                }}
+              >
+                <img src={icon} alt="" style={{ width: 19, height: 19, objectFit: "contain", opacity: active ? 1 : 0.48 }} />
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 400, color: active ? tabAccentColor(key) : "var(--text3)", whiteSpace: "nowrap" }}>
+                  {label}
                 </span>
-              )}
-            </button>
-          ))}
+                {count > 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? tabAccentBg(key) : "var(--border)", borderRadius: 20, padding: "1px 6px", minWidth: 18, textAlign: "center" }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -279,18 +342,36 @@ function PrayerPageContent() {
           </div>
         ) : currentList.length === 0 ? (
           <div style={{ textAlign: "center", padding: "52px 0" }}>
-            <div style={{ color: "var(--text3)", marginBottom: 12, display: "flex", justifyContent: "center" }}>{tab === "praying" ? <HandHeart size={36} /> : <Sparkles size={36} />}</div>
+            <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+              <img src={emptyIconSrc} alt="" style={{ width: 54, height: 54, objectFit: "contain", opacity: 0.55 }} />
+            </div>
             <p style={{ color: "var(--text3)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              {tab === "praying" ? c("prayer_empty_praying_title") : c("prayer_empty_answered_title")}
+              {emptyTitle}
             </p>
             <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.6 }}>
-              {tab === "praying" ? c("prayer_empty_praying_sub") : c("prayer_empty_answered_sub")}
+              {emptySub}
             </p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {currentList.map(p => (
               <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`}>
+
+                {tab === "intercession" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    {p.profiles?.avatar_url && !p.is_anonymous ? (
+                      <img src={p.profiles.avatar_url} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--border)" }} />
+                    ) : (
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(196,149,106,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src="/icon-pray.webp" alt="" style={{ width: 17, height: 17, objectFit: "contain" }} />
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text2)", lineHeight: 1.2 }}>{profileName(p)}</p>
+                      <p style={{ fontSize: 10, color: "var(--text3)", lineHeight: 1.2 }}>{c("prayer_intercession_card_sub")}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* 응답 배지 */}
                 {p.is_answered && (
@@ -306,7 +387,7 @@ function PrayerPageContent() {
                 )}
 
                 {/* 중보기도 요청 중 */}
-                {p.visibility === "all" && !p.is_answered && (
+                {p.visibility === "all" && !p.is_answered && tab !== "intercession" && (
                   <div style={{ marginBottom: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
                       {c("prayer_intercession_badge", { count: p.prayer_count ?? 0 })}
@@ -314,8 +395,16 @@ function PrayerPageContent() {
                   </div>
                 )}
 
+                {tab === "intercession" && !p.is_answered && (
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--terra-dark)", background: "rgba(196,149,106,0.12)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(196,149,106,0.28)" }}>
+                      {c("prayer_intercession_praying_badge", { count: p.prayer_count ?? 0 })}
+                    </span>
+                  </div>
+                )}
+
                 {/* 수정 모드 */}
-                {editId === p.id ? (
+                {editId === p.id && tab !== "intercession" ? (
                   <div>
                     <textarea className="textarea-field" rows={3} value={editText}
                       onChange={e => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
@@ -331,7 +420,7 @@ function PrayerPageContent() {
                 ) : (
                   <>
                     <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)" }}>
-                      {p.content} {p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
+                      {p.content} {p.is_answered && tab !== "intercession" && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
                     </p>
 
                     {/* 간증 */}
@@ -344,7 +433,7 @@ function PrayerPageContent() {
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {!p.is_answered && (
+                        {!p.is_answered && tab !== "intercession" && (
                           <>
                             <button onClick={() => { setEditId(p.id); setEditText(p.content); }}
                               style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
@@ -422,8 +511,8 @@ function PrayerPageContent() {
         </div>
       )}
 
-      {/* + 버튼 (기도 중 탭에서만) */}
-      {tab === "praying" && (
+      {/* + 버튼 (나의 기도 탭에서만) */}
+      {tab === "mine" && (
         <button
           onClick={() => setShowForm(true)}
           style={{ position: "fixed", bottom: 80, right: 16, width: 52, height: 52, background: "var(--sage)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "0 4px 14px rgba(122,157,122,0.4)" }}
