@@ -158,9 +158,9 @@ function RecordContent() {
           if (Object.keys(updates).length > 0) {
             await supabase.from("profiles").update(updates).eq("id", u.id);
             if (updates.badge_joseph && !prof?.badge_joseph) {
-              setBadgePopup({ img: "/badge_joseph.png", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
+              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
             } else if (updates.badge_qt_bird) {
-              setBadgePopup({ img: "/qt_bird.png", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
             }
           }
         }

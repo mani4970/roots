@@ -431,7 +431,7 @@ export default function CommunityPage() {
           .select("id").eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
           await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
-          setBadgePopup({ img: "/badge_paul.png", title: c("community_badge_paul_title"), msg: t("badge_paul_msg", lang) });
+          setBadgePopup({ img: "/badge_paul.webp", title: c("community_badge_paul_title"), msg: t("badge_paul_msg", lang) });
         }
       }
     } catch (e) {}
@@ -459,7 +459,7 @@ export default function CommunityPage() {
             .select("id").eq("created_by", user.id);
           if ((myGroups?.length ?? 0) === 1) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_peter.png", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
+            setBadgePopup({ img: "/badge_peter.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
           }
         }
       }

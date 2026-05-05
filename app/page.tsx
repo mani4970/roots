@@ -322,22 +322,22 @@ export default function HomePage() {
     // 이번 세션에서 새로 획득한 뱃지만 팝업 (newlyAwardedBadgesRef에 있는 것만)
     if (newly.has("badge_rootsman")) {
       newly.delete("badge_rootsman");
-      setBadgePopup({ img: "/badge_rootsman.png", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+      setBadgePopup({ img: "/badge_rootsman.webp", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
       return;
     }
     if (newly.has("badge_mose")) {
       newly.delete("badge_mose");
-      setBadgePopup({ img: "/badge_mose.png", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+      setBadgePopup({ img: "/badge_mose.webp", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
       return;
     }
     if (newly.has("badge_rootsman_bible")) {
       newly.delete("badge_rootsman_bible");
-      setBadgePopup({ img: "/badge_rootsman_bible.png", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+      setBadgePopup({ img: "/badge_rootsman_bible.webp", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
       return;
     }
     if (newly.has("badge_david")) {
       newly.delete("badge_david");
-      setBadgePopup({ img: "/badge_david.png", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+      setBadgePopup({ img: "/badge_david.webp", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
       return;
     }
     for (let i = 0; i < 9; i++) {
@@ -350,7 +350,7 @@ export default function HomePage() {
     }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
-      setBadgePopup({ img: "/angel.png", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
+      setBadgePopup({ img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return;
     }
 

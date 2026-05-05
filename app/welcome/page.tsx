@@ -217,7 +217,7 @@ const FRUIT_FILE_KEYS = ["love", "joy", "peace", "patience", "kindness", "goodne
 function BadgeImage({ fileKey, label }: { fileKey: string; label: string }) {
   return (
     <Image
-      src={`/badge_${fileKey}.png`}
+      src={`/badge_${fileKey}.webp`}
       alt={label}
       width={44}
       height={44}

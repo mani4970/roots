@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
-import { Loader2, Check, X, Camera, Share2, Settings } from "lucide-react";
+import { Loader2, Check, X, Camera, Share2, Settings, HandHeart } from "lucide-react";
 
 const PROFILE_WEEKDAY_KEYS = [
   "weekday_sun",
@@ -25,17 +25,17 @@ const PROFILE_MONTH_LOCALE = {
 } as const;
 
 const FAITH_BADGES = [
-  { key: "badge_rootsman", img: "/badge_rootsman.png", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
-  { key: "badge_mose", img: "/badge_mose.png", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
-  { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.png", titleKey: "badge_rootsman_bible_title", descKey: "badge_rootsman_bible_desc" },
-  { key: "badge_david", img: "/badge_david.png", titleKey: "badge_david_title", descKey: "badge_david_desc" },
-  { key: "badge_noah", img: "/badge_noah.png", titleKey: "badge_noah_title", descKey: "badge_noah_desc" },
-  { key: "badge_joseph", img: "/badge_joseph.png", titleKey: "badge_joseph_title", descKey: "badge_joseph_desc" },
-  { key: "badge_prayer_warrior", img: "/prayer_warrior.png", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
-  { key: "badge_paul", img: "/badge_paul.png", titleKey: "badge_paul_title", descKey: "badge_paul_desc" },
-  { key: "badge_peter", img: "/badge_peter.png", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
-  { key: "badge_qt_bird", img: "/qt_bird.png", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
-  { key: "badge_angel", img: "/angel.png", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
+  { key: "badge_rootsman", img: "/badge_rootsman.webp", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
+  { key: "badge_mose", img: "/badge_mose.webp", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
+  { key: "badge_rootsman_bible", img: "/badge_rootsman_bible.webp", titleKey: "badge_rootsman_bible_title", descKey: "badge_rootsman_bible_desc" },
+  { key: "badge_david", img: "/badge_david.webp", titleKey: "badge_david_title", descKey: "badge_david_desc" },
+  { key: "badge_noah", img: "/badge_noah.webp", titleKey: "badge_noah_title", descKey: "badge_noah_desc" },
+  { key: "badge_joseph", img: "/badge_joseph.webp", titleKey: "badge_joseph_title", descKey: "badge_joseph_desc" },
+  { key: "badge_prayer_warrior", img: "/prayer_warrior.webp", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
+  { key: "badge_paul", img: "/badge_paul.webp", titleKey: "badge_paul_title", descKey: "badge_paul_desc" },
+  { key: "badge_peter", img: "/badge_peter.webp", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
+  { key: "badge_qt_bird", img: "/qt_bird.webp", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
+  { key: "badge_angel", img: "/angel.webp", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
 const SPIRIT_FRUIT_BADGES = [
@@ -348,12 +348,12 @@ export default function ProfilePage() {
         <div className="sec-label">{t("profile_faith_journey", lang)}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
-            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <img src="/icon-prayer-request.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
-            { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, icon: <img src="/icon-prayer-answered.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
-            { label: t("profile_qt_share", lang), value: qtShareCount, icon: <img src="/icon-qt-share.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} /> },
+            { label: t("profile_prayer_count", lang), value: prayerStats.total, icon: <HandHeart size={18} /> },
+            { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, icon: "✨" },
+            { label: t("profile_qt_share", lang), value: qtShareCount, icon: "🤝" },
           ].map(s => (
             <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ height: 38, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.icon}</div>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 4 }}>{s.value}</div>
               <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
             </div>
@@ -420,7 +420,7 @@ export default function ProfilePage() {
                       {/* 미획득 상태에서도 이름/설명은 읽기 쉽게 유지하고, 배지 이미지만 흐릿하게 표시 */}
                       <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)" }}>
                         <img
-                          src={`/badge_${b.name.toLowerCase().replace("-","_")}.png`}
+                          src={`/badge_${b.name.toLowerCase().replace("-","_")}.webp`}
                           alt={b.name}
                           style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         />

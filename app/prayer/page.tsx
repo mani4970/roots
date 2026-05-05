@@ -144,7 +144,7 @@ function PrayerPageContent() {
         if ((shared?.length ?? 0) >= 15) {
           await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
           setBadgePopup({
-            img: "/prayer_warrior.png",
+            img: "/prayer_warrior.webp",
             title: c("prayer_badge_warrior_popup"),
             msg: t("badge_prayer_warrior_msg", lang),
           });
@@ -178,7 +178,7 @@ function PrayerPageContent() {
           .select("badge_noah").eq("id", user.id).single();
         if (!prof?.badge_noah) {
           await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
-          setBadgePopup({ img: "/badge_noah.png", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+          setBadgePopup({ img: "/badge_noah.webp", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
         }
       }
       setTestimonyPrayerId(null);
