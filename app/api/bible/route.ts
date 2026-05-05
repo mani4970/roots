@@ -63,6 +63,28 @@ const MAX_VERSE = 176;
 const MAX_VERSE_RANGE = 176;
 const FETCH_TIMEOUT_MS = 10_000;
 
+function readServerEnv(name: string, fallback = "") {
+  const value = process.env[name] ?? fallback;
+  return value.trim().replace(/^([\"'])(.*)\1$/, "$2");
+}
+
+function getBibleApiHeaders(): HeadersInit {
+  const authorization = readServerEnv("BIBLE_API_AUTHORIZATION");
+
+  if (!authorization) {
+    throw new Error("Missing BIBLE_API_AUTHORIZATION");
+  }
+
+  return {
+    Accept: "application/json",
+    "X-API-Key-ID": readServerEnv("BIBLE_API_KEY_ID", "roots-puce"),
+    Authorization: authorization,
+    "X-Client-Type": readServerEnv("BIBLE_API_CLIENT_TYPE", "vercel-server"),
+    "X-App-Name": readServerEnv("BIBLE_API_APP_NAME", "Roots Puce"),
+    "X-App-Version": readServerEnv("BIBLE_API_APP_VERSION", "1.0.0"),
+  };
+}
+
 type VerseApiItem = {
   verse?: number | string;
   text?: string;
@@ -105,6 +127,7 @@ async function fetchWithTimeout(url: string) {
 
   try {
     return await fetch(url, {
+      headers: getBibleApiHeaders(),
       next: { revalidate: 86400 },
       signal: controller.signal,
     });
@@ -139,7 +162,8 @@ export async function GET(req: NextRequest) {
     const res = await fetchWithTimeout(url);
 
     if (!res.ok) {
-      return jsonError("본문을 불러올 수 없어요.", 404);
+      console.error("Bible API request failed", { status: res.status });
+      return jsonError("본문을 불러올 수 없어요.", 502);
     }
 
     const json = await res.json();
@@ -168,6 +192,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ text: fullText, verses, reference, version: String(translationId) });
 
   } catch (e) {
+    console.error("Bible API proxy error:", e);
     return jsonError("네트워크 오류가 발생했어요", 500);
   }
 }

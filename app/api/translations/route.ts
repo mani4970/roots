@@ -3,6 +3,28 @@ import { NextResponse } from "next/server";
 const TRANSLATIONS_API_URL = "https://bible.asher.design/api/v1/translations.php";
 const FETCH_TIMEOUT_MS = 10_000;
 
+function readServerEnv(name: string, fallback = "") {
+  const value = process.env[name] ?? fallback;
+  return value.trim().replace(/^([\"'])(.*)\1$/, "$2");
+}
+
+function getBibleApiHeaders(): HeadersInit {
+  const authorization = readServerEnv("BIBLE_API_AUTHORIZATION");
+
+  if (!authorization) {
+    throw new Error("Missing BIBLE_API_AUTHORIZATION");
+  }
+
+  return {
+    Accept: "application/json",
+    "X-API-Key-ID": readServerEnv("BIBLE_API_KEY_ID", "roots-puce"),
+    Authorization: authorization,
+    "X-Client-Type": readServerEnv("BIBLE_API_CLIENT_TYPE", "vercel-server"),
+    "X-App-Name": readServerEnv("BIBLE_API_APP_NAME", "Roots Puce"),
+    "X-App-Version": readServerEnv("BIBLE_API_APP_VERSION", "1.0.0"),
+  };
+}
+
 function fallbackTranslations() {
   return {
     ok: true,
@@ -19,6 +41,7 @@ async function fetchWithTimeout(url: string) {
 
   try {
     return await fetch(url, {
+      headers: getBibleApiHeaders(),
       next: { revalidate: 86400 * 30 },
       signal: controller.signal,
     });
@@ -30,7 +53,10 @@ async function fetchWithTimeout(url: string) {
 export async function GET() {
   try {
     const res = await fetchWithTimeout(TRANSLATIONS_API_URL);
-    if (!res.ok) return NextResponse.json(fallbackTranslations());
+    if (!res.ok) {
+      console.error("Bible translations API request failed", { status: res.status });
+      return NextResponse.json(fallbackTranslations());
+    }
 
     const json = await res.json();
     if (!json?.ok || !Array.isArray(json.data)) {
@@ -38,7 +64,8 @@ export async function GET() {
     }
 
     return NextResponse.json(json);
-  } catch {
+  } catch (e) {
+    console.error("Bible translations API proxy error:", e);
     // API 실패 시 기본 번역본 목록 반환
     return NextResponse.json(fallbackTranslations());
   }
