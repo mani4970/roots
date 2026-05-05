@@ -52,7 +52,7 @@ export const T = {
   home_decision_title: { ko: "오늘의 결단",                  de: "Heutiger Vorsatz", en: "Today's resolution", fr: "Décision du jour" },
   home_decision_done: { ko: "결단 완료 ✓",                  de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓" },
   home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision" },
-  home_streak: { ko: "일 연속",            de: "Tage in Folge", en: "days in a row", fr: "jours de suite" },
+  home_streak: { ko: "일 누적 루틴 완료", de: "Routinetage insgesamt", en: "cumulative routine days", fr: "jours de routine cumulés" },
   home_routine_complete: { ko: "오늘의 루틴을 완료했어요. 정원을 확인해보세요.", de: "Die heutige Routine ist abgeschlossen. Schauen Sie in den Garten.", en: "Today's routine is complete. Take a look at your garden.", fr: "La routine du jour est terminée. Regardez votre jardin." },
 
   // ── 감정 체크인 ──
@@ -275,7 +275,7 @@ export const T = {
   profile_delete_cancel: { ko: "취소",                de: "Abbrechen", en: "Cancel", fr: "Annuler" },
   profile_delete_confirm_btn: { ko: "탈퇴하기",       de: "Löschen", en: "Delete", fr: "Supprimer" },
   profile_deleting: { ko: "삭제 중...",              de: "Wird gelöscht...", en: "Deleting...", fr: "Suppression..." },
-  profile_streak: { ko: "일 연속",       de: "Tage in Folge", en: "days in a row", fr: "jours de suite" },
+  profile_streak: { ko: "{n}일 누적 루틴 완료", de: "{n} Routinetage insgesamt", en: "{n} cumulative routine days", fr: "{n} jours de routine cumulés" },
   profile_prayer_count: { ko: "기도 제목",            de: "Gebete", en: "Prayers", fr: "Prières" },
   profile_prayer_answered_count: { ko: "기도 응답",   de: "Erhörte Gebete", en: "Answered Prayers", fr: "Prières exaucées" },
   profile_qt_share: { ko: "큐티 나눔",               de: "Geteilte QTs", en: "Shared QTs", fr: "QT partagés" },
@@ -338,7 +338,7 @@ export const T = {
   badge_paul_title: { ko: "바울",                de: "Paulus", en: "Paul", fr: "Paul" },
   badge_paul_desc: { ko: "함께기도 30회",        de: "30 gemeinsame Gebete", en: "30 community prayers", fr: "30 prières communautaires" },
   badge_peter_title: { ko: "베드로",              de: "Petrus", en: "Peter", fr: "Pierre" },
-  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "First group created", fr: "premier groupe créé" },
+  badge_peter_desc: { ko: "첫 그룹 만들기",       de: "Erste Gruppe erstellt", en: "Rock of faith", fr: "Rocher de foi" },
   badge_qt_bird_title: { ko: "말씀 배달부",          de: "Wortüberbringer", en: "Word Carrier", fr: "Porteur de la Parole" },
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
@@ -355,7 +355,7 @@ export const T = {
   badge_paul_msg: { ko: "바울처럼 공동체를 사랑하고 위해 기도하는 당신을 축복합니다!", de: "Wie Paulus – der die Gemeinde liebt und für sie betet!", en: "30 prayers in the community — like Paul's letters!", fr: "30 prières dans la communauté — comme les lettres de Paul !" },
   badge_peter_msg: { ko: "베드로처럼 사람을 낚는 어부가 될 당신, 더 큰 열매를 맺을 줄 믿습니다!", de: "Wie Petrus, der Menschenfischer – Sie werden große Frucht tragen!", en: "Steadfast like Peter, the rock!", fr: "Solide comme Pierre, le rocher !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
-  badge_angel_msg: { ko: "1000일 동안 쉬지 않고 하나님과 말씀으로 매일 동행하며 승리한 당신을 축복합니다", de: "1000 Tage lang sind Sie ohne Unterbrechung täglich mit Gott und seinem Wort gegangen und haben überwunden. Segen für Sie.", en: "Blessings on you for walking with God and His Word every day for 1000 days without stopping and overcoming in victory.", fr: "Soyez béni(e) pour avoir marché chaque jour avec Dieu et sa Parole pendant 1000 jours sans vous arrêter, et pour avoir vaincu." },
+  badge_angel_msg: { ko: "1000일 누적 루틴 완료! 다시 돌아올 때마다 하나님과 말씀으로 동행한 당신을 축복합니다", de: "1000 Routinetage insgesamt geschafft – jedes Zurückkommen zählt. Gottes Segen für Ihren Weg mit seinem Wort.", en: "1000 cumulative routine days completed — every return matters. Blessings as you keep walking with God and His Word.", fr: "1000 jours de routine cumulés accomplis — chaque retour compte. Soyez béni(e) dans votre marche avec Dieu et sa Parole." },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -587,7 +587,7 @@ export const T = {
   tree_day_count:   { ko: "{n}일째", de: "Tag {n}", en: "Day {n}", fr: "Jour {n}" },
   tree_garden_n:    { ko: "{n}번째 정원", de: "{n}. Garten", en: "{n}.garden", fr: "{n}e jardin" },
   tree_progress:    { ko: "{n} / 10", de: "{n} / 10", en: "{n} / 10", fr: "{n} / 10" },
-  tree_streak:      { ko: "{n}일 연속 기록 중", de: "{n} Tage in Folge", en: "{n} days in a row", fr: "{n} jours de suite" },
+  tree_streak:      { ko: "{n}일 누적 루틴 완료", de: "{n} Routinetage insgesamt", en: "{n} cumulative routine days", fr: "{n} jours de routine cumulés" },
   tree_away_msg:    { ko: "{n}일 만이에요. 오늘 루틴으로 다시 뿌리내려봐요.", de: "{n} Tage her. Starten Sie die Routine und kommen Sie zurück.", en: "It's been {n} days. Start the routine and come back.", fr: "Cela fait {n} jours. Reprenez la routine et enracinez-vous à nouveau." },
 
   // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
@@ -627,7 +627,7 @@ export const T = {
   qt_today_start: { ko: "오늘 큐티 시작하기",                   de: "Heutige QT beginnen", en: "Start today's QT", fr: "Commencer le QT du jour" },
   qt_catchup_start: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
   qt_catchup_title: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
-  qt_catchup_sub: { ko: "기록 보완용이에요. 오늘 루틴과 streak에는 영향을 주지 않아요.", de: "Nur zur Ergänzung Ihrer Aufzeichnungen. Die heutige Routine und der Streak bleiben unverändert.", en: "This only completes your record. It does not affect today's routine or your streak.", fr: "Cela complète seulement votre historique. Cela n’influence pas la routine du jour ni votre série." },
+  qt_catchup_sub: { ko: "기록 보완용이에요. 오늘 루틴과 누적 루틴 완료일에는 영향을 주지 않아요.", de: "Nur zur Ergänzung Ihrer Aufzeichnungen. Die heutige Routine und die gesamten Routinetage bleiben unverändert.", en: "This only completes your record. It does not affect today's routine or cumulative routine days.", fr: "Cela complète seulement votre historique. Cela n’influence pas la routine du jour ni les jours de routine cumulés." },
   qt_catchup_date_label: { ko: "날짜 선택", de: "Datum auswählen", en: "Choose a date", fr: "Choisir une date" },
   qt_catchup_no_dates: { ko: "최근 60일 안에 보완할 수 있는 날짜가 없어요. 이미 기록된 날짜는 다시 선택할 수 없어요.", de: "In den letzten 60 Tagen gibt es kein nachzutragendes Datum. Bereits gespeicherte Tage können nicht erneut ausgewählt werden.", en: "There are no available dates to complete in the last 60 days. Dates with an existing record cannot be selected again.", fr: "Aucune date à compléter dans les 60 derniers jours. Les dates déjà enregistrées ne peuvent pas être sélectionnées à nouveau." },
   qt_catchup_6step_desc: { ko: "선택한 날짜의 본문을 불러와 6단계로 기록해요.", de: "Lädt den Abschnitt des ausgewählten Datums und führt durch 6 Schritte.", en: "Loads that date's passage and records it in 6 steps.", fr: "Charge le passage de cette date et l’enregistre en 6 étapes." },
@@ -805,7 +805,7 @@ const FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
  * @example
  *   t("home_greeting_morning", "de")              // "Guten Morgen ☀️"
  *   t("home_garden_my", "de", { name: "Anna" })   // "Annas Garten"
- *   t("tree_streak", "ko", { n: 7 })              // "7일 연속 기록 중"
+ *   t("tree_streak", "ko", { n: 7 })              // "7일 누적 루틴 완료"
  */
 export function t(key: TKey, lang: Lang = FALLBACK_LANG, vars?: Record<string, string | number>): string {
   const entry = T[key] as Translation;

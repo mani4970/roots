@@ -371,7 +371,7 @@ export default function ProfilePage() {
                 {profile?.name ?? t("profile_default_name", lang)}
               </h1>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{profile?.streak_days ?? 0} {t("profile_streak", lang)}</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</p>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
