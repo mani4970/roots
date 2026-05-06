@@ -1058,14 +1058,14 @@ export default function CommunityPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {groupQts.map(r => (
-                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative", paddingRight: 44 }} onClick={() => setDetailQt(r)}>
+                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                       <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ position: "absolute", top: 18, right: 18, display: "flex", alignItems: "center", gap: 6 }}>
                           {r.isUnreadInGroup && (
                             <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
                               {c("community_unread")}
@@ -1075,8 +1075,8 @@ export default function CommunityPage() {
                           <CardMenu kind="qt" item={r} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
+                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
@@ -1377,7 +1377,7 @@ export default function CommunityPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {qtShares.map(r => (
-                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative", paddingRight: 44 }} onClick={() => setDetailQt(r)}>
+                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                     <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1394,8 +1394,8 @@ export default function CommunityPage() {
                         <CardMenu kind="qt" item={r} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                       </div>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
+                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
