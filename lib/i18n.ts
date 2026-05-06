@@ -235,9 +235,9 @@ export const T = {
   prayer_together: { ko: "함께 기도할게요",         de: "Gemeinsam beten", en: "Pray together", fr: "Je prie avec vous" },
   prayer_prayed: { ko: "기도했어요",              de: "Gebetet", en: "Prayed", fr: "J’ai prié" },
   prayer_answered: { ko: "기도 응답됨",             de: "Erhört", en: "Answered", fr: "Exaucée" },
-  prayer_sub_line1: { ko: "내 기도 제목들과 중보 중인 기도 제목들을 관리할 수 있어요.", de: "Hier können Sie Ihre eigenen Gebetsanliegen und Anliegen, für die Sie mitbeten, verwalten.", en: "Manage your prayer requests and the requests you’re praying for.", fr: "Gérez vos sujets de prière et ceux pour lesquels vous priez." },
-  prayer_sub_line2: { ko: "공동체에 중보 기도 요청해 보세요.", de: "Bitten Sie Ihre Gemeinschaft um Fürbitte.", en: "Ask your community to pray with you.", fr: "Demandez l’intercession à votre communauté." },
-  prayer_sub_line3: { ko: "기도 응답을 간증으로 남겨보세요. 하나님이 이루시는 일들을 기록해봐요.", de: "Halten Sie erhörte Gebete als Zeugnisse fest. Schreiben Sie auf, was Gott tut.", en: "Record answered prayers as testimonies. Write down the things God is doing.", fr: "Notez les prières exaucées comme témoignages. Consignez ce que Dieu accomplit." },
+  prayer_sub_line1: { ko: "나의 기도와 중보 중인 기도를 함께 기록해요.", de: "Halten Sie Ihre eigenen Gebete und die Fürbitten, die Sie begleiten, gemeinsam fest.", en: "Keep your own prayers and the prayers you are interceding for together.", fr: "Gardez ensemble vos prières et celles pour lesquelles vous intercédez." },
+  prayer_sub_line2: { ko: "응답된 기도는 짧은 간증으로 남겨보세요.", de: "Halten Sie erhörte Gebete als kurzes Zeugnis fest.", en: "Record answered prayers as short testimonies.", fr: "Notez les prières exaucées comme de courts témoignages." },
+  prayer_sub_line3: { ko: "", de: "", en: "", fr: "" },
   prayer_error_save: { ko: "기도 제목을 저장하지 못했어요.", de: "Das Gebetsanliegen konnte nicht gespeichert werden.", en: "Could not save the prayer request.", fr: "Impossible d’enregistrer le sujet de prière." },
   prayer_error_edit: { ko: "수정을 저장하지 못했어요.", de: "Die Änderungen konnten nicht gespeichert werden.", en: "Could not save your changes.", fr: "Impossible d’enregistrer les modifications." },
   prayer_error_intercession: { ko: "중보기도 요청을 저장하지 못했어요.", de: "Die Fürbitte-Anfrage konnte nicht gespeichert werden.", en: "Could not save the intercession request.", fr: "Impossible d’enregistrer la demande d’intercession." },
@@ -421,20 +421,64 @@ export const T = {
 
   // ── 온보딩 ──
   onboarding_title1: { ko: "Roots에 오신 걸 환영해요",  de: "Willkommen bei Roots", en: "Welcome to Roots", fr: "Bienvenue sur Roots" },
-  onboarding_desc1: { ko: "말씀에 뿌리내리고, 함께 자라다.\n매일 3가지 루틴으로 \n하나님과 깊어지는 시간을 만들어요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.\n3 tägliche Routinen für eine tiefere Zeit mit Gott.", en: "Root yourself in God’s Word and grow each day.\nBuild a deeper daily rhythm with God through three simple routines.", fr: "Enracinez-vous dans la Parole de Dieu et grandissez chaque jour.\\nAvec trois routines simples, construisez un rythme quotidien plus profond avec Dieu." },
+  onboarding_desc1: { ko: "말씀에 뿌리내리고, 함께 자라요.
+QT, 기도, 결단으로 매일 하나님과 동행하며 승리해요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.
+Mit Stille Zeit, Gebet und Entscheidung gehen Sie täglich mit Gott und leben im Sieg.", en: "Root yourself in God’s Word and grow together.
+Walk with God each day through Quiet Time, prayer, and decision.", fr: "Enracinez-vous dans la Parole et grandissez ensemble.
+Chaque jour, marchez avec Dieu par le QT, la prière et la décision." },
   onboarding_desc1_sub: { ko: "", de: "", en: "", fr: "" },
-  onboarding_title2: { ko: "오늘 마음에 맞는 말씀을 받아요", de: "Ein Vers für Ihr heutiges Herz", en: "Receive a verse for today", fr: "Recevez un verset pour aujourd’hui" },
-  onboarding_desc2: { ko: "오늘의 감정이나 상태를 선택하면\nRoots가 그 마음에 맞는 말씀을 추천해 드려요.", de: "Wenn Sie Ihre heutige Stimmung oder Ihren Zustand wählen,\nempfiehlt Roots Ihnen einen passenden Vers.", en: "Choose your current emotion or state,\nand Roots will recommend a verse that fits your heart today.", fr: "Choisissez votre émotion ou votre état actuel,\\net Roots vous recommandera un verset adapté à votre cœur." },
-  onboarding_desc2_sub: { ko: "현재 감정과 상태에 맞는 말씀을 추천해 드립니다.", de: "Wir empfehlen Ihnen einen Vers, der zu Ihrem heutigen Herzen und Zustand passt.", en: "We recommend a verse that matches your current heart and state.", fr: "Nous vous recommandons un verset adapté à votre cœur et à votre état actuel." },
-  onboarding_title3: { ko: "큐티 6단계로 말씀을 심어요", de: "Gottes Wort in 6 Schritten", en: "Quiet Time\nin 6 steps", fr: "Quiet Time\\nen 6 étapes" },
-  onboarding_desc3: { ko: "① 들어가는 기도\n② 본문 요약\n③ 붙잡은 말씀\n④ 느낌과 묵상\n⑤ 적용과 결단\n⑥ 올려드리는 기도", de: "① Eröffnungsgebet\n② Zusammenfassung\n③ Schlüsselvers\n④ Empfinden & Meditation\n⑤ Anwendung & Entschluss\n⑥ Abschlussgebet", en: "① Opening Prayer\n② Summary\n③ Key Verse\n④ Reflection & Meditation\n⑤ Application & Resolution\n⑥ Closing Prayer", fr: "① Prière d'ouverture\n② Résumé\n③ Verset clé\n④ Réflexion & méditation\n⑤ Application & décision\n⑥ Prière finale" },
-  onboarding_desc3_sub: { ko: "처음이어도 괜찮아요.\n각 단계마다 안내가 있어서 혼자서도 충분히 할 수 있어요.", de: "Auch für Anfänger geeignet.\nJeder Schritt wird erklärt.", en: "Suitable for beginners.\nEach step is guided.", fr: "Adapté aux débutants.\nChaque étape est guidée." },
-  onboarding_title4: { ko: "기도 제목을 기록하고 응답을 확인해요", de: "Gebete aufzeichnen und Erhörungen sehen", en: "Record prayer requests and answered prayers", fr: "Notez vos sujets de prière et les réponses" },
-  onboarding_desc4: { ko: "기도 제목을 적고, 응답됐을 때 간증을 남겨요.\n중보기도 요청으로 함께 기도할 수도 있어요.", de: "Gebete aufschreiben und Zeugnisse teilen.\nGemeinsam für einander beten.", en: "Write down your prayer requests and record your testimony when they are answered.\nYou can also ask others to pray with you.", fr: "Écrivez vos sujets de prière et laissez un témoignage quand Dieu répond.\\nVous pouvez aussi demander l’intercession." },
-  onboarding_desc4_sub: { ko: "기도 중 → 기도 응답으로\n하나님의 일하심을 기록해가요.", de: "Im Gebet → Erhörtes Gebet\nGottes Wirken aufzeichnen.", en: "Praying → Answered prayer\nRecord God's work.", fr: "En prière → Prière exaucée\nNotez l'œuvre de Dieu." },
+  onboarding_title2: { ko: "6단계 큐티로 말씀을 묵상해요", de: "Gottes Wort in 6 Schritten betrachten", en: "Reflect on the Word in 6 steps", fr: "Méditer la Parole en 6 étapes" },
+  onboarding_desc2: { ko: "① 들어가는 기도
+② 본문 요약
+③ 붙잡은 말씀
+④ 느낌과 묵상
+⑤ 적용과 결단
+⑥ 올려드리는 기도", de: "① Eröffnungsgebet
+② Zusammenfassung
+③ Schlüsselvers
+④ Empfinden & Meditation
+⑤ Anwendung & Entschluss
+⑥ Abschlussgebet", en: "① Opening Prayer
+② Summary
+③ Key Verse
+④ Reflection & Meditation
+⑤ Application & Resolution
+⑥ Closing Prayer", fr: "① Prière d’ouverture
+② Résumé
+③ Verset clé
+④ Réflexion & méditation
+⑤ Application & décision
+⑥ Prière finale" },
+  onboarding_desc2_sub: { ko: "처음이어도 괜찮아요.
+각 단계마다 안내가 있어요.", de: "Auch wenn Sie neu anfangen, ist das in Ordnung.
+Jeder Schritt wird begleitet.", en: "It’s okay if this is your first time.
+Each step is guided.", fr: "Même si c’est votre première fois, ce n’est pas grave.
+Chaque étape est guidée." },
+  onboarding_title3: { ko: "기도를 기록하고 함께 기도해요", de: "Gebete festhalten und gemeinsam beten", en: "Record prayers and pray together", fr: "Noter les prières et prier ensemble" },
+  onboarding_desc3: { ko: "기도 제목을 적고, 응답됐을 때 짧은 간증을 남겨요.
+공동체에 중보 기도를 요청할 수도 있어요.", de: "Schreiben Sie Gebetsanliegen auf und halten Sie erhörte Gebete als kurzes Zeugnis fest.
+Sie können Ihre Gemeinschaft auch um Fürbitte bitten.", en: "Write down prayer requests and leave a short testimony when they are answered.
+You can also ask the community to pray with you.", fr: "Écrivez vos sujets de prière et laissez un court témoignage quand Dieu répond.
+Vous pouvez aussi demander l’intercession à la communauté." },
+  onboarding_desc3_sub: { ko: "하나님이 이루시는 일들을 기록해가요.", de: "Halten Sie fest, was Gott tut.", en: "Record the things God is doing.", fr: "Notez ce que Dieu accomplit." },
+  onboarding_title4: { ko: "말씀이 삶이 되는 삶을 살아요", de: "Leben, damit das Wort zum Alltag wird", en: "Live so the Word becomes your life", fr: "Vivre pour que la Parole devienne votre vie" },
+  onboarding_desc4: { ko: "묵상을 통해 하나님이 주신 마음을 가지고
+하나님이 기뻐하시는 삶을 살아가요.", de: "Nehmen Sie durch die Meditation das Herz auf, das Gott Ihnen schenkt,
+und leben Sie ein Leben, das Gott Freude macht.", en: "Through meditation, carry the heart God gives you
+and live a life that pleases Him.", fr: "Par la méditation, recevez le cœur que Dieu vous donne
+et vivez une vie qui Lui plaît." },
+  onboarding_desc4_sub: { ko: "", de: "", en: "", fr: "" },
   onboarding_title5: { ko: "매일 하면 정원이 자라요",    de: "Täglich wächst Ihr Garten", en: "Watch your garden grow", fr: "Votre jardin grandit chaque jour" },
-  onboarding_desc5: { ko: "큐티 + 기도 + 결단, 3가지를 모두 완료하면\n나무가 자라 100일마다 성령의 열매 배지를 받아요.", de: "Stille Zeit + Gebet + Vorsatz:\nIhr Baum wächst und alle 100 Tage gibt es eine Frucht.", en: "Complete all three daily routines—Quiet Time, Prayer, and Decision—and watch your tree grow.\nEvery 100 days, you receive a Fruit of the Spirit badge.", fr: "Quand vous complétez les trois routines — QT, prière et décision — votre arbre grandit.\\nTous les 100 jours, vous recevez un badge du fruit de l’Esprit." },
-  onboarding_desc5_sub: { ko: "꾸준히 하는 게 핵심이에요.\n오늘부터 시작해봐요! ", de: "Konsequenz ist das Wichtigste.\nFangen Sie heute an! ", en: "Consistency is key.\nStart today! ", fr: "La constance est essentielle.\\nCommencez aujourd’hui ! " },
+  onboarding_desc5: { ko: "QT + 기도 + 결단을 모두 완료하면
+겨자씨 한 알이 자라 100일 후에 공중의 새들이 깃들이는 나무가 돼요.", de: "Wenn Sie Stille Zeit, Gebet und Entscheidung abschließen,
+wächst ein Senfkorn und wird nach 100 Tagen zu einem Baum, in dem die Vögel nisten.", en: "Complete Quiet Time, prayer, and decision,
+and a mustard seed grows into a tree where birds can nest after 100 days.", fr: "Quand vous complétez le QT, la prière et la décision,
+un grain de moutarde grandit et devient après 100 jours un arbre où les oiseaux peuvent se poser." },
+  onboarding_desc5_sub: { ko: "쉬었다가 다시 와도 괜찮아요.
+오늘 다시 하나님과 동행해요.", de: "Es ist in Ordnung, wenn Sie pausiert haben und zurückkommen.
+Gehen Sie heute wieder mit Gott.", en: "It’s okay to pause and come back.
+Walk with God again today.", fr: "Vous pouvez faire une pause et revenir.
+Marchez de nouveau avec Dieu aujourd’hui." },
   onboarding_next: { ko: "다음 →",                   de: "Weiter →", en: "Next", fr: "Suivant" },
   onboarding_start: { ko: "시작하기 ",               de: "Loslegen ", en: "Start →", fr: "Commencer →" },
   onboarding_skip: { ko: "건너뛰기",                  de: "Überspringen", en: "Skip", fr: "Passer" },
