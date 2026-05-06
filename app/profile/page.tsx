@@ -365,7 +365,7 @@ export default function ProfilePage() {
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={t("nav_profile", lang)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <span style={{ fontSize: 26 }}>🌱</span>
+                <img src="/roots-logo-transparent-96.png" alt="Roots" width={42} height={42} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
               )}
             </div>
             <button

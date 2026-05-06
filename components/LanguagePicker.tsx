@@ -29,14 +29,14 @@ export default function LanguagePicker({ onSelect, initialLang = FALLBACK_LANG }
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflowY: "auto" }}>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <svg width="60" height="75" viewBox="0 0 80 100" fill="none" style={{ marginBottom: 16 }}>
-          <path d="M40 90 Q38 70 40 50" stroke="#7A9D7A" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M40 65 Q25 55 22 40 Q35 42 40 55" fill="#7A9D7A" opacity="0.85"/>
-          <path d="M40 58 Q55 48 58 33 Q45 35 40 48" fill="#5C8A58" opacity="0.85"/>
-          <ellipse cx="40" cy="90" rx="18" ry="5" fill="#C4956A" opacity="0.4"/>
-        </svg>
+        <img
+          src="/roots-logo-transparent-160.png"
+          alt="Roots"
+          width={74}
+          height={74}
+          style={{ objectFit: "contain", imageRendering: "pixelated", marginBottom: 16 }}
+        />
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-        <p style={{ color: "var(--text3)", fontSize: 13 }}>🌱</p>
       </div>
 
       <div style={{ width: "100%", maxWidth: 340 }}>

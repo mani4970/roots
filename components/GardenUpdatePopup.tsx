@@ -30,8 +30,6 @@ const STAGE_DESC_KEYS: readonly TKey[] = [
   "garden_stage_1_desc", "garden_stage_2_desc", "garden_stage_3_desc", "garden_stage_4_desc", "garden_stage_5_desc",
   "garden_stage_6_desc", "garden_stage_7_desc", "garden_stage_8_desc", "garden_stage_9_desc", "garden_stage_10_desc",
 ];
-const STAGE_EMOJIS = ["🌱","🌿","🌲","🌳","🌴","🍃","🍎","🐦","🌺","🏆"];
-
 function getStage(streakDays: number): number {
   const cycleDay = streakDays === 0 ? 0 : ((streakDays - 1) % 100) + 1;
   return Math.min(Math.ceil(cycleDay / 10) || 1, 10);
@@ -51,7 +49,6 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
   const badge = BADGES[badgeIndex % BADGES.length];
   const isBadge = type === "badge";
   const stage = getStage(streakDays);
-  const stageEmoji = STAGE_EMOJIS[stage - 1];
   const stageTitle = t(STAGE_TITLE_KEYS[stage - 1], lang);
   const stageDesc = t(STAGE_DESC_KEYS[stage - 1], lang);
 
@@ -84,7 +81,9 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
           </>
         ) : (
           <>
-            <div style={{ fontSize: 56, marginBottom: 14 }}>{stageEmoji}</div>
+            <div style={{ width: 86, height: 86, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/roots-logo-transparent-160.png" alt="Roots" width={78} height={78} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
+            </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
               {stageTitle}
             </h2>

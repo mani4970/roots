@@ -10,7 +10,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
   const SLIDES = [
     {
-      emoji: "🌱",
       title: t("onboarding_title1", lang),
       desc: t("onboarding_desc1", lang),
       sub: null,
@@ -34,7 +33,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       sub: t("onboarding_desc4_sub", lang),
     },
     {
-      emoji: "🌳",
       title: t("onboarding_title5", lang),
       desc: t("onboarding_desc5", lang),
       sub: t("onboarding_desc5_sub", lang),

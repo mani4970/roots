@@ -104,7 +104,9 @@ export default function LoginPage() {
       {showBrowserGuide && (
         <div onClick={() => setShowBrowserGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(26,28,30,0.66)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "22px 20px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", textAlign: "center" }}>
-            <div style={{ fontSize: 28, marginBottom: 10 }}>🌿</div>
+            <div style={{ width: 46, height: 46, margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/roots-logo-transparent-96.png" alt="Roots" width={42} height={42} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
+            </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 10 }}>{browserGuide.title}</h3>
             <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text2)", marginBottom: 10 }}>{browserGuide.body}</p>
             <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)", marginBottom: 16 }}>{browserGuide.hint}</p>

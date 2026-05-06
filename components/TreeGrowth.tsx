@@ -75,7 +75,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
     <div style={{ margin: "0 16px 14px" }}>
       {isAway && (
         <div style={{ background: "rgba(196,149,106,0.12)", border: "1px solid rgba(196,149,106,0.25)", borderRadius: 12, padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 16 }}>🌿</span>
+          <img src="/roots-logo-transparent-96.png" alt="Roots" width={18} height={18} style={{ objectFit: "contain", imageRendering: "pixelated", flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: "var(--terra-dark)" }}>
             {t("tree_away_msg", lang, { n: daysSince })}
           </span>
