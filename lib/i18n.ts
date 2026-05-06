@@ -420,65 +420,21 @@ export const T = {
   badge_popup_qt_bird: { ko: "말씀 배달부 배지 획득! 🕊️",    de: "Wortüberbringer-Abzeichen! 🕊️", en: "Word Carrier Badge! 🕊️", fr: "Badge Porteur de la Parole ! 🕊️" },
 
   // ── 온보딩 ──
-  onboarding_title1: { ko: "Roots에 오신 걸 환영해요",  de: "Willkommen bei Roots", en: "Welcome to Roots", fr: "Bienvenue sur Roots" },
-  onboarding_desc1: { ko: "말씀에 뿌리내리고, 함께 자라요.
-QT, 기도, 결단으로 매일 하나님과 동행하며 승리해요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.
-Mit Stille Zeit, Gebet und Entscheidung gehen Sie täglich mit Gott und leben im Sieg.", en: "Root yourself in God’s Word and grow together.
-Walk with God each day through Quiet Time, prayer, and decision.", fr: "Enracinez-vous dans la Parole et grandissez ensemble.
-Chaque jour, marchez avec Dieu par le QT, la prière et la décision." },
+  onboarding_title1: { ko: "Roots에 오신 걸 환영해요", de: "Willkommen bei Roots", en: "Welcome to Roots", fr: "Bienvenue sur Roots" },
+  onboarding_desc1: { ko: "말씀에 뿌리내리고, 함께 자라요.\nQT, 기도, 결단으로 매일 하나님과 동행하며 승리해요.", de: "In Gottes Wort verwurzelt, gemeinsam wachsen.\nMit Stille Zeit, Gebet und Entscheidung gehen Sie täglich mit Gott und leben im Sieg.", en: "Root yourself in God’s Word and grow together.\nWalk with God each day through Quiet Time, prayer, and decision.", fr: "Enracinez-vous dans la Parole et grandissez ensemble.\nChaque jour, marchez avec Dieu par le QT, la prière et la décision." },
   onboarding_desc1_sub: { ko: "", de: "", en: "", fr: "" },
   onboarding_title2: { ko: "6단계 큐티로 말씀을 묵상해요", de: "Gottes Wort in 6 Schritten betrachten", en: "Reflect on the Word in 6 steps", fr: "Méditer la Parole en 6 étapes" },
-  onboarding_desc2: { ko: "① 들어가는 기도
-② 본문 요약
-③ 붙잡은 말씀
-④ 느낌과 묵상
-⑤ 적용과 결단
-⑥ 올려드리는 기도", de: "① Eröffnungsgebet
-② Zusammenfassung
-③ Schlüsselvers
-④ Empfinden & Meditation
-⑤ Anwendung & Entschluss
-⑥ Abschlussgebet", en: "① Opening Prayer
-② Summary
-③ Key Verse
-④ Reflection & Meditation
-⑤ Application & Resolution
-⑥ Closing Prayer", fr: "① Prière d’ouverture
-② Résumé
-③ Verset clé
-④ Réflexion & méditation
-⑤ Application & décision
-⑥ Prière finale" },
-  onboarding_desc2_sub: { ko: "처음이어도 괜찮아요.
-각 단계마다 안내가 있어요.", de: "Auch wenn Sie neu anfangen, ist das in Ordnung.
-Jeder Schritt wird begleitet.", en: "It’s okay if this is your first time.
-Each step is guided.", fr: "Même si c’est votre première fois, ce n’est pas grave.
-Chaque étape est guidée." },
+  onboarding_desc2: { ko: "① 들어가는 기도\n② 본문 요약\n③ 붙잡은 말씀\n④ 느낌과 묵상\n⑤ 적용과 결단\n⑥ 올려드리는 기도", de: "① Eröffnungsgebet\n② Zusammenfassung\n③ Schlüsselvers\n④ Empfinden & Meditation\n⑤ Anwendung & Entschluss\n⑥ Abschlussgebet", en: "① Opening Prayer\n② Summary\n③ Key Verse\n④ Reflection & Meditation\n⑤ Application & Resolution\n⑥ Closing Prayer", fr: "① Prière d’ouverture\n② Résumé\n③ Verset clé\n④ Réflexion & méditation\n⑤ Application & décision\n⑥ Prière finale" },
+  onboarding_desc2_sub: { ko: "처음이어도 괜찮아요.\n각 단계마다 안내가 있어요.", de: "Auch wenn Sie neu anfangen, ist das in Ordnung.\nJeder Schritt wird begleitet.", en: "It’s okay if this is your first time.\nEach step is guided.", fr: "Même si c’est votre première fois, ce n’est pas grave.\nChaque étape est guidée." },
   onboarding_title3: { ko: "기도를 기록하고 함께 기도해요", de: "Gebete festhalten und gemeinsam beten", en: "Record prayers and pray together", fr: "Noter les prières et prier ensemble" },
-  onboarding_desc3: { ko: "기도 제목을 적고, 응답됐을 때 짧은 간증을 남겨요.
-공동체에 중보 기도를 요청할 수도 있어요.", de: "Schreiben Sie Gebetsanliegen auf und halten Sie erhörte Gebete als kurzes Zeugnis fest.
-Sie können Ihre Gemeinschaft auch um Fürbitte bitten.", en: "Write down prayer requests and leave a short testimony when they are answered.
-You can also ask the community to pray with you.", fr: "Écrivez vos sujets de prière et laissez un court témoignage quand Dieu répond.
-Vous pouvez aussi demander l’intercession à la communauté." },
+  onboarding_desc3: { ko: "기도 제목을 적고, 응답됐을 때 짧은 간증을 남겨요.\n공동체에 중보 기도를 요청할 수도 있어요.", de: "Schreiben Sie Gebetsanliegen auf und halten Sie erhörte Gebete als kurzes Zeugnis fest.\nSie können Ihre Gemeinschaft auch um Fürbitte bitten.", en: "Write down prayer requests and leave a short testimony when they are answered.\nYou can also ask the community to pray with you.", fr: "Écrivez vos sujets de prière et laissez un court témoignage quand Dieu répond.\nVous pouvez aussi demander l’intercession à la communauté." },
   onboarding_desc3_sub: { ko: "하나님이 이루시는 일들을 기록해가요.", de: "Halten Sie fest, was Gott tut.", en: "Record the things God is doing.", fr: "Notez ce que Dieu accomplit." },
   onboarding_title4: { ko: "말씀이 삶이 되는 삶을 살아요", de: "Leben, damit das Wort zum Alltag wird", en: "Live so the Word becomes your life", fr: "Vivre pour que la Parole devienne votre vie" },
-  onboarding_desc4: { ko: "묵상을 통해 하나님이 주신 마음을 가지고
-하나님이 기뻐하시는 삶을 살아가요.", de: "Nehmen Sie durch die Meditation das Herz auf, das Gott Ihnen schenkt,
-und leben Sie ein Leben, das Gott Freude macht.", en: "Through meditation, carry the heart God gives you
-and live a life that pleases Him.", fr: "Par la méditation, recevez le cœur que Dieu vous donne
-et vivez une vie qui Lui plaît." },
+  onboarding_desc4: { ko: "묵상을 통해 하나님이 주신 마음을 가지고\n하나님이 기뻐하시는 삶을 살아가요.", de: "Nehmen Sie durch die Meditation das Herz auf, das Gott Ihnen schenkt,\nund leben Sie ein Leben, das Gott Freude macht.", en: "Through meditation, carry the heart God gives you\nand live a life that pleases Him.", fr: "Par la méditation, recevez le cœur que Dieu vous donne\net vivez une vie qui Lui plaît." },
   onboarding_desc4_sub: { ko: "", de: "", en: "", fr: "" },
-  onboarding_title5: { ko: "매일 하면 정원이 자라요",    de: "Täglich wächst Ihr Garten", en: "Watch your garden grow", fr: "Votre jardin grandit chaque jour" },
-  onboarding_desc5: { ko: "QT + 기도 + 결단을 모두 완료하면
-겨자씨 한 알이 자라 100일 후에 공중의 새들이 깃들이는 나무가 돼요.", de: "Wenn Sie Stille Zeit, Gebet und Entscheidung abschließen,
-wächst ein Senfkorn und wird nach 100 Tagen zu einem Baum, in dem die Vögel nisten.", en: "Complete Quiet Time, prayer, and decision,
-and a mustard seed grows into a tree where birds can nest after 100 days.", fr: "Quand vous complétez le QT, la prière et la décision,
-un grain de moutarde grandit et devient après 100 jours un arbre où les oiseaux peuvent se poser." },
-  onboarding_desc5_sub: { ko: "쉬었다가 다시 와도 괜찮아요.
-오늘 다시 하나님과 동행해요.", de: "Es ist in Ordnung, wenn Sie pausiert haben und zurückkommen.
-Gehen Sie heute wieder mit Gott.", en: "It’s okay to pause and come back.
-Walk with God again today.", fr: "Vous pouvez faire une pause et revenir.
-Marchez de nouveau avec Dieu aujourd’hui." },
+  onboarding_title5: { ko: "매일 하면 정원이 자라요", de: "Täglich wächst Ihr Garten", en: "Watch your garden grow", fr: "Votre jardin grandit chaque jour" },
+  onboarding_desc5: { ko: "QT + 기도 + 결단을 모두 완료하면\n겨자씨 한 알이 자라 100일 후에 공중의 새들이 깃들이는 나무가 돼요.", de: "Wenn Sie Stille Zeit, Gebet und Entscheidung abschließen,\nwächst ein Senfkorn und wird nach 100 Tagen zu einem Baum, in dem die Vögel nisten.", en: "Complete Quiet Time, prayer, and decision,\nand a mustard seed grows into a tree where birds can nest after 100 days.", fr: "Quand vous complétez le QT, la prière et la décision,\nun grain de moutarde grandit et devient après 100 jours un arbre où les oiseaux peuvent se poser." },
+  onboarding_desc5_sub: { ko: "쉬었다가 다시 와도 괜찮아요.\n오늘 다시 하나님과 동행해요.", de: "Es ist in Ordnung, wenn Sie pausiert haben und zurückkommen.\nGehen Sie heute wieder mit Gott.", en: "It’s okay to pause and come back.\nWalk with God again today.", fr: "Vous pouvez faire une pause et revenir.\nMarchez de nouveau avec Dieu aujourd’hui." },
   onboarding_next: { ko: "다음 →",                   de: "Weiter →", en: "Next", fr: "Suivant" },
   onboarding_start: { ko: "시작하기 ",               de: "Loslegen ", en: "Start →", fr: "Commencer →" },
   onboarding_skip: { ko: "건너뛰기",                  de: "Überspringen", en: "Skip", fr: "Passer" },
