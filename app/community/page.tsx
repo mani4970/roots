@@ -257,7 +257,7 @@ export default function CommunityPage() {
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActionMenu({ kind, item, scope, groupId }); }}
         aria-label="Manage content"
-        style={{ width: 28, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+        style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0 }}
       >
         <MoreHorizontal size={16} />
       </button>
@@ -1058,7 +1058,8 @@ export default function CommunityPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {groupQts.map(r => (
-                    <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative", paddingRight: 44 }} onClick={() => setDetailQt(r)}>
+                      <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
@@ -1079,7 +1080,6 @@ export default function CommunityPage() {
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
-                      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                     </div>
                   ))}
                 </div>
@@ -1108,7 +1108,7 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
+                          {!p.is_answered && <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />}
                         </div>
                       </div>
 
@@ -1276,7 +1276,7 @@ export default function CommunityPage() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
+                          {!p.is_answered && <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />}
                         </div>
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
@@ -1313,7 +1313,6 @@ export default function CommunityPage() {
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>
                             {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
                           </span>
-                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
                       {/* 기도 제목 */}
@@ -1378,7 +1377,8 @@ export default function CommunityPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {qtShares.map(r => (
-                  <div key={r.id} className="card" style={{ cursor: "pointer" }} onClick={() => setDetailQt(r)}>
+                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative", paddingRight: 44 }} onClick={() => setDetailQt(r)}>
+                    <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
@@ -1399,7 +1399,6 @@ export default function CommunityPage() {
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
-                    <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                   </div>
                 ))}
               </div>
