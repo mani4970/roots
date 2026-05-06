@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const TRANSLATIONS_API_URL = "https://bible.asher.design/api/v1/translations.php";
 const FETCH_TIMEOUT_MS = 10_000;
 

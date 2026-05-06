@@ -31,10 +31,13 @@ const FAITH_BADGES = [
   { key: "badge_david", img: "/badge_david.webp", titleKey: "badge_david_title", descKey: "badge_david_desc" },
   { key: "badge_noah", img: "/badge_noah.webp", titleKey: "badge_noah_title", descKey: "badge_noah_desc" },
   { key: "badge_joseph", img: "/badge_joseph.webp", titleKey: "badge_joseph_title", descKey: "badge_joseph_desc" },
-  { key: "badge_prayer_warrior", img: "/badge_rootswoman_fire.webp", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
+  { key: "badge_prayer_ember", img: "/badge_rootswoman_fire.webp", titleKey: "badge_prayer_ember_title", descKey: "badge_prayer_ember_desc" },
+  { key: "badge_prayer_warrior", img: "/prayer_warrior.webp", titleKey: "badge_prayer_warrior_title", descKey: "badge_prayer_warrior_desc" },
   { key: "badge_paul", img: "/badge_paul.webp", titleKey: "badge_paul_title", descKey: "badge_paul_desc" },
-  { key: "badge_peter", img: "/badge_roots_together.webp", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
-  { key: "badge_qt_bird", img: "/badge_rootswoman_rest.webp", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
+  { key: "badge_peter", img: "/badge_peter.webp", titleKey: "badge_peter_title", descKey: "badge_peter_desc" },
+  { key: "badge_roots_together", img: "/badge_roots_together.webp", titleKey: "badge_roots_together_title", descKey: "badge_roots_together_desc" },
+  { key: "badge_qt_bird", img: "/qt_bird.webp", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
+  { key: "badge_word_peace", img: "/badge_rootswoman_rest.webp", titleKey: "badge_word_peace_title", descKey: "badge_word_peace_desc" },
   { key: "badge_angel", img: "/angel.webp", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
@@ -134,9 +137,11 @@ export default function ProfilePage() {
     if (p) {
       const badgeUpdates: Record<string, boolean> = {};
       if (!p.badge_joseph && qtShareCnt >= 1) badgeUpdates.badge_joseph = true;
-      if (!p.badge_qt_bird && qtShareCnt >= 50) badgeUpdates.badge_qt_bird = true;
-      if (!p.badge_prayer_warrior && prayerSharedCnt >= 7) badgeUpdates.badge_prayer_warrior = true;
-      if (!p.badge_peter && groupParticipationCount >= 5) badgeUpdates.badge_peter = true;
+      if (!p.badge_qt_bird && qtShareCnt >= 30) badgeUpdates.badge_qt_bird = true;
+      if (!p.badge_word_peace && qtShareCnt >= 50) badgeUpdates.badge_word_peace = true;
+      if (!p.badge_prayer_ember && prayerSharedCnt >= 7) badgeUpdates.badge_prayer_ember = true;
+      if (!p.badge_prayer_warrior && prayerSharedCnt >= 15) badgeUpdates.badge_prayer_warrior = true;
+      if (!p.badge_roots_together && groupParticipationCount >= 5) badgeUpdates.badge_roots_together = true;
       if (Object.keys(badgeUpdates).length > 0) {
         const { error: badgeError } = await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
         if (!badgeError) {

@@ -497,20 +497,30 @@ export default function CommunityPage() {
     if (error || !newGroup) { setSavingGroup(false); return; }
     const { error: memberError } = await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     if (memberError) { setSavingGroup(false); return; }
-    // 그룹 5개 참여 배지는 그룹 생성/가입으로 5개를 채웠을 때 지급합니다.
+    // 베드로 배지는 첫 그룹 생성, 동행 배지는 그룹 5개 참여 시 지급합니다.
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: prof } = await supabase.from("profiles")
-          .select("badge_peter").eq("id", user.id).single();
+          .select("badge_peter, badge_roots_together").eq("id", user.id).single();
+        const updates: Record<string, boolean> = {};
+        let popup: null | { img: string; title: string; msg: string } = null;
         if (!prof?.badge_peter) {
+          updates.badge_peter = true;
+          popup = { img: "/badge_peter.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) };
+        }
+        if (!prof?.badge_roots_together) {
           const { data: memberships } = await supabase.from("group_members")
             .select("group_id").eq("user_id", user.id);
           const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
           if (joinedCount >= 5) {
-            await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
+            updates.badge_roots_together = true;
+            popup = { img: "/badge_roots_together.webp", title: c("community_badge_roots_together_title"), msg: t("badge_roots_together_msg", lang) };
           }
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("profiles").update(updates).eq("id", user.id);
+          if (popup) setBadgePopup(popup);
         }
       }
     } catch (e) {}
@@ -530,14 +540,14 @@ export default function CommunityPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: prof } = await supabase.from("profiles")
-          .select("badge_peter").eq("id", user.id).single();
-        if (!prof?.badge_peter) {
+          .select("badge_roots_together").eq("id", user.id).single();
+        if (!prof?.badge_roots_together) {
           const { data: memberships } = await supabase.from("group_members")
             .select("group_id").eq("user_id", user.id);
           const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
           if (joinedCount >= 5) {
-            await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
+            await supabase.from("profiles").update({ badge_roots_together: true }).eq("id", user.id);
+            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_roots_together_title"), msg: t("badge_roots_together_msg", lang) });
           }
         }
       }
