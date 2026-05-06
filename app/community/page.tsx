@@ -122,10 +122,10 @@ export default function CommunityPage() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
-  const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any }>(null);
+  const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
   const [manageText, setManageText] = useState("");
   const [manageSaving, setManageSaving] = useState(false);
-  const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any }>(null);
+  const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
@@ -138,21 +138,33 @@ export default function CommunityPage() {
     return rows.filter((row: any) => !keys.includes(contentKey(kind, row.id)));
   }
 
+  function visibilityTargets(value?: string | null) {
+    return String(value ?? "private")
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part && part !== "private");
+  }
+
+  function removeVisibilityTarget(value: string | null | undefined, target: string) {
+    const nextTargets = visibilityTargets(value).filter((part) => part !== target);
+    return nextTargets.length > 0 ? nextTargets.join(",") : "private";
+  }
+
   function memberCountText(count: number) {
     return c("community_member_count", { count });
   }
 
-  function openPrayerEdit(item: any, event?: any) {
+  function openPrayerEdit(item: any, event?: any, scope?: "all" | "group", groupId?: string) {
     event?.stopPropagation?.();
     setActionMenu(null);
     setManageText(item.content ?? "");
-    setManageModal({ kind: "prayer-edit", item });
+    setManageModal({ kind: "prayer-edit", item, scope, groupId });
   }
 
-  function openManage(kind: "qt-unshare" | "qt-edit" | "prayer-unshare", item: any, event?: any) {
+  function openManage(kind: "qt-unshare" | "qt-edit" | "prayer-unshare", item: any, event?: any, scope?: "all" | "group", groupId?: string) {
     event?.stopPropagation?.();
     setActionMenu(null);
-    setManageModal({ kind, item });
+    setManageModal({ kind, item, scope, groupId });
   }
 
   function closeManageModal() {
@@ -182,13 +194,25 @@ export default function CommunityPage() {
       if (!user) return;
       const isQt = manageModal.kind === "qt-unshare";
       const table = isQt ? "qt_records" : "prayer_items";
+      const target = manageModal.scope === "group" && manageModal.groupId ? `group_${manageModal.groupId}` : "all";
+      const nextVisibility = removeVisibilityTarget(manageModal.item.visibility, target);
       const { error } = await supabase
         .from(table)
-        .update({ visibility: "private" })
+        .update({ visibility: nextVisibility })
         .eq("id", manageModal.item.id)
         .eq("user_id", user.id);
       if (error) throw error;
-      removeSharedItem(isQt ? "qt" : "prayer", manageModal.item.id);
+
+      const updateVisibility = (item: any) => item.id === manageModal.item.id ? { ...item, visibility: nextVisibility } : item;
+      if (isQt) {
+        setQtShares(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
+        setGroupQts(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
+        if (detailQt?.id === manageModal.item.id && nextVisibility === "private") setDetailQt(null);
+      } else {
+        setPrayers(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
+        setGroupPrayers(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
+        setAnsweredPrayers(prev => prev.map(updateVisibility));
+      }
       closeManageModal();
     } catch (error) {
       console.error("community unshare failed", error);
@@ -228,18 +252,18 @@ export default function CommunityPage() {
     router.push(`/qt/record?id=${manageModal.item.id}&edit=1`);
   }
 
-  function CardMenu({ kind, item }: { kind: "qt" | "prayer"; item: any }) {
-    if (!userId) return null;
+  function CardMenu({ kind, item, scope = "all", groupId }: { kind: "qt" | "prayer"; item: any; scope?: "all" | "group"; groupId?: string }) {
     return (
       <button
-        onClick={(e) => { e.stopPropagation(); setActionMenu({ kind, item }); }}
-        aria-label={c("community_manage_more")}
-        style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActionMenu({ kind, item, scope, groupId }); }}
+        aria-label="Manage content"
+        style={{ width: 28, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
       >
-        <MoreHorizontal size={18} />
+        <MoreHorizontal size={16} />
       </button>
     );
   }
+
 
   async function hideItem(kind: "qt" | "prayer", item: any, shouldReport = false) {
     if (!userId) return;
@@ -274,7 +298,7 @@ export default function CommunityPage() {
 
   function renderActionMenu() {
     if (!actionMenu) return null;
-    const { kind, item } = actionMenu;
+    const { kind, item, scope, groupId } = actionMenu;
     const isMine = !!userId && item.user_id === userId;
     return (
       <div onClick={() => setActionMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 270, background: "rgba(26,28,30,0.58)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(18px + env(safe-area-inset-bottom))" }}>
@@ -282,10 +306,10 @@ export default function CommunityPage() {
           <p style={{ fontSize: 13, color: "var(--text3)", fontWeight: 800, padding: "4px 6px 10px" }}>{isMine ? c("community_manage_my_share") : c("community_manage_other_content")}</p>
           {isMine ? (
             <>
-              <button onClick={() => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item, undefined, scope, groupId)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <Trash2 size={17} /> {c("community_manage_unshare")}
               </button>
-              <button onClick={() => kind === "qt" ? openManage("qt-edit", item) : openPrayerEdit(item)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => kind === "qt" ? openManage("qt-edit", item, undefined, scope, groupId) : openPrayerEdit(item, undefined, scope, groupId)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <Edit3 size={17} /> {kind === "qt" ? c("community_manage_qt_edit") : c("community_manage_prayer_edit")}
               </button>
             </>
@@ -949,7 +973,7 @@ export default function CommunityPage() {
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-          <button onClick={() => { setSelectedGroup(null); setGroupQts([]); setGroupPrayers([]); setGroupDetailTab("qt"); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+          <button onClick={() => { setActionMenu(null); closeManageModal(); setSelectedGroup(null); setGroupQts([]); setGroupPrayers([]); setGroupDetailTab("qt"); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -1047,7 +1071,7 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="qt" item={r} />
+                          <CardMenu kind="qt" item={r} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
@@ -1084,7 +1108,7 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="prayer" item={p} />
+                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
 
@@ -1122,6 +1146,8 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
+        {renderActionMenu()}
+        {renderManageModal()}
         {showLeaveConfirm && selectedGroup && (
           <div
             onClick={() => !leavingGroup && setShowLeaveConfirm(false)}
@@ -1250,7 +1276,7 @@ export default function CommunityPage() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="prayer" item={p} />
+                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
@@ -1287,7 +1313,7 @@ export default function CommunityPage() {
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>
                             {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
                           </span>
-                          <CardMenu kind="prayer" item={p} />
+                          <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                         </div>
                       </div>
                       {/* 기도 제목 */}
@@ -1365,7 +1391,7 @@ export default function CommunityPage() {
                           </span>
                         )}
                         <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                        <CardMenu kind="qt" item={r} />
+                        <CardMenu kind="qt" item={r} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
                       </div>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>

@@ -6,7 +6,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3, Save } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3, Save, Trash2, Plus } from "lucide-react";
 
 
 // QT Record 전용 라벨 매핑
@@ -72,14 +72,26 @@ function splitDecisionItems(value?: string | null) {
   const items = String(value ?? "")
     .split("\n")
     .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 4);
-  while (items.length < 4) items.push("");
-  return items;
+    .filter(Boolean);
+  return items.length > 0 ? items : [""];
 }
 
 function joinDecisionItems(items: string[]) {
   return items.map((item) => item.trim()).filter(Boolean).join("\n");
+}
+
+function decisionAddLabel(lang: Lang, qtMode?: string) {
+  if (qtMode === "free") {
+    return lang === "ko" ? "결단 추가하기" : lang === "de" ? "Vorsatz hinzufügen" : lang === "fr" ? "Ajouter une décision" : "Add resolution";
+  }
+  return lang === "ko" ? "행동 추가하기" : lang === "de" ? "Handlung hinzufügen" : lang === "fr" ? "Ajouter une action" : "Add action";
+}
+
+function decisionPlaceholder(lang: Lang, index: number, qtMode?: string) {
+  if (qtMode === "free") {
+    return lang === "ko" ? `결단 ${index}` : lang === "de" ? `Vorsatz ${index}` : lang === "fr" ? `Décision ${index}` : `Resolution ${index}`;
+  }
+  return lang === "ko" ? `행동 ${index}` : lang === "de" ? `Handlung ${index}` : lang === "fr" ? `Action ${index}` : `Action ${index}`;
 }
 
 function RecordContent() {
@@ -442,7 +454,7 @@ function RecordContent() {
         <button onClick={openShareModal} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: `1px solid ${isShared ? "var(--sage)" : "var(--border)"}`, background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
           {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
         </button>
-        <button onClick={startEdit} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)", fontWeight: 800, whiteSpace: "nowrap" }}>
+        <button onClick={startEdit} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
           <Edit3 size={14} /> {trR("큐티 수정", lang)}
         </button>
       </div>
@@ -549,24 +561,45 @@ function RecordContent() {
               <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
               {editMode ? (
                 isDecision ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {[0, 1, 2, 3].map((idx) => (
-                      <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 8 }}>
-                          {idx + 1}
+                  <div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {editDecisionItems.map((item, idx) => (
+                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{idx + 1}</span>
+                          </div>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder={decisionPlaceholder(lang, idx + 1, record?.qt_mode)}
+                            value={item ?? ""}
+                            onChange={(e) => setEditDecisionItems(prev => {
+                              const next = [...prev];
+                              next[idx] = e.target.value;
+                              return next;
+                            })}
+                            style={{ flex: 1 }}
+                          />
+                          {editDecisionItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setEditDecisionItems(prev => prev.filter((_, i) => i !== idx))}
+                              aria-label="Delete decision"
+                              style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
-                        <textarea
-                          className="textarea-field"
-                          rows={2}
-                          value={editDecisionItems[idx] ?? ""}
-                          onChange={(e) => setEditDecisionItems(prev => {
-                            const next = [...prev];
-                            next[idx] = e.target.value;
-                            return next;
-                          })}
-                        />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditDecisionItems(prev => [...prev, ""])}
+                      style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}
+                    >
+                      <Plus size={14} /> {decisionAddLabel(lang, record?.qt_mode)}
+                    </button>
                   </div>
                 ) : (
                   <textarea
