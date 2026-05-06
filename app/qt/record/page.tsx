@@ -257,7 +257,6 @@ function RecordContent() {
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
       record.summary ? `\n${trR("말씀 요약", lang)}\n${record.summary}` : "",
-      `\n\n${t("qt_record_copy_signature", lang)}`,
     ];
 
     const sixStepParts = [
@@ -268,7 +267,6 @@ function RecordContent() {
       record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
-      `\n\n${t("qt_record_copy_signature", lang)}`,
     ];
 
     const parts = (isSunday ? sundayParts : sixStepParts).filter(Boolean).join("\n");
