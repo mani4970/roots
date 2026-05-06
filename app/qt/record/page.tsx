@@ -164,7 +164,7 @@ function RecordContent() {
           if (!prof?.badge_joseph && shareCount >= 1) {
             updates.badge_joseph = true;
           }
-          if (!prof?.badge_qt_bird && shareCount >= 30) {
+          if (!prof?.badge_qt_bird && shareCount >= 50) {
             updates.badge_qt_bird = true;
           }
           if (Object.keys(updates).length > 0) {
@@ -172,7 +172,7 @@ function RecordContent() {
             if (updates.badge_joseph && !prof?.badge_joseph) {
               setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
             } else if (updates.badge_qt_bird) {
-              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
             }
           }
         }

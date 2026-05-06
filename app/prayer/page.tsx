@@ -240,7 +240,7 @@ function PrayerPageContent() {
         return;
       }
 
-      // 기도의 용사 뱃지 체크 (중보요청 15번)
+      // 기도의 불씨 배지 체크 (중보요청 7번)
       // 전체 공개와 그룹 공유 모두 중보기도 요청으로 인정합니다.
       const { data: prof } = await supabase.from("profiles")
         .select("badge_prayer_warrior").eq("id", user.id).single();
@@ -248,10 +248,10 @@ function PrayerPageContent() {
         const { data: shared } = await supabase.from("prayer_items")
           .select("id, visibility").eq("user_id", user.id);
         const sharedCount = (shared ?? []).filter((row: any) => isSharedVisibility(row.visibility)).length;
-        if (sharedCount >= 15) {
+        if (sharedCount >= 7) {
           await supabase.from("profiles").update({ badge_prayer_warrior: true }).eq("id", user.id);
           setBadgePopup({
-            img: "/prayer_warrior.webp",
+            img: "/badge_rootswoman_fire.webp",
             title: c("prayer_badge_warrior_popup"),
             msg: t("badge_prayer_warrior_msg", lang),
           });

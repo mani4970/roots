@@ -497,18 +497,19 @@ export default function CommunityPage() {
     if (error || !newGroup) { setSavingGroup(false); return; }
     const { error: memberError } = await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     if (memberError) { setSavingGroup(false); return; }
-    // 베드로 뱃지는 그룹 생성과 멤버 등록이 성공한 뒤에만 지급합니다.
+    // 그룹 5개 참여 배지는 그룹 생성/가입으로 5개를 채웠을 때 지급합니다.
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: prof } = await supabase.from("profiles")
           .select("badge_peter").eq("id", user.id).single();
         if (!prof?.badge_peter) {
-          const { data: myGroups } = await supabase.from("groups")
-            .select("id").eq("created_by", user.id);
-          if ((myGroups?.length ?? 0) === 1) {
+          const { data: memberships } = await supabase.from("group_members")
+            .select("group_id").eq("user_id", user.id);
+          const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
+          if (joinedCount >= 5) {
             await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_peter.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
+            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
           }
         }
       }
@@ -524,6 +525,23 @@ export default function CommunityPage() {
     const joinedAt = new Date().toISOString();
     setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false } : g)));
     if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false }));
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: prof } = await supabase.from("profiles")
+          .select("badge_peter").eq("id", user.id).single();
+        if (!prof?.badge_peter) {
+          const { data: memberships } = await supabase.from("group_members")
+            .select("group_id").eq("user_id", user.id);
+          const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
+          if (joinedCount >= 5) {
+            await supabase.from("profiles").update({ badge_peter: true }).eq("id", user.id);
+            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) });
+          }
+        }
+      }
+    } catch (e) {}
   }
 
   async function toggleFavoriteGroup(group: any, event?: any) {
