@@ -8,7 +8,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2 } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
   { id: "bless", labelKey: "community_reaction_bless" },
@@ -122,11 +122,168 @@ export default function CommunityPage() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
+  const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any }>(null);
+  const [manageText, setManageText] = useState("");
+  const [manageSaving, setManageSaving] = useState(false);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
   function memberCountText(count: number) {
     return c("community_member_count", { count });
+  }
+
+  function openPrayerEdit(item: any, event?: any) {
+    event?.stopPropagation();
+    setManageText(item.content ?? "");
+    setManageModal({ kind: "prayer-edit", item });
+  }
+
+  function openManage(kind: "qt-unshare" | "qt-edit" | "prayer-unshare", item: any, event?: any) {
+    event?.stopPropagation();
+    setManageModal({ kind, item });
+  }
+
+  function closeManageModal() {
+    if (manageSaving) return;
+    setManageModal(null);
+    setManageText("");
+  }
+
+  function removeSharedItem(kind: "qt" | "prayer", id: string) {
+    if (kind === "qt") {
+      setQtShares(prev => prev.filter(item => item.id !== id));
+      setGroupQts(prev => prev.filter(item => item.id !== id));
+      if (detailQt?.id === id) setDetailQt(null);
+    } else {
+      setPrayers(prev => prev.filter(item => item.id !== id));
+      setGroupPrayers(prev => prev.filter(item => item.id !== id));
+      setAnsweredPrayers(prev => prev.filter(item => item.id !== id));
+    }
+  }
+
+  async function confirmUnshare() {
+    if (!manageModal || (manageModal.kind !== "qt-unshare" && manageModal.kind !== "prayer-unshare")) return;
+    setManageSaving(true);
+    const supabase = createClient();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const isQt = manageModal.kind === "qt-unshare";
+      const table = isQt ? "qt_records" : "prayer_items";
+      const { error } = await supabase
+        .from(table)
+        .update({ visibility: "private" })
+        .eq("id", manageModal.item.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      removeSharedItem(isQt ? "qt" : "prayer", manageModal.item.id);
+      closeManageModal();
+    } catch (error) {
+      console.error("community unshare failed", error);
+    } finally {
+      setManageSaving(false);
+    }
+  }
+
+  async function savePrayerEdit() {
+    if (!manageModal || manageModal.kind !== "prayer-edit" || !manageText.trim()) return;
+    setManageSaving(true);
+    const supabase = createClient();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const nextContent = manageText.trim();
+      const { error } = await supabase
+        .from("prayer_items")
+        .update({ content: nextContent })
+        .eq("id", manageModal.item.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      const updateItem = (item: any) => item.id === manageModal.item.id ? { ...item, content: nextContent } : item;
+      setPrayers(prev => prev.map(updateItem));
+      setGroupPrayers(prev => prev.map(updateItem));
+      setAnsweredPrayers(prev => prev.map(updateItem));
+      closeManageModal();
+    } catch (error) {
+      console.error("community prayer edit failed", error);
+    } finally {
+      setManageSaving(false);
+    }
+  }
+
+  function goEditQt() {
+    if (!manageModal || manageModal.kind !== "qt-edit") return;
+    router.push(`/qt/record?id=${manageModal.item.id}&edit=1`);
+  }
+
+  function ManageButtons({ kind, item }: { kind: "qt" | "prayer"; item: any }) {
+    if (!userId || item.user_id !== userId) return null;
+    return (
+      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <button
+          onClick={(e) => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item, e)}
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+        >
+          <Trash2 size={13} /> {c("community_manage_unshare")}
+        </button>
+        <button
+          onClick={(e) => kind === "qt" ? openManage("qt-edit", item, e) : openPrayerEdit(item, e)}
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 12, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+        >
+          <Edit3 size={13} /> {kind === "qt" ? c("community_manage_qt_edit") : c("community_manage_prayer_edit")}
+        </button>
+      </div>
+    );
+  }
+
+  function renderManageModal() {
+    if (!manageModal) return null;
+    const isQt = manageModal.kind.startsWith("qt");
+    const isEdit = manageModal.kind.endsWith("edit");
+    const title = manageModal.kind === "qt-unshare"
+      ? c("community_manage_qt_unshare_title")
+      : manageModal.kind === "prayer-unshare"
+        ? c("community_manage_prayer_unshare_title")
+        : manageModal.kind === "qt-edit"
+          ? c("community_manage_qt_edit_title")
+          : c("community_manage_prayer_edit_title");
+    const msg = manageModal.kind === "qt-unshare"
+      ? c("community_manage_qt_unshare_msg")
+      : manageModal.kind === "prayer-unshare"
+        ? c("community_manage_prayer_unshare_msg")
+        : manageModal.kind === "qt-edit"
+          ? c("community_manage_qt_edit_msg")
+          : c("community_manage_prayer_edit_msg");
+
+    return (
+      <div onClick={closeManageModal} style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{title}</h2>
+          <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>{msg}</p>
+          {manageModal.kind === "prayer-edit" && (
+            <textarea
+              className="textarea-field"
+              rows={5}
+              value={manageText}
+              onChange={(e) => setManageText(e.target.value)}
+              placeholder={c("community_manage_prayer_edit_placeholder")}
+              style={{ marginBottom: 14 }}
+            />
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={closeManageModal} disabled={manageSaving} className="btn-outline" style={{ flex: 1 }}>{c("community_cancel")}</button>
+            <button
+              onClick={manageModal.kind === "qt-edit" ? goEditQt : manageModal.kind === "prayer-edit" ? savePrayerEdit : confirmUnshare}
+              disabled={manageSaving || (manageModal.kind === "prayer-edit" && !manageText.trim())}
+              className={isEdit ? "btn-sage" : ""}
+              style={isEdit ? { flex: 1 } : { flex: 1, border: "none", borderRadius: 14, background: "rgba(196,106,106,0.14)", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: manageSaving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              {manageSaving ? <Loader2 size={15} className="spin" /> : isEdit ? c("community_manage_continue") : c("community_manage_unshare")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   function prayerActionText(prayer: any, alreadyPrayed: boolean) {
@@ -821,6 +978,7 @@ export default function CommunityPage() {
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
+                      <ManageButtons kind="qt" item={r} />
                       <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                     </div>
                   ))}
@@ -880,6 +1038,7 @@ export default function CommunityPage() {
                           </span>
                         </button>
                       )}
+                      <ManageButtons kind="prayer" item={p} />
                     </div>
                   ))}
                 </div>
@@ -1022,6 +1181,7 @@ export default function CommunityPage() {
                           {prayerActionText(p, prayedIds.includes(p.id))}
                         </span>
                       </button>
+                      <ManageButtons kind="prayer" item={p} />
                     </div>
                   ))}
                 </div>
@@ -1131,6 +1291,7 @@ export default function CommunityPage() {
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
+                    <ManageButtons kind="qt" item={r} />
                     <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                   </div>
                 ))}
@@ -1187,6 +1348,8 @@ export default function CommunityPage() {
           </div>
         )}
       </div>
+
+      {renderManageModal()}
 
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>

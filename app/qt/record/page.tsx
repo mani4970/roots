@@ -6,7 +6,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3, Save } from "lucide-react";
 
 
 // QT Record 전용 라벨 매핑
@@ -15,6 +15,11 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "전체 복사": "qt_record_copy_all",
   "복사됨! ✓": "qt_record_copied",
   "나누기": "qt_record_share",
+  "큐티 수정": "qt_record_edit",
+  "수정 저장": "qt_record_edit_save",
+  "수정 취소": "qt_record_edit_cancel",
+  "수정하면 내 기록과 공유된 모든 곳에 함께 반영돼요.": "qt_record_edit_notice",
+  "수정 내용을 저장했어요": "qt_record_edit_saved",
   "공유 중 (수정)": "qt_record_shared_edit",
   "취소": "qt_record_cancel",
   "큐티 나누기": "qt_record_share_title",
@@ -70,6 +75,9 @@ function RecordContent() {
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState<Record<string, string>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -98,6 +106,10 @@ function RecordContent() {
         const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
         if (data) {
           setRecord(data);
+          const initialEditData: Record<string, string> = {};
+          SECTIONS.forEach(({ key }) => { initialEditData[key] = data[key] ?? ""; });
+          setEditData(initialEditData);
+          if (params.get("edit") === "1") setEditMode(true);
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
           if (v !== "private") {
@@ -213,6 +225,49 @@ function RecordContent() {
     // 현재 공유 중인 것들을 초기 선택으로
     setSelectedTargets(sharedTargets.length > 0 ? [...sharedTargets] : []);
     setShowShareModal(true);
+  }
+
+  function startEdit() {
+    if (!record) return;
+    const next: Record<string, string> = {};
+    SECTIONS.forEach(({ key }) => { next[key] = record[key] ?? ""; });
+    setEditData(next);
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    if (!record) return;
+    const next: Record<string, string> = {};
+    SECTIONS.forEach(({ key }) => { next[key] = record[key] ?? ""; });
+    setEditData(next);
+    setEditMode(false);
+  }
+
+  async function saveEdit() {
+    if (!record || savingEdit) return;
+    setSavingEdit(true);
+    const supabase = createClient();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const payload: Record<string, string> = {};
+      SECTIONS.forEach(({ key }) => { payload[key] = (editData[key] ?? "").trim(); });
+      const { data, error } = await supabase
+        .from("qt_records")
+        .update(payload)
+        .eq("id", id)
+        .eq("user_id", user?.id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) setRecord(data);
+      setEditMode(false);
+      setNotice(trR("수정 내용을 저장했어요", lang));
+    } catch (error) {
+      console.error("qt record edit failed", error);
+      setNotice(t("qt_record_error_load", lang));
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   function copyAll() {
@@ -345,9 +400,12 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
-        <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={copyAll} style={{ flex: "1 1 120px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
+        </button>
+        <button onClick={startEdit} style={{ flex: "1 1 120px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>
+          <Edit3 size={14} /> {trR("큐티 수정", lang)}
         </button>
         {isShared ? (
           <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
@@ -436,17 +494,40 @@ function RecordContent() {
         </div>
       )}
 
+      {editMode && (
+        <div style={{ padding: "12px 16px 0" }}>
+          <div style={{ background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", borderRadius: 14, padding: "10px 12px", marginBottom: 10 }}>
+            <p style={{ fontSize: 12, lineHeight: 1.6, color: "var(--sage-dark)", fontWeight: 700 }}>{trR("수정하면 내 기록과 공유된 모든 곳에 함께 반영돼요.", lang)}</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={cancelEdit} disabled={savingEdit} className="btn-outline" style={{ flex: 1 }}>{trR("수정 취소", lang)}</button>
+            <button onClick={saveEdit} disabled={savingEdit} className="btn-sage" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {savingEdit ? <Loader2 size={15} className="spin" /> : <Save size={15} />}
+              {trR("수정 저장", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {(record?.qt_mode === "sunday"
           ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
           : SECTIONS
         ).map(({ key, label, italic, isDecision }) => {
-          const value = record[key];
-          if (!value) return null;
+          const value = editMode ? (editData[key] ?? "") : record[key];
+          if (!editMode && !value) return null;
           return (
             <div key={key} className="card">
               <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
-              {isDecision ? (
+              {editMode ? (
+                <textarea
+                  className="textarea-field"
+                  rows={isDecision ? 4 : 5}
+                  value={editData[key] ?? ""}
+                  onChange={(e) => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{ fontStyle: italic ? "italic" : "normal" }}
+                />
+              ) : isDecision ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
                     <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
