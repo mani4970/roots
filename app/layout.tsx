@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 
 export const metadata: Metadata = {
   title: "Roots",
@@ -65,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `
         }} />
       </head>
-      <body>{children}</body>
+      <body><CapacitorAuthBridge />{children}</body>
     </html>
   );
 }

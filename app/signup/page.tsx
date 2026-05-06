@@ -8,7 +8,7 @@ import { t, type Lang } from "@/lib/i18n";
 import { Loader2, ChevronLeft } from "lucide-react";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { storageSet } from "@/lib/clientStorage";
-import { getOAuthRedirectTo } from "@/lib/authRedirect";
+import { signInWithGoogleOAuth } from "@/lib/nativeOAuth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -29,10 +29,13 @@ export default function SignupPage() {
     storageSet("roots_lang_selected", "true");
     const d: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(d[lang] ?? 92));
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: getOAuthRedirectTo(lang) },
-    });
+    try {
+      await signInWithGoogleOAuth(supabase, lang);
+    } catch (error) {
+      console.error("Google signup failed", error);
+      setError(t("signup_error", lang));
+      setGLoading(false);
+    }
   }
 
   async function handleSignup() {
