@@ -8,7 +8,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2 } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
   { id: "bless", labelKey: "community_reaction_bless" },
@@ -125,21 +125,33 @@ export default function CommunityPage() {
   const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any }>(null);
   const [manageText, setManageText] = useState("");
   const [manageSaving, setManageSaving] = useState(false);
+  const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any }>(null);
+  const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+
+  function contentKey(kind: "qt" | "prayer", id: string) {
+    return `${kind}:${id}`;
+  }
+
+  function filterHiddenItems(kind: "qt" | "prayer", rows: any[], keys = hiddenKeys) {
+    return rows.filter((row: any) => !keys.includes(contentKey(kind, row.id)));
+  }
 
   function memberCountText(count: number) {
     return c("community_member_count", { count });
   }
 
   function openPrayerEdit(item: any, event?: any) {
-    event?.stopPropagation();
+    event?.stopPropagation?.();
+    setActionMenu(null);
     setManageText(item.content ?? "");
     setManageModal({ kind: "prayer-edit", item });
   }
 
   function openManage(kind: "qt-unshare" | "qt-edit" | "prayer-unshare", item: any, event?: any) {
-    event?.stopPropagation();
+    event?.stopPropagation?.();
+    setActionMenu(null);
     setManageModal({ kind, item });
   }
 
@@ -216,22 +228,79 @@ export default function CommunityPage() {
     router.push(`/qt/record?id=${manageModal.item.id}&edit=1`);
   }
 
-  function ManageButtons({ kind, item }: { kind: "qt" | "prayer"; item: any }) {
-    if (!userId || item.user_id !== userId) return null;
+  function CardMenu({ kind, item }: { kind: "qt" | "prayer"; item: any }) {
+    if (!userId) return null;
     return (
-      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button
-          onClick={(e) => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item, e)}
-          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-        >
-          <Trash2 size={13} /> {c("community_manage_unshare")}
-        </button>
-        <button
-          onClick={(e) => kind === "qt" ? openManage("qt-edit", item, e) : openPrayerEdit(item, e)}
-          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 12, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
-        >
-          <Edit3 size={13} /> {kind === "qt" ? c("community_manage_qt_edit") : c("community_manage_prayer_edit")}
-        </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); setActionMenu({ kind, item }); }}
+        aria-label={c("community_manage_more")}
+        style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+      >
+        <MoreHorizontal size={18} />
+      </button>
+    );
+  }
+
+  async function hideItem(kind: "qt" | "prayer", item: any, shouldReport = false) {
+    if (!userId) return;
+    setManageSaving(true);
+    const supabase = createClient();
+    try {
+      if (shouldReport) {
+        await supabase.from("content_reports").insert({
+          reporter_id: userId,
+          content_type: kind,
+          content_id: item.id,
+          reported_user_id: item.user_id ?? null,
+          reason: "inappropriate",
+        });
+      }
+      await supabase.from("hidden_community_items").upsert({
+        user_id: userId,
+        content_type: kind,
+        content_id: item.id,
+      }, { onConflict: "user_id,content_type,content_id" });
+      const key = contentKey(kind, item.id);
+      setHiddenKeys(prev => prev.includes(key) ? prev : [...prev, key]);
+      removeSharedItem(kind, item.id);
+      if (detailQt?.id === item.id) setDetailQt(null);
+      setActionMenu(null);
+    } catch (error) {
+      console.error("community report/hide failed", error);
+    } finally {
+      setManageSaving(false);
+    }
+  }
+
+  function renderActionMenu() {
+    if (!actionMenu) return null;
+    const { kind, item } = actionMenu;
+    const isMine = !!userId && item.user_id === userId;
+    return (
+      <div onClick={() => setActionMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 270, background: "rgba(26,28,30,0.58)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(18px + env(safe-area-inset-bottom))" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "14px", boxShadow: "0 18px 52px rgba(0,0,0,0.28)" }}>
+          <p style={{ fontSize: 13, color: "var(--text3)", fontWeight: 800, padding: "4px 6px 10px" }}>{isMine ? c("community_manage_my_share") : c("community_manage_other_content")}</p>
+          {isMine ? (
+            <>
+              <button onClick={() => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+                <Trash2 size={17} /> {c("community_manage_unshare")}
+              </button>
+              <button onClick={() => kind === "qt" ? openManage("qt-edit", item) : openPrayerEdit(item)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+                <Edit3 size={17} /> {kind === "qt" ? c("community_manage_qt_edit") : c("community_manage_prayer_edit")}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => hideItem(kind, item, true)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+                <Flag size={17} /> {c("community_report")}
+              </button>
+              <button onClick={() => hideItem(kind, item, false)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+                <EyeOff size={17} /> {c("community_hide_content")}
+              </button>
+            </>
+          )}
+          <button onClick={() => setActionMenu(null)} className="btn-outline" style={{ width: "100%", marginTop: 8 }}>{c("community_cancel")}</button>
+        </div>
       </div>
     );
   }
@@ -335,6 +404,12 @@ export default function CommunityPage() {
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
 
+    const { data: hiddenRows } = await supabase.from("hidden_community_items")
+      .select("content_type,content_id")
+      .eq("user_id", user.id);
+    const loadedHiddenKeys = (hiddenRows ?? []).map((row: any) => `${row.content_type}:${row.content_id}`);
+    setHiddenKeys(loadedHiddenKeys);
+
     // prayedIds: DB에서 로드
     const { data: prayLogs } = await supabase.from("user_prayer_logs")
       .select("prayer_id").eq("user_id", user.id);
@@ -349,7 +424,7 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false });
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
-        setPrayers(data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+        setPrayers(filterHiddenItems("prayer", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys));
       }
       // 응답됨 (간증 있는 것)
       const { data: answered } = await supabase.from("prayer_items")
@@ -374,7 +449,7 @@ export default function CommunityPage() {
         }
 
         setLikedPrayerIds(myLikedIds);
-        setAnsweredPrayers(answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })));
+        setAnsweredPrayers(filterHiddenItems("prayer", answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })), loadedHiddenKeys));
       } else {
         setLikedPrayerIds([]);
         setAnsweredPrayers([]);
@@ -386,7 +461,7 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false }).limit(30);
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
-        const withProfs = data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null }));
+        const withProfs = filterHiddenItems("qt", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys);
         setQtShares(withProfs);
         // 반응 카운트 로드
         const qtIds = data.map((r: any) => r.id);
@@ -497,16 +572,17 @@ export default function CommunityPage() {
     setLoadingGroupPrayers(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const currentHiddenKeys = hiddenKeys;
     const { data } = await supabase.from("qt_records")
       .select("*").ilike("visibility", `%group_${group.id}%`)
       .order("created_at", { ascending: false }).limit(30);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
-      const withProfs = data.map((r: any) => ({
+      const withProfs = filterHiddenItems("qt", data.map((r: any) => ({
         ...r,
         profiles: profMap[r.user_id] ?? null,
         isUnreadInGroup: isLaterThan(r.created_at, previousSeenAt),
-      }));
+      })), currentHiddenKeys);
       setGroupQts(withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
@@ -536,11 +612,11 @@ export default function CommunityPage() {
         .limit(50);
       if (prayerRows) {
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
-        setGroupPrayers(prayerRows.map((row: any) => ({
+        setGroupPrayers(filterHiddenItems("prayer", prayerRows.map((row: any) => ({
           ...row,
           profiles: prayerProfMap[row.user_id] ?? null,
           isUnreadInGroup: isLaterThan(row.created_at, previousSeenAt),
-        })));
+        })), currentHiddenKeys));
       } else {
         setGroupPrayers([]);
       }
@@ -971,6 +1047,7 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                          <CardMenu kind="qt" item={r} />
                         </div>
                       </div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
@@ -978,7 +1055,6 @@ export default function CommunityPage() {
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
-                      <ManageButtons kind="qt" item={r} />
                       <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                     </div>
                   ))}
@@ -1008,6 +1084,7 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                          <CardMenu kind="prayer" item={p} />
                         </div>
                       </div>
 
@@ -1038,7 +1115,6 @@ export default function CommunityPage() {
                           </span>
                         </button>
                       )}
-                      <ManageButtons kind="prayer" item={p} />
                     </div>
                   ))}
                 </div>
@@ -1172,7 +1248,10 @@ export default function CommunityPage() {
                           <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                          <CardMenu kind="prayer" item={p} />
+                        </div>
                       </div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
                       <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
@@ -1181,7 +1260,6 @@ export default function CommunityPage() {
                           {prayerActionText(p, prayedIds.includes(p.id))}
                         </span>
                       </button>
-                      <ManageButtons kind="prayer" item={p} />
                     </div>
                   ))}
                 </div>
@@ -1205,9 +1283,12 @@ export default function CommunityPage() {
                           <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                          {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                            {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
+                          </span>
+                          <CardMenu kind="prayer" item={p} />
+                        </div>
                       </div>
                       {/* 기도 제목 */}
                       <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text2)", marginBottom: 8, whiteSpace: "pre-line", textDecoration: "line-through", opacity: 0.7 }}>{p.content}</p>
@@ -1284,6 +1365,7 @@ export default function CommunityPage() {
                           </span>
                         )}
                         <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                        <CardMenu kind="qt" item={r} />
                       </div>
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
@@ -1291,7 +1373,6 @@ export default function CommunityPage() {
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
-                    <ManageButtons kind="qt" item={r} />
                     <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 8, textAlign: "right" }}>{c("community_tap_details")}</p>
                   </div>
                 ))}
@@ -1349,6 +1430,7 @@ export default function CommunityPage() {
         )}
       </div>
 
+      {renderActionMenu()}
       {renderManageModal()}
 
       {showGroupForm && (
