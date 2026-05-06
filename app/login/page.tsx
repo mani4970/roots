@@ -12,6 +12,20 @@ import { storageGet, storageSet } from "@/lib/clientStorage";
 import { signInWithGoogleOAuth } from "@/lib/nativeOAuth";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 
+function getSafeRedirectFromLocation() {
+  if (typeof window === "undefined") return "/";
+  const redirect = new URLSearchParams(window.location.search).get("redirect");
+  if (!redirect || !redirect.startsWith("/") || redirect.startsWith("//")) return "/";
+  return redirect;
+}
+
+function withRedirect(path: string) {
+  const redirect = getSafeRedirectFromLocation();
+  if (redirect === "/") return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}redirect=${encodeURIComponent(redirect)}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const detectedLang = useLang();
@@ -48,7 +62,7 @@ export default function LoginPage() {
     if (user) {
       await supabase.from("profiles").update({ preferred_translation: trId, preferred_language: lang }).eq("id", user.id);
     }
-    router.push("/"); router.refresh();
+    router.push(getSafeRedirectFromLocation()); router.refresh();
   }
 
   async function handleGoogle() {
@@ -64,7 +78,7 @@ export default function LoginPage() {
     const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
     try {
-      await signInWithGoogleOAuth(supabase, lang);
+      await signInWithGoogleOAuth(supabase, lang, getSafeRedirectFromLocation());
     } catch (error) {
       console.error("Google login failed", error);
       setError(t("login_error", lang));
@@ -94,7 +108,7 @@ export default function LoginPage() {
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 10 }}>{browserGuide.title}</h3>
             <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text2)", marginBottom: 10 }}>{browserGuide.body}</p>
             <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)", marginBottom: 16 }}>{browserGuide.hint}</p>
-            <button onClick={openCurrentPageInNewWindow} className="btn-primary" style={{ marginBottom: 10 }}>{browserGuide.open}</button>
+            <button onClick={async () => { openCurrentPageInNewWindow(); await handleCopyLink(); }} className="btn-primary" style={{ marginBottom: 10 }}>{browserGuide.open}</button>
             <button onClick={handleCopyLink} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
               {linkCopied ? browserGuide.copied : browserGuide.copy}
             </button>
@@ -105,7 +119,7 @@ export default function LoginPage() {
         </div>
       )}
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
-      <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 20, left: 20 }}>
+      <Link href={withRedirect("/welcome")} style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 20, left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
@@ -154,6 +168,12 @@ export default function LoginPage() {
           {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}
         </button>
 
+        <div style={{ marginTop: 16, textAlign: "center" }}>
+          <p style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>{t("login_signup_prompt", lang)}</p>
+          <button onClick={() => router.push(withRedirect("/signup"))} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 700 }}>
+            {t("login_signup_btn", lang)}
+          </button>
+        </div>
 
       </div>
     </div>

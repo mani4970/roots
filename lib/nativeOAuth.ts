@@ -14,12 +14,12 @@ type SupabaseOAuthClient = {
   };
 };
 
-export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang: Lang) {
+export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang: Lang, nextPath?: string | null) {
   const nativeApp = isCapacitorApp();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: getOAuthRedirectTo(lang),
+      redirectTo: getOAuthRedirectTo(lang, nextPath),
       skipBrowserRedirect: nativeApp,
     },
   });

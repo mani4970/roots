@@ -2,9 +2,18 @@ import type { Lang } from "@/lib/i18n";
 
 const DEFAULT_CAPACITOR_AUTH_CALLBACK = "roots://auth/callback";
 
-function appendLang(url: string, lang: Lang) {
+function appendQuery(url: string, params: Record<string, string | undefined>) {
+  const entries = Object.entries(params).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0);
+  if (entries.length === 0) return url;
+  const query = entries.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
   const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}lang=${encodeURIComponent(lang)}`;
+  return `${url}${separator}${query}`;
+}
+
+function safeNextPath(nextPath?: string | null) {
+  if (!nextPath) return undefined;
+  if (!nextPath.startsWith("/") || nextPath.startsWith("//")) return undefined;
+  return nextPath;
 }
 
 export function isCapacitorApp() {
@@ -33,14 +42,16 @@ export function isCapacitorApp() {
   return false;
 }
 
-export function getOAuthRedirectTo(lang: Lang) {
+export function getOAuthRedirectTo(lang: Lang, nextPath?: string | null) {
   if (typeof window === "undefined") return undefined;
+
+  const next = safeNextPath(nextPath);
 
   if (isCapacitorApp()) {
     const capacitorCallback =
       process.env.NEXT_PUBLIC_CAPACITOR_AUTH_CALLBACK || DEFAULT_CAPACITOR_AUTH_CALLBACK;
-    return appendLang(capacitorCallback, lang);
+    return appendQuery(capacitorCallback, { lang, next });
   }
 
-  return `${window.location.origin}/auth/callback?lang=${encodeURIComponent(lang)}`;
+  return appendQuery(`${window.location.origin}/auth/callback`, { lang, next });
 }

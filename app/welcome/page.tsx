@@ -200,6 +200,13 @@ function IconArrow() {
   );
 }
 
+function getWelcomeRedirect() {
+  if (typeof window === "undefined") return "";
+  const redirect = new URLSearchParams(window.location.search).get("redirect");
+  if (!redirect || !redirect.startsWith("/") || redirect.startsWith("//")) return "";
+  return `?redirect=${encodeURIComponent(redirect)}`;
+}
+
 function IconLeaf() {
   return (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -252,12 +259,12 @@ export default function WelcomePage() {
 
   function goSignup() {
     saveLangLocally(lang);
-    router.push("/signup");
+    router.push(`/signup${getWelcomeRedirect()}`);
   }
 
   function goLogin() {
     saveLangLocally(lang);
-    router.push("/login");
+    router.push(`/login${getWelcomeRedirect()}`);
   }
 
 

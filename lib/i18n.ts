@@ -510,6 +510,8 @@ export const T = {
   login_error: { ko: "이메일 또는 비밀번호가 틀렸어요", de: "E-Mail oder Passwort ist falsch", en: "Login failed. Please check your credentials.", fr: "Échec de la connexion. Vérifiez vos identifiants." },
   login_no_account: { ko: "계정이 없으신가요?",         de: "Noch kein Konto?", en: "No account yet?", fr: "Pas encore de compte ?" },
   login_signup_link: { ko: "회원가입",                  de: "Registrieren", en: "Sign up", fr: "S’inscrire" },
+  login_signup_prompt: { ko: "아직 계정이 없으신가요?", de: "Noch kein Konto?", en: "Don’t have an account yet?", fr: "Vous n’avez pas encore de compte ?" },
+  login_signup_btn: { ko: "회원가입", de: "Registrieren", en: "Sign up", fr: "S’inscrire" },
   signup_title: { ko: "시작하기",                 de: "Loslegen", en: "Join Roots 🌱", fr: "Rejoindre Roots 🌱" },
   signup_sub: { ko: "오늘부터 말씀에 뿌리내려요 🌱", de: "Ab heute in Gottes Wort verwurzeln 🌱", en: "Root yourself in God's Word from today 🌱", fr: "Enracinez-vous dans la Parole de Dieu dès aujourd’hui 🌱" },
   signup_nickname: { ko: "닉네임",                   de: "Nickname", en: "Nickname", fr: "Pseudo" },
@@ -520,6 +522,8 @@ export const T = {
   signup_error: { ko: "회원가입에 실패했어요. 다시 시도해주세요.", de: "Registrierung fehlgeschlagen. Bitte erneut versuchen.", en: "Sign-up failed. Please try again.", fr: "Échec de l’inscription. Veuillez réessayer." },
   signup_pw_error: { ko: "비밀번호는 6자 이상이어야 해요", de: "Passwort muss mindestens 6 Zeichen haben", en: "Password must be at least 6 characters", fr: "Le mot de passe doit contenir au moins 6 caractères" },
   signup_back: { ko: "로그인으로",               de: "Zurück zur Anmeldung", en: "Back to login", fr: "Retour à la connexion" },
+  signup_login_prompt: { ko: "이미 계정이 있으신가요?", de: "Sie haben bereits ein Konto?", en: "Already have an account?", fr: "Vous avez déjà un compte ?" },
+  signup_login_btn: { ko: "로그인", de: "Anmelden", en: "Log in", fr: "Connexion" },
 
   // ── 공통 ──
   save: { ko: "저장",    de: "Speichern", en: "Save", fr: "Enregistrer" },
@@ -752,7 +756,7 @@ export const T = {
   join_moving_community: { ko: "커뮤니티로 이동 중...", de: "Weiter zur Community...", en: "Moving to Community...", fr: "Redirection vers la communauté..." },
   join_members_joined: { ko: "{count}명 참여 중", de: "{count} Mitglieder dabei", en: "{count} members joined", fr: "{count} membres" },
   join_private_notice: { ko: "비공개 그룹이에요.\n로그인 후 참여할 수 있어요.", de: "Dies ist eine private Gruppe.\nNach dem Login können Sie beitreten.", en: "This is a private group.\nYou can join after logging in.", fr: "Ceci est un groupe privé.\nVous pouvez le rejoindre après connexion." },
-  join_no_account_hint: { ko: "Roots 계정이 없으신가요? 참여 후 가입할 수 있어요", de: "Sie haben noch kein Roots-Konto? Nach dem Beitritt können Sie sich registrieren.", en: "No Roots account yet? You can sign up after joining.", fr: "Vous n’avez pas encore de compte Roots ? Vous pourrez vous inscrire après avoir rejoint le groupe." },
+  join_no_account_hint: { ko: "가입 혹은 로그인 후 참여할 수 있어요", de: "Nach der Registrierung oder Anmeldung können Sie beitreten.", en: "You can join after signing up or logging in.", fr: "Vous pourrez rejoindre après inscription ou connexion." },
 
   // ── 성경 번역본 그룹 라벨 ──
     qt_translation_ko: { ko: "한국어",   de: "Koreanisch", en: "Korean", fr: "Coréen" },

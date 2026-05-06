@@ -10,10 +10,17 @@ function isLang(value: string | null): value is Lang {
   return !!value && (SUPPORTED_LANGS as readonly string[]).includes(value)
 }
 
+function getSafeNext(value: string | null) {
+  if (!value) return "/";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const selectedLang = searchParams.get('lang')
+  const next = getSafeNext(searchParams.get('next'))
 
   if (code) {
     const cookieStore = cookies()
@@ -45,5 +52,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/`)
+  return NextResponse.redirect(`${origin}${next}`)
 }

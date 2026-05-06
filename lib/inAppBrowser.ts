@@ -25,9 +25,18 @@ export function getCurrentExternalUrl() {
   return window.location.href;
 }
 
-export function openCurrentPageInNewWindow() {
+export async function openCurrentPageInNewWindow() {
   if (typeof window === "undefined") return;
-  window.open(getCurrentExternalUrl(), "_blank", "noopener,noreferrer");
+  const url = getCurrentExternalUrl();
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+    }
+  } catch {}
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    window.location.href = url;
+  }
 }
 
 export async function copyCurrentPageUrl() {

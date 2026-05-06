@@ -116,7 +116,7 @@ function JoinContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push(`/login?redirect=/join?group=${groupId}`);
+        router.push(`/welcome?redirect=${encodeURIComponent(`/join?group=${groupId}`)}`);
         return;
       }
       const { data: existing } = await supabase.from("group_members")
@@ -144,7 +144,13 @@ function JoinContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🌱</div>
+        <img
+          src="/roots-logo-transparent-160.png"
+          alt={t("auth_logo_alt", lang)}
+          width={76}
+          height={76}
+          style={{ objectFit: "contain", marginBottom: 16 }}
+        />
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Roots</h1>
         <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 28 }}>{t("home_loading_sub", lang)}</p>
 

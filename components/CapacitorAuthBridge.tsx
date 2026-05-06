@@ -33,6 +33,12 @@ function getSearchParams(rawUrl: string) {
   }
 }
 
+function getSafeNext(value: string | null) {
+  if (!value) return "/";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
 export default function CapacitorAuthBridge() {
   const router = useRouter();
   const handledUrls = useRef(new Set<string>());
@@ -50,6 +56,7 @@ export default function CapacitorAuthBridge() {
       const params = getSearchParams(rawUrl);
       const lang = normalizeLang(params.get("lang"));
       const code = params.get("code");
+      const next = getSafeNext(params.get("next"));
       const error = params.get("error") || params.get("error_description");
 
       storageSet("roots_lang", lang);
@@ -72,7 +79,8 @@ export default function CapacitorAuthBridge() {
         return;
       }
 
-      router.replace(`/?lang=${encodeURIComponent(lang)}`);
+      const separator = next.includes("?") ? "&" : "?";
+      router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
       router.refresh();
     }
 
