@@ -58,7 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             (function(){
               try {
                 var t = localStorage.getItem('roots_theme');
-                if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+                if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else document.documentElement.removeAttribute('data-theme');
               } catch (e) {}
             })();
             var isCapacitorApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
