@@ -88,7 +88,7 @@ export default function HomePage() {
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const lang = useLang();
   const [showLangPicker, setShowLangPicker] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
@@ -123,8 +123,11 @@ export default function HomePage() {
   async function load() {
     if (typeof window !== "undefined") {
       const saved = storageGet("roots_theme");
-      if (saved === "light") {
-        document.documentElement.setAttribute("data-theme", "light");
+      if (saved === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        setTheme("dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
         setTheme("light");
       }
     }
@@ -795,15 +798,15 @@ export default function HomePage() {
           <button
             onClick={() => {
               const html = document.documentElement;
-              const isLight = html.getAttribute("data-theme") === "light";
-              if (isLight) {
+              const isDark = html.getAttribute("data-theme") === "dark";
+              if (isDark) {
                 html.removeAttribute("data-theme");
-                storageSet("roots_theme", "dark");
-              } else {
-                html.setAttribute("data-theme", "light");
                 storageSet("roots_theme", "light");
+              } else {
+                html.setAttribute("data-theme", "dark");
+                storageSet("roots_theme", "dark");
               }
-              setTheme(isLight ? "dark" : "light");
+              setTheme(isDark ? "light" : "dark");
             }}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 4, lineHeight: 1 }}
           >

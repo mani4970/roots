@@ -3,28 +3,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  /* 다크 모드 (기본) */
-  --bg: #1A1C1E;
-  --bg2: #22252A;
-  --bg3: #2A2E34;
-  --sage: #7A9D7A;
-  --sage-light: #2A3A2A;
-  --sage-dark: #A8C8A8;
-  --terra: #C4956A;
-  --terra-light: #3A2A1E;
-  --terra-dark: #E0B88A;
-  --text: #EAEAEA;
-  --text2: #B8B8B8;
-  --text3: #808080;
-  --white: #22252A;
-  --border: #333840;
-  --beige: #D4C5A9;
-  --beige-light: #2E2820;
-  --html-bg: #111315;
-}
-
-/* 라이트 모드 — 따뜻한 베이지 톤 */
-[data-theme="light"] {
+  /* 라이트 모드 (기본) — 따뜻한 베이지 톤 */
   --bg: #FAF6F0;
   --bg2: #FFFFFF;
   --bg3: #F0EBE3;
@@ -42,6 +21,27 @@
   --beige: #8B7D6B;
   --beige-light: #F5EDE4;
   --html-bg: #F0EBE3;
+}
+
+/* 다크 모드 */
+[data-theme="dark"] {
+  --bg: #1A1C1E;
+  --bg2: #22252A;
+  --bg3: #2A2E34;
+  --sage: #7A9D7A;
+  --sage-light: #2A3A2A;
+  --sage-dark: #A8C8A8;
+  --terra: #C4956A;
+  --terra-light: #3A2A1E;
+  --terra-dark: #E0B88A;
+  --text: #EAEAEA;
+  --text2: #B8B8B8;
+  --text3: #808080;
+  --white: #22252A;
+  --border: #333840;
+  --beige: #D4C5A9;
+  --beige-light: #2E2820;
+  --html-bg: #111315;
 }
 
 html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--html-bg); }
