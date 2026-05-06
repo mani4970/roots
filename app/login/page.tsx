@@ -10,6 +10,7 @@ import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { storageGet, storageSet } from "@/lib/clientStorage";
 import { signInWithGoogleOAuth } from "@/lib/nativeOAuth";
+import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +23,8 @@ export default function LoginPage() {
   const [gLoading, setGLoading] = useState(false);
   const [error, setError] = useState("");
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showBrowserGuide, setShowBrowserGuide] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -49,6 +52,11 @@ export default function LoginPage() {
   }
 
   async function handleGoogle() {
+    if (isInAppBrowser()) {
+      setShowBrowserGuide(true);
+      setLinkCopied(false);
+      return;
+    }
     setGLoading(true);
     const supabase = createClient();
     storageSet("roots_lang", lang);
@@ -64,12 +72,38 @@ export default function LoginPage() {
     }
   }
 
+
+  const browserGuide = inAppBrowserText(lang);
+
+  async function handleCopyLink() {
+    const copied = await copyCurrentPageUrl();
+    if (copied) setLinkCopied(true);
+  }
+
   if (showLangPicker) {
     return <LanguagePicker initialLang={lang} onSelect={(nextLang) => { setSelectedLang(nextLang); setShowLangPicker(false); }} />;
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative" }}>
+
+      {showBrowserGuide && (
+        <div onClick={() => setShowBrowserGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(26,28,30,0.66)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "22px 20px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>🌿</div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 10 }}>{browserGuide.title}</h3>
+            <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text2)", marginBottom: 10 }}>{browserGuide.body}</p>
+            <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)", marginBottom: 16 }}>{browserGuide.hint}</p>
+            <button onClick={openCurrentPageInNewWindow} className="btn-primary" style={{ marginBottom: 10 }}>{browserGuide.open}</button>
+            <button onClick={handleCopyLink} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
+              {linkCopied ? browserGuide.copied : browserGuide.copy}
+            </button>
+            <button onClick={() => setShowBrowserGuide(false)} style={{ border: "none", background: "transparent", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: 8 }}>
+              {browserGuide.close}
+            </button>
+          </div>
+        </div>
+      )}
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
       <Link href="/welcome" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 20, left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
