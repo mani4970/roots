@@ -112,11 +112,31 @@ export default function ProfilePage() {
       setPrayerSharedCount(sharedCount);
     }
 
-    // 큐티 커뮤니티 나눔 횟수
+    // 큐티 나눔 횟수
+    // visibility가 private인 기록은 실제 나눔이 아니므로 제외합니다.
     const { data: qtShares } = await supabase.from("qt_records")
-      .select("id").eq("user_id", user.id).not("visibility", "is", null).eq("is_draft", false);
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_draft", false)
+      .not("visibility", "is", null)
+      .neq("visibility", "private")
+      .neq("visibility", "");
     const qtShareCnt = qtShares?.length ?? 0;
     setQtShareCount(qtShareCnt);
+
+    // 기존 기록이 이미 조건을 채웠는데 배지 컬럼만 false인 경우를 보정합니다.
+    // 예: 말씀 배달부 배지 로직 적용 전에 이미 QT 나눔 30회를 채운 사용자.
+    if (p) {
+      const badgeUpdates: Record<string, boolean> = {};
+      if (!p.badge_joseph && qtShareCnt >= 1) badgeUpdates.badge_joseph = true;
+      if (!p.badge_qt_bird && qtShareCnt >= 30) badgeUpdates.badge_qt_bird = true;
+      if (Object.keys(badgeUpdates).length > 0) {
+        const { error: badgeError } = await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
+        if (!badgeError) {
+          setProfile((current: any) => ({ ...(current ?? p), ...badgeUpdates }));
+        }
+      }
+    }
 
     setLoading(false);
   }

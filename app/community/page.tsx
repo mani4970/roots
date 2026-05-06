@@ -33,8 +33,10 @@ function isLaterThan(left?: string | null, right?: string | null) {
 
 function sortGroupsForDisplay(groups: any[]) {
   return [...groups].sort((a, b) => {
+    const aHasNew = !!(a.hasNewContent ?? a.hasNewQt);
+    const bHasNew = !!(b.hasNewContent ?? b.hasNewQt);
     if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
-    if (!!a.hasNewQt !== !!b.hasNewQt) return a.hasNewQt ? -1 : 1;
+    if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
   });
 }
@@ -287,6 +289,8 @@ export default function CommunityPage() {
           .select("*", { count: "exact", head: true }).eq("group_id", g.id);
 
         let latestQtAt: string | null = null;
+        let latestPrayerAt: string | null = null;
+        const lastSeenGroupAt = memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null;
         if (isMember) {
           const { data: latestQt } = await supabase.from("qt_records")
             .select("created_at")
@@ -295,16 +299,31 @@ export default function CommunityPage() {
             .limit(1)
             .maybeSingle();
           latestQtAt = latestQt?.created_at ?? null;
+
+          const { data: latestPrayer } = await supabase.from("prayer_items")
+            .select("created_at")
+            .ilike("visibility", `%group_${g.id}%`)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          latestPrayerAt = latestPrayer?.created_at ?? null;
         }
+
+        const hasNewQtShare = isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
+        const hasNewPrayer = isMember && isLaterThan(latestPrayerAt, lastSeenGroupAt);
 
         return {
           ...g,
           member_count: count ?? 0,
           isMember,
           isFavorite: !!memberMeta?.is_favorite,
-          last_seen_qt_at: memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null,
+          last_seen_qt_at: lastSeenGroupAt,
           latest_qt_at: latestQtAt,
-          hasNewQt: isMember && isLaterThan(latestQtAt, memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null),
+          latest_prayer_at: latestPrayerAt,
+          hasNewQtShare,
+          hasNewPrayer,
+          hasNewContent: hasNewQtShare || hasNewPrayer,
+          hasNewQt: hasNewQtShare || hasNewPrayer,
         };
       }));
       setGroups(sortGroupsForDisplay(withMeta));
@@ -313,10 +332,10 @@ export default function CommunityPage() {
   }
 
   async function loadGroupDetail(group: any) {
-    setGroupDetailTab("qt");
+    setGroupDetailTab(group.hasNewPrayer && !group.hasNewQtShare ? "prayer" : "qt");
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
-    setSelectedGroup({ ...group, hasNewQt: false, last_seen_qt_at: openedAt });
+    setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
     const supabase = createClient();
@@ -346,7 +365,7 @@ export default function CommunityPage() {
           if (oldError) console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
         }
         const persistedSeenAt = Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at ? seenRows[0].last_seen_qt_at : openedAt;
-        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, last_seen_qt_at: persistedSeenAt } : g)));
+        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: persistedSeenAt } : g)));
       }
     }
 
@@ -363,6 +382,7 @@ export default function CommunityPage() {
         setGroupPrayers(prayerRows.map((row: any) => ({
           ...row,
           profiles: prayerProfMap[row.user_id] ?? null,
+          isUnreadInGroup: isLaterThan(row.created_at, previousSeenAt),
         })));
       } else {
         setGroupPrayers([]);
@@ -502,8 +522,8 @@ export default function CommunityPage() {
     const supabase = createClient();
     await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
     const joinedAt = new Date().toISOString();
-    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false } : g)));
-    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false }));
+    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false } : g)));
+    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false }));
   }
 
   async function toggleFavoriteGroup(group: any, event?: any) {
@@ -566,7 +586,7 @@ export default function CommunityPage() {
     setGroupDetailTab("qt");
     setDetailQt(null);
     setGroups(prev => sortGroupsForDisplay(prev
-      .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
+      .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
       .filter(g => wasPublic || g.id !== leftGroupId)
     ));
     setLeavingGroup(false);
@@ -795,7 +815,14 @@ export default function CommunityPage() {
                           <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {p.isUnreadInGroup && (
+                            <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                              {c("community_unread")}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                        </div>
                       </div>
 
                       {p.is_answered && (
@@ -1096,7 +1123,7 @@ export default function CommunityPage() {
               </div>
             ) : (
               groups.map(g => (
-                <div key={g.id} onClick={() => loadGroupDetail(g)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") loadGroupDetail(g); }} style={{ width: "100%", textAlign: "left", background: g.hasNewQt ? "rgba(122,157,122,0.08)" : "var(--bg2)", border: `1px solid ${g.hasNewQt ? "rgba(122,157,122,0.35)" : "var(--border)"}`, borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                <div key={g.id} onClick={() => loadGroupDetail(g)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") loadGroupDetail(g); }} style={{ width: "100%", textAlign: "left", background: (g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.08)" : "var(--bg2)", border: `1px solid ${(g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.35)" : "var(--border)"}`, borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
                   {g.isMember && (
                     <button
                       onClick={(e) => toggleFavoriteGroup(g, e)}
@@ -1113,7 +1140,7 @@ export default function CommunityPage() {
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.is_public ? "var(--sage-light)" : "var(--bg3)", color: g.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
                         {g.is_public ? (c("community_public")) : (c("community_private"))}
                       </span>
-                      {g.hasNewQt && (
+                      {(g.hasNewContent ?? g.hasNewQt) && (
                         <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)" }}>
                           {c("community_new")}
                         </span>
