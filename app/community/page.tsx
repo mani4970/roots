@@ -249,7 +249,7 @@ export default function CommunityPage() {
 
   function goEditQt() {
     if (!manageModal || manageModal.kind !== "qt-edit") return;
-    router.push(`/qt/record?id=${manageModal.item.id}&edit=1`);
+    router.push(`/qt/write?editId=${manageModal.item.id}`);
   }
 
   function CardMenu({ kind, item, scope = "all", groupId }: { kind: "qt" | "prayer"; item: any; scope?: "all" | "group"; groupId?: string }) {

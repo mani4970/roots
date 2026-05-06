@@ -123,6 +123,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "자동 임시저장됨 · {time}": { de: "Automatisch gespeichert · {time}", en: "Auto-saved · {time}", fr: "Enregistré automatiquement · {time}" },
   "작성 내용은 자동으로 임시저장돼요": { de: "Ihre Eingaben werden automatisch als Entwurf gespeichert", en: "Your writing is auto-saved as a draft", fr: "Votre texte est enregistré automatiquement comme brouillon" },
   "자동 임시저장 실패 · 수동 임시저장을 눌러주세요": { de: "Automatisches Speichern fehlgeschlagen · Bitte manuell speichern", en: "Auto-save failed · Please save manually", fr: "Échec de l’enregistrement automatique · Enregistrez manuellement" },
+  "수정 모드에서는 자동 임시저장이 꺼져 있어요": { de: "Im Bearbeitungsmodus ist die automatische Speicherung deaktiviert", en: "Auto-save is off while editing", fr: "L’enregistrement automatique est désactivé pendant la modification" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   // UI 문자열
@@ -380,6 +381,8 @@ function QTWriteContent() {
     toastTimerRef.current = window.setTimeout(() => setToast(null), duration);
   }
   const initMode = params.get("mode") as "6step" | "sunday" | "free" | null;
+  const editId = params.get("editId");
+  const isEditMode = Boolean(editId);
   const isResume = params.get("resume") === "true";
   const isCatchUp = params.get("catchup") === "true";
   // 오늘 스케줄 파라미터
@@ -506,7 +509,7 @@ function QTWriteContent() {
     const loadSchedulePassage = async () => {
       // resume=true일 때는 draft 복원이 끝날 때까지 빈 화면을 유지해
       // 기본 말씀 선택 화면이 잠깐 보이는 flicker를 막는다.
-      if (isResume) return;
+      if (isResume || isEditMode) return;
       if (mode !== "6step") {
         setPageReady(true);
         return;
@@ -632,6 +635,138 @@ function QTWriteContent() {
     };
 
     const loadDraft = async () => {
+      if (isEditMode && editId) {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.push("/login"); return; }
+        const { data: record, error } = await supabase
+          .from("qt_records")
+          .select("*")
+          .eq("id", editId)
+          .eq("user_id", user.id)
+          .eq("is_draft", false)
+          .maybeSingle();
+        if (error || !record) {
+          showToast(t("qt_record_error_load", lang), "error");
+          setPageReady(true);
+          return;
+        }
+
+        resetDraftState();
+        setSelectedDate(record.date ?? todayStr);
+        setMode(record.qt_mode ?? "6step");
+        setCur(0);
+
+        const sundayRecord = record.qt_mode === "sunday" ? parseSundayBibleRef(record.bible_ref) : null;
+        if (sundayRecord) {
+          setSermonTitle(sundayRecord.title);
+          const [mainRef, ...extraRefs] = sundayRecord.refs;
+          if (mainRef) {
+            setBibleRef(mainRef);
+            setBibleStep("done");
+            setSundayBibleStep("done");
+          }
+          if (extraRefs.length > 0) {
+            setPassages(extraRefs.map(ref => ({
+              book: "",
+              chapter: "",
+              startV: "",
+              endV: "",
+              endChapter: "",
+              cross: ref.includes("-") && ref.includes(":"),
+              verses: [],
+              ref,
+            })));
+          }
+        } else if (record.bible_ref) {
+          setBibleRef(record.bible_ref);
+          setBibleStep("done");
+        }
+
+        if (record.key_verse) {
+          setKeyVerse(record.key_verse);
+          setBibleStep("done");
+          const restoredNums = String(record.key_verse)
+            .split("\n")
+            .map((line: string) => {
+              const m = line.match(/^(\d+)\s/);
+              return m ? parseInt(m[1], 10) : null;
+            })
+            .filter((n: number | null): n is number => n !== null);
+          if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
+        }
+        if (record.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: record.opening_prayer }));
+        if (record.summary) setAnswers(p => ({ ...p, summary: record.summary }));
+        if (record.meditation) {
+          if (record.qt_mode === "free") setFreeText(record.meditation);
+          else setAnswers(p => ({ ...p, meditation: record.meditation }));
+        }
+        if (record.application) setAnswers(p => ({ ...p, application: record.application }));
+        if (record.closing_prayer) setAnswers(p => ({ ...p, closing_prayer: record.closing_prayer }));
+        if (record.decision) {
+          const dList = String(record.decision).split("\n").map((d: string) => d.replace(/^\s*\d+[.)]\s*/, "").trim()).filter(Boolean);
+          if (dList.length > 0) setDecisions(dList);
+        }
+
+        const refForReload = sundayRecord?.refs?.[0] ?? record.bible_ref;
+        if (refForReload) {
+          try {
+            const SHORT_TO_FULL: Record<string, string> = {
+              "창":"창세기","출":"출애굽기","레":"레위기","민":"민수기","신":"신명기",
+              "수":"여호수아","삿":"사사기","룻":"룻기","삼상":"사무엘상","삼하":"사무엘하",
+              "왕상":"열왕기상","왕하":"열왕기하","대상":"역대상","대하":"역대하","스":"에스라",
+              "느":"느헤미야","에":"에스더","욥":"욥기","시":"시편","잠":"잠언",
+              "전":"전도서","아":"아가","사":"이사야","렘":"예레미야","애":"예레미야애가",
+              "겔":"에스겔","단":"다니엘","호":"호세아","욜":"요엘","암":"아모스",
+              "옵":"오바댜","욘":"요나","미":"미가","나":"나훔","합":"하박국",
+              "습":"스바냐","학":"학개","슥":"스가랴","말":"말라기",
+              "마":"마태복음","막":"마가복음","눅":"누가복음","요":"요한복음",
+              "행":"사도행전","롬":"로마서","고전":"고린도전서","고후":"고린도후서",
+              "갈":"갈라디아서","엡":"에베소서","빌":"빌립보서","골":"골로새서",
+              "살전":"데살로니가전서","살후":"데살로니가후서","딤전":"디모데전서","딤후":"디모데후서",
+              "딛":"디도서","몬":"빌레몬서","히":"히브리서","약":"야고보서",
+              "벧전":"베드로전서","벧후":"베드로후서","요일":"요한일서","요이":"요한이서",
+              "요삼":"요한삼서","유":"유다서","계":"요한계시록",
+            };
+            const match = String(refForReload).match(/^(.+?)\s+(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/);
+            if (match) {
+              const [, abbr, chap, sv, evChap, ev] = match;
+              const bookName = SHORT_TO_FULL[abbr] ?? abbr;
+              const finalEndChapter = evChap ?? chap;
+              const finalEndVerse = ev ?? sv;
+              setBook(bookName);
+              setChapter(chap);
+              setStartV(sv);
+              setEndChapter(finalEndChapter);
+              setEndV(finalEndVerse);
+              setCrossChapter(finalEndChapter !== chap);
+              if (finalEndChapter !== chap) {
+                const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+                const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+                const idx = allLocalBooks.indexOf(bookName);
+                const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
+                const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
+                const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+                const d1 = await r1.json();
+                const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+                const d2 = await r2.json();
+                const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
+                if (verses.length > 0) setPassageVerses(verses);
+              } else {
+                const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+                const data = await res.json();
+                if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
+              }
+              setBibleStep("done");
+              setSundayBibleStep("done");
+            }
+          } catch {
+            // 본문 재로드 실패해도 저장된 QT 내용은 수정 가능
+          }
+        }
+        setPageReady(true);
+        return;
+      }
       if (!isResume) {
         if (!hasSchedule) setPageReady(true);
         return;
@@ -791,7 +926,7 @@ function QTWriteContent() {
       setPageReady(true);
     }
     loadDraft();
-  }, [isResume, selectedDate]);
+  }, [isResume, isEditMode, editId, selectedDate]);
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
@@ -994,6 +1129,14 @@ function QTWriteContent() {
   }
 
   function renderAutoSaveStatus() {
+    if (isEditMode) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: "var(--text3)", fontSize: 11 }}>
+          <Save size={12} />
+          <span>{trQT("수정 모드에서는 자동 임시저장이 꺼져 있어요", lang)}</span>
+        </div>
+      );
+    }
     if (selectedDate !== todayStr) return null;
 
     return (
@@ -1046,6 +1189,7 @@ function QTWriteContent() {
   });
 
   async function saveDraft(options: SaveDraftOptions = {}) {
+    if (isEditMode) return false;
     const silent = options.silent ?? false;
     const markSaving = options.markSaving ?? true;
     const snapshot = options.snapshot ?? getDraftSnapshot();
@@ -1160,7 +1304,7 @@ function QTWriteContent() {
   }
 
   useEffect(() => {
-    if (!pageReady || selectedDate !== todayStr) return;
+    if (isEditMode || !pageReady || selectedDate !== todayStr) return;
 
     const snapshot = getDraftSnapshot();
     if (!hasDraftContent(snapshot)) {
@@ -1184,13 +1328,47 @@ function QTWriteContent() {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [isEditMode, pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
     };
   }, []);
+
+  function buildCompleteRecordData(userId: string) {
+    const decisionText = decisions.filter(d => d.trim()).join("\n");
+    let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode };
+
+    if (mode === "free") {
+      recordData = { ...recordData, bible_ref: bibleRef, key_verse: keyVerse, meditation: freeText, decision: decisionText };
+    } else if (mode === "sunday") {
+      const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
+      recordData = {
+        ...recordData,
+        bible_ref: buildSundayBibleRef(sermonTitle, allRefs),
+        opening_prayer: answers.opening_prayer ?? "",
+        summary: answers.summary ?? "",
+        meditation: answers.meditation ?? "",
+        application: answers.application ?? "",
+        decision: decisionText,
+        closing_prayer: answers.closing_prayer ?? "",
+      };
+    } else {
+      recordData = {
+        ...recordData,
+        bible_ref: bibleRef,
+        key_verse: keyVerse,
+        opening_prayer: answers.opening_prayer ?? "",
+        summary: answers.summary ?? "",
+        meditation: answers.meditation ?? "",
+        application: answers.application ?? "",
+        decision: decisionText,
+        closing_prayer: answers.closing_prayer ?? "",
+      };
+    }
+    return recordData;
+  }
 
   async function save() {
     if (autoSaveTimerRef.current) {
@@ -1204,61 +1382,46 @@ function QTWriteContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
+      const recordData = buildCompleteRecordData(user.id);
+
+      if (isEditMode && editId) {
+        const { error } = await supabase.from("qt_records")
+          .update({ ...recordData, is_draft: false, current_step: cur })
+          .eq("id", editId)
+          .eq("user_id", user.id)
+          .eq("is_draft", false);
+        if (error) {
+          showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+          return;
+        }
+        router.push(`/qt/record?id=${editId}`);
+        return;
+      }
+
       const { data: rows, error: rowsError } = await supabase.from("qt_records")
         .select("id,is_draft,created_at")
         .eq("user_id", user.id)
         .eq("date", selectedDate)
         .order("created_at", { ascending: false });
-      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
+      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
 
       // 완료된 기록이 이미 있으면 막기 (draft는 통과)
-      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info"); setSaving(false); return; }
-
-      const decisionText = decisions.filter(d => d.trim()).join("\n");
-      let insertData: any = { user_id: user.id, date: selectedDate, qt_mode: mode };
-
-      if (mode === "free") {
-        insertData = { ...insertData, bible_ref: bibleRef, key_verse: keyVerse, meditation: freeText, decision: decisionText };
-      } else if (mode === "sunday") {
-        // 말씀 ref: 메인 + 추가 말씀 합치기
-        const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
-        insertData = {
-          ...insertData,
-          bible_ref: buildSundayBibleRef(sermonTitle, allRefs),
-          opening_prayer: answers.opening_prayer ?? "",
-          summary: answers.summary ?? "",
-          meditation: answers.meditation ?? "",
-          application: answers.application ?? "",
-          decision: decisionText,
-          closing_prayer: answers.closing_prayer ?? "",
-        };
-      } else {
-        insertData = {
-          ...insertData,
-          bible_ref: bibleRef, key_verse: keyVerse,
-          opening_prayer: answers.opening_prayer ?? "",
-          summary: answers.summary ?? "",
-          meditation: answers.meditation ?? "",
-          application: answers.application ?? "",
-          decision: decisionText,
-          closing_prayer: answers.closing_prayer ?? "",
-        };
-      }
+      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info"); return; }
 
       // draft가 있으면 update, 없으면 insert
       if (draftRecord) {
         const { error } = await supabase.from("qt_records")
-          .update({ ...insertData, is_draft: false }).eq("id", draftRecord.id);
-        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
+          .update({ ...recordData, is_draft: false }).eq("id", draftRecord.id);
+        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
       } else {
-        const { error } = await supabase.from("qt_records").insert({ ...insertData, is_draft: false });
+        const { error } = await supabase.from("qt_records").insert({ ...recordData, is_draft: false });
         if (error) {
-          const { qt_mode, ...withoutMode } = insertData;
+          const { qt_mode, ...withoutMode } = recordData;
           const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
-          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); setSaving(false); return; }
+          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
         }
       }
 
@@ -1617,11 +1780,13 @@ function QTWriteContent() {
 
         <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
           <button onClick={save} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
-            {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
+            {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
           </button>
-          <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
-            {trQT("임시저장하고 나중에 이어쓰기", lang)}
-          </button>
+          {!isEditMode && (
+            <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+              {trQT("임시저장하고 나중에 이어쓰기", lang)}
+            </button>
+          )}
           {renderAutoSaveStatus()}
         </div>
       </div>
@@ -1889,16 +2054,18 @@ function QTWriteContent() {
             {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
               <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-                {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
+                {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
               </button>
             ) : (
               <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
             )}
           </div>
           {/* 임시저장 버튼 */}
-          <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
-            {trQT("임시저장하고 나중에 이어쓰기", lang)}
-          </button>
+          {!isEditMode && (
+            <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+              {trQT("임시저장하고 나중에 이어쓰기", lang)}
+            </button>
+          )}
           {renderAutoSaveStatus()}
         </div>
       </div>
@@ -2168,20 +2335,22 @@ function QTWriteContent() {
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
             <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{trQT("큐티 완료", lang)}</>}
+              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
             </button>
           ) : (
             <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
           )}
         </div>
         {/* 임시저장 버튼 */}
-        <button
-          onClick={() => saveDraft()}
-          disabled={saving || selectedDate !== todayStr}
-          style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}
-        >
-          {trQT("임시저장하고 나중에 이어쓰기", lang)}
-        </button>
+        {!isEditMode && (
+          <button
+            onClick={() => saveDraft()}
+            disabled={saving || selectedDate !== todayStr}
+            style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text3)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}
+          >
+            {trQT("임시저장하고 나중에 이어쓰기", lang)}
+          </button>
+        )}
         {renderAutoSaveStatus()}
       </div>
     </div>

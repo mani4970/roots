@@ -152,7 +152,7 @@ function RecordContent() {
           SECTION_META.forEach(({ key }) => { initialEditData[key] = data[key] ?? ""; });
           setEditData(initialEditData);
           setEditDecisionItems(splitDecisionItems(data.decision));
-          if (params.get("edit") === "1") setEditMode(true);
+          if (params.get("edit") === "1") router.replace(`/qt/write?editId=${data.id}`);
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
           setSharedTargets(v !== "private" ? v.split(",").filter(Boolean) : []);
@@ -275,11 +275,7 @@ function RecordContent() {
 
   function startEdit() {
     if (!record) return;
-    const next: Record<string, string> = {};
-    SECTION_META.forEach(({ key }) => { next[key] = record[key] ?? ""; });
-    setEditData(next);
-    setEditDecisionItems(splitDecisionItems(record.decision));
-    setEditMode(true);
+    router.push(`/qt/write?editId=${record.id}`);
   }
 
   function cancelEdit() {
