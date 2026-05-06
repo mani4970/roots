@@ -2,9 +2,27 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://christian-roots.com"),
   title: "Roots",
   description: "매일 말씀과 동행하는 삶, 루츠와 함께",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "🌱 Roots",
+    description: "말씀에 뿌리내리고, 함께 자라는 크리스천 앱",
+    url: "https://christian-roots.com",
+    siteName: "Roots",
+    images: [
+      { url: "/og-roots-share.png", width: 1200, height: 630, alt: "Roots" },
+    ],
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "🌱 Roots",
+    description: "말씀에 뿌리내리고, 함께 자라는 크리스천 앱",
+    images: ["/og-roots-share.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -40,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             (function(){
               try {
                 var t = localStorage.getItem('roots_theme');
-                if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
               } catch (e) {}
             })();
             var isCapacitorApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());

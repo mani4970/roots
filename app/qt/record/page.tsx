@@ -6,7 +6,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3, Save, Trash2, Plus } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
 
 
 // QT Record 전용 라벨 매핑
@@ -15,11 +15,6 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "전체 복사": "qt_record_copy_all",
   "복사됨! ✓": "qt_record_copied",
   "나누기": "qt_record_share",
-  "큐티 수정": "qt_record_edit",
-  "수정 저장": "qt_record_edit_save",
-  "수정 취소": "qt_record_edit_cancel",
-  "수정하면 내 기록과 공유된 모든 곳에 함께 반영돼요.": "qt_record_edit_notice",
-  "수정 내용을 저장했어요": "qt_record_edit_saved",
   "공유 중 (수정)": "qt_record_shared_edit",
   "취소": "qt_record_cancel",
   "큐티 나누기": "qt_record_share_title",
@@ -58,42 +53,6 @@ function sectionLabel(key: string, qtMode?: string, lang?: Lang): string {
   return trR(map[key] || key, lang || "ko");
 }
 
-const SECTION_META = [
-  { key: "opening_prayer", italic: false, isDecision: false },
-  { key: "summary", italic: false, isDecision: false },
-  { key: "key_verse", italic: true, isDecision: false },
-  { key: "meditation", italic: false, isDecision: false },
-  { key: "application", italic: false, isDecision: false },
-  { key: "decision", italic: false, isDecision: true },
-  { key: "closing_prayer", italic: false, isDecision: false },
-] as const;
-
-function splitDecisionItems(value?: string | null) {
-  const items = String(value ?? "")
-    .split("\n")
-    .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
-    .filter(Boolean);
-  return items.length > 0 ? items : [""];
-}
-
-function joinDecisionItems(items: string[]) {
-  return items.map((item) => item.trim()).filter(Boolean).join("\n");
-}
-
-function decisionAddLabel(lang: Lang, qtMode?: string) {
-  if (qtMode === "free") {
-    return lang === "ko" ? "결단 추가하기" : lang === "de" ? "Vorsatz hinzufügen" : lang === "fr" ? "Ajouter une décision" : "Add resolution";
-  }
-  return lang === "ko" ? "행동 추가하기" : lang === "de" ? "Handlung hinzufügen" : lang === "fr" ? "Ajouter une action" : "Add action";
-}
-
-function decisionPlaceholder(lang: Lang, index: number, qtMode?: string) {
-  if (qtMode === "free") {
-    return lang === "ko" ? `결단 ${index}` : lang === "de" ? `Vorsatz ${index}` : lang === "fr" ? `Décision ${index}` : `Resolution ${index}`;
-  }
-  return lang === "ko" ? `행동 ${index}` : lang === "de" ? `Handlung ${index}` : lang === "fr" ? `Action ${index}` : `Action ${index}`;
-}
-
 function RecordContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -111,10 +70,6 @@ function RecordContent() {
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [editData, setEditData] = useState<Record<string, string>>({});
-  const [editDecisionItems, setEditDecisionItems] = useState<string[]>(["", "", "", ""]);
-  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -140,41 +95,28 @@ function RecordContent() {
       const supabase = createClient();
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        const { data, error } = await supabase.from("qt_records").select("*").eq("id", id).maybeSingle();
-        if (error) {
-          console.error("qt record load failed", error);
-          setNotice(t("qt_record_error_load", lang));
-          return;
-        }
+        const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
         if (data) {
           setRecord(data);
-          const initialEditData: Record<string, string> = {};
-          SECTION_META.forEach(({ key }) => { initialEditData[key] = data[key] ?? ""; });
-          setEditData(initialEditData);
-          setEditDecisionItems(splitDecisionItems(data.decision));
-          if (params.get("edit") === "1") router.replace(`/qt/write?editId=${data.id}`);
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
-          setSharedTargets(v !== "private" ? v.split(",").filter(Boolean) : []);
+          if (v !== "private") {
+            setSharedTargets(v.split(",").filter(Boolean));
+          }
         }
         // 내가 속한 그룹 — Supabase에서 로드
         if (user) {
-          const { data: memberRows, error: memberError } = await supabase.from("group_members")
+          const { data: memberRows } = await supabase.from("group_members")
             .select("group_id").eq("user_id", user.id);
-          if (memberError) {
-            console.warn("qt record groups load failed", memberError);
-          } else {
-            const gIds = (memberRows ?? []).map((r: any) => r.group_id).filter(Boolean);
-            if (gIds.length > 0) {
-              const { data: groupData, error: groupError } = await supabase.from("groups")
-                .select("id, name, is_public").in("id", gIds);
-              if (groupError) console.warn("qt record group names load failed", groupError);
-              setMyGroups(groupData ?? []);
-            }
+          const gIds = (memberRows ?? []).map((r: any) => r.group_id);
+          if (gIds.length > 0) {
+            const { data: groupData } = await supabase.from("groups")
+              .select("id, name, is_public").in("id", gIds);
+            setMyGroups(groupData ?? []);
           }
         }
       } catch (error) {
-        console.error("qt record load unexpected failure", error);
+        console.error("qt record load failed", error);
         setNotice(t("qt_record_error_load", lang));
       } finally {
         setLoading(false);
@@ -213,7 +155,7 @@ function RecordContent() {
         const { data: { user: u } } = await supabase.auth.getUser();
         if (u) {
           const { data: prof } = await supabase.from("profiles")
-            .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", u.id).single();
+            .select("badge_qt_bird, badge_joseph").eq("id", u.id).single();
           const { data: shares } = await supabase.from("qt_records")
             .select("id").eq("user_id", u.id).eq("is_draft", false)
             .not("visibility", "is", null).neq("visibility", "private");
@@ -222,20 +164,15 @@ function RecordContent() {
           if (!prof?.badge_joseph && shareCount >= 1) {
             updates.badge_joseph = true;
           }
-          if (!prof?.badge_qt_bird && shareCount >= 30) {
+          if (!prof?.badge_qt_bird && shareCount >= 50) {
             updates.badge_qt_bird = true;
-          }
-          if (!prof?.badge_word_peace && shareCount >= 50) {
-            updates.badge_word_peace = true;
           }
           if (Object.keys(updates).length > 0) {
             await supabase.from("profiles").update(updates).eq("id", u.id);
             if (updates.badge_joseph && !prof?.badge_joseph) {
               setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
-            } else if (updates.badge_word_peace) {
-              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
             } else if (updates.badge_qt_bird) {
-              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
             }
           }
         }
@@ -271,49 +208,6 @@ function RecordContent() {
     // 현재 공유 중인 것들을 초기 선택으로
     setSelectedTargets(sharedTargets.length > 0 ? [...sharedTargets] : []);
     setShowShareModal(true);
-  }
-
-  function startEdit() {
-    if (!record) return;
-    router.push(`/qt/write?editId=${record.id}`);
-  }
-
-  function cancelEdit() {
-    if (!record) return;
-    const next: Record<string, string> = {};
-    SECTION_META.forEach(({ key }) => { next[key] = record[key] ?? ""; });
-    setEditData(next);
-    setEditDecisionItems(splitDecisionItems(record.decision));
-    setEditMode(false);
-  }
-
-  async function saveEdit() {
-    if (!record || savingEdit) return;
-    setSavingEdit(true);
-    const supabase = createClient();
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const payload: Record<string, string> = {};
-      SECTION_META.forEach(({ key, isDecision }) => {
-        payload[key] = isDecision ? joinDecisionItems(editDecisionItems) : (editData[key] ?? "").trim();
-      });
-      const { data, error } = await supabase
-        .from("qt_records")
-        .update(payload)
-        .eq("id", id)
-        .eq("user_id", user?.id)
-        .select()
-        .single();
-      if (error) throw error;
-      if (data) setRecord(data);
-      setEditMode(false);
-      setNotice(trR("수정 내용을 저장했어요", lang));
-    } catch (error) {
-      console.error("qt record edit failed", error);
-      setNotice(t("qt_record_error_load", lang));
-    } finally {
-      setSavingEdit(false);
-    }
   }
 
   function copyAll() {
@@ -399,12 +293,15 @@ function RecordContent() {
   if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p></div>;
 
   const isShared = sharedTargets.length > 0;
-  const SECTIONS = SECTION_META.map(({ key, italic, isDecision }) => ({
-    key,
-    label: sectionLabel(key, record?.qt_mode, lang),
-    italic,
-    isDecision,
-  }));
+  const SECTIONS = [
+    { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
+    { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
+    { key: "key_verse", label: sectionLabel("key_verse", record?.qt_mode, lang), italic: true },
+    { key: "meditation", label: sectionLabel("meditation", record?.qt_mode, lang) },
+    { key: "application", label: sectionLabel("application", record?.qt_mode, lang) },
+    { key: "decision", label: sectionLabel("decision", record?.qt_mode, lang), isDecision: true },
+    { key: "closing_prayer", label: sectionLabel("closing_prayer", record?.qt_mode, lang) },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
@@ -443,16 +340,20 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-        <button onClick={copyAll} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
+        <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
-        <button onClick={openShareModal} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: `1px solid ${isShared ? "var(--sage)" : "var(--border)"}`, background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
-          {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
-        </button>
-        <button onClick={startEdit} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
-          <Edit3 size={14} /> {trR("큐티 수정", lang)}
-        </button>
+        {isShared ? (
+          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
+            <Check size={14} /> {trR("공유 중 (수정)", lang)}
+          </button>
+        ) : (
+          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
+            <Share2 size={14} /> {trR("나누기", lang)}
+          </button>
+        )}
+
       </div>
 
       {/* 나누기 모달 */}
@@ -530,83 +431,17 @@ function RecordContent() {
         </div>
       )}
 
-      {editMode && (
-        <div style={{ padding: "12px 16px 0" }}>
-          <div style={{ background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", borderRadius: 14, padding: "10px 12px", marginBottom: 10 }}>
-            <p style={{ fontSize: 12, lineHeight: 1.6, color: "var(--sage-dark)", fontWeight: 700 }}>{trR("수정하면 내 기록과 공유된 모든 곳에 함께 반영돼요.", lang)}</p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={cancelEdit} disabled={savingEdit} className="btn-outline" style={{ flex: 1 }}>{trR("수정 취소", lang)}</button>
-            <button onClick={saveEdit} disabled={savingEdit} className="btn-sage" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              {savingEdit ? <Loader2 size={15} className="spin" /> : <Save size={15} />}
-              {trR("수정 저장", lang)}
-            </button>
-          </div>
-        </div>
-      )}
-
       <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {(record?.qt_mode === "sunday"
           ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
           : SECTIONS
         ).map(({ key, label, italic, isDecision }) => {
-          const value = editMode ? (editData[key] ?? "") : record[key];
-          if (!editMode && !value) return null;
+          const value = record[key];
+          if (!value) return null;
           return (
             <div key={key} className="card">
               <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
-              {editMode ? (
-                isDecision ? (
-                  <div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {editDecisionItems.map((item, idx) => (
-                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{idx + 1}</span>
-                          </div>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder={decisionPlaceholder(lang, idx + 1, record?.qt_mode)}
-                            value={item ?? ""}
-                            onChange={(e) => setEditDecisionItems(prev => {
-                              const next = [...prev];
-                              next[idx] = e.target.value;
-                              return next;
-                            })}
-                            style={{ flex: 1 }}
-                          />
-                          {editDecisionItems.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setEditDecisionItems(prev => prev.filter((_, i) => i !== idx))}
-                              aria-label="Delete decision"
-                              style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", padding: 4, flexShrink: 0 }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditDecisionItems(prev => [...prev, ""])}
-                      style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}
-                    >
-                      <Plus size={14} /> {decisionAddLabel(lang, record?.qt_mode)}
-                    </button>
-                  </div>
-                ) : (
-                  <textarea
-                    className="textarea-field"
-                    rows={5}
-                    value={editData[key] ?? ""}
-                    onChange={(e) => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
-                    style={{ fontStyle: italic ? "italic" : "normal" }}
-                  />
-                )
-              ) : isDecision ? (
+              {isDecision ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
                     <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
