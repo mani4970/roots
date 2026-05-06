@@ -58,6 +58,30 @@ function sectionLabel(key: string, qtMode?: string, lang?: Lang): string {
   return trR(map[key] || key, lang || "ko");
 }
 
+const SECTION_META = [
+  { key: "opening_prayer", italic: false, isDecision: false },
+  { key: "summary", italic: false, isDecision: false },
+  { key: "key_verse", italic: true, isDecision: false },
+  { key: "meditation", italic: false, isDecision: false },
+  { key: "application", italic: false, isDecision: false },
+  { key: "decision", italic: false, isDecision: true },
+  { key: "closing_prayer", italic: false, isDecision: false },
+] as const;
+
+function splitDecisionItems(value?: string | null) {
+  const items = String(value ?? "")
+    .split("\n")
+    .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  while (items.length < 4) items.push("");
+  return items;
+}
+
+function joinDecisionItems(items: string[]) {
+  return items.map((item) => item.trim()).filter(Boolean).join("\n");
+}
+
 function RecordContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -77,6 +101,7 @@ function RecordContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<Record<string, string>>({});
+  const [editDecisionItems, setEditDecisionItems] = useState<string[]>(["", "", "", ""]);
   const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
@@ -103,32 +128,41 @@ function RecordContent() {
       const supabase = createClient();
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
+        const { data, error } = await supabase.from("qt_records").select("*").eq("id", id).maybeSingle();
+        if (error) {
+          console.error("qt record load failed", error);
+          setNotice(t("qt_record_error_load", lang));
+          return;
+        }
         if (data) {
           setRecord(data);
           const initialEditData: Record<string, string> = {};
-          SECTIONS.forEach(({ key }) => { initialEditData[key] = data[key] ?? ""; });
+          SECTION_META.forEach(({ key }) => { initialEditData[key] = data[key] ?? ""; });
           setEditData(initialEditData);
+          setEditDecisionItems(splitDecisionItems(data.decision));
           if (params.get("edit") === "1") setEditMode(true);
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
-          if (v !== "private") {
-            setSharedTargets(v.split(",").filter(Boolean));
-          }
+          setSharedTargets(v !== "private" ? v.split(",").filter(Boolean) : []);
         }
         // 내가 속한 그룹 — Supabase에서 로드
         if (user) {
-          const { data: memberRows } = await supabase.from("group_members")
+          const { data: memberRows, error: memberError } = await supabase.from("group_members")
             .select("group_id").eq("user_id", user.id);
-          const gIds = (memberRows ?? []).map((r: any) => r.group_id);
-          if (gIds.length > 0) {
-            const { data: groupData } = await supabase.from("groups")
-              .select("id, name, is_public").in("id", gIds);
-            setMyGroups(groupData ?? []);
+          if (memberError) {
+            console.warn("qt record groups load failed", memberError);
+          } else {
+            const gIds = (memberRows ?? []).map((r: any) => r.group_id).filter(Boolean);
+            if (gIds.length > 0) {
+              const { data: groupData, error: groupError } = await supabase.from("groups")
+                .select("id, name, is_public").in("id", gIds);
+              if (groupError) console.warn("qt record group names load failed", groupError);
+              setMyGroups(groupData ?? []);
+            }
           }
         }
       } catch (error) {
-        console.error("qt record load failed", error);
+        console.error("qt record load unexpected failure", error);
         setNotice(t("qt_record_error_load", lang));
       } finally {
         setLoading(false);
@@ -230,16 +264,18 @@ function RecordContent() {
   function startEdit() {
     if (!record) return;
     const next: Record<string, string> = {};
-    SECTIONS.forEach(({ key }) => { next[key] = record[key] ?? ""; });
+    SECTION_META.forEach(({ key }) => { next[key] = record[key] ?? ""; });
     setEditData(next);
+    setEditDecisionItems(splitDecisionItems(record.decision));
     setEditMode(true);
   }
 
   function cancelEdit() {
     if (!record) return;
     const next: Record<string, string> = {};
-    SECTIONS.forEach(({ key }) => { next[key] = record[key] ?? ""; });
+    SECTION_META.forEach(({ key }) => { next[key] = record[key] ?? ""; });
     setEditData(next);
+    setEditDecisionItems(splitDecisionItems(record.decision));
     setEditMode(false);
   }
 
@@ -250,7 +286,9 @@ function RecordContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const payload: Record<string, string> = {};
-      SECTIONS.forEach(({ key }) => { payload[key] = (editData[key] ?? "").trim(); });
+      SECTION_META.forEach(({ key, isDecision }) => {
+        payload[key] = isDecision ? joinDecisionItems(editDecisionItems) : (editData[key] ?? "").trim();
+      });
       const { data, error } = await supabase
         .from("qt_records")
         .update(payload)
@@ -353,15 +391,12 @@ function RecordContent() {
   if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p></div>;
 
   const isShared = sharedTargets.length > 0;
-  const SECTIONS = [
-    { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
-    { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
-    { key: "key_verse", label: sectionLabel("key_verse", record?.qt_mode, lang), italic: true },
-    { key: "meditation", label: sectionLabel("meditation", record?.qt_mode, lang) },
-    { key: "application", label: sectionLabel("application", record?.qt_mode, lang) },
-    { key: "decision", label: sectionLabel("decision", record?.qt_mode, lang), isDecision: true },
-    { key: "closing_prayer", label: sectionLabel("closing_prayer", record?.qt_mode, lang) },
-  ];
+  const SECTIONS = SECTION_META.map(({ key, italic, isDecision }) => ({
+    key,
+    label: sectionLabel(key, record?.qt_mode, lang),
+    italic,
+    isDecision,
+  }));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
@@ -400,23 +435,16 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={copyAll} style={{ flex: "1 1 120px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+        <button onClick={copyAll} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
-        <button onClick={startEdit} style={{ flex: "1 1 120px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>
+        <button onClick={openShareModal} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: `1px solid ${isShared ? "var(--sage)" : "var(--border)"}`, background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", fontWeight: 700, whiteSpace: "nowrap" }}>
+          {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
+        </button>
+        <button onClick={startEdit} style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 6px", borderRadius: 14, border: "1px solid rgba(122,157,122,0.35)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)", fontWeight: 800, whiteSpace: "nowrap" }}>
           <Edit3 size={14} /> {trR("큐티 수정", lang)}
         </button>
-        {isShared ? (
-          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
-            <Check size={14} /> {trR("공유 중 (수정)", lang)}
-          </button>
-        ) : (
-          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
-            <Share2 size={14} /> {trR("나누기", lang)}
-          </button>
-        )}
-
       </div>
 
       {/* 나누기 모달 */}
@@ -520,13 +548,35 @@ function RecordContent() {
             <div key={key} className="card">
               <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
               {editMode ? (
-                <textarea
-                  className="textarea-field"
-                  rows={isDecision ? 4 : 5}
-                  value={editData[key] ?? ""}
-                  onChange={(e) => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
-                  style={{ fontStyle: italic ? "italic" : "normal" }}
-                />
+                isDecision ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {[0, 1, 2, 3].map((idx) => (
+                      <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 8 }}>
+                          {idx + 1}
+                        </div>
+                        <textarea
+                          className="textarea-field"
+                          rows={2}
+                          value={editDecisionItems[idx] ?? ""}
+                          onChange={(e) => setEditDecisionItems(prev => {
+                            const next = [...prev];
+                            next[idx] = e.target.value;
+                            return next;
+                          })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <textarea
+                    className="textarea-field"
+                    rows={5}
+                    value={editData[key] ?? ""}
+                    onChange={(e) => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
+                    style={{ fontStyle: italic ? "italic" : "normal" }}
+                  />
+                )
               ) : isDecision ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
