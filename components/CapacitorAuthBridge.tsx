@@ -6,7 +6,7 @@ import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase";
-import { storageSet } from "@/lib/clientStorage";
+import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import type { Lang } from "@/lib/i18n";
 
 const SUPPORTED_LANGS = new Set<Lang>(["ko", "de", "en", "fr"]);
@@ -56,7 +56,7 @@ export default function CapacitorAuthBridge() {
       const params = getSearchParams(rawUrl);
       const lang = normalizeLang(params.get("lang"));
       const code = params.get("code");
-      const next = getSafeNext(params.get("next"));
+      const next = getSafeNext(params.get("next") || storageGet("roots_native_oauth_next"));
       const error = params.get("error") || params.get("error_description");
 
       storageSet("roots_lang", lang);
@@ -78,6 +78,11 @@ export default function CapacitorAuthBridge() {
         router.replace(`/login?lang=${encodeURIComponent(lang)}`);
         return;
       }
+
+      storageRemove("roots_native_oauth_next");
+      try {
+        await Browser.close();
+      } catch {}
 
       const separator = next.includes("?") ? "&" : "?";
       router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);

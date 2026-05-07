@@ -24,7 +24,7 @@
 /* ── LANG BAR ── */
 .langBar {
   position: absolute;
-  top: calc(72px + env(safe-area-inset-top));
+  top: calc(92px + env(safe-area-inset-top));
   right: 28px;
   z-index: 20;
 }
@@ -80,7 +80,7 @@
 
 /* ── HERO ── */
 .hero {
-  padding: calc(84px + env(safe-area-inset-top)) 28px 32px;
+  padding: calc(116px + env(safe-area-inset-top)) 28px 32px;
   position: relative;
   overflow: hidden;
 }
