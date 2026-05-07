@@ -984,11 +984,11 @@ export default function HomePage() {
           <div className="card" style={{ borderRadius: 22, padding: 18 }}>
             {myDecisions.length > 0 ? (
               <>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 16, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <img src="/icon-decision.webp" alt="" width={34} height={34} style={{ objectFit: "contain" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                  <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55, fontWeight: 650 }}>
+                  <div style={{ fontSize: 16, color: "var(--text)", lineHeight: 1.45, fontWeight: 800 }}>
                     {t("home_next_step_decision_empty_sub", lang)}
                   </div>
                 </div>
