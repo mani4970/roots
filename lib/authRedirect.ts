@@ -48,9 +48,9 @@ export function getOAuthRedirectTo(lang: Lang, nextPath?: string | null, forceNa
   const next = safeNextPath(nextPath);
 
   if (forceNative || isCapacitorApp()) {
-    const capacitorCallback =
-      process.env.NEXT_PUBLIC_CAPACITOR_AUTH_CALLBACK || DEFAULT_CAPACITOR_AUTH_CALLBACK;
-    return appendQuery(capacitorCallback, { lang, next });
+    // Keep the native redirect URL exact and simple for Supabase allow-list matching.
+    // Lang and in-app destination are stored locally before opening OAuth.
+    return process.env.NEXT_PUBLIC_CAPACITOR_AUTH_CALLBACK || DEFAULT_CAPACITOR_AUTH_CALLBACK;
   }
 
   return appendQuery(`${window.location.origin}/auth/callback`, { lang, next });

@@ -54,7 +54,7 @@ export default function CapacitorAuthBridge() {
       handledUrls.current.add(rawUrl);
 
       const params = getSearchParams(rawUrl);
-      const lang = normalizeLang(params.get("lang"));
+      const lang = normalizeLang(params.get("lang") || storageGet("roots_lang"));
       const code = params.get("code");
       const next = getSafeNext(params.get("next") || storageGet("roots_native_oauth_next"));
       const error = params.get("error") || params.get("error_description");
@@ -64,6 +64,7 @@ export default function CapacitorAuthBridge() {
 
       try {
         await Browser.close();
+        window.setTimeout(() => { void Browser.close().catch(() => {}); }, 250);
       } catch {}
 
       if (error || !code) {
@@ -82,6 +83,7 @@ export default function CapacitorAuthBridge() {
       storageRemove("roots_native_oauth_next");
       try {
         await Browser.close();
+        window.setTimeout(() => { void Browser.close().catch(() => {}); }, 250);
       } catch {}
 
       const separator = next.includes("?") ? "&" : "?";

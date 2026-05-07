@@ -27,6 +27,8 @@ function isNativeRuntime() {
 export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang: Lang, nextPath?: string | null) {
   const nativeApp = isNativeRuntime();
   if (nativeApp) {
+    storageSet("roots_lang", lang);
+    storageSet("roots_lang_selected", "true");
     if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
       storageSet("roots_native_oauth_next", nextPath);
     } else {

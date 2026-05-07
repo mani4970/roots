@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
+import NativeStatusBar from "@/components/NativeStatusBar";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://christian-roots.com"),
@@ -84,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `
         }} />
       </head>
-      <body>{children}</body>
+      <body><NativeStatusBar /><CapacitorAuthBridge />{children}</body>
     </html>
   );
 }
