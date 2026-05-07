@@ -457,7 +457,6 @@ function PrayerPageContent() {
                           WebkitTouchCallout: "none",
                           WebkitUserSelect: "none",
                           userSelect: "none",
-                          WebkitUserDrag: "none",
                         }}
                       />
                     ) : (
