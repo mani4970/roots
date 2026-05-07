@@ -635,26 +635,14 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const routineCards = [
-    {
-      label: t("home_routine_qt", lang),
-      done: todayDone.qt,
-      icon: <img src="/icon-qt.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
-      onClick: openHomeQT,
-    },
-    {
-      label: t("home_routine_prayer", lang),
-      done: todayDone.prayer,
-      icon: <img src="/icon-pray.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
-      onClick: openPrayerSection,
-    },
-    {
-      label: t("home_routine_decision", lang),
-      done: decisionDone,
-      icon: <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />,
-      onClick: openDecisionSection,
-    },
-  ];
+  function openTodayQtRecord() {
+    if (completedQtRecordId) {
+      router.push(`/qt/record?id=${completedQtRecordId}`);
+      return;
+    }
+    router.push("/qt");
+  }
+
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
 
@@ -924,21 +912,32 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_routine_section", lang)}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {routineCards.map(({ label, done, icon, onClick }) => {
-            const bg = done ? "var(--terra-light)" : "var(--bg2)";
-            const border = done ? "rgba(196,149,106,0.35)" : "var(--border)";
-            const color = done ? "var(--terra-dark)" : "var(--text)";
-            const subColor = done ? "var(--terra-dark)" : "var(--text3)";
-            return (
-              <button key={label} onClick={onClick} style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: 18, padding: "15px 8px 13px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ width: 44, height: 44, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", color }}>{icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
-                <div style={{ fontSize: 11, color: subColor, marginTop: 4 }}>{done ? t("home_routine_done", lang) : t("home_routine_open", lang)}</div>
-              </button>
-            );
-          })}
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <img src="/icon-qt.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} />
+          <span>{t("home_routine_section", lang)}</span>
+        </div>
+        <div className="card-sage" style={{ borderRadius: 22, padding: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <img src="/icon-qt.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", lineHeight: 1.35, marginBottom: 4 }}>
+                {todayDone.qt ? t("home_qt_completed_title", lang) : t("home_qt_today_title", lang)}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55 }}>
+                {todayDone.qt ? t("home_qt_completed_sub", lang) : t("home_qt_today_sub", lang)}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
+            className={todayDone.qt ? "btn-outline" : "btn-sage"}
+            style={{ width: "100%", minHeight: 46, marginTop: 14 }}
+          >
+            {todayDone.qt ? t("home_qt_view_record", lang) : t("home_qt_start_today", lang)}
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
@@ -959,9 +958,25 @@ export default function HomePage() {
         </div>
       </div>
 
+      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><img src="/icon-pray.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} /><span>{t("home_prayer_section", lang)}</span></div>
+        <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 8 }}>
+            {t("home_prayer_desc", lang)}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
+            {t("home_prayer_hint", lang)}
+          </div>
+          <button onClick={openPrayerRequest} className="btn-sage" style={{ width: "100%", minHeight: 46 }}>
+            {t("home_prayer_write_option", lang)}
+          </button>
+        </div>
+      </div>
+
+
       {(todayDone.qt || myDecisions.length > 0) && (
         <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">{t("home_apply_my", lang)}</div>
+          <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><img src="/icon-decision.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} /><span>{t("home_apply_my", lang)}</span></div>
           <div className="card" style={{ borderRadius: 22, padding: 18 }}>
             {myDecisions.length > 0 ? (
               myDecisions.map((d, i) => (
@@ -1009,20 +1024,6 @@ export default function HomePage() {
         </div>
       )}
 
-      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_prayer_section", lang)}</div>
-        <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 8 }}>
-            {t("home_prayer_desc", lang)}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
-            {t("home_prayer_hint", lang)}
-          </div>
-          <button onClick={openPrayerRequest} className="btn-sage" style={{ width: "100%", minHeight: 46 }}>
-            {t("home_prayer_write_option", lang)}
-          </button>
-        </div>
-      </div>
 
 
       <BottomNav />
