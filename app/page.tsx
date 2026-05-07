@@ -52,6 +52,34 @@ type HomeQTState = {
   todaySchedule: QTSchedule | null;
 };
 
+type ChapterPopupState = {
+  show: boolean;
+  loading: boolean;
+  reference: string;
+  text: string;
+  error: string;
+};
+
+const HOME_CHAPTER_LABELS = {
+  open: { ko: "장 전체 보기", de: "Ganzes Kapitel", en: "Full chapter", fr: "Chapitre entier" },
+  close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
+  loading: { ko: "장을 불러오고 있어요...", de: "Kapitel wird geladen...", en: "Loading chapter...", fr: "Chargement du chapitre..." },
+  error: { ko: "장 전체를 불러오지 못했어요.", de: "Das ganze Kapitel konnte nicht geladen werden.", en: "Could not load the full chapter.", fr: "Impossible de charger le chapitre entier." },
+  chapterSuffix: { ko: "장", de: "", en: "", fr: "" },
+} as const;
+
+function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: "ko" | "de" | "en" | "fr") {
+  return HOME_CHAPTER_LABELS[key][lang] ?? HOME_CHAPTER_LABELS[key].ko;
+}
+
+function formatChapterReference(book: string, chapter: number, lang: "ko" | "de" | "en" | "fr") {
+  const translatedBook = translateBookName(book, lang);
+  if (lang === "ko") return `${translatedBook} ${chapter}장`;
+  if (lang === "de") return `${translatedBook} ${chapter}`;
+  if (lang === "fr") return `${translatedBook} ${chapter}`;
+  return `${translatedBook} ${chapter}`;
+}
+
 function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
   if (typeof value !== "string" || !value.trim()) return fallback;
 
@@ -71,6 +99,13 @@ export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [todayVerse, setTodayVerse] = useState<any>(null);
+  const [chapterPopup, setChapterPopup] = useState<ChapterPopupState>({
+    show: false,
+    loading: false,
+    reference: "",
+    text: "",
+    error: "",
+  });
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
@@ -163,7 +198,7 @@ export default function HomePage() {
 
     const today = getLocalDateString();
     const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id")
+      .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) {
       setTodayVerse({
@@ -553,6 +588,37 @@ export default function HomePage() {
     }
   }
 
+  async function openChapterPopup() {
+    if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
+
+    const book = String(todayVerse.verse_book);
+    const chapter = Number(todayVerse.verse_start_chapter);
+    const translation = Number(todayVerse.verse_translation_id ?? profile?.preferred_translation ?? homeQTState.preferredTranslation ?? 92);
+    if (!book || !Number.isFinite(chapter) || chapter <= 0) return;
+
+    const reference = formatChapterReference(book, chapter, lang);
+    setChapterPopup({ show: true, loading: true, reference, text: "", error: "" });
+
+    try {
+      const params = new URLSearchParams({
+        book,
+        chapter: String(chapter),
+        startVerse: "1",
+        endVerse: "176",
+        translation: String(translation),
+      });
+      const res = await fetch(`/api/bible?${params.toString()}`);
+      if (!res.ok) throw new Error(`Bible chapter failed: ${res.status}`);
+      const data = await res.json();
+      const text = String(data.text ?? "").trim();
+      if (!text) throw new Error("Empty chapter text");
+      setChapterPopup({ show: true, loading: false, reference, text, error: "" });
+    } catch (error) {
+      console.error(error);
+      setChapterPopup({ show: true, loading: false, reference, text: "", error: homeChapterText("error", lang) });
+    }
+  }
+
   function formatTodaySchedule() {
     const schedule = homeQTState.todaySchedule;
     if (!schedule) return null;
@@ -793,6 +859,43 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      {chapterPopup.show && (
+        <div
+          onClick={() => setChapterPopup({ show: false, loading: false, reference: "", text: "", error: "" })}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 520, maxHeight: "78vh", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, boxShadow: "0 18px 52px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 18px 12px", borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{chapterPopup.reference}</h2>
+                <p style={{ fontSize: 12, color: "var(--text3)" }}>{homeChapterText("open", lang)}</p>
+              </div>
+              <button
+                onClick={() => setChapterPopup({ show: false, loading: false, reference: "", text: "", error: "" })}
+                aria-label={homeChapterText("close", lang)}
+                style={{ border: "none", background: "none", color: "var(--text3)", fontSize: 24, lineHeight: 1, cursor: "pointer", padding: 2 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: 18, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+              {chapterPopup.loading ? (
+                <p style={{ fontSize: 14, color: "var(--text3)", lineHeight: 1.7 }}>{homeChapterText("loading", lang)}</p>
+              ) : chapterPopup.error ? (
+                <p style={{ fontSize: 14, color: "var(--terra-dark)", lineHeight: 1.7 }}>{chapterPopup.error}</p>
+              ) : (
+                <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.9, whiteSpace: "pre-line" }}>
+                  {chapterPopup.text}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
           await setPreferredLang(l);
@@ -952,7 +1055,17 @@ export default function HomePage() {
         <div className="card-sage" style={{ borderRadius: 22, padding: 18 }}>
           {todayVerse?.verse ? (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.4px", marginBottom: 10 }}>{todayVerse.reference}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.4px" }}>{todayVerse.reference}</div>
+                {todayVerse?.verse_book && todayVerse?.verse_start_chapter && (
+                  <button
+                    onClick={openChapterPopup}
+                    style={{ border: "none", background: "rgba(255,255,255,0.42)", color: "var(--sage-dark)", borderRadius: 999, padding: "6px 9px", fontSize: 11, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
+                  >
+                    {homeChapterText("open", lang)}
+                  </button>
+                )}
+              </div>
               <p className="verse-text">"{todayVerse.verse}"</p>
             </>
           ) : (
