@@ -106,6 +106,9 @@ export default function HomePage() {
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const [homeDecisionInput, setHomeDecisionInput] = useState("");
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
+  const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
+  const [homePrayerInput, setHomePrayerInput] = useState("");
+  const [savingHomePrayer, setSavingHomePrayer] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -116,7 +119,7 @@ export default function HomePage() {
 
   const hasMyDecisions = myDecisions.length > 0;
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
-  const allDone = todayDone.qt && todayDone.prayer && decisionDone;
+  const wordWalkDone = todayDone.qt;
 
   useEffect(() => { load(); }, []);
 
@@ -228,7 +231,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const onboardingDone = storageGet("onboarding_done");
-    if (!loading && allDone && !celebrationShownRef.current && onboardingDone) {
+    if (!loading && wordWalkDone && !celebrationShownRef.current && onboardingDone) {
       const today = getLocalDateString();
       if (!storageGet(`celebrated_${today}`)) {
         void (async () => {
@@ -238,13 +241,13 @@ export default function HomePage() {
           storageSet(`celebrated_${today}`, "true");
           enqueueCelebration({
             message: t("home_celebration_title", lang),
-            subMessage: t(getTreeSubMsgKey((profile?.streak_days ?? 0) + 1), lang),
+            subMessage: t("home_celebration_sub", lang),
             launchRootsMan: true,
           });
         })();
       }
     }
-  }, [allDone, loading]);
+  }, [wordWalkDone, loading]);
 
   async function updateStreak(today: string): Promise<boolean> {
     const supabase = createClient();
@@ -358,7 +361,7 @@ export default function HomePage() {
     }
 
     // 정원 단계 변경 팝업 (10일마다)
-    // Roots의 streak_days는 연속 출석이 아니라 누적 루틴 완료일입니다.
+    // Roots의 streak_days는 연속 출석이 아니라 누적 QT 완료일(말씀 동행일)입니다.
     const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
       const gardenKey = `garden_shown_${streak}`;
@@ -434,7 +437,43 @@ export default function HomePage() {
   }
 
   function openPrayerRequest() {
-    router.push("/prayer?compose=1");
+    setShowHomePrayerCompose(true);
+  }
+
+  async function saveHomePrayerRequest() {
+    const content = homePrayerInput.trim();
+    if (!content || savingHomePrayer) return;
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setSavingHomePrayer(true);
+    try {
+      const today = getLocalDateString();
+      const { error: insertError } = await supabase.from("prayer_items").insert({
+        user_id: user.id,
+        content,
+        is_anonymous: false,
+        visibility: "private",
+      });
+      if (insertError) throw insertError;
+
+      await supabase.from("daily_prayer_completions").upsert({
+        user_id: user.id,
+        date: today,
+        source: "written",
+      }, { onConflict: "user_id,date" });
+
+      setHomePrayerInput("");
+      setShowHomePrayerCompose(false);
+      router.push("/prayer");
+    } catch (error) {
+      console.error(error);
+      showToast(t("home_prayer_save_error", lang));
+    } finally {
+      setSavingHomePrayer(false);
+    }
   }
 
   async function saveHomeDecision() {
@@ -511,9 +550,6 @@ export default function HomePage() {
           decisions_done: JSON.stringify(updated.map(d => d.done)),
         });
       }
-    }
-    if (!celebrationShownRef.current && !storageGet(`celebrated_${today}`)) {
-      enqueueCelebration({ message: t("home_decision_celeb", lang), subMessage: t("home_decision_celeb_sub", lang) });
     }
   }
 
@@ -711,6 +747,51 @@ export default function HomePage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showHomePrayerCompose && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", boxShadow: "0 18px 52px rgba(0,0,0,0.28)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{t("home_prayer_compose_title", lang)}</h2>
+                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{t("home_prayer_compose_sub", lang)}</p>
+              </div>
+              <button
+                onClick={() => { if (!savingHomePrayer) { setShowHomePrayerCompose(false); setHomePrayerInput(""); } }}
+                aria-label={t("close", lang)}
+                style={{ border: "none", background: "none", color: "var(--text3)", fontSize: 22, lineHeight: 1, cursor: "pointer", padding: 2 }}
+              >
+                ×
+              </button>
+            </div>
+            <textarea
+              className="textarea-field"
+              rows={4}
+              value={homePrayerInput}
+              onChange={(e) => setHomePrayerInput(e.target.value)}
+              placeholder={t("home_prayer_compose_placeholder", lang)}
+              style={{ marginBottom: 12 }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn-outline"
+                onClick={() => { if (!savingHomePrayer) { setShowHomePrayerCompose(false); setHomePrayerInput(""); } }}
+                style={{ flex: 1 }}
+              >
+                {t("cancel", lang)}
+              </button>
+              <button
+                className="btn-sage"
+                onClick={saveHomePrayerRequest}
+                disabled={savingHomePrayer || !homePrayerInput.trim()}
+                style={{ flex: 1, opacity: savingHomePrayer || !homePrayerInput.trim() ? 0.55 : 1 }}
+              >
+                {savingHomePrayer ? t("loading", lang) : t("home_prayer_compose_save", lang)}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -931,29 +1012,15 @@ export default function HomePage() {
       <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
-          <div style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, marginBottom: 8 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 8 }}>
             {t("home_prayer_desc", lang)}
           </div>
-          <div style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
             {t("home_prayer_hint", lang)}
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={markQuietPrayer}
-              disabled={todayDone.prayer}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 14px", background: todayDone.prayer ? "var(--sage)" : "rgba(255,255,255,0.06)", borderRadius: 12, border: `1px solid ${todayDone.prayer ? "var(--sage)" : "var(--border)"}`, cursor: todayDone.prayer ? "default" : "pointer", flex: 1 }}
-            >
-              <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${todayDone.prayer ? "white" : "var(--text3)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: todayDone.prayer ? "rgba(255,255,255,0.2)" : "transparent" }}>
-                {todayDone.prayer && <Check size={12} style={{ color: "white" }} />}
-              </div>
-              <span style={{ fontSize: 13, color: todayDone.prayer ? "white" : "var(--text2)", fontWeight: todayDone.prayer ? 700 : 600 }}>
-                {todayDone.prayer ? t("home_prayer_done_msg", lang) : t("home_prayer_quiet_option", lang)}
-              </span>
-            </button>
-            <button onClick={openPrayerRequest} className="btn-outline" style={{ flex: 1 }}>
-              {t("home_prayer_write_option", lang)}
-            </button>
-          </div>
+          <button onClick={openPrayerRequest} className="btn-sage" style={{ width: "100%", minHeight: 46 }}>
+            {t("home_prayer_write_option", lang)}
+          </button>
         </div>
       </div>
 
