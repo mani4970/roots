@@ -60,12 +60,19 @@ type ChapterPopupState = {
   error: string;
 };
 
+type BibleTranslationOption = {
+  id: number;
+  name: string;
+  language?: string;
+};
+
 const HOME_CHAPTER_LABELS = {
   open: { ko: "장 전체 보기", de: "Ganzes Kapitel", en: "Full chapter", fr: "Chapitre entier" },
   close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
   loading: { ko: "장을 불러오고 있어요...", de: "Kapitel wird geladen...", en: "Loading chapter...", fr: "Chargement du chapitre..." },
   error: { ko: "장 전체를 불러오지 못했어요.", de: "Das ganze Kapitel konnte nicht geladen werden.", en: "Could not load the full chapter.", fr: "Impossible de charger le chapitre entier." },
-  chapterSuffix: { ko: "장", de: "", en: "", fr: "" },
+  translation: { ko: "번역본", de: "Übersetzung", en: "Translation", fr: "Traduction" },
+  chapterSuffix: { ko: "장", de: "", en: "" , fr: "" },
 } as const;
 
 function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: "ko" | "de" | "en" | "fr") {
@@ -106,6 +113,8 @@ export default function HomePage() {
     text: "",
     error: "",
   });
+  const [chapterTranslationId, setChapterTranslationId] = useState<number>(92);
+  const [chapterTranslations, setChapterTranslations] = useState<BibleTranslationOption[]>([]);
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
@@ -588,16 +597,15 @@ export default function HomePage() {
     }
   }
 
-  async function openChapterPopup() {
+  async function loadChapterText(translationId: number) {
     if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
 
     const book = String(todayVerse.verse_book);
     const chapter = Number(todayVerse.verse_start_chapter);
-    const translation = Number(todayVerse.verse_translation_id ?? profile?.preferred_translation ?? homeQTState.preferredTranslation ?? 92);
     if (!book || !Number.isFinite(chapter) || chapter <= 0) return;
 
     const reference = formatChapterReference(book, chapter, lang);
-    setChapterPopup({ show: true, loading: true, reference, text: "", error: "" });
+    setChapterPopup(current => ({ ...current, show: true, loading: true, reference, text: "", error: "" }));
 
     try {
       const params = new URLSearchParams({
@@ -605,7 +613,7 @@ export default function HomePage() {
         chapter: String(chapter),
         startVerse: "1",
         endVerse: "176",
-        translation: String(translation),
+        translation: String(translationId),
       });
       const res = await fetch(`/api/bible?${params.toString()}`);
       if (!res.ok) throw new Error(`Bible chapter failed: ${res.status}`);
@@ -617,6 +625,38 @@ export default function HomePage() {
       console.error(error);
       setChapterPopup({ show: true, loading: false, reference, text: "", error: homeChapterText("error", lang) });
     }
+  }
+
+  async function ensureChapterTranslations() {
+    if (chapterTranslations.length > 0) return;
+
+    try {
+      const res = await fetch("/api/translations");
+      if (!res.ok) throw new Error(`Translations failed: ${res.status}`);
+      const json = await res.json();
+      const options = Array.isArray(json?.data)
+        ? json.data
+            .map((row: any) => ({ id: Number(row.id), name: String(row.name ?? row.title ?? row.label ?? row.id), language: row.language ? String(row.language) : undefined }))
+            .filter((row: BibleTranslationOption) => Number.isFinite(row.id) && row.name)
+        : [];
+      if (options.length > 0) setChapterTranslations(options);
+    } catch (error) {
+      console.error("translation list failed", error);
+    }
+  }
+
+  async function openChapterPopup() {
+    if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
+
+    const translation = Number(todayVerse.verse_translation_id ?? profile?.preferred_translation ?? homeQTState.preferredTranslation ?? 92);
+    setChapterTranslationId(translation);
+    await ensureChapterTranslations();
+    await loadChapterText(translation);
+  }
+
+  async function changeChapterTranslation(nextTranslationId: number) {
+    setChapterTranslationId(nextTranslationId);
+    await loadChapterText(nextTranslationId);
   }
 
   function formatTodaySchedule() {
@@ -869,9 +909,23 @@ export default function HomePage() {
             style={{ width: "100%", maxWidth: 520, maxHeight: "78vh", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, boxShadow: "0 18px 52px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}
           >
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 18px 12px", borderBottom: "1px solid var(--border)" }}>
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{chapterPopup.reference}</h2>
-                <p style={{ fontSize: 12, color: "var(--text3)" }}>{homeChapterText("open", lang)}</p>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{chapterPopup.reference}</h2>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "var(--text3)" }}>
+                  <span>{homeChapterText("translation", lang)}</span>
+                  <select
+                    value={chapterTranslationId}
+                    onChange={(e) => changeChapterTranslation(Number(e.target.value))}
+                    disabled={chapterPopup.loading}
+                    style={{ maxWidth: 220, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 700 }}
+                  >
+                    {(chapterTranslations.length > 0 ? chapterTranslations : [{ id: chapterTranslationId, name: String(chapterTranslationId) }]).map((translation) => (
+                      <option key={translation.id} value={translation.id}>
+                        {translation.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <button
                 onClick={() => setChapterPopup({ show: false, loading: false, reference: "", text: "", error: "" })}
@@ -1060,7 +1114,7 @@ export default function HomePage() {
                 {todayVerse?.verse_book && todayVerse?.verse_start_chapter && (
                   <button
                     onClick={openChapterPopup}
-                    style={{ border: "none", background: "rgba(255,255,255,0.42)", color: "var(--sage-dark)", borderRadius: 999, padding: "6px 9px", fontSize: 11, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
+                    style={{ border: "1px solid rgba(122,157,122,0.18)", background: "rgba(255,255,255,0.32)", color: "var(--sage-dark)", borderRadius: 999, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
                   >
                     {homeChapterText("open", lang)}
                   </button>
