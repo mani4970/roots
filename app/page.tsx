@@ -643,6 +643,16 @@ export default function HomePage() {
     router.push("/qt");
   }
 
+  const qtCardSubText = todayDone.qt
+    ? t("home_qt_completed_sub", lang).replace(". ", ".\n")
+    : t("home_qt_today_sub", lang);
+  const homePrayerGoLabel = lang === "ko"
+    ? "기도 하러 가기"
+    : lang === "de"
+    ? "Zum Gebet"
+    : lang === "fr"
+    ? "Aller à la prière"
+    : "Go to prayer";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
 
@@ -922,8 +932,8 @@ export default function HomePage() {
               <div style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", lineHeight: 1.35, marginBottom: 4 }}>
                 {todayDone.qt ? t("home_qt_completed_title", lang) : t("home_qt_today_title", lang)}
               </div>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55 }}>
-                {todayDone.qt ? t("home_qt_completed_sub", lang) : t("home_qt_today_sub", lang)}
+              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55, whiteSpace: "pre-line" }}>
+                {qtCardSubText}
               </div>
             </div>
           </div>
@@ -933,7 +943,6 @@ export default function HomePage() {
             style={{ width: "100%", minHeight: 46, marginTop: 14 }}
           >
             {todayDone.qt ? t("home_qt_view_record", lang) : t("home_qt_start_today", lang)}
-            <ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -971,9 +980,14 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <button onClick={openPrayerRequest} className="btn-sage" style={{ width: "100%", minHeight: 46 }}>
-            {t("home_prayer_write_option", lang)}
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={openPrayerRequest} className="btn-sage" style={{ flex: 1, minHeight: 46 }}>
+              {t("home_prayer_write_option", lang)}
+            </button>
+            <button onClick={() => router.push("/prayer")} className="btn-outline" style={{ flex: 1, minHeight: 46 }}>
+              {homePrayerGoLabel}
+            </button>
+          </div>
         </div>
       </div>
 
