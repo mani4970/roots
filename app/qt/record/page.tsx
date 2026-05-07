@@ -6,7 +6,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3 } from "lucide-react";
 
 
 // QT Record 전용 라벨 매핑
@@ -16,6 +16,7 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "복사됨! ✓": "qt_record_copied",
   "나누기": "qt_record_share",
   "공유 중 (수정)": "qt_record_shared_edit",
+  "큐티 수정": "qt_record_edit",
   "취소": "qt_record_cancel",
   "큐티 나누기": "qt_record_share_title",
   "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": "qt_record_share_sub",
@@ -149,35 +150,29 @@ function RecordContent() {
       if (data && data.length > 0) {
       setRecord((r: any) => ({ ...r, visibility: newVisibility }));
       setSharedTargets(selectedTargets);
-      // 말씀 배달부 + 요셉 뱃지 체크
+      // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
       // 전체 공개뿐 아니라 그룹 나눔도 QT 나눔으로 인정합니다.
       try {
         const { data: { user: u } } = await supabase.auth.getUser();
         if (u) {
           const { data: prof } = await supabase.from("profiles")
-            .select("badge_qt_bird, badge_joseph, badge_word_peace").eq("id", u.id).single();
+            .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", u.id).single();
           const { data: shares } = await supabase.from("qt_records")
             .select("id").eq("user_id", u.id).eq("is_draft", false)
             .not("visibility", "is", null).neq("visibility", "private").neq("visibility", "");
           const shareCount = (shares?.length ?? 0);
           const updates: any = {};
-          if (!prof?.badge_joseph && shareCount >= 1) {
-            updates.badge_joseph = true;
-          }
-          if (!prof?.badge_qt_bird && shareCount >= 30) {
-            updates.badge_qt_bird = true;
-          }
-          if (!prof?.badge_word_peace && shareCount >= 50) {
-            updates.badge_word_peace = true;
-          }
+          if (!prof?.badge_joseph && shareCount >= 1) updates.badge_joseph = true;
+          if (!prof?.badge_qt_bird && shareCount >= 30) updates.badge_qt_bird = true;
+          if (!prof?.badge_word_peace && shareCount >= 50) updates.badge_word_peace = true;
           if (Object.keys(updates).length > 0) {
             await supabase.from("profiles").update(updates).eq("id", u.id);
-            if (updates.badge_joseph && !prof?.badge_joseph) {
-              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
-            } else if (updates.badge_word_peace && !prof?.badge_word_peace) {
+            if (updates.badge_word_peace) {
               setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
-            } else if (updates.badge_qt_bird && !prof?.badge_qt_bird) {
+            } else if (updates.badge_qt_bird) {
               setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+            } else if (updates.badge_joseph) {
+              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
             }
           }
         }
@@ -280,6 +275,11 @@ function RecordContent() {
     });
   }
 
+  function goEdit() {
+    if (!record?.id) return;
+    router.push(`/qt/write?editId=${record.id}`);
+  }
+
   function getShareLabel() {
     if (sharedTargets.length === 0) return null;
     const labels: string[] = [];
@@ -343,23 +343,17 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
-        <button onClick={copyAll} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)" }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+        <button onClick={copyAll} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: copied ? "1px solid var(--sage)" : "1px solid var(--border)", background: copied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
-        {isShared ? (
-          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", fontSize: 12, color: "var(--sage-dark)" }}>
-            <Check size={14} /> {trR("공유 중 (수정)", lang)}
-          </button>
-        ) : (
-          <button onClick={openShareModal} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)" }}>
-            <Share2 size={14} /> {trR("나누기", lang)}
-          </button>
-        )}
-
+        <button onClick={openShareModal} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: isShared ? "1px solid var(--sage)" : "1px solid var(--border)", background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
+          {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
+        </button>
+        <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
+          <Edit3 size={14} /> {trR("큐티 수정", lang)}
+        </button>
       </div>
-
-      {/* 나누기 모달 */}
 
       {/* 나누기 모달 */}
       {showShareModal && (
