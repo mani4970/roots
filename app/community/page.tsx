@@ -63,10 +63,32 @@ function updateFavoriteCache(userId: string, groupId: string, isFavorite: boolea
 }
 
 function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number; emoji?: string }) {
-  if (url) return <img src={url} alt={name ?? "프로필"} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
+  const safeAvatarStyle = {
+    width: size,
+    height: size,
+    borderRadius: "50%",
+    objectFit: "cover",
+    flexShrink: 0,
+    userSelect: "none",
+    WebkitTouchCallout: "none",
+  } as const;
+
+  if (url) return (
+    <img
+      src={url}
+      alt={name ?? "프로필"}
+      draggable={false}
+      onDragStart={(event) => event.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
+      style={safeAvatarStyle}
+    />
+  );
   const initial = (name?.trim()?.[0] ?? "R").toUpperCase();
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+    <div
+      onContextMenu={(event) => event.preventDefault()}
+      style={{ ...safeAvatarStyle, background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
       <span style={{ fontSize: size * 0.36, fontWeight: 800, color: "var(--sage-dark)" }}>{initial}</span>
     </div>
   );

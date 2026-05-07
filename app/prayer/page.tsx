@@ -443,7 +443,23 @@ function PrayerPageContent() {
                 {tab === "intercession" && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     {p.profiles?.avatar_url && !p.is_anonymous ? (
-                      <img src={p.profiles.avatar_url} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--border)" }} />
+                      <img
+                        src={p.profiles.avatar_url}
+                        alt=""
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          border: "1px solid var(--border)",
+                          WebkitTouchCallout: "none",
+                          WebkitUserSelect: "none",
+                          userSelect: "none",
+                          WebkitUserDrag: "none",
+                        }}
+                      />
                     ) : (
                       <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(196,149,106,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <img src="/icon-pray.webp" alt="" style={{ width: 17, height: 17, objectFit: "contain" }} />
