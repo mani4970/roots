@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
-import NativeStatusBar from "@/components/NativeStatusBar";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://christian-roots.com"),
@@ -13,17 +11,13 @@ export const metadata: Metadata = {
     description: "말씀에 뿌리내리고, 함께 자라는 크리스천 앱",
     url: "https://christian-roots.com",
     siteName: "Roots",
-    images: [
-      { url: "/og-roots-share.png", width: 1200, height: 630, alt: "Roots" },
-    ],
     locale: "ko_KR",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "🌱 Roots",
     description: "말씀에 뿌리내리고, 함께 자라는 크리스천 앱",
-    images: ["/og-roots-share.png"],
   },
   icons: {
     icon: [
@@ -86,7 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `
         }} />
       </head>
-      <body><NativeStatusBar /><CapacitorAuthBridge />{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

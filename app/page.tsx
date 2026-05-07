@@ -120,7 +120,6 @@ export default function HomePage() {
   const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
     show: false, type: "garden", badgeIndex: 0,
   });
-  const [pauseGardenPopup, setPauseGardenPopup] = useState(false);
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const lang = useLang();
@@ -272,9 +271,8 @@ export default function HomePage() {
       const today = getLocalDateString();
       if (!storageGet(`celebrated_${today}`)) {
         void (async () => {
-          setPauseGardenPopup(true);
           const updated = await updateStreak(today);
-          if (!updated) { setPauseGardenPopup(false); return; }
+          if (!updated) return;
           celebrationShownRef.current = true;
           storageSet(`celebrated_${today}`, "true");
           enqueueCelebration({
@@ -454,17 +452,6 @@ export default function HomePage() {
     }
 
     setCelebration({ show: false, message: "", subMessage: "", launchRootsMan: false });
-
-    // If a garden-stage popup was created at the same time as the QT completion
-    // celebration, show the garden popup first. RootsMan's watering prompt should
-    // always be the last popup before moving to the garden animation.
-    if (gardenPopup.show) {
-      if (launchRootsMan || pendingRootsManRef.current) pendingRootsManRef.current = true;
-      setPauseGardenPopup(false);
-      return;
-    }
-
-    setPauseGardenPopup(false);
     if (launchRootsMan || pendingRootsManRef.current) {
       pendingRootsManRef.current = false;
       requestRootsManExperience();
@@ -748,7 +735,7 @@ export default function HomePage() {
     ? "Aller à la prière"
     : "Go to prayer";
 
-  const showGardenUpdatePopup = gardenPopup.show && !pauseGardenPopup && !celebration.show && !showRootsManPopup;
+  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -960,6 +947,8 @@ export default function HomePage() {
         show={celebration.show}
         message={celebration.message}
         subMessage={celebration.subMessage}
+        iconSrc="/icon-qt.webp"
+        iconAlt="QT"
         onClose={closeCelebration}
       />
 

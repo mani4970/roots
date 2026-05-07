@@ -9,9 +9,11 @@ interface CelebrationProps {
   message?: string;
   subMessage?: string;
   onClose: () => void;
+  iconSrc?: string;
+  iconAlt?: string;
 }
 
-export default function Celebration({ show, message, subMessage, onClose }: CelebrationProps) {
+export default function Celebration({ show, message, subMessage, onClose, iconSrc, iconAlt = "" }: CelebrationProps) {
   const lang = useLang();
   if (!show) return null;
 
@@ -27,7 +29,13 @@ export default function Celebration({ show, message, subMessage, onClose }: Cele
       <ConfettiBurst variant="absolute" zIndex={1} />
 
       <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "36px 28px", background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", margin: "0 28px", maxWidth: 340, animation: "rootsConfettiPop 0.28s ease both", boxShadow: "0 18px 60px rgba(0,0,0,0.26)" }}>
-        <div style={{ width: 58, height: 58, borderRadius: 22, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--sage-light)", color: "var(--sage-dark)" }}><Sparkles size={30} strokeWidth={1.8} /></div>
+        <div style={{ width: 58, height: 58, borderRadius: 22, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--sage-light)", color: "var(--sage-dark)", overflow: "hidden" }}>
+          {iconSrc ? (
+            <img src={iconSrc} alt={iconAlt} width={42} height={42} style={{ objectFit: "contain" }} />
+          ) : (
+            <Sparkles size={30} strokeWidth={1.8} />
+          )}
+        </div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 10, lineHeight: 1.3 }}>
           {message ?? t("celebration_default_done", lang)}
         </h2>

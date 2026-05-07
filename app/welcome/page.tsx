@@ -40,10 +40,10 @@ const TEXTS: Record<Lang, {
   footer: string; footer2: string;
 }> = {
   ko: {
-    tagline: "오늘도 말씀에 뿌리를 내려요",
+    tagline: "말씀에 뿌리를 내려요",
     descParts: [
-      "QT로 말씀과 동행하고",
-      "기도 제목을 하나님께 올려드리고",
+      "QT를 통해 매일 말씀과 동행하고",
+      "기도를 하나님께 올려드리고",
       "오늘의 결단으로 말씀을 삶에 심어보세요.",
     ],
     growthEyebrow: "나의 정원",
@@ -69,10 +69,10 @@ const TEXTS: Record<Lang, {
     footer2: "광고 없이 사용",
   },
   en: {
-    tagline: "Root yourself in the Word today",
+    tagline: "Root yourself in the Word",
     descParts: [
-      "Walk with the Word through QT,",
-      "bring your prayer requests to God,",
+      "Walk with God’s Word daily through QT,",
+      "bring your prayers to God,",
       "and plant today’s decision in your life.",
     ],
     growthEyebrow: "My Garden",
@@ -98,10 +98,10 @@ const TEXTS: Record<Lang, {
     footer2: "No ads",
   },
   de: {
-    tagline: "Heute im Wort Wurzeln schlagen",
+    tagline: "Im Wort Wurzeln schlagen",
     descParts: [
-      "Gehen Sie mit QT im Wort,",
-      "bringen Sie Ihre Gebetsanliegen zu Gott,",
+      "Gehen Sie täglich durch QT mit dem Wort,",
+      "bringen Sie Ihre Gebete zu Gott,",
       "und pflanzen Sie die heutige Entscheidung ins Leben.",
     ],
     growthEyebrow: "Mein Garten",

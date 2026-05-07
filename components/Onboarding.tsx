@@ -70,9 +70,9 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           {slide.desc}
         </p>
         {slide.sub && (
-          <div style={{ background: "var(--bg3)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border)", marginBottom: 28 }}>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, whiteSpace: "pre-line" }}>{slide.sub}</p>
-          </div>
+          <p style={{ fontSize: 13, color: "var(--text)", fontWeight: 800, lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 28 }}>
+            {slide.sub}
+          </p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button onClick={next} className="btn-sage">

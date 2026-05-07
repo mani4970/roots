@@ -371,6 +371,8 @@ function PrayerPageContent() {
         show={celebration}
         message={c("prayer_saved_message")}
         subMessage={c("prayer_saved_sub")}
+        iconSrc="/icon-pray.webp"
+        iconAlt="Prayer"
         onClose={() => setCelebration(false)}
       />
 
