@@ -12,9 +12,12 @@ interface TreeGrowthProps {
 }
 
 function getCycleInfo(days: number) {
-  if (days === 0) return { cycleDay: 0, cycleIndex: 0 };
-  const cycleIndex = Math.floor((days - 1) / 100);
-  const cycleDay = ((days - 1) % 100) + 1;
+  if (days <= 0) return { cycleDay: 0, cycleIndex: 0 };
+  // A garden cycle completes every 100 QT days.
+  // 0 day in a cycle is the seed stage (tree1/dark1), then 1-10 uses tree2, ... 91-99 uses tree11.
+  // On the 100th QT day, the fruit badge is awarded and the next garden begins from seed stage.
+  const cycleIndex = Math.floor(days / 100);
+  const cycleDay = days % 100;
   return { cycleDay, cycleIndex };
 }
 

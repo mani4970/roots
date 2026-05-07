@@ -396,9 +396,9 @@ export default function HomePage() {
       return;
     }
 
-    // 정원 단계 변경 팝업 (10일마다)
+    // 정원 단계 변경 팝업 (11/21/31/.../91일마다)
     // Roots의 streak_days는 연속 출석이 아니라 누적 QT 완료일(말씀 동행일)입니다.
-    const cycleDay = streak > 0 ? (((streak - 1) % 100) + 1) : 0;
+    const cycleDay = streak > 0 ? (streak % 100) : 0;
     if (cycleDay % 10 === 1 && cycleDay > 1) {
       const gardenKey = `garden_shown_${streak}`;
       if (!storageGet(gardenKey)) {

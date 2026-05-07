@@ -15,11 +15,14 @@ interface RootsManPopupProps {
 const ROOTSMAN_MSG_KEYS: readonly TKey[] = [
   "rootsman_msg_1", "rootsman_msg_2", "rootsman_msg_3", "rootsman_msg_4", "rootsman_msg_5",
   "rootsman_msg_6", "rootsman_msg_7", "rootsman_msg_8", "rootsman_msg_9", "rootsman_msg_10",
+  "rootsman_msg_11",
 ];
 
 function getGardenMessageKey(days: number): TKey {
-  const cycleDay = days === 0 ? 0 : ((days - 1) % 100) + 1;
-  const stage = Math.min(Math.ceil(cycleDay / 10) || 1, 10);
+  if (days <= 0) return ROOTSMAN_MSG_KEYS[0];
+  const cycleDay = days % 100;
+  if (cycleDay === 0) return ROOTSMAN_MSG_KEYS[0];
+  const stage = Math.min(Math.ceil(cycleDay / 10) + 1, 11);
   return ROOTSMAN_MSG_KEYS[stage - 1];
 }
 

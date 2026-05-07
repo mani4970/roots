@@ -20,20 +20,24 @@ const BADGES: { name: string; fruit: string; descKey: TKey }[] = [
 ];
 
 /**
- * 10단계 메시지 키 매핑
- * 언어와 무관하게 단계만 결정 — 번역은 i18n.ts 의 garden_stage_N_* 키에서 관리
+ * 11단계 메시지 키 매핑
+ * 1단계는 새 정원/씨앗 단계(0일), 이후 10일 단위로 11단계까지 성장합니다.
  */
 const STAGE_TITLE_KEYS: readonly TKey[] = [
   "garden_stage_1_title", "garden_stage_2_title", "garden_stage_3_title", "garden_stage_4_title", "garden_stage_5_title",
   "garden_stage_6_title", "garden_stage_7_title", "garden_stage_8_title", "garden_stage_9_title", "garden_stage_10_title",
+  "garden_stage_11_title",
 ];
 const STAGE_DESC_KEYS: readonly TKey[] = [
   "garden_stage_1_desc", "garden_stage_2_desc", "garden_stage_3_desc", "garden_stage_4_desc", "garden_stage_5_desc",
   "garden_stage_6_desc", "garden_stage_7_desc", "garden_stage_8_desc", "garden_stage_9_desc", "garden_stage_10_desc",
+  "garden_stage_11_desc",
 ];
 function getStage(streakDays: number): number {
-  const cycleDay = streakDays === 0 ? 0 : ((streakDays - 1) % 100) + 1;
-  return Math.min(Math.ceil(cycleDay / 10) || 1, 10);
+  if (streakDays <= 0) return 1;
+  const cycleDay = streakDays % 100;
+  if (cycleDay === 0) return 1;
+  return Math.min(Math.ceil(cycleDay / 10) + 1, 11);
 }
 
 interface GardenUpdatePopupProps {
