@@ -42,12 +42,12 @@ export function isCapacitorApp() {
   return false;
 }
 
-export function getOAuthRedirectTo(lang: Lang, nextPath?: string | null) {
+export function getOAuthRedirectTo(lang: Lang, nextPath?: string | null, forceNative = false) {
   if (typeof window === "undefined") return undefined;
 
   const next = safeNextPath(nextPath);
 
-  if (isCapacitorApp()) {
+  if (forceNative || isCapacitorApp()) {
     const capacitorCallback =
       process.env.NEXT_PUBLIC_CAPACITOR_AUTH_CALLBACK || DEFAULT_CAPACITOR_AUTH_CALLBACK;
     return appendQuery(capacitorCallback, { lang, next });

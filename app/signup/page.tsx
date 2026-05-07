@@ -9,6 +9,7 @@ import { Loader2, ChevronLeft } from "lucide-react";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { storageSet } from "@/lib/clientStorage";
 import { signInWithGoogleOAuth } from "@/lib/nativeOAuth";
+import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 
 function getSafeRedirectFromLocation() {
@@ -40,7 +41,7 @@ export default function SignupPage() {
   const [linkCopied, setLinkCopied] = useState(false);
 
   async function handleGoogle() {
-    if (isInAppBrowser()) {
+    if (!isCapacitorApp() && isInAppBrowser()) {
       setShowBrowserGuide(true);
       setLinkCopied(false);
       return;
@@ -95,7 +96,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 40px", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "calc(96px + env(safe-area-inset-top)) 24px 40px", position: "relative" }}>
 
       {showBrowserGuide && (
         <div onClick={() => setShowBrowserGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(26,28,30,0.66)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -117,7 +118,7 @@ export default function SignupPage() {
         </div>
       )}
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
-      <Link href={withRedirect("/welcome")} style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32, position: "absolute", top: 20, left: 20 }}>
+      <Link href={withRedirect("/welcome")} style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32, position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 24 }}>

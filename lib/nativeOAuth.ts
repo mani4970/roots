@@ -1,4 +1,5 @@
 import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import { getOAuthRedirectTo, isCapacitorApp } from "@/lib/authRedirect";
 import type { Lang } from "@/lib/i18n";
 
@@ -14,12 +15,20 @@ type SupabaseOAuthClient = {
   };
 };
 
+function isNativeRuntime() {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return isCapacitorApp();
+  }
+}
+
 export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang: Lang, nextPath?: string | null) {
-  const nativeApp = isCapacitorApp();
+  const nativeApp = isNativeRuntime();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: getOAuthRedirectTo(lang, nextPath),
+      redirectTo: getOAuthRedirectTo(lang, nextPath, nativeApp),
       skipBrowserRedirect: nativeApp,
     },
   });

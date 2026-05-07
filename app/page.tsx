@@ -428,6 +428,14 @@ export default function HomePage() {
     setShowRootsManPopup(true);
   }
 
+  function requestRootsManExperience() {
+    if (gardenPopup.show) {
+      pendingRootsManRef.current = true;
+      return;
+    }
+    openRootsManExperience();
+  }
+
   function closeCelebration() {
     const launchRootsMan = celebration.launchRootsMan;
     const next = celebrationQueueRef.current.shift();
@@ -446,7 +454,7 @@ export default function HomePage() {
     setCelebration({ show: false, message: "", subMessage: "", launchRootsMan: false });
     if (launchRootsMan || pendingRootsManRef.current) {
       pendingRootsManRef.current = false;
-      openRootsManExperience();
+      requestRootsManExperience();
     }
   }
 
@@ -965,6 +973,11 @@ export default function HomePage() {
         badgeIndex={gardenPopup.badgeIndex}
         onClose={() => {
           setGardenPopup(p => ({ ...p, show: false }));
+          if (pendingRootsManRef.current) {
+            pendingRootsManRef.current = false;
+            openRootsManExperience();
+            return;
+          }
           gardenTopRef_scroll();
         }}
       />
