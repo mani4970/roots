@@ -912,11 +912,8 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <img src="/icon-qt.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} />
-          <span>{t("home_routine_section", lang)}</span>
-        </div>
-        <div className="card-sage" style={{ borderRadius: 22, padding: 18 }}>
+        <div className="sec-label">{t("home_routine_section", lang)}</div>
+        <div className={todayDone.qt ? "card-sage" : "card"} style={{ borderRadius: 22, padding: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <img src="/icon-qt.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
@@ -959,13 +956,20 @@ export default function HomePage() {
       </div>
 
       <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><img src="/icon-pray.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} /><span>{t("home_prayer_section", lang)}</span></div>
+        <div className="sec-label">{t("home_prayer_section", lang)}</div>
         <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 8 }}>
-            {t("home_prayer_desc", lang)}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>
-            {t("home_prayer_hint", lang)}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <img src="/icon-pray.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 6 }}>
+                {t("home_prayer_desc", lang)}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65 }}>
+                {t("home_prayer_hint", lang)}
+              </div>
+            </div>
           </div>
           <button onClick={openPrayerRequest} className="btn-sage" style={{ width: "100%", minHeight: 46 }}>
             {t("home_prayer_write_option", lang)}
@@ -976,10 +980,19 @@ export default function HomePage() {
 
       {(todayDone.qt || myDecisions.length > 0) && (
         <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><img src="/icon-decision.webp" alt="" width={18} height={18} style={{ objectFit: "contain" }} /><span>{t("home_apply_my", lang)}</span></div>
+          <div className="sec-label">{t("home_apply_my", lang)}</div>
           <div className="card" style={{ borderRadius: 22, padding: 18 }}>
             {myDecisions.length > 0 ? (
-              myDecisions.map((d, i) => (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 16, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <img src="/icon-decision.webp" alt="" width={34} height={34} style={{ objectFit: "contain" }} />
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55, fontWeight: 650 }}>
+                    {t("home_next_step_decision_empty_sub", lang)}
+                  </div>
+                </div>
+                {myDecisions.map((d, i) => (
                 <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: i === myDecisions.length - 1 ? "0" : "0 0 10px", width: "100%" }}>
                   <div style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
                     {d.done && <Check size={13} style={{ color: "var(--bg)" }} />}
@@ -988,14 +1001,22 @@ export default function HomePage() {
                     {i + 1}. {d.text}
                   </span>
                 </button>
-              ))
+                ))}
+              </>
             ) : (
               <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 8 }}>
-                  {t("home_next_step_decision_empty_title", lang)}
-                </div>
-                <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, marginBottom: 14 }}>
-                  {t("home_next_step_decision_empty_sub", lang)}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+                  <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 6 }}>
+                      {t("home_next_step_decision_empty_title", lang)}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65 }}>
+                      {t("home_next_step_decision_empty_sub", lang)}
+                    </div>
+                  </div>
                 </div>
                 <input
                   ref={homeDecisionInputRef}

@@ -52,7 +52,7 @@ export const T = {
   home_decision_title: { ko: "오늘의 결단",                  de: "Heutiger Vorsatz", en: "Today's resolution", fr: "Décision du jour" },
   home_decision_done: { ko: "결단 완료 ✓",                  de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓" },
   home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision" },
-  home_streak: { ko: "말씀 동행", de: "Wortbegleitung", en: "Word walk", fr: "Marche dans la Parole" },
+  home_streak: { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}" },
   home_routine_complete: { ko: "오늘의 루틴을 완료했어요. 정원을 확인해보세요.", de: "Die heutige Routine ist abgeschlossen. Schauen Sie in den Garten.", en: "Today's routine is complete. Take a look at your garden.", fr: "La routine du jour est terminée. Regardez votre jardin." },
 
   // ── 감정 체크인 ──
@@ -319,7 +319,7 @@ export const T = {
   profile_delete_cancel: { ko: "취소",                de: "Abbrechen", en: "Cancel", fr: "Annuler" },
   profile_delete_confirm_btn: { ko: "탈퇴하기",       de: "Löschen", en: "Delete", fr: "Supprimer" },
   profile_deleting: { ko: "삭제 중...",              de: "Wird gelöscht...", en: "Deleting...", fr: "Suppression..." },
-  profile_streak: { ko: "말씀 동행 {n}", de: "Wortbegleitung {n}", en: "Word walk {n}", fr: "Marche dans la Parole {n}" },
+  profile_streak: { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}" },
   profile_prayer_count: { ko: "기도 제목",            de: "Gebete", en: "Prayers", fr: "Prières" },
   profile_prayer_answered_count: { ko: "기도 응답",   de: "Erhörte Gebete", en: "Answered Prayers", fr: "Prières exaucées" },
   profile_qt_share: { ko: "큐티 나눔",               de: "Geteilte QTs", en: "Shared QTs", fr: "QT partagés" },
@@ -366,13 +366,13 @@ export const T = {
   // ── 뱃지 ──
   badge_thanks: { ko: "감사해요",             de: "Danke", en: "Thank you", fr: "Merci" },
   badge_rootsman_title: { ko: "루츠맨",              de: "Rootsman", en: "Rootsman", fr: "Rootsman" },
-  badge_rootsman_desc: { ko: "7일 QT 완료",        de: "7 QTs abgeschlossen", en: "Completed 7 QTs", fr: "7 QT terminés" },
+  badge_rootsman_desc: { ko: "7일 QT 완료", de: "7 QTs abgeschlossen", en: "Completed 7 QTs", fr: "7 QT accomplis" },
   badge_mose_title: { ko: "모세",                de: "Mose", en: "Moses", fr: "Moïse" },
-  badge_mose_desc: { ko: "40일 QT 완료",        de: "40 QTs abgeschlossen", en: "Completed 40 QTs", fr: "40 QT terminés" },
+  badge_mose_desc: { ko: "40일 QT 완료", de: "40 QTs abgeschlossen", en: "Completed 40 QTs", fr: "40 QT accomplis" },
   badge_rootsman_bible_title: { ko: "루츠맨 성경",    de: "Rootsman Bibel", en: "Rootsman Bible", fr: "Bible Rootsman" },
-  badge_rootsman_bible_desc: { ko: "52일 QT 완료", de: "52 QTs abgeschlossen", en: "Completed 52 QTs", fr: "52 QT terminés" },
+  badge_rootsman_bible_desc: { ko: "52일 QT 완료", de: "52 QTs abgeschlossen", en: "Completed 52 QTs", fr: "52 QT accomplis" },
   badge_david_title: { ko: "다윗",                de: "David", en: "David", fr: "David" },
-  badge_david_desc: { ko: "111일 QT 완료",       de: "111 QTs abgeschlossen", en: "Completed 111 QTs", fr: "111 QT terminés" },
+  badge_david_desc: { ko: "111일 QT 완료", de: "111 QTs abgeschlossen", en: "Completed 111 QTs", fr: "111 QT accomplis" },
   badge_noah_title: { ko: "노아",                de: "Noah", en: "Noah", fr: "Noé" },
   badge_noah_desc: { ko: "첫 기도 응답",         de: "Erstes erhörtes Gebet", en: "First answered prayer", fr: "Première prière exaucée" },
   badge_joseph_title: { ko: "요셉",                de: "Josef", en: "Joseph", fr: "Joseph" },
@@ -392,13 +392,13 @@ export const T = {
   badge_word_peace_title: { ko: "말씀의 평안",          de: "Ruhe im Wort", en: "Peace in the Word", fr: "Paix dans la Parole" },
   badge_word_peace_desc: { ko: "큐티 나눔 50회",       de: "50 geteilte QTs", en: "50 QTs shared", fr: "50 QT partagés" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
-  badge_angel_desc: { ko: "1000일 하루 루틴 완주",      de: "1000 Routinetage abgeschlossen", en: "Completed 1000 daily routine days", fr: "1000 jours de routine quotidienne accomplis" },
+  badge_angel_desc: { ko: "1000일 QT 완료", de: "1000 QTs abgeschlossen", en: "Completed 1000 QTs", fr: "1000 QT accomplis" },
 
   // 뱃지 팝업 메시지
-  badge_rootsman_msg: { ko: "7일 동안 오늘의 루틴을 완료한 당신, Roots의 진짜 시작이에요!", de: "7 Routinetage geschafft – ein echter Anfang bei Roots!", en: "7 routine days completed — your Roots journey is truly beginning!", fr: "7 jours de routine accomplis — votre parcours Roots commence vraiment !" },
-  badge_mose_msg: { ko: "광야의 모세처럼, 40일의 루틴을 걸어온 당신을 하나님이 기억하세요!", de: "Wie Mose in der Wüste – Gott kennt Ihren Weg durch 40 Routinetage!", en: "40 routine days completed — like Moses, you kept walking with God!", fr: "40 jours de routine accomplis — comme Moïse, vous avez continué à marcher avec Dieu !" },
-  badge_rootsman_bible_msg: { ko: "52일 루틴 완료! 오병이어처럼 작은 헌신이 기적을 만들어요!", de: "52 Routinetage geschafft! Wie bei der Brotvermehrung – kleine Hingabe macht Wunder!", en: "52 routine days completed — small faithful steps can become a miracle!", fr: "52 jours de routine accomplis — de petits pas fidèles peuvent devenir un miracle !" },
-  badge_david_msg: { ko: "111일 루틴 완료! 골리앗 앞에 선 다윗처럼, 담대하고 굳건한 믿음의 당신을 축복합니다!", de: "111 Routinetage geschafft! Wie David vor Goliat – mutig und standhaft im Glauben!", en: "111 routine days completed — bold and steadfast like David before Goliath!", fr: "111 jours de routine accomplis — courageux et ferme comme David devant Goliath !" },
+  badge_rootsman_msg: { ko: "7일 동안 QT를 완료한 당신, Roots의 진짜 시작이에요!", de: "7 QTs abgeschlossen – ein echter Anfang bei Roots!", en: "7 QTs completed — your Roots journey is truly beginning!", fr: "7 QT accomplis — votre parcours Roots commence vraiment !" },
+  badge_mose_msg: { ko: "40일 동안 말씀과 동행한 당신을 하나님이 기억하세요!", de: "40 Tage im Wort gegangen – Gott kennt Ihren Weg!", en: "40 days walking with the Word — God remembers your journey!", fr: "40 jours avec la Parole — Dieu se souvient de votre chemin !" },
+  badge_rootsman_bible_msg: { ko: "52일 QT 완료! 오병이어처럼 작은 헌신이 기적을 만들어요!", de: "52 QTs abgeschlossen! Wie bei der Brotvermehrung – kleine Hingabe macht Wunder!", en: "52 QTs completed — small faithful steps can become a miracle!", fr: "52 QT accomplis — de petits pas fidèles peuvent devenir un miracle !" },
+  badge_david_msg: { ko: "111일 QT 완료! 골리앗 앞에 선 다윗처럼, 담대하고 굳건한 믿음의 당신을 축복합니다!", de: "111 QTs abgeschlossen! Wie David vor Goliat – mutig und standhaft im Glauben!", en: "111 QTs completed — bold and steadfast like David before Goliath!", fr: "111 QT accomplis — courageux et ferme comme David devant Goliath !" },
   badge_noah_msg: { ko: "노아의 방주처럼, 하나님의 약속은 반드시 이루어져요!", de: "Wie die Arche Noah – Gottes Versprechen wird erfüllt!", en: "Your first prayer was answered! Like Noah's rainbow!", fr: "Votre première prière a été exaucée ! Comme l’arc-en-ciel de Noé !" },
   badge_joseph_msg: { ko: "요셉의 꿈처럼, 당신의 나눔이 누군가에게 소망이 돼요!", de: "Wie Josefs Traum – Ihr Teilen gibt anderen Hoffnung!", en: "You shared your QT for the first time!", fr: "Vous avez partagé votre QT pour la première fois !" },
   badge_prayer_ember_msg: { ko: "작은 불씨를 살리듯, 기도의 불을 키워가는 당신을 축복합니다!", de: "Wie eine kleine Glut, die sorgsam entfacht wird: Gesegnet seien Sie, die das Feuer des Gebets wachsen lässt!", en: "Blessings on you for nurturing the fire of prayer like a small ember being brought to life!", fr: "Soyez béni(e), vous qui entretenez le feu de la prière comme une petite braise que l’on ravive !" },
@@ -408,7 +408,7 @@ export const T = {
   badge_roots_together_msg: { ko: "공동체와 함께 순방향의 길로 나아가는 당신을 축복합니다!", de: "Gesegnet seien Sie, der gemeinsam mit der Gemeinschaft auf dem guten Weg vorangeht!", en: "Blessings on you as you walk forward together with the community!", fr: "Soyez béni(e) alors que vous avancez avec la communauté sur un chemin de vie !" },
   badge_qt_bird_msg: { ko: "큐티 나눔을 통해 받은 은혜를 전하는 당신을 축복합니다.", de: "Gesegnet seien Sie, der durch das Teilen Gnade weitergibt.", en: "30 QTs shared! Carrying the Word like a dove!", fr: "30 QT partagés ! Vous portez la Parole comme une colombe !" },
   badge_word_peace_msg: { ko: "하나님의 말씀 안에 평안을 누리며, 그 은혜를 나누는 당신을 축복합니다.", de: "Gesegnet seien Sie, der Ruhe im Wort Gottes findet und diese Gnade mit anderen teilt.", en: "Blessings on you for resting in God’s Word and sharing that peace with others.", fr: "Soyez béni(e) car vous trouvez le repos dans la Parole de Dieu et vous partagez cette paix avec les autres." },
-  badge_angel_msg: { ko: "1000일 누적 루틴 완료! 다시 돌아올 때마다 하나님과 말씀으로 동행한 당신을 축복합니다", de: "1000 Routinetage insgesamt geschafft – jedes Zurückkommen zählt. Gottes Segen für Ihren Weg mit seinem Wort.", en: "1000 cumulative routine days completed — every return matters. Blessings as you keep walking with God and His Word.", fr: "1000 jours de routine cumulés accomplis — chaque retour compte. Soyez béni(e) dans votre marche avec Dieu et sa Parole." },
+  badge_angel_msg: { ko: "1000일 QT 완료! 다시 돌아올 때마다 하나님과 말씀으로 동행한 당신을 축복합니다", de: "1000 QTs abgeschlossen – jedes Zurückkommen zählt. Gottes Segen für Ihren Weg mit seinem Wort.", en: "1000 QTs completed — every return matters. Blessings as you keep walking with God and His Word.", fr: "1000 QT accomplis — chaque retour compte. Soyez béni(e) dans votre marche avec Dieu et sa Parole." },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -432,22 +432,22 @@ export const T = {
   onboarding_title4: { ko: "말씀이 삶이 되는 삶을 살아요", de: "Leben, damit das Wort zum Alltag wird", en: "Live so the Word becomes your life", fr: "Vivre pour que la Parole devienne votre vie" },
   onboarding_desc4: { ko: "묵상을 통해 하나님이 주신 마음을 가지고\n하나님이 기뻐하시는 삶을 살아가요.", de: "Nehmen Sie durch die Meditation das Herz auf, das Gott Ihnen schenkt,\nund leben Sie ein Leben, das Gott Freude macht.", en: "Through meditation, carry the heart God gives you\nand live a life that pleases Him.", fr: "Par la méditation, recevez le cœur que Dieu vous donne\net vivez une vie qui Lui plaît." },
   onboarding_desc4_sub: { ko: "", de: "", en: "", fr: "" },
-  onboarding_title5: { ko: "매일 하면 정원이 자라요", de: "Täglich wächst Ihr Garten", en: "Watch your garden grow", fr: "Votre jardin grandit chaque jour" },
-  onboarding_desc5: { ko: "QT + 기도 + 결단을 모두 완료하면\n겨자씨 한 알이 자라 100일 후에 공중의 새들이 깃들이는 나무가 돼요.", de: "Wenn Sie Stille Zeit, Gebet und Entscheidung abschließen,\nwächst ein Senfkorn und wird nach 100 Tagen zu einem Baum, in dem die Vögel nisten.", en: "Complete Quiet Time, prayer, and decision,\nand a mustard seed grows into a tree where birds can nest after 100 days.", fr: "Quand vous complétez le QT, la prière et la décision,\nun grain de moutarde grandit et devient après 100 jours un arbre où les oiseaux peuvent se poser." },
+  onboarding_title5: { ko: "QT를 하면 정원이 자라요", de: "Mit QT wächst Ihr Garten", en: "Your garden grows through QT", fr: "Votre jardin grandit avec le QT" },
+  onboarding_desc5: { ko: "QT를 완료하면\n겨자씨 한 알이 자라 100일 후에 공중의 새들이 깃들이는 나무가 돼요.", de: "Wenn Sie eine QT abschließen,\nwächst ein Senfkorn und wird nach 100 Tagen zu einem Baum, in dem die Vögel nisten.", en: "When you complete Quiet Time,\na mustard seed grows into a tree where birds can nest after 100 days.", fr: "Quand vous terminez un QT,\nun grain de moutarde grandit et devient après 100 jours un arbre où les oiseaux peuvent se poser." },
   onboarding_desc5_sub: { ko: "쉬었다가 다시 와도 괜찮아요.\n오늘 다시 하나님과 동행해요.", de: "Es ist in Ordnung, wenn Sie pausiert haben und zurückkommen.\nGehen Sie heute wieder mit Gott.", en: "It’s okay to pause and come back.\nWalk with God again today.", fr: "Vous pouvez faire une pause et revenir.\nMarchez de nouveau avec Dieu aujourd’hui." },
   onboarding_next: { ko: "다음 →",                   de: "Weiter →", en: "Next", fr: "Suivant" },
   onboarding_start: { ko: "시작하기 ",               de: "Loslegen ", en: "Start →", fr: "Commencer →" },
   onboarding_skip: { ko: "건너뛰기",                  de: "Überspringen", en: "Skip", fr: "Passer" },
 
   // ── 복귀 팝업 ──
-  welcome_back_btn: { ko: "오늘 루틴 시작하기 ",   de: "Routine starten ", en: "Start fresh today", fr: "Recommencer aujourd’hui" },
+  welcome_back_btn: { ko: "오늘 QT 시작하기", de: "Heutige QT beginnen", en: "Start today’s QT", fr: "Commencer le QT du jour" },
   welcome_back_fixed_title: { ko: "다시 돌아왔군요! 축복해요! 🤍", de: "Sie sind zurück! Segen für Sie! 🤍", en: "You're back! Blessings! 🤍", fr: "Vous êtes de retour ! Soyez béni(e) ! 🤍" },
   welcome_back_fixed_sub: { ko: "하나님과 매일 동행하며,\n말씀에 깊게 뿌리내려봐요.", de: "Gehen Sie jeden Tag mit Gott,\nund verwurzeln Sie sich tief in seinem Wort.", en: "Walk with God every day,\nand root yourself deeply in His Word.", fr: "Marchez chaque jour avec Dieu,\net enracinez-vous profondément dans sa Parole." },
   welcome_back_30_title: { ko: "오랜만이에요!",           de: "Lang nicht gesehen!", en: "Long time no see!", fr: "Ça fait longtemps !" },
   welcome_back_30_sub: { ko: "말씀이 기다리고 있었어요.\n오늘 다시 뿌리를 내려봐요.", de: "Das Wort hat auf Sie gewartet.\nKommen Sie zurück und wachsen Sie wieder.", en: "The Word has been waiting.\nCome back and keep growing!", fr: "La Parole vous attendait.\\nRevenez et continuez à grandir !" },
   welcome_back_n_title:  { ko: "{n}일 만이에요!",         de: "{n} Tage später!", en: "It's been {n} days!", fr: "Cela fait {n} jours !" },
   welcome_back_14_sub: { ko: "괜찮아요, 언제든 돌아오면 돼요.\n오늘부터 다시 함께 자라요!", de: "Kein Problem, Sie können immer zurückkommen.\nFangen wir heute wieder an!", en: "No problem, you can always come back.\nLet's start fresh today!", fr: "Pas de problème, vous pouvez toujours revenir.\\nRecommençons aujourd’hui !" },
-  welcome_back_7_sub: { ko: "나무가 당신을 기다리고 있었어요.\n오늘 루틴으로 다시 시작해봐요.", de: "Ihr Baum hat auf Sie gewartet.\nWeiter geht's mit der Routine.", en: "Your tree has been waiting.\nLet's continue with the routine!", fr: "Your tree has been waiting.\\nLet's continue with the routine!" },
+  welcome_back_7_sub: { ko: "나무가 당신을 기다리고 있었어요.\n오늘 QT로 다시 말씀에 뿌리내려봐요.", de: "Ihr Baum hat auf Sie gewartet.\nSchlagen Sie heute mit QT wieder Wurzeln im Wort.", en: "Your tree has been waiting.\nRoot yourself in the Word again through QT today.", fr: "Votre arbre vous attendait.\nEnracinez-vous de nouveau dans la Parole avec le QT aujourd’hui." },
   welcome_back_1_sub: { ko: "괜찮아요! 오늘 다시 시작해봐요.\n조금씩 꾸준히가 중요해요 ", de: "Kein Problem! Fangen wir heute neu an.\nKleine Schritte zählen ", en: "No problem! Let's start fresh.\nSmall steps count too!", fr: "No problem! Let's start fresh.\\nSmall steps count too!" },
 
   // ── 가든 팝업 ──
@@ -594,7 +594,7 @@ export const T = {
   home_prayer_quiet_celeb: { ko: "오늘의 기도를\n하나님께 드렸어요", de: "Sie haben Ihr heutiges Gebet Gott gebracht", en: "You offered today's prayer to God", fr: "Vous avez offert la prière du jour à Dieu" },
   home_prayer_quiet_celeb_sub: { ko: "구하고 찾는 자에게\n하나님이 반드시 응답하실거예요!", de: "Gott wird denen, die bitten und suchen, gewiss antworten!", en: "God will surely answer those who ask and seek!", fr: "Dieu répondra assurément à ceux qui demandent et cherchent!" },
   home_prayer_yes_btn: { ko: "네, 오늘 기도했어요",    de: "Ja, ich habe heute gebetet", en: "Yes, I prayed today", fr: "Oui, j’ai prié aujourd’hui" },
-  home_routine_section: { ko: "오늘도 말씀에 뿌리를 내려요", de: "Heute wieder im Wort Wurzeln schlagen", en: "Root yourself in the Word again today", fr: "Enracinez-vous encore dans la Parole aujourd’hui" },
+  home_routine_section: { ko: "오늘도 말씀에 뿌리를 내려요", de: "Heute im Wort Wurzeln schlagen", en: "Root yourself in the Word today", fr: "Enracinez-vous dans la Parole aujourd’hui" },
   home_qt_today_title: { ko: "오늘의 QT", de: "Heutige QT", en: "Today’s QT", fr: "QT du jour" },
   home_qt_today_sub: { ko: "말씀과 동행하며 정원을 가꿔요.", de: "Gehen Sie mit dem Wort und pflegen Sie Ihren Garten.", en: "Walk with the Word and tend your garden.", fr: "Marchez avec la Parole et prenez soin de votre jardin." },
   home_qt_start_today: { ko: "오늘 큐티 하기", de: "Heute QT machen", en: "Do today’s QT", fr: "Faire le QT du jour" },
@@ -654,7 +654,7 @@ export const T = {
   tree_day_count:   { ko: "{n}일째", de: "Tag {n}", en: "Day {n}", fr: "Jour {n}" },
   tree_garden_n:    { ko: "{n}번째 정원", de: "{n}. Garten", en: "{n}.garden", fr: "{n}e jardin" },
   tree_progress:    { ko: "{n} / 10", de: "{n} / 10", en: "{n} / 10", fr: "{n} / 10" },
-  tree_streak:      { ko: "말씀 동행 {n}", de: "Wortbegleitung {n}", en: "Word walk {n}", fr: "Marche dans la Parole {n}" },
+  tree_streak:      { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}" },
   tree_away_msg:    { ko: "{n}일 만이에요. 오늘 루틴으로 다시 뿌리내려봐요.", de: "{n} Tage her. Starten Sie die Routine und kommen Sie zurück.", en: "It's been {n} days. Start the routine and come back.", fr: "Cela fait {n} jours. Reprenez la routine et enracinez-vous à nouveau." },
 
   // TreeGrowth 축하 sub messages (100일 사이클 / 10일 단위)
@@ -694,7 +694,7 @@ export const T = {
   qt_today_start: { ko: "오늘 큐티 시작하기",                   de: "Heutige QT beginnen", en: "Start today's QT", fr: "Commencer le QT du jour" },
   qt_catchup_start: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
   qt_catchup_title: { ko: "지난 큐티 하기", de: "Vergangene QT nachholen", en: "Do a past QT", fr: "Faire un QT passé" },
-  qt_catchup_sub: { ko: "기록 보완용이에요. 오늘의 말씀 동행일에는 영향을 주지 않아요.", de: "Nur zur Ergänzung Ihrer Aufzeichnungen. Die heutige Wortbegleitung bleibt unverändert.", en: "This only completes your record. It does not affect today's Word walk day.", fr: "Cela complète seulement votre historique. Cela n’influence pas la marche dans la Parole du jour." },
+  qt_catchup_sub: { ko: "기록 보완용이에요. 오늘 말씀동행일에는 영향을 주지 않아요.", de: "Nur zur Ergänzung Ihrer Aufzeichnungen. Der heutige Wortweg bleibt unverändert.", en: "This only completes your record. It does not affect today’s Word walk day.", fr: "Cela complète seulement votre historique. Cela n’influence pas le jour de marche avec la Parole d’aujourd’hui." },
   qt_catchup_date_label: { ko: "날짜 선택", de: "Datum auswählen", en: "Choose a date", fr: "Choisir une date" },
   qt_catchup_no_dates: { ko: "최근 60일 안에 보완할 수 있는 날짜가 없어요. 이미 기록된 날짜는 다시 선택할 수 없어요.", de: "In den letzten 60 Tagen gibt es kein nachzutragendes Datum. Bereits gespeicherte Tage können nicht erneut ausgewählt werden.", en: "There are no available dates to complete in the last 60 days. Dates with an existing record cannot be selected again.", fr: "Aucune date à compléter dans les 60 derniers jours. Les dates déjà enregistrées ne peuvent pas être sélectionnées à nouveau." },
   qt_catchup_6step_desc: { ko: "선택한 날짜의 본문을 불러와 6단계로 기록해요.", de: "Lädt den Abschnitt des ausgewählten Datums und führt durch 6 Schritte.", en: "Loads that date's passage and records it in 6 steps.", fr: "Charge le passage de cette date et l’enregistre en 6 étapes." },
@@ -880,7 +880,7 @@ const FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
  * @example
  *   t("home_greeting_morning", "de")              // "Guten Morgen ☀️"
  *   t("home_garden_my", "de", { name: "Anna" })   // "Annas Garten"
- *   t("tree_streak", "ko", { n: 7 })              // "7일 누적 루틴 완료"
+ *   t("tree_streak", "ko", { n: 7 })              // "말씀동행 +7"
  */
 export function t(key: TKey, lang: Lang = FALLBACK_LANG, vars?: Record<string, string | number>): string {
   const entry = T[key] as Translation;
