@@ -5,6 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
+import ConfettiBurst from "@/components/ConfettiBurst";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
@@ -363,22 +364,22 @@ export default function HomePage() {
     // 이번 세션에서 새로 획득한 뱃지만 팝업 (newlyAwardedBadgesRef에 있는 것만)
     if (newly.has("badge_rootsman")) {
       newly.delete("badge_rootsman");
-      setBadgePopup({ img: "/badge_rootsman.webp", title: t("badge_rootsman_title", lang), msg: t("badge_rootsman_desc", lang) });
+      setBadgePopup({ img: "/badge_rootsman.webp", title: t("badge_popup_rootsman", lang), msg: t("badge_rootsman_msg", lang) });
       return;
     }
     if (newly.has("badge_mose")) {
       newly.delete("badge_mose");
-      setBadgePopup({ img: "/badge_mose.webp", title: t("badge_mose_title", lang), msg: t("badge_mose_desc", lang) });
+      setBadgePopup({ img: "/badge_mose.webp", title: t("badge_popup_mose", lang), msg: t("badge_mose_msg", lang) });
       return;
     }
     if (newly.has("badge_rootsman_bible")) {
       newly.delete("badge_rootsman_bible");
-      setBadgePopup({ img: "/badge_rootsman_bible.webp", title: t("badge_rootsman_bible_title", lang), msg: t("badge_rootsman_bible_desc", lang) });
+      setBadgePopup({ img: "/badge_rootsman_bible.webp", title: t("badge_popup_rootsman_bible", lang), msg: t("badge_rootsman_bible_msg", lang) });
       return;
     }
     if (newly.has("badge_david")) {
       newly.delete("badge_david");
-      setBadgePopup({ img: "/badge_david.webp", title: t("badge_david_title", lang), msg: t("badge_david_desc", lang) });
+      setBadgePopup({ img: "/badge_david.webp", title: t("badge_popup_david", lang), msg: t("badge_david_msg", lang) });
       return;
     }
     for (let i = 0; i < 9; i++) {
@@ -918,6 +919,7 @@ export default function HomePage() {
 
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
               <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />

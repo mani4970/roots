@@ -1,4 +1,5 @@
 "use client";
+import ConfettiBurst from "@/components/ConfettiBurst";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 
@@ -54,6 +55,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.88)", backdropFilter: "blur(10px)" }}>
+      {isBadge && <ConfettiBurst variant="fixed" zIndex={102} />}
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: `1px solid ${isBadge ? "rgba(232,197,71,0.5)" : "var(--border)"}`, padding: "32px 28px 24px", margin: "0 28px", maxWidth: 340, width: "100%", textAlign: "center", boxShadow: isBadge ? "0 0 40px rgba(232,197,71,0.2)" : "none" }}>
         {isBadge ? (
           <>
@@ -72,7 +74,7 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
                 {badge.name} — {t(badge.descKey, lang)}
               </p>
               <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
-                {t("garden_badge_100days", lang)}
+                {t("garden_badge_100days", lang, { n: streakDays, fruit: t(badge.descKey, lang) })}
               </p>
             </div>
             <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
