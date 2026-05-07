@@ -33,7 +33,7 @@ export default function AuthLanguageSwitcher({ value, onChange, ariaLabel = "Cho
   }
 
   return (
-    <div ref={ref} style={{ position: "absolute", top: "calc(84px + env(safe-area-inset-top))", right: 22, zIndex: 30 }}>
+    <div ref={ref} style={{ position: "absolute", top: 22, right: 22, zIndex: 30 }}>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}

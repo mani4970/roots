@@ -64,7 +64,6 @@ export default function CapacitorAuthBridge() {
 
       try {
         await Browser.close();
-        window.setTimeout(() => { void Browser.close().catch(() => {}); }, 250);
       } catch {}
 
       if (error || !code) {
@@ -81,10 +80,6 @@ export default function CapacitorAuthBridge() {
       }
 
       storageRemove("roots_native_oauth_next");
-      try {
-        await Browser.close();
-        window.setTimeout(() => { void Browser.close().catch(() => {}); }, 250);
-      } catch {}
 
       const separator = next.includes("?") ? "&" : "?";
       router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
