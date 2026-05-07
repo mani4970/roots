@@ -14,6 +14,11 @@ export function saveLangLocally(lang: Lang): number {
   storageSet(STORAGE_KEY, lang);
   storageSet(SELECTED_FLAG, "true");
   storageSet(TRANSLATION_STORAGE_KEY, String(translationId));
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("roots_lang_changed", { detail: { lang } }));
+  }
+
   return translationId;
 }
 
@@ -31,6 +36,13 @@ export function useLang(): Lang {
   const [lang, setLang] = useState<Lang>(FALLBACK_LANG);
 
   useEffect(() => {
+    function handleLangChanged(event: Event) {
+      const next = (event as CustomEvent<{ lang?: string }>).detail?.lang;
+      if (isLang(next)) setLang(next);
+    }
+
+    window.addEventListener("roots_lang_changed", handleLangChanged as EventListener);
+
     let storedLang: Lang | null = null;
 
     // 1. client storage 우선 — 로그인 전 선택한 언어를 절대 DB 기본값으로 덮어쓰지 않음
@@ -76,6 +88,7 @@ export function useLang(): Lang {
           }
         });
     });
+    return () => window.removeEventListener("roots_lang_changed", handleLangChanged as EventListener);
   }, []);
 
   return lang;

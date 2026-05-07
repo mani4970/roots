@@ -914,7 +914,6 @@ export default function HomePage() {
         <LanguagePicker onSelect={async (l) => {
           await setPreferredLang(l);
           setShowFirstLangPicker(false);
-          window.location.reload();
         }} />
       )}
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
@@ -1029,7 +1028,6 @@ export default function HomePage() {
                   <button key={opt.code} onClick={async () => {
                     setShowLangPicker(false);
                     await setPreferredLang(opt.code);
-                    window.location.reload();
                   }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 22 }}>{opt.flag}</span>
                     <span>{opt.nativeName}</span>

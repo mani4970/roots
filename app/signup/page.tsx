@@ -119,7 +119,7 @@ export default function SignupPage() {
       )}
       <AuthLanguageSwitcher value={lang} onChange={setSelectedLang} ariaLabel={t("auth_language_aria", lang)} />
       <Link href={withRedirect("/welcome")} style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 32, position: "absolute", top: 22, left: 22 }}>
-        <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("signup_back", lang)}</span>
+        <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
       </Link>
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <img
