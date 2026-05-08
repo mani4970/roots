@@ -21,6 +21,7 @@
     "@capacitor/browser": "^7.0.5",
     "@capacitor/core": "^7.6.2",
     "@capacitor/ios": "^7.6.2",
+    "@capacitor/share": "^7.0.3",
     "@capacitor/status-bar": "^7.0.3",
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.101.1",

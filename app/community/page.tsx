@@ -9,6 +9,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
+import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
@@ -909,21 +910,38 @@ export default function CommunityPage() {
     setLeavingGroup(false);
   }
 
-  function copyInviteLink(groupId: string) {
-    navigator.clipboard.writeText(`${APP_URL}/join?group=${groupId}`).then(() => { setCopiedId(groupId); setTimeout(() => setCopiedId(null), 2000); });
+  async function copyInviteLink(groupId: string) {
+    const copied = await copyText(`${APP_URL}/join?group=${groupId}`);
+    if (copied) {
+      setCopiedId(groupId);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   }
 
-  function shareInvite(group: any) {
+  async function shareInvite(group: any) {
     const inviteUrl = `${APP_URL}/join?group=${group.id}`;
     const text = c("community_group_invite_share_text", { name: group.name, url: inviteUrl });
-    if (navigator.share) navigator.share({ title: c("community_group_invite_share_title", { name: group.name }), text });
-    else copyInviteLink(group.id);
+    const result = await shareInviteContent({
+      title: c("community_group_invite_share_title", { name: group.name }),
+      text,
+      url: inviteUrl,
+    });
+    if (result === "copied") {
+      setCopiedId(group.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   }
 
-  function shareApp() {
-    const text = c("community_app_invite_share_text", { url: APP_URL });
-    if (navigator.share) navigator.share({ title: c("community_app_invite_share_title"), text });
-    else navigator.clipboard.writeText(text);
+  async function shareApp() {
+    const result = await shareInviteContent({
+      title: c("community_app_invite_share_title"),
+      text: c("community_app_invite_share_text", { url: APP_URL }),
+      url: APP_URL,
+    });
+    if (result === "copied") {
+      setCopiedId("app");
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   }
 
   // 반응 버튼 컴포넌트

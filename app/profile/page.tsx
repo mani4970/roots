@@ -5,6 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
+import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { Loader2, Check, X, Camera, Share2, Settings } from "lucide-react";
 
 const PROFILE_WEEKDAY_KEYS = [
@@ -211,13 +212,11 @@ export default function ProfilePage() {
     }
   }
 
-  function shareApp() {
+  async function shareApp() {
     const title = t("profile_invite_title", lang);
     const text = t("profile_invite_text", lang);
-    if (navigator.share) {
-      navigator.share({ title, text });
-    } else {
-      navigator.clipboard.writeText(text);
+    const result = await shareInviteContent({ title, text, url: "https://christian-roots.com" });
+    if (result === "copied") {
       showToast(t("profile_invite_copied", lang));
     }
   }
