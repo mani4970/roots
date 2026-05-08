@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { Clipboard } from "@capacitor/clipboard";
 import { Share } from "@capacitor/share";
 
 export type ShareInviteParams = {
@@ -17,6 +18,15 @@ function isNativeApp() {
 
 export async function copyText(text: string): Promise<boolean> {
   if (!isBrowser()) return false;
+
+  if (isNativeApp()) {
+    try {
+      await Clipboard.write({ string: text });
+      return true;
+    } catch (error) {
+      console.warn("Native clipboard failed; trying web clipboard fallback.", error);
+    }
+  }
 
   try {
     if (navigator.clipboard?.writeText) {

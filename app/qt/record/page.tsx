@@ -7,6 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
+import { copyText } from "@/lib/nativeShare";
 import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3 } from "lucide-react";
 
 
@@ -211,7 +212,7 @@ function RecordContent() {
     setShowShareModal(true);
   }
 
-  function copyAll() {
+  async function copyAll() {
     if (!record) return;
     const isSunday = record.qt_mode === "sunday";
     // 한국어 + 주일예배일 때 날짜 끝에 "주일" 추가 (예: "2026년 5월 3일 주일")
@@ -271,9 +272,13 @@ function RecordContent() {
     ];
 
     const parts = (isSunday ? sundayParts : sixStepParts).filter(Boolean).join("\n");
-    navigator.clipboard.writeText(parts).then(() => {
-      setCopied(true); setTimeout(() => setCopied(false), 2000);
-    });
+    const ok = await copyText(parts);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setNotice(t("qt_record_error_share", lang));
+    }
   }
 
   function goEdit() {
