@@ -162,6 +162,7 @@ export default function CommunityPage() {
   const [manageText, setManageText] = useState("");
   const [manageSaving, setManageSaving] = useState(false);
   const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
+  const [safetyConfirm, setSafetyConfirm] = useState<null | { action: "report" | "hide-item" | "hide-author"; kind: "qt" | "prayer"; item: any }>(null);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
 
@@ -341,6 +342,29 @@ export default function CommunityPage() {
     }
   }
 
+  function openSafetyConfirm(action: "report" | "hide-item" | "hide-author", kind: "qt" | "prayer", item: any) {
+    setActionMenu(null);
+    setSafetyConfirm({ action, kind, item });
+  }
+
+  function closeSafetyConfirm() {
+    if (manageSaving) return;
+    setSafetyConfirm(null);
+  }
+
+  async function confirmSafetyAction() {
+    if (!safetyConfirm || manageSaving) return;
+    const { action, kind, item } = safetyConfirm;
+    if (action === "report") {
+      await hideItem(kind, item, true);
+    } else if (action === "hide-item") {
+      await hideItem(kind, item, false);
+    } else {
+      await hideAuthor(item);
+    }
+    setSafetyConfirm(null);
+  }
+
   async function hideAuthor(item: any) {
     if (!userId || !item?.user_id || item.user_id === userId) return;
     setManageSaving(true);
@@ -379,18 +403,53 @@ export default function CommunityPage() {
             </>
           ) : (
             <>
-              <button onClick={() => hideItem(kind, item, true)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => openSafetyConfirm("report", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <Flag size={17} /> {c("community_report")}
               </button>
-              <button onClick={() => hideItem(kind, item, false)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => openSafetyConfirm("hide-item", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <EyeOff size={17} /> {c("community_hide_content")}
               </button>
-              <button onClick={() => hideAuthor(item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => openSafetyConfirm("hide-author", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <EyeOff size={17} /> {c("community_hide_user_content")}
               </button>
             </>
           )}
           <button onClick={() => setActionMenu(null)} className="btn-outline" style={{ width: "100%", marginTop: 8 }}>{c("community_cancel")}</button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSafetyConfirmModal() {
+    if (!safetyConfirm) return null;
+    const isReport = safetyConfirm.action === "report";
+    const title = isReport
+      ? c("community_report_confirm_title")
+      : safetyConfirm.action === "hide-item"
+        ? c("community_hide_content_confirm_title")
+        : c("community_hide_user_confirm_title");
+    const msg = isReport
+      ? c("community_report_confirm_msg")
+      : safetyConfirm.action === "hide-item"
+        ? c("community_hide_content_confirm_msg")
+        : c("community_hide_user_confirm_msg");
+    const actionText = isReport ? c("community_report_confirm_action") : c("community_hide_confirm_action");
+
+    return (
+      <div onClick={closeSafetyConfirm} style={{ position: "fixed", inset: 0, zIndex: 280, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{title}</h2>
+          <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>{msg}</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={closeSafetyConfirm} disabled={manageSaving} className="btn-outline" style={{ flex: 1 }}>{c("community_cancel")}</button>
+            <button
+              onClick={confirmSafetyAction}
+              disabled={manageSaving}
+              style={{ flex: 1, border: "none", borderRadius: 14, background: isReport ? "rgba(196,106,106,0.14)" : "var(--sage)", color: isReport ? "#B35F5F" : "white", fontSize: 14, fontWeight: 800, cursor: manageSaving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              {manageSaving ? <Loader2 size={15} className="spin" /> : actionText}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1235,6 +1294,7 @@ export default function CommunityPage() {
           </div>
         </div>
         {renderActionMenu()}
+        {renderSafetyConfirmModal()}
         {renderManageModal()}
         {showLeaveConfirm && selectedGroup && (
           <div
@@ -1545,6 +1605,7 @@ export default function CommunityPage() {
       </div>
 
       {renderActionMenu()}
+      {renderSafetyConfirmModal()}
       {renderManageModal()}
 
       {showGroupForm && (
