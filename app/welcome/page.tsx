@@ -238,8 +238,8 @@ function BadgeImage({ src, label }: { src: string; label: string }) {
     <Image
       src={src}
       alt={label}
-      width={44}
-      height={44}
+      width={54}
+      height={54}
       style={{ borderRadius: "50%", objectFit: "cover" }}
     />
   );
