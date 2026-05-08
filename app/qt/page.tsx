@@ -482,21 +482,12 @@ export default function QTPage() {
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
               <button onClick={() => setShowPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 18, lineHeight: 1.6 }}>{t("qt_passage_choice_sub", lang)}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", textAlign: "left" }}>
-                <BookOpen size={28} strokeWidth={1.8} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_passage_choice_today", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_today_desc", lang)}</p>
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+              <button onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", color: "var(--sage-dark)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+                {t("qt_passage_choice_today", lang)}
               </button>
-              <button onClick={() => startQT("6step", "custom")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
-                <PenLine size={28} strokeWidth={1.8} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_passage_choice_custom", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_custom_desc", lang)}</p>
-                </div>
+              <button onClick={() => startQT("6step", "custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+                {t("qt_passage_choice_custom", lang)}
               </button>
             </div>
             <button onClick={() => { setShowPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>

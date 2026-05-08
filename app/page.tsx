@@ -795,9 +795,11 @@ export default function HomePage() {
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
                   {showHomeSundayQT ? t("home_qt_sunday_title", lang) : showHomeQTPassageChoice ? t("qt_passage_choice_title", lang) : t("home_qt_choice_title", lang)}
                 </h2>
-                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>
-                  {showHomeSundayQT ? t("home_qt_sunday_sub", lang) : showHomeQTPassageChoice ? t("qt_passage_choice_sub", lang) : t("home_qt_choice_sub", lang)}
-                </p>
+                {!showHomeQTPassageChoice && (
+                  <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>
+                    {showHomeSundayQT ? t("home_qt_sunday_sub", lang) : t("home_qt_choice_sub", lang)}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTPassageChoice(false); setShowHomeQTGuide(false); }}
@@ -815,13 +817,11 @@ export default function HomePage() {
               </button>
             ) : showHomeQTPassageChoice ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                <button onClick={() => startHomeSixStepFromPassageChoice("scheduled")} className="btn-sage" style={{ width: "100%", minHeight: 58, flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{t("qt_passage_choice_today", lang)} <ChevronRight size={16} /></span>
-                  <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.82, lineHeight: 1.5 }}>{t("qt_passage_choice_today_desc", lang)}</span>
+                <button onClick={() => startHomeSixStepFromPassageChoice("scheduled")} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center" }}>
+                  {t("qt_passage_choice_today", lang)}
                 </button>
-                <button onClick={() => startHomeSixStepFromPassageChoice("custom")} className="btn-outline" style={{ width: "100%", minHeight: 58, flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px" }}>
-                  <span>{t("qt_passage_choice_custom", lang)}</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_custom_desc", lang)}</span>
+                <button onClick={() => startHomeSixStepFromPassageChoice("custom")} className="btn-outline" style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center" }}>
+                  {t("qt_passage_choice_custom", lang)}
                 </button>
                 <button onClick={() => { setShowHomeQTPassageChoice(false); setShowHomeQTChoice(true); }} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
                   {t("qt_passage_choice_back", lang)}
