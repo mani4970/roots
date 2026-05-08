@@ -48,12 +48,22 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
+function buildShareText(text: string, url?: string) {
+  if (!url) return text;
+  return text.includes(url) ? text : `${text}
+${url}`;
+}
+
 export async function shareInvite({ title, text, url }: ShareInviteParams): Promise<"shared" | "copied" | "failed"> {
   if (!isBrowser()) return "failed";
 
+  const shareText = buildShareText(text, url);
+
   if (isNativeApp()) {
     try {
-      await Share.share({ title, text, url, dialogTitle: title });
+      // Android message apps often render both `text` and `url`, which duplicates invite links.
+      // Keep the link inside text only so every target receives a single clean message.
+      await Share.share({ title, text: shareText, dialogTitle: title });
       return "shared";
     } catch (error) {
       // User cancellation should not be treated as an app error.
@@ -63,14 +73,12 @@ export async function shareInvite({ title, text, url }: ShareInviteParams): Prom
 
   try {
     if (navigator.share) {
-      await navigator.share({ title, text, url });
+      await navigator.share({ title, text: shareText });
       return "shared";
     }
   } catch (error) {
     console.warn("Web share failed or was cancelled; trying clipboard fallback.", error);
   }
 
-  const copyPayload = url ? `${text}
-${url}` : text;
-  return (await copyText(copyPayload)) ? "copied" : "failed";
+  return (await copyText(shareText)) ? "copied" : "failed";
 }
