@@ -152,7 +152,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "임시저장하고 나중에 이어쓰기": { de: "Als Entwurf speichern", en: "Save as draft", fr: "Enregistrer comme brouillon" },
   "성품 (마음의 결심)": { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)", fr: "Caractère (décision du cœur)" },
   "행동 (구체적인 실천)": { de: "Handlung (konkretes Tun)", en: "Action (concrete practice)", fr: "Action (pratique concrète)" },
-  "행동 추가하기": { de: "Handlung hinzufügen", en: "Add action", fr: "Ajouter une action" },
+  "행동 추가하기": { de: "Vorsatz hinzufügen", en: "Add resolution", fr: "Ajouter une décision" },
   "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé" },
   "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage" },
   "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé" },
@@ -2033,7 +2033,7 @@ function QTWriteContent() {
                     ))}
                   </div>
                   <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-                    <Plus size={14} /> {trQT("행동 추가하기", lang)}
+                    <Plus size={14} /> {trQT("결단 추가하기", lang)}
                   </button>
                 </div>
               </div>
@@ -2292,7 +2292,7 @@ function QTWriteContent() {
               ))}
             </div>
             <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text3)", fontSize: 12 }}>
-              <Plus size={14} /> {trQT("행동 추가하기", lang)}
+              <Plus size={14} /> {trQT("결단 추가하기", lang)}
             </button>
           </div>
         </div>
