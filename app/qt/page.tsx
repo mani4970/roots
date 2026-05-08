@@ -95,6 +95,7 @@ export default function QTPage() {
   const [expandedYear, setExpandedYear] = useState<number | null>(() => parseLocalDateString(getLocalDateString()).getFullYear());
   const [expandedMonthKeys, setExpandedMonthKeys] = useState<Set<string>>(() => new Set([getYearMonthKey()]));
   const [showStartModal, setShowStartModal] = useState(false);
+  const [showPassageChoiceModal, setShowPassageChoiceModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
@@ -183,12 +184,14 @@ export default function QTPage() {
     });
   }
 
-  function startQT(mode: string) {
+  function startQT(mode: "6step" | "sunday" | "free", passageSource: "scheduled" | "custom" = "scheduled") {
     setShowStartModal(false);
+    setShowPassageChoiceModal(false);
     router.push(buildQTWriteHref({
-      mode: mode as "6step" | "sunday" | "free",
+      mode,
       preferredTranslation,
       todaySchedule,
+      useTodaySchedule: passageSource === "scheduled",
     }));
   }
 
@@ -472,6 +475,37 @@ export default function QTPage() {
         </div>
       )}
 
+      {showPassageChoiceModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
+              <button onClick={() => setShowPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 18, lineHeight: 1.6 }}>{t("qt_passage_choice_sub", lang)}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: "pointer", textAlign: "left" }}>
+                <BookOpen size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_passage_choice_today", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_today_desc", lang)}</p>
+                </div>
+              </button>
+              <button onClick={() => startQT("6step", "custom")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                <PenLine size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_passage_choice_custom", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_custom_desc", lang)}</p>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => { setShowPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+              {t("qt_passage_choice_back", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showStartModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
@@ -488,7 +522,8 @@ export default function QTPage() {
                     showToast(t("qt_sunday_required", lang));
                     return;
                   }
-                  startQT("6step");
+                  setShowStartModal(false);
+                  setShowPassageChoiceModal(true);
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border)" : "1px solid var(--sage)", background: isSundayToday ? "var(--bg3)" : "var(--sage-light)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
               >

@@ -115,6 +115,7 @@ export default function HomePage() {
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
   const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
+  const [showHomeQTPassageChoice, setShowHomeQTPassageChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
   const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
   const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
@@ -652,7 +653,7 @@ export default function HomePage() {
     return `${translatedBook} ${verseRange}`;
   }
 
-  function startHomeQT(mode?: QTMode) {
+  function startHomeQT(mode?: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
     if (homeQTState.hasDraft && !mode) {
       router.push("/qt/write?resume=true");
       return;
@@ -663,6 +664,7 @@ export default function HomePage() {
       mode: nextMode,
       preferredTranslation: homeQTState.preferredTranslation,
       todaySchedule: homeQTState.todaySchedule,
+      useTodaySchedule: passageSource === "scheduled",
     }));
   }
 
@@ -679,6 +681,7 @@ export default function HomePage() {
       setShowHomeSundayQT(true);
       return;
     }
+    setShowHomeQTPassageChoice(false);
     setShowHomeQTChoice(true);
   }
 
@@ -686,7 +689,19 @@ export default function HomePage() {
     setShowHomeQTChoice(false);
     setShowHomeSundayQT(false);
     setShowHomeQTGuide(false);
+
+    if (mode === "6step") {
+      setShowHomeQTPassageChoice(true);
+      return;
+    }
+
+    setShowHomeQTPassageChoice(false);
     startHomeQT(mode);
+  }
+
+  function startHomeSixStepFromPassageChoice(passageSource: "scheduled" | "custom") {
+    setShowHomeQTPassageChoice(false);
+    startHomeQT("6step", passageSource);
   }
 
   function openDecisionSection() {
@@ -772,20 +787,20 @@ export default function HomePage() {
         </div>
       )}
 
-      {(showHomeQTChoice || showHomeSundayQT) && (
+      {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
           <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
-                  {showHomeSundayQT ? t("home_qt_sunday_title", lang) : t("home_qt_choice_title", lang)}
+                  {showHomeSundayQT ? t("home_qt_sunday_title", lang) : showHomeQTPassageChoice ? t("qt_passage_choice_title", lang) : t("home_qt_choice_title", lang)}
                 </h2>
                 <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>
-                  {showHomeSundayQT ? t("home_qt_sunday_sub", lang) : t("home_qt_choice_sub", lang)}
+                  {showHomeSundayQT ? t("home_qt_sunday_sub", lang) : showHomeQTPassageChoice ? t("qt_passage_choice_sub", lang) : t("home_qt_choice_sub", lang)}
                 </p>
               </div>
               <button
-                onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTGuide(false); }}
+                onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTPassageChoice(false); setShowHomeQTGuide(false); }}
                 aria-label={t("home_qt_choice_close", lang)}
                 style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, border: "none", background: "none", color: "var(--text3)", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
@@ -798,6 +813,20 @@ export default function HomePage() {
                 {t("home_qt_sunday_start", lang)}
                 <ChevronRight size={16} />
               </button>
+            ) : showHomeQTPassageChoice ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                <button onClick={() => startHomeSixStepFromPassageChoice("scheduled")} className="btn-sage" style={{ width: "100%", minHeight: 58, flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{t("qt_passage_choice_today", lang)} <ChevronRight size={16} /></span>
+                  <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.82, lineHeight: 1.5 }}>{t("qt_passage_choice_today_desc", lang)}</span>
+                </button>
+                <button onClick={() => startHomeSixStepFromPassageChoice("custom")} className="btn-outline" style={{ width: "100%", minHeight: 58, flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px" }}>
+                  <span>{t("qt_passage_choice_custom", lang)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_passage_choice_custom_desc", lang)}</span>
+                </button>
+                <button onClick={() => { setShowHomeQTPassageChoice(false); setShowHomeQTChoice(true); }} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
+                  {t("qt_passage_choice_back", lang)}
+                </button>
+              </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
                 <button onClick={() => startHomeQTFromPopup("6step")} className="btn-sage" style={{ width: "100%", minHeight: 48 }}>

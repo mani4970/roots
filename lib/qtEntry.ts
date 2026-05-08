@@ -21,17 +21,19 @@ export function buildQTWriteHref({
   mode,
   preferredTranslation,
   todaySchedule,
+  useTodaySchedule = true,
 }: {
   mode: QTMode;
   preferredTranslation: number;
   todaySchedule?: QTSchedule | null;
+  useTodaySchedule?: boolean;
 }) {
   const params = new URLSearchParams({
     mode,
     translation: String(preferredTranslation),
   });
 
-  if (mode === "6step" && todaySchedule) {
+  if (mode === "6step" && useTodaySchedule && todaySchedule) {
     params.set("schedBook", todaySchedule.book);
     params.set("schedChapter", String(todaySchedule.chapter));
     params.set("schedStartV", String(todaySchedule.start_verse));
