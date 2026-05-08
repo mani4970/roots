@@ -98,13 +98,10 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
                 {stageDesc}
               </p>
             </div>
-            <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
-              {t("garden_updated_day", lang, { n: streakDays })}
-            </p>
           </>
         )}
         <button onClick={onClose} style={{ width: "100%", padding: "13px", background: isBadge ? "rgba(232,197,71,0.9)" : "var(--sage)", color: isBadge ? "#1a1c1e" : "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-          {isBadge ? t("badge_check_btn", lang) : t("garden_check_btn", lang)}
+          {isBadge ? t("badge_check_btn", lang) : t("confirm", lang)}
         </button>
       </div>
     </div>
