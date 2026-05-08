@@ -9,14 +9,11 @@ export const TRANSLATIONS = [
     { id: 98, name: "새번역" },
     { id: 88, name: "쉬운성경" },
     { id: 89, name: "우리말성경" },
-    { id: 90, name: "바른성경" },
     { id: 83, name: "현대인의성경" },
     { id: 81, name: "공동번역" },
     { id: 99, name: "새한글" },
-    { id: 87, name: "한글KJV" },
   ]},
   { group: "English", items: [
-    { id: 67, name: "KJV" },
     { id: 80, name: "NIV" },
     { id: 100, name: "ESV" },
     { id: 62, name: "NASB" },
@@ -38,8 +35,8 @@ export const ALL_TRANSLATIONS = TRANSLATIONS.flatMap(g => g.items);
 
 // 번역본 ID → 언어 코드
 export const TRANSLATION_LANG: Record<number, string> = {
-  92:"KO", 84:"KO", 98:"KO", 88:"KO", 89:"KO", 90:"KO", 83:"KO", 81:"KO", 99:"KO", 87:"KO",
-  67:"EN", 80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
+  92:"KO", 84:"KO", 98:"KO", 88:"KO", 89:"KO", 83:"KO", 81:"KO", 99:"KO",
+  80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
   29:"DE", 27:"DE", 97:"DE",
   26:"FR", 24:"FR",
 };
