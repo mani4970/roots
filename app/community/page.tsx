@@ -163,6 +163,7 @@ export default function CommunityPage() {
   const [manageSaving, setManageSaving] = useState(false);
   const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
+  const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -170,8 +171,8 @@ export default function CommunityPage() {
     return `${kind}:${id}`;
   }
 
-  function filterHiddenItems(kind: "qt" | "prayer", rows: any[], keys = hiddenKeys) {
-    return rows.filter((row: any) => !keys.includes(contentKey(kind, row.id)));
+  function filterHiddenItems(kind: "qt" | "prayer", rows: any[], keys = hiddenKeys, authorIds = hiddenUserIds) {
+    return rows.filter((row: any) => !keys.includes(contentKey(kind, row.id)) && !authorIds.includes(row.user_id));
   }
 
   function visibilityTargets(value?: string | null) {
@@ -219,6 +220,15 @@ export default function CommunityPage() {
       setGroupPrayers(prev => prev.filter(item => item.id !== id));
       setAnsweredPrayers(prev => prev.filter(item => item.id !== id));
     }
+  }
+
+  function removeSharedAuthor(authorId: string) {
+    setQtShares(prev => prev.filter(item => item.user_id !== authorId));
+    setGroupQts(prev => prev.filter(item => item.user_id !== authorId));
+    setPrayers(prev => prev.filter(item => item.user_id !== authorId));
+    setGroupPrayers(prev => prev.filter(item => item.user_id !== authorId));
+    setAnsweredPrayers(prev => prev.filter(item => item.user_id !== authorId));
+    if (detailQt?.user_id === authorId) setDetailQt(null);
   }
 
   async function confirmUnshare() {
@@ -323,10 +333,28 @@ export default function CommunityPage() {
       const key = contentKey(kind, item.id);
       setHiddenKeys(prev => prev.includes(key) ? prev : [...prev, key]);
       removeSharedItem(kind, item.id);
-      if (detailQt?.id === item.id) setDetailQt(null);
       setActionMenu(null);
     } catch (error) {
       console.error("community report/hide failed", error);
+    } finally {
+      setManageSaving(false);
+    }
+  }
+
+  async function hideAuthor(item: any) {
+    if (!userId || !item?.user_id || item.user_id === userId) return;
+    setManageSaving(true);
+    const supabase = createClient();
+    try {
+      await supabase.from("hidden_community_users").upsert({
+        user_id: userId,
+        hidden_user_id: item.user_id,
+      }, { onConflict: "user_id,hidden_user_id" });
+      setHiddenUserIds(prev => prev.includes(item.user_id) ? prev : [...prev, item.user_id]);
+      removeSharedAuthor(item.user_id);
+      setActionMenu(null);
+    } catch (error) {
+      console.error("community user hide failed", error);
     } finally {
       setManageSaving(false);
     }
@@ -356,6 +384,9 @@ export default function CommunityPage() {
               </button>
               <button onClick={() => hideItem(kind, item, false)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
                 <EyeOff size={17} /> {c("community_hide_content")}
+              </button>
+              <button onClick={() => hideAuthor(item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+                <EyeOff size={17} /> {c("community_hide_user_content")}
               </button>
             </>
           )}
@@ -470,6 +501,12 @@ export default function CommunityPage() {
     const loadedHiddenKeys = (hiddenRows ?? []).map((row: any) => `${row.content_type}:${row.content_id}`);
     setHiddenKeys(loadedHiddenKeys);
 
+    const { data: hiddenUserRows } = await supabase.from("hidden_community_users")
+      .select("hidden_user_id")
+      .eq("user_id", user.id);
+    const loadedHiddenUserIds = (hiddenUserRows ?? []).map((row: any) => row.hidden_user_id).filter(Boolean);
+    setHiddenUserIds(loadedHiddenUserIds);
+
     // prayedIds: DB에서 로드
     const { data: prayLogs } = await supabase.from("user_prayer_logs")
       .select("prayer_id").eq("user_id", user.id);
@@ -484,7 +521,7 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false });
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
-        setPrayers(filterHiddenItems("prayer", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys));
+        setPrayers(filterHiddenItems("prayer", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds));
       }
       // 응답됨 (간증 있는 것)
       const { data: answered } = await supabase.from("prayer_items")
@@ -509,7 +546,7 @@ export default function CommunityPage() {
         }
 
         setLikedPrayerIds(myLikedIds);
-        setAnsweredPrayers(filterHiddenItems("prayer", answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })), loadedHiddenKeys));
+        setAnsweredPrayers(filterHiddenItems("prayer", answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds));
       } else {
         setLikedPrayerIds([]);
         setAnsweredPrayers([]);
@@ -521,7 +558,7 @@ export default function CommunityPage() {
         .order("created_at", { ascending: false }).limit(30);
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
-        const withProfs = filterHiddenItems("qt", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys);
+        const withProfs = filterHiddenItems("qt", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
         setQtShares(withProfs);
         // 반응 카운트 로드
         const qtIds = data.map((r: any) => r.id);
@@ -630,6 +667,7 @@ export default function CommunityPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const currentHiddenKeys = hiddenKeys;
+    const currentHiddenUserIds = hiddenUserIds;
     const { data } = await supabase.from("qt_records")
       .select("*").ilike("visibility", `%group_${group.id}%`)
       .order("created_at", { ascending: false }).limit(30);
@@ -639,7 +677,7 @@ export default function CommunityPage() {
         ...r,
         profiles: profMap[r.user_id] ?? null,
         isUnreadInGroup: isLaterThan(r.created_at, previousSeenAt),
-      })), currentHiddenKeys);
+      })), currentHiddenKeys, currentHiddenUserIds);
       setGroupQts(withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
@@ -673,7 +711,7 @@ export default function CommunityPage() {
           ...row,
           profiles: prayerProfMap[row.user_id] ?? null,
           isUnreadInGroup: isLaterThan(sharedContentTime(row), previousSeenAt),
-        })), currentHiddenKeys));
+        })), currentHiddenKeys, currentHiddenUserIds));
       } else {
         setGroupPrayers([]);
       }

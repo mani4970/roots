@@ -148,6 +148,7 @@ export const T = {
   community_manage_other_content: { ko: "글 관리", de: "Beitrag verwalten", en: "Manage post", fr: "Gérer ce contenu" },
   community_report: { ko: "신고하기", de: "Melden", en: "Report", fr: "Signaler" },
   community_hide_content: { ko: "이 글 숨기기", de: "Diesen Beitrag ausblenden", en: "Hide this post", fr: "Masquer ce contenu" },
+  community_hide_user_content: { ko: "이 사용자의 글 숨기기", de: "Beiträge dieser Person ausblenden", en: "Hide posts from this user", fr: "Masquer les publications de cette personne" },
   community_free_meditation: { ko: "자유 묵상", de: "Freie Meditation", en: "Free Meditation", fr: "Méditation libre" },
   community_tap_details: { ko: "탭하여 전체 보기 →", de: "Antippen für Details →", en: "Tap for details →", fr: "Appuyez pour voir les détails →" },
   community_react_to_qt: { ko: "이 말씀 묵상에 반응해주세요", de: "Reagieren Sie auf diese Stille Zeit", en: "React to this Quiet Time", fr: "Réagissez à ce QT" },
