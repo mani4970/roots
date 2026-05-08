@@ -248,11 +248,17 @@
 .badgesSection {
   padding: 0 20px;
 }
+.badgesGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
 .badgesRow {
   display: flex;
   justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .badgePh {
   width: 48px;
