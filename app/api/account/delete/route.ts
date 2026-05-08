@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -11,6 +10,8 @@ type DeleteStepResult = {
   error: string;
 };
 
+type SupabaseStepResult = PromiseLike<{ error: { message?: string } | null } | void>;
+
 function getRequiredEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env: ${name}`);
@@ -20,7 +21,7 @@ function getRequiredEnv(name: string) {
 async function runStep(
   errors: DeleteStepResult[],
   step: string,
-  action: () => Promise<{ error: { message?: string } | null } | void>
+  action: () => SupabaseStepResult
 ) {
   try {
     const result = await action();
@@ -73,7 +74,7 @@ export async function POST() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  let admin: SupabaseClient;
+  let admin: ReturnType<typeof createSupabaseAdminClient>;
   try {
     admin = createSupabaseAdminClient(
       getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
