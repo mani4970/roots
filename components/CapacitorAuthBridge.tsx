@@ -10,6 +10,10 @@ import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import type { Lang } from "@/lib/i18n";
 
 const SUPPORTED_LANGS = new Set<Lang>(["ko", "de", "en", "fr"]);
+const ROOTS_WEB_HOSTS = new Set([
+  "www.christian-roots.com",
+  "christian-roots.com",
+]);
 
 function normalizeLang(value: string | null): Lang {
   return SUPPORTED_LANGS.has(value as Lang) ? (value as Lang) : "ko";
@@ -18,13 +22,30 @@ function normalizeLang(value: string | null): Lang {
 function isRootsAuthCallback(rawUrl: string) {
   try {
     const url = new URL(rawUrl);
-    return (
+    const normalizedPath = url.pathname.replace(/\/$/, "");
+
+    if (
       url.protocol === "roots:" &&
       url.host === "auth" &&
-      url.pathname === "/callback"
-    );
+      normalizedPath === "/callback"
+    ) {
+      return true;
+    }
+
+    if (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      ROOTS_WEB_HOSTS.has(url.host) &&
+      normalizedPath === "/auth/callback"
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
-    return rawUrl.startsWith("roots://auth/callback");
+    return (
+      rawUrl.startsWith("roots://auth/callback") ||
+      rawUrl.includes("christian-roots.com/auth/callback")
+    );
   }
 }
 
@@ -43,12 +64,17 @@ function getSafeNext(value: string | null) {
   return value;
 }
 
-function debugOAuth(message: string, details?: Record<string, unknown>) {
-  if (process.env.NODE_ENV === "production") {
-    console.info(`[Roots OAuth] ${message}`, details ?? "");
-    return;
+function safeJson(value: Record<string, unknown>) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
   }
-  console.info(`[Roots OAuth] ${message}`, details ?? "");
+}
+
+function debugOAuth(message: string, details?: Record<string, unknown>) {
+  const suffix = details ? ` ${safeJson(details)}` : "";
+  console.info(`[Roots OAuth] ${message}${suffix}`);
 }
 
 function maskCallbackUrl(rawUrl: string) {
@@ -57,7 +83,8 @@ function maskCallbackUrl(rawUrl: string) {
     const params = url.searchParams;
     const code = params.get("code");
     if (code) params.set("code", `${code.slice(0, 6)}…(${code.length})`);
-    return `${url.protocol}//${url.host}${url.pathname}?${params.toString()}`;
+    const query = params.toString();
+    return `${url.protocol}//${url.host}${url.pathname}${query ? `?${query}` : ""}`;
   } catch {
     return rawUrl.includes("code=")
       ? rawUrl.replace(
@@ -79,26 +106,37 @@ export default function CapacitorAuthBridge() {
     let active = true;
     let listener: { remove: () => Promise<void> } | undefined;
 
-    async function handleOpenUrl(rawUrl: string) {
-      if (!rawUrl || !isRootsAuthCallback(rawUrl)) return;
+    async function handleOpenUrl(rawUrl: string, source: "appUrlOpen" | "launchUrl") {
+      if (!rawUrl) {
+        debugOAuth("empty url ignored", { source });
+        return;
+      }
+
+      const callback = isRootsAuthCallback(rawUrl);
+      debugOAuth("url received", {
+        source,
+        isCallback: callback,
+        platform: Capacitor.getPlatform(),
+        url: maskCallbackUrl(rawUrl),
+      });
+
+      if (!callback) return;
 
       debugOAuth("callback received", {
+        source,
         platform: Capacitor.getPlatform(),
         url: maskCallbackUrl(rawUrl),
       });
 
       const params = getSearchParams(rawUrl);
-      const lang = normalizeLang(
-        params.get("lang") || storageGet("roots_lang"),
-      );
+      const lang = normalizeLang(params.get("lang") || storageGet("roots_lang"));
       const code = params.get("code");
-      const next = getSafeNext(
-        params.get("next") || storageGet("roots_native_oauth_next"),
-      );
+      const next = getSafeNext(params.get("next") || storageGet("roots_native_oauth_next"));
       const error = params.get("error") || params.get("error_description");
       const handledCodeKey = code ? `roots_native_oauth_code_${code}` : "";
 
       debugOAuth("callback params", {
+        source,
         hasCode: Boolean(code),
         codeLength: code?.length ?? 0,
         hasError: Boolean(error),
@@ -107,9 +145,7 @@ export default function CapacitorAuthBridge() {
         lang,
         duplicateUrl: handledUrls.current.has(rawUrl),
         isHandling: handlingRef.current,
-        handledCodeStored: Boolean(
-          handledCodeKey && storageGet(handledCodeKey),
-        ),
+        handledCodeStored: Boolean(handledCodeKey && storageGet(handledCodeKey)),
       });
 
       storageSet("roots_lang", lang);
@@ -117,13 +153,12 @@ export default function CapacitorAuthBridge() {
 
       try {
         await Browser.close();
-        debugOAuth("browser close requested");
+        debugOAuth("browser close requested", { source });
       } catch (closeError) {
         debugOAuth("browser close failed", {
+          source,
           message:
-            closeError instanceof Error
-              ? closeError.message
-              : String(closeError),
+            closeError instanceof Error ? closeError.message : String(closeError),
         });
       }
 
@@ -134,6 +169,7 @@ export default function CapacitorAuthBridge() {
           data: { session },
         } = await supabase.auth.getSession();
         debugOAuth("callback missing code or has provider error", {
+          source,
           hasSession: Boolean(session),
           error,
         });
@@ -155,6 +191,7 @@ export default function CapacitorAuthBridge() {
           data: { session },
         } = await supabase.auth.getSession();
         debugOAuth("duplicate callback skipped", {
+          source,
           hasSession: Boolean(session),
           next,
         });
@@ -173,12 +210,14 @@ export default function CapacitorAuthBridge() {
       try {
         const { data: beforeExchange } = await supabase.auth.getSession();
         debugOAuth("before exchange", {
+          source,
           hasSession: Boolean(beforeExchange.session),
         });
 
         const { error: exchangeError } =
           await supabase.auth.exchangeCodeForSession(code);
         debugOAuth("exchange completed", {
+          source,
           hasError: Boolean(exchangeError),
           errorMessage: exchangeError?.message,
           errorName: exchangeError?.name,
@@ -187,11 +226,13 @@ export default function CapacitorAuthBridge() {
               ? (exchangeError as { status?: number }).status
               : undefined,
         });
+
         if (exchangeError) {
           const {
             data: { session },
           } = await supabase.auth.getSession();
           debugOAuth("after failed exchange session check", {
+            source,
             hasSession: Boolean(session),
           });
           if (session) {
@@ -213,15 +254,15 @@ export default function CapacitorAuthBridge() {
 
         const { data: afterExchange } = await supabase.auth.getSession();
         debugOAuth("after exchange", {
+          source,
           hasSession: Boolean(afterExchange.session),
           next,
         });
 
         const separator = next.includes("?") ? "&" : "?";
-        debugOAuth("routing after callback", {
-          href: `${next}${separator}lang=${encodeURIComponent(lang)}`,
-        });
-        router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
+        const href = `${next}${separator}lang=${encodeURIComponent(lang)}`;
+        debugOAuth("routing after callback", { source, href });
+        router.replace(href);
         router.refresh();
       } finally {
         handlingRef.current = false;
@@ -230,7 +271,7 @@ export default function CapacitorAuthBridge() {
 
     App.addListener("appUrlOpen", (event: URLOpenListenerEvent) => {
       debugOAuth("appUrlOpen event", { url: maskCallbackUrl(event.url) });
-      void handleOpenUrl(event.url);
+      void handleOpenUrl(event.url, "appUrlOpen");
     }).then((handle) => {
       if (!active) {
         void handle.remove();
@@ -242,7 +283,7 @@ export default function CapacitorAuthBridge() {
     App.getLaunchUrl().then((launchUrl) => {
       if (launchUrl?.url) {
         debugOAuth("launch url found", { url: maskCallbackUrl(launchUrl.url) });
-        void handleOpenUrl(launchUrl.url);
+        void handleOpenUrl(launchUrl.url, "launchUrl");
       } else {
         debugOAuth("launch url empty");
       }
