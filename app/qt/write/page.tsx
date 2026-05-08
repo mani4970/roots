@@ -99,7 +99,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "← 이전": { de: "← Zurück", en: "← Back", fr: "← Retour" },
   "임시저장하고 나중에 이어쓰기": { de: "Als Entwurf speichern", en: "Save as draft", fr: "Enregistrer comme brouillon" },
   "성품 (마음의 결심)": { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)", fr: "Caractère (décision du cœur)" },
-  "행동 (구체적인 실천)": { de: "Handlung (konkretes Tun)", en: "Action (concrete practice)", fr: "Action (pratique concrète)" },
+  "행동 (구체적인 결단)": { de: "Handlung (konkreter Vorsatz)", en: "Action (concrete resolution)", fr: "Action (décision concrète)" },
   "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé" },
   "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage" },
   "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé" },
@@ -1934,7 +1934,7 @@ function QTWriteContent() {
                   <textarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 실천)", lang)}</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {decisions.map((d, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2193,7 +2193,7 @@ function QTWriteContent() {
             <textarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 실천)", lang)}</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
