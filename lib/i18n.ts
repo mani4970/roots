@@ -859,7 +859,6 @@ export const T = {
   qt_record_badge_joseph_title: { ko: "요셉 배지 획득! 🌈", de: "Josef-Abzeichen! 🌈", en: "Joseph Badge! 🌈", fr: "Badge Joseph ! 🌈" },
   qt_record_badge_qt_bird_title: { ko: "말씀 배달부 배지 획득! 🕊️", de: "Wortüberbringer-Abzeichen! 🕊️", en: "Word Carrier Badge! 🕊️", fr: "Badge Porteur de la Parole ! 🕊️" },
   qt_record_badge_word_peace_title: { ko: "말씀의 평안 배지 획득! 🌿", de: "Abzeichen Ruhe im Wort! 🌿", en: "Peace in the Word Badge! 🌿", fr: "Badge Paix dans la Parole ! 🌿" },
-  qt_record_copy_signature: { ko: "— 말씀에 뿌리내리다, Roots", de: "— In Gottes Wort verwurzelt, Roots", en: "— Rooted in the Word, Roots", fr: "— Enraciné dans la Parole, Roots" },
   qt_record_shared_label: { ko: "{labels}에 공유 중", de: "Geteilt: {labels}", en: "Shared: {labels}", fr: "Partagé : {labels}" },
   qt_record_not_found: { ko: "기록을 찾을 수 없어요", de: "Eintrag nicht gefunden", en: "Record not found", fr: "Enregistrement introuvable" },
   qt_record_selected_count: { ko: "{count}곳에 나누기", de: "{count} Orte zum Teilen", en: "{count} places to share", fr: "{count} lieux de partage" },
