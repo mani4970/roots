@@ -19,17 +19,28 @@ function normalizeLang(value: string | null): Lang {
   return SUPPORTED_LANGS.has(value as Lang) ? (value as Lang) : "ko";
 }
 
+function isRootsSchemeAuthCallback(rawUrl: string) {
+  const value = rawUrl.trim();
+
+  // Android can deliver the same custom-scheme redirect as roots:////auth/callback
+  // even when Supabase was given roots://auth/callback. Handle the custom scheme
+  // before URL parsing so platform-specific URL normalization cannot turn it false.
+  return /^roots:\/+(?:auth\/callback)\/?(?:[?#]|$)/i.test(value);
+}
+
 function isRootsAuthCallback(rawUrl: string) {
+  if (isRootsSchemeAuthCallback(rawUrl)) return true;
+
   try {
     const url = new URL(rawUrl);
     const normalizedPath = url.pathname.replace(/\/$/, "");
 
-    if (
-      url.protocol === "roots:" &&
-      url.host === "auth" &&
-      normalizedPath === "/callback"
-    ) {
-      return true;
+    if (url.protocol === "roots:") {
+      const rootsPath = `${url.host}${normalizedPath}`
+        .replace(/^\/+/, "")
+        .replace(/\/+$/, "");
+
+      return rootsPath === "auth/callback";
     }
 
     if (
@@ -42,10 +53,7 @@ function isRootsAuthCallback(rawUrl: string) {
 
     return false;
   } catch {
-    return (
-      rawUrl.startsWith("roots://auth/callback") ||
-      rawUrl.includes("christian-roots.com/auth/callback")
-    );
+    return rawUrl.includes("christian-roots.com/auth/callback");
   }
 }
 
