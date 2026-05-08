@@ -42,6 +42,7 @@ function getSafeNext(value: string | null) {
 export default function CapacitorAuthBridge() {
   const router = useRouter();
   const handledUrls = useRef(new Set<string>());
+  const handlingRef = useRef(false);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -50,14 +51,14 @@ export default function CapacitorAuthBridge() {
     let listener: { remove: () => Promise<void> } | undefined;
 
     async function handleOpenUrl(rawUrl: string) {
-      if (!rawUrl || handledUrls.current.has(rawUrl) || !isRootsAuthCallback(rawUrl)) return;
-      handledUrls.current.add(rawUrl);
+      if (!rawUrl || !isRootsAuthCallback(rawUrl)) return;
 
       const params = getSearchParams(rawUrl);
       const lang = normalizeLang(params.get("lang") || storageGet("roots_lang"));
       const code = params.get("code");
       const next = getSafeNext(params.get("next") || storageGet("roots_native_oauth_next"));
       const error = params.get("error") || params.get("error_description");
+      const handledCodeKey = code ? `roots_native_oauth_code_${code}` : "";
 
       storageSet("roots_lang", lang);
       storageSet("roots_lang_selected", "true");
@@ -66,24 +67,55 @@ export default function CapacitorAuthBridge() {
         await Browser.close();
       } catch {}
 
-      if (error || !code) {
-        router.replace(`/login?lang=${encodeURIComponent(lang)}`);
-        return;
-      }
-
       const supabase = createClient();
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) {
-        console.error("Capacitor OAuth session exchange failed", exchangeError.message);
-        router.replace(`/login?lang=${encodeURIComponent(lang)}`);
+
+      if (error || !code) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          router.replace(next);
+          router.refresh();
+        } else {
+          router.replace(`/login?lang=${encodeURIComponent(lang)}`);
+        }
         return;
       }
 
-      storageRemove("roots_native_oauth_next");
+      if (handledUrls.current.has(rawUrl) || handlingRef.current || (handledCodeKey && storageGet(handledCodeKey))) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          storageRemove("roots_native_oauth_next");
+          const separator = next.includes("?") ? "&" : "?";
+          router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
+          router.refresh();
+        }
+        return;
+      }
 
-      const separator = next.includes("?") ? "&" : "?";
-      router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
-      router.refresh();
+      handledUrls.current.add(rawUrl);
+      handlingRef.current = true;
+
+      try {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            console.warn("Capacitor OAuth callback was already handled; keeping existing session.");
+          } else {
+            console.error("Capacitor OAuth session exchange failed", exchangeError.message);
+            router.replace(`/login?lang=${encodeURIComponent(lang)}`);
+            return;
+          }
+        }
+
+        if (handledCodeKey) storageSet(handledCodeKey, String(Date.now()));
+        storageRemove("roots_native_oauth_next");
+
+        const separator = next.includes("?") ? "&" : "?";
+        router.replace(`${next}${separator}lang=${encodeURIComponent(lang)}`);
+        router.refresh();
+      } finally {
+        handlingRef.current = false;
+      }
     }
 
     App.addListener("appUrlOpen", (event: URLOpenListenerEvent) => {

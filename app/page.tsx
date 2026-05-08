@@ -171,7 +171,13 @@ export default function HomePage() {
       }
     }
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      await new Promise(resolve => setTimeout(resolve, 350));
+      const retry = await supabase.auth.getSession();
+      session = retry.data.session;
+    }
+    const user = session?.user ?? null;
     if (!user) { router.push("/welcome"); return; }
 
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
