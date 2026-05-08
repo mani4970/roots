@@ -32,6 +32,18 @@ function isLaterThan(left?: string | null, right?: string | null) {
   return new Date(left).getTime() > new Date(right).getTime();
 }
 
+function sharedContentTime(row: any): string | null {
+  return row?.shared_at ?? row?.created_at ?? null;
+}
+
+function latestSharedContentTime(rows?: any[] | null): string | null {
+  if (!rows || rows.length === 0) return null;
+  return rows
+    .map(sharedContentTime)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0] as string | null;
+}
+
 function sortGroupsForDisplay(groups: any[]) {
   return [...groups].sort((a, b) => {
     const aHasNew = !!(a.hasNewContent ?? a.hasNewQt);
@@ -579,13 +591,10 @@ export default function CommunityPage() {
             .maybeSingle();
           latestQtAt = latestQt?.created_at ?? null;
 
-          const { data: latestPrayer } = await supabase.from("prayer_items")
-            .select("created_at")
-            .ilike("visibility", `%group_${g.id}%`)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          latestPrayerAt = latestPrayer?.created_at ?? null;
+          const { data: latestPrayerRows } = await supabase.from("prayer_items")
+            .select("*")
+            .ilike("visibility", `%group_${g.id}%`);
+          latestPrayerAt = latestSharedContentTime(latestPrayerRows);
         }
 
         const hasNewQtShare = isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
@@ -662,7 +671,7 @@ export default function CommunityPage() {
         setGroupPrayers(filterHiddenItems("prayer", prayerRows.map((row: any) => ({
           ...row,
           profiles: prayerProfMap[row.user_id] ?? null,
-          isUnreadInGroup: isLaterThan(row.created_at, previousSeenAt),
+          isUnreadInGroup: isLaterThan(sharedContentTime(row), previousSeenAt),
         })), currentHiddenKeys));
       } else {
         setGroupPrayers([]);

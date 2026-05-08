@@ -231,11 +231,21 @@ function PrayerPageContent() {
       if (!user) return;
 
       const newVisibility = selectedTargets.join(",");
-      const { error: visibilityError } = await supabase
+      const sharedAt = new Date().toISOString();
+      let { error: visibilityError } = await supabase
         .from("prayer_items")
-        .update({ visibility: newVisibility })
+        .update({ visibility: newVisibility, shared_at: sharedAt })
         .eq("id", sharePrayerId)
         .eq("user_id", user.id);
+      if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
+        console.warn("prayer_items.shared_at column is not available yet. Retrying without shared_at:", visibilityError.message);
+        const retry = await supabase
+          .from("prayer_items")
+          .update({ visibility: newVisibility })
+          .eq("id", sharePrayerId)
+          .eq("user_id", user.id);
+        visibilityError = retry.error;
+      }
       if (visibilityError) {
         setNotice(c("prayer_error_intercession"));
         return;
