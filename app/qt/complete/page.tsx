@@ -25,10 +25,13 @@ export default function QTCompletePage() {
         <p style={{ color: "var(--sage-dark)", fontSize: 13, lineHeight: 1.65, marginBottom: 28 }}>
           {t("qt_complete_blessing", lang)}
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <button className="btn-sage" onClick={() => { window.location.href = "/qt"; }}>{t("qt_complete_go_qt", lang)}</button>
-          <button className="btn-outline" onClick={() => { window.location.href = "/"; }}>{t("qt_complete_go_home", lang)}</button>
-        </div>
+        <button
+          className="btn-sage"
+          onClick={() => { window.location.replace("/"); }}
+          style={{ width: "100%" }}
+        >
+          {t("confirm", lang)}
+        </button>
       </div>
     </div>
   );
