@@ -600,20 +600,34 @@ export default function HomePage() {
   async function toggleMyDecision(i: number) {
     if (myDecisions[i].done) return;
     const today = getLocalDateString();
+    const previous = myDecisions;
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
+    const decisionsDone = JSON.stringify(updated.map(d => d.done));
     setMyDecisions(updated);
+
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from("daily_checkins")
-        .update({ decisions_done: JSON.stringify(updated.map(d => d.done)) })
-        .eq("user_id", user.id).eq("date", today);
-      if (error) {
-        await supabase.from("daily_checkins").insert({
-          user_id: user.id, date: today,
-          decisions_done: JSON.stringify(updated.map(d => d.done)),
-        });
+    if (!user) return;
+
+    try {
+      const { data: updatedRows, error } = await supabase.from("daily_checkins")
+        .update({ decisions_done: decisionsDone })
+        .eq("user_id", user.id).eq("date", today)
+        .select("date");
+      if (error) throw error;
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const { error: upsertError } = await supabase.from("daily_checkins").upsert({
+          user_id: user.id,
+          date: today,
+          decisions_done: decisionsDone,
+        }, { onConflict: "user_id,date" });
+        if (upsertError) throw upsertError;
       }
+    } catch (error) {
+      console.error(error);
+      setMyDecisions(previous);
+      showToast(t("home_decision_save_error", lang));
     }
   }
 
