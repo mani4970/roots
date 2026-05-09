@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock, MoreHorizontal, Trash2 } from "lucide-react";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -519,9 +519,9 @@ function PrayerPageContent() {
                         event.stopPropagation();
                         setActionMenuPrayerId(actionMenuPrayerId === p.id ? null : p.id);
                       }}
-                      style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--text3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                     >
-                      <MoreVertical size={16} />
+                      <MoreHorizontal size={16} />
                     </button>
                     {actionMenuPrayerId === p.id && (
                       <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 34, right: 0, minWidth: 132, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "0 12px 30px rgba(0,0,0,0.16)", zIndex: 4 }}>
