@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock, MoreVertical, Trash2 } from "lucide-react";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -38,6 +38,9 @@ function PrayerPageContent() {
   const [sharePrayerId, setSharePrayerId] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [sharingIntercession, setSharingIntercession] = useState(false);
+  const [actionMenuPrayerId, setActionMenuPrayerId] = useState<string | null>(null);
+  const [pendingDeletePrayerId, setPendingDeletePrayerId] = useState<string | null>(null);
+  const [deletingPrayer, setDeletingPrayer] = useState(false);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -221,6 +224,62 @@ function PrayerPageContent() {
       setNotice(c("prayer_error_edit"));
     }
   }
+  function startEditPrayer(prayer: any) {
+    setActionMenuPrayerId(null);
+    setEditId(prayer.id);
+    setEditText(prayer.content);
+  }
+
+  function openDeletePrayer(prayerId: string) {
+    setActionMenuPrayerId(null);
+    setPendingDeletePrayerId(prayerId);
+  }
+
+  async function deletePrayer() {
+    if (!pendingDeletePrayerId || deletingPrayer) return;
+    setDeletingPrayer(true);
+    const supabase = createClient();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+
+      await supabase
+        .from("user_prayer_logs")
+        .delete()
+        .eq("prayer_id", pendingDeletePrayerId)
+        .eq("user_id", user.id);
+
+      const { error } = await supabase
+        .from("prayer_items")
+        .delete()
+        .eq("id", pendingDeletePrayerId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        setNotice(c("prayer_error_delete"));
+        return;
+      }
+
+      if (editId === pendingDeletePrayerId) {
+        setEditId(null);
+        setEditText("");
+      }
+      if (testimonyPrayerId === pendingDeletePrayerId) {
+        setTestimonyPrayerId(null);
+        setTestimonyText("");
+      }
+      setPrayers(prev => prev.filter(prayer => prayer.id !== pendingDeletePrayerId));
+      setPendingDeletePrayerId(null);
+      setNotice(c("prayer_delete_success"));
+      await loadPrayers();
+    } catch (error) {
+      console.error("prayer delete failed", error);
+      setNotice(c("prayer_error_delete"));
+    } finally {
+      setDeletingPrayer(false);
+    }
+  }
+
 
   async function saveIntercessionTargets() {
     if (!sharePrayerId || selectedTargets.length === 0 || sharingIntercession) return;
@@ -450,7 +509,34 @@ function PrayerPageContent() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {currentList.map(p => (
-              <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`}>
+              <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`} style={{ position: "relative" }}>
+
+                {tab !== "intercession" && editId !== p.id && (
+                  <div style={{ position: "absolute", top: 10, right: 10, zIndex: 3 }}>
+                    <button
+                      aria-label={c("prayer_actions")}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setActionMenuPrayerId(actionMenuPrayerId === p.id ? null : p.id);
+                      }}
+                      style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {actionMenuPrayerId === p.id && (
+                      <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 34, right: 0, minWidth: 132, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "0 12px 30px rgba(0,0,0,0.16)", zIndex: 4 }}>
+                        {!p.is_answered && (
+                          <button onClick={() => startEditPrayer(p)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--text2)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
+                            <Pencil size={13} /> {c("prayer_edit")}
+                          </button>
+                        )}
+                        <button onClick={() => openDeletePrayer(p.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--danger, #B35C4A)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
+                          <Trash2 size={13} /> {c("prayer_delete")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {tab === "intercession" && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -485,7 +571,7 @@ function PrayerPageContent() {
 
                 {/* 응답 배지 */}
                 {p.is_answered && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingRight: tab !== "intercession" ? 34 : 0 }}>
                     <CheckCircle size={14} style={{ color: "var(--terra-dark)" }} />
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{c("prayer_answered_badge")}</span>
                     {p.answered_at && (
@@ -529,7 +615,7 @@ function PrayerPageContent() {
                   </div>
                 ) : (
                   <>
-                    <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)" }}>
+                    <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)", paddingRight: tab !== "intercession" ? 34 : 0 }}>
                       {p.content} {p.is_answered && tab !== "intercession" && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
                     </p>
 
@@ -545,10 +631,6 @@ function PrayerPageContent() {
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {!p.is_answered && tab !== "intercession" && (
                           <>
-                            <button onClick={() => { setEditId(p.id); setEditText(p.content); }}
-                              style={{ fontSize: 10, color: "var(--text3)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 20, background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                              <Pencil size={10} /> {c("prayer_edit")}
-                            </button>
                             <button onClick={() => openAnsweredPrayer(p.id)}
                               style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
                               {c("prayer_answered_cta")}
@@ -571,6 +653,22 @@ function PrayerPageContent() {
           </div>
         )}
       </div>
+
+
+      {pendingDeletePrayerId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 255, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 370, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "0 18px 52px rgba(0,0,0,0.25)" }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{c("prayer_delete_title")}</h2>
+            <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 18 }}>{c("prayer_delete_msg")}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-outline" onClick={() => setPendingDeletePrayerId(null)} disabled={deletingPrayer} style={{ flex: 1 }}>{c("prayer_cancel")}</button>
+              <button onClick={deletePrayer} disabled={deletingPrayer} style={{ flex: 1, padding: "12px", borderRadius: 14, border: "none", background: "var(--danger, #B35C4A)", color: "white", fontSize: 13, fontWeight: 800, cursor: deletingPrayer ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {deletingPrayer ? <Loader2 size={16} className="spin" /> : c("prayer_delete_confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showShareModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
