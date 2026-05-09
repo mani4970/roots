@@ -64,7 +64,21 @@ function buildShareText(text: string, url?: string) {
 ${url}`;
 }
 
-export async function shareInvite({ title, text, url }: ShareInviteParams): Promise<"shared" | "copied" | "failed"> {
+function isShareCancelled(error: unknown): boolean {
+  const err = error as { message?: unknown; errorMessage?: unknown; name?: unknown } | null;
+  const rawMessage = [err?.message, err?.errorMessage, err?.name]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return rawMessage.includes("share canceled")
+    || rawMessage.includes("share cancelled")
+    || rawMessage.includes("cancelled")
+    || rawMessage.includes("canceled")
+    || rawMessage.includes("aborterror");
+}
+
+export async function shareInvite({ title, text, url }: ShareInviteParams): Promise<"shared" | "copied" | "failed" | "cancelled"> {
   if (!isBrowser()) return "failed";
 
   const shareText = buildShareText(text, url);
@@ -76,8 +90,12 @@ export async function shareInvite({ title, text, url }: ShareInviteParams): Prom
       await Share.share({ title, text: shareText, dialogTitle: title });
       return "shared";
     } catch (error) {
-      // User cancellation should not be treated as an app error.
-      console.warn("Native share failed or was cancelled; trying web fallback.", error);
+      // User cancellation is intentional. Do not copy the invite text as a fallback.
+      if (isShareCancelled(error)) {
+        console.warn("Native share was cancelled by the user.", error);
+        return "cancelled";
+      }
+      console.warn("Native share failed; trying web fallback.", error);
     }
   }
 
@@ -87,7 +105,12 @@ export async function shareInvite({ title, text, url }: ShareInviteParams): Prom
       return "shared";
     }
   } catch (error) {
-    console.warn("Web share failed or was cancelled; trying clipboard fallback.", error);
+    // User cancellation is intentional. Do not copy the invite text as a fallback.
+    if (isShareCancelled(error)) {
+      console.warn("Web share was cancelled by the user.", error);
+      return "cancelled";
+    }
+    console.warn("Web share failed; trying clipboard fallback.", error);
   }
 
   return (await copyText(shareText)) ? "copied" : "failed";

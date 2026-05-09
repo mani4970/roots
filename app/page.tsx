@@ -132,6 +132,7 @@ export default function HomePage() {
   const celebrationShownRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
+  const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
   const prayerSectionRef = useRef<HTMLDivElement | null>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
@@ -282,11 +283,7 @@ export default function HomePage() {
           if (!updated) return;
           celebrationShownRef.current = true;
           storageSet(`celebrated_${today}`, "true");
-          enqueueCelebration({
-            message: t("home_celebration_title", lang),
-            subMessage: t("home_celebration_sub", lang),
-            launchRootsMan: true,
-          });
+          requestRootsManExperience();
         })();
       }
     }
@@ -363,8 +360,9 @@ export default function HomePage() {
     return true;
   }
 
-  useEffect(() => {
-    if (!profile) return;
+  function showNextProgressPopup(): boolean {
+    if (!profile || badgePopup || gardenPopup.show) return false;
+
     const newly = newlyAwardedBadgesRef.current;
     const streak = profile?.streak_days ?? 0;
 
@@ -372,35 +370,35 @@ export default function HomePage() {
     if (newly.has("badge_rootsman")) {
       newly.delete("badge_rootsman");
       setBadgePopup({ img: "/badge_rootsman.webp", title: t("badge_popup_rootsman", lang), msg: t("badge_rootsman_msg", lang) });
-      return;
+      return true;
     }
     if (newly.has("badge_mose")) {
       newly.delete("badge_mose");
       setBadgePopup({ img: "/badge_mose.webp", title: t("badge_popup_mose", lang), msg: t("badge_mose_msg", lang) });
-      return;
+      return true;
     }
     if (newly.has("badge_rootsman_bible")) {
       newly.delete("badge_rootsman_bible");
       setBadgePopup({ img: "/badge_rootsman_bible.webp", title: t("badge_popup_rootsman_bible", lang), msg: t("badge_rootsman_bible_msg", lang) });
-      return;
+      return true;
     }
     if (newly.has("badge_david")) {
       newly.delete("badge_david");
       setBadgePopup({ img: "/badge_david.webp", title: t("badge_popup_david", lang), msg: t("badge_david_msg", lang) });
-      return;
+      return true;
     }
     for (let i = 0; i < 9; i++) {
       const key = `fruit_badge_${i}`;
       if (newly.has(key)) {
         newly.delete(key);
         setGardenPopup({ show: true, type: "badge", badgeIndex: i });
-        return;
+        return true;
       }
     }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
       setBadgePopup({ img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
-      return;
+      return true;
     }
 
     // 정원 단계 변경 팝업 (11/21/31/.../91일마다)
@@ -411,9 +409,24 @@ export default function HomePage() {
       if (!storageGet(gardenKey)) {
         storageSet(gardenKey, "true");
         setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+        return true;
       }
     }
-  }, [profile]);
+
+    return false;
+  }
+
+  useEffect(() => {
+    if (!profile || celebration.show || showRootsManPopup) return;
+
+    const openedProgressPopup = showNextProgressPopup();
+    if (openedProgressPopup) return;
+
+    if (pendingRootsManRef.current && !badgePopup && !gardenPopup.show) {
+      pendingRootsManRef.current = false;
+      openRootsManExperience();
+    }
+  }, [profile, celebration.show, badgePopup, gardenPopup.show, showRootsManPopup, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -436,11 +449,8 @@ export default function HomePage() {
   }
 
   function requestRootsManExperience() {
-    if (gardenPopup.show) {
-      pendingRootsManRef.current = true;
-      return;
-    }
-    openRootsManExperience();
+    pendingRootsManRef.current = true;
+    setRootsManRequestToken(token => token + 1);
   }
 
   function closeCelebration() {
@@ -460,7 +470,6 @@ export default function HomePage() {
 
     setCelebration({ show: false, message: "", subMessage: "", launchRootsMan: false });
     if (launchRootsMan || pendingRootsManRef.current) {
-      pendingRootsManRef.current = false;
       requestRootsManExperience();
     }
   }
@@ -518,7 +527,11 @@ export default function HomePage() {
 
       setHomePrayerInput("");
       setShowHomePrayerCompose(false);
-      router.push("/prayer");
+      setTodayDone(p => ({ ...p, prayer: true }));
+      enqueueCelebration({
+        message: t("prayer_saved_message", lang),
+        subMessage: t("prayer_saved_sub", lang),
+      });
     } catch (error) {
       console.error(error);
       showToast(t("home_prayer_save_error", lang));
@@ -756,7 +769,7 @@ export default function HomePage() {
     ? "Aller à la prière"
     : "Go to prayer";
 
-  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !showRootsManPopup;
+  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !showRootsManPopup;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -987,7 +1000,7 @@ export default function HomePage() {
       />
 
       <RootsManPopup
-        show={showRootsManPopup}
+        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show}
         streakDays={profile?.streak_days ?? 0}
         onGoGarden={() => {
           setShowRootsMan(true);
