@@ -361,6 +361,7 @@ export const T = {
   profile_email_missing: { ko: "이메일 주소를 찾을 수 없어요.", de: "Keine E-Mail-Adresse gefunden.", en: "No email address found.", fr: "Adresse e-mail introuvable." },
   profile_password_reset_sent: { ko: "비밀번호 변경 이메일을 보냈어요.", de: "E-Mail zum Ändern des Passworts gesendet.", en: "Password change email sent.", fr: "E-mail de changement de mot de passe envoyé." },
   profile_password_reset_fail: { ko: "이메일을 보내지 못했어요.", de: "E-Mail konnte nicht gesendet werden.", en: "Could not send email.", fr: "Impossible d’envoyer l’e-mail." },
+  profile_password_google_account: { ko: "Google 계정 비밀번호는 Google에서 변경해 주세요.", de: "Bitte ändern Sie das Passwort Ihres Google-Kontos bei Google.", en: "Please change your Google account password in Google.", fr: "Veuillez modifier le mot de passe de votre compte Google dans Google." },
   profile_account_settings: { ko: "계정 설정", de: "Kontoeinstellungen", en: "Account settings", fr: "Paramètres du compte" },
   profile_name_placeholder: { ko: "닉네임", de: "Name", en: "Nickname", fr: "Nom" },
   profile_save: { ko: "저장", de: "Speichern", en: "Save", fr: "Enregistrer" },

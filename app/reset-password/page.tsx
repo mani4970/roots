@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, ChevronLeft } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
@@ -93,7 +94,16 @@ export default function ResetPasswordPage() {
       setConfirmPassword("");
       setHasSession(false);
       setMessage(t("reset_password_success", lang));
-      window.setTimeout(() => router.replace(`/login?lang=${encodeURIComponent(lang)}`), 1400);
+      window.setTimeout(() => {
+        const loginPath = `/login?lang=${encodeURIComponent(lang)}`;
+        if (Capacitor.isNativePlatform()) {
+          router.replace(loginPath);
+          return;
+        }
+        const nativeLoginUrl = `roots://auth/callback?next=/login&lang=${encodeURIComponent(lang)}`;
+        window.location.href = nativeLoginUrl;
+        window.setTimeout(() => router.replace(loginPath), 900);
+      }, 1400);
     } catch (e) {
       setError(t("reset_password_fail", lang));
     } finally {

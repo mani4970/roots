@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -260,9 +261,27 @@ export default function ProfilePage() {
     setSendingPasswordReset(true);
     try {
       const supabase = createClient();
-      await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: `${ROOTS_WEB_ORIGIN}/reset-password`,
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      const providers = new Set(
+        [
+          ...((user?.app_metadata?.providers as string[] | undefined) ?? []),
+          user?.app_metadata?.provider as string | undefined,
+          ...((user?.identities ?? []).map((identity: any) => identity?.provider as string | undefined)),
+        ].filter(Boolean),
+      );
+      const hasEmailPasswordIdentity = providers.has("email");
+      const hasOnlyExternalIdentity = providers.size > 0 && !hasEmailPasswordIdentity;
+      if (hasOnlyExternalIdentity) {
+        showToast(t("profile_password_google_account", lang));
+        setSendingPasswordReset(false);
+        return;
+      }
+
+      const redirectTo = Capacitor.isNativePlatform()
+        ? `roots://auth/callback?next=/reset-password&lang=${encodeURIComponent(lang)}`
+        : `${ROOTS_WEB_ORIGIN}/reset-password?lang=${encodeURIComponent(lang)}`;
+
+      await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo });
       showToast(t("profile_password_reset_sent", lang));
     } catch (e) {
       showToast(t("profile_password_reset_fail", lang));
@@ -324,7 +343,7 @@ export default function ProfilePage() {
   return (
     <div className="page" style={{ paddingBottom: 80 }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
         </div>
       )}
