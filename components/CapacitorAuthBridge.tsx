@@ -80,7 +80,10 @@ function safeJson(value: Record<string, unknown>) {
   }
 }
 
+const DEBUG_OAUTH = process.env.NODE_ENV !== "production";
+
 function debugOAuth(message: string, details?: Record<string, unknown>) {
+  if (!DEBUG_OAUTH) return;
   const suffix = details ? ` ${safeJson(details)}` : "";
   console.info(`[Roots OAuth] ${message}${suffix}`);
 }

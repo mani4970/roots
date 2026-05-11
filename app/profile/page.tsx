@@ -8,6 +8,14 @@ import { t, type TKey } from "@/lib/i18n";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { Loader2, Check, X, Camera, Share2, Settings } from "lucide-react";
 
+const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
 const PROFILE_WEEKDAY_KEYS = [
   "weekday_sun",
   "weekday_mon",
@@ -171,15 +179,19 @@ export default function ProfilePage() {
     if (!file) return;
     setPhotoError("");
     // 5MB 제한
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_AVATAR_SIZE) {
       setPhotoError(t("profile_photo_size_error", lang));
+      return;
+    }
+    const ext = ALLOWED_AVATAR_TYPES[file.type];
+    if (!ext) {
+      setPhotoError(t("profile_photo_format_error", lang));
       return;
     }
     setUploadingPhoto(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
     const path = `${user.id}/avatar.${ext}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
@@ -249,7 +261,7 @@ export default function ProfilePage() {
     try {
       const supabase = createClient();
       await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${ROOTS_WEB_ORIGIN}/reset-password`,
       });
       showToast(t("profile_password_reset_sent", lang));
     } catch (e) {
