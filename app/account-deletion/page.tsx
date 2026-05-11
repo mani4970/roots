@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 
 
-const SUPPORT_EMAIL = "cookiko313@gmail.com";
+const SUPPORT_EMAIL = "support@christian-roots.com";
 
 const COPY = {
   ko: {
