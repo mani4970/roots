@@ -25,18 +25,33 @@ export default function ResetPasswordPage() {
     async function prepareSession() {
       const supabase = createClient();
       try {
-        const code = new URLSearchParams(window.location.search).get("code");
+        const query = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const code = query.get("code");
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        const hashError = hash.get("error") || hash.get("error_description");
+
+        if (hashError) throw new Error(hashError);
+
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
-          window.history.replaceState(null, "", "/reset-password");
+          window.history.replaceState(null, "", `/reset-password?lang=${encodeURIComponent(lang)}`);
+        } else if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          window.history.replaceState(null, "", `/reset-password?lang=${encodeURIComponent(lang)}`);
         }
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!active) return;
         setHasSession(Boolean(session));
         if (!session) setError(t("reset_password_session_error", lang));
-      } catch (e) {
+      } catch {
         if (!active) return;
         setHasSession(false);
         setError(t("reset_password_session_error", lang));
@@ -65,6 +80,12 @@ export default function ResetPasswordPage() {
     setSaving(true);
     try {
       const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setHasSession(false);
+        setError(t("reset_password_session_error", lang));
+        return;
+      }
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
       await supabase.auth.signOut();
@@ -101,17 +122,17 @@ export default function ResetPasswordPage() {
           <>
             <div style={{ marginBottom: 10 }}>
               <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("reset_password_new_label", lang)}</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} disabled={!hasSession || saving} />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} disabled={saving} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("reset_password_confirm_label", lang)}</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} disabled={!hasSession || saving} onKeyDown={e => e.key === "Enter" && hasSession && updatePassword()} />
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} disabled={saving} onKeyDown={e => e.key === "Enter" && updatePassword()} />
             </div>
 
             {error && <p style={{ color: "#E05050", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</p>}
             {message && <p style={{ color: "var(--green)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
 
-            <button onClick={updatePassword} disabled={saving || !hasSession || !password || !confirmPassword} className="btn-primary">
+            <button onClick={updatePassword} disabled={saving || !password || !confirmPassword} className="btn-primary">
               {saving ? <><Loader2 size={18} className="spin" />{t("reset_password_btn", lang)}</> : t("reset_password_btn", lang)}
             </button>
           </>
