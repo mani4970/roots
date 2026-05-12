@@ -1422,7 +1422,7 @@ function QTWriteContent() {
             </button>
           </div>
 
-          {/* 장/절 선택 + 장 넘어가는 말씀 지원 */}
+          {/* 장/절 선택 */}
           {(() => {
             const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
             const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
@@ -1430,44 +1430,33 @@ function QTWriteContent() {
             const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
             const maxChapter = chaptersData.length || 150;
             const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
-            const maxEndV = crossChapter ? (chaptersData[parseInt(endChapter)-1] ?? 176) : (chaptersData[parseInt(chapter)-1] ?? 176);
+            const effectiveEndChapter = endChapter || chapter;
+            const maxEndV = chaptersData[parseInt(effectiveEndChapter)-1] ?? 176;
             return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* 시작: 장 + 절 */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
-                    <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
-                    <select value={startV} onChange={e => { setStartV(e.target.value); if(!crossChapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
+                  <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                    {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
-                {/* 장 넘어가기 토글 */}
-                <button onClick={() => { setCrossChapter(p=>!p); if(!crossChapter) setEndChapter(chapter); }} style={{ display: "flex", alignItems: "center", gap: 6, background: crossChapter ? "var(--sage-light)" : "none", border: `1px solid ${crossChapter ? "var(--sage)" : "var(--border)"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", fontSize: 12, color: crossChapter ? "var(--sage-dark)" : "var(--text3)" }}>
-                  <span>{crossChapter ? "✓" : "+"}</span> {trQT("장이 넘어가는 말씀 (예: 9장 25절~10장 6절)", lang)}
-                </button>
-                {/* 끝: 장 + 절 */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {crossChapter && (
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
-                      <select value={endChapter} onChange={e => setEndChapter(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
-                    <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                      {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
+                  <select value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
+                    {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
+                  <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter && parseInt(startV)>parseInt(endV)) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
+                    {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
+                  <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                    {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
               </div>
             );
