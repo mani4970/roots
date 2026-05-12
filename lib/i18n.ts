@@ -369,8 +369,10 @@ export const T = {
   profile_password_email_hint: { ko: "비밀번호 변경 이메일을 보내드려요.", de: "Wir senden Ihnen eine E-Mail.", en: "We will send you an email.", fr: "Nous vous enverrons un e-mail." },
   profile_delete_hint: { ko: "계정과 데이터를 영구 삭제", de: "Daten dauerhaft entfernen", en: "Permanently remove data", fr: "Supprimer définitivement les données" },
   profile_spirit_fruit_first_hint: { ko: "100일을 채우면 첫 번째 열매를 받아요 ", de: "Nach 100 Tagen erhalten Sie die erste Frucht ", en: "After 100 days you receive the first fruit ", fr: "Après 100 jours, vous recevez le premier fruit " },
-  profile_qt_month_label: { ko: "{month} 큐티 현황", de: "QT im {month}", en: "QT in {month}", fr: "QT en {month}" },
-  profile_qt_days_suffix: { ko: "일", de: " Tage", en: " Days", fr: " jours" },
+  profile_qt_month_label: { ko: "{month} 말씀 묵상 현황", de: "Stille Zeit im {month}", en: "Bible Reflection in {month}", fr: "Méditation biblique en {month}" },
+  profile_qt_days_suffix: { ko: "일", de: " Tage", en: " days", fr: " jours" },
+  profile_calendar_previous_month: { ko: "이전 달 보기", de: "Vorherigen Monat anzeigen", en: "View previous month", fr: "Voir le mois précédent" },
+  profile_calendar_next_month: { ko: "다음 달 보기", de: "Nächsten Monat anzeigen", en: "View next month", fr: "Voir le mois suivant" },
 
   // ── 요일 ──
   weekday_sun: { ko: "일", de: "So", en: "Sun", fr: "Dim" },

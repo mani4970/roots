@@ -34,6 +34,20 @@ const PROFILE_MONTH_LOCALE = {
   fr: "fr-FR",
 } as const;
 
+type QtRecord = { date: string };
+
+function getMonthStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isSameCalendarMonth(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
 const FAITH_BADGES = [
   { key: "badge_rootsman", img: "/badge_rootsman.webp", titleKey: "badge_rootsman_title", descKey: "badge_rootsman_desc" },
   { key: "badge_mose", img: "/badge_mose.webp", titleKey: "badge_mose_title", descKey: "badge_mose_desc" },
@@ -73,7 +87,10 @@ export default function ProfilePage() {
   const [savingName, setSavingName] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState("");
-  const [qtRecords, setQtRecords] = useState<any[]>([]);
+  const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
+  const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
+  const [profileUserId, setProfileUserId] = useState("");
+  const [loadingQtCalendar, setLoadingQtCalendar] = useState(false);
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const [qtShareCount, setQtShareCount] = useState(0);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
@@ -101,6 +118,7 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/welcome"); return; }
     setUserEmail(user.email ?? "");
+    setProfileUserId(user.id);
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
@@ -110,10 +128,7 @@ export default function ProfilePage() {
       setProfile(p);
       setNewName(p.name ?? "");
     }
-    const now = new Date();
-    const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
-    const { data: qt } = await supabase.from("qt_records").select("date").eq("user_id", user.id).eq("is_draft", false).gte("date", firstDay);
-    if (qt) setQtRecords(qt);
+    await loadQtRecordsForMonth(user.id, calendarMonth);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     let prayerSharedCnt = 0;
     if (prayers) {
@@ -161,6 +176,42 @@ export default function ProfilePage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadQtRecordsForMonth(userId: string, monthDate: Date, options: { showSpinner?: boolean } = {}) {
+    const monthStart = getMonthStart(monthDate);
+    const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    if (options.showSpinner) {
+      setLoadingQtCalendar(true);
+      setQtRecords([]);
+    }
+
+    try {
+      const supabase = createClient();
+      const { data: qt, error } = await supabase.from("qt_records")
+        .select("date")
+        .eq("user_id", userId)
+        .eq("is_draft", false)
+        .gte("date", toDateKey(monthStart))
+        .lt("date", toDateKey(nextMonthStart));
+
+      if (error) {
+        console.error("말씀 묵상 월별 기록 조회 실패:", error);
+        setQtRecords([]);
+        return;
+      }
+      setQtRecords((qt ?? []) as QtRecord[]);
+    } finally {
+      if (options.showSpinner) setLoadingQtCalendar(false);
+    }
+  }
+
+  function changeCalendarMonth(monthOffset: number) {
+    const targetMonth = getMonthStart(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + monthOffset, 1));
+    const currentMonth = getMonthStart(new Date());
+    if (targetMonth > currentMonth) return;
+    setCalendarMonth(targetMonth);
+    if (profileUserId) void loadQtRecordsForMonth(profileUserId, targetMonth, { showSpinner: true });
   }
 
   async function saveName() {
@@ -314,8 +365,8 @@ export default function ProfilePage() {
 
   function renderCalendar() {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDow = new Date(year, month, 1).getDay();
     const doneDates = new Set(qtRecords.map(r => r.date));
@@ -324,7 +375,7 @@ export default function ProfilePage() {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
       const done = doneDates.has(dateStr);
-      const isToday = d === now.getDate();
+      const isToday = isSameCalendarMonth(calendarMonth, now) && d === now.getDate();
       cells.push(
         <div key={d} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: done ? "var(--sage)" : isToday ? "var(--bg3)" : "transparent", border: isToday && !done ? "1px solid var(--sage)" : "none" }}>
           <span style={{ fontSize: 10, fontWeight: done ? 700 : 400, color: done ? "var(--bg)" : isToday ? "var(--sage)" : "var(--text3)" }}>{d}</span>
@@ -333,6 +384,11 @@ export default function ProfilePage() {
     }
     return cells;
   }
+
+  const calendarMonthLabel = calendarMonth.toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { year: "numeric", month: "long" });
+  const qtCompletedDayCount = new Set(qtRecords.map(record => record.date)).size;
+  const isViewingCurrentMonth = isSameCalendarMonth(calendarMonth, new Date());
+
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -556,13 +612,37 @@ export default function ProfilePage() {
         );
       })()}
 
-      {/* 큐티 현황 달력 */}
+      {/* 말씀 묵상 현황 달력 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">
-          {t("profile_qt_month_label", lang, { month: new Date().toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { month: "long" }) })}
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{qtRecords.length}{t("profile_qt_days_suffix", lang)}</span>
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            onClick={() => changeCalendarMonth(-1)}
+            aria-label={t("profile_calendar_previous_month", lang)}
+            style={{ width: 32, height: 32, flexShrink: 0, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+          >‹</button>
+          <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {t("profile_qt_month_label", lang, { month: calendarMonthLabel })}
+            </span>
+            <span style={{ display: "block", marginTop: 3, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>
+              {qtCompletedDayCount}{t("profile_qt_days_suffix", lang)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => changeCalendarMonth(1)}
+            disabled={isViewingCurrentMonth}
+            aria-label={t("profile_calendar_next_month", lang)}
+            style={{ width: 32, height: 32, flexShrink: 0, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: isViewingCurrentMonth ? "not-allowed" : "pointer", opacity: isViewingCurrentMonth ? 0.35 : 1, fontSize: 18, lineHeight: 1 }}
+          >›</button>
         </div>
-        <div className="card">
+        <div className="card" style={{ position: "relative" }} aria-busy={loadingQtCalendar}>
+          {loadingQtCalendar && (
+            <div style={{ position: "absolute", top: 12, right: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Loader2 size={13} style={{ color: "var(--sage)" }} className="spin" />
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
             {PROFILE_WEEKDAY_KEYS.map(key => {
               const d = t(key, lang);
