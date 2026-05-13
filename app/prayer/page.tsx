@@ -672,7 +672,7 @@ function PrayerPageContent() {
                   </div>
                 ) : (
                   <>
-                    <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)", paddingRight: tab !== "intercession" ? 34 : 0 }}>
+                    <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)", paddingRight: tab !== "intercession" ? 34 : 0, whiteSpace: "pre-line", overflowWrap: "anywhere" }}>
                       {p.content} {p.is_answered && tab !== "intercession" && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
                     </p>
 
