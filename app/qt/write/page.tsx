@@ -10,6 +10,7 @@ import { getLocalDateString } from "@/lib/date";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
 import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, TRANSLATIONS } from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
+import SharePromptModal, { type ShareTargetGroup } from "@/components/SharePromptModal";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -178,6 +179,10 @@ type SaveDraftOptions = {
   markSaving?: boolean;
   snapshot?: DraftSnapshot;
   signature?: string;
+};
+
+type CompleteSaveOptions = {
+  visibility?: string;
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
@@ -386,6 +391,10 @@ function QTWriteContent() {
   const [freeText, setFreeText] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState("");
+  const [showCompleteSharePrompt, setShowCompleteSharePrompt] = useState(false);
+  const [completeShareTargets, setCompleteShareTargets] = useState<string[]>([]);
+  const [completeShareGroups, setCompleteShareGroups] = useState<ShareTargetGroup[]>([]);
+  const [loadingCompleteShareGroups, setLoadingCompleteShareGroups] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
   const autoSavingRef = useRef(false);
   const queuedAutoSaveRef = useRef<{ snapshot: DraftSnapshot; signature: string } | null>(null);
@@ -1242,7 +1251,97 @@ function QTWriteContent() {
     };
   }, []);
 
-  function buildCompleteRecordData(userId: string) {
+  async function loadCompleteShareGroups() {
+    setLoadingCompleteShareGroups(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCompleteShareGroups([]);
+        return;
+      }
+
+      const { data: memberRows } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+      const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
+      if (groupIds.length === 0) {
+        setCompleteShareGroups([]);
+        return;
+      }
+
+      const { data: groups } = await supabase
+        .from("groups")
+        .select("id, name, is_public")
+        .in("id", groupIds);
+      setCompleteShareGroups((groups ?? []).map((group: any) => ({
+        id: String(group.id),
+        name: String(group.name ?? ""),
+        is_public: !!group.is_public,
+      })));
+    } catch (error) {
+      console.error("qt complete share groups load failed", error);
+      setCompleteShareGroups([]);
+    } finally {
+      setLoadingCompleteShareGroups(false);
+    }
+  }
+
+  function toggleCompleteShareTarget(target: string) {
+    setCompleteShareTargets(prev =>
+      prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
+    );
+  }
+
+  function openCompleteSharePrompt() {
+    if (isEditMode) {
+      void save();
+      return;
+    }
+    setCompleteShareTargets([]);
+    setShowCompleteSharePrompt(true);
+    void loadCompleteShareGroups();
+  }
+
+  function closeCompleteSharePrompt() {
+    if (saving) return;
+    setShowCompleteSharePrompt(false);
+    setCompleteShareTargets([]);
+  }
+
+  function renderCompleteSharePrompt() {
+    if (!showCompleteSharePrompt || isEditMode) return null;
+
+    return (
+      <SharePromptModal
+        title={t("qt_complete_share_title", lang)}
+        description={t("qt_complete_share_sub", lang)}
+        helperText={t("qt_complete_share_helper", lang)}
+        allLabel={t("qt_record_share_all", lang)}
+        allSubLabel={t("qt_record_share_all_sub", lang)}
+        groupsLabel={t("qt_record_my_groups", lang)}
+        publicGroupLabel={t("qt_record_public_group", lang)}
+        privateGroupLabel={t("qt_record_private_group", lang)}
+        noGroupsLabel={t("qt_record_no_groups", lang)}
+        selectedCountLabel={t("qt_record_selected_count", lang, { count: completeShareTargets.length })}
+        loadingLabel={t("loading", lang)}
+        shareActionLabel={t("qt_complete_share_action", lang)}
+        privateActionLabel={t("share_prompt_private_action", lang)}
+        closeLabel={t("close", lang)}
+        groups={completeShareGroups}
+        selectedTargets={completeShareTargets}
+        saving={saving}
+        loadingGroups={loadingCompleteShareGroups}
+        onToggleTarget={toggleCompleteShareTarget}
+        onClose={closeCompleteSharePrompt}
+        onPrivate={() => { void save({ visibility: "private" }); }}
+        onShare={() => { if (completeShareTargets.length > 0) void save({ visibility: completeShareTargets.join(",") }); }}
+      />
+    );
+  }
+
+  function buildCompleteRecordData(userId: string, options: CompleteSaveOptions = {}) {
     const decisionText = decisions.filter(d => d.trim()).join("\n");
     let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode };
 
@@ -1273,10 +1372,13 @@ function QTWriteContent() {
         closing_prayer: answers.closing_prayer ?? "",
       };
     }
+    if (typeof options.visibility === "string") {
+      recordData.visibility = options.visibility;
+    }
     return recordData;
   }
 
-  async function save() {
+  async function save(options: CompleteSaveOptions = {}) {
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = null;
@@ -1288,7 +1390,7 @@ function QTWriteContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      const recordData = buildCompleteRecordData(user.id);
+      const recordData = buildCompleteRecordData(user.id, options);
 
       if (isEditMode && editId) {
         const { error } = await supabase.from("qt_records")
@@ -1300,6 +1402,8 @@ function QTWriteContent() {
           showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
           return;
         }
+        setShowCompleteSharePrompt(false);
+        setCompleteShareTargets([]);
         router.push(`/qt/record?id=${editId}`);
         return;
       }
@@ -1333,6 +1437,8 @@ function QTWriteContent() {
 
       // streak 업데이트는 홈(page.tsx)에서 3개 루틴 모두 완료 시 처리
       // 큐티 단독으로는 streak가 올라가지 않음
+      setShowCompleteSharePrompt(false);
+      setCompleteShareTargets([]);
       router.push("/qt/complete");
     } finally { setSaving(false); }
   }
@@ -1573,6 +1679,7 @@ function QTWriteContent() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {renderCompleteSharePrompt()}
       {toast && (
         <div
           role={toast.kind === "error" ? "alert" : "status"}
@@ -1674,7 +1781,7 @@ function QTWriteContent() {
         </div>
 
         <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button onClick={save} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
+          <button onClick={openCompleteSharePrompt} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
             {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
           </button>
           {!isEditMode && (
@@ -1694,6 +1801,7 @@ function QTWriteContent() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {renderCompleteSharePrompt()}
       {toast && (
         <div
           role={toast.kind === "error" ? "alert" : "status"}
@@ -1948,7 +2056,7 @@ function QTWriteContent() {
           <div style={{ display: "flex", gap: 8 }}>
             {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
-              <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+              <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
                 {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
               </button>
             ) : (
@@ -1971,6 +2079,7 @@ function QTWriteContent() {
   const step6 = STEPS_6[cur];
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      {renderCompleteSharePrompt()}
       {toast && (
         <div
           role={toast.kind === "error" ? "alert" : "status"}
@@ -2227,7 +2336,7 @@ function QTWriteContent() {
         <div style={{ display: "flex", gap: 8 }}>
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
-            <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+            <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
               {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
             </button>
           ) : (

@@ -9,6 +9,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, Globe, Lock, MoreHorizontal, Trash2 } from "lucide-react";
+import SharePromptModal from "@/components/SharePromptModal";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -37,6 +38,8 @@ function PrayerPageContent() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePrayerId, setSharePrayerId] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  const [showCreateSharePrompt, setShowCreateSharePrompt] = useState(false);
+  const [createShareTargets, setCreateShareTargets] = useState<string[]>([]);
   const [sharingIntercession, setSharingIntercession] = useState(false);
   const [actionMenuPrayerId, setActionMenuPrayerId] = useState<string | null>(null);
   const [pendingDeletePrayerId, setPendingDeletePrayerId] = useState<string | null>(null);
@@ -61,7 +64,7 @@ function PrayerPageContent() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (!showShareModal) return;
+    if (!showShareModal && !showCreateSharePrompt) return;
     const bodyOverflow = document.body.style.overflow;
     const htmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -70,7 +73,7 @@ function PrayerPageContent() {
       document.body.style.overflow = bodyOverflow;
       document.documentElement.style.overflow = htmlOverflow;
     };
-  }, [showShareModal]);
+  }, [showShareModal, showCreateSharePrompt]);
 
   function visibilityTargets(visibility?: string | null) {
     return (visibility ?? "private")
@@ -87,6 +90,32 @@ function PrayerPageContent() {
     setSelectedTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
+  }
+
+  function toggleCreateShareTarget(target: string) {
+    setCreateShareTargets(prev =>
+      prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
+    );
+  }
+
+  function openCreateSharePrompt() {
+    if (!newPrayer.trim() || saving) return;
+    setCreateShareTargets([]);
+    setShowCreateSharePrompt(true);
+  }
+
+  function closeCreateSharePrompt() {
+    if (saving) return;
+    setShowCreateSharePrompt(false);
+    setCreateShareTargets([]);
+  }
+
+  function normalizedGroups() {
+    return myGroups.map((group: any) => ({
+      id: String(group.id),
+      name: String(group.name ?? ""),
+      is_public: !!group.is_public,
+    }));
   }
 
   function openIntercessionShare(prayer: any) {
@@ -171,7 +200,7 @@ function PrayerPageContent() {
     }
   }
 
-  async function submit() {
+  async function submit(visibility = "private") {
     if (!newPrayer.trim() || !userId || saving) return;
     setSaving(true);
     const supabase = createClient();
@@ -180,7 +209,7 @@ function PrayerPageContent() {
         user_id: userId,
         content: newPrayer.trim(),
         is_anonymous: false,
-        visibility: "private",
+        visibility,
       }).select("id").single();
       if (insertError) throw insertError;
 
@@ -198,6 +227,8 @@ function PrayerPageContent() {
 
       setNewPrayer("");
       setShowForm(false);
+      setShowCreateSharePrompt(false);
+      setCreateShareTargets([]);
       setCelebration(true);
       await loadPrayers();
     } catch (error) {
@@ -444,6 +475,32 @@ function PrayerPageContent() {
         iconAlt="Prayer"
         onClose={() => setCelebration(false)}
       />
+
+      {showCreateSharePrompt && (
+        <SharePromptModal
+          title={c("prayer_complete_share_title")}
+          description={c("prayer_complete_share_sub")}
+          helperText={c("prayer_complete_share_helper")}
+          allLabel={c("prayer_intercession_share_all")}
+          allSubLabel={c("prayer_intercession_share_all_sub")}
+          groupsLabel={c("prayer_intercession_my_groups")}
+          publicGroupLabel={c("prayer_intercession_public_group")}
+          privateGroupLabel={c("prayer_intercession_private_group")}
+          noGroupsLabel={c("prayer_intercession_no_groups")}
+          selectedCountLabel={c("prayer_intercession_selected_count", { count: createShareTargets.length })}
+          loadingLabel={c("loading")}
+          shareActionLabel={c("prayer_intercession_share_action")}
+          privateActionLabel={c("share_prompt_private_action")}
+          closeLabel={c("close")}
+          groups={normalizedGroups()}
+          selectedTargets={createShareTargets}
+          saving={saving}
+          onToggleTarget={toggleCreateShareTarget}
+          onClose={closeCreateSharePrompt}
+          onPrivate={() => { void submit("private"); }}
+          onShare={() => { if (createShareTargets.length > 0) void submit(createShareTargets.join(",")); }}
+        />
+      )}
 
       {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
@@ -779,7 +836,7 @@ function PrayerPageContent() {
               value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>{c("prayer_cancel")}</button>
-              <button className="btn-sage" onClick={submit} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
+              <button className="btn-sage" onClick={openCreateSharePrompt} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
                 {saving ? <Loader2 size={16} className="spin" /> : c("prayer_save_action")}
               </button>
             </div>

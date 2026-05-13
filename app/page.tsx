@@ -11,6 +11,7 @@ import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
+import SharePromptModal, { type ShareTargetGroup } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
@@ -147,6 +148,10 @@ export default function HomePage() {
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
+  const [showHomePrayerSharePrompt, setShowHomePrayerSharePrompt] = useState(false);
+  const [homePrayerShareTargets, setHomePrayerShareTargets] = useState<string[]>([]);
+  const [homePrayerShareGroups, setHomePrayerShareGroups] = useState<ShareTargetGroup[]>([]);
+  const [loadingHomePrayerShareGroups, setLoadingHomePrayerShareGroups] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -500,7 +505,63 @@ export default function HomePage() {
     setShowHomePrayerCompose(true);
   }
 
-  async function saveHomePrayerRequest() {
+  async function loadHomePrayerShareGroups() {
+    setLoadingHomePrayerShareGroups(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setHomePrayerShareGroups([]);
+        return;
+      }
+
+      const { data: memberRows } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+      const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
+      if (groupIds.length === 0) {
+        setHomePrayerShareGroups([]);
+        return;
+      }
+
+      const { data: groups } = await supabase
+        .from("groups")
+        .select("id, name, is_public")
+        .in("id", groupIds);
+      setHomePrayerShareGroups((groups ?? []).map((group: any) => ({
+        id: String(group.id),
+        name: String(group.name ?? ""),
+        is_public: !!group.is_public,
+      })));
+    } catch (error) {
+      console.error("home prayer share groups load failed", error);
+      setHomePrayerShareGroups([]);
+    } finally {
+      setLoadingHomePrayerShareGroups(false);
+    }
+  }
+
+  function toggleHomePrayerShareTarget(target: string) {
+    setHomePrayerShareTargets(prev =>
+      prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
+    );
+  }
+
+  function openHomePrayerSharePrompt() {
+    if (!homePrayerInput.trim() || savingHomePrayer) return;
+    setHomePrayerShareTargets([]);
+    setShowHomePrayerSharePrompt(true);
+    void loadHomePrayerShareGroups();
+  }
+
+  function closeHomePrayerSharePrompt() {
+    if (savingHomePrayer) return;
+    setShowHomePrayerSharePrompt(false);
+    setHomePrayerShareTargets([]);
+  }
+
+  async function saveHomePrayerRequest(visibility = "private") {
     const content = homePrayerInput.trim();
     if (!content || savingHomePrayer) return;
 
@@ -515,7 +576,7 @@ export default function HomePage() {
         user_id: user.id,
         content,
         is_anonymous: false,
-        visibility: "private",
+        visibility,
       });
       if (insertError) throw insertError;
 
@@ -527,6 +588,8 @@ export default function HomePage() {
 
       setHomePrayerInput("");
       setShowHomePrayerCompose(false);
+      setShowHomePrayerSharePrompt(false);
+      setHomePrayerShareTargets([]);
       setTodayDone(p => ({ ...p, prayer: true }));
       enqueueCelebration({
         message: t("prayer_saved_message", lang),
@@ -926,7 +989,7 @@ export default function HomePage() {
               </button>
               <button
                 className="btn-sage"
-                onClick={saveHomePrayerRequest}
+                onClick={openHomePrayerSharePrompt}
                 disabled={savingHomePrayer || !homePrayerInput.trim()}
                 style={{ flex: 1, opacity: savingHomePrayer || !homePrayerInput.trim() ? 0.55 : 1 }}
               >
@@ -1012,6 +1075,33 @@ export default function HomePage() {
         iconAlt="QT"
         onClose={closeCelebration}
       />
+
+      {showHomePrayerSharePrompt && (
+        <SharePromptModal
+          title={t("prayer_complete_share_title", lang)}
+          description={t("prayer_complete_share_sub", lang)}
+          helperText={t("prayer_complete_share_helper", lang)}
+          allLabel={t("prayer_intercession_share_all", lang)}
+          allSubLabel={t("prayer_intercession_share_all_sub", lang)}
+          groupsLabel={t("prayer_intercession_my_groups", lang)}
+          publicGroupLabel={t("prayer_intercession_public_group", lang)}
+          privateGroupLabel={t("prayer_intercession_private_group", lang)}
+          noGroupsLabel={t("prayer_intercession_no_groups", lang)}
+          selectedCountLabel={t("prayer_intercession_selected_count", lang, { count: homePrayerShareTargets.length })}
+          loadingLabel={t("loading", lang)}
+          shareActionLabel={t("prayer_intercession_share_action", lang)}
+          privateActionLabel={t("share_prompt_private_action", lang)}
+          closeLabel={t("close", lang)}
+          groups={homePrayerShareGroups}
+          selectedTargets={homePrayerShareTargets}
+          saving={savingHomePrayer}
+          loadingGroups={loadingHomePrayerShareGroups}
+          onToggleTarget={toggleHomePrayerShareTarget}
+          onClose={closeHomePrayerSharePrompt}
+          onPrivate={() => { void saveHomePrayerRequest("private"); }}
+          onShare={() => { if (homePrayerShareTargets.length > 0) void saveHomePrayerRequest(homePrayerShareTargets.join(",")); }}
+        />
+      )}
 
       <RootsManPopup
         show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show}
