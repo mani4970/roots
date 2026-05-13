@@ -1438,7 +1438,7 @@ function QTWriteContent() {
       // 완료 후 /qt/complete 팝업을 거쳐 홈으로 돌아오면 정원/루츠맨 물주기 흐름이 이어져야 한다.
       // 오늘 말씀 묵상 완료에만 표시하고, 지난 날짜 기록 저장은 홈 물주기를 트리거하지 않는다.
       if (selectedDate === getLocalDateString()) {
-        storageSet(`qt_completion_pending_watering_${selectedDate}`, "true");
+        storageSet(`qt_completion_pending_watering_${user.id}_${selectedDate}`, "true");
       }
       setShowCompleteSharePrompt(false);
       setCompleteShareTargets([]);

@@ -45,6 +45,15 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
 }
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
+const CELEBRATED_KEY_PREFIX = "celebrated_";
+
+function getScopedStorageKey(prefix: string, userId: string, date: string) {
+  return `${prefix}${userId}_${date}`;
+}
+
+function getLegacyStorageKey(prefix: string, date: string) {
+  return `${prefix}${date}`;
+}
 
 const gardenTopRef_scroll = () => {
   window.scrollTo({ top: 0, behavior: "instant" });
@@ -271,10 +280,19 @@ export default function HomePage() {
 
     setTodayDone({ qt: !!completedQt, prayer: prayerChecked });
 
-    const completionWateringKey = `${QT_COMPLETION_WATERING_KEY_PREFIX}${today}`;
-    const hasCompletionWateringRequest = !!storageGet(completionWateringKey);
-    if (storageGet(`celebrated_${today}`) && !hasCompletionWateringRequest) {
+    const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, user.id, today);
+    const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
+    const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, user.id, today);
+    const profileLastCheckinToday = p?.last_checkin ? String(p.last_checkin).slice(0, 10) === today : false;
+    const hasScopedCompletionWateringRequest = !!storageGet(completionWateringKey);
+    const hasLegacyCompletionWateringRequest = !!storageGet(legacyCompletionWateringKey);
+    const hasCompletionWateringRequest =
+      hasScopedCompletionWateringRequest || (hasLegacyCompletionWateringRequest && !profileLastCheckinToday);
+    if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
       celebrationShownRef.current = true;
+      if (profileLastCheckinToday && !storageGet(celebratedKey)) {
+        storageSet(celebratedKey, "true");
+      }
     }
     if (isFirstLaunch()) {
       setShowFirstLangPicker(true);
@@ -288,22 +306,37 @@ export default function HomePage() {
     if (loading || !wordWalkDone || !onboardingDone || celebrationShownRef.current || progressUpdateInFlightRef.current) return;
 
     const today = getLocalDateString();
-    const completionWateringKey = `${QT_COMPLETION_WATERING_KEY_PREFIX}${today}`;
-    const hasCompletionWateringRequest = !!storageGet(completionWateringKey);
-    if (storageGet(`celebrated_${today}`) && !hasCompletionWateringRequest) return;
+    const userId = profile?.id;
+    if (!userId) return;
+    const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, userId, today);
+    const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
+    const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, userId, today);
+    const profileLastCheckinToday = profile?.last_checkin ? String(profile.last_checkin).slice(0, 10) === today : false;
+    const hasScopedCompletionWateringRequest = !!storageGet(completionWateringKey);
+    const hasLegacyCompletionWateringRequest = !!storageGet(legacyCompletionWateringKey);
+    const hasCompletionWateringRequest =
+      hasScopedCompletionWateringRequest || (hasLegacyCompletionWateringRequest && !profileLastCheckinToday);
+    if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
+      celebrationShownRef.current = true;
+      if (profileLastCheckinToday && !storageGet(celebratedKey)) {
+        storageSet(celebratedKey, "true");
+      }
+      return;
+    }
 
     progressUpdateInFlightRef.current = true;
     void (async () => {
       const updated = await updateStreak(today);
       if (!updated) return;
       celebrationShownRef.current = true;
-      storageSet(`celebrated_${today}`, "true");
+      storageSet(celebratedKey, "true");
       storageRemove(completionWateringKey);
+      storageRemove(legacyCompletionWateringKey);
       requestRootsManExperience();
     })().finally(() => {
       progressUpdateInFlightRef.current = false;
     });
-  }, [wordWalkDone, loading]);
+  }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
 
   async function updateStreak(today: string): Promise<boolean> {
     const supabase = createClient();
