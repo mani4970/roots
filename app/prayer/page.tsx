@@ -848,7 +848,7 @@ function PrayerPageContent() {
       {tab === "mine" && (
         <button
           onClick={() => setShowForm(true)}
-          style={{ position: "fixed", bottom: 80, right: 16, width: 52, height: 52, background: "var(--sage)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "0 4px 14px rgba(122,157,122,0.4)" }}
+          style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--sage)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "0 4px 14px rgba(122,157,122,0.4)" }}
         >
           <Plus size={22} style={{ color: "var(--bg)" }} />
         </button>

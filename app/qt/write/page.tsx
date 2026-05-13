@@ -1435,8 +1435,11 @@ function QTWriteContent() {
         }
       }
 
-      // streak 업데이트는 홈(page.tsx)에서 3개 루틴 모두 완료 시 처리
-      // 큐티 단독으로는 streak가 올라가지 않음
+      // 완료 후 /qt/complete 팝업을 거쳐 홈으로 돌아오면 정원/루츠맨 물주기 흐름이 이어져야 한다.
+      // 오늘 말씀 묵상 완료에만 표시하고, 지난 날짜 기록 저장은 홈 물주기를 트리거하지 않는다.
+      if (selectedDate === getLocalDateString()) {
+        storageSet(`qt_completion_pending_watering_${selectedDate}`, "true");
+      }
       setShowCompleteSharePrompt(false);
       setCompleteShareTargets([]);
       router.push("/qt/complete");

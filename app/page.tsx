@@ -19,7 +19,7 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { storageGet, storageSet } from "@/lib/clientStorage";
+import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -43,6 +43,8 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
   if (cycleDay <= 90) return "tree_sub_90";
   return "tree_sub_100";
 }
+
+const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 
 const gardenTopRef_scroll = () => {
   window.scrollTo({ top: 0, behavior: "instant" });
@@ -131,6 +133,7 @@ export default function HomePage() {
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
   const celebrationShownRef = useRef(false);
+  const progressUpdateInFlightRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
@@ -268,7 +271,9 @@ export default function HomePage() {
 
     setTodayDone({ qt: !!completedQt, prayer: prayerChecked });
 
-    if (storageGet(`celebrated_${today}`)) {
+    const completionWateringKey = `${QT_COMPLETION_WATERING_KEY_PREFIX}${today}`;
+    const hasCompletionWateringRequest = !!storageGet(completionWateringKey);
+    if (storageGet(`celebrated_${today}`) && !hasCompletionWateringRequest) {
       celebrationShownRef.current = true;
     }
     if (isFirstLaunch()) {
@@ -280,18 +285,24 @@ export default function HomePage() {
 
   useEffect(() => {
     const onboardingDone = storageGet("onboarding_done");
-    if (!loading && wordWalkDone && !celebrationShownRef.current && onboardingDone) {
-      const today = getLocalDateString();
-      if (!storageGet(`celebrated_${today}`)) {
-        void (async () => {
-          const updated = await updateStreak(today);
-          if (!updated) return;
-          celebrationShownRef.current = true;
-          storageSet(`celebrated_${today}`, "true");
-          requestRootsManExperience();
-        })();
-      }
-    }
+    if (loading || !wordWalkDone || !onboardingDone || celebrationShownRef.current || progressUpdateInFlightRef.current) return;
+
+    const today = getLocalDateString();
+    const completionWateringKey = `${QT_COMPLETION_WATERING_KEY_PREFIX}${today}`;
+    const hasCompletionWateringRequest = !!storageGet(completionWateringKey);
+    if (storageGet(`celebrated_${today}`) && !hasCompletionWateringRequest) return;
+
+    progressUpdateInFlightRef.current = true;
+    void (async () => {
+      const updated = await updateStreak(today);
+      if (!updated) return;
+      celebrationShownRef.current = true;
+      storageSet(`celebrated_${today}`, "true");
+      storageRemove(completionWateringKey);
+      requestRootsManExperience();
+    })().finally(() => {
+      progressUpdateInFlightRef.current = false;
+    });
   }, [wordWalkDone, loading]);
 
   async function updateStreak(today: string): Promise<boolean> {
