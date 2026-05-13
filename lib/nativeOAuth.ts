@@ -4,10 +4,12 @@ import { getOAuthRedirectTo, isCapacitorApp } from "@/lib/authRedirect";
 import { storageRemove, storageSet } from "@/lib/clientStorage";
 import type { Lang } from "@/lib/i18n";
 
+export type OAuthProvider = "google" | "apple";
+
 type SupabaseOAuthClient = {
   auth: {
     signInWithOAuth: (credentials: {
-      provider: "google";
+      provider: OAuthProvider;
       options?: {
         redirectTo?: string;
         skipBrowserRedirect?: boolean;
@@ -24,7 +26,12 @@ function isNativeRuntime() {
   }
 }
 
-export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang: Lang, nextPath?: string | null) {
+export async function signInWithOAuthProvider(
+  supabase: SupabaseOAuthClient,
+  provider: OAuthProvider,
+  lang: Lang,
+  nextPath?: string | null,
+) {
   const nativeApp = isNativeRuntime();
   if (nativeApp) {
     storageSet("roots_lang", lang);
@@ -37,7 +44,7 @@ export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang:
   }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+    provider,
     options: {
       // Keep the native redirect URL simple so it matches the Supabase allow list.
       // The desired in-app destination is stored locally and restored in CapacitorAuthBridge.
@@ -51,4 +58,12 @@ export async function signInWithGoogleOAuth(supabase: SupabaseOAuthClient, lang:
   if (nativeApp && data?.url) {
     await Browser.open({ url: data.url });
   }
+}
+
+export async function signInWithGoogleOAuth(
+  supabase: SupabaseOAuthClient,
+  lang: Lang,
+  nextPath?: string | null,
+) {
+  return signInWithOAuthProvider(supabase, "google", lang, nextPath);
 }
