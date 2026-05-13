@@ -5,6 +5,7 @@
 :root {
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --bottom-nav-safe-extra: max(0px, var(--safe-area-bottom));
+  --bottom-nav-bottom-padding: max(8px, var(--bottom-nav-safe-extra));
   /* 라이트 모드 (기본) — 따뜻한 베이지 톤 */
   --bg: #FAF6F0;
   --bg2: #FFFFFF;
@@ -47,7 +48,7 @@
 }
 
 html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--html-bg); }
-html[data-native-platform="android"] { --bottom-nav-safe-extra: max(var(--safe-area-bottom), 34px); }
+html[data-native-platform="android"] { --bottom-nav-safe-extra: max(0px, var(--safe-area-bottom)); }
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
@@ -74,12 +75,12 @@ a { text-decoration: none; color: inherit; }
 .card-beige { background: var(--beige-light); border: 1px solid rgba(212,197,169,0.2); border-radius: 18px; padding: 16px; }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
-.page { min-height: 100vh; background: var(--bg); padding-bottom: calc(90px + var(--bottom-nav-safe-extra)); }
+.page { min-height: 100vh; background: var(--bg); padding-bottom: calc(82px + var(--bottom-nav-bottom-padding)); }
 .header-title { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1.2; }
 .header-title em { color: var(--sage); font-style: normal; }
 
 /* 하단 네비게이션 */
-.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; z-index: 50; padding: 6px 0 calc(10px + var(--bottom-nav-safe-extra)); }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; z-index: 50; padding: 6px 0 var(--bottom-nav-bottom-padding); }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 2px; background: none; border: none; color: var(--text3); font-size: 10px; font-weight: 400; cursor: pointer; text-decoration: none; }
 .nav-item.active { color: var(--sage); font-weight: 600; }
 .nav-item svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
