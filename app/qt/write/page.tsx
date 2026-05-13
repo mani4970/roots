@@ -1061,14 +1061,6 @@ function QTWriteContent() {
     );
   }
 
-  // 6단계 canNext
-  function canNext6(): boolean {
-    const step = STEPS_6[cur];
-    if (step.isPassageStep) return (answers.summary ?? "").trim().length > 0;
-    if (step.isDecision) return decisions.some(d => d.trim().length > 0);
-    return (answers[step.id] ?? "").trim().length > 0;
-  }
-
   // 주일예배 canNext
   function canNextSunday(): boolean {
     const step = STEPS_SUNDAY[cur] as any;
@@ -1977,8 +1969,6 @@ function QTWriteContent() {
 
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
-  const canNext6val = canNext6();
-
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
@@ -2237,7 +2227,7 @@ function QTWriteContent() {
         <div style={{ display: "flex", gap: 8 }}>
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
-            <button onClick={save} disabled={!canNext6val || saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+            <button onClick={save} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
               {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
             </button>
           ) : (

@@ -12,6 +12,7 @@ export default function NativeStatusBar() {
     if (!Capacitor.isNativePlatform()) return;
 
     document.documentElement.setAttribute("data-native-app", "true");
+    document.documentElement.setAttribute("data-native-platform", Capacitor.getPlatform());
 
     void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
 

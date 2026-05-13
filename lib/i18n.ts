@@ -659,8 +659,8 @@ export const T = {
   home_decision_celeb: { ko: "결단 실천 완료!",     de: "Vorsatz umgesetzt!", en: "Resolution complete!", fr: "Décision accomplie !" },
   home_decision_celeb_sub: { ko: "말씀을 삶으로 살아내는 당신을 축복해요 ", de: "Gesegnet, wer Gottes Wort im Leben umsetzt ", en: "Blessed are those who live by God's Word ", fr: "Béni soit celui qui vit selon la Parole de Dieu " },
 
-  // "{name}의 정원" / "{name}s Garten"
-  home_garden_my: { ko: "{name}님의 정원", de: "{name}s Garten", en: "{name}s garden", fr: "Jardin de {name}" },
+  // "{name} 님의 정원" / "{name}'s garden" / "{name}s Garten"
+  home_garden_my: { ko: "{name} 님의 정원", de: "{name}s Garten", en: "{name}'s garden", fr: "Jardin de {name}" },
   home_garden_keyword: { ko: "정원", de: "Garten", en: "garden", fr: "Jardin" },
 
   // ── TreeGrowth 하드코딩 ──
