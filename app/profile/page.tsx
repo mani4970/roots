@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
+import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -226,9 +227,7 @@ export default function ProfilePage() {
     setSavingName(false);
   }
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadAvatarFile(file: File) {
     setPhotoError("");
     // 5MB 제한
     if (file.size > MAX_AVATAR_SIZE) {
@@ -243,7 +242,10 @@ export default function ProfilePage() {
     setUploadingPhoto(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setUploadingPhoto(false);
+      return;
+    }
     const path = `${user.id}/avatar.${ext}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
@@ -263,6 +265,54 @@ export default function ProfilePage() {
     }
     setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
     setUploadingPhoto(false);
+  }
+
+  function getMimeTypeFromPhoto(format?: string, blobType?: string) {
+    if (blobType && ALLOWED_AVATAR_TYPES[blobType]) return blobType;
+    if (format === "jpeg" || format === "jpg") return "image/jpeg";
+    if (format === "png") return "image/png";
+    if (format === "webp") return "image/webp";
+    return "image/jpeg";
+  }
+
+  async function chooseProfilePhoto() {
+    setPhotoError("");
+    if (Capacitor.getPlatform() === "ios") {
+      try {
+        // iOS의 기본 파일 input은 "Take Photo" 선택지를 함께 보여주며,
+        // 카메라 권한/기기 조합에서 앱이 종료될 수 있습니다.
+        // 프로필 사진은 갤러리 선택만 사용하도록 네이티브 Photo Library를 직접 엽니다.
+        const photo = await NativeCamera.getPhoto({
+          source: CameraSource.Photos,
+          resultType: CameraResultType.Uri,
+          quality: 85,
+          allowEditing: false,
+        });
+
+        if (!photo.webPath) return;
+        const response = await fetch(photo.webPath);
+        const blob = await response.blob();
+        const mimeType = getMimeTypeFromPhoto(photo.format, blob.type);
+        const ext = ALLOWED_AVATAR_TYPES[mimeType] ?? "jpg";
+        const file = new File([blob], `avatar.${ext}`, { type: mimeType });
+        await uploadAvatarFile(file);
+      } catch (error: any) {
+        const message = String(error?.message ?? error ?? "").toLowerCase();
+        if (message.includes("cancel") || message.includes("cancelled") || message.includes("canceled")) return;
+        console.error("프로필 사진 선택 실패:", error);
+        setPhotoError(t("profile_upload_fail", lang));
+      }
+      return;
+    }
+
+    fileRef.current?.click();
+  }
+
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.currentTarget.value = "";
+    if (!file) return;
+    await uploadAvatarFile(file);
   }
 
   async function logout() {
@@ -455,13 +505,13 @@ export default function ProfilePage() {
               )}
             </div>
             <button
-              onClick={() => { setPhotoError(""); fileRef.current?.click(); }}
+              onClick={chooseProfilePhoto}
               disabled={uploadingPhoto}
               style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
               {uploadingPhoto ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>
 
           {/* 이름 — overflow 방지 */}
