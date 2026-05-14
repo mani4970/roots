@@ -52,5 +52,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Roots uses the camera so you can take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Roots uses your photo library so you can choose a profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Roots may save selected profile images when needed.</string>
 </dict>
 </plist>
