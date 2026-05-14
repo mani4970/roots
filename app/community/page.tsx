@@ -156,6 +156,10 @@ export default function CommunityPage() {
   const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showGroupActionMenu, setShowGroupActionMenu] = useState(false);
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
+  const [groupMemberProfiles, setGroupMemberProfiles] = useState<any[]>([]);
+  const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
   const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
@@ -190,6 +194,19 @@ export default function CommunityPage() {
 
   function memberCountText(count: number) {
     return c("community_member_count", { count });
+  }
+
+  function closeGroupDetail() {
+    setActionMenu(null);
+    setShowGroupActionMenu(false);
+    setShowGroupMembers(false);
+    setGroupMemberProfiles([]);
+    closeManageModal();
+    setSelectedGroup(null);
+    setGroupQts([]);
+    setGroupPrayers([]);
+    setGroupDetailTab("qt");
+    setDetailQt(null);
   }
 
   function openPrayerEdit(item: any, event?: any, scope?: "all" | "group", groupId?: string) {
@@ -527,6 +544,39 @@ export default function CommunityPage() {
     const map: Record<string, any> = {};
     (profs ?? []).forEach((p: any) => { map[p.id] = p; });
     return map;
+  }
+
+  async function openGroupMembers(group: any) {
+    setShowGroupMembers(true);
+    setLoadingGroupMembers(true);
+    const supabase = createClient();
+    try {
+      const { data: rows, error } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", group.id);
+
+      if (error) throw error;
+      const memberIds = Array.from(new Set((rows ?? []).map((row: any) => row.user_id).filter(Boolean)));
+      if (memberIds.length === 0) {
+        setGroupMemberProfiles([]);
+        return;
+      }
+
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .in("id", memberIds);
+
+      const profileMap: Record<string, any> = {};
+      (profs ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
+      setGroupMemberProfiles(memberIds.map((id: string) => profileMap[id] ?? { id, name: c("community_member_unknown"), avatar_url: null }));
+    } catch (error) {
+      console.warn("그룹 참여자 조회 실패:", error);
+      setGroupMemberProfiles([]);
+    } finally {
+      setLoadingGroupMembers(false);
+    }
   }
 
   // qt_reactions 로드 헬퍼 - qtIds 목록의 반응 카운트 + 내 반응 가져오기
@@ -992,6 +1042,8 @@ export default function CommunityPage() {
     }
 
     setShowLeaveConfirm(false);
+    setShowGroupActionMenu(false);
+    setShowGroupMembers(false);
     const leftGroupId = selectedGroup.id;
     const wasPublic = !!selectedGroup.is_public;
     updateFavoriteCache(userId, leftGroupId, false);
@@ -1120,11 +1172,11 @@ export default function CommunityPage() {
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
-          <button onClick={() => { setActionMenu(null); closeManageModal(); setSelectedGroup(null); setGroupQts([]); setGroupPrayers([]); setGroupDetailTab("qt"); setDetailQt(null); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+          <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{selectedGroup.name}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, position: "relative" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", minWidth: 0 }}>{selectedGroup.name}</h1>
             <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: selectedGroup.is_public ? "var(--sage-light)" : "var(--bg3)", color: selectedGroup.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${selectedGroup.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
               {selectedGroup.is_public ? (c("community_public")) : (c("community_private"))}
             </span>
@@ -1133,44 +1185,49 @@ export default function CommunityPage() {
                 onClick={(e) => toggleFavoriteGroup(selectedGroup, e)}
                 disabled={favoriteSavingIds.includes(selectedGroup.id)}
                 aria-label={c("community_favorite")}
-                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(selectedGroup.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(selectedGroup.id) ? 0.65 : 1 }}
+                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(selectedGroup.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(selectedGroup.id) ? 0.65 : 1, flexShrink: 0 }}
               >
                 <Star size={16} strokeWidth={1.9} fill={selectedGroup.isFavorite ? "currentColor" : "transparent"} />
               </button>
             )}
+            <button
+              onClick={() => setShowGroupActionMenu(prev => !prev)}
+              aria-label={c("community_group_actions")}
+              style={{ marginLeft: "auto", width: 34, height: 34, border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0 }}
+            >
+              <MoreHorizontal size={22} />
+            </button>
+            {showGroupActionMenu && (
+              <div style={{ position: "absolute", right: 0, top: 38, zIndex: 80, minWidth: 180, borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg2)", boxShadow: "0 16px 45px rgba(0,0,0,0.16)", padding: 8 }}>
+                <button onClick={() => { setShowGroupActionMenu(false); shareInvite(selectedGroup); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+                  <Share2 size={15} />{c("community_invite")}
+                </button>
+                <button onClick={() => { setShowGroupActionMenu(false); copyInviteLink(selectedGroup.id); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "var(--text2)", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+                  {copiedId === selectedGroup.id ? <Check size={15} /> : <Copy size={15} />}
+                  {copiedId === selectedGroup.id ? c("community_copied") : c("community_copy_link")}
+                </button>
+                {selectedGroup.isMember && (
+                  <button onClick={() => { setShowGroupActionMenu(false); setShowLeaveConfirm(true); }} disabled={leavingGroup} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "#B35F5F", fontSize: 13, fontWeight: 800, cursor: leavingGroup ? "default" : "pointer", textAlign: "left", opacity: leavingGroup ? 0.65 : 1 }}>
+                    {leavingGroup ? <Loader2 size={15} className="spin" /> : <LogOut size={15} />}
+                    {c("community_leave_group")}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
-          <p style={{ fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 600 }}>{memberCountText(selectedGroup.member_count ?? 0)}</p>
+          <button onClick={() => openGroupMembers(selectedGroup)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 700, cursor: "pointer" }}>
+            <span>{memberCountText(selectedGroup.member_count ?? 0)}</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
         <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {!selectedGroup.isMember ? (
-              <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ flex: 1 }}>{c("community_join")}</button>
-            ) : (
-              <div style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", textAlign: "center", fontSize: 12, color: "var(--text3)", fontWeight: 600 }}>{c("community_member_badge")}</div>
-            )}
-            <button onClick={() => copyInviteLink(selectedGroup.id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: copiedId === selectedGroup.id ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copiedId === selectedGroup.id ? "var(--sage-dark)" : "var(--text2)", fontWeight: 600 }}>
-              {copiedId === selectedGroup.id ? <Check size={13} /> : <Copy size={13} />}
-              {copiedId === selectedGroup.id ? (c("community_copied")) : (c("community_copy_link"))}
-            </button>
-            <button onClick={() => shareInvite(selectedGroup)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--sage-dark)" }}>
-              <Share2 size={13} />{c("community_invite")}
-            </button>
-          </div>
-
-          {selectedGroup.isMember && (
-            <button
-              onClick={() => setShowLeaveConfirm(true)}
-              disabled={leavingGroup}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "11px", borderRadius: 14, border: "1px solid rgba(196,106,106,0.25)", background: "rgba(196,106,106,0.08)", color: "#B35F5F", cursor: leavingGroup ? "default" : "pointer", fontSize: 12, fontWeight: 700 }}
-            >
-              {leavingGroup ? <Loader2 size={14} className="spin" /> : <LogOut size={14} />}
-              {c("community_leave_group")}
-            </button>
+          {!selectedGroup.isMember && (
+            <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ width: "100%" }}>{c("community_join")}</button>
           )}
 
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: selectedGroup.isMember ? 8 : 0 }}>
             <div style={{ display: "flex", marginBottom: 14, borderBottom: "1px solid var(--border)" }}>
               {[
                 { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
@@ -1296,6 +1353,50 @@ export default function CommunityPage() {
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
         {renderManageModal()}
+        {showGroupMembers && selectedGroup && (
+          <div
+            onClick={() => setShowGroupMembers(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 215, background: "rgba(26,28,30,0.62)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 14px 18px" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: "100%", maxWidth: 430, background: "var(--bg2)", borderRadius: 26, padding: 20, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.24)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 3 }}>{c("community_members_title")}</h2>
+                  <p style={{ fontSize: 12, color: "var(--text3)" }}>{memberCountText(selectedGroup.member_count ?? groupMemberProfiles.length)}</p>
+                </div>
+                <button onClick={() => setShowGroupMembers(false)} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <X size={17} />
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "52vh", overflowY: "auto" }}>
+                {loadingGroupMembers ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 0", color: "var(--text3)", fontSize: 13 }}>
+                    <Loader2 size={16} className="spin" />
+                    {c("community_members_loading")}
+                  </div>
+                ) : groupMemberProfiles.length > 0 ? (
+                  groupMemberProfiles.map((member: any) => (
+                    <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0" }}>
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
+                      ) : (
+                        <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Users size={17} />
+                        </div>
+                      )}
+                      <span style={{ fontSize: 14, color: "var(--text)", fontWeight: 700 }}>{member.name || c("community_member_unknown")}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ fontSize: 13, color: "var(--text3)", padding: "12px 0" }}>{c("community_members_empty")}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {showLeaveConfirm && selectedGroup && (
           <div
             onClick={() => !leavingGroup && setShowLeaveConfirm(false)}
