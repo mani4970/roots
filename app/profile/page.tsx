@@ -275,30 +275,40 @@ export default function ProfilePage() {
     return "image/jpeg";
   }
 
+  function base64ToAvatarFile(base64: string, mimeType: string, fileName: string) {
+    const byteString = window.atob(base64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i += 1) {
+      bytes[i] = byteString.charCodeAt(i);
+    }
+    return new File([bytes], fileName, { type: mimeType });
+  }
+
   async function chooseProfilePhoto() {
     setPhotoError("");
-    if (Capacitor.getPlatform() === "ios") {
+    if (Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform()) {
       try {
-        // iOS의 기본 파일 input은 "Take Photo" 선택지를 함께 보여주며,
-        // 카메라 권한/기기 조합에서 앱이 종료될 수 있습니다.
-        // 프로필 사진은 갤러리 선택만 사용하도록 네이티브 Photo Library를 직접 엽니다.
+        // iOS의 기본 file input은 "Take Photo" 선택지를 함께 표시합니다.
+        // App Store 심사에서 해당 카메라 촬영 흐름이 crash를 만들 수 있으므로,
+        // iOS 앱에서는 Capacitor Camera plugin으로 Photo Library만 직접 엽니다.
+        // Base64 결과를 사용해 webPath fetch 실패나 로컬 파일 URL 접근 이슈를 피합니다.
         const photo = await NativeCamera.getPhoto({
           source: CameraSource.Photos,
-          resultType: CameraResultType.Uri,
+          resultType: CameraResultType.Base64,
           quality: 85,
+          width: 1024,
+          correctOrientation: true,
           allowEditing: false,
         });
 
-        if (!photo.webPath) return;
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-        const mimeType = getMimeTypeFromPhoto(photo.format, blob.type);
+        if (!photo.base64String) return;
+        const mimeType = getMimeTypeFromPhoto(photo.format);
         const ext = ALLOWED_AVATAR_TYPES[mimeType] ?? "jpg";
-        const file = new File([blob], `avatar.${ext}`, { type: mimeType });
+        const file = base64ToAvatarFile(photo.base64String, mimeType, `avatar.${ext}`);
         await uploadAvatarFile(file);
       } catch (error: any) {
         const message = String(error?.message ?? error ?? "").toLowerCase();
-        if (message.includes("cancel") || message.includes("cancelled") || message.includes("canceled")) return;
+        if (message.includes("cancel") || message.includes("cancelled") || message.includes("canceled") || message.includes("user cancelled")) return;
         console.error("프로필 사진 선택 실패:", error);
         setPhotoError(t("profile_upload_fail", lang));
       }
