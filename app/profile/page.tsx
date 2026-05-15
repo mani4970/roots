@@ -284,9 +284,26 @@ export default function ProfilePage() {
     return new File([bytes], fileName, { type: mimeType });
   }
 
+  function restoreIOSViewportAfterPhotoPicker(scrollY: number) {
+    if (!(Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform())) return;
+
+    // iOS의 Photo Library가 닫힌 뒤 WebView viewport/scroll 위치가 살짝 밀리는 경우가 있어
+    // 현재 페이지 위치를 명시적으로 복구하고 레이아웃 재계산을 유도합니다.
+    window.setTimeout(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
+      window.dispatchEvent(new Event("resize"));
+      document.documentElement.style.setProperty("--roots-viewport-refresh", String(Date.now()));
+    }, 80);
+
+    window.setTimeout(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
+    }, 260);
+  }
+
   async function chooseProfilePhoto() {
     setPhotoError("");
     if (Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform()) {
+      const scrollYBeforePicker = window.scrollY;
       try {
         // iOS의 기본 file input은 "Take Photo" 선택지를 함께 표시합니다.
         // App Store 심사에서 해당 카메라 촬영 흐름이 crash를 만들 수 있으므로,
@@ -311,6 +328,8 @@ export default function ProfilePage() {
         if (message.includes("cancel") || message.includes("cancelled") || message.includes("canceled") || message.includes("user cancelled")) return;
         console.error("프로필 사진 선택 실패:", error);
         setPhotoError(t("profile_upload_fail", lang));
+      } finally {
+        restoreIOSViewportAfterPhotoPicker(scrollYBeforePicker);
       }
       return;
     }
