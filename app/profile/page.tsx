@@ -287,17 +287,21 @@ export default function ProfilePage() {
   function restoreIOSViewportAfterPhotoPicker(scrollY: number) {
     if (!(Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform())) return;
 
-    // iOS의 Photo Library가 닫힌 뒤 WebView viewport/scroll 위치가 살짝 밀리는 경우가 있어
-    // 현재 페이지 위치를 명시적으로 복구하고 레이아웃 재계산을 유도합니다.
-    window.setTimeout(() => {
-      window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) activeElement.blur();
+
+    // iOS Photo Library가 닫힌 뒤 WebView의 status bar / safe-area 계산이 밀리는 경우가 있어
+    // native status bar 설정을 다시 적용하고, 현재 페이지 위치를 여러 프레임에 걸쳐 복구합니다.
+    const restore = () => {
+      window.dispatchEvent(new Event("roots:native-viewport-refresh"));
       window.dispatchEvent(new Event("resize"));
       document.documentElement.style.setProperty("--roots-viewport-refresh", String(Date.now()));
-    }, 80);
-
-    window.setTimeout(() => {
       window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
-    }, 260);
+    };
+
+    window.setTimeout(restore, 80);
+    window.setTimeout(restore, 260);
+    window.setTimeout(restore, 650);
   }
 
   async function chooseProfilePhoto() {
