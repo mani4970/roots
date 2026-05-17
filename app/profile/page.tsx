@@ -87,7 +87,9 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [resettingPhoto, setResettingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
   const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
   const [profileUserId, setProfileUserId] = useState("");
@@ -302,6 +304,36 @@ export default function ProfilePage() {
     window.setTimeout(restore, 80);
     window.setTimeout(restore, 260);
     window.setTimeout(restore, 650);
+  }
+
+  async function resetProfilePhoto() {
+    setPhotoError("");
+    setResettingPhoto(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error: dbError } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
+      if (dbError) {
+        console.error("프로필 사진 기본 이미지 복귀 실패:", dbError);
+        setPhotoError(`${t("profile_photo_reset_fail", lang)}: ${dbError.message}`);
+        return;
+      }
+
+      setProfile((current: any) => ({ ...(current ?? {}), avatar_url: null }));
+      showToast(t("profile_photo_reset_ok", lang));
+
+      // 이전 프로필 사진은 사용자별 고정 경로에 저장됩니다. 삭제가 실패해도 화면 복귀는 유지합니다.
+      const oldAvatarPaths = ["jpg", "png", "webp"].map(ext => `${user.id}/avatar.${ext}`);
+      const { error: removeError } = await supabase.storage.from("avatars").remove(oldAvatarPaths);
+      if (removeError) {
+        console.warn("기존 프로필 사진 파일 정리 실패:", removeError);
+      }
+    } finally {
+      setResettingPhoto(false);
+      setShowPhotoMenu(false);
+    }
   }
 
   async function chooseProfilePhoto() {
@@ -538,11 +570,12 @@ export default function ProfilePage() {
               )}
             </div>
             <button
-              onClick={chooseProfilePhoto}
-              disabled={uploadingPhoto}
+              onClick={() => setShowPhotoMenu(true)}
+              disabled={uploadingPhoto || resettingPhoto}
+              aria-label={t("profile_photo_menu_title", lang)}
               style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              {uploadingPhoto ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
+              {uploadingPhoto || resettingPhoto ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
             </button>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>
@@ -777,6 +810,46 @@ export default function ProfilePage() {
 
       <div style={{ height: 80 }} />
       <BottomNav />
+
+
+      {/* 프로필 사진 관리 메뉴 */}
+      {showPhotoMenu && (
+        <div onClick={() => setShowPhotoMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 92px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 390, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "18px 16px 14px", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{t("profile_photo_menu_title", lang)}</h3>
+              <button onClick={() => setShowPhotoMenu(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={15} />
+              </button>
+            </div>
+            <button
+              onClick={async () => {
+                setShowPhotoMenu(false);
+                await chooseProfilePhoto();
+              }}
+              disabled={uploadingPhoto || resettingPhoto}
+              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              {uploadingPhoto ? <Loader2 size={14} className="spin" /> : <Camera size={15} />}
+              {t("profile_photo_select", lang)}
+            </button>
+            <button
+              onClick={resetProfilePhoto}
+              disabled={uploadingPhoto || resettingPhoto || !profile?.avatar_url}
+              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: profile?.avatar_url ? "var(--text)" : "var(--text3)", fontSize: 14, fontWeight: 700, cursor: profile?.avatar_url ? "pointer" : "not-allowed", opacity: profile?.avatar_url ? 1 : 0.56, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              {resettingPhoto ? <Loader2 size={14} className="spin" /> : null}
+              {t("profile_photo_reset", lang)}
+            </button>
+            <button
+              onClick={() => setShowPhotoMenu(false)}
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 14, background: "transparent", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+            >
+              {t("profile_photo_cancel", lang)}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 계정 설정 모달 */}
       {showSettingsModal && (
