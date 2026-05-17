@@ -233,7 +233,7 @@ public class MainActivity extends BridgeActivity {
         if (isConnected) {
             reloadRootWebView();
             if (offlineView != null) {
-                offlineView.postDelayed(this::hideOfflineView, 1200);
+                offlineView.postDelayed(this::hideOfflineView, 2500);
             }
         } else if (offlineView != null) {
             offlineView.animate()
@@ -259,7 +259,7 @@ public class MainActivity extends BridgeActivity {
     private void reloadRootWebView() {
         WebView webView = findWebView(findViewById(android.R.id.content));
         if (webView != null) {
-            webView.reload();
+            webView.loadUrl("https://www.christian-roots.com");
         }
     }
 

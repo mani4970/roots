@@ -159,7 +159,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         isNetworkAvailable = networkMonitor.currentPath.status == .satisfied
         if isNetworkAvailable {
             reloadRootWebView()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 self?.hideOfflineView()
             }
         } else {
@@ -180,8 +180,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func reloadRootWebView() {
-        guard let rootViewController = window?.rootViewController else { return }
-        findWebView(in: rootViewController.view)?.reload()
+        guard let rootViewController = window?.rootViewController,
+              let webView = findWebView(in: rootViewController.view),
+              let rootsURL = URL(string: "https://www.christian-roots.com") else {
+            return
+        }
+
+        webView.load(URLRequest(url: rootsURL))
     }
 
     private func findWebView(in view: UIView?) -> WKWebView? {
