@@ -19,7 +19,8 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
+import { completeReflectionProgressForDate } from "@/lib/reflectionProgress";
+import { storageGet, storageGetJson, storageRemove, storageSet } from "@/lib/clientStorage";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -46,6 +47,7 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
+const PENDING_BADGES_KEY_PREFIX = "qt_completion_pending_badges_";
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
@@ -53,6 +55,14 @@ function getScopedStorageKey(prefix: string, userId: string, date: string) {
 
 function getLegacyStorageKey(prefix: string, date: string) {
   return `${prefix}${date}`;
+}
+
+function getPendingBadgeKeys(userId: string, date: string): string[] {
+  return storageGetJson<string[]>(getScopedStorageKey(PENDING_BADGES_KEY_PREFIX, userId, date), []);
+}
+
+function clearPendingBadgeKeys(userId: string, date: string) {
+  storageRemove(getScopedStorageKey(PENDING_BADGES_KEY_PREFIX, userId, date));
 }
 
 const gardenTopRef_scroll = () => {
@@ -326,12 +336,16 @@ export default function HomePage() {
 
     progressUpdateInFlightRef.current = true;
     void (async () => {
+      const pendingBadgeKeys = getPendingBadgeKeys(userId, today);
+      pendingBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
+
       const updated = await updateStreak(today);
       if (!updated) return;
       celebrationShownRef.current = true;
       storageSet(celebratedKey, "true");
       storageRemove(completionWateringKey);
       storageRemove(legacyCompletionWateringKey);
+      clearPendingBadgeKeys(userId, today);
       requestRootsManExperience();
     })().finally(() => {
       progressUpdateInFlightRef.current = false;
@@ -342,70 +356,11 @@ export default function HomePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const { data: p } = await supabase.from("profiles")
-      .select("streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose, badge_love, badge_peace, badge_joy, badge_goodness, badge_kindness, badge_patience, badge_faithfulness, badge_gentleness, badge_self_control").eq("id", user.id).single();
-    if (!p) return false;
-    const lastCheckinDate = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
-    if (lastCheckinDate === today) return true;
-    // Roots intentionally keeps the streak when a user returns after a break.
-    // Returning is welcomed and the routine continues instead of resetting to zero.
-    let newStreak = p.last_checkin ? (p.streak_days ?? 0) + 1 : 1;
-    const alreadyHasAngel = p.badge_angel ?? false;
-    const alreadyHasRootsman = p.badge_rootsman ?? false;
-    const alreadyHasRootsmanBible = p.badge_rootsman_bible ?? false;
-    const alreadyHasMose = p.badge_mose ?? false;
-    const alreadyHasDavid = p.badge_david ?? false;
-    const badgeUpdate: any = {
-      streak_days: newStreak,
-      total_days: (p.total_days ?? 0) + 1,
-      last_checkin: today,
-    };
-    const spiritFruitBadgeColumns = [
-      "badge_love",
-      "badge_peace",
-      "badge_joy",
-      "badge_goodness",
-      "badge_kindness",
-      "badge_patience",
-      "badge_faithfulness",
-      "badge_gentleness",
-      "badge_self_control",
-    ] as const;
-    if (newStreak >= 7 && !alreadyHasRootsman) {
-      badgeUpdate.badge_rootsman = true;
-      newlyAwardedBadgesRef.current.add("badge_rootsman");
-    }
-    if (newStreak >= 40 && !alreadyHasMose) {
-      badgeUpdate.badge_mose = true;
-      newlyAwardedBadgesRef.current.add("badge_mose");
-    }
-    if (newStreak >= 52 && !alreadyHasRootsmanBible) {
-      badgeUpdate.badge_rootsman_bible = true;
-      newlyAwardedBadgesRef.current.add("badge_rootsman_bible");
-    }
-    if (newStreak >= 111 && !alreadyHasDavid) {
-      badgeUpdate.badge_david = true;
-      newlyAwardedBadgesRef.current.add("badge_david");
-    }
-    const fruitBadgeIndex =
-      newStreak % 100 === 0 && newStreak >= 100 && newStreak <= 900
-        ? Math.floor(newStreak / 100) - 1
-        : null;
-    if (fruitBadgeIndex !== null) {
-      const fruitBadgeColumn = spiritFruitBadgeColumns[fruitBadgeIndex];
-      if (fruitBadgeColumn && !p[fruitBadgeColumn]) {
-        badgeUpdate[fruitBadgeColumn] = true;
-        newlyAwardedBadgesRef.current.add(`fruit_badge_${fruitBadgeIndex}`);
-      }
-    }
-    if (newStreak >= 1000 && !alreadyHasAngel) {
-      badgeUpdate.badge_angel = true;
-      newlyAwardedBadgesRef.current.add("badge_angel");
-    }
-    const { error } = await supabase.from("profiles").update(badgeUpdate).eq("id", user.id);
-    if (error) return false;
-    const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (newProfile) setProfile(newProfile);
+
+    const result = await completeReflectionProgressForDate(supabase, user.id, today);
+    if (!result.ok) return false;
+    result.newBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
+    if (result.profile) setProfile(result.profile);
     return true;
   }
 
