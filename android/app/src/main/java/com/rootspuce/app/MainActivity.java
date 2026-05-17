@@ -23,6 +23,8 @@ import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
 
+import android.os.LocaleList;
+
 import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
@@ -67,8 +69,9 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onAvailable(@NonNull Network network) {
                 runOnUiThread(() -> {
-                    isConnected = true;
-                    hideOfflineViewAndReload();
+                    isConnected = hasInternetConnection();
+                    // Keep the offline screen visible until the user explicitly retries.
+                    // This avoids exposing a blank WebView while the remote app is still loading.
                 });
             }
 
@@ -101,7 +104,14 @@ public class MainActivity extends BridgeActivity {
     }
 
     private OfflineCopy getOfflineCopy() {
-        String language = Locale.getDefault().getLanguage();
+        Locale locale;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            LocaleList locales = getResources().getConfiguration().getLocales();
+            locale = locales != null && !locales.isEmpty() ? locales.get(0) : Locale.getDefault();
+        } else {
+            locale = getResources().getConfiguration().locale;
+        }
+        String language = locale != null ? locale.getLanguage() : "en";
         switch (language) {
             case "ko":
                 return new OfflineCopy(
@@ -221,7 +231,10 @@ public class MainActivity extends BridgeActivity {
     private void retryLoadingRoots() {
         isConnected = hasInternetConnection();
         if (isConnected) {
-            hideOfflineViewAndReload();
+            reloadRootWebView();
+            if (offlineView != null) {
+                offlineView.postDelayed(this::hideOfflineView, 1200);
+            }
         } else if (offlineView != null) {
             offlineView.animate()
                     .scaleX(0.985f)
@@ -232,7 +245,7 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private void hideOfflineViewAndReload() {
+    private void hideOfflineView() {
         if (offlineView == null) {
             return;
         }
@@ -241,7 +254,6 @@ public class MainActivity extends BridgeActivity {
             parent.removeView(offlineView);
         }
         offlineView = null;
-        reloadRootWebView();
     }
 
     private void reloadRootWebView() {

@@ -25,7 +25,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 guard let self = self else { return }
                 self.isNetworkAvailable = path.status == .satisfied
                 if self.isNetworkAvailable {
-                    self.hideOfflineViewAndReload()
+                    // Keep the offline screen visible until the user explicitly retries.
+                    // This avoids exposing a blank WebView while the remote app is still loading.
+                    return
                 } else {
                     self.showOfflineView()
                 }
@@ -35,12 +37,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func localizedOfflineCopy() -> (title: String, message: String, button: String) {
-        let languageCode: String
-        if #available(iOS 16.0, *) {
-            languageCode = Locale.current.language.languageCode?.identifier ?? "en"
-        } else {
-            languageCode = Locale.current.languageCode ?? "en"
-        }
+        let preferredLanguage = Locale.preferredLanguages.first?.lowercased() ?? "en"
+        let languageCode = preferredLanguage.split(separator: "-").first.map(String.init) ?? preferredLanguage
 
         switch languageCode {
         case "ko":
@@ -158,8 +156,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     @objc private func retryLoadingRoots() {
+        isNetworkAvailable = networkMonitor.currentPath.status == .satisfied
         if isNetworkAvailable {
-            hideOfflineViewAndReload()
+            reloadRootWebView()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.hideOfflineView()
+            }
         } else {
             UIView.animate(withDuration: 0.08, animations: {
                 self.offlineView?.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
@@ -171,11 +173,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
-    private func hideOfflineViewAndReload() {
+    private func hideOfflineView() {
         guard let offlineView = offlineView else { return }
         offlineView.removeFromSuperview()
         self.offlineView = nil
-        reloadRootWebView()
     }
 
     private func reloadRootWebView() {
