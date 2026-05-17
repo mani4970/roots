@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rootspuce.app",
+      "sha256_cert_fingerprints": [
+        "37:5E:55:0E:AB:5C:2D:5A:77:E1:63:47:F5:D1:11:95:AF:F9:A0:3B:C8:96:94:B3:4E:0B:3E:27:B9:F9:ED:24"
+      ]
+    }
+  }
+]
