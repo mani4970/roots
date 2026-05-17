@@ -57,6 +57,37 @@ function isRootsAuthCallback(rawUrl: string) {
   }
 }
 
+
+function getRootsInAppPath(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    const normalizedPath = url.pathname.replace(/\/$/, "") || "/";
+
+    if (url.protocol === "roots:") {
+      const rootsPath = `${url.host}${normalizedPath}`
+        .replace(/^\/+/, "")
+        .replace(/\/+$/, "");
+      if (rootsPath === "join") return `/join${url.search}${url.hash}`;
+      return null;
+    }
+
+    if (
+      (url.protocol !== "https:" && url.protocol !== "http:") ||
+      !ROOTS_WEB_HOSTS.has(url.host)
+    ) {
+      return null;
+    }
+
+    if (normalizedPath === "/auth/callback") return null;
+    if (normalizedPath === "/") return `/${url.search}${url.hash}`;
+    if (normalizedPath === "/join") return `/join${url.search}${url.hash}`;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function getSearchParams(rawUrl: string) {
   try {
     return new URL(rawUrl).searchParams;
@@ -124,14 +155,28 @@ export default function CapacitorAuthBridge() {
       }
 
       const callback = isRootsAuthCallback(rawUrl);
+      const inAppPath = getRootsInAppPath(rawUrl);
       debugOAuth("url received", {
         source,
         isCallback: callback,
+        hasInAppPath: Boolean(inAppPath),
         platform: Capacitor.getPlatform(),
         url: maskCallbackUrl(rawUrl),
       });
 
-      if (!callback) return;
+      if (!callback) {
+        if (inAppPath) {
+          debugOAuth("routing universal link", { source, href: inAppPath });
+          try {
+            await Browser.close();
+          } catch {
+            // Browser may not be open. Ignore and route inside the app.
+          }
+          router.replace(inAppPath);
+          router.refresh();
+        }
+        return;
+      }
 
       debugOAuth("callback received", {
         source,
