@@ -8,6 +8,7 @@ import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
 import { completeReflectionProgressForDate } from "@/lib/reflectionProgress";
+import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
 import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, TRANSLATIONS } from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
@@ -1446,6 +1447,7 @@ function QTWriteContent() {
           if (progressResult.newBadgeKeys.length > 0) {
             storageSetJson(`qt_completion_pending_badges_${user.id}_${selectedDate}`, progressResult.newBadgeKeys);
           }
+          await markBibleReflectionCompletedForNotifications(selectedDate, lang);
         } catch {
           // If the immediate progress update fails, Home will retry from the pending watering marker.
         }

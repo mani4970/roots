@@ -393,6 +393,25 @@ export const T = {
   profile_calendar_previous_month: { ko: "이전 달 보기", de: "Vorherigen Monat anzeigen", en: "View previous month", fr: "Voir le mois précédent" },
   profile_calendar_next_month: { ko: "다음 달 보기", de: "Nächsten Monat anzeigen", en: "View next month", fr: "Voir le mois suivant" },
 
+
+  // ── 알림 설정 ──
+  notifications_title: { ko: "알림 설정", de: "Benachrichtigungen", en: "Notifications", fr: "Notifications" },
+  notifications_settings_hint: { ko: "말씀 묵상과 기도 시간을 설정해요.", de: "Zeiten für Stille Zeit und Gebet festlegen.", en: "Set Bible Reflection and prayer reminders.", fr: "Définissez les rappels de méditation et de prière." },
+  notifications_intro: { ko: "Roots가 말씀과 기도의 시간을 부드럽게 기억해드릴게요. 원하는 시간에 맞춰 알림을 받을 수 있어요.", de: "Roots erinnert dich sanft an Stille Zeit und Gebet. Du kannst die Zeiten selbst festlegen.", en: "Roots can gently remind you of Bible Reflection and prayer at the times you choose.", fr: "Roots peut vous rappeler en douceur la méditation biblique et la prière aux heures choisies." },
+  notifications_native_only: { ko: "알림은 iOS/Android 앱에서 사용할 수 있어요. 브라우저에서는 설정만 미리 확인할 수 있습니다.", de: "Benachrichtigungen sind in der iOS-/Android-App verfügbar. Im Browser kannst du die Einstellungen nur ansehen.", en: "Notifications are available in the iOS/Android app. In the browser, you can only preview these settings.", fr: "Les notifications sont disponibles dans l’app iOS/Android. Dans le navigateur, vous pouvez seulement prévisualiser ces réglages." },
+  notifications_master_toggle: { ko: "알림 받기", de: "Benachrichtigungen erhalten", en: "Receive notifications", fr: "Recevoir les notifications" },
+  notifications_master_hint: { ko: "처음 켤 때 기기 알림 권한을 요청합니다.", de: "Beim ersten Aktivieren fragt das Gerät nach der Erlaubnis.", en: "Your device will ask for permission when you turn this on.", fr: "Votre appareil demandera l’autorisation lors de l’activation." },
+  notifications_morning_title: { ko: "아침 말씀 묵상", de: "Morgendliche Stille Zeit", en: "Morning Bible Reflection", fr: "Méditation du matin" },
+  notifications_morning_desc: { ko: "오늘도 말씀 묵상으로 하나님과 하루를 시작해봐요 🌱", de: "Beginne den Tag mit Gott durch Stille Zeit 🌱", en: "Start today with God through Bible Reflection 🌱", fr: "Commencez la journée avec Dieu par la méditation biblique 🌱" },
+  notifications_evening_title: { ko: "저녁 리마인드", de: "Abendliche Erinnerung", en: "Evening reminder", fr: "Rappel du soir" },
+  notifications_evening_desc: { ko: "하루가 끝나기 전, 잠시 말씀 앞에 나아가볼까요?", de: "Bevor der Tag endet, möchtest du kurz vor Gottes Wort kommen?", en: "Before the day ends, shall we come before the Word for a moment?", fr: "Avant la fin de la journée, voulez-vous venir un instant devant la Parole ?" },
+  notifications_prayer_title: { ko: "기도 알림", de: "Gebetserinnerung", en: "Prayer reminder", fr: "Rappel de prière" },
+  notifications_prayer_desc: { ko: "기도할 시간이에요! 하나님께 찾고 구해보세요 💛", de: "Es ist Zeit zu beten! Suche Gott und bitte ihn 💛", en: "It’s time to pray! Seek and ask God 💛", fr: "C’est le moment de prier ! Cherchez Dieu et demandez-lui 💛" },
+  notifications_save: { ko: "알림 저장", de: "Speichern", en: "Save notifications", fr: "Enregistrer" },
+  notifications_saved: { ko: "알림 설정을 저장했어요.", de: "Benachrichtigungseinstellungen gespeichert.", en: "Notification settings saved.", fr: "Réglages de notification enregistrés." },
+  notifications_save_failed: { ko: "알림 설정을 저장하지 못했어요.", de: "Benachrichtigungseinstellungen konnten nicht gespeichert werden.", en: "Could not save notification settings.", fr: "Impossible d’enregistrer les notifications." },
+  notifications_permission_denied: { ko: "기기 알림 권한이 꺼져 있어요. 설정에서 Roots 알림을 허용해 주세요.", de: "Die Benachrichtigungserlaubnis ist deaktiviert. Bitte erlaube Roots-Benachrichtigungen in den Einstellungen.", en: "Notifications are disabled on this device. Please allow Roots notifications in Settings.", fr: "Les notifications sont désactivées sur cet appareil. Autorisez les notifications Roots dans les réglages." },
+
   // ── 요일 ──
   weekday_sun: { ko: "일", de: "So", en: "Sun", fr: "Dim" },
   weekday_mon: { ko: "월", de: "Mo", en: "Mon", fr: "Lun" },
