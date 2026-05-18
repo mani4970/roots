@@ -937,6 +937,48 @@ export const T = {
   qt_record_not_found: { ko: "기록을 찾을 수 없어요", de: "Eintrag nicht gefunden", en: "Record not found", fr: "Enregistrement introuvable" },
   qt_record_selected_count: { ko: "{count}곳에 나누기", de: "{count} Orte zum Teilen", en: "{count} places to share", fr: "{count} lieux de partage" },
 
+
+  // ── Companions (동행) ──
+  common_back: { ko: "뒤로", de: "Zurück", en: "Back", fr: "Retour" },
+  companions_title: { ko: "나의 동행", de: "Meine Weggefährten", en: "My Companions", fr: "Mes compagnons" },
+  companions_subtitle: { ko: "말씀과 기도로 함께 걷는 사람들", de: "Menschen, mit denen du im Wort und Gebet unterwegs bist", en: "People walking with you in the Word and prayer", fr: "Des personnes qui marchent avec vous dans la Parole et la prière" },
+  companions_profile_settings_hint: { ko: "동행 초대와 목록을 관리해요", de: "Einladungen und Liste verwalten", en: "Manage companion invites and list", fr: "Gérer les invitations et la liste" },
+
+  companions_invite_title: { ko: "동행 초대", de: "Zur Weggemeinschaft einladen", en: "Invite a companion", fr: "Inviter un compagnon" },
+  companions_invite_desc: { ko: "링크를 보내 함께 말씀동행을 시작해보세요.", de: "Teile den Link, um gemeinsam mit Stiller Zeit und Gebet unterwegs zu sein.", en: "Share a link to begin walking together in Bible Reflection and prayer.", fr: "Partagez un lien pour commencer à marcher ensemble dans la méditation biblique et la prière." },
+  companions_invite_share: { ko: "초대하기", de: "Einladen", en: "Invite", fr: "Inviter" },
+  companions_invite_share_title: { ko: "Roots 동행 초대", de: "Roots Einladung", en: "Roots Companion Invite", fr: "Invitation Roots" },
+  companions_invite_share_text: { ko: "{name}님이 말씀동행에 초대했어요 🌱", de: "{name} lädt dich zur Weggemeinschaft in Roots ein 🌱", en: "{name} invited you to walk together in Roots 🌱", fr: "{name} vous invite à cheminer ensemble dans Roots 🌱" },
+  companions_invite_copied: { ko: "동행 초대 링크를 복사했어요.", de: "Einladungslink kopiert.", en: "Companion invite link copied.", fr: "Lien d’invitation copié." },
+  companions_invite_received: { ko: "말씀동행 초대가 도착했어요", de: "Eine Einladung ist angekommen", en: "You received a companion invite", fr: "Vous avez reçu une invitation" },
+  companions_invite_from: { ko: "{name}님이 말씀동행에 초대했어요 🌱", de: "{name} lädt dich zur Weggemeinschaft ein 🌱", en: "{name} invited you to walk together 🌱", fr: "{name} vous invite à cheminer ensemble 🌱" },
+  companions_invite_accept_body: { ko: "함께 동행하며 매일 말씀과 기도로 하나님께 더 가까이 나아가볼까요?", de: "Wollt ihr gemeinsam unterwegs sein und Gott jeden Tag durch sein Wort und Gebet näher kommen?", en: "Would you like to walk together and draw closer to God each day through the Word and prayer?", fr: "Voulez-vous cheminer ensemble et vous rapprocher de Dieu chaque jour par la Parole et la prière ?" },
+  companions_accept_invite: { ko: "동행 수락", de: "Einladung annehmen", en: "Accept", fr: "Accepter" },
+  companions_invite_accepted: { ko: "말씀동행을 시작했어요.", de: "Ihr seid jetzt Weggefährten.", en: "You are now companions.", fr: "Vous êtes maintenant compagnons." },
+  companions_invite_accept_fail: { ko: "동행 초대를 수락하지 못했어요.", de: "Einladung konnte nicht angenommen werden.", en: "Could not accept the companion invite.", fr: "Impossible d’accepter l’invitation." },
+
+  companions_received_requests: { ko: "받은 요청", de: "Erhaltene Anfragen", en: "Received requests", fr: "Demandes reçues" },
+  companions_no_received_requests: { ko: "아직 받은 동행 요청이 없어요.", de: "Noch keine erhaltenen Anfragen.", en: "No received companion requests yet.", fr: "Aucune demande reçue pour le moment." },
+  companions_sent_requests: { ko: "보낸 요청", de: "Gesendete Anfragen", en: "Sent requests", fr: "Demandes envoyées" },
+  companions_no_sent_requests: { ko: "아직 보낸 동행 요청이 없어요.", de: "Noch keine gesendeten Anfragen.", en: "No sent companion requests yet.", fr: "Aucune demande envoyée pour le moment." },
+  companions_my_companions: { ko: "동행 중", de: "Weggefährten", en: "Companions", fr: "Compagnons" },
+  companions_empty: { ko: "아직 동행이 없어요. 초대 링크를 보내 함께 말씀동행을 시작해보세요.", de: "Noch keine Weggefährten. Teile deinen Einladungslink.", en: "No companions yet. Share your invite link to start walking together.", fr: "Aucun compagnon pour le moment. Partagez votre lien d’invitation." },
+
+  companions_request_accepted: { ko: "동행 요청을 수락했어요.", de: "Anfrage angenommen.", en: "Companion request accepted.", fr: "Demande acceptée." },
+  companions_request_declined: { ko: "동행 요청을 거절했어요.", de: "Anfrage abgelehnt.", en: "Companion request declined.", fr: "Demande refusée." },
+  companions_request_cancelled: { ko: "동행 요청을 취소했어요.", de: "Anfrage zurückgezogen.", en: "Companion request cancelled.", fr: "Demande annulée." },
+  companions_cancel_request: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler" },
+  companions_update_fail: { ko: "동행 정보를 업데이트하지 못했어요.", de: "Weggefährten konnten nicht aktualisiert werden.", en: "Could not update companion information.", fr: "Impossible de mettre à jour les compagnons." },
+  companions_already_connected: { ko: "이미 동행 중이에요.", de: "Ihr seid bereits verbunden.", en: "Already companions.", fr: "Déjà compagnons." },
+  companions_status_connected: { ko: "동행 중", de: "Verbunden", en: "Connected", fr: "Connecté" },
+
+  companions_remove: { ko: "동행 끊기", de: "Entfernen", en: "Remove", fr: "Retirer" },
+  companions_removed: { ko: "동행을 끊었어요.", de: "Weggefährte entfernt.", en: "Companion removed.", fr: "Compagnon retiré." },
+  companions_remove_confirm_title: { ko: "동행을 끊을까요?", de: "Weggefährten entfernen?", en: "Remove this companion?", fr: "Retirer ce compagnon ?" },
+  companions_remove_confirm_body: { ko: "이 동행과의 연결을 끊습니다. 나중에 다시 초대할 수 있어요.", de: "Diese Verbindung wird entfernt. Du kannst später erneut einladen.", en: "This companion connection will be removed. You can invite them again later.", fr: "Cette relation sera retirée. Vous pourrez l’inviter de nouveau plus tard." },
+  companions_remove_confirm_button: { ko: "끊기", de: "Entfernen", en: "Remove", fr: "Retirer" },
+
+
 } as const satisfies Record<string, Translation>;
 
 export type TKey = keyof typeof T;
