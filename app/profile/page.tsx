@@ -9,7 +9,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
-import { Loader2, Check, X, Camera, Share2, Settings, Bell } from "lucide-react";
+import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
@@ -896,6 +896,22 @@ export default function ProfilePage() {
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("notifications_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45 }}>{t("notifications_settings_hint", lang)}</p>
+                </div>
+              </div>
+              <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
+            </button>
+
+            <button
+              onClick={() => { setShowSettingsModal(false); router.push("/companions"); }}
+              style={{ width: "100%", padding: "13px 14px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
+            >
+              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 12, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Users size={15} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("companions_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45 }}>{t("companions_profile_settings_hint", lang)}</p>
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>

@@ -15,6 +15,11 @@ create table if not exists public.content_reports (
 create index if not exists content_reports_reporter_idx on public.content_reports(reporter_id, created_at desc);
 create index if not exists content_reports_status_idx on public.content_reports(status, created_at desc);
 
+-- Explicit grants for Supabase Data API access.
+-- RLS below still limits rows/actions per user.
+grant select, insert on public.content_reports to authenticated;
+grant select, insert, update, delete on public.content_reports to service_role;
+
 alter table public.content_reports enable row level security;
 
 drop policy if exists "Users can create their own reports" on public.content_reports;
@@ -41,6 +46,11 @@ create table if not exists public.hidden_community_items (
 );
 
 create index if not exists hidden_community_items_user_idx on public.hidden_community_items(user_id, created_at desc);
+
+-- Explicit grants for Supabase Data API access.
+-- Upsert needs insert/update; RLS below restricts rows to the owner.
+grant select, insert, update, delete on public.hidden_community_items to authenticated;
+grant select, insert, update, delete on public.hidden_community_items to service_role;
 
 alter table public.hidden_community_items enable row level security;
 
