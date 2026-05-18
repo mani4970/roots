@@ -2,12 +2,12 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { storageGet, storageSet, storageSetJson } from "@/lib/clientStorage";
+import { storageGet, storageSet } from "@/lib/clientStorage";
+import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
-import { completeReflectionProgressForDate } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
 import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, TRANSLATIONS } from "@/lib/bibleData";
@@ -1441,15 +1441,19 @@ function QTWriteContent() {
       // 물주기/루츠맨은 홈에서 이어지는 보상 UI로 유지한다.
       // 지난 날짜 기록 저장이나 수정 모드는 progress를 증가시키지 않는다.
       if (selectedDate === getLocalDateString()) {
+        try {
+          const progress = await recordBibleReflectionProgress(supabase, user.id, selectedDate);
+          if (progress.awardedBadges.length > 0) {
+            storageSet(getPendingAwardedBadgesKey(user.id, selectedDate), JSON.stringify(progress.awardedBadges));
+          }
+        } catch (progressError) {
+          console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
+        }
         storageSet(`qt_completion_pending_watering_${user.id}_${selectedDate}`, "true");
         try {
-          const progressResult = await completeReflectionProgressForDate(supabase, user.id, selectedDate);
-          if (progressResult.newBadgeKeys.length > 0) {
-            storageSetJson(`qt_completion_pending_badges_${user.id}_${selectedDate}`, progressResult.newBadgeKeys);
-          }
           await markBibleReflectionCompletedForNotifications(selectedDate, lang);
-        } catch {
-          // If the immediate progress update fails, Home will retry from the pending watering marker.
+        } catch (notificationError) {
+          console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
         }
       }
       setShowCompleteSharePrompt(false);

@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export const QT_PENDING_AWARDED_BADGES_PREFIX = "qt_pending_awarded_badges_";
+
 export type ReflectionProgressResult = {
+  updated: boolean;
+  awardedBadges: string[];
+  profile: any | null;
+};
+
+export type LegacyReflectionProgressResult = {
   ok: boolean;
   progressed: boolean;
   newBadgeKeys: string[];
@@ -22,19 +30,22 @@ const SPIRIT_FRUIT_BADGE_COLUMNS = [
   "badge_self_control",
 ] as const;
 
+export function getPendingAwardedBadgesKey(userId: string, date: string) {
+  return `${QT_PENDING_AWARDED_BADGES_PREFIX}${userId}_${date}`;
+}
+
 /**
- * Persist the Bible Reflection progress for a completed reflection date.
+ * Persist Bible Reflection progress immediately after a newly completed reflection is saved.
  *
- * Roots intentionally treats `streak_days` as accumulated Word-walk days,
- * not as a reset-on-missed-day streak. This helper only increments when the
- * user's `last_checkin` is not already the completed date, so the same day
- * cannot be counted twice. Callers should only use this for a newly completed
- * non-draft Bible Reflection, not for edits or historical records.
+ * Roots treats `streak_days` as accumulated Word-walk days, not as a reset-on-missed-day streak.
+ * The update is guarded by `last_checkin`, so calling this multiple times for the same date should
+ * not double count. Callers should only use this for a newly completed, non-draft Bible Reflection
+ * for today, not for edits or historical records.
  */
-export async function completeReflectionProgressForDate(
+export async function recordBibleReflectionProgress(
   supabase: SupabaseClient,
   userId: string,
-  completedDate: string
+  date: string
 ): Promise<ReflectionProgressResult> {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -43,64 +54,64 @@ export async function completeReflectionProgressForDate(
     .single();
 
   if (profileError || !profile) {
-    return { ok: false, progressed: false, newBadgeKeys: [], profile: null };
+    throw profileError ?? new Error("Profile not found");
   }
 
   const lastCheckinDate = profile.last_checkin ? String(profile.last_checkin).slice(0, 10) : null;
-  if (lastCheckinDate === completedDate) {
-    return { ok: true, progressed: false, newBadgeKeys: [], profile };
+  if (lastCheckinDate === date) {
+    return { updated: false, awardedBadges: [], profile };
   }
 
-  const newStreak = profile.last_checkin ? (profile.streak_days ?? 0) + 1 : 1;
-  const newBadgeKeys: string[] = [];
-  const badgeUpdate: Record<string, unknown> = {
-    streak_days: newStreak,
+  const nextStreak = profile.last_checkin ? (profile.streak_days ?? 0) + 1 : 1;
+  const awardedBadges: string[] = [];
+  const update: Record<string, unknown> = {
+    streak_days: nextStreak,
     total_days: (profile.total_days ?? 0) + 1,
-    last_checkin: completedDate,
+    last_checkin: date,
   };
 
-  if (newStreak >= 7 && !profile.badge_rootsman) {
-    badgeUpdate.badge_rootsman = true;
-    newBadgeKeys.push("badge_rootsman");
+  if (nextStreak >= 7 && !profile.badge_rootsman) {
+    update.badge_rootsman = true;
+    awardedBadges.push("badge_rootsman");
   }
-  if (newStreak >= 40 && !profile.badge_mose) {
-    badgeUpdate.badge_mose = true;
-    newBadgeKeys.push("badge_mose");
+  if (nextStreak >= 40 && !profile.badge_mose) {
+    update.badge_mose = true;
+    awardedBadges.push("badge_mose");
   }
-  if (newStreak >= 52 && !profile.badge_rootsman_bible) {
-    badgeUpdate.badge_rootsman_bible = true;
-    newBadgeKeys.push("badge_rootsman_bible");
+  if (nextStreak >= 52 && !profile.badge_rootsman_bible) {
+    update.badge_rootsman_bible = true;
+    awardedBadges.push("badge_rootsman_bible");
   }
-  if (newStreak >= 111 && !profile.badge_david) {
-    badgeUpdate.badge_david = true;
-    newBadgeKeys.push("badge_david");
+  if (nextStreak >= 111 && !profile.badge_david) {
+    update.badge_david = true;
+    awardedBadges.push("badge_david");
   }
 
   const fruitBadgeIndex =
-    newStreak % 100 === 0 && newStreak >= 100 && newStreak <= 900
-      ? Math.floor(newStreak / 100) - 1
+    nextStreak % 100 === 0 && nextStreak >= 100 && nextStreak <= 900
+      ? Math.floor(nextStreak / 100) - 1
       : null;
+
   if (fruitBadgeIndex !== null) {
     const fruitBadgeColumn = SPIRIT_FRUIT_BADGE_COLUMNS[fruitBadgeIndex];
     if (fruitBadgeColumn && !profile[fruitBadgeColumn]) {
-      badgeUpdate[fruitBadgeColumn] = true;
-      newBadgeKeys.push(`fruit_badge_${fruitBadgeIndex}`);
+      update[fruitBadgeColumn] = true;
+      awardedBadges.push(`fruit_badge_${fruitBadgeIndex}`);
     }
   }
 
-  if (newStreak >= 1000 && !profile.badge_angel) {
-    badgeUpdate.badge_angel = true;
-    newBadgeKeys.push("badge_angel");
+  if (nextStreak >= 1000 && !profile.badge_angel) {
+    update.badge_angel = true;
+    awardedBadges.push("badge_angel");
   }
 
   const { error: updateError } = await supabase
     .from("profiles")
-    .update(badgeUpdate)
-    .eq("id", userId);
+    .update(update)
+    .eq("id", userId)
+    .or(`last_checkin.is.null,last_checkin.neq.${date}`);
 
-  if (updateError) {
-    return { ok: false, progressed: false, newBadgeKeys: [], profile };
-  }
+  if (updateError) throw updateError;
 
   const { data: updatedProfile } = await supabase
     .from("profiles")
@@ -109,9 +120,29 @@ export async function completeReflectionProgressForDate(
     .single();
 
   return {
-    ok: true,
-    progressed: true,
-    newBadgeKeys,
-    profile: updatedProfile ?? { ...profile, ...badgeUpdate },
+    updated: true,
+    awardedBadges,
+    profile: updatedProfile ?? { ...profile, ...update },
   };
+}
+
+/**
+ * Backwards-compatible wrapper for older Home code paths.
+ */
+export async function completeReflectionProgressForDate(
+  supabase: SupabaseClient,
+  userId: string,
+  completedDate: string
+): Promise<LegacyReflectionProgressResult> {
+  try {
+    const result = await recordBibleReflectionProgress(supabase, userId, completedDate);
+    return {
+      ok: true,
+      progressed: result.updated,
+      newBadgeKeys: result.awardedBadges,
+      profile: result.profile,
+    };
+  } catch {
+    return { ok: false, progressed: false, newBadgeKeys: [], profile: null };
+  }
 }

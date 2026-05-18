@@ -19,8 +19,8 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { completeReflectionProgressForDate } from "@/lib/reflectionProgress";
-import { storageGet, storageGetJson, storageRemove, storageSet } from "@/lib/clientStorage";
+import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
+import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -47,8 +47,6 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
-const PENDING_BADGES_KEY_PREFIX = "qt_completion_pending_badges_";
-
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
 }
@@ -57,12 +55,17 @@ function getLegacyStorageKey(prefix: string, date: string) {
   return `${prefix}${date}`;
 }
 
-function getPendingBadgeKeys(userId: string, date: string): string[] {
-  return storageGetJson<string[]>(getScopedStorageKey(PENDING_BADGES_KEY_PREFIX, userId, date), []);
-}
-
-function clearPendingBadgeKeys(userId: string, date: string) {
-  storageRemove(getScopedStorageKey(PENDING_BADGES_KEY_PREFIX, userId, date));
+function consumePendingAwardedBadges(userId: string, date: string): string[] {
+  const key = getPendingAwardedBadgesKey(userId, date);
+  const raw = storageGet(key);
+  if (!raw) return [];
+  storageRemove(key);
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 const gardenTopRef_scroll = () => {
@@ -233,6 +236,9 @@ export default function HomePage() {
     }
 
     const today = getLocalDateString();
+    const pendingAwardedBadges = consumePendingAwardedBadges(user.id, today);
+    pendingAwardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
+
     const { data: ci } = await supabase.from("daily_checkins")
       .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
@@ -336,16 +342,15 @@ export default function HomePage() {
 
     progressUpdateInFlightRef.current = true;
     void (async () => {
-      const pendingBadgeKeys = getPendingBadgeKeys(userId, today);
+      const pendingBadgeKeys = consumePendingAwardedBadges(userId, today);
       pendingBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
 
-      const updated = await updateStreak(today);
-      if (!updated) return;
+      const progressedOrAlreadyDone = await updateStreak(today);
+      if (!progressedOrAlreadyDone) return;
       celebrationShownRef.current = true;
       storageSet(celebratedKey, "true");
       storageRemove(completionWateringKey);
       storageRemove(legacyCompletionWateringKey);
-      clearPendingBadgeKeys(userId, today);
       requestRootsManExperience();
     })().finally(() => {
       progressUpdateInFlightRef.current = false;
@@ -357,11 +362,15 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const result = await completeReflectionProgressForDate(supabase, user.id, today);
-    if (!result.ok) return false;
-    result.newBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
-    if (result.profile) setProfile(result.profile);
-    return true;
+    try {
+      const result = await recordBibleReflectionProgress(supabase, user.id, today);
+      result.awardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
+      if (result.profile) setProfile(result.profile);
+      return true;
+    } catch (error) {
+      console.warn("말씀 묵상 progress 업데이트 실패:", error);
+      return false;
+    }
   }
 
   function showNextProgressPopup(): boolean {
