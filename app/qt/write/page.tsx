@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
+import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -1435,9 +1436,17 @@ function QTWriteContent() {
         }
       }
 
-      // 완료 후 /qt/complete 팝업을 거쳐 홈으로 돌아오면 정원/루츠맨 물주기 흐름이 이어져야 한다.
-      // 오늘 말씀 묵상 완료에만 표시하고, 지난 날짜 기록 저장은 홈 물주기를 트리거하지 않는다.
+      // 오늘 말씀 묵상 완료는 홈/물주기 UI에 도달하기 전에도 progress가 먼저 저장되어야 한다.
+      // 물주기는 이미 저장된 완료를 보여주는 보상 UI로 유지한다.
       if (selectedDate === getLocalDateString()) {
+        try {
+          const progress = await recordBibleReflectionProgress(supabase, user.id, selectedDate);
+          if (progress.awardedBadges.length > 0) {
+            storageSet(getPendingAwardedBadgesKey(user.id, selectedDate), JSON.stringify(progress.awardedBadges));
+          }
+        } catch (progressError) {
+          console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
+        }
         storageSet(`qt_completion_pending_watering_${user.id}_${selectedDate}`, "true");
       }
       setShowCompleteSharePrompt(false);
