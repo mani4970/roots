@@ -68,6 +68,7 @@ function getRootsInAppPath(rawUrl: string) {
         .replace(/^\/+/, "")
         .replace(/\/+$/, "");
       if (rootsPath === "join") return `/join${url.search}${url.hash}`;
+      if (rootsPath === "companions") return `/companions${url.search}${url.hash}`;
       return null;
     }
 
@@ -81,6 +82,7 @@ function getRootsInAppPath(rawUrl: string) {
     if (normalizedPath === "/auth/callback") return null;
     if (normalizedPath === "/") return `/${url.search}${url.hash}`;
     if (normalizedPath === "/join") return `/join${url.search}${url.hash}`;
+    if (normalizedPath === "/companions") return `/companions${url.search}${url.hash}`;
 
     return null;
   } catch {

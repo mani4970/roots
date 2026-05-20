@@ -7,7 +7,9 @@
         "paths": [
           "/",
           "/join",
-          "/join/*"
+          "/join/*",
+          "/companions",
+          "/companions/*"
         ]
       }
     ]
