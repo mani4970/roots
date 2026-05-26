@@ -355,7 +355,9 @@ function QTWriteContent() {
   const [crossChapter, setCrossChapter] = useState(false); // 장 넘어가는 말씀 여부
 
   // 말씀 여러 개 (추가 말씀)
-  type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: {num:number;text:string}[]; ref: string };
+  type VerseNum = number | string;
+  type PassageVerse = { num: VerseNum; text: string };
+  type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: PassageVerse[]; ref: string };
   const [passages, setPassages] = useState<PassageItem[]>([]);
 
   // 주일예배 말씀 선택 step
@@ -378,10 +380,10 @@ function QTWriteContent() {
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [loadingBible, setLoadingBible] = useState(false);
   const [bibleError, setBibleError] = useState("");
-  const [passageVerses, setPassageVerses] = useState<{ num: number; text: string }[]>([]);
+  const [passageVerses, setPassageVerses] = useState<PassageVerse[]>([]);
   const [bibleRef, setBibleRef] = useState("");
   const [keyVerse, setKeyVerse] = useState("");
-  const [selectedVerseNums, setSelectedVerseNums] = useState<number[]>([]);
+  const [selectedVerseNums, setSelectedVerseNums] = useState<string[]>([]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
   const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
 
@@ -497,7 +499,7 @@ function QTWriteContent() {
         setEndChapter(evChap ?? chap);
         setCrossChapter(Boolean(evChap && evChap !== chap));
 
-        let allVerses: {num: number; text: string}[] = [];
+        let allVerses: PassageVerse[] = [];
         let refStr = "";
 
         if (evChap && evChap !== chap) {
@@ -614,10 +616,10 @@ function QTWriteContent() {
           const restoredNums = String(record.key_verse)
             .split("\n")
             .map((line: string) => {
-              const m = line.match(/^(\d+)\s/);
-              return m ? parseInt(m[1], 10) : null;
+              const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
+              return m ? m[1] : null;
             })
-            .filter((n: number | null): n is number => n !== null);
+            .filter((n: string | null): n is string => Boolean(n));
           if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
         }
         if (record.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: record.opening_prayer }));
@@ -763,10 +765,10 @@ function QTWriteContent() {
         const restoredNums = String(draft.key_verse)
           .split("\n")
           .map((line: string) => {
-            const m = line.match(/^(\d+)\s/);
-            return m ? parseInt(m[1], 10) : null;
+            const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
+            return m ? m[1] : null;
           })
-          .filter((n: number | null): n is number => n !== null);
+          .filter((n: string | null): n is string => Boolean(n));
         if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
       }
       if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
@@ -898,7 +900,7 @@ function QTWriteContent() {
   async function loadPassage() {
     setLoadingBible(true); setBibleError("");
     try {
-      let allVerses: {num:number;text:string}[] = [];
+      let allVerses: PassageVerse[] = [];
       let refStr = "";
 
       const effectiveEndChapter = crossChapter ? endChapter : chapter;
@@ -940,7 +942,7 @@ function QTWriteContent() {
     setLoadingBible(true); setBibleError("");
     try {
       const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
-      let vers: {num:number;text:string}[] = [];
+      let vers: PassageVerse[] = [];
       let refStr = "";
       const effectiveEndChapter = crossChapter ? endChapter : chapter;
       if (crossChapter && effectiveEndChapter !== chapter) {
@@ -967,17 +969,24 @@ function QTWriteContent() {
     setLoadingBible(false);
   }
 
-  function selectVerse(verseText: string, num: number) {
-    if (selectedVerseNums.includes(num)) {
-      setSelectedVerseNums(prev => prev.filter(n => n !== num));
-      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${num} `)).join("\n").trim());
+  function normalizeVerseNum(num: VerseNum) {
+    return String(num).trim();
+  }
+
+  function selectVerse(verseText: string, num: VerseNum) {
+    const verseId = normalizeVerseNum(num);
+    if (!verseId) return;
+
+    if (selectedVerseNums.includes(verseId)) {
+      setSelectedVerseNums(prev => prev.filter(n => n !== verseId));
+      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${verseId} `)).join("\n").trim());
     } else {
       // 안전장치: keyVerse에 이미 같은 절 번호로 시작하는 줄이 있다면 중복 방지.
-      // (예: draft 복원 후 selectedVerseNums가 비어있는 상태로 다시 클릭한 경우)
-      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${num} `));
-      setSelectedVerseNums(prev => [...prev, num]);
+      // 장이 넘어가는 본문은 "20:41"처럼 장:절을 고유 ID로 사용합니다.
+      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${verseId} `));
+      setSelectedVerseNums(prev => prev.includes(verseId) ? prev : [...prev, verseId]);
       if (!alreadyInKeyVerse) {
-        const line = `${num} ${verseText}`;
+        const line = `${verseId} ${verseText}`;
         setKeyVerse(prev => prev ? prev + "\n" + line : line);
       }
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
@@ -2269,13 +2278,17 @@ async function save(options: CompleteSaveOptions = {}) {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {passageVerses.map(v => (
-                  <button key={v.num} onClick={() => selectVerse(String(v.text), typeof v.num === "number" ? v.num : 0)} style={{ textAlign: "left", background: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                    <span style={{ fontSize: bibleTextFontSize, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
-                    {selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
-                  </button>
-                ))}
+                {passageVerses.map(v => {
+                  const verseId = normalizeVerseNum(v.num);
+                  const isSelected = selectedVerseNums.includes(verseId);
+                  return (
+                    <button key={verseId} onClick={() => selectVerse(String(v.text), v.num)} style={{ textAlign: "left", background: isSelected ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: verseId.includes(":") ? 32 : 16 }}>{verseId}</span>
+                      <span style={{ fontSize: bibleTextFontSize, color: isSelected ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: isSelected ? 600 : 400 }}>{v.text}</span>
+                      {isSelected && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
+                    </button>
+                  );
+                })}
               </div>
               <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
               </div>
