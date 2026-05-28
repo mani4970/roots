@@ -10,7 +10,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff } from "lucide-react";
+import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
   { id: "bless", labelKey: "community_reaction_bless" },
@@ -119,7 +119,7 @@ const SECTIONS: { key: string; labelKey: TKey; sundayLabelKey?: TKey; italic?: b
 
 export default function CommunityPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"prayer" | "qt" | "group">("prayer");
+  const [tab, setTab] = useState<"partner" | "prayer" | "qt" | "group">("partner");
   const [prayerTab, setPrayerTab] = useState<"praying" | "answered">("praying");
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
@@ -151,7 +151,7 @@ export default function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
-  const [groupDetailTab, setGroupDetailTab] = useState<"qt" | "prayer">("qt");
+  const [groupDetailTab, setGroupDetailTab] = useState<"qt" | "praying" | "answered">("qt");
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
   const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
@@ -676,7 +676,7 @@ export default function CommunityPage() {
         setMyQtReactions(mine);
       }
 
-    } else {
+    } else if (tab === "group") {
       let memberRows: any[] = [];
       const favoriteCache = readFavoriteCache(user.id);
 
@@ -767,7 +767,7 @@ export default function CommunityPage() {
   }
 
   async function loadGroupDetail(group: any) {
-    setGroupDetailTab(group.hasNewPrayer && !group.hasNewQtShare ? "prayer" : "qt");
+    setGroupDetailTab(group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt");
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
@@ -1166,7 +1166,10 @@ export default function CommunityPage() {
     );
   }
 
-  const TABS: { id: typeof tab; label: string }[] = [{ id: "prayer", label: c("community_tab_prayer") }, { id: "qt", label: c("community_tab_qt") }, { id: "group", label: c("community_tab_group") }];
+  const TABS: { id: typeof tab; label: string }[] = [{ id: "partner", label: c("community_tab_partner") }, { id: "group", label: c("community_tab_group") }, { id: "qt", label: c("community_tab_qt") }, { id: "prayer", label: c("community_tab_prayer") }];
+  const groupPrayingPrayers = groupPrayers.filter((p: any) => !p.is_answered);
+  const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
+  const groupPrayersForCurrentTab = groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
 
   if (selectedGroup) {
     return (
@@ -1231,7 +1234,8 @@ export default function CommunityPage() {
             <div style={{ display: "flex", marginBottom: 14, borderBottom: "1px solid var(--border)" }}>
               {[
                 { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
-                { key: "prayer" as const, label: c("community_group_tab_prayer"), count: groupPrayers.length },
+                { key: "praying" as const, label: c("community_prayer_tab_praying"), count: groupPrayingPrayers.length },
+                { key: "answered" as const, label: c("community_prayer_tab_answered"), count: groupAnsweredPrayers.length },
               ].map(({ key, label, count }) => {
                 const active = groupDetailTab === key;
                 return (
@@ -1291,14 +1295,14 @@ export default function CommunityPage() {
             ) : (
               loadingGroupPrayers ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
-              ) : groupPrayers.length === 0 ? (
+              ) : groupPrayersForCurrentTab.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
                   <HandHeart size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
-                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{c("community_no_group_prayers")}</p>
+                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{groupDetailTab === "answered" ? c("community_no_group_answered_prayers") : c("community_no_group_prayers")}</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {groupPrayers.map(p => (
+                  {groupPrayersForCurrentTab.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1485,6 +1489,32 @@ export default function CommunityPage() {
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>
 
+        ) : tab === "partner" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="card" style={{ padding: 18, border: "1px solid rgba(122,157,122,0.22)", background: "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Users size={20} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{c("community_partner_cta_title")}</h2>
+                  <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("community_partner_cta_body")}</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button onClick={() => router.push("/companions")} className="btn-sage" style={{ display: "inline-flex", alignItems: "center", gap: 7, flex: "1 1 150px", justifyContent: "center" }}>
+                      <Plus size={15} /> {c("community_partner_invite_button")}
+                    </button>
+                    <button onClick={() => router.push("/companions")} className="btn-outline" style={{ flex: "1 1 130px" }}>
+                      {c("community_partner_manage_button")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", padding: "28px 16px", background: "var(--bg2)", borderRadius: 18, border: "1px dashed var(--border)" }}>
+              <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{c("community_partner_feed_coming")}</p>
+            </div>
+          </div>
+
         ) : tab === "prayer" ? (
           <>
             {/* 기도 중 / 응답됐어요 서브탭 */}
@@ -1658,6 +1688,13 @@ export default function CommunityPage() {
 
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="card" style={{ background: "rgba(122,157,122,0.08)", border: "1px solid rgba(122,157,122,0.22)", padding: "14px 16px" }}>
+              <p style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginBottom: 5 }}>{c("community_partner_invite_cta_title")}</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55, marginBottom: 12 }}>{c("community_partner_invite_cta_body")}</p>
+              <button onClick={() => router.push("/companions")} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <UserPlus size={15} /> {c("community_partner_invite_cta_button")}
+              </button>
+            </div>
             <button onClick={() => setShowGroupForm(true)} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={16} /> {c("community_create_group")}
             </button>

@@ -59,6 +59,25 @@ export default function SharePromptModal({
 }: SharePromptModalProps) {
   const allSelected = selectedTargets.includes("all");
 
+  function renderAllCommunityOption() {
+    return (
+      <button
+        onClick={() => onToggleTarget("all")}
+        disabled={saving}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+      >
+        <Globe size={20} style={{ color: allSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: allSelected ? "var(--sage-dark)" : "var(--text)" }}>{allLabel}</p>
+          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2, lineHeight: 1.45 }}>{allSubLabel}</p>
+        </div>
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {allSelected && <Check size={12} style={{ color: "white" }} />}
+        </div>
+      </button>
+    );
+  }
+
   return (
     <div
       style={{
@@ -108,21 +127,6 @@ export default function SharePromptModal({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
-          <button
-            onClick={() => onToggleTarget("all")}
-            disabled={saving}
-            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
-          >
-            <Globe size={20} style={{ color: allSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: allSelected ? "var(--sage-dark)" : "var(--text)" }}>{allLabel}</p>
-              <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2, lineHeight: 1.45 }}>{allSubLabel}</p>
-            </div>
-            <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {allSelected && <Check size={12} style={{ color: "white" }} />}
-            </div>
-          </button>
-
           {loadingGroups ? (
             <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Loader2 size={14} className="spin" /> {loadingLabel}
@@ -155,6 +159,9 @@ export default function SharePromptModal({
           ) : (
             <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
           )}
+
+          <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
+          {renderAllCommunityOption()}
         </div>
 
         <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>
