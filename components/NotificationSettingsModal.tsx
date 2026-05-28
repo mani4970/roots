@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { Bell, Clock, Loader2, X } from "lucide-react";
-import { Capacitor } from "@capacitor/core";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/useLang";
 import {
   applyNotificationSettings,
   getNotificationSettings,
+  isLocalNotificationsAvailable,
   inputValueToTime,
   timeToInputValue,
   type RootsNotificationSettings,
@@ -90,7 +90,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   const [settings, setSettings] = useState<RootsNotificationSettings>(() => getNotificationSettings());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const isNative = useMemo(() => typeof window !== "undefined" && Capacitor.isNativePlatform(), []);
+  const notificationsAvailable = useMemo(() => isLocalNotificationsAvailable(), []);
   const disabled = !settings.enabled;
 
   function update(next: Partial<RootsNotificationSettings>) {
@@ -102,7 +102,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
     setMessage("");
     try {
       const result = await applyNotificationSettings(settings, lang);
-      if (!isNative) {
+      if (!notificationsAvailable || result.permission === "unavailable") {
         setMessage(t("notifications_native_only", lang));
       } else if (settings.enabled && result.permission !== "granted") {
         setMessage(t("notifications_permission_denied", lang));
@@ -137,7 +137,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
-        {!isNative && (
+        {!notificationsAvailable && (
           <div style={{ borderRadius: 16, background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.24)", color: "var(--text2)", padding: "11px 12px", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
             {t("notifications_native_only", lang)}
           </div>

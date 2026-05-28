@@ -71,6 +71,11 @@ function CompanionsContent() {
     window.setTimeout(() => setToast(null), 2400);
   }
 
+  function currentCompanionsRedirectPath() {
+    const query = searchParams.toString();
+    return `/companions${query ? `?${query}` : ""}`;
+  }
+
   function setBusy(id: string, busy: boolean) {
     setBusyIds(current => busy ? Array.from(new Set([...current, id])) : current.filter(item => item !== id));
   }
@@ -99,7 +104,7 @@ function CompanionsContent() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.push("/welcome");
+      router.push(`/welcome?redirect=${encodeURIComponent(currentCompanionsRedirectPath())}`);
       return;
     }
     setUserId(user.id);

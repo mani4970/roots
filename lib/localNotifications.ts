@@ -72,8 +72,21 @@ export function saveNotificationSettings(settings: RootsNotificationSettings) {
   storageSetJson(SETTINGS_KEY, normalizeSettings(settings));
 }
 
+export function isLocalNotificationsAvailable() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (!Capacitor.isNativePlatform()) return false;
+    if (typeof Capacitor.isPluginAvailable === "function") {
+      return Capacitor.isPluginAvailable("LocalNotifications");
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function isNativeNotificationsAvailable() {
-  return typeof window !== "undefined" && Capacitor.isNativePlatform();
+  return isLocalNotificationsAvailable();
 }
 
 function pad(value: number) {
@@ -180,13 +193,18 @@ async function cancelRootsNotifications() {
 async function ensureNotificationPermission(): Promise<NotificationApplyResult> {
   if (!isNativeNotificationsAvailable()) return { ok: false, permission: "unavailable" };
 
-  const current = await LocalNotifications.checkPermissions();
-  if (current.display === "granted") return { ok: true, permission: "granted" };
+  try {
+    const current = await LocalNotifications.checkPermissions();
+    if (current.display === "granted") return { ok: true, permission: "granted" };
 
-  const requested = await LocalNotifications.requestPermissions();
-  if (requested.display === "granted") return { ok: true, permission: "granted" };
+    const requested = await LocalNotifications.requestPermissions();
+    if (requested.display === "granted") return { ok: true, permission: "granted" };
 
-  return { ok: false, permission: requested.display === "denied" ? "denied" : "prompt" };
+    return { ok: false, permission: requested.display === "denied" ? "denied" : "prompt" };
+  } catch (error) {
+    console.warn("Roots notification permission unavailable", error);
+    return { ok: false, permission: "unavailable" };
+  }
 }
 
 export async function applyNotificationSettings(settings: RootsNotificationSettings, lang: Lang): Promise<NotificationApplyResult> {
@@ -273,14 +291,19 @@ export async function markBibleReflectionCompletedForNotifications(completedDate
 export async function setupNotificationTapRouting(navigate: (target: NotificationTarget) => void) {
   if (!isNativeNotificationsAvailable()) return () => {};
 
-  const listener = await LocalNotifications.addListener("localNotificationActionPerformed", (event) => {
-    const target = event.notification.extra?.target as NotificationTarget | undefined;
-    if (target === "reflection" || target === "prayer" || target === "home") {
-      navigate(target);
-    }
-  });
+  try {
+    const listener = await LocalNotifications.addListener("localNotificationActionPerformed", (event) => {
+      const target = event.notification.extra?.target as NotificationTarget | undefined;
+      if (target === "reflection" || target === "prayer" || target === "home") {
+        navigate(target);
+      }
+    });
 
-  return () => {
-    void listener.remove();
-  };
+    return () => {
+      void listener.remove();
+    };
+  } catch (error) {
+    console.warn("Roots notification tap routing unavailable", error);
+    return () => {};
+  }
 }
