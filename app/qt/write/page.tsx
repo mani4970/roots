@@ -77,6 +77,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "수정 모드에서는 자동 임시저장이 꺼져 있어요": { de: "Im Bearbeitungsmodus ist die automatische Speicherung deaktiviert", en: "Auto-save is off while editing", fr: "L’enregistrement automatique est désactivé pendant la modification" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
+  "말씀동행 반영에 실패했어요. 다시 완료해주세요.": { de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
   // UI 문자열
   "오늘": { de: "Heute", en: "Today", fr: "Aujourd’hui" },
   "오늘의 말씀 찾기": { de: "Heutigen Abschnitt finden", en: "Find today's passage", fr: "Trouver le passage du jour" },
@@ -355,7 +356,9 @@ function QTWriteContent() {
   const [crossChapter, setCrossChapter] = useState(false); // 장 넘어가는 말씀 여부
 
   // 말씀 여러 개 (추가 말씀)
-  type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: {num:number;text:string}[]; ref: string };
+  type VerseNum = number | string;
+  type PassageVerse = { num: VerseNum; text: string };
+  type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: PassageVerse[]; ref: string };
   const [passages, setPassages] = useState<PassageItem[]>([]);
 
   // 주일예배 말씀 선택 step
@@ -378,10 +381,10 @@ function QTWriteContent() {
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [loadingBible, setLoadingBible] = useState(false);
   const [bibleError, setBibleError] = useState("");
-  const [passageVerses, setPassageVerses] = useState<{ num: number; text: string }[]>([]);
+  const [passageVerses, setPassageVerses] = useState<PassageVerse[]>([]);
   const [bibleRef, setBibleRef] = useState("");
   const [keyVerse, setKeyVerse] = useState("");
-  const [selectedVerseNums, setSelectedVerseNums] = useState<number[]>([]);
+  const [selectedVerseNums, setSelectedVerseNums] = useState<string[]>([]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
   const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
 
@@ -497,7 +500,7 @@ function QTWriteContent() {
         setEndChapter(evChap ?? chap);
         setCrossChapter(Boolean(evChap && evChap !== chap));
 
-        let allVerses: {num: number; text: string}[] = [];
+        let allVerses: PassageVerse[] = [];
         let refStr = "";
 
         if (evChap && evChap !== chap) {
@@ -614,10 +617,10 @@ function QTWriteContent() {
           const restoredNums = String(record.key_verse)
             .split("\n")
             .map((line: string) => {
-              const m = line.match(/^(\d+)\s/);
-              return m ? parseInt(m[1], 10) : null;
+              const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
+              return m ? m[1] : null;
             })
-            .filter((n: number | null): n is number => n !== null);
+            .filter((n: string | null): n is string => Boolean(n));
           if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
         }
         if (record.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: record.opening_prayer }));
@@ -763,10 +766,10 @@ function QTWriteContent() {
         const restoredNums = String(draft.key_verse)
           .split("\n")
           .map((line: string) => {
-            const m = line.match(/^(\d+)\s/);
-            return m ? parseInt(m[1], 10) : null;
+            const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
+            return m ? m[1] : null;
           })
-          .filter((n: number | null): n is number => n !== null);
+          .filter((n: string | null): n is string => Boolean(n));
         if (restoredNums.length > 0) setSelectedVerseNums(restoredNums);
       }
       if (draft.opening_prayer) setAnswers(p => ({ ...p, opening_prayer: draft.opening_prayer }));
@@ -898,7 +901,7 @@ function QTWriteContent() {
   async function loadPassage() {
     setLoadingBible(true); setBibleError("");
     try {
-      let allVerses: {num:number;text:string}[] = [];
+      let allVerses: PassageVerse[] = [];
       let refStr = "";
 
       const effectiveEndChapter = crossChapter ? endChapter : chapter;
@@ -940,7 +943,7 @@ function QTWriteContent() {
     setLoadingBible(true); setBibleError("");
     try {
       const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
-      let vers: {num:number;text:string}[] = [];
+      let vers: PassageVerse[] = [];
       let refStr = "";
       const effectiveEndChapter = crossChapter ? endChapter : chapter;
       if (crossChapter && effectiveEndChapter !== chapter) {
@@ -967,17 +970,24 @@ function QTWriteContent() {
     setLoadingBible(false);
   }
 
-  function selectVerse(verseText: string, num: number) {
-    if (selectedVerseNums.includes(num)) {
-      setSelectedVerseNums(prev => prev.filter(n => n !== num));
-      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${num} `)).join("\n").trim());
+  function normalizeVerseNum(num: VerseNum) {
+    return String(num).trim();
+  }
+
+  function selectVerse(verseText: string, num: VerseNum) {
+    const verseId = normalizeVerseNum(num);
+    if (!verseId) return;
+
+    if (selectedVerseNums.includes(verseId)) {
+      setSelectedVerseNums(prev => prev.filter(n => n !== verseId));
+      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${verseId} `)).join("\n").trim());
     } else {
       // 안전장치: keyVerse에 이미 같은 절 번호로 시작하는 줄이 있다면 중복 방지.
-      // (예: draft 복원 후 selectedVerseNums가 비어있는 상태로 다시 클릭한 경우)
-      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${num} `));
-      setSelectedVerseNums(prev => [...prev, num]);
+      // 장이 넘어가는 본문은 "20:41"처럼 장:절을 고유 ID로 사용합니다.
+      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${verseId} `));
+      setSelectedVerseNums(prev => prev.includes(verseId) ? prev : [...prev, verseId]);
       if (!alreadyInKeyVerse) {
-        const line = `${num} ${verseText}`;
+        const line = `${verseId} ${verseText}`;
         setKeyVerse(prev => prev ? prev + "\n" + line : line);
       }
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
@@ -1380,6 +1390,24 @@ function QTWriteContent() {
     return recordData;
   }
 
+  
+  async function recordProgressBeforeCompletion(supabase: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+    if (selectedDate !== getLocalDateString()) return true;
+
+    try {
+      const progress = await recordBibleReflectionProgress(supabase, userId, selectedDate);
+      if (progress.awardedBadges.length > 0) {
+        storageSet(getPendingAwardedBadgesKey(userId, selectedDate), JSON.stringify(progress.awardedBadges));
+      }
+      storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
+      return true;
+    } catch (progressError) {
+      console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
+      showToast(trQT("말씀동행 반영에 실패했어요. 다시 완료해주세요.", lang), "error");
+      return false;
+    }
+  }
+
   async function save(options: CompleteSaveOptions = {}) {
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
@@ -1420,8 +1448,28 @@ function QTWriteContent() {
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
 
-      // 완료된 기록이 이미 있으면 막기 (draft는 통과)
-      if (completedRecord) { showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info"); return; }
+      // 완료된 기록이 이미 있더라도, 오늘 progress가 누락된 상태라면 먼저 복구를 시도합니다.
+      // 저장 성공 후 progress 반영이 실패했던 사용자가 다시 완료 버튼을 눌렀을 때 조용히 막히지 않게 합니다.
+      if (completedRecord) {
+        if (selectedDate === getLocalDateString()) {
+          const progressSaved = await recordProgressBeforeCompletion(supabase, user.id);
+          if (!progressSaved) return;
+
+          try {
+            await markBibleReflectionCompletedForNotifications(selectedDate, lang);
+          } catch (notificationError) {
+            console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
+          }
+
+          setShowCompleteSharePrompt(false);
+          setCompleteShareTargets([]);
+          router.push("/qt/complete");
+          return;
+        }
+
+        showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: selectedDate }), "info");
+        return;
+      }
 
       // draft가 있으면 update, 없으면 insert
       if (draftRecord) {
@@ -1437,19 +1485,15 @@ function QTWriteContent() {
         }
       }
 
-      // 오늘 말씀 묵상 완료는 저장 직후 progress를 먼저 반영한다.
-      // 물주기/루츠맨은 홈에서 이어지는 보상 UI로 유지한다.
-      // 지난 날짜 기록 저장이나 수정 모드는 progress를 증가시키지 않는다.
+      // 오늘 말씀 묵상 완료는 홈/물주기 UI에 도달하기 전에도 progress가 먼저 저장되어야 합니다.
+      // progress 저장 실패를 조용히 넘기면 사용자의 말씀동행이 누락될 수 있으므로,
+      // 완료 화면으로 넘어가기 전에 반드시 저장 성공을 확인합니다.
+      const progressSaved = await recordProgressBeforeCompletion(supabase, user.id);
+      if (!progressSaved) return;
+
+      // 알림 상태 업데이트는 progress 저장 성공 후 처리합니다.
+      // 실패해도 말씀 묵상 완료 자체를 막지는 않습니다.
       if (selectedDate === getLocalDateString()) {
-        try {
-          const progress = await recordBibleReflectionProgress(supabase, user.id, selectedDate);
-          if (progress.awardedBadges.length > 0) {
-            storageSet(getPendingAwardedBadgesKey(user.id, selectedDate), JSON.stringify(progress.awardedBadges));
-          }
-        } catch (progressError) {
-          console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
-        }
-        storageSet(`qt_completion_pending_watering_${user.id}_${selectedDate}`, "true");
         try {
           await markBibleReflectionCompletedForNotifications(selectedDate, lang);
         } catch (notificationError) {
@@ -2251,13 +2295,17 @@ function QTWriteContent() {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {passageVerses.map(v => (
-                  <button key={v.num} onClick={() => selectVerse(String(v.text), typeof v.num === "number" ? v.num : 0)} style={{ textAlign: "left", background: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: 16 }}>{v.num}</span>
-                    <span style={{ fontSize: bibleTextFontSize, color: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) ? 600 : 400 }}>{v.text}</span>
-                    {selectedVerseNums.includes(typeof v.num === "number" ? v.num : 0) && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
-                  </button>
-                ))}
+                {passageVerses.map(v => {
+                  const verseId = normalizeVerseNum(v.num);
+                  const isSelected = selectedVerseNums.includes(verseId);
+                  return (
+                    <button key={verseId} onClick={() => selectVerse(String(v.text), v.num)} style={{ textAlign: "left", background: isSelected ? "var(--sage-light)" : "rgba(122,157,122,0.06)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--sage)" : "rgba(122,157,122,0.15)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: verseId.includes(":") ? 32 : 16 }}>{verseId}</span>
+                      <span style={{ fontSize: bibleTextFontSize, color: isSelected ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: isSelected ? 600 : 400 }}>{v.text}</span>
+                      {isSelected && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
+                    </button>
+                  );
+                })}
               </div>
               <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
               </div>
