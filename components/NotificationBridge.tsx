@@ -7,7 +7,7 @@ import { refreshNotificationSchedule, setupNotificationTapRouting, type Notifica
 
 function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
-  if (target === "reflection") return "/qt/write";
+  if (target === "reflection") return "/qt";
   return "/";
 }
 
