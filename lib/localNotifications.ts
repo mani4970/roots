@@ -129,6 +129,39 @@ function dateForTimeOnDay(time: NotificationTime, dayOffset: number) {
   return addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate(), time.hour, time.minute, 0, 0), dayOffset);
 }
 
+type LocalNotificationSchedule = NonNullable<
+  Parameters<typeof LocalNotifications.schedule>[0]["notifications"][number]["schedule"]
+>;
+
+function scheduleAt(at: Date, repeats = false): LocalNotificationSchedule {
+  const schedule: LocalNotificationSchedule = repeats ? { at, repeats: true } : { at };
+
+  // Android can delay short local-notification tests while the device is idle or the screen is off.
+  // Use allowWhileIdle for Roots' low-frequency reminders without requesting exact-alarm privileges.
+  if (Capacitor.getPlatform() === "android") {
+    schedule.allowWhileIdle = true;
+  }
+
+  return schedule;
+}
+
+async function rememberPendingNotificationDebugInfo(): Promise<void> {
+  if (!isNativeNotificationsAvailable()) {
+    return;
+  }
+
+  try {
+    const pending = await LocalNotifications.getPending();
+    storageSet("roots_notifications_pending_count", String(pending.notifications.length));
+    storageSet(
+      "roots_notifications_pending_ids",
+      pending.notifications.map((notification) => String(notification.id)).join(",")
+    );
+  } catch (error) {
+    console.warn("Roots notification pending inspection failed", error);
+  }
+}
+
 function getCompletedReflectionDates() {
   const values = storageGetJson<string[]>(COMPLETED_DATES_KEY, []);
   return new Set(values.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).slice(-90));
@@ -227,7 +260,7 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
       id: NOTIFICATION_IDS.morning,
       title: text.roots,
       body: text.morning,
-      schedule: { at: nextDateForTime(normalized.morningTime), repeats: true, every: "day" },
+      schedule: scheduleAt(nextDateForTime(normalized.morningTime), true),
       extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
       autoCancel: true,
     });
@@ -238,7 +271,7 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
       id: NOTIFICATION_IDS.prayer,
       title: text.prayerTitle,
       body: text.prayer,
-      schedule: { at: nextDateForTime(normalized.prayerTime), repeats: true, every: "day" },
+      schedule: scheduleAt(nextDateForTime(normalized.prayerTime), true),
       extra: { target: "prayer" satisfies NotificationTarget, kind: "prayer" },
       autoCancel: true,
     });
@@ -256,7 +289,7 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
         id: NOTIFICATION_IDS.eveningBase + offset,
         title: text.eveningTitle,
         body: text.evening,
-        schedule: { at },
+        schedule: scheduleAt(at),
         extra: { target: "reflection" satisfies NotificationTarget, kind: "evening_reflection" },
         autoCancel: true,
       });
@@ -266,6 +299,8 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
   if (notifications.length > 0) {
     await LocalNotifications.schedule({ notifications });
   }
+
+  await rememberPendingNotificationDebugInfo();
 
   storageSet("roots_notifications_last_scheduled_at", new Date().toISOString());
   return { ok: true, permission: "granted" };

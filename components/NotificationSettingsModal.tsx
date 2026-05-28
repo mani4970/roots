@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Clock, Loader2, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/useLang";
@@ -90,7 +90,25 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   const [settings, setSettings] = useState<RootsNotificationSettings>(() => getNotificationSettings());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const notificationsAvailable = useMemo(() => isLocalNotificationsAvailable(), []);
+  const [notificationsAvailable, setNotificationsAvailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshAvailability = () => {
+      if (!cancelled) {
+        setNotificationsAvailable(isLocalNotificationsAvailable());
+      }
+    };
+
+    refreshAvailability();
+    const timer = window.setTimeout(refreshAvailability, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
   const disabled = !settings.enabled;
 
   function update(next: Partial<RootsNotificationSettings>) {
