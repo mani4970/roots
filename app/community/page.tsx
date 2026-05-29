@@ -50,6 +50,7 @@ function sortGroupsForDisplay(groups: any[]) {
     const aHasNew = !!(a.hasNewContent ?? a.hasNewQt);
     const bHasNew = !!(b.hasNewContent ?? b.hasNewQt);
     if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
+    if (!!a.isMember !== !!b.isMember) return a.isMember ? -1 : 1;
     if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
   });
@@ -1240,7 +1241,7 @@ export default function CommunityPage() {
 
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 16px" }}>
+        <div style={{ background: "var(--bg)", padding: "56px 20px 8px" }}>
           <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -1253,7 +1254,7 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        <div style={{ padding: "16px 16px 96px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ padding: "4px 16px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex" }}>
             {([
               { key: "qt" as const, label: c("community_group_tab_qt") },
@@ -1265,7 +1266,7 @@ export default function CommunityPage() {
                 <button
                   key={key}
                   onClick={() => setPartnerDetailTab(key)}
-                  style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
                   <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
                 </button>
@@ -1297,7 +1298,7 @@ export default function CommunityPage() {
   if (selectedGroup) {
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 16px" }}>
+        <div style={{ background: "var(--bg)", padding: "56px 20px 8px" }}>
           <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -1348,13 +1349,13 @@ export default function CommunityPage() {
           </button>
         </div>
 
-        <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: "4px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
           {!selectedGroup.isMember && (
             <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ width: "100%" }}>{c("community_join")}</button>
           )}
 
-          <div style={{ marginTop: selectedGroup.isMember ? 8 : 0 }}>
-            <div style={{ display: "flex", marginBottom: 14 }}>
+          <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>
+            <div style={{ display: "flex", marginBottom: 12 }}>
               {[
                 { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
                 { key: "praying" as const, label: c("community_prayer_tab_praying"), count: groupPrayingPrayers.length },
@@ -1365,7 +1366,7 @@ export default function CommunityPage() {
                   <button
                     key={key}
                     onClick={() => setGroupDetailTab(key)}
-                    style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
                     {count > 0 && (
@@ -1681,7 +1682,7 @@ export default function CommunityPage() {
                   <button
                     key={key}
                     onClick={() => setAllTab(key)}
-                    style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
                     {count > 0 && (
