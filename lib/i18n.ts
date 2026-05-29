@@ -336,6 +336,7 @@ export const T = {
   community_tab_prayer: { ko: "기도",               de: "Gebet", en: "Prayer", fr: "Prière" },
   community_tab_qt: { ko: "묵상 나눔", de: "Stille Zeit", en: "Reflections", fr: "Méditations" },
   community_tab_group: { ko: "그룹",               de: "Gruppe", en: "Group", fr: "Groupe" },
+  community_tab_all: { ko: "전체", de: "Alle", en: "All", fr: "Tout" },
 
   // ── 프로필 ──
   profile_faith_journey: { ko: "신앙 여정",           de: "Glaubensweg", en: "Faith Journey", fr: "Parcours de foi" },
