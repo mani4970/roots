@@ -110,6 +110,58 @@ export default function SharePromptModal({
     );
   }
 
+  function renderGroupOption(group: ShareTargetGroup) {
+    const target = `group_${group.id}`;
+    const selected = selectedTargets.includes(target);
+    return (
+      <button
+        key={group.id}
+        onClick={() => onToggleTarget(target)}
+        disabled={saving}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+      >
+        <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
+          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
+        </div>
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {selected && <Check size={12} style={{ color: "white" }} />}
+        </div>
+      </button>
+    );
+  }
+
+  const scrollAreaStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    maxHeight: 184,
+    overflowY: "auto",
+    minHeight: 0,
+    paddingRight: 2,
+    overscrollBehavior: "contain",
+    WebkitOverflowScrolling: "touch",
+  } as const;
+
+  const sectionStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    minHeight: 0,
+    flexShrink: 0,
+  } as const;
+
+  const sectionTitleStyle = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--text3)",
+    marginTop: 4,
+    paddingLeft: 4,
+    flexShrink: 0,
+  } as const;
+
+
   function renderAllCommunityOption() {
     return (
       <button
@@ -177,47 +229,38 @@ export default function SharePromptModal({
           <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{helperText}</p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
           {loadingPartners || loadingGroups ? (
             <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Loader2 size={14} className="spin" /> {loadingLabel}
             </p>
           ) : (
             <>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{partnersLabel}</p>
-              {partners.length > 0 ? partners.map(renderPartnerOption) : (
-                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noPartnersLabel}</p>
-              )}
+              <section style={sectionStyle}>
+                <p style={sectionTitleStyle}>{partnersLabel}</p>
+                <div style={scrollAreaStyle}>
+                  {partners.length > 0 ? partners.map(renderPartnerOption) : (
+                    <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noPartnersLabel}</p>
+                  )}
+                </div>
+              </section>
 
-              <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
+              <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
 
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{groupsLabel}</p>
-              {groups.length > 0 ? groups.map(group => {
-                const target = `group_${group.id}`;
-                const selected = selectedTargets.includes(target);
-                return (
-                  <button
-                    key={group.id}
-                    onClick={() => onToggleTarget(target)}
-                    disabled={saving}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
-                  >
-                    <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
-                      <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
-                    </div>
-                    <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {selected && <Check size={12} style={{ color: "white" }} />}
-                    </div>
-                  </button>
-                );
-              }) : (
-                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
-              )}
+              <section style={sectionStyle}>
+                <p style={sectionTitleStyle}>{groupsLabel}</p>
+                <div style={scrollAreaStyle}>
+                  {groups.length > 0 ? groups.map(renderGroupOption) : (
+                    <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
+                  )}
+                </div>
+              </section>
 
-              <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
-              {renderAllCommunityOption()}
+              <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
+
+              <section style={sectionStyle}>
+                {renderAllCommunityOption()}
+              </section>
             </>
           )}
         </div>
