@@ -56,6 +56,13 @@ function sortGroupsForDisplay(groups: any[]) {
   });
 }
 
+function sortPartnersForDisplay(partners: any[]) {
+  return [...partners].sort((a, b) => {
+    if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
+    return new Date(b.responded_at ?? b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.responded_at ?? a.updated_at ?? a.created_at ?? 0).getTime();
+  });
+}
+
 function favoriteCacheKey(userId: string) {
   return `roots_group_favorites_${userId}`;
 }
@@ -165,6 +172,7 @@ export default function CommunityPage() {
   const [groupMemberProfiles, setGroupMemberProfiles] = useState<any[]>([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
+  const [partnerFavoriteSavingIds, setPartnerFavoriteSavingIds] = useState<string[]>([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
   const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any; scope?: "all" | "group"; groupId?: string }>(null);
   const [manageText, setManageText] = useState("");
@@ -654,14 +662,32 @@ export default function CommunityPage() {
             .in("id", partnerIds);
           (profileRows ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
         }
-        setPartners(rows.map((row: any) => {
+        let favoritePartnerIds = new Set<string>();
+        if (partnerIds.length > 0) {
+          const { data: preferenceRows, error: preferenceError } = await supabase
+            .from("companion_preferences")
+            .select("companion_user_id,is_favorite")
+            .eq("user_id", user.id)
+            .in("companion_user_id", partnerIds);
+          if (preferenceError) {
+            console.warn("동역자 즐겨찾기 조회 실패:", preferenceError.message);
+          } else {
+            favoritePartnerIds = new Set((preferenceRows ?? [])
+              .filter((row: any) => !!row.is_favorite)
+              .map((row: any) => row.companion_user_id)
+              .filter(Boolean));
+          }
+        }
+
+        setPartners(sortPartnersForDisplay(rows.map((row: any) => {
           const partnerId = row.requester_id === user.id ? row.receiver_id : row.requester_id;
           return {
             ...row,
             partner_id: partnerId,
             profile: profileMap[partnerId] ?? null,
+            isFavorite: favoritePartnerIds.has(partnerId),
           };
-        }));
+        })));
       }
 
     } else if (tab === "all") {
@@ -1071,6 +1097,43 @@ export default function CommunityPage() {
     setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
   }
 
+  async function toggleFavoritePartner(partner: any, event?: any) {
+    event?.stopPropagation?.();
+    if (!userId || !partner?.partner_id || partnerFavoriteSavingIds.includes(partner.partner_id)) return;
+
+    const previousFavorite = !!partner.isFavorite;
+    const nextFavorite = !previousFavorite;
+    const partnerId = partner.partner_id;
+
+    const applyFavoriteState = (value: boolean) => {
+      setPartners(prev => sortPartnersForDisplay(prev.map(item => item.partner_id === partnerId ? { ...item, isFavorite: value } : item)));
+      if (selectedPartner?.partner_id === partnerId) setSelectedPartner((current: any) => ({ ...current, isFavorite: value }));
+    };
+
+    setPartnerFavoriteSavingIds(prev => prev.includes(partnerId) ? prev : [...prev, partnerId]);
+    applyFavoriteState(nextFavorite);
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("companion_preferences")
+      .upsert(
+        {
+          user_id: userId,
+          companion_user_id: partnerId,
+          is_favorite: nextFavorite,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,companion_user_id" }
+      );
+
+    if (error) {
+      console.warn("동역자 즐겨찾기 저장 실패:", error.message);
+      applyFavoriteState(previousFavorite);
+    }
+
+    setPartnerFavoriteSavingIds(prev => prev.filter(id => id !== partnerId));
+  }
+
   async function leaveSelectedGroup() {
     if (!selectedGroup?.id || !userId || leavingGroup) return;
     setLeavingGroup(true);
@@ -1251,6 +1314,14 @@ export default function CommunityPage() {
               <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</h1>
               <p style={{ fontSize: 12, color: "var(--text3)" }}>{t("profile_streak", lang, { n: partnerProfile.streak_days ?? 0 })}</p>
             </div>
+            <button
+              onClick={(event) => toggleFavoritePartner(selectedPartner, event)}
+              disabled={partnerFavoriteSavingIds.includes(selectedPartner.partner_id)}
+              aria-label={c("community_favorite")}
+              style={{ marginLeft: "auto", width: 32, height: 32, borderRadius: 999, border: `1px solid ${selectedPartner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedPartner.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedPartner.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: partnerFavoriteSavingIds.includes(selectedPartner.partner_id) ? "default" : "pointer", opacity: partnerFavoriteSavingIds.includes(selectedPartner.partner_id) ? 0.65 : 1, flexShrink: 0 }}
+            >
+              <Star size={16} strokeWidth={1.9} fill={selectedPartner.isFavorite ? "currentColor" : "transparent"} />
+            </button>
           </div>
         </div>
 
@@ -1646,12 +1717,23 @@ export default function CommunityPage() {
                   const profile = partner.profile ?? {};
                   const partnerName = profile.name || c("profile_default_name");
                   return (
-                    <button
+                    <div
                       key={partner.id}
                       onClick={() => setSelectedPartner(partner)}
-                      style={{ width: "100%", padding: 14, borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => { if (event.key === "Enter") setSelectedPartner(partner); }}
+                      style={{ width: "100%", padding: 14, borderRadius: 18, border: "1px solid var(--border)", background: partner.isFavorite ? "rgba(232,197,71,0.07)" : "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <button
+                          onClick={(event) => toggleFavoritePartner(partner, event)}
+                          disabled={partnerFavoriteSavingIds.includes(partner.partner_id)}
+                          aria-label={c("community_favorite")}
+                          style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${partner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: partner.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: partner.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: partnerFavoriteSavingIds.includes(partner.partner_id) ? "default" : "pointer", opacity: partnerFavoriteSavingIds.includes(partner.partner_id) ? 0.65 : 1, flexShrink: 0 }}
+                        >
+                          <Star size={16} strokeWidth={1.9} fill={partner.isFavorite ? "currentColor" : "transparent"} />
+                        </button>
                         <Avatar url={profile.avatar_url} name={partnerName} size={42} />
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</p>
@@ -1659,7 +1741,7 @@ export default function CommunityPage() {
                         </div>
                       </div>
                       <ChevronRight size={18} style={{ color: "var(--text3)", flexShrink: 0 }} />
-                    </button>
+                    </div>
                   );
                 })}
                 <button onClick={() => router.push("/companions")} className="btn-outline">
