@@ -11,7 +11,7 @@ import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
-import SharePromptModal, { type ShareTargetGroup } from "@/components/SharePromptModal";
+import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
@@ -176,7 +176,8 @@ export default function HomePage() {
   const [showHomePrayerSharePrompt, setShowHomePrayerSharePrompt] = useState(false);
   const [homePrayerShareTargets, setHomePrayerShareTargets] = useState<string[]>([]);
   const [homePrayerShareGroups, setHomePrayerShareGroups] = useState<ShareTargetGroup[]>([]);
-  const [loadingHomePrayerShareGroups, setLoadingHomePrayerShareGroups] = useState(false);
+  const [homePrayerSharePartners, setHomePrayerSharePartners] = useState<ShareTargetPartner[]>([]);
+  const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -513,13 +514,30 @@ export default function HomePage() {
     setShowHomePrayerCompose(true);
   }
 
-  async function loadHomePrayerShareGroups() {
-    setLoadingHomePrayerShareGroups(true);
+  function splitHomePrayerShareTargets(targets: string[]) {
+    const partnerRecipientIds = Array.from(new Set(
+      targets
+        .filter(target => target.startsWith("partner_"))
+        .map(target => target.replace(/^partner_/, ""))
+        .filter(Boolean)
+    ));
+    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
+    const visibility = visibilityTargets.includes("all")
+      ? "all"
+      : visibilityTargets.length > 0
+        ? visibilityTargets.join(",")
+        : "private";
+    return { visibility, partnerRecipientIds };
+  }
+
+  async function loadHomePrayerShareOptions() {
+    setLoadingHomePrayerShareOptions(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setHomePrayerShareGroups([]);
+        setHomePrayerSharePartners([]);
         return;
       }
 
@@ -528,25 +546,50 @@ export default function HomePage() {
         .select("group_id")
         .eq("user_id", user.id);
       const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
-      if (groupIds.length === 0) {
+      if (groupIds.length > 0) {
+        const { data: groups } = await supabase
+          .from("groups")
+          .select("id, name, is_public")
+          .in("id", groupIds);
+        setHomePrayerShareGroups((groups ?? []).map((group: any) => ({
+          id: String(group.id),
+          name: String(group.name ?? ""),
+          is_public: !!group.is_public,
+        })));
+      } else {
         setHomePrayerShareGroups([]);
-        return;
       }
 
-      const { data: groups } = await supabase
-        .from("groups")
-        .select("id, name, is_public")
-        .in("id", groupIds);
-      setHomePrayerShareGroups((groups ?? []).map((group: any) => ({
-        id: String(group.id),
-        name: String(group.name ?? ""),
-        is_public: !!group.is_public,
-      })));
+      const { data: companionRows } = await supabase
+        .from("companions")
+        .select("requester_id, receiver_id")
+        .eq("status", "accepted")
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+      const partnerIds = Array.from(new Set((companionRows ?? [])
+        .map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id)
+        .filter(Boolean)
+      ));
+      if (partnerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url")
+          .in("id", partnerIds);
+        const profileMap: Record<string, any> = {};
+        (profiles ?? []).forEach((profile: any) => { profileMap[String(profile.id)] = profile; });
+        setHomePrayerSharePartners(partnerIds.map((partnerId: any) => ({
+          id: String(partnerId),
+          name: String(profileMap[partnerId]?.name ?? t("profile_default_name", lang)),
+          avatar_url: profileMap[partnerId]?.avatar_url ?? null,
+        })));
+      } else {
+        setHomePrayerSharePartners([]);
+      }
     } catch (error) {
-      console.error("home prayer share groups load failed", error);
+      console.error("home prayer share options load failed", error);
       setHomePrayerShareGroups([]);
+      setHomePrayerSharePartners([]);
     } finally {
-      setLoadingHomePrayerShareGroups(false);
+      setLoadingHomePrayerShareOptions(false);
     }
   }
 
@@ -560,7 +603,7 @@ export default function HomePage() {
     if (!homePrayerInput.trim() || savingHomePrayer) return;
     setHomePrayerShareTargets([]);
     setShowHomePrayerSharePrompt(true);
-    void loadHomePrayerShareGroups();
+    void loadHomePrayerShareOptions();
   }
 
   function closeHomePrayerSharePrompt() {
@@ -569,7 +612,7 @@ export default function HomePage() {
     setHomePrayerShareTargets([]);
   }
 
-  async function saveHomePrayerRequest(visibility = "private") {
+  async function saveHomePrayerRequest(visibility = "private", partnerRecipientIds: string[] = []) {
     const content = homePrayerInput.trim();
     if (!content || savingHomePrayer) return;
 
@@ -580,13 +623,27 @@ export default function HomePage() {
     setSavingHomePrayer(true);
     try {
       const today = getLocalDateString();
-      const { error: insertError } = await supabase.from("prayer_items").insert({
+      const { data: insertedPrayer, error: insertError } = await supabase.from("prayer_items").insert({
         user_id: user.id,
         content,
         is_anonymous: false,
         visibility,
-      });
+      }).select("id").single();
       if (insertError) throw insertError;
+
+      if (insertedPrayer?.id && partnerRecipientIds.length > 0) {
+        const { error: recipientError } = await supabase
+          .from("prayer_item_recipients")
+          .insert(partnerRecipientIds.map(recipientId => ({
+            prayer_item_id: insertedPrayer.id,
+            owner_id: user.id,
+            recipient_id: recipientId,
+          })));
+        if (recipientError) {
+          await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          throw recipientError;
+        }
+      }
 
       await supabase.from("daily_prayer_completions").upsert({
         user_id: user.id,
@@ -1091,6 +1148,9 @@ export default function HomePage() {
           helperText={t("prayer_complete_share_helper", lang)}
           allLabel={t("prayer_intercession_share_all", lang)}
           allSubLabel={t("prayer_intercession_share_all_sub", lang)}
+          partnersLabel={t("share_prompt_partners", lang)}
+          partnerSubLabel={t("share_prompt_partner_sub", lang)}
+          noPartnersLabel={t("share_prompt_no_partners", lang)}
           groupsLabel={t("prayer_intercession_my_groups", lang)}
           publicGroupLabel={t("prayer_intercession_public_group", lang)}
           privateGroupLabel={t("prayer_intercession_private_group", lang)}
@@ -1101,13 +1161,15 @@ export default function HomePage() {
           privateActionLabel={t("share_prompt_private_action", lang)}
           closeLabel={t("close", lang)}
           groups={homePrayerShareGroups}
+          partners={homePrayerSharePartners}
           selectedTargets={homePrayerShareTargets}
           saving={savingHomePrayer}
-          loadingGroups={loadingHomePrayerShareGroups}
+          loadingGroups={loadingHomePrayerShareOptions}
+          loadingPartners={loadingHomePrayerShareOptions}
           onToggleTarget={toggleHomePrayerShareTarget}
           onClose={closeHomePrayerSharePrompt}
-          onPrivate={() => { void saveHomePrayerRequest("private"); }}
-          onShare={() => { if (homePrayerShareTargets.length > 0) void saveHomePrayerRequest(homePrayerShareTargets.join(",")); }}
+          onPrivate={() => { void saveHomePrayerRequest("private", []); }}
+          onShare={() => { if (homePrayerShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitHomePrayerShareTargets(homePrayerShareTargets); void saveHomePrayerRequest(visibility, partnerRecipientIds); } }}
         />
       )}
 

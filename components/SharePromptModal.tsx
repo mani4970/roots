@@ -1,11 +1,17 @@
 "use client";
 
-import { Check, Globe, Loader2, Lock, X } from "lucide-react";
+import { Check, Globe, Loader2, Lock, UserRound, X } from "lucide-react";
 
 export type ShareTargetGroup = {
   id: string;
   name: string;
   is_public?: boolean | null;
+};
+
+export type ShareTargetPartner = {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
 };
 
 type SharePromptModalProps = {
@@ -14,6 +20,9 @@ type SharePromptModalProps = {
   helperText: string;
   allLabel: string;
   allSubLabel: string;
+  partnersLabel: string;
+  partnerSubLabel: string;
+  noPartnersLabel: string;
   groupsLabel: string;
   publicGroupLabel: string;
   privateGroupLabel: string;
@@ -24,9 +33,11 @@ type SharePromptModalProps = {
   privateActionLabel: string;
   closeLabel: string;
   groups: ShareTargetGroup[];
+  partners?: ShareTargetPartner[];
   selectedTargets: string[];
   saving?: boolean;
   loadingGroups?: boolean;
+  loadingPartners?: boolean;
   onToggleTarget: (target: string) => void;
   onShare: () => void;
   onPrivate: () => void;
@@ -39,6 +50,9 @@ export default function SharePromptModal({
   helperText,
   allLabel,
   allSubLabel,
+  partnersLabel,
+  partnerSubLabel,
+  noPartnersLabel,
   groupsLabel,
   publicGroupLabel,
   privateGroupLabel,
@@ -49,15 +63,52 @@ export default function SharePromptModal({
   privateActionLabel,
   closeLabel,
   groups,
+  partners = [],
   selectedTargets,
   saving = false,
   loadingGroups = false,
+  loadingPartners = false,
   onToggleTarget,
   onShare,
   onPrivate,
   onClose,
 }: SharePromptModalProps) {
   const allSelected = selectedTargets.includes("all");
+
+
+  function renderPartnerOption(partner: ShareTargetPartner) {
+    const target = `partner_${partner.id}`;
+    const selected = selectedTargets.includes(target);
+    return (
+      <button
+        key={partner.id}
+        onClick={() => onToggleTarget(target)}
+        disabled={saving}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+      >
+        {partner.avatar_url ? (
+          <img
+            src={partner.avatar_url}
+            alt=""
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, flexShrink: 0, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+          />
+        ) : (
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: selected ? "var(--sage-light)" : "var(--bg)", border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <UserRound size={16} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)" }} />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partner.name}</p>
+          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{partnerSubLabel}</p>
+        </div>
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {selected && <Check size={12} style={{ color: "white" }} />}
+        </div>
+      </button>
+    );
+  }
 
   function renderAllCommunityOption() {
     return (
@@ -127,14 +178,21 @@ export default function SharePromptModal({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
-          {loadingGroups ? (
+          {loadingPartners || loadingGroups ? (
             <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Loader2 size={14} className="spin" /> {loadingLabel}
             </p>
-          ) : groups.length > 0 ? (
+          ) : (
             <>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{partnersLabel}</p>
+              {partners.length > 0 ? partners.map(renderPartnerOption) : (
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noPartnersLabel}</p>
+              )}
+
+              <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
+
               <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{groupsLabel}</p>
-              {groups.map(group => {
+              {groups.length > 0 ? groups.map(group => {
                 const target = `group_${group.id}`;
                 const selected = selectedTargets.includes(target);
                 return (
@@ -154,14 +212,14 @@ export default function SharePromptModal({
                     </div>
                   </button>
                 );
-              })}
-            </>
-          ) : (
-            <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
-          )}
+              }) : (
+                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
+              )}
 
-          <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
-          {renderAllCommunityOption()}
+              <div style={{ height: 1, background: "var(--border)", margin: "8px 4px", flexShrink: 0 }} />
+              {renderAllCommunityOption()}
+            </>
+          )}
         </div>
 
         <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>

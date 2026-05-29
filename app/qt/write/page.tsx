@@ -12,7 +12,7 @@ import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotific
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
 import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, TRANSLATIONS } from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
-import SharePromptModal, { type ShareTargetGroup } from "@/components/SharePromptModal";
+import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -186,6 +186,7 @@ type SaveDraftOptions = {
 
 type CompleteSaveOptions = {
   visibility?: string;
+  partnerRecipientIds?: string[];
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
@@ -399,7 +400,8 @@ function QTWriteContent() {
   const [showCompleteSharePrompt, setShowCompleteSharePrompt] = useState(false);
   const [completeShareTargets, setCompleteShareTargets] = useState<string[]>([]);
   const [completeShareGroups, setCompleteShareGroups] = useState<ShareTargetGroup[]>([]);
-  const [loadingCompleteShareGroups, setLoadingCompleteShareGroups] = useState(false);
+  const [completeSharePartners, setCompleteSharePartners] = useState<ShareTargetPartner[]>([]);
+  const [loadingCompleteShareOptions, setLoadingCompleteShareOptions] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
   const autoSavingRef = useRef(false);
   const queuedAutoSaveRef = useRef<{ snapshot: DraftSnapshot; signature: string } | null>(null);
@@ -1263,13 +1265,30 @@ function QTWriteContent() {
     };
   }, []);
 
-  async function loadCompleteShareGroups() {
-    setLoadingCompleteShareGroups(true);
+  function splitShareTargets(targets: string[]) {
+    const partnerRecipientIds = Array.from(new Set(
+      targets
+        .filter(target => target.startsWith("partner_"))
+        .map(target => target.replace(/^partner_/, ""))
+        .filter(Boolean)
+    ));
+    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
+    const visibility = visibilityTargets.includes("all")
+      ? "all"
+      : visibilityTargets.length > 0
+        ? visibilityTargets.join(",")
+        : "private";
+    return { visibility, partnerRecipientIds };
+  }
+
+  async function loadCompleteShareOptions() {
+    setLoadingCompleteShareOptions(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setCompleteShareGroups([]);
+        setCompleteSharePartners([]);
         return;
       }
 
@@ -1278,25 +1297,50 @@ function QTWriteContent() {
         .select("group_id")
         .eq("user_id", user.id);
       const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
-      if (groupIds.length === 0) {
+      if (groupIds.length > 0) {
+        const { data: groups } = await supabase
+          .from("groups")
+          .select("id, name, is_public")
+          .in("id", groupIds);
+        setCompleteShareGroups((groups ?? []).map((group: any) => ({
+          id: String(group.id),
+          name: String(group.name ?? ""),
+          is_public: !!group.is_public,
+        })));
+      } else {
         setCompleteShareGroups([]);
-        return;
       }
 
-      const { data: groups } = await supabase
-        .from("groups")
-        .select("id, name, is_public")
-        .in("id", groupIds);
-      setCompleteShareGroups((groups ?? []).map((group: any) => ({
-        id: String(group.id),
-        name: String(group.name ?? ""),
-        is_public: !!group.is_public,
-      })));
+      const { data: companionRows } = await supabase
+        .from("companions")
+        .select("requester_id, receiver_id")
+        .eq("status", "accepted")
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+      const partnerIds = Array.from(new Set((companionRows ?? [])
+        .map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id)
+        .filter(Boolean)
+      ));
+      if (partnerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url")
+          .in("id", partnerIds);
+        const profileMap: Record<string, any> = {};
+        (profiles ?? []).forEach((profile: any) => { profileMap[String(profile.id)] = profile; });
+        setCompleteSharePartners(partnerIds.map((partnerId: any) => ({
+          id: String(partnerId),
+          name: String(profileMap[partnerId]?.name ?? t("profile_default_name", lang)),
+          avatar_url: profileMap[partnerId]?.avatar_url ?? null,
+        })));
+      } else {
+        setCompleteSharePartners([]);
+      }
     } catch (error) {
-      console.error("qt complete share groups load failed", error);
+      console.error("qt complete share options load failed", error);
       setCompleteShareGroups([]);
+      setCompleteSharePartners([]);
     } finally {
-      setLoadingCompleteShareGroups(false);
+      setLoadingCompleteShareOptions(false);
     }
   }
 
@@ -1313,13 +1357,33 @@ function QTWriteContent() {
     }
     setCompleteShareTargets([]);
     setShowCompleteSharePrompt(true);
-    void loadCompleteShareGroups();
+    void loadCompleteShareOptions();
   }
 
   function closeCompleteSharePrompt() {
     if (saving) return;
     setShowCompleteSharePrompt(false);
     setCompleteShareTargets([]);
+  }
+
+  async function replaceQtRecordRecipients(supabase: ReturnType<typeof createClient>, recordId: string, ownerId: string, recipientIds: string[]) {
+    const { error: deleteError } = await supabase
+      .from("qt_record_recipients")
+      .delete()
+      .eq("qt_record_id", recordId)
+      .eq("owner_id", ownerId);
+    if (deleteError) throw deleteError;
+
+    if (recipientIds.length === 0) return;
+
+    const { error: insertError } = await supabase
+      .from("qt_record_recipients")
+      .insert(recipientIds.map(recipientId => ({
+        qt_record_id: recordId,
+        owner_id: ownerId,
+        recipient_id: recipientId,
+      })));
+    if (insertError) throw insertError;
   }
 
   function renderCompleteSharePrompt() {
@@ -1332,6 +1396,9 @@ function QTWriteContent() {
         helperText={t("qt_complete_share_helper", lang)}
         allLabel={t("qt_record_share_all", lang)}
         allSubLabel={t("qt_record_share_all_sub", lang)}
+        partnersLabel={t("share_prompt_partners", lang)}
+        partnerSubLabel={t("share_prompt_partner_sub", lang)}
+        noPartnersLabel={t("share_prompt_no_partners", lang)}
         groupsLabel={t("qt_record_my_groups", lang)}
         publicGroupLabel={t("qt_record_public_group", lang)}
         privateGroupLabel={t("qt_record_private_group", lang)}
@@ -1342,13 +1409,15 @@ function QTWriteContent() {
         privateActionLabel={t("share_prompt_private_action", lang)}
         closeLabel={t("close", lang)}
         groups={completeShareGroups}
+        partners={completeSharePartners}
         selectedTargets={completeShareTargets}
         saving={saving}
-        loadingGroups={loadingCompleteShareGroups}
+        loadingGroups={loadingCompleteShareOptions}
+        loadingPartners={loadingCompleteShareOptions}
         onToggleTarget={toggleCompleteShareTarget}
         onClose={closeCompleteSharePrompt}
-        onPrivate={() => { void save({ visibility: "private" }); }}
-        onShare={() => { if (completeShareTargets.length > 0) void save({ visibility: completeShareTargets.join(",") }); }}
+        onPrivate={() => { void save({ visibility: "private", partnerRecipientIds: [] }); }}
+        onShare={() => { if (completeShareTargets.length > 0) void save(splitShareTargets(completeShareTargets)); }}
       />
     );
   }
@@ -1452,6 +1521,16 @@ function QTWriteContent() {
       // 저장 성공 후 progress 반영이 실패했던 사용자가 다시 완료 버튼을 눌렀을 때 조용히 막히지 않게 합니다.
       if (completedRecord) {
         if (selectedDate === getLocalDateString()) {
+          if (Array.isArray(options.partnerRecipientIds)) {
+            try {
+              await replaceQtRecordRecipients(supabase, completedRecord.id, user.id, options.partnerRecipientIds);
+            } catch (recipientError) {
+              console.warn("말씀 묵상 동역자 공유 저장 실패:", recipientError);
+              showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+              return;
+            }
+          }
+
           const progressSaved = await recordProgressBeforeCompletion(supabase, user.id);
           if (!progressSaved) return;
 
@@ -1471,17 +1550,42 @@ function QTWriteContent() {
         return;
       }
 
+      let completedRecordId = "";
+
       // draft가 있으면 update, 없으면 insert
       if (draftRecord) {
-        const { error } = await supabase.from("qt_records")
-          .update({ ...recordData, is_draft: false }).eq("id", draftRecord.id);
+        const { data: updatedRecord, error } = await supabase.from("qt_records")
+          .update({ ...recordData, is_draft: false })
+          .eq("id", draftRecord.id)
+          .select("id")
+          .single();
         if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
+        completedRecordId = updatedRecord?.id ?? draftRecord.id;
       } else {
-        const { error } = await supabase.from("qt_records").insert({ ...recordData, is_draft: false });
+        const { data: insertedRecord, error } = await supabase.from("qt_records")
+          .insert({ ...recordData, is_draft: false })
+          .select("id")
+          .single();
         if (error) {
           const { qt_mode, ...withoutMode } = recordData;
-          const { error: e2 } = await supabase.from("qt_records").insert({ ...withoutMode, is_draft: false });
+          const { data: fallbackInsertedRecord, error: e2 } = await supabase.from("qt_records")
+            .insert({ ...withoutMode, is_draft: false })
+            .select("id")
+            .single();
           if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
+          completedRecordId = fallbackInsertedRecord?.id ?? "";
+        } else {
+          completedRecordId = insertedRecord?.id ?? "";
+        }
+      }
+
+      if (completedRecordId && Array.isArray(options.partnerRecipientIds)) {
+        try {
+          await replaceQtRecordRecipients(supabase, completedRecordId, user.id, options.partnerRecipientIds);
+        } catch (recipientError) {
+          console.warn("말씀 묵상 동역자 공유 저장 실패:", recipientError);
+          showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+          return;
         }
       }
 
