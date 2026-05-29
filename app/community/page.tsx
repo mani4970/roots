@@ -1214,20 +1214,47 @@ export default function CommunityPage() {
   if (selectedPartner) {
     const partnerProfile = selectedPartner.profile ?? {};
     const partnerName = partnerProfile.name || c("profile_default_name");
+    const partnerEmptyConfig = partnerDetailTab === "qt"
+      ? {
+          icon: <BookOpen size={24} />,
+          title: c("community_partner_empty_qt_title"),
+          body: c("community_partner_empty_qt_body"),
+          action: c("community_partner_empty_qt_action"),
+          path: "/qt",
+        }
+      : partnerDetailTab === "praying"
+        ? {
+            icon: <HandHeart size={24} />,
+            title: c("community_partner_empty_praying_title"),
+            body: c("community_partner_empty_praying_body"),
+            action: c("community_partner_empty_praying_action"),
+            path: "/prayer",
+          }
+        : {
+            icon: <CheckCircle2 size={24} />,
+            title: c("community_partner_empty_answered_title"),
+            body: c("community_partner_empty_answered_body"),
+            action: c("community_partner_empty_answered_action"),
+            path: "/prayer",
+          };
+
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
           <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Avatar url={partnerProfile.avatar_url} name={partnerName} size={48} />
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</h1>
               <p style={{ fontSize: 12, color: "var(--text3)" }}>{t("profile_streak", lang, { n: partnerProfile.streak_days ?? 0 })}</p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+        </div>
+
+        <div style={{ padding: "16px 16px 96px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
             {([
               { key: "qt" as const, label: c("community_group_tab_qt") },
               { key: "praying" as const, label: c("community_prayer_tab_praying") },
@@ -1235,27 +1262,29 @@ export default function CommunityPage() {
             ]).map(({ key, label }) => {
               const active = partnerDetailTab === key;
               return (
-                <button key={key} onClick={() => setPartnerDetailTab(key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,0.38)" : "1px solid var(--border)", background: active ? "var(--sage-light)" : "var(--bg2)", color: active ? "var(--sage-dark)" : "var(--text3)", fontSize: 12, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
-                  {label}
+                <button
+                  key={key}
+                  onClick={() => setPartnerDetailTab(key)}
+                  style={{ flex: 1, padding: "10px 0 12px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
                 </button>
               );
             })}
           </div>
-        </div>
 
-        <div style={{ padding: "18px 16px 96px" }}>
-          <div className="card" style={{ padding: "26px 18px", textAlign: "center", border: "1px dashed var(--border)" }}>
+          <div style={{ textAlign: "center", padding: "32px 18px", background: "var(--bg2)", borderRadius: 18, border: "1px solid var(--border)" }}>
             <div style={{ width: 46, height: 46, borderRadius: 18, margin: "0 auto 12px", background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {partnerDetailTab === "qt" ? <BookOpen size={21} /> : partnerDetailTab === "praying" ? <HandHeart size={21} /> : <CheckCircle2 size={21} />}
+              {partnerEmptyConfig.icon}
             </div>
             <h2 style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>
-              {partnerDetailTab === "qt" ? c("community_partner_empty_qt_title") : partnerDetailTab === "praying" ? c("community_partner_empty_praying_title") : c("community_partner_empty_answered_title")}
+              {partnerEmptyConfig.title}
             </h2>
             <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto 16px" }}>
-              {partnerDetailTab === "qt" ? c("community_partner_empty_qt_body") : partnerDetailTab === "praying" ? c("community_partner_empty_praying_body") : c("community_partner_empty_answered_body")}
+              {partnerEmptyConfig.body}
             </p>
-            <button onClick={() => router.push("/companions")} className="btn-outline">
-              {c("community_partner_manage_button")}
+            <button onClick={() => router.push(partnerEmptyConfig.path)} className="btn-sage" style={{ width: "100%", maxWidth: 300 }}>
+              {partnerEmptyConfig.action}
             </button>
           </div>
         </div>
