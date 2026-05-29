@@ -127,6 +127,9 @@ export default function CommunityPage() {
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
+  const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
+  const [partnerDetailTab, setPartnerDetailTab] = useState<"qt" | "praying" | "answered">("qt");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -207,6 +210,11 @@ export default function CommunityPage() {
     setGroupPrayers([]);
     setGroupDetailTab("qt");
     setDetailQt(null);
+  }
+
+  function closePartnerDetail() {
+    setSelectedPartner(null);
+    setPartnerDetailTab("qt");
   }
 
   function openPrayerEdit(item: any, event?: any, scope?: "all" | "group", groupId?: string) {
@@ -623,7 +631,39 @@ export default function CommunityPage() {
     setPrayedIds(dbPrayed);
     storageSetJson(`comm_prayed_${user.id}`, dbPrayed);
 
-    if (tab === "all") {
+    if (tab === "partner") {
+      const { data: companionRows, error: companionError } = await supabase
+        .from("companions")
+        .select("id,requester_id,receiver_id,status,created_at,updated_at,responded_at")
+        .eq("status", "accepted")
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+
+      if (companionError) {
+        console.error("동역자 목록 조회 실패:", companionError);
+        setPartners([]);
+      } else {
+        const rows = companionRows ?? [];
+        const partnerIds = Array.from(new Set(rows.map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id).filter(Boolean)));
+        let profileMap: Record<string, any> = {};
+        if (partnerIds.length > 0) {
+          const { data: profileRows } = await supabase
+            .from("profiles")
+            .select("id,name,avatar_url,streak_days")
+            .in("id", partnerIds);
+          (profileRows ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
+        }
+        setPartners(rows.map((row: any) => {
+          const partnerId = row.requester_id === user.id ? row.receiver_id : row.requester_id;
+          return {
+            ...row,
+            partner_id: partnerId,
+            profile: profileMap[partnerId] ?? null,
+          };
+        }));
+      }
+
+    } else if (tab === "all") {
       // 기도 중 (미응답)
       const { data } = await supabase.from("prayer_items")
         .select("*").ilike("visibility", "%all%").eq("is_answered", false)
@@ -1171,6 +1211,60 @@ export default function CommunityPage() {
   const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
   const groupPrayersForCurrentTab = groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
 
+  if (selectedPartner) {
+    const partnerProfile = selectedPartner.profile ?? {};
+    const partnerName = partnerProfile.name || c("profile_default_name");
+    return (
+      <div className="page">
+        <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+          <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <Avatar url={partnerProfile.avatar_url} name={partnerName} size={48} />
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</h1>
+              <p style={{ fontSize: 12, color: "var(--text3)" }}>{t("profile_streak", lang, { n: partnerProfile.streak_days ?? 0 })}</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {([
+              { key: "qt" as const, label: c("community_group_tab_qt") },
+              { key: "praying" as const, label: c("community_prayer_tab_praying") },
+              { key: "answered" as const, label: c("community_prayer_tab_answered") },
+            ]).map(({ key, label }) => {
+              const active = partnerDetailTab === key;
+              return (
+                <button key={key} onClick={() => setPartnerDetailTab(key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,0.38)" : "1px solid var(--border)", background: active ? "var(--sage-light)" : "var(--bg2)", color: active ? "var(--sage-dark)" : "var(--text3)", fontSize: 12, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ padding: "18px 16px 96px" }}>
+          <div className="card" style={{ padding: "26px 18px", textAlign: "center", border: "1px dashed var(--border)" }}>
+            <div style={{ width: 46, height: 46, borderRadius: 18, margin: "0 auto 12px", background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {partnerDetailTab === "qt" ? <BookOpen size={21} /> : partnerDetailTab === "praying" ? <HandHeart size={21} /> : <CheckCircle2 size={21} />}
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>
+              {partnerDetailTab === "qt" ? c("community_partner_empty_qt_title") : partnerDetailTab === "praying" ? c("community_partner_empty_praying_title") : c("community_partner_empty_answered_title")}
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto 16px" }}>
+              {partnerDetailTab === "qt" ? c("community_partner_empty_qt_body") : partnerDetailTab === "praying" ? c("community_partner_empty_praying_body") : c("community_partner_empty_answered_body")}
+            </p>
+            <button onClick={() => router.push("/companions")} className="btn-outline">
+              {c("community_partner_manage_button")}
+            </button>
+          </div>
+        </div>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
   if (selectedGroup) {
     return (
       <div className="page">
@@ -1491,28 +1585,58 @@ export default function CommunityPage() {
 
         ) : tab === "partner" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div className="card" style={{ padding: 18, border: "1px solid rgba(122,157,122,0.22)", background: "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Users size={20} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{c("community_partner_cta_title")}</h2>
-                  <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("community_partner_cta_body")}</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button onClick={() => router.push("/companions")} className="btn-sage" style={{ display: "inline-flex", alignItems: "center", gap: 7, flex: "1 1 150px", justifyContent: "center" }}>
-                      <Plus size={15} /> {c("community_partner_invite_button")}
-                    </button>
-                    <button onClick={() => router.push("/companions")} className="btn-outline" style={{ flex: "1 1 130px" }}>
-                      {c("community_partner_manage_button")}
-                    </button>
+            <button onClick={() => router.push("/companions")} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Plus size={16} /> {c("community_partner_invite_button")}
+            </button>
+
+            {partners.length === 0 ? (
+              <>
+                <div className="card" style={{ padding: 18, border: "1px solid rgba(122,157,122,0.22)", background: "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Users size={20} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{c("community_partner_cta_title")}</h2>
+                      <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("community_partner_cta_body")}</p>
+                      <button onClick={() => router.push("/companions")} className="btn-outline">
+                        {c("community_partner_manage_button")}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div style={{ textAlign: "center", padding: "28px 16px", background: "var(--bg2)", borderRadius: 18, border: "1px dashed var(--border)" }}>
-              <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{c("community_partner_feed_coming")}</p>
-            </div>
+                <div style={{ textAlign: "center", padding: "28px 16px", background: "var(--bg2)", borderRadius: 18, border: "1px dashed var(--border)" }}>
+                  <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{c("community_partner_feed_coming")}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("community_partner_list_hint")}</p>
+                {partners.map((partner) => {
+                  const profile = partner.profile ?? {};
+                  const partnerName = profile.name || c("profile_default_name");
+                  return (
+                    <button
+                      key={partner.id}
+                      onClick={() => setSelectedPartner(partner)}
+                      style={{ width: "100%", padding: 14, borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                        <Avatar url={profile.avatar_url} name={partnerName} size={42} />
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_streak", lang, { n: profile.streak_days ?? 0 })}</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} style={{ color: "var(--text3)", flexShrink: 0 }} />
+                    </button>
+                  );
+                })}
+                <button onClick={() => router.push("/companions")} className="btn-outline">
+                  {c("community_partner_manage_button")}
+                </button>
+              </>
+            )}
           </div>
 
         ) : tab === "all" ? (
