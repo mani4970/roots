@@ -1240,7 +1240,7 @@ export default function CommunityPage() {
 
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ background: "var(--bg)", padding: "56px 20px 16px" }}>
           <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -1254,7 +1254,7 @@ export default function CommunityPage() {
         </div>
 
         <div style={{ padding: "16px 16px 96px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex" }}>
             {([
               { key: "qt" as const, label: c("community_group_tab_qt") },
               { key: "praying" as const, label: c("community_prayer_tab_praying") },
@@ -1283,7 +1283,7 @@ export default function CommunityPage() {
             <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto 16px" }}>
               {partnerEmptyConfig.body}
             </p>
-            <button onClick={() => router.push(partnerEmptyConfig.path)} className="btn-sage" style={{ width: "100%", maxWidth: 300 }}>
+            <button onClick={() => router.push(partnerEmptyConfig.path)} className="btn-sage" style={{ width: "100%", maxWidth: 300, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {partnerEmptyConfig.action}
             </button>
           </div>
@@ -1297,7 +1297,7 @@ export default function CommunityPage() {
   if (selectedGroup) {
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ background: "var(--bg)", padding: "56px 20px 16px" }}>
           <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -1354,7 +1354,7 @@ export default function CommunityPage() {
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 8 : 0 }}>
-            <div style={{ display: "flex", marginBottom: 14, borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", marginBottom: 14 }}>
               {[
                 { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
                 { key: "praying" as const, label: c("community_prayer_tab_praying"), count: groupPrayingPrayers.length },
