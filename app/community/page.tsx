@@ -587,6 +587,74 @@ export default function CommunityPage() {
     return c("community_answered_prayer_count", { count });
   }
 
+  async function fetchPrayerLikeMeta(supabase: any, prayerIds: string[], uid: string) {
+    if (prayerIds.length === 0) return { counts: {} as Record<string, number>, mine: [] as string[] };
+
+    const { data: likes, error } = await supabase
+      .from("prayer_likes")
+      .select("prayer_id,user_id")
+      .in("prayer_id", prayerIds);
+
+    if (error) {
+      console.warn("기도 응답 좋아요 조회 실패:", error.message);
+      return { counts: {} as Record<string, number>, mine: [] as string[] };
+    }
+
+    const counts: Record<string, number> = {};
+    const mine: string[] = [];
+    (likes ?? []).forEach((like: any) => {
+      counts[like.prayer_id] = (counts[like.prayer_id] ?? 0) + 1;
+      if (like.user_id === uid) mine.push(like.prayer_id);
+    });
+
+    return { counts, mine };
+  }
+
+  async function likeAnsweredPrayer(prayerId: string) {
+    if (!userId || likedPrayerIds.includes(prayerId)) return;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("prayer_likes")
+      .insert({ prayer_id: prayerId, user_id: userId });
+
+    if (error) {
+      if (error.code === "23505") {
+        setLikedPrayerIds(prev => prev.includes(prayerId) ? prev : [...prev, prayerId]);
+      }
+      return;
+    }
+
+    const bumpLikeCount = (items: any[]) => items.map((item: any) =>
+      item.id === prayerId ? { ...item, like_count: (item.like_count ?? 0) + 1 } : item
+    );
+
+    setLikedPrayerIds(prev => prev.includes(prayerId) ? prev : [...prev, prayerId]);
+    setAnsweredPrayers(prev => bumpLikeCount(prev));
+    setGroupPrayers(prev => bumpLikeCount(prev));
+    setPartnerPrayers(prev => bumpLikeCount(prev));
+  }
+
+  function PrayerLikeButton({ prayer }: { prayer: any }) {
+    const liked = likedPrayerIds.includes(prayer.id);
+    return (
+      <button
+        onClick={() => { void likeAnsweredPrayer(prayer.id); }}
+        disabled={liked}
+        style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: liked ? "default" : "pointer", padding: "4px 8px", borderRadius: 20 }}
+      >
+        <span style={{ fontSize: 18, color: liked ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: liked ? "scale(1.1)" : "scale(1)" }}>
+          <Heart size={17} strokeWidth={1.9} fill={liked ? "#E05050" : "none"} />
+        </span>
+        {(prayer.like_count ?? 0) > 0 && (
+          <span style={{ fontSize: 12, color: liked ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
+            {prayer.like_count}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   useEffect(() => { loadData(); }, [tab]);
 
   // 프로필 fetch 헬퍼
@@ -693,8 +761,14 @@ export default function CommunityPage() {
 
         if (prayerError) throw prayerError;
         const profMap = await fetchProfiles(supabase, prayerRows ?? []);
+        const answeredIds = (prayerRows ?? []).filter((row: any) => !!row.is_answered).map((row: any) => row.id);
+        const { counts: likeCounts, mine: myLikedIds } = await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
+        if (myLikedIds.length > 0) {
+          setLikedPrayerIds(prev => Array.from(new Set([...prev, ...myLikedIds])));
+        }
         const rowsWithProfiles = (prayerRows ?? []).map((row: any) => ({
           ...row,
+          like_count: likeCounts[row.id] ?? row.like_count ?? 0,
           profiles: profMap[row.user_id] ?? null,
           partnerSharedAt: recipientMap[row.id]?.created_at ?? row.created_at,
         })).sort((a: any, b: any) => new Date((b.is_answered ? b.answered_at : b.partnerSharedAt) ?? b.created_at ?? 0).getTime() - new Date((a.is_answered ? a.answered_at : a.partnerSharedAt) ?? a.created_at ?? 0).getTime());
@@ -1031,8 +1105,14 @@ export default function CommunityPage() {
         .limit(50);
       if (prayerRows) {
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
+        const answeredIds = prayerRows.filter((row: any) => !!row.is_answered).map((row: any) => row.id);
+        const { counts: likeCounts, mine: myLikedIds } = await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
+        if (myLikedIds.length > 0) {
+          setLikedPrayerIds(prev => Array.from(new Set([...prev, ...myLikedIds])));
+        }
         setGroupPrayers(filterHiddenItems("prayer", prayerRows.map((row: any) => ({
           ...row,
+          like_count: likeCounts[row.id] ?? row.like_count ?? 0,
           profiles: prayerProfMap[row.user_id] ?? null,
           isUnreadInGroup: isLaterThan(sharedContentTime(row), previousSeenAt),
         })), currentHiddenKeys, currentHiddenUserIds));
@@ -1588,6 +1668,12 @@ export default function CommunityPage() {
                       </div>
                     )}
 
+                    {p.is_answered && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                        <PrayerLikeButton prayer={p} />
+                      </div>
+                    )}
+
                     {!p.is_answered && (
                       <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
                         <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
@@ -1777,6 +1863,12 @@ export default function CommunityPage() {
                         <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
                           <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{c("community_prayer_testimony")}</p>
                           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
+                        </div>
+                      )}
+
+                      {p.is_answered && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                          <PrayerLikeButton prayer={p} />
                         </div>
                       )}
 
@@ -2124,31 +2216,7 @@ export default function CommunityPage() {
                             <span style={{ fontSize: 11, color: "var(--text3)" }}>{answeredPrayerCountText(p.prayer_count ?? 0)}</span>
                           )}
                         </div>
-                        <button
-                          onClick={async () => {
-                            if (!userId || likedPrayerIds.includes(p.id)) return;
-                            const supabase = createClient();
-                            const { error } = await supabase
-                              .from("prayer_likes")
-                              .insert({ prayer_id: p.id, user_id: userId });
-
-                            if (error && error.code !== "23505") return;
-
-                            setLikedPrayerIds(prev => prev.includes(p.id) ? prev : [...prev, p.id]);
-                            setAnsweredPrayers(prev => prev.map(ap => ap.id === p.id ? { ...ap, like_count: Math.max(ap.like_count ?? 0, (p.like_count ?? 0) + 1) } : ap));
-                          }}
-                          disabled={likedPrayerIds.includes(p.id)}
-                          style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: likedPrayerIds.includes(p.id) ? "default" : "pointer", padding: "4px 8px", borderRadius: 20 }}
-                        >
-                          <span style={{ fontSize: 18, color: likedPrayerIds.includes(p.id) ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: likedPrayerIds.includes(p.id) ? "scale(1.1)" : "scale(1)" }}>
-                            <Heart size={17} strokeWidth={1.9} fill={likedPrayerIds.includes(p.id) ? "#E05050" : "none"} />
-                          </span>
-                          {(p.like_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 12, color: likedPrayerIds.includes(p.id) ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
-                              {p.like_count}
-                            </span>
-                          )}
-                        </button>
+                        <PrayerLikeButton prayer={p} />
                       </div>
                     </div>
                   ))}

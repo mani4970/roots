@@ -2,13 +2,14 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
+import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { copyText } from "@/lib/nativeShare";
-import { ChevronLeft, Loader2, Share2, Check, Copy, Globe, Lock, X, Edit3 } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
 
 
 // QT Record 전용 라벨 매핑
@@ -65,8 +66,9 @@ function RecordContent() {
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [myGroups, setMyGroups] = useState<any[]>([]);
-  // 다중 선택: "all" | groupId 배열
+  const [myGroups, setMyGroups] = useState<ShareTargetGroup[]>([]);
+  const [myPartners, setMyPartners] = useState<ShareTargetPartner[]>([]);
+  // 다중 선택: "all" | "group_<id>" | "partner_<id>" 배열
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   // 현재 공유 대상들
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
@@ -99,24 +101,61 @@ function RecordContent() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
+        let visibilityTargets: string[] = [];
         if (data) {
           setRecord(data);
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
-          if (v !== "private") {
-            setSharedTargets(v.split(",").filter(Boolean));
-          }
+          visibilityTargets = v !== "private" ? v.split(",").map((part: string) => part.trim()).filter(Boolean) : [];
         }
-        // 내가 속한 그룹 — Supabase에서 로드
+        // 내가 속한 그룹 / 동역자 — Supabase에서 로드
         if (user) {
           const { data: memberRows } = await supabase.from("group_members")
             .select("group_id").eq("user_id", user.id);
-          const gIds = (memberRows ?? []).map((r: any) => r.group_id);
+          const gIds = (memberRows ?? []).map((r: any) => r.group_id).filter(Boolean);
           if (gIds.length > 0) {
             const { data: groupData } = await supabase.from("groups")
               .select("id, name, is_public").in("id", gIds);
-            setMyGroups(groupData ?? []);
+            setMyGroups((groupData ?? []).map((group: any) => ({ id: String(group.id), name: String(group.name ?? ""), is_public: !!group.is_public })));
+          } else {
+            setMyGroups([]);
           }
+
+          const { data: companionRows } = await supabase
+            .from("companions")
+            .select("requester_id, receiver_id, status")
+            .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
+            .eq("status", "accepted");
+          const partnerIds = Array.from(new Set((companionRows ?? []).map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id).filter(Boolean)));
+          if (partnerIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, name, avatar_url")
+              .in("id", partnerIds);
+            const profileMap: Record<string, any> = {};
+            (profiles ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
+            setMyPartners(partnerIds.map((partnerId: string) => ({
+              id: partnerId,
+              name: profileMap[partnerId]?.name ?? t("community_unknown", lang),
+              avatar_url: profileMap[partnerId]?.avatar_url ?? null,
+            })));
+          } else {
+            setMyPartners([]);
+          }
+
+          if (id) {
+            const { data: recipientRows } = await supabase
+              .from("qt_record_recipients")
+              .select("recipient_id")
+              .eq("qt_record_id", id)
+              .eq("owner_id", user.id);
+            const partnerTargets = (recipientRows ?? []).map((row: any) => `partner_${row.recipient_id}`).filter(Boolean);
+            setSharedTargets(Array.from(new Set([...visibilityTargets, ...partnerTargets])));
+          } else {
+            setSharedTargets(visibilityTargets);
+          }
+        } else {
+          setSharedTargets(visibilityTargets);
         }
       } catch (error) {
         console.error("qt record load failed", error);
@@ -134,51 +173,98 @@ function RecordContent() {
     );
   }
 
-  async function doShare() {
-    if (selectedTargets.length === 0) return;
+  function splitShareTargets(targets: string[]) {
+    const partnerRecipientIds = Array.from(new Set(
+      targets
+        .filter(target => target.startsWith("partner_"))
+        .map(target => target.replace(/^partner_/, ""))
+        .filter(Boolean)
+    ));
+    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
+    const visibility = visibilityTargets.includes("all")
+      ? "all"
+      : visibilityTargets.length > 0
+        ? visibilityTargets.join(",")
+        : "private";
+    return { visibility, partnerRecipientIds };
+  }
+
+  async function replaceQtRecipients(supabase: ReturnType<typeof createClient>, qtRecordId: string, ownerId: string, recipientIds: string[]) {
+    const { error: deleteError } = await supabase
+      .from("qt_record_recipients")
+      .delete()
+      .eq("qt_record_id", qtRecordId)
+      .eq("owner_id", ownerId);
+    if (deleteError) throw deleteError;
+
+    if (recipientIds.length === 0) return;
+
+    const { error: insertError } = await supabase
+      .from("qt_record_recipients")
+      .insert(recipientIds.map(recipientId => ({
+        qt_record_id: qtRecordId,
+        owner_id: ownerId,
+        recipient_id: recipientId,
+      })));
+    if (insertError) throw insertError;
+  }
+
+  async function saveShareTargets(privateOnly = false) {
+    if (!id || (!privateOnly && selectedTargets.length === 0)) return;
     setSharing(true);
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      // visibility: "all,group_xxx,group_yyy" 형태로 저장
-      // 단 "all"이 있으면 그룹도 포함해서 쉼표로 합치기
-      const newVisibility = selectedTargets.join(",");
+      if (!user) return;
+
+      const { visibility: newVisibility, partnerRecipientIds } = privateOnly
+        ? { visibility: "private", partnerRecipientIds: [] as string[] }
+        : splitShareTargets(selectedTargets);
+
       const { error, data } = await supabase.from("qt_records")
         .update({ visibility: newVisibility })
         .eq("id", id)
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .select();
       if (error) throw error;
+
+      await replaceQtRecipients(supabase, id, user.id, partnerRecipientIds);
+
       if (data && data.length > 0) {
-      setRecord((r: any) => ({ ...r, visibility: newVisibility }));
-      setSharedTargets(selectedTargets);
-      // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
-      // 전체 공개뿐 아니라 그룹 나눔도 QT 나눔으로 인정합니다.
-      try {
-        const { data: { user: u } } = await supabase.auth.getUser();
-        if (u) {
-          const { data: prof } = await supabase.from("profiles")
-            .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", u.id).single();
-          const { data: shares } = await supabase.from("qt_records")
-            .select("id").eq("user_id", u.id).eq("is_draft", false)
-            .not("visibility", "is", null).neq("visibility", "private").neq("visibility", "");
-          const shareCount = (shares?.length ?? 0);
-          const updates: any = {};
-          if (!prof?.badge_joseph && shareCount >= 1) updates.badge_joseph = true;
-          if (!prof?.badge_qt_bird && shareCount >= 30) updates.badge_qt_bird = true;
-          if (!prof?.badge_word_peace && shareCount >= 50) updates.badge_word_peace = true;
-          if (Object.keys(updates).length > 0) {
-            await supabase.from("profiles").update(updates).eq("id", u.id);
-            if (updates.badge_word_peace) {
-              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
-            } else if (updates.badge_qt_bird) {
-              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
-            } else if (updates.badge_joseph) {
-              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
+        setRecord((r: any) => ({ ...r, visibility: newVisibility }));
+        setSharedTargets(privateOnly ? [] : Array.from(new Set(selectedTargets)));
+        // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
+        // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.
+        if (!privateOnly) {
+          try {
+            const { data: prof } = await supabase.from("profiles")
+              .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", user.id).single();
+            const { data: visibilityShares } = await supabase.from("qt_records")
+              .select("id").eq("user_id", user.id).eq("is_draft", false)
+              .not("visibility", "is", null).neq("visibility", "private").neq("visibility", "");
+            const { data: partnerShares } = await supabase.from("qt_record_recipients")
+              .select("qt_record_id").eq("owner_id", user.id);
+            const sharedIds = new Set([
+              ...((visibilityShares ?? []).map((row: any) => row.id)),
+              ...((partnerShares ?? []).map((row: any) => row.qt_record_id)),
+            ]);
+            const shareCount = sharedIds.size;
+            const updates: any = {};
+            if (!prof?.badge_joseph && shareCount >= 1) updates.badge_joseph = true;
+            if (!prof?.badge_qt_bird && shareCount >= 30) updates.badge_qt_bird = true;
+            if (!prof?.badge_word_peace && shareCount >= 50) updates.badge_word_peace = true;
+            if (Object.keys(updates).length > 0) {
+              await supabase.from("profiles").update(updates).eq("id", user.id);
+              if (updates.badge_word_peace) {
+                setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
+              } else if (updates.badge_qt_bird) {
+                setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+              } else if (updates.badge_joseph) {
+                setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
+              }
             }
-          }
+          } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
         }
-      } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
       }
       setShowShareModal(false);
     } catch (error) {
@@ -186,23 +272,6 @@ function RecordContent() {
       setNotice(t("qt_record_error_share", lang));
     } finally {
       setSharing(false);
-    }
-  }
-
-  async function unshare() {
-    const supabase = createClient();
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("qt_records")
-        .update({ visibility: "private" })
-        .eq("id", id)
-        .eq("user_id", user?.id);
-      if (error) throw error;
-      setRecord((r: any) => ({ ...r, visibility: "private" }));
-      setSharedTargets([]);
-    } catch (error) {
-      console.error("qt unshare failed", error);
-      setNotice(t("qt_record_error_share", lang));
     }
   }
 
@@ -290,10 +359,15 @@ function RecordContent() {
     if (sharedTargets.length === 0) return null;
     const labels: string[] = [];
     if (sharedTargets.includes("all")) labels.push(trR("전체 커뮤니티", lang));
-    sharedTargets.filter(t => t !== "all").forEach(t => {
-      const gId = t.startsWith("group_") ? t.replace("group_", "") : t;
-      const g = myGroups.find(g => g.id === gId);
-      if (g) labels.push(`'${g.name}'`);
+    sharedTargets.filter(target => target.startsWith("partner_")).forEach(target => {
+      const partnerId = target.replace("partner_", "");
+      const partner = myPartners.find(item => item.id === partnerId);
+      if (partner) labels.push(`'${partner.name}'`);
+    });
+    sharedTargets.filter(target => target.startsWith("group_")).forEach(target => {
+      const groupId = target.replace("group_", "");
+      const group = myGroups.find(item => item.id === groupId);
+      if (group) labels.push(`'${group.name}'`);
     });
     return labels.length > 0 ? t("qt_record_shared_label", lang, { labels: labels.join(", ") }) : null;
   }
@@ -364,75 +438,33 @@ function RecordContent() {
 
       {/* 나누기 모달 */}
       {showShareModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", maxHeight: "min(720px, calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))", display: "flex", flexDirection: "column", boxShadow: "0 18px 52px rgba(0,0,0,0.28)", overflow: "hidden" }}>
-            <div style={{ flexShrink: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{trR("큐티 나누기", lang)}</h2>
-                <button onClick={() => setShowShareModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
-              </div>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}</p>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, overflowY: "auto", minHeight: 0, flex: "1 1 auto", paddingRight: 2, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
-              {/* 전체 커뮤니티 */}
-              <button onClick={() => toggleTarget("all")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
-                <Globe size={20} style={{ color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: selectedTargets.includes("all") ? "var(--sage-dark)" : "var(--text)" }}>{trR("전체 커뮤니티", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{trR("모든 Roots 사용자에게 공개", lang)}</p>
-                </div>
-                <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selectedTargets.includes("all") ? "var(--sage)" : "var(--border)"}`, background: selectedTargets.includes("all") ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {selectedTargets.includes("all") && <Check size={12} style={{ color: "white" }} />}
-                </div>
-              </button>
-
-              {/* 내 그룹들 */}
-              {myGroups.length > 0 && (
-                <>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginTop: 4, paddingLeft: 4, flexShrink: 0 }}>{trR("내 그룹", lang)}</p>
-                  {myGroups.map(g => {
-                    const key = `group_${g.id}`;
-                    const isSelected = selectedTargets.includes(key);
-                    return (
-                      <button key={g.id} onClick={() => toggleTarget(key)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
-                        <Lock size={20} style={{ color: isSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: isSelected ? "var(--sage-dark)" : "var(--text)" }}>{g.name}</p>
-                          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{g.is_public ? trR("공개 그룹", lang) : trR("비공개 그룹", lang)}</p>
-                        </div>
-                        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          {isSelected && <Check size={12} style={{ color: "white" }} />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-
-              {myGroups.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>
-                  {trR("그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", lang)}
-                </p>
-              )}
-            </div>
-
-            <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>
-              {selectedTargets.length > 0 && (
-                <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 600 }}>
-                  {t("qt_record_selected_count", lang, { count: selectedTargets.length })}
-                </p>
-              )}
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setShowShareModal(false)} className="btn-outline" style={{ flex: 1 }}>{trR("취소", lang)}</button>
-                <button onClick={doShare} disabled={sharing || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1 }}>
-                  {sharing ? <Loader2 size={16} className="spin" /> : `${trR("나누기", lang)}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SharePromptModal
+          title={trR("큐티 나누기", lang)}
+          description={trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}
+          helperText={t("qt_complete_share_helper", lang)}
+          allLabel={trR("전체 커뮤니티", lang)}
+          allSubLabel={trR("모든 Roots 사용자에게 공개", lang)}
+          partnersLabel={t("share_prompt_partners", lang)}
+          partnerSubLabel={t("share_prompt_partner_sub", lang)}
+          noPartnersLabel={t("share_prompt_no_partners", lang)}
+          groupsLabel={trR("내 그룹", lang)}
+          publicGroupLabel={trR("공개 그룹", lang)}
+          privateGroupLabel={trR("비공개 그룹", lang)}
+          noGroupsLabel={trR("그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", lang)}
+          selectedCountLabel={t("qt_record_selected_count", lang, { count: selectedTargets.length })}
+          loadingLabel={t("loading", lang)}
+          shareActionLabel={trR("나누기", lang)}
+          privateActionLabel={t("share_prompt_private_action", lang)}
+          closeLabel={t("close", lang)}
+          groups={myGroups}
+          partners={myPartners}
+          selectedTargets={selectedTargets}
+          saving={sharing}
+          onToggleTarget={toggleTarget}
+          onClose={() => setShowShareModal(false)}
+          onPrivate={() => { void saveShareTargets(true); }}
+          onShare={() => { void saveShareTargets(false); }}
+        />
       )}
 
       <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
