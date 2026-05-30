@@ -228,6 +228,9 @@ export default function CommunityPage() {
   }
 
   function closePartnerDetail() {
+    setActionMenu(null);
+    setSafetyConfirm(null);
+    closeManageModal();
     setSelectedPartner(null);
     setPartnerDetailTab("qt");
     setPartnerQts([]);
@@ -1601,6 +1604,9 @@ export default function CommunityPage() {
         </div>
 
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
+        {renderActionMenu()}
+        {renderSafetyConfirmModal()}
+        {renderManageModal()}
         <BottomNav />
       </div>
     );
