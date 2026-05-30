@@ -68,8 +68,11 @@ function sortGroupsForDisplay(groups: any[]) {
 
 function sortPartnersForDisplay(partners: any[]) {
   return [...partners].sort((a, b) => {
+    const aHasNew = !!a.hasNewContent;
+    const bHasNew = !!b.hasNewContent;
     if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
-    return new Date(b.responded_at ?? b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.responded_at ?? a.updated_at ?? a.created_at ?? 0).getTime();
+    if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
+    return new Date(b.latest_partner_activity_at ?? b.responded_at ?? b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.latest_partner_activity_at ?? a.responded_at ?? a.updated_at ?? a.created_at ?? 0).getTime();
   });
 }
 
@@ -676,8 +679,9 @@ export default function CommunityPage() {
   }
 
   async function openPartnerDetail(partner: any) {
-    setSelectedPartner(partner);
-    setPartnerDetailTab("qt");
+    const openedAt = new Date().toISOString();
+    setSelectedPartner({ ...partner, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt });
+    setPartnerDetailTab(partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt");
     setPartnerQts([]);
     setPartnerPrayers([]);
     setLoadingPartnerQts(true);
@@ -696,6 +700,23 @@ export default function CommunityPage() {
       setLoadingPartnerQts(false);
       setLoadingPartnerPrayers(false);
       return;
+    }
+
+    setPartners(prev => sortPartnersForDisplay(prev.map(item => item.partner_id === partnerId ? { ...item, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt } : item)));
+
+    try {
+      const { error: seenError } = await supabase
+        .from("companion_preferences")
+        .upsert({
+          user_id: user.id,
+          companion_user_id: partnerId,
+          is_favorite: !!partner.isFavorite,
+          last_seen_shared_at: openedAt,
+          updated_at: openedAt,
+        }, { onConflict: "user_id,companion_user_id" });
+      if (seenError) console.warn("동역자 읽음 상태 저장 실패:", seenError.message);
+    } catch (error) {
+      console.warn("동역자 읽음 상태 저장 중 예외:", error);
     }
 
     const currentHiddenKeys = hiddenKeys;
@@ -893,29 +914,98 @@ export default function CommunityPage() {
           (profileRows ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
         }
         let favoritePartnerIds = new Set<string>();
+        const partnerPreferenceMap: Record<string, any> = {};
         if (partnerIds.length > 0) {
-          const { data: preferenceRows, error: preferenceError } = await supabase
+          let preferenceRows: any[] | null = null;
+          const { data, error: preferenceError } = await supabase
             .from("companion_preferences")
-            .select("companion_user_id,is_favorite")
+            .select("companion_user_id,is_favorite,last_seen_shared_at,created_at")
             .eq("user_id", user.id)
             .in("companion_user_id", partnerIds);
+
           if (preferenceError) {
-            console.warn("동역자 즐겨찾기 조회 실패:", preferenceError.message);
+            console.warn("동역자 선호도/읽음 상태 조회 실패. 기존 컬럼으로 fallback:", preferenceError.message);
+            const { data: fallbackRows, error: fallbackError } = await supabase
+              .from("companion_preferences")
+              .select("companion_user_id,is_favorite,created_at")
+              .eq("user_id", user.id)
+              .in("companion_user_id", partnerIds);
+            if (fallbackError) {
+              console.warn("동역자 즐겨찾기 조회 실패:", fallbackError.message);
+            } else {
+              preferenceRows = fallbackRows ?? [];
+            }
           } else {
-            favoritePartnerIds = new Set((preferenceRows ?? [])
-              .filter((row: any) => !!row.is_favorite)
-              .map((row: any) => row.companion_user_id)
-              .filter(Boolean));
+            preferenceRows = data ?? [];
+          }
+
+          (preferenceRows ?? []).forEach((row: any) => {
+            partnerPreferenceMap[row.companion_user_id] = row;
+          });
+          favoritePartnerIds = new Set((preferenceRows ?? [])
+            .filter((row: any) => !!row.is_favorite)
+            .map((row: any) => row.companion_user_id)
+            .filter(Boolean));
+        }
+
+        const latestPartnerQtAt: Record<string, string | null> = {};
+        const latestPartnerPrayerAt: Record<string, string | null> = {};
+        if (partnerIds.length > 0) {
+          const { data: qtRecipientRows, error: qtRecipientError } = await supabase
+            .from("qt_record_recipients")
+            .select("owner_id,recipient_id,created_at")
+            .eq("recipient_id", user.id)
+            .in("owner_id", partnerIds)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          if (qtRecipientError) {
+            console.warn("동역자 새 묵상 조회 실패:", qtRecipientError.message);
+          } else {
+            (qtRecipientRows ?? []).forEach((row: any) => {
+              if (!latestPartnerQtAt[row.owner_id]) latestPartnerQtAt[row.owner_id] = row.created_at ?? null;
+            });
+          }
+
+          const { data: prayerRecipientRows, error: prayerRecipientError } = await supabase
+            .from("prayer_item_recipients")
+            .select("owner_id,recipient_id,created_at")
+            .eq("recipient_id", user.id)
+            .in("owner_id", partnerIds)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          if (prayerRecipientError) {
+            console.warn("동역자 새 기도 조회 실패:", prayerRecipientError.message);
+          } else {
+            (prayerRecipientRows ?? []).forEach((row: any) => {
+              if (!latestPartnerPrayerAt[row.owner_id]) latestPartnerPrayerAt[row.owner_id] = row.created_at ?? null;
+            });
           }
         }
 
         setPartners(sortPartnersForDisplay(rows.map((row: any) => {
           const partnerId = row.requester_id === user.id ? row.receiver_id : row.requester_id;
+          const preference = partnerPreferenceMap[partnerId] ?? null;
+          const lastSeenPartnerAt = preference?.last_seen_shared_at ?? row.responded_at ?? row.created_at ?? null;
+          const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
+          const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
+          const latestPartnerActivityAt = latestSharedContentTime([
+            latestQtAt ? { created_at: latestQtAt } : null,
+            latestPrayerAt ? { created_at: latestPrayerAt } : null,
+          ].filter(Boolean) as any[]);
+          const hasNewQtShare = isLaterThan(latestQtAt, lastSeenPartnerAt);
+          const hasNewPrayer = isLaterThan(latestPrayerAt, lastSeenPartnerAt);
           return {
             ...row,
             partner_id: partnerId,
             profile: profileMap[partnerId] ?? null,
             isFavorite: favoritePartnerIds.has(partnerId),
+            last_seen_shared_at: lastSeenPartnerAt,
+            latest_qt_at: latestQtAt,
+            latest_prayer_at: latestPrayerAt,
+            latest_partner_activity_at: latestPartnerActivityAt,
+            hasNewQtShare,
+            hasNewPrayer,
+            hasNewContent: hasNewQtShare || hasNewPrayer,
           };
         })));
       }
@@ -2069,7 +2159,7 @@ export default function CommunityPage() {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event) => { if (event.key === "Enter") openPartnerDetail(partner); }}
-                      style={{ width: "100%", padding: 14, borderRadius: 18, border: "1px solid var(--border)", background: partner.isFavorite ? "rgba(232,197,71,0.07)" : "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
+                      style={{ width: "100%", padding: 14, borderRadius: 18, border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`, background: partner.hasNewContent ? "rgba(122,157,122,0.08)" : (partner.isFavorite ? "rgba(232,197,71,0.07)" : "var(--bg2)"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                         <button
@@ -2082,7 +2172,14 @@ export default function CommunityPage() {
                         </button>
                         <Avatar url={profile.avatar_url} name={partnerName} size={42} />
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, minWidth: 0, flexWrap: "wrap" }}>
+                            <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{partnerName}</p>
+                            {partner.hasNewContent && (
+                              <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", flexShrink: 0 }}>
+                                {c("community_new")}
+                              </span>
+                            )}
+                          </div>
                           <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_streak", lang, { n: profile.streak_days ?? 0 })}</p>
                         </div>
                       </div>
