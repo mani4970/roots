@@ -680,6 +680,7 @@ export default function CommunityPage() {
 
   async function openPartnerDetail(partner: any) {
     const openedAt = new Date().toISOString();
+    const previousSeenAt = partner.last_seen_shared_at ?? null;
     setSelectedPartner({ ...partner, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt });
     setPartnerDetailTab(partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt");
     setPartnerQts([]);
@@ -745,11 +746,16 @@ export default function CommunityPage() {
 
         if (qtError) throw qtError;
         const profMap = await fetchProfiles(supabase, qtRows ?? []);
-        const rowsWithProfiles = (qtRows ?? []).map((row: any) => ({
-          ...row,
-          profiles: profMap[row.user_id] ?? null,
-          partnerSharedAt: recipientMap[row.id]?.created_at ?? row.created_at,
-        })).sort((a: any, b: any) => new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() - new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime());
+        const rowsWithProfiles = (qtRows ?? []).map((row: any) => {
+          const recipient = recipientMap[row.id] ?? null;
+          const partnerSharedAt = recipient?.created_at ?? row.created_at;
+          return {
+            ...row,
+            profiles: profMap[row.user_id] ?? null,
+            partnerSharedAt,
+            isUnreadInPartner: recipient?.owner_id === partnerId && recipient?.recipient_id === user.id && isLaterThan(partnerSharedAt, previousSeenAt),
+          };
+        }).sort((a: any, b: any) => new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() - new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime());
 
         setPartnerQts(filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds));
 
@@ -795,12 +801,17 @@ export default function CommunityPage() {
         if (myLikedIds.length > 0) {
           setLikedPrayerIds(prev => Array.from(new Set([...prev, ...myLikedIds])));
         }
-        const rowsWithProfiles = (prayerRows ?? []).map((row: any) => ({
-          ...row,
-          like_count: likeCounts[row.id] ?? row.like_count ?? 0,
-          profiles: profMap[row.user_id] ?? null,
-          partnerSharedAt: recipientMap[row.id]?.created_at ?? row.created_at,
-        })).sort((a: any, b: any) => new Date((b.is_answered ? b.answered_at : b.partnerSharedAt) ?? b.created_at ?? 0).getTime() - new Date((a.is_answered ? a.answered_at : a.partnerSharedAt) ?? a.created_at ?? 0).getTime());
+        const rowsWithProfiles = (prayerRows ?? []).map((row: any) => {
+          const recipient = recipientMap[row.id] ?? null;
+          const partnerSharedAt = recipient?.created_at ?? row.created_at;
+          return {
+            ...row,
+            like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+            profiles: profMap[row.user_id] ?? null,
+            partnerSharedAt,
+            isUnreadInPartner: recipient?.owner_id === partnerId && recipient?.recipient_id === user.id && isLaterThan(partnerSharedAt, previousSeenAt),
+          };
+        }).sort((a: any, b: any) => new Date((b.is_answered ? b.answered_at : b.partnerSharedAt) ?? b.created_at ?? 0).getTime() - new Date((a.is_answered ? a.answered_at : a.partnerSharedAt) ?? a.created_at ?? 0).getTime());
 
         setPartnerPrayers(filterHiddenItems("prayer", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds));
       } else {
@@ -1705,6 +1716,11 @@ export default function CommunityPage() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        {r.isUnreadInPartner && (
+                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                            {c("community_unread")}
+                          </span>
+                        )}
                         <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                         <CardMenu kind="qt" item={r} scope="partner" partnerId={selectedPartner.partner_id} />
                       </div>
@@ -1742,6 +1758,11 @@ export default function CommunityPage() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        {p.isUnreadInPartner && (
+                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                            {c("community_unread")}
+                          </span>
+                        )}
                         <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                         <CardMenu kind="prayer" item={p} scope="partner" partnerId={selectedPartner.partner_id} />
                       </div>
@@ -2159,7 +2180,7 @@ export default function CommunityPage() {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event) => { if (event.key === "Enter") openPartnerDetail(partner); }}
-                      style={{ width: "100%", padding: 14, borderRadius: 18, border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`, background: partner.hasNewContent ? "rgba(122,157,122,0.08)" : (partner.isFavorite ? "rgba(232,197,71,0.07)" : "var(--bg2)"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
+                      style={{ width: "100%", padding: 14, borderRadius: 18, border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`, background: partner.hasNewContent ? "rgba(122,157,122,0.08)" : "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                         <button
