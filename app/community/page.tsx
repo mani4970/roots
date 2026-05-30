@@ -49,11 +49,19 @@ function latestSharedContentTime(rows?: any[] | null): string | null {
 
 function sortGroupsForDisplay(groups: any[]) {
   return [...groups].sort((a, b) => {
+    const aIsMember = !!a.isMember;
+    const bIsMember = !!b.isMember;
     const aHasNew = !!(a.hasNewContent ?? a.hasNewQt);
     const bHasNew = !!(b.hasNewContent ?? b.hasNewQt);
-    if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
-    if (!!a.isMember !== !!b.isMember) return a.isMember ? -1 : 1;
-    if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
+
+    // 참여하지 않은 공개 그룹은 새글이 있어도 내가 참여한 그룹 위로 올라오지 않게 항상 아래에 둔다.
+    if (aIsMember !== bIsMember) return aIsMember ? -1 : 1;
+
+    if (aIsMember && bIsMember) {
+      if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
+      if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
+    }
+
     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
   });
 }

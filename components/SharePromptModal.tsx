@@ -240,7 +240,9 @@ export default function SharePromptModal({
                 <p style={sectionTitleStyle}>{partnersLabel}</p>
                 <div style={scrollAreaStyle}>
                   {partners.length > 0 ? partners.map(renderPartnerOption) : (
-                    <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noPartnersLabel}</p>
+                    <div style={{ border: "1px dashed var(--border)", background: "var(--bg3)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
+                      <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{noPartnersLabel}</p>
+                    </div>
                   )}
                 </div>
               </section>
