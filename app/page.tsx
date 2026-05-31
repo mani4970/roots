@@ -180,6 +180,7 @@ export default function HomePage() {
   const [homePrayerSharePartners, setHomePrayerSharePartners] = useState<ShareTargetPartner[]>([]);
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
 
   function showToast(message: string) {
     setToast(message);
@@ -256,6 +257,18 @@ export default function HomePage() {
       .select("id,is_draft,decision")
       .eq("user_id", user.id)
       .eq("date", today);
+
+    const { data: pendingCompanionRequests, error: pendingCompanionRequestsError } = await supabase
+      .from("companions")
+      .select("id")
+      .eq("receiver_id", user.id)
+      .eq("status", "pending");
+    if (pendingCompanionRequestsError) {
+      console.error("동역자 신청 조회 실패:", pendingCompanionRequestsError);
+      setPendingCompanionRequestCount(0);
+    } else {
+      setPendingCompanionRequestCount((pendingCompanionRequests ?? []).length);
+    }
 
     const { data: prayerCompletion } = await supabase
       .from("daily_prayer_completions")
@@ -1338,6 +1351,22 @@ export default function HomePage() {
             {todayDone.qt ? t("home_qt_view_record", lang) : t("home_qt_start_today", lang)}
           </button>
         </div>
+
+        {pendingCompanionRequestCount > 0 && (
+          <div className="card-sage" style={{ borderRadius: 20, padding: 14, marginTop: 10, border: "1px solid rgba(122,157,122,0.26)" }}>
+            <div style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, marginBottom: 10 }}>
+              {t("home_partner_request_notice", lang)}
+            </div>
+            <button
+              onClick={() => router.push("/companions")}
+              className="btn-sage"
+              style={{ width: "100%", minHeight: 42 }}
+            >
+              {t("home_partner_request_cta", lang)}
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>

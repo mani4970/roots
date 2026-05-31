@@ -702,6 +702,8 @@ export const T = {
   home_qt_completed_title: { ko: "오늘 QT 완료", de: "Heutige QT abgeschlossen", en: "Today’s QT complete", fr: "QT du jour terminé" },
   home_qt_completed_sub: { ko: "정원이 자랐어요. 오늘의 말씀을 다시 돌아볼 수 있어요.", de: "Ihr Garten ist gewachsen. Sie können die heutige QT noch einmal ansehen.", en: "Your garden has grown. You can revisit today’s QT.", fr: "Votre jardin a grandi. Vous pouvez revoir le QT du jour." },
   home_qt_view_record: { ko: "큐티 보러 가기", de: "QT ansehen", en: "View QT", fr: "Voir le QT" },
+  home_partner_request_notice: { ko: "새 동역자 신청이 있어요!", de: "Neue Glaubenspartner-Anfrage erhalten!", en: "You have a new faith partner request!", fr: "Vous avez une nouvelle demande de partenaire de foi !" },
+  home_partner_request_cta: { ko: "확인하러 가기", de: "Ansehen", en: "View request", fr: "Voir la demande" },
     home_routine_qt:        { ko: "큐티",                 de: "QT", en: "QT", fr: "QT" },
     home_routine_prayer:    { ko: "기도",                 de: "Gebet", en: "Prayer", fr: "Prière" },
     home_routine_decision:  { ko: "결단",                 de: "Vorsatz", en: "Resolution", fr: "Décision" },
