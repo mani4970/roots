@@ -1418,12 +1418,8 @@ function QTWriteContent() {
         .map(target => target.replace(/^partner_/, ""))
         .filter(Boolean)
     ));
-    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
-    const visibility = visibilityTargets.includes("all")
-      ? "all"
-      : visibilityTargets.length > 0
-        ? visibilityTargets.join(",")
-        : "private";
+    const visibilityTargets = Array.from(new Set(targets.filter(target => target === "all" || target.startsWith("group_"))));
+    const visibility = visibilityTargets.length > 0 ? visibilityTargets.join(",") : "private";
     return { visibility, partnerRecipientIds };
   }
 
@@ -1674,6 +1670,18 @@ function QTWriteContent() {
       // 저장 성공 후 progress 반영이 실패했던 사용자가 다시 완료 버튼을 눌렀을 때 조용히 막히지 않게 합니다.
       if (completedRecord) {
         if (selectedDate === getLocalDateString()) {
+          if (typeof options.visibility === "string") {
+            const { error: visibilityError } = await supabase.from("qt_records")
+              .update({ visibility: options.visibility })
+              .eq("id", completedRecord.id)
+              .eq("user_id", user.id);
+            if (visibilityError) {
+              console.warn("말씀 묵상 그룹/전체 공유 저장 실패:", visibilityError);
+              showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+              return;
+            }
+          }
+
           if (Array.isArray(options.partnerRecipientIds)) {
             try {
               await replaceQtRecordRecipients(supabase, completedRecord.id, user.id, options.partnerRecipientIds);
