@@ -1560,10 +1560,10 @@ export default function CommunityPage() {
         <div style={{ padding: "4px 16px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex" }}>
             {([
-              { key: "qt" as const, label: c("community_group_tab_qt"), count: partnerQts.length },
-              { key: "praying" as const, label: c("community_prayer_tab_praying"), count: partnerPrayingPrayers.length },
-              { key: "answered" as const, label: c("community_prayer_tab_answered"), count: partnerAnsweredPrayers.length },
-            ]).map(({ key, label, count }) => {
+              { key: "qt" as const, label: c("community_group_tab_qt") },
+              { key: "praying" as const, label: c("community_prayer_tab_praying") },
+              { key: "answered" as const, label: c("community_prayer_tab_answered") },
+            ]).map(({ key, label }) => {
               const active = partnerDetailTab === key;
               return (
                 <button
@@ -1572,11 +1572,6 @@ export default function CommunityPage() {
                   style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                 >
                   <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
-                  {count > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px" }}>
-                      {count}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -1760,10 +1755,10 @@ export default function CommunityPage() {
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>
             <div style={{ display: "flex", marginBottom: 12 }}>
               {[
-                { key: "qt" as const, label: c("community_group_tab_qt"), count: groupQts.length },
-                { key: "praying" as const, label: c("community_prayer_tab_praying"), count: groupPrayingPrayers.length },
-                { key: "answered" as const, label: c("community_prayer_tab_answered"), count: groupAnsweredPrayers.length },
-              ].map(({ key, label, count }) => {
+                { key: "qt" as const, label: c("community_group_tab_qt") },
+                { key: "praying" as const, label: c("community_prayer_tab_praying") },
+                { key: "answered" as const, label: c("community_prayer_tab_answered") },
+              ].map(({ key, label }) => {
                 const active = groupDetailTab === key;
                 return (
                   <button
@@ -1772,11 +1767,6 @@ export default function CommunityPage() {
                     style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
-                    {count > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px" }}>
-                        {count}
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -2093,10 +2083,10 @@ export default function CommunityPage() {
           <>
             <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
               {([
-                { key: "qt" as const, label: c("community_group_tab_qt"), count: qtShares.length },
-                { key: "praying" as const, label: c("community_prayer_tab_praying"), count: prayers.length },
-                { key: "answered" as const, label: c("community_prayer_tab_answered"), count: answeredPrayers.length },
-              ]).map(({ key, label, count }) => {
+                { key: "qt" as const, label: c("community_group_tab_qt") },
+                { key: "praying" as const, label: c("community_prayer_tab_praying") },
+                { key: "answered" as const, label: c("community_prayer_tab_answered") },
+              ]).map(({ key, label }) => {
                 const active = allTab === key;
                 return (
                   <button
@@ -2105,11 +2095,6 @@ export default function CommunityPage() {
                     style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
-                    {count > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? "var(--sage)" : "var(--border)", borderRadius: 20, padding: "1px 7px" }}>
-                        {count}
-                      </span>
-                    )}
                   </button>
                 );
               })}
