@@ -180,12 +180,8 @@ function RecordContent() {
         .map(target => target.replace(/^partner_/, ""))
         .filter(Boolean)
     ));
-    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
-    const visibility = visibilityTargets.includes("all")
-      ? "all"
-      : visibilityTargets.length > 0
-        ? visibilityTargets.join(",")
-        : "private";
+    const visibilityTargets = Array.from(new Set(targets.filter(target => target === "all" || target.startsWith("group_"))));
+    const visibility = visibilityTargets.length > 0 ? visibilityTargets.join(",") : "private";
     return { visibility, partnerRecipientIds };
   }
 
@@ -221,22 +217,20 @@ function RecordContent() {
         ? { visibility: "private", partnerRecipientIds: [] as string[] }
         : splitShareTargets(selectedTargets);
 
-      const { error, data } = await supabase.from("qt_records")
+      const { error } = await supabase.from("qt_records")
         .update({ visibility: newVisibility })
         .eq("id", id)
-        .eq("user_id", user.id)
-        .select();
+        .eq("user_id", user.id);
       if (error) throw error;
 
       await replaceQtRecipients(supabase, id, user.id, partnerRecipientIds);
 
-      if (data && data.length > 0) {
-        setRecord((r: any) => ({ ...r, visibility: newVisibility }));
-        setSharedTargets(privateOnly ? [] : Array.from(new Set(selectedTargets)));
-        // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
-        // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.
-        if (!privateOnly) {
-          try {
+      setRecord((r: any) => ({ ...r, visibility: newVisibility }));
+      setSharedTargets(privateOnly ? [] : Array.from(new Set(selectedTargets)));
+      // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
+      // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.
+      if (!privateOnly) {
+        try {
             const { data: prof } = await supabase.from("profiles")
               .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", user.id).single();
             const { data: visibilityShares } = await supabase.from("qt_records")
@@ -264,7 +258,6 @@ function RecordContent() {
               }
             }
           } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
-        }
       }
       setShowShareModal(false);
     } catch (error) {
