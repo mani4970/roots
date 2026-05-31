@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Globe, Loader2, Lock, UserRound, X } from "lucide-react";
+import { Check, Globe, Loader2, Lock, UserPlus, UserRound, X } from "lucide-react";
 
 export type ShareTargetGroup = {
   id: string;
@@ -23,6 +23,7 @@ type SharePromptModalProps = {
   partnersLabel: string;
   partnerSubLabel: string;
   noPartnersLabel: string;
+  invitePartnersLabel?: string;
   groupsLabel: string;
   publicGroupLabel: string;
   privateGroupLabel: string;
@@ -38,6 +39,7 @@ type SharePromptModalProps = {
   saving?: boolean;
   loadingGroups?: boolean;
   loadingPartners?: boolean;
+  onInvitePartners?: () => void;
   onToggleTarget: (target: string) => void;
   onShare: () => void;
   onPrivate: () => void;
@@ -53,6 +55,7 @@ export default function SharePromptModal({
   partnersLabel,
   partnerSubLabel,
   noPartnersLabel,
+  invitePartnersLabel,
   groupsLabel,
   publicGroupLabel,
   privateGroupLabel,
@@ -68,6 +71,7 @@ export default function SharePromptModal({
   saving = false,
   loadingGroups = false,
   loadingPartners = false,
+  onInvitePartners,
   onToggleTarget,
   onShare,
   onPrivate,
@@ -242,6 +246,18 @@ export default function SharePromptModal({
                   {partners.length > 0 ? partners.map(renderPartnerOption) : (
                     <div style={{ border: "1px dashed var(--border)", background: "var(--bg3)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
                       <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{noPartnersLabel}</p>
+                      {onInvitePartners && invitePartnersLabel && (
+                        <button
+                          type="button"
+                          onClick={onInvitePartners}
+                          disabled={saving}
+                          className="btn-outline"
+                          style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 12px", opacity: saving ? 0.55 : 1 }}
+                        >
+                          <UserPlus size={15} />
+                          {invitePartnersLabel}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

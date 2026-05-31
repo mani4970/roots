@@ -520,6 +520,8 @@ function PhotoReflectionContent() {
           partnersLabel={t("share_prompt_partners", lang)}
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
           noPartnersLabel={t("share_prompt_no_partners", lang)}
+          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
+          onInvitePartners={() => router.push("/community")}
           groupsLabel={t("qt_record_my_groups", lang)}
           publicGroupLabel={t("qt_record_public_group", lang)}
           privateGroupLabel={t("qt_record_private_group", lang)}

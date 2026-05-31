@@ -202,6 +202,7 @@ export default function CommunityPage() {
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
   const [visibleFeedCounts, setVisibleFeedCounts] = useState<Record<string, number>>({});
+  const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -227,6 +228,112 @@ export default function CommunityPage() {
 
   function memberCountText(count: number) {
     return c("community_member_count", { count });
+  }
+
+
+  async function openAuthorProfile(profile: any, authorId?: string | null, event?: React.MouseEvent) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!authorId) return;
+
+    const fallbackProfile = profile ?? { id: authorId, name: c("community_unknown"), avatar_url: null, streak_days: 0 };
+    setProfileModal({ profile: { ...fallbackProfile, id: authorId }, userId: authorId, relationStatus: authorId === userId ? "self" : "loading" });
+    if (!userId || authorId === userId) return;
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("companions")
+        .select("id,requester_id,receiver_id,status")
+        .or(`and(requester_id.eq.${userId},receiver_id.eq.${authorId}),and(requester_id.eq.${authorId},receiver_id.eq.${userId})`)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const relation = (data ?? [])[0] as any | undefined;
+      let relationStatus: "none" | "accepted" | "pending_sent" | "pending_received" | "declined" = "none";
+      if (relation?.status === "accepted") relationStatus = "accepted";
+      else if (relation?.status === "pending") relationStatus = relation.requester_id === userId ? "pending_sent" : "pending_received";
+      else if (relation?.status === "declined") relationStatus = "declined";
+      setProfileModal(current => current?.userId === authorId ? { ...current, relationStatus, relationId: relation?.id } : current);
+    } catch (error) {
+      console.warn("프로필 동역자 상태 조회 실패:", error);
+      setProfileModal(current => current?.userId === authorId ? { ...current, relationStatus: "none" } : current);
+    }
+  }
+
+  function AuthorIdentity({ profile, authorId }: { profile: any; authorId?: string | null }) {
+    const canOpen = !!authorId;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <button type="button" onClick={(event) => openAuthorProfile(profile, authorId, event)} disabled={!canOpen} aria-label={c("community_profile_view")} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: "none", background: "transparent", cursor: canOpen ? "pointer" : "default", flexShrink: 0 }}>
+          <Avatar url={profile?.avatar_url} name={profile?.name} />
+        </button>
+        <button type="button" onClick={(event) => openAuthorProfile(profile, authorId, event)} disabled={!canOpen} style={{ minWidth: 0, padding: 0, border: "none", background: "transparent", cursor: canOpen ? "pointer" : "default", textAlign: "left" }}>
+          <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.name ?? (c("community_unknown"))}</span>
+        </button>
+      </div>
+    );
+  }
+
+  async function sendCompanionRequestFromProfile() {
+    if (!profileModal || !userId || profileModal.userId === userId || profileModal.saving) return;
+    const targetId = profileModal.userId;
+    setProfileModal(current => current?.userId === targetId ? { ...current, saving: true } : current);
+    try {
+      const supabase = createClient();
+      if (profileModal.relationId && profileModal.relationStatus === "declined") {
+        const { error } = await supabase.from("companions").update({ requester_id: userId, receiver_id: targetId, status: "pending", responded_at: null, updated_at: new Date().toISOString() }).eq("id", profileModal.relationId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("companions").insert({ requester_id: userId, receiver_id: targetId, status: "pending" });
+        if (error) throw error;
+      }
+      setProfileModal(current => current?.userId === targetId ? { ...current, relationStatus: "pending_sent", saving: false } : current);
+    } catch (error) {
+      console.error("동역자 신청 실패:", error);
+      setProfileModal(current => current?.userId === targetId ? { ...current, saving: false } : current);
+    }
+  }
+
+  function renderProfileModal() {
+    if (!profileModal) return null;
+    const name = profileModal.profile?.name || c("profile_default_name");
+    const streakDays = profileModal.profile?.streak_days ?? 0;
+    return (
+      <div onClick={() => setProfileModal(null)} style={{ position: "fixed", inset: 0, zIndex: 330, background: "rgba(26,28,30,0.68)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 14px calc(16px + env(safe-area-inset-bottom))" }}>
+        <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", borderRadius: 26, padding: 20, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.24)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)" }}>{c("community_profile_modal_title")}</h2>
+            <button onClick={() => setProfileModal(null)} style={{ width: 32, height: 32, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg3)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}><X size={18} /></button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10 }}>
+            <Avatar url={profileModal.profile?.avatar_url} name={name} size={76} />
+            <div>
+              <p style={{ fontSize: 20, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{name}</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", fontWeight: 700 }}>{t("profile_streak", lang, { n: streakDays })}</p>
+            </div>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            {profileModal.relationStatus === "loading" ? (
+              <button className="btn-outline" disabled style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.65 }}><Loader2 size={16} className="spin" /> {c("community_profile_checking")}</button>
+            ) : profileModal.relationStatus === "self" ? (
+              <div style={{ padding: "12px 14px", borderRadius: 16, background: "var(--bg3)", color: "var(--text3)", fontSize: 13, fontWeight: 700, textAlign: "center" }}>{c("community_profile_self")}</div>
+            ) : profileModal.relationStatus === "accepted" ? (
+              <div style={{ padding: "12px 14px", borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 13, fontWeight: 800, textAlign: "center" }}>{c("community_profile_already_partner")}</div>
+            ) : profileModal.relationStatus === "pending_sent" ? (
+              <div style={{ padding: "12px 14px", borderRadius: 16, background: "rgba(232,197,71,0.12)", color: "var(--terra-dark)", fontSize: 13, fontWeight: 800, textAlign: "center" }}>{c("community_profile_request_sent")}</div>
+            ) : profileModal.relationStatus === "pending_received" ? (
+              <button onClick={() => router.push("/companions")} className="btn-sage" style={{ width: "100%" }}>{c("community_profile_request_received")}</button>
+            ) : (
+              <button onClick={sendCompanionRequestFromProfile} disabled={!!profileModal.saving} className="btn-sage" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: profileModal.saving ? 0.65 : 1 }}>
+                {profileModal.saving ? <Loader2 size={16} className="spin" /> : <UserPlus size={16} />}
+                {c("community_profile_request_button")}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   function closeGroupDetail() {
@@ -676,7 +783,7 @@ export default function CommunityPage() {
   async function fetchProfiles(supabase: any, data: any[]) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
     if (uids.length === 0) return {};
-    const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
+    const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url, streak_days").in("id", uids);
     const map: Record<string, any> = {};
     (profs ?? []).forEach((p: any) => { map[p.id] = p; });
     return map;
@@ -1776,10 +1883,7 @@ export default function CommunityPage() {
                   <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                     <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
-                      </div>
+                      <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                         {r.isUnreadInPartner && (
                           <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
@@ -1821,10 +1925,7 @@ export default function CommunityPage() {
                 {visiblePartnerPrayers.map(p => (
                   <div key={p.id} className="card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
-                      </div>
+                      <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                         {p.isUnreadInPartner && (
                           <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
@@ -1878,6 +1979,7 @@ export default function CommunityPage() {
         </div>
 
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
+        {renderProfileModal()}
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
         {renderManageModal()}
@@ -1983,10 +2085,7 @@ export default function CommunityPage() {
                     <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                       <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
-                        </div>
+                        <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                         <div style={{ position: "absolute", top: 18, right: 18, display: "flex", alignItems: "center", gap: 6 }}>
                           {r.isUnreadInGroup && (
                             <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
@@ -2022,10 +2121,7 @@ export default function CommunityPage() {
                   {visibleGroupPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
-                        </div>
+                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           {p.isUnreadInGroup && (
                             <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
@@ -2078,6 +2174,7 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
+        {renderProfileModal()}
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
         {renderManageModal()}
@@ -2322,10 +2419,7 @@ export default function CommunityPage() {
                       <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                         <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} />
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{r.profiles?.name ?? (c("community_unknown"))}</span>
-                          </div>
+                          <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                             <CardMenu kind="qt" item={r} scope="all" />
@@ -2356,10 +2450,7 @@ export default function CommunityPage() {
                   {visibleAllPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
-                        </div>
+                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
                           {!p.is_answered && <CardMenu kind="prayer" item={p} scope="all" />}
@@ -2389,10 +2480,7 @@ export default function CommunityPage() {
                   {visibleAllAnsweredPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.name} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{p.profiles?.name ?? (c("community_unknown"))}</span>
-                        </div>
+                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: "var(--text3)" }}>
                             {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
@@ -2472,6 +2560,7 @@ export default function CommunityPage() {
         )}
       </div>
 
+      {renderProfileModal()}
       {renderActionMenu()}
       {renderSafetyConfirmModal()}
       {renderManageModal()}

@@ -450,6 +450,8 @@ function RecordContent() {
           partnersLabel={t("share_prompt_partners", lang)}
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
           noPartnersLabel={t("share_prompt_no_partners", lang)}
+          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
+          onInvitePartners={() => router.push("/community")}
           groupsLabel={trR("내 그룹", lang)}
           publicGroupLabel={trR("공개 그룹", lang)}
           privateGroupLabel={trR("비공개 그룹", lang)}

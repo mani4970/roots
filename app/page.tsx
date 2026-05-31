@@ -1197,6 +1197,8 @@ export default function HomePage() {
           partnersLabel={t("share_prompt_partners", lang)}
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
           noPartnersLabel={t("share_prompt_no_partners", lang)}
+          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
+          onInvitePartners={() => router.push("/community")}
           groupsLabel={t("prayer_intercession_my_groups", lang)}
           publicGroupLabel={t("prayer_intercession_public_group", lang)}
           privateGroupLabel={t("prayer_intercession_private_group", lang)}

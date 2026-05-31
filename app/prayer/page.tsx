@@ -601,6 +601,8 @@ function PrayerPageContent() {
           partnersLabel={c("share_prompt_partners")}
           partnerSubLabel={c("share_prompt_partner_sub")}
           noPartnersLabel={c("share_prompt_no_partners")}
+          invitePartnersLabel={c("share_prompt_invite_partners")}
+          onInvitePartners={() => router.push("/community")}
           groupsLabel={c("prayer_intercession_my_groups")}
           publicGroupLabel={c("prayer_intercession_public_group")}
           privateGroupLabel={c("prayer_intercession_private_group")}
@@ -856,6 +858,8 @@ function PrayerPageContent() {
           partnersLabel={c("share_prompt_partners")}
           partnerSubLabel={c("share_prompt_partner_sub")}
           noPartnersLabel={c("share_prompt_no_partners")}
+          invitePartnersLabel={c("share_prompt_invite_partners")}
+          onInvitePartners={() => router.push("/community")}
           groupsLabel={c("prayer_intercession_my_groups")}
           publicGroupLabel={c("prayer_intercession_public_group")}
           privateGroupLabel={c("prayer_intercession_private_group")}
