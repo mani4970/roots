@@ -308,6 +308,7 @@ function QTWriteContent() {
   const isEditMode = Boolean(editId);
   const isResume = params.get("resume") === "true";
   const isCatchUp = params.get("catchup") === "true";
+  const isSundayContextParam = params.get("sundayContext") === "true";
   // 오늘 스케줄 파라미터
   const schedBook = params.get("schedBook");
   const schedChapter = params.get("schedChapter");
@@ -318,6 +319,7 @@ function QTWriteContent() {
   const todayStr = getLocalDateString();
   const resumeDateParam = params.get("date");
   const initialDate = resumeDateParam || todayStr;
+  const initialSundayContext = isSundayContextParam || isSunday(initialDate);
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -361,6 +363,7 @@ function QTWriteContent() {
   type PassageVerse = { num: VerseNum; text: string };
   type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: PassageVerse[]; ref: string };
   const [passages, setPassages] = useState<PassageItem[]>([]);
+  const [activePassageIndex, setActivePassageIndex] = useState(0);
 
   // 주일예배 말씀 선택 step
   const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
@@ -410,10 +413,17 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
+  const [freeSundayContext, setFreeSundayContext] = useState(() => initMode === "free" && initialSundayContext);
+
+  useEffect(() => {
+    if (activePassageIndex >= passages.length) {
+      setActivePassageIndex(Math.max(0, passages.length - 1));
+    }
+  }, [activePassageIndex, passages.length]);
 
   function buildSundayBibleRef(title: string, refs: string[]) {
     const cleanTitle = title.trim();
-    const cleanRefs = refs.filter(Boolean).join(", ");
+    const cleanRefs = Array.from(new Set(refs.map(ref => ref.trim()).filter(Boolean))).join(", ");
     if (!cleanTitle && !cleanRefs) return "";
     if (cleanRefs) return `설교: ${cleanTitle} (${cleanRefs})`;
     return `설교: ${cleanTitle}`;
@@ -428,6 +438,100 @@ function QTWriteContent() {
     const refsText = (match?.[2] ?? "").trim();
     const refs = refsText ? refsText.split(/\s*,\s*/).filter(Boolean) : [];
     return { title, refs };
+  }
+
+
+  const SHORT_TO_FULL_BOOKS: Record<string, string> = {
+    "창":"창세기","출":"출애굽기","레":"레위기","민":"민수기","신":"신명기",
+    "수":"여호수아","삿":"사사기","룻":"룻기","삼상":"사무엘상","삼하":"사무엘하",
+    "왕상":"열왕기상","왕하":"열왕기하","대상":"역대상","대하":"역대하","스":"에스라",
+    "느":"느헤미야","에":"에스더","욥":"욥기","시":"시편","잠":"잠언",
+    "전":"전도서","아":"아가","사":"이사야","렘":"예레미야","애":"예레미야애가",
+    "겔":"에스겔","단":"다니엘","호":"호세아","욜":"요엘","암":"아모스",
+    "옵":"오바댜","욘":"요나","미":"미가","나":"나훔","합":"하박국",
+    "습":"스바냐","학":"학개","슥":"스가랴","말":"말라기",
+    "마":"마태복음","막":"마가복음","눅":"누가복음","요":"요한복음",
+    "행":"사도행전","롬":"로마서","고전":"고린도전서","고후":"고린도후서",
+    "갈":"갈라디아서","엡":"에베소서","빌":"빌립보서","골":"골로새서",
+    "살전":"데살로니가전서","살후":"데살로니가후서","딤전":"디모데전서","딤후":"디모데후서",
+    "딛":"디도서","몬":"빌레몬","히":"히브리서","약":"야고보서",
+    "벧전":"베드로전서","벧후":"베드로후서","요일":"요한일서","요이":"요한이서",
+    "요삼":"요한삼서","유":"유다서","계":"요한계시록",
+  };
+
+  function toKoreanBookName(name: string) {
+    const normalized = SHORT_TO_FULL_BOOKS[name] ?? name;
+    const koBooks = [...BOOK_NAMES.KO];
+    for (const names of Object.values(BOOK_NAMES)) {
+      const idx = names.indexOf(normalized);
+      if (idx >= 0) return koBooks[idx] ?? normalized;
+    }
+    return normalized;
+  }
+
+  function parseBibleRefParts(ref: string) {
+    const match = String(ref).trim().match(/^(.+?)\s+(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/);
+    if (!match) return null;
+    const [, rawBook, chap, sv, evChap, ev] = match;
+    const bookName = SHORT_TO_FULL_BOOKS[rawBook] ?? rawBook;
+    const finalEndChapter = evChap ?? chap;
+    const finalEndVerse = ev ?? sv;
+    return { bookName, chap, sv, finalEndChapter, finalEndVerse, cross: finalEndChapter !== chap };
+  }
+
+  async function loadPassageItemFromRef(ref: string): Promise<PassageItem | null> {
+    const parts = parseBibleRefParts(ref);
+    if (!parts) return null;
+    const { bookName, chap, sv, finalEndChapter, finalEndVerse, cross } = parts;
+    if (cross) {
+      const koBook = toKoreanBookName(bookName);
+      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap) - 1] ?? 176;
+      const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+      const d1 = await r1.json();
+      const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+      const d2 = await r2.json();
+      const verses = [
+        ...(d1.verses ?? []).map((v: any) => ({ ...v, num: `${chap}:${v.num}` })),
+        ...(d2.verses ?? []).map((v: any) => ({ ...v, num: `${finalEndChapter}:${v.num}` })),
+      ];
+      return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: true, verses, ref };
+    }
+    const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+    const data = await res.json();
+    return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: false, verses: data.verses ?? [], ref: data.reference || ref };
+  }
+
+  async function restoreSermonPassages(rawRef?: string | null, options: { markFreeSundayContext?: boolean } = {}) {
+    const parsed = parseSundayBibleRef(rawRef);
+    if (parsed.title) setSermonTitle(parsed.title);
+    if (options.markFreeSundayContext) setFreeSundayContext(true);
+    const refs = parsed.refs.filter(Boolean);
+    if (refs.length === 0) return false;
+
+    const loaded = await Promise.all(refs.map(async ref => {
+      try {
+        return await loadPassageItemFromRef(ref);
+      } catch {
+        return null;
+      }
+    }));
+    const items = loaded.map((item, idx) => item ?? { book: "", chapter: "", startV: "", endV: "", endChapter: "", cross: refs[idx].includes("-") && refs[idx].includes(":"), verses: [], ref: refs[idx] });
+    const first = items[0];
+    if (first) {
+      setBibleRef(first.ref);
+      setBook(first.book || book);
+      setChapter(first.chapter || chapter);
+      setStartV(first.startV || startV);
+      setEndChapter(first.endChapter || first.chapter || endChapter);
+      setEndV(first.endV || endV);
+      setCrossChapter(Boolean(first.cross));
+      setPassageVerses(first.verses ?? []);
+      setPassages(items);
+      setActivePassageIndex(0);
+      setBibleStep("done");
+      setSundayBibleStep("done");
+    }
+    return true;
   }
 
 
@@ -546,6 +650,7 @@ function QTWriteContent() {
       else if (initMode === "sunday") setMode("sunday");
       else if (initMode === "6step") setMode("6step");
       else setMode(isSunday(selectedDate) ? "sunday" : "6step");
+      setFreeSundayContext(initMode === "free" && (isSundayContextParam || isSunday(selectedDate)));
 
       setBibleRef("");
       setKeyVerse("");
@@ -587,28 +692,11 @@ function QTWriteContent() {
         setMode(record.qt_mode ?? "6step");
         setCur(0);
 
-        const sundayRecord = record.qt_mode === "sunday" ? parseSundayBibleRef(record.bible_ref) : null;
-        if (sundayRecord) {
-          setSermonTitle(sundayRecord.title);
-          const [mainRef, ...extraRefs] = sundayRecord.refs;
-          if (mainRef) {
-            setBibleRef(mainRef);
-            setBibleStep("done");
-            setSundayBibleStep("done");
-          }
-          if (extraRefs.length > 0) {
-            setPassages(extraRefs.map(ref => ({
-              book: "",
-              chapter: "",
-              startV: "",
-              endV: "",
-              endChapter: "",
-              cross: ref.includes("-") && ref.includes(":"),
-              verses: [],
-              ref,
-            })));
-          }
-        } else if (record.bible_ref) {
+        const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
+        const restoredSermonPassages = (record.qt_mode === "sunday" || (record.qt_mode === "free" && isSermonRef))
+          ? await restoreSermonPassages(record.bible_ref, { markFreeSundayContext: record.qt_mode === "free" })
+          : false;
+        if (!restoredSermonPassages && record.bible_ref) {
           setBibleRef(record.bible_ref);
           setBibleStep("done");
         }
@@ -638,7 +726,7 @@ function QTWriteContent() {
           if (dList.length > 0) setDecisions(dList);
         }
 
-        const refForReload = sundayRecord?.refs?.[0] ?? record.bible_ref;
+        const refForReload = restoredSermonPassages ? null : record.bible_ref;
         if (refForReload) {
           try {
             const SHORT_TO_FULL: Record<string, string> = {
@@ -734,29 +822,12 @@ function QTWriteContent() {
       resetDraftState();
 
       // 기존 draft 데이터 복원
-      const sundayDraft = draft.qt_mode === "sunday" ? parseSundayBibleRef(draft.bible_ref) : null;
       if (draft.qt_mode) setMode(draft.qt_mode);
-      if (sundayDraft) {
-        setSermonTitle(sundayDraft.title);
-        const [mainRef, ...extraRefs] = sundayDraft.refs;
-        if (mainRef) {
-          setBibleRef(mainRef);
-          setBibleStep("done");
-          setSundayBibleStep("done");
-        }
-        if (extraRefs.length > 0) {
-          setPassages(extraRefs.map(ref => ({
-            book: "",
-            chapter: "",
-            startV: "",
-            endV: "",
-            endChapter: "",
-            cross: ref.includes("-") && ref.includes(":"),
-            verses: [],
-            ref,
-          })));
-        }
-      } else if (draft.bible_ref) {
+      const isDraftSermonRef = String(draft.bible_ref ?? "").trim().startsWith("설교:");
+      const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || (draft.qt_mode === "free" && isDraftSermonRef))
+        ? await restoreSermonPassages(draft.bible_ref, { markFreeSundayContext: draft.qt_mode === "free" })
+        : false;
+      if (!restoredDraftSermonPassages && draft.bible_ref) {
         setBibleRef(draft.bible_ref);
       }
       if (draft.key_verse) {
@@ -788,7 +859,7 @@ function QTWriteContent() {
       }
 
       // 말씀 본문 재로드 (bible_ref가 있으면)
-      const refForReload = sundayDraft?.refs?.[0] ?? draft.bible_ref;
+      const refForReload = restoredDraftSermonPassages ? null : draft.bible_ref;
       if (refForReload) {
         try {
           // 약어 → 전체 이름 역변환 맵
@@ -941,7 +1012,7 @@ function QTWriteContent() {
   const loadSundayPassage = loadPassage;
 
   // 말씀 추가하기 (passages 배열에 추가)
-  async function addPassage() {
+  async function addPassage(options: { stayOnSelect?: boolean } = {}) {
     setLoadingBible(true); setBibleError("");
     try {
       const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
@@ -963,13 +1034,86 @@ function QTWriteContent() {
       }
       if (vers.length > 0) {
         const newP: PassageItem = { book, chapter, startV, endV, endChapter, cross: crossChapter, verses: vers, ref: refStr };
-        setPassages(prev => [...prev, newP]);
+        setPassages(prev => {
+          const next = [...prev, newP];
+          setActivePassageIndex(next.length - 1);
+          return next;
+        });
         // 첫 번째 말씀이 없으면 메인으로도 설정
-        if (!bibleRef) { setPassageVerses(vers); setBibleRef(refStr); setBibleStep("done"); setSundayBibleStep("done"); }
-        if (mode === "sunday") setSundayBibleStep("done");
+        if (!bibleRef) {
+          setPassageVerses(vers);
+          setBibleRef(refStr);
+          if (!options.stayOnSelect) {
+            setBibleStep("done");
+            setSundayBibleStep("done");
+          }
+        }
+        if (mode === "sunday" && !options.stayOnSelect) setSundayBibleStep("done");
       }
     } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
     setLoadingBible(false);
+  }
+
+  function continueWithSelectedPassages() {
+    if (bibleRef || passages.length > 0) {
+      setBibleError("");
+      setBibleStep("done");
+      setSundayBibleStep("done");
+      return;
+    }
+    void loadPassage();
+  }
+
+  function getDisplayPassages(): PassageItem[] {
+    if (passages.length > 0) return passages;
+    if (!bibleRef || passageVerses.length === 0) return [];
+    return [{ book, chapter, startV, endV, endChapter, cross: crossChapter, verses: passageVerses, ref: bibleRef }];
+  }
+
+  function renderSelectedPassageViewer(options: { showTextSizeButtons?: boolean; showTranslation?: boolean } = {}) {
+    const displayPassages = getDisplayPassages();
+    if (displayPassages.length === 0) return null;
+    const safeIndex = Math.min(activePassageIndex, displayPassages.length - 1);
+    const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
+    const verses = activePassage.verses ?? [];
+    const hasMultiplePassages = displayPassages.length > 1;
+
+    return (
+      <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
+          </p>
+          {options.showTranslation !== false && <BibleTranslationSelect compact />}
+          {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
+          {options.showTextSizeButtons && <CompactBibleTextSizeButtons />}
+        </div>
+        {hasMultiplePassages && (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 8 }}>
+            {displayPassages.map((p, i) => {
+              const selected = i === safeIndex;
+              return (
+                <button key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--sage)" : "rgba(122,157,122,0.28)"}`, background: selected ? "rgba(122,157,122,0.18)" : "rgba(255,255,255,0.32)", color: selected ? "var(--sage-dark)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                  {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ overflow: "hidden", maxHeight: !passageExpanded && verses.length > 3 ? 90 : undefined, transition: "max-height 0.3s" }}>
+          {verses.map(v => (
+            <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text)", lineHeight: 1.75, marginBottom: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
+            </p>
+          ))}
+        </div>
+        {verses.length > 3 && (
+          <button onClick={() => setPassageExpanded(p => !p)} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
+          </button>
+        )}
+      </div>
+    );
   }
 
   function normalizeVerseNum(num: VerseNum) {
@@ -1035,7 +1179,9 @@ function QTWriteContent() {
   function buildDraftData(userId: string, snapshot: DraftSnapshot) {
     const decisionText = snapshot.decisions.filter(d => d.trim()).join("\n");
     const sundayRefs = [snapshot.bibleRef, ...snapshot.passageRefs].filter(Boolean);
-    const draftBibleRef = snapshot.mode === "sunday" ? buildSundayBibleRef(snapshot.sermonTitle, sundayRefs) : snapshot.bibleRef;
+    const draftBibleRef = snapshot.mode === "sunday" || (snapshot.mode === "free" && freeSundayContext)
+      ? buildSundayBibleRef(snapshot.sermonTitle, sundayRefs)
+      : snapshot.bibleRef;
 
     return {
       user_id: userId,
@@ -1427,7 +1573,14 @@ function QTWriteContent() {
     let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode };
 
     if (mode === "free") {
-      recordData = { ...recordData, bible_ref: bibleRef, key_verse: keyVerse, meditation: freeText, decision: decisionText };
+      const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
+      recordData = {
+        ...recordData,
+        bible_ref: freeSundayContext ? buildSundayBibleRef(sermonTitle, allRefs) : bibleRef,
+        key_verse: keyVerse,
+        meditation: freeText,
+        decision: decisionText,
+      };
     } else if (mode === "sunday") {
       const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
       recordData = {
@@ -1679,77 +1832,161 @@ function QTWriteContent() {
             </button>
           </div>
 
-          {/* 책 선택 */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
-            <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
-              <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
-            </button>
-          </div>
-
-          {/* 장/절 선택 */}
-          {(() => {
-            const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
-            const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
-            const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
-            const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
-            const maxChapter = chaptersData.length || 150;
-            const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
-            const effectiveEndChapter = endChapter || chapter;
-            const maxEndV = chaptersData[parseInt(effectiveEndChapter)-1] ?? 176;
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
-                  <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                    {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
-                  <select value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
-                    {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
-                  <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter && parseInt(startV)>parseInt(endV)) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
-                    {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
-                  <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-                    {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
+          {mode === "free" && freeSundayContext ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{trQT("본문 말씀", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>{trQT("설교 제목과 본문 말씀을 적어요", lang)}</p>
               </div>
-            );
-          })()}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
+                <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
+              </div>
 
-          {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
+              {/* 책 선택 */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
+                <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
+                  <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
+                </button>
+              </div>
 
-          <button onClick={loadPassage} disabled={loadingBible} className="btn-sage">
-            {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("말씀 불러오기", lang)}</>}
-          </button>
+              {/* 장/절 선택 */}
+              {(() => {
+                const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+                const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+                const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
+                const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
+                const maxChapter = chaptersData.length || 150;
+                const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
+                const effectiveEndChapter = endChapter || chapter;
+                const maxEndV = chaptersData[parseInt(effectiveEndChapter)-1] ?? 176;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
+                      <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
+                      <select value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
+                      <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter && parseInt(startV)>parseInt(endV)) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
+                      <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })()}
 
-          {/* 말씀 추가 버튼 */}
-          {(bibleRef || passages.length > 0) && (
-            <button onClick={addPassage} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              <Plus size={14} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}
-            </button>
-          )}
+              {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
-          {/* 추가된 말씀 목록 */}
-          {passages.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {passages.map((p, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
-                  <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
-                  <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
+              <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</>}
+              </button>
+
+              {passages.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {passages.map((p, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
+                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}><BookOpen size={13} /> {p.ref}</span>
+                      <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              <button onClick={continueWithSelectedPassages} disabled={loadingBible || (!bibleRef && passages.length === 0)} className="btn-sage">
+                {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("말씀 불러오기", lang)}</>}
+              </button>
             </div>
+          ) : (
+            <>
+              {/* 책 선택 */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
+                <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
+                  <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
+                </button>
+              </div>
+
+              {/* 장/절 선택 */}
+              {(() => {
+                const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
+                const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+                const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
+                const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
+                const maxChapter = chaptersData.length || 150;
+                const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
+                const effectiveEndChapter = endChapter || chapter;
+                const maxEndV = chaptersData[parseInt(effectiveEndChapter)-1] ?? 176;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
+                      <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
+                      <select value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value)>parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
+                      <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter && parseInt(startV)>parseInt(endV)) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
+                      <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
+                        {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
+
+              <button onClick={loadPassage} disabled={loadingBible} className="btn-sage">
+                {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("말씀 불러오기", lang)}</>}
+              </button>
+
+              {/* 말씀 추가 버튼 */}
+              {(bibleRef || passages.length > 0) && (
+                <button onClick={() => { void addPassage(); }} disabled={loadingBible} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", border: "1px dashed var(--sage)", borderRadius: 12, background: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <Plus size={14} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}
+                </button>
+              )}
+
+              {/* 추가된 말씀 목록 */}
+              {passages.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {passages.map((p, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 12px", border: "1px solid rgba(122,157,122,0.3)" }}>
+                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
+                      <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {mode === "free" && (
@@ -1898,29 +2135,16 @@ function QTWriteContent() {
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
             <div>
-              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(122,157,122,0.3)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
-                <BibleTranslationSelect compact />
-                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
-                <CompactBibleTextSizeButtons />
-              </div>
-              <div style={{ overflow: "hidden", maxHeight: !passageExpanded && passageVerses.length > LONG_THRESHOLD ? 90 : undefined, transition: "max-height 0.3s" }}>
-                {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text)", lineHeight: 1.75, marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
-                  </p>
-                ))}
-              </div>
-              {passageVerses.length > LONG_THRESHOLD && (
-                <button onClick={() => setPassageExpanded(p => !p)} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
-                </button>
-              )}
-              </div>
+              {renderSelectedPassageViewer({ showTextSizeButtons: true })}
             </div>
           )}
 
+          {freeSundayContext && sermonTitle.trim() && (
+            <div className="card" style={{ padding: 12 }}>
+              <p style={{ fontSize: 10, fontWeight: 800, color: "var(--text3)", marginBottom: 4 }}>{trQT("설교 제목", lang)}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{sermonTitle}</p>
+            </div>
+          )}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
             <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => setFreeText(e.target.value)} />
@@ -2022,28 +2246,9 @@ function QTWriteContent() {
         </div>
 
         {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
-        {!step.isSermonInfo && bibleRef && passageVerses.length > 0 && (
+        {!step.isSermonInfo && getDisplayPassages().length > 0 && (
           <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
-            {step.id === "summary" && <BibleTextSizeControl />}
-            <div style={{ background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</span>
-                <BibleTranslationSelect compact />
-                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
-                <button onClick={() => setPassageOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 10, flexShrink: 0 }}>
-                  {passageOpen ? `▲ ${trQT("접기", lang)}` : `▼ ${trQT("더보기", lang)}`}
-                </button>
-              </div>
-              {passageOpen && (
-                <div style={{ padding: "0 14px 12px", maxHeight: 200, overflowY: "auto" }}>
-                  {passageVerses.map(v => (
-                    <p key={v.num} style={{ fontSize: bibleTextFontSize, color: "var(--text2)", lineHeight: 1.75, marginTop: 4 }}>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>{v.text}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
+            {renderSelectedPassageViewer({ showTextSizeButtons: true })}
           </div>
         )}
 
@@ -2065,9 +2270,13 @@ function QTWriteContent() {
 
           {/* 0단계: 설교 정보 + 말씀 선택 */}
           {step.isSermonInfo && (
-            <>
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
+                <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{trQT("본문 말씀", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>{trQT("설교 제목과 본문 말씀을 적어요", lang)}</p>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
                 <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
               {/* 성경 본문 불러오기 (6단계와 동일한 UI) */}
@@ -2121,8 +2330,8 @@ function QTWriteContent() {
                       </div>
                     );
                   })()}
-                  <button onClick={bibleRef ? addPassage : loadSundayPassage} disabled={loadingBible} className="btn-primary" style={{ marginBottom: 8 }}>
-                    {loadingBible ? trQT("불러오는 중...", lang) : bibleRef ? <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</> : <><BookOpen size={16} /> {trQT("말씀 불러오기", lang)}</>}
+                  <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</>}
                   </button>
                   {passages.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
@@ -2134,38 +2343,17 @@ function QTWriteContent() {
                       ))}
                     </div>
                   )}
+                  <button onClick={continueWithSelectedPassages} disabled={loadingBible || (!bibleRef && passages.length === 0)} className="btn-sage" style={{ marginBottom: 8 }}>
+                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} /> {trQT("말씀 불러오기", lang)}</>}
+                  </button>
                   {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
                 </div>
               ) : (
-                <div className="card-sage" style={{ padding: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
-                      <BibleTranslationSelect compact />
-                      {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                      <button onClick={() => { setSundayBibleStep("select"); }} style={{ fontSize: 11, color: "var(--sage-dark)", background: "none", border: "none", cursor: "pointer" }}>{trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</button>
-                      <button onClick={() => { setSundayBibleStep("select"); setPassageVerses([]); setBibleRef(""); setPassages([]); }} style={{ fontSize: 11, color: "var(--text3)", background: "none", border: "none", cursor: "pointer" }}>{trQT("다시 선택", lang)}</button>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 12, color: "var(--text2)", marginTop: 6, lineHeight: 1.7, fontStyle: "italic" }}>
-                    {passageVerses.slice(0, 2).map(v => `${v.num} ${v.text}`).join(" ")}
-                    {passageVerses.length > 2 ? "..." : ""}
-                  </p>
-                  {passages.length > 0 && (
-                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                      {passages.map((p, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: "7px 10px", border: "1px solid rgba(122,157,122,0.18)" }}>
-                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>+ {p.ref}</span>
-                          <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={13}/></button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div>
+                  {renderSelectedPassageViewer({ showTextSizeButtons: false })}
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* 깨달음과 결단 단계 */}
@@ -2293,41 +2481,9 @@ function QTWriteContent() {
         </div>
 
         {/* 말씀 미리보기 */}
-        {bibleRef && !step6.isPassageStep && (
-          <div>
-            <div style={{ background: "var(--sage-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, border: "1px solid rgba(122,157,122,0.3)" }}>
-            {/* 상단: 본문 참조 + 번역본 선택 + 더보기/접기 */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{translateBibleRef(bibleRef, (currentLang.toLowerCase() as Lang) || lang)}</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {/* 번역본 선택 */}
-                <BibleTranslationSelect compact />
-                {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)" }} />}
-                {/* 더보기/접기 */}
-                <button
-                  onClick={() => setVersePreviewExpanded(p => !p)}
-                  style={{ display: "flex", alignItems: "center", gap: 2, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
-                >
-                  {versePreviewExpanded ? <><ChevronUp size={13} />{trQT("접기", lang)}</> : <><ChevronDown size={13} />{trQT("더보기", lang)}</>}
-                </button>
-              </div>
-            </div>
-            {!versePreviewExpanded && (
-              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic" }}>
-                {passageVerses[0]?.text?.slice(0, 60)}{passageVerses[0]?.text && passageVerses[0].text.length > 60 ? "..." : ""}
-              </p>
-            )}
-            {versePreviewExpanded && passageVerses.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {passageVerses.map(v => (
-                  <p key={v.num} style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.7 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", marginRight: 4 }}>{v.num}</span>
-                    {v.text}
-                  </p>
-                ))}
-              </div>
-            )}
-            </div>
+        {!step6.isPassageStep && getDisplayPassages().length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            {renderSelectedPassageViewer({ showTextSizeButtons: true })}
           </div>
         )}
 

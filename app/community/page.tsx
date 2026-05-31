@@ -168,6 +168,7 @@ export default function CommunityPage() {
   const [qtReactionCounts, setQtReactionCounts] = useState<Record<string, Record<string, number>>>({});
   // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
   const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>({});
+  const [qtPhotoUrls, setQtPhotoUrls] = useState<Record<string, string>>({});
 
   // 그룹
   const [showGroupForm, setShowGroupForm] = useState(false);
@@ -678,6 +679,19 @@ export default function CommunityPage() {
     return map;
   }
 
+  async function loadQtPhotoUrls(supabase: any, rows: any[]) {
+    const photoRows = rows.filter((row: any) => row?.photo_path && !qtPhotoUrls[row.id]);
+    if (photoRows.length === 0) return;
+    const entries = await Promise.all(photoRows.map(async (row: any) => {
+      const { data } = await supabase.storage.from("qt-photos").createSignedUrl(row.photo_path, 60 * 60);
+      return [row.id, data?.signedUrl ?? ""] as const;
+    }));
+    setQtPhotoUrls(prev => ({
+      ...prev,
+      ...Object.fromEntries(entries.filter(([, url]) => !!url)),
+    }));
+  }
+
   async function openPartnerDetail(partner: any) {
     const openedAt = new Date().toISOString();
     const previousSeenAt = partner.last_seen_shared_at ?? null;
@@ -757,7 +771,9 @@ export default function CommunityPage() {
           };
         }).sort((a: any, b: any) => new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() - new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime());
 
-        setPartnerQts(filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds));
+        const visibleRows = filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds);
+        setPartnerQts(visibleRows);
+        void loadQtPhotoUrls(supabase, visibleRows);
 
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
         setQtReactionCounts(prev => ({ ...prev, ...counts }));
@@ -1067,6 +1083,7 @@ export default function CommunityPage() {
         const profMap = await fetchProfiles(supabase, qtData);
         const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
         setQtShares(withProfs);
+        void loadQtPhotoUrls(supabase, withProfs);
         // 반응 카운트 로드
         const qtIds = qtData.map((r: any) => r.id);
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
@@ -1186,6 +1203,7 @@ export default function CommunityPage() {
         isUnreadInGroup: isLaterThan(r.created_at, previousSeenAt),
       })), currentHiddenKeys, currentHiddenUserIds);
       setGroupQts(withProfs);
+      void loadQtPhotoUrls(supabase, withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
       const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
@@ -1580,6 +1598,15 @@ export default function CommunityPage() {
                 {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", whiteSpace: "pre-line" }}>"{r.key_verse}"</p>}
               </div>
             )}
+            {r.photo_path && (
+              <div style={{ marginBottom: 16 }}>
+                {qtPhotoUrls[r.id] ? (
+                  <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                ) : (
+                  <div style={{ padding: 24, borderRadius: 16, background: "var(--bg3)", color: "var(--text3)", fontSize: 13, textAlign: "center" }}>사진을 불러오는 중이에요.</div>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).sort((a, b) => { if (r.qt_mode === "sunday") { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); } return 0; }).map(({ key, labelKey, sundayLabelKey, italic, isDecision }) => { const displayLabelKey = key === "summary" && r.qt_mode === "sunday" && sundayLabelKey ? sundayLabelKey : labelKey; return (
                 <div key={key}>
@@ -1727,6 +1754,8 @@ export default function CommunityPage() {
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                    {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                    {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
@@ -1931,6 +1960,8 @@ export default function CommunityPage() {
                       </div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                       {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                      {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                      {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
@@ -2266,6 +2297,8 @@ export default function CommunityPage() {
                         </div>
                         <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                         {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
+                        {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                        {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                         <div onClick={e => e.stopPropagation()}>
                           <ReactionButtons qtId={r.id} onReact={reactToQT} />
                         </div>

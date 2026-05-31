@@ -75,6 +75,7 @@ function RecordContent() {
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!notice) return;
@@ -104,6 +105,12 @@ function RecordContent() {
         let visibilityTargets: string[] = [];
         if (data) {
           setRecord(data);
+          if (data.photo_path) {
+            const { data: signed } = await supabase.storage.from("qt-photos").createSignedUrl(data.photo_path, 60 * 60);
+            setPhotoUrl(signed?.signedUrl ?? null);
+          } else {
+            setPhotoUrl(null);
+          }
           // 현재 공유 상태 파싱 (visibility는 "private" | "all" | "group_xxx" | "all,group_xxx,group_yyy")
           const v = data.visibility ?? "private";
           visibilityTargets = v !== "private" ? v.split(",").map((part: string) => part.trim()).filter(Boolean) : [];
@@ -376,6 +383,7 @@ function RecordContent() {
   if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p></div>;
 
   const isShared = sharedTargets.length > 0;
+  const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
   const SECTIONS = [
     { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
     { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
@@ -424,16 +432,18 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: isPhotoRecord ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
         <button onClick={copyAll} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: copied ? "1px solid var(--sage)" : "1px solid var(--border)", background: copied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
         <button onClick={openShareModal} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: isShared ? "1px solid var(--sage)" : "1px solid var(--border)", background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
           {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
         </button>
-        <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
-          <Edit3 size={14} /> {trR("큐티 수정", lang)}
-        </button>
+        {!isPhotoRecord && (
+          <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
+            <Edit3 size={14} /> {trR("큐티 수정", lang)}
+          </button>
+        )}
       </div>
 
       {/* 나누기 모달 */}
@@ -467,11 +477,27 @@ function RecordContent() {
         />
       )}
 
+      {isPhotoRecord && (
+        <div style={{ padding: "16px 16px 0" }}>
+          <div className="card">
+            {photoUrl ? (
+              <img src={photoUrl} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }} />
+            ) : (
+              <div style={{ padding: 28, textAlign: "center", color: "var(--text3)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
+            )}
+            {(record.photo_caption || record.meditation) && (
+              <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{record.photo_caption || record.meditation}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         {(record?.qt_mode === "sunday"
           ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
           : SECTIONS
         ).map(({ key, label, italic, isDecision }) => {
+          if (isPhotoRecord) return null;
           const value = record[key];
           if (!value) return null;
           return (

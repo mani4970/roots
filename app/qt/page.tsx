@@ -7,9 +7,9 @@ import { storageGet, storageSet } from "@/lib/clientStorage";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
-import { buildQTWriteHref } from "@/lib/qtEntry";
+import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays } from "lucide-react";
+import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
   { icon: "prayer", titleKey: "qt_g1_title", descKey: "qt_g1_desc", exKey: "qt_g1_ex" },
@@ -96,6 +96,7 @@ export default function QTPage() {
   const [expandedMonthKeys, setExpandedMonthKeys] = useState<Set<string>>(() => new Set([getYearMonthKey()]));
   const [showStartModal, setShowStartModal] = useState(false);
   const [showPassageChoiceModal, setShowPassageChoiceModal] = useState(false);
+  const [showPhotoPassageChoiceModal, setShowPhotoPassageChoiceModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
@@ -192,6 +193,18 @@ export default function QTPage() {
       preferredTranslation,
       todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
+      sundayContext: mode === "free" && isSundayToday,
+    }));
+  }
+
+  function startPhotoReflection(passageSource: "scheduled" | "custom" = "scheduled") {
+    setShowStartModal(false);
+    setShowPhotoPassageChoiceModal(false);
+    router.push(buildQTPhotoHref({
+      preferredTranslation,
+      todaySchedule,
+      useTodaySchedule: passageSource === "scheduled",
+      sundayContext: isSundayToday,
     }));
   }
 
@@ -213,19 +226,33 @@ export default function QTPage() {
   }
 
 
-  function startCatchUp(mode: "6step" | "free") {
+  function startCatchUp(mode: "6step" | "free" | "sunday" | "photo") {
     const targetDate = catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0];
     if (!targetDate) {
       showToast(t("qt_catchup_no_dates", lang));
       return;
     }
     setShowCatchUpModal(false);
+    if (mode === "photo") {
+      router.push(buildQTPhotoHref({
+        preferredTranslation,
+        useTodaySchedule: false,
+        date: targetDate,
+        catchup: true,
+        sundayContext: parseLocalDateString(targetDate).getDay() === 0,
+      }));
+      return;
+    }
+
     const params = new URLSearchParams({
       mode,
       date: targetDate,
       catchup: "true",
       translation: String(preferredTranslation),
     });
+    if (mode === "free" && parseLocalDateString(targetDate).getDay() === 0) {
+      params.set("sundayContext", "true");
+    }
     router.push(`/qt/write?${params.toString()}`);
   }
 
@@ -463,6 +490,20 @@ export default function QTPage() {
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_6step_desc", lang)}</p>
                 </div>
               </button>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+                <HandHeart size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_mode_sunday_desc", lang)}</p>
+                </div>
+              </button>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("photo")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+                <ImagePlus size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_photo_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_mode_photo_desc", lang)}</p>
+                </div>
+              </button>
               <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <PenLine size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
@@ -471,6 +512,33 @@ export default function QTPage() {
                 </div>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showPhotoPassageChoiceModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_mode_photo_title", lang)}</h2>
+              <button onClick={() => setShowPhotoPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>{t("qt_photo_passage_choice_sub", lang)}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+              <button
+                disabled={!todaySchedule}
+                onClick={() => startPhotoReflection("scheduled")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: todaySchedule ? "1px solid var(--sage)" : "1px solid var(--border)", background: todaySchedule ? "var(--sage-light)" : "var(--bg3)", color: todaySchedule ? "var(--sage-dark)" : "var(--text3)", cursor: todaySchedule ? "pointer" : "not-allowed", textAlign: "center", fontSize: 14, fontWeight: 700, opacity: todaySchedule ? 1 : 0.65 }}
+              >
+                {t("qt_passage_choice_today", lang)}
+              </button>
+              <button onClick={() => startPhotoReflection("custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+                {t("qt_passage_choice_custom", lang)}
+              </button>
+            </div>
+            <button onClick={() => { setShowPhotoPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+              {t("qt_passage_choice_back", lang)}
+            </button>
           </div>
         </div>
       )}
@@ -543,6 +611,13 @@ export default function QTPage() {
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_free_desc", lang)}</p>
+                </div>
+              </button>
+              <button onClick={() => { setShowStartModal(false); setShowPhotoPassageChoiceModal(true); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+                <ImagePlus size={28} strokeWidth={1.8} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_photo_title", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_photo_desc", lang)}</p>
                 </div>
               </button>
             </div>

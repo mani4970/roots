@@ -1,4 +1,5 @@
 export type QTMode = "6step" | "sunday" | "free";
+export type QTPhotoPassageSource = "scheduled" | "custom";
 
 export type QTSchedule = {
   book: string;
@@ -22,16 +23,22 @@ export function buildQTWriteHref({
   preferredTranslation,
   todaySchedule,
   useTodaySchedule = true,
+  sundayContext = false,
 }: {
   mode: QTMode;
   preferredTranslation: number;
   todaySchedule?: QTSchedule | null;
   useTodaySchedule?: boolean;
+  sundayContext?: boolean;
 }) {
   const params = new URLSearchParams({
     mode,
     translation: String(preferredTranslation),
   });
+
+  if (sundayContext) {
+    params.set("sundayContext", "true");
+  }
 
   if (mode === "6step" && useTodaySchedule && todaySchedule) {
     params.set("schedBook", todaySchedule.book);
@@ -45,4 +52,43 @@ export function buildQTWriteHref({
   }
 
   return `/qt/write?${params.toString()}`;
+}
+
+
+export function buildQTPhotoHref({
+  preferredTranslation,
+  todaySchedule,
+  useTodaySchedule = true,
+  date,
+  catchup = false,
+  sundayContext = false,
+}: {
+  preferredTranslation: number;
+  todaySchedule?: QTSchedule | null;
+  useTodaySchedule?: boolean;
+  date?: string;
+  catchup?: boolean;
+  sundayContext?: boolean;
+}) {
+  const params = new URLSearchParams({
+    translation: String(preferredTranslation),
+    source: useTodaySchedule ? "scheduled" : "custom",
+  });
+
+  if (date) params.set("date", date);
+  if (catchup) params.set("catchup", "true");
+  if (sundayContext) params.set("sundayContext", "true");
+
+  if (useTodaySchedule && todaySchedule) {
+    params.set("schedBook", todaySchedule.book);
+    params.set("schedChapter", String(todaySchedule.chapter));
+    params.set("schedStartV", String(todaySchedule.start_verse));
+    params.set("schedEndV", String(todaySchedule.end_verse));
+
+    if (todaySchedule.end_chapter) {
+      params.set("schedEndChapter", String(todaySchedule.end_chapter));
+    }
+  }
+
+  return `/qt/photo?${params.toString()}`;
 }
