@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
+import PhotoViewerModal from "@/components/PhotoViewerModal";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -76,6 +77,7 @@ function RecordContent() {
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -472,11 +474,15 @@ function RecordContent() {
         />
       )}
 
+      {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt="photo reflection" onClose={() => setPhotoViewerOpen(false)} />}
+
       {isPhotoRecord && (
         <div style={{ padding: "16px 16px 0" }}>
           <div className="card">
             {photoUrl ? (
-              <img src={photoUrl} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }} />
+              <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
+                <img src={photoUrl} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+              </button>
             ) : (
               <div style={{ padding: 28, textAlign: "center", color: "var(--text3)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
             )}

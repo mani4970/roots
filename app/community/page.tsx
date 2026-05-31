@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -203,6 +204,7 @@ export default function CommunityPage() {
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
   const [visibleFeedCounts, setVisibleFeedCounts] = useState<Record<string, number>>({});
   const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
+  const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -281,13 +283,8 @@ export default function CommunityPage() {
     setProfileModal(current => current?.userId === targetId ? { ...current, saving: true } : current);
     try {
       const supabase = createClient();
-      if (profileModal.relationId && profileModal.relationStatus === "declined") {
-        const { error } = await supabase.from("companions").update({ requester_id: userId, receiver_id: targetId, status: "pending", responded_at: null, updated_at: new Date().toISOString() }).eq("id", profileModal.relationId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("companions").insert({ requester_id: userId, receiver_id: targetId, status: "pending" });
-        if (error) throw error;
-      }
+      const { error } = await supabase.from("companions").insert({ requester_id: userId, receiver_id: targetId, status: "pending" });
+      if (error) throw error;
       setProfileModal(current => current?.userId === targetId ? { ...current, relationStatus: "pending_sent", saving: false } : current);
     } catch (error) {
       console.error("동역자 신청 실패:", error);
@@ -1716,6 +1713,22 @@ export default function CommunityPage() {
     );
   }
 
+  function PhotoReflectionImage({ src, alt, style }: { src: string; alt?: string; style?: CSSProperties }) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setPhotoViewer({ src, alt: alt || "photo reflection" });
+        }}
+        style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", textAlign: "left" }}
+      >
+        <img src={src} alt={alt || "photo reflection"} style={style} />
+      </button>
+    );
+  }
+
   // 큐티 전체보기 모달
   function QTDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
     return (
@@ -1741,7 +1754,7 @@ export default function CommunityPage() {
             {r.photo_path && (
               <div style={{ marginBottom: 16 }}>
                 {qtPhotoUrls[r.id] ? (
-                  <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                  <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
                 ) : (
                   <div style={{ padding: 24, borderRadius: 16, background: "var(--bg3)", color: "var(--text3)", fontSize: 13, textAlign: "center" }}>사진을 불러오는 중이에요.</div>
                 )}
@@ -1896,7 +1909,7 @@ export default function CommunityPage() {
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                     {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                    {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                    {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
                     {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                     <div onClick={e => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
@@ -2098,7 +2111,7 @@ export default function CommunityPage() {
                       </div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                       {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                      {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                      {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
                       {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                       <div onClick={e => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
@@ -2427,7 +2440,7 @@ export default function CommunityPage() {
                         </div>
                         <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
                         {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                        {r.photo_path && qtPhotoUrls[r.id] && <img src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
+                        {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
                         {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
                         <div onClick={e => e.stopPropagation()}>
                           <ReactionButtons qtId={r.id} onReact={reactToQT} />
@@ -2560,6 +2573,7 @@ export default function CommunityPage() {
         )}
       </div>
 
+      {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
       {renderProfileModal()}
       {renderActionMenu()}
       {renderSafetyConfirmModal()}
