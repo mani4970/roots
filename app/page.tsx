@@ -1353,17 +1353,68 @@ export default function HomePage() {
         </div>
 
         {pendingCompanionRequestCount > 0 && (
-          <div className="card-sage" style={{ borderRadius: 20, padding: 14, marginTop: 10, border: "1px solid rgba(122,157,122,0.26)" }}>
-            <div style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, marginBottom: 10 }}>
+          <div
+            style={{
+              position: "relative",
+              borderRadius: 20,
+              padding: "18px 18px",
+              marginTop: 10,
+              minHeight: 104,
+              border: "1px solid rgba(213,166,83,0.34)",
+              background: "#FFF7E8",
+              boxShadow: "0 10px 22px rgba(88, 64, 28, 0.06)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <img
+              src="/badge_roots_together.webp"
+              alt=""
+              width={62}
+              height={62}
+              style={{
+                position: "absolute",
+                left: 22,
+                top: "50%",
+                transform: "translateY(-50%)",
+                objectFit: "contain",
+              }}
+            />
+            <div
+              style={{
+                width: "100%",
+                padding: "0 74px",
+                textAlign: "center",
+                fontSize: 17,
+                fontWeight: 900,
+                color: "var(--text)",
+                lineHeight: 1.35,
+                wordBreak: "keep-all",
+              }}
+            >
               {t("home_partner_request_notice", lang)}
             </div>
             <button
               onClick={() => router.push("/companions")}
-              className="btn-sage"
-              style={{ width: "100%", minHeight: 42 }}
+              style={{
+                position: "absolute",
+                right: 18,
+                bottom: 14,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 2,
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                color: "#111827",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
             >
               {t("home_partner_request_cta", lang)}
-              <ChevronRight size={16} />
+              <ChevronRight size={12} strokeWidth={2.4} />
             </button>
           </div>
         )}
