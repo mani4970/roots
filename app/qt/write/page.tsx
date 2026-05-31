@@ -275,8 +275,8 @@ function QTWriteContent() {
           const newId = parseInt(e.target.value);
           setSelectedTranslation(newId);
           storageSet("roots_default_translation", String(newId));
-          if (bibleRef && passageVerses.length > 0) {
-            await reloadPassageWithTranslation(newId);
+          if (passages.length > 0 || (bibleRef && passageVerses.length > 0)) {
+            await reloadDisplayPassagesWithTranslation(newId);
           }
         }}
         aria-label={trQT("번역본", lang)}
@@ -955,6 +955,57 @@ function QTWriteContent() {
       }
     } catch (e) { /* 로드 실패 무시 */ }
     setLoadingBible(false);
+  }
+
+  async function fetchPassageItemWithTranslation(item: PassageItem, newTranslationId: number): Promise<PassageItem> {
+    const effectiveEndChapter = item.cross ? item.endChapter : item.chapter;
+    const koBook = (() => {
+      const all = [...OT_BOOKS, ...NT_BOOKS];
+      const loc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+      const i = loc.indexOf(item.book);
+      return i >= 0 ? all[i] : item.book;
+    })();
+
+    if (item.cross && effectiveEndChapter !== item.chapter) {
+      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(item.chapter) - 1] ?? 176;
+      const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${maxV1}`);
+      const d1 = await r1.json();
+      const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${item.endV}`);
+      const d2 = await r2.json();
+      const verses = [
+        ...(d1.verses ?? []).map((v: any) => ({ ...v, num: `${item.chapter}:${v.num}` })),
+        ...(d2.verses ?? []).map((v: any) => ({ ...v, num: `${effectiveEndChapter}:${v.num}` })),
+      ];
+      return { ...item, verses, ref: `${item.book} ${item.chapter}:${item.startV}-${effectiveEndChapter}:${item.endV}` };
+    }
+
+    const res = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${item.endV}`);
+    const data = await res.json();
+    return { ...item, verses: data.verses ?? [], ref: data.reference || item.ref };
+  }
+
+  async function reloadDisplayPassagesWithTranslation(newTranslationId: number) {
+    const displayPassages = getDisplayPassages();
+    if (displayPassages.length === 0) return;
+
+    setLoadingBible(true);
+    try {
+      const reloaded = await Promise.all(displayPassages.map(item => fetchPassageItemWithTranslation(item, newTranslationId)));
+      const safeIndex = Math.min(activePassageIndex, reloaded.length - 1);
+      const active = reloaded[safeIndex] ?? reloaded[0];
+
+      if (passages.length > 0) {
+        setPassages(reloaded);
+      }
+      if (active) {
+        setPassageVerses(active.verses);
+        setBibleRef(active.ref);
+      }
+    } catch (e) {
+      // 번역본 변경 중 본문 재로드가 실패해도 작성 중인 묵상 내용은 유지합니다.
+    } finally {
+      setLoadingBible(false);
+    }
   }
 
   function resetFreePassageSelection() {
