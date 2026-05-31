@@ -28,6 +28,8 @@ function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
 type ShareScope = "all" | "group" | "partner";
 
 const APP_URL = "https://christian-roots.com";
+const COMMUNITY_FEED_PAGE_SIZE = 30;
+const COMMUNITY_FEED_PREFETCH_LIMIT = 300;
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -187,6 +189,7 @@ export default function CommunityPage() {
   const [safetyConfirm, setSafetyConfirm] = useState<null | { action: "report" | "hide-item" | "hide-author"; kind: "qt" | "prayer"; item: any }>(null);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
+  const [visibleFeedCounts, setVisibleFeedCounts] = useState<Record<string, number>>({});
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -667,6 +670,35 @@ export default function CommunityPage() {
     return map;
   }
 
+  function getVisibleFeedCount(key: string) {
+    return visibleFeedCounts[key] ?? COMMUNITY_FEED_PAGE_SIZE;
+  }
+
+  function showMoreFeedItems(key: string) {
+    setVisibleFeedCounts(prev => ({
+      ...prev,
+      [key]: (prev[key] ?? COMMUNITY_FEED_PAGE_SIZE) + COMMUNITY_FEED_PAGE_SIZE,
+    }));
+  }
+
+  function visibleFeedItems<T>(key: string, items: T[]) {
+    return items.slice(0, getVisibleFeedCount(key));
+  }
+
+  function renderFeedLoadMore(key: string, total: number) {
+    const visibleCount = getVisibleFeedCount(key);
+    if (total <= visibleCount) return null;
+    return (
+      <button
+        onClick={() => showMoreFeedItems(key)}
+        className="btn-outline"
+        style={{ width: "100%", marginTop: 4 }}
+      >
+        {c("community_manage_more")}
+      </button>
+    );
+  }
+
   async function openPartnerDetail(partner: any) {
     setSelectedPartner(partner);
     setPartnerDetailTab("qt");
@@ -699,7 +731,7 @@ export default function CommunityPage() {
         .select("qt_record_id,owner_id,recipient_id,created_at")
         .or(`and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
       if (qtRecipientError) throw qtRecipientError;
       const qtIds = Array.from(new Set((qtRecipientRows ?? []).map((row: any) => row.qt_record_id).filter(Boolean)));
@@ -743,7 +775,7 @@ export default function CommunityPage() {
         .select("prayer_item_id,owner_id,recipient_id,created_at")
         .or(`and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: false })
-        .limit(80);
+        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
       if (prayerRecipientError) throw prayerRecipientError;
       const prayerIds = Array.from(new Set((prayerRecipientRows ?? []).map((row: any) => row.prayer_item_id).filter(Boolean)));
@@ -916,7 +948,8 @@ export default function CommunityPage() {
       // 기도 중 (미응답)
       const { data } = await supabase.from("prayer_items")
         .select("*").ilike("visibility", "%all%").eq("is_answered", false)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
         setPrayers(filterHiddenItems("prayer", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds));
@@ -924,7 +957,8 @@ export default function CommunityPage() {
       // 응답됨 (간증 있는 것)
       const { data: answered } = await supabase.from("prayer_items")
         .select("*").ilike("visibility", "%all%").eq("is_answered", true)
-        .order("answered_at", { ascending: false });
+        .order("answered_at", { ascending: false })
+        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (answered) {
         const profMap2 = await fetchProfiles(supabase, answered);
         const answeredIds = answered.map((r: any) => r.id);
@@ -953,7 +987,7 @@ export default function CommunityPage() {
       // 전체 공개 묵상 나눔
       const { data: qtData } = await supabase.from("qt_records")
         .select("*").ilike("visibility", "%all%")
-        .order("created_at", { ascending: false }).limit(30);
+        .order("created_at", { ascending: false }).limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (qtData) {
         const profMap = await fetchProfiles(supabase, qtData);
         const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
@@ -1068,7 +1102,7 @@ export default function CommunityPage() {
     const currentHiddenUserIds = hiddenUserIds;
     const { data } = await supabase.from("qt_records")
       .select("*").ilike("visibility", `%group_${group.id}%`)
-      .order("created_at", { ascending: false }).limit(30);
+      .order("created_at", { ascending: false }).limit(COMMUNITY_FEED_PREFETCH_LIMIT);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
       const withProfs = filterHiddenItems("qt", data.map((r: any) => ({
@@ -1102,7 +1136,7 @@ export default function CommunityPage() {
         .ilike("visibility", `%group_${group.id}%`)
         .order("is_answered", { ascending: true })
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (prayerRows) {
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
         const answeredIds = prayerRows.filter((row: any) => !!row.is_answered).map((row: any) => row.id);
@@ -1503,6 +1537,12 @@ export default function CommunityPage() {
   const groupPrayingPrayers = groupPrayers.filter((p: any) => !p.is_answered);
   const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
   const groupPrayersForCurrentTab = groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
+  const allQtFeedKey = "all-qt";
+  const allPrayingFeedKey = "all-praying";
+  const allAnsweredFeedKey = "all-answered";
+  const visibleAllQts = visibleFeedItems(allQtFeedKey, qtShares);
+  const visibleAllPrayers = visibleFeedItems(allPrayingFeedKey, prayers);
+  const visibleAllAnsweredPrayers = visibleFeedItems(allAnsweredFeedKey, answeredPrayers);
 
   if (selectedPartner) {
     const partnerProfile = selectedPartner.profile ?? {};
@@ -1510,6 +1550,10 @@ export default function CommunityPage() {
     const partnerPrayingPrayers = partnerPrayers.filter((prayer) => !prayer.is_answered);
     const partnerAnsweredPrayers = partnerPrayers.filter((prayer) => prayer.is_answered);
     const partnerPrayersForCurrentTab = partnerDetailTab === "answered" ? partnerAnsweredPrayers : partnerPrayingPrayers;
+    const partnerQtFeedKey = `partner-${selectedPartner.partner_id}-qt`;
+    const partnerPrayerFeedKey = `partner-${selectedPartner.partner_id}-${partnerDetailTab}`;
+    const visiblePartnerQts = visibleFeedItems(partnerQtFeedKey, partnerQts);
+    const visiblePartnerPrayers = visibleFeedItems(partnerPrayerFeedKey, partnerPrayersForCurrentTab);
     const partnerEmptyConfig = partnerDetailTab === "qt"
       ? {
           icon: <BookOpen size={24} />,
@@ -1593,7 +1637,7 @@ export default function CommunityPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {partnerQts.map(r => (
+                {visiblePartnerQts.map(r => (
                   <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                     <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1613,6 +1657,7 @@ export default function CommunityPage() {
                     </div>
                   </div>
                 ))}
+                {renderFeedLoadMore(partnerQtFeedKey, partnerQts.length)}
               </div>
             )
           ) : (
@@ -1631,7 +1676,7 @@ export default function CommunityPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {partnerPrayersForCurrentTab.map(p => (
+                {visiblePartnerPrayers.map(p => (
                   <div key={p.id} className="card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1679,6 +1724,7 @@ export default function CommunityPage() {
                     )}
                   </div>
                 ))}
+                {renderFeedLoadMore(partnerPrayerFeedKey, partnerPrayersForCurrentTab.length)}
               </div>
             )
           )}
@@ -1694,6 +1740,10 @@ export default function CommunityPage() {
   }
 
   if (selectedGroup) {
+    const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
+    const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
+    const visibleGroupQts = visibleFeedItems(groupQtFeedKey, groupQts);
+    const visibleGroupPrayers = visibleFeedItems(groupPrayerFeedKey, groupPrayersForCurrentTab);
     return (
       <div className="page">
         <div style={{ background: "var(--bg)", padding: "56px 20px 8px" }}>
@@ -1782,7 +1832,7 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {groupQts.map(r => (
+                  {visibleGroupQts.map(r => (
                     <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                       <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1807,6 +1857,7 @@ export default function CommunityPage() {
                       </div>
                     </div>
                   ))}
+                  {renderFeedLoadMore(groupQtFeedKey, groupQts.length)}
                 </div>
               )
             ) : (
@@ -1819,7 +1870,7 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {groupPrayersForCurrentTab.map(p => (
+                  {visibleGroupPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1872,6 +1923,7 @@ export default function CommunityPage() {
                       )}
                     </div>
                   ))}
+                  {renderFeedLoadMore(groupPrayerFeedKey, groupPrayersForCurrentTab.length)}
                 </div>
               )
             )}
@@ -2110,7 +2162,7 @@ export default function CommunityPage() {
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {qtShares.map(r => (
+                    {visibleAllQts.map(r => (
                       <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
                         <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -2130,6 +2182,7 @@ export default function CommunityPage() {
                         </div>
                       </div>
                     ))}
+                    {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
                 {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
@@ -2142,7 +2195,7 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {prayers.map(p => (
+                  {visibleAllPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2163,6 +2216,7 @@ export default function CommunityPage() {
                       </button>
                     </div>
                   ))}
+                  {renderFeedLoadMore(allPrayingFeedKey, prayers.length)}
                 </div>
               )
             ) : (
@@ -2174,7 +2228,7 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {answeredPrayers.map(p => (
+                  {visibleAllAnsweredPrayers.map(p => (
                     <div key={p.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2205,6 +2259,7 @@ export default function CommunityPage() {
                       </div>
                     </div>
                   ))}
+                  {renderFeedLoadMore(allAnsweredFeedKey, answeredPrayers.length)}
                 </div>
               )
             )}
