@@ -37,10 +37,6 @@
                     android:scheme="https"
                     android:host="www.christian-roots.com"
                     android:path="/" />
-                <data
-                    android:scheme="https"
-                    android:host="christian-roots.com"
-                    android:path="/" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
@@ -53,15 +49,7 @@
                     android:pathPrefix="/join" />
                 <data
                     android:scheme="https"
-                    android:host="christian-roots.com"
-                    android:pathPrefix="/join" />
-                <data
-                    android:scheme="https"
                     android:host="www.christian-roots.com"
-                    android:pathPrefix="/companions" />
-                <data
-                    android:scheme="https"
-                    android:host="christian-roots.com"
                     android:pathPrefix="/companions" />
             </intent-filter>
 
