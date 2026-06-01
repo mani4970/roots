@@ -31,6 +31,7 @@ type ShareScope = "all" | "group" | "partner";
 const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 300;
+type CommunitySectionKey = "qt" | "praying" | "answered";
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -203,6 +204,7 @@ export default function CommunityPage() {
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
   const [visibleFeedCounts, setVisibleFeedCounts] = useState<Record<string, number>>({});
+  const [allSectionSeenAt, setAllSectionSeenAt] = useState<Record<CommunitySectionKey, string | null>>({ qt: null, praying: null, answered: null });
   const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
   const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
 
@@ -776,6 +778,11 @@ export default function CommunityPage() {
 
   useEffect(() => { loadData(); }, [tab]);
 
+  useEffect(() => {
+    if (tab !== "all" || !userId) return;
+    markAllSectionSeen(allTab);
+  }, [tab, allTab, userId, qtShares.length, prayers.length, answeredPrayers.length]);
+
   // 프로필 fetch 헬퍼
   async function fetchProfiles(supabase: any, data: any[]) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
@@ -826,6 +833,85 @@ export default function CommunityPage() {
         {c("community_manage_more")}
       </button>
     );
+  }
+
+  function allSectionSeenKey(uid: string) {
+    return `roots_community_all_section_seen_${uid}`;
+  }
+
+  function latestContentTime(rows: any[], field: "qt" | "prayer" | "answered" = "qt") {
+    if (!rows || rows.length === 0) return null;
+    const times = rows
+      .map((row: any) => {
+        if (field === "answered") return row.answered_at ?? row.created_at ?? null;
+        if (field === "prayer") return sharedContentTime(row);
+        return row.created_at ?? null;
+      })
+      .filter((value): value is string => typeof value === "string" && value.length > 0);
+    return times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  }
+
+  function hasAllSectionNew(section: CommunitySectionKey) {
+    const latest = section === "qt"
+      ? latestContentTime(qtShares, "qt")
+      : section === "answered"
+        ? latestContentTime(answeredPrayers, "answered")
+        : latestContentTime(prayers, "prayer");
+    return isLaterThan(latest, allSectionSeenAt[section]);
+  }
+
+  function markAllSectionSeen(section: CommunitySectionKey) {
+    if (!userId) return;
+    const seenAt = new Date().toISOString();
+    setAllSectionSeenAt(prev => {
+      const next = { ...prev, [section]: seenAt };
+      storageSetJson(allSectionSeenKey(userId), next);
+      return next;
+    });
+  }
+
+  function selectAllSection(section: CommunitySectionKey) {
+    setAllTab(section);
+    markAllSectionSeen(section);
+  }
+
+  function hasUnreadPartnerSection(section: CommunitySectionKey) {
+    if (section === "qt") return partnerQts.some((row: any) => !!row.isUnreadInPartner);
+    return partnerPrayers.some((row: any) => section === "answered" ? !!row.is_answered && !!row.isUnreadInPartner : !row.is_answered && !!row.isUnreadInPartner);
+  }
+
+  function selectPartnerSection(section: CommunitySectionKey) {
+    setPartnerDetailTab(section);
+    if (section === "qt") {
+      setPartnerQts(prev => prev.map((row: any) => ({ ...row, isUnreadInPartner: false })));
+      return;
+    }
+    setPartnerPrayers(prev => prev.map((row: any) => {
+      const matches = section === "answered" ? !!row.is_answered : !row.is_answered;
+      return matches ? { ...row, isUnreadInPartner: false } : row;
+    }));
+  }
+
+  function hasUnreadGroupSection(section: CommunitySectionKey) {
+    if (section === "qt") return groupQts.some((row: any) => !!row.isUnreadInGroup);
+    return groupPrayers.some((row: any) => section === "answered" ? !!row.is_answered && !!row.isUnreadInGroup : !row.is_answered && !!row.isUnreadInGroup);
+  }
+
+  function selectGroupSection(section: CommunitySectionKey) {
+    setGroupDetailTab(section);
+    if (section === "qt") {
+      setGroupQts(prev => prev.map((row: any) => ({ ...row, isUnreadInGroup: false })));
+      return;
+    }
+    setGroupPrayers(prev => prev.map((row: any) => {
+      const matches = section === "answered" ? !!row.is_answered : !row.is_answered;
+      return matches ? { ...row, isUnreadInGroup: false } : row;
+    }));
+  }
+
+  function SectionUnreadDot({ show }: { show: boolean }) {
+    if (!show) return null;
+    return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: "var(--sage)", boxShadow: "0 0 0 2px rgba(122,157,122,0.14)", flexShrink: 0 }} />;
   }
   async function openPartnerDetail(partner: any) {
     const openedAt = new Date().toISOString();
@@ -1033,6 +1119,7 @@ export default function CommunityPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
+    setAllSectionSeenAt(storageGetJson<Record<CommunitySectionKey, string | null>>(allSectionSeenKey(user.id), { qt: null, praying: null, answered: null }));
 
     const { data: hiddenRows } = await supabase.from("hidden_community_items")
       .select("content_type,content_id")
@@ -1867,10 +1954,11 @@ export default function CommunityPage() {
               return (
                 <button
                   key={key}
-                  onClick={() => setPartnerDetailTab(key)}
+                  onClick={() => selectPartnerSection(key)}
                   style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                 >
                   <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                  <SectionUnreadDot show={!active && hasUnreadPartnerSection(key)} />
                 </button>
               );
             })}
@@ -2075,10 +2163,11 @@ export default function CommunityPage() {
                 return (
                   <button
                     key={key}
-                    onClick={() => setGroupDetailTab(key)}
+                    onClick={() => selectGroupSection(key)}
                     style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                    <SectionUnreadDot show={!active && hasUnreadGroupSection(key)} />
                   </button>
                 );
               })}
@@ -2409,10 +2498,11 @@ export default function CommunityPage() {
                 return (
                   <button
                     key={key}
-                    onClick={() => setAllTab(key)}
+                    onClick={() => selectAllSection(key)}
                     style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                    <SectionUnreadDot show={!active && hasAllSectionNew(key)} />
                   </button>
                 );
               })}
