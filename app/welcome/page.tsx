@@ -17,6 +17,8 @@ const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
   { code: "fr", flag: "🇫🇷", name: "Français" },
 ];
 
+const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 // ── Translations ───────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ const TEXTS: Record<Lang, {
   f3t: string; f3s: string;
   verseRef: string; verse: string;
   btnStart: string; btnLogin: string;
+  storePrompt: string; appStore: string; googlePlay: string;
   footer: string; footer2: string;
 }> = {
   ko: {
@@ -67,6 +70,9 @@ const TEXTS: Record<Lang, {
     verse: "복 있는 사람은 오직 여호와의\n율법을 즐거워하여 그의 율법을\n주야로 묵상하는도다",
     btnStart: "시작하기",
     btnLogin: "이미 계정이 있어요",
+    storePrompt: "앱으로 더 편하게 사용해보세요",
+    appStore: "App Store",
+    googlePlay: "Google Play",
     footer: "말씀 동행",
     footer2: "광고 없이 사용",
   },
@@ -97,6 +103,9 @@ const TEXTS: Record<Lang, {
     verse: "Blessed is the one whose delight\nis in the law of the LORD,\nand who meditates on his law day and night.",
     btnStart: "Get Started",
     btnLogin: "I already have an account",
+    storePrompt: "Use Roots more easily in the app",
+    appStore: "App Store",
+    googlePlay: "Google Play",
     footer: "Word walk",
     footer2: "No ads",
   },
@@ -127,6 +136,9 @@ const TEXTS: Record<Lang, {
     verse: "Wohl dem, der Lust hat am Gesetz\ndes HERRN und über sein Gesetz\nnachsinnt Tag und Nacht.",
     btnStart: "Jetzt starten",
     btnLogin: "Ich habe bereits ein Konto",
+    storePrompt: "Nutzen Sie Roots bequemer in der App",
+    appStore: "App Store",
+    googlePlay: "Google Play",
     footer: "Wortweg",
     footer2: "Ohne Werbung",
   },
@@ -157,6 +169,9 @@ const TEXTS: Record<Lang, {
     verse: "Heureux l'homme qui trouve son plaisir\ndans la loi de l'Éternel,\net qui la médite jour et nuit !",
     btnStart: "Commencer",
     btnLogin: "J'ai déjà un compte",
+    storePrompt: "Utilisez Roots plus facilement dans l’application",
+    appStore: "App Store",
+    googlePlay: "Google Play",
     footer: "Marche avec la Parole",
     footer2: "Sans publicité",
   },
@@ -456,6 +471,19 @@ export default function WelcomePage() {
           <button className={styles.btnOutline} onClick={goLogin}>
             {tx.btnLogin}
           </button>
+          <div className={styles.storeBlock} aria-label={tx.storePrompt}>
+            <div className={styles.storePrompt}>{tx.storePrompt}</div>
+            <div className={styles.storeButtons}>
+              <a className={styles.storeButton} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+                <span className={styles.storeIcon}></span>
+                <span>{tx.appStore}</span>
+              </a>
+              <a className={styles.storeButton} href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer">
+                <span className={styles.storeIcon}>▶</span>
+                <span>{tx.googlePlay}</span>
+              </a>
+            </div>
+          </div>
         </div>
 
         <div className={styles.footerNote}>
