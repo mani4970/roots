@@ -30,11 +30,12 @@ export type NotificationApplyResult = {
 const SETTINGS_KEY = "roots_local_notification_settings_v1";
 const COMPLETED_DATES_KEY = "roots_local_notification_completed_reflections_v1";
 const NOTIFICATION_IDS = {
-  morning: 11001,
-  prayer: 11003,
+  morningBase: 11000,
+  prayerBase: 11100,
   eveningBase: 11200,
 };
-const EVENING_LOOKAHEAD_DAYS = 14;
+const NOTIFICATION_LOOKAHEAD_DAYS = 14;
+const ROOTS_NOTIFICATION_CHANNEL_ID = "roots-daily-reminders";
 
 export const DEFAULT_NOTIFICATION_SETTINGS: RootsNotificationSettings = {
   enabled: false,
@@ -179,14 +180,36 @@ function notificationText(lang: Lang) {
 async function cancelRootsNotifications() {
   if (!isNativeNotificationsAvailable()) return;
   const notifications = [
-    { id: NOTIFICATION_IDS.morning },
-    { id: NOTIFICATION_IDS.prayer },
-    ...Array.from({ length: EVENING_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.eveningBase + index })),
+    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.morningBase + index })),
+    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.prayerBase + index })),
+    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.eveningBase + index })),
+    // Legacy repeating notification ids from the first notification implementation.
+    { id: 11001 },
+    { id: 11003 },
   ];
   try {
     await LocalNotifications.cancel({ notifications });
   } catch {
     // Ignore cancellation failures; a fresh schedule will be attempted next.
+  }
+}
+
+async function ensureAndroidNotificationChannel(lang: Lang) {
+  if (!isNativeNotificationsAvailable() || Capacitor.getPlatform() !== "android") return;
+
+  const text = notificationText(lang);
+  try {
+    await LocalNotifications.createChannel({
+      id: ROOTS_NOTIFICATION_CHANNEL_ID,
+      name: text.roots,
+      description: text.morning,
+      importance: 4,
+      visibility: 1,
+      lights: true,
+      vibration: true,
+    });
+  } catch (error) {
+    console.warn("Roots notification channel setup failed", error);
   }
 }
 
@@ -219,47 +242,61 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
   const permission = await ensureNotificationPermission();
   if (!permission.ok) return permission;
 
+  await ensureAndroidNotificationChannel(lang);
+
   const text = notificationText(lang);
   const notifications: Parameters<typeof LocalNotifications.schedule>[0]["notifications"] = [];
+  const now = new Date();
+  const completedDates = getCompletedReflectionDates();
+  const androidChannel = Capacitor.getPlatform() === "android" ? ROOTS_NOTIFICATION_CHANNEL_ID : undefined;
 
-  if (normalized.morningEnabled) {
-    notifications.push({
-      id: NOTIFICATION_IDS.morning,
-      title: text.roots,
-      body: text.morning,
-      schedule: { at: nextDateForTime(normalized.morningTime), repeats: true, every: "day" },
-      extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
-      autoCancel: true,
-    });
-  }
+  for (let offset = 0; offset < NOTIFICATION_LOOKAHEAD_DAYS; offset += 1) {
+    if (normalized.morningEnabled) {
+      const at = dateForTimeOnDay(normalized.morningTime, offset);
+      if (at > now) {
+        notifications.push({
+          id: NOTIFICATION_IDS.morningBase + offset,
+          title: text.roots,
+          body: text.morning,
+          schedule: { at },
+          extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
+          autoCancel: true,
+          channelId: androidChannel,
+        });
+      }
+    }
 
-  if (normalized.prayerEnabled) {
-    notifications.push({
-      id: NOTIFICATION_IDS.prayer,
-      title: text.prayerTitle,
-      body: text.prayer,
-      schedule: { at: nextDateForTime(normalized.prayerTime), repeats: true, every: "day" },
-      extra: { target: "prayer" satisfies NotificationTarget, kind: "prayer" },
-      autoCancel: true,
-    });
-  }
+    if (normalized.prayerEnabled) {
+      const at = dateForTimeOnDay(normalized.prayerTime, offset);
+      if (at > now) {
+        notifications.push({
+          id: NOTIFICATION_IDS.prayerBase + offset,
+          title: text.prayerTitle,
+          body: text.prayer,
+          schedule: { at },
+          extra: { target: "prayer" satisfies NotificationTarget, kind: "prayer" },
+          autoCancel: true,
+          channelId: androidChannel,
+        });
+      }
+    }
 
-  if (normalized.eveningEnabled) {
-    const completedDates = getCompletedReflectionDates();
-    const now = new Date();
-    for (let offset = 0; offset < EVENING_LOOKAHEAD_DAYS; offset += 1) {
+    if (normalized.eveningEnabled) {
       const at = dateForTimeOnDay(normalized.eveningTime, offset);
-      if (at <= now) continue;
-      const key = todayKey(at);
-      if (completedDates.has(key)) continue;
-      notifications.push({
-        id: NOTIFICATION_IDS.eveningBase + offset,
-        title: text.eveningTitle,
-        body: text.evening,
-        schedule: { at },
-        extra: { target: "reflection" satisfies NotificationTarget, kind: "evening_reflection" },
-        autoCancel: true,
-      });
+      if (at > now) {
+        const key = todayKey(at);
+        if (!completedDates.has(key)) {
+          notifications.push({
+            id: NOTIFICATION_IDS.eveningBase + offset,
+            title: text.eveningTitle,
+            body: text.evening,
+            schedule: { at },
+            extra: { target: "reflection" satisfies NotificationTarget, kind: "evening_reflection" },
+            autoCancel: true,
+            channelId: androidChannel,
+          });
+        }
+      }
     }
   }
 
