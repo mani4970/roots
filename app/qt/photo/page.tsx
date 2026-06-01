@@ -11,7 +11,7 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS } from "@/lib/bibleData";
+import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS } from "@/lib/bibleData";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 
 type CompletePhotoOptions = {
@@ -34,6 +34,7 @@ const PHOTO_COPY = {
   memoPlaceholder: { ko: "선택사항이에요. 오늘 받은 은혜를 짧게 적어도 좋아요.", de: "Optional. Du kannst kurz notieren, was du heute empfangen hast.", en: "Optional. You can briefly note the grace you received today.", fr: "Facultatif. Vous pouvez noter brièvement la grâce reçue aujourd’hui." },
   shareAndSave: { ko: "나눔 설정하고 저장하기", de: "Teilen einstellen und speichern", en: "Set sharing and save", fr: "Définir le partage et enregistrer" },
   customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage" },
+  translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique" },
   sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon" },
   sermonTitlePlaceholder: { ko: "예: 두려워하지 말라", de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. N’aie pas peur" },
   book: { ko: "성경", de: "Buch", en: "Book", fr: "Livre" },
@@ -68,10 +69,14 @@ function buildSundayBibleRef(title: string, refs: string[]) {
 
 function splitShareTargets(targets: string[]) {
   const hasAll = targets.includes("all");
-  const groupTargets = targets.filter(target => target.startsWith("group:"));
-  const partnerRecipientIds = targets.filter(target => target.startsWith("partner:")).map(target => target.slice("partner:".length));
+  const groupTargets = targets.filter(target => target.startsWith("group_")).map(target => target.slice("group_".length));
+  const partnerRecipientIds = targets.filter(target => target.startsWith("partner_")).map(target => target.slice("partner_".length));
+  const visibilityParts = [
+    ...(hasAll ? ["all"] : []),
+    ...groupTargets.map(groupId => `group_${groupId}`),
+  ];
   return {
-    visibility: hasAll ? "all" : groupTargets.length > 0 ? `group_${groupTargets[0].slice("group:".length)}` : "private",
+    visibility: visibilityParts.length > 0 ? visibilityParts.join(",") : "private",
     partnerRecipientIds,
   };
 }
@@ -143,6 +148,12 @@ function PhotoReflectionContent() {
   const [startVerse, setStartVerse] = useState(scheduledStart || 1);
   const [endChapter, setEndChapter] = useState(scheduledEndChapter || scheduledChapter || 1);
   const [endVerse, setEndVerse] = useState(scheduledEnd || 1);
+  const [selectedTranslation, setSelectedTranslation] = useState<number>(() => {
+    if (typeof window === "undefined") return 92;
+    const saved = window.localStorage.getItem("roots_default_translation");
+    const parsed = saved ? Number(saved) : 92;
+    return Number.isFinite(parsed) ? parsed : 92;
+  });
   const [sermonTitle, setSermonTitle] = useState("");
   const [extraRefs, setExtraRefs] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
@@ -171,7 +182,7 @@ function PhotoReflectionContent() {
     ? buildRef(scheduledBook, scheduledChapter, scheduledStart, scheduledEnd, scheduledEndChapter)
     : "";
   const customRefs = extraRefs.length > 0 ? extraRefs : [currentCustomRef];
-  const bibleRef = scheduledRef || (sundayContext ? buildSundayBibleRef(sermonTitle, customRefs) : currentCustomRef);
+  const bibleRef = scheduledRef || (sundayContext ? buildSundayBibleRef(sermonTitle, customRefs) : customRefs.join(", "));
 
   useEffect(() => {
     setChapter(1);
@@ -428,6 +439,26 @@ function PhotoReflectionContent() {
           <div className="card">
             <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>{pc("customPassage", lang)}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("translation", lang)}</span>
+                <select
+                  className="input-field"
+                  value={selectedTranslation}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setSelectedTranslation(next);
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem("roots_default_translation", String(next));
+                    }
+                  }}
+                >
+                  {TRANSLATIONS.map(group => (
+                    <optgroup key={group.group} label={group.group}>
+                      {group.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
               {sundayContext && (
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("sermonTitle", lang)}</span>
@@ -466,12 +497,10 @@ function PhotoReflectionContent() {
                   </select>
                 </label>
               </div>
-              {sundayContext && (
-                <button type="button" onClick={addCurrentPassage} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <Plus size={15} /> {pc("addPassage", lang)}
-                </button>
-              )}
-              {sundayContext && extraRefs.length > 0 && (
+              <button type="button" onClick={addCurrentPassage} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Plus size={15} /> {pc("addPassage", lang)}
+              </button>
+              {extraRefs.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {extraRefs.map(ref => (
                     <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 10px", border: "1px solid rgba(122,157,122,0.24)" }}>
