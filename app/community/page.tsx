@@ -28,7 +28,7 @@ function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
 
 type ShareScope = "all" | "group" | "partner";
 
-const APP_URL = "https://christian-roots.com";
+const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 300;
 
@@ -1681,8 +1681,8 @@ export default function CommunityPage() {
   async function shareApp() {
     const result = await shareInviteContent({
       title: c("community_app_invite_share_title"),
-      text: c("community_app_invite_share_text", { url: APP_URL }),
-      url: APP_URL,
+      text: c("community_app_invite_share_text"),
+      url: `${APP_URL}/welcome`,
     });
     if (result === "copied") {
       setCopiedId("app");
