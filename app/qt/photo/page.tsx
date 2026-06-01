@@ -9,9 +9,9 @@ import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotific
 import { storageSet } from "@/lib/clientStorage";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS } from "@/lib/bibleData";
+import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 
 type CompletePhotoOptions = {
@@ -52,6 +52,15 @@ const PHOTO_COPY = {
 function pc(key: keyof typeof PHOTO_COPY, lang: string) {
   const entry = PHOTO_COPY[key] as any;
   return entry[lang] ?? entry.ko;
+}
+
+function getBibleDisplayLang(translationId: number, fallbackLang: string): Lang {
+  const bibleLang = TRANSLATION_LANG[translationId] ?? "KO";
+  if (bibleLang === "EN") return "en";
+  if (bibleLang === "DE") return "de";
+  if (bibleLang === "FR") return "fr";
+  if (fallbackLang === "en" || fallbackLang === "de" || fallbackLang === "fr" || fallbackLang === "ko") return fallbackLang;
+  return "ko";
 }
 
 function buildRef(book: string, chapter: number, start: number, end: number, endChapter?: number | null) {
@@ -178,6 +187,7 @@ function PhotoReflectionContent() {
     safeEndChapter === chapter ? Math.max(Math.min(startVerse, maxStartVerses), Math.min(endVerse, maxEndVerses)) : Math.min(endVerse, maxEndVerses),
     safeEndChapter,
   );
+  const bibleDisplayLang = getBibleDisplayLang(selectedTranslation, lang);
   const scheduledRef = source === "scheduled" && scheduledBook && scheduledChapter
     ? buildRef(scheduledBook, scheduledChapter, scheduledStart, scheduledEnd, scheduledEndChapter)
     : "";
@@ -428,7 +438,7 @@ function PhotoReflectionContent() {
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="card-sage">
           <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
-          <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(bibleRef, lang)}</p>
+          <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(bibleRef, bibleDisplayLang)}</p>
           {isCatchup && (
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString()}</p>
           )}
@@ -468,7 +478,7 @@ function PhotoReflectionContent() {
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("book", lang)}</span>
                 <select className="input-field" value={book} onChange={e => setBook(e.target.value)}>
-                  {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, lang)}</option>)}
+                  {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, bibleDisplayLang)}</option>)}
                 </select>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
@@ -504,7 +514,7 @@ function PhotoReflectionContent() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {extraRefs.map(ref => (
                     <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 10px", border: "1px solid rgba(122,157,122,0.24)" }}>
-                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>{translateBibleRef(ref, lang)}</span>
+                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>{translateBibleRef(ref, bibleDisplayLang)}</span>
                       <button type="button" onClick={() => removeExtraRef(ref)} style={{ border: "none", background: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14} /></button>
                     </div>
                   ))}
