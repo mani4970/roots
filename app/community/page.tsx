@@ -148,6 +148,8 @@ function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: 
     <img
       src={url}
       alt={name ?? "프로필"}
+      loading="lazy"
+      decoding="async"
       draggable={false}
       onDragStart={(event) => event.preventDefault()}
       onContextMenu={(event) => event.preventDefault()}
@@ -854,6 +856,21 @@ export default function CommunityPage() {
     return items.slice(0, getVisibleFeedCount(key));
   }
 
+  useEffect(() => {
+    const supabase = createClient();
+    if (tab === "all") {
+      void loadQtPhotoUrls(supabase, visibleFeedItems("all-qt", qtShares));
+      return;
+    }
+    if (tab === "group" && selectedGroup?.id) {
+      void loadQtPhotoUrls(supabase, visibleFeedItems(`group-${selectedGroup.id}-qt`, groupQts));
+      return;
+    }
+    if (tab === "partners" && selectedPartner?.partner_id) {
+      void loadQtPhotoUrls(supabase, visibleFeedItems(`partner-${selectedPartner.partner_id}-qt`, partnerQts));
+    }
+  }, [tab, selectedGroup?.id, selectedPartner?.partner_id, qtShares, groupQts, partnerQts, visibleFeedCounts]);
+
   function renderFeedLoadMore(key: string, total: number) {
     const visibleCount = getVisibleFeedCount(key);
     if (total <= visibleCount) return null;
@@ -1027,7 +1044,7 @@ export default function CommunityPage() {
 
         const visibleRows = filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds);
         setPartnerQts(visibleRows);
-        void loadQtPhotoUrls(supabase, visibleRows);
+        void loadQtPhotoUrls(supabase, visibleRows.slice(0, COMMUNITY_FEED_PAGE_SIZE));
 
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
         setQtReactionCounts(prev => ({ ...prev, ...counts }));
@@ -1338,7 +1355,7 @@ export default function CommunityPage() {
         const profMap = await fetchProfiles(supabase, qtData);
         const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
         setQtShares(sortQtFeedRows(withProfs));
-        void loadQtPhotoUrls(supabase, withProfs);
+        void loadQtPhotoUrls(supabase, withProfs.slice(0, COMMUNITY_FEED_PAGE_SIZE));
         // 반응 카운트 로드
         const qtIds = qtData.map((r: any) => r.id);
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
@@ -1456,7 +1473,7 @@ export default function CommunityPage() {
         isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
       })), currentHiddenKeys, currentHiddenUserIds);
       setGroupQts(sortQtFeedRows(withProfs));
-      void loadQtPhotoUrls(supabase, withProfs);
+      void loadQtPhotoUrls(supabase, withProfs.slice(0, COMMUNITY_FEED_PAGE_SIZE));
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
       const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
@@ -1840,7 +1857,7 @@ export default function CommunityPage() {
         }}
         style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", textAlign: "left" }}
       >
-        <img src={src} alt={alt || "photo reflection"} style={style} />
+        <img src={src} alt={alt || "photo reflection"} loading="lazy" decoding="async" style={style} />
       </button>
     );
   }
@@ -2337,7 +2354,7 @@ export default function CommunityPage() {
                   groupMemberProfiles.map((member: any) => (
                     <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0" }}>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
+                        <img src={member.avatar_url} alt="" loading="lazy" decoding="async" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
                       ) : (
                         <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <Users size={17} />
