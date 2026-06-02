@@ -226,15 +226,24 @@ function RecordContent() {
         ? { visibility: "private", partnerRecipientIds: [] as string[] }
         : splitShareTargets(selectedTargets);
 
-      const { error } = await supabase.from("qt_records")
-        .update({ visibility: newVisibility })
+      const sharedAt = newVisibility === "private" ? null : new Date().toISOString();
+      let { error } = await supabase.from("qt_records")
+        .update({ visibility: newVisibility, shared_at: sharedAt })
         .eq("id", id)
         .eq("user_id", user.id);
+      if (error && /shared_at/i.test(error.message ?? "")) {
+        console.warn("qt_records.shared_at column is not available yet. Retrying visibility update without shared_at:", error.message);
+        const retry = await supabase.from("qt_records")
+          .update({ visibility: newVisibility })
+          .eq("id", id)
+          .eq("user_id", user.id);
+        error = retry.error;
+      }
       if (error) throw error;
 
       await replaceQtRecipients(supabase, id, user.id, partnerRecipientIds);
 
-      setRecord((r: any) => ({ ...r, visibility: newVisibility }));
+      setRecord((r: any) => ({ ...r, visibility: newVisibility, shared_at: sharedAt }));
       setSharedTargets(privateOnly ? [] : Array.from(new Set(selectedTargets)));
       // 요셉(첫 QT 나눔), 말씀 배달부(30회), 말씀의 평안(50회) 배지 체크
       // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.

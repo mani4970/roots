@@ -43,6 +43,39 @@ function sharedContentTime(row: any): string | null {
   return row?.shared_at ?? row?.created_at ?? null;
 }
 
+function qtFeedTime(row: any): string | null {
+  return row?.shared_at ?? row?.created_at ?? null;
+}
+
+function sortQtFeedRows<T extends Record<string, any>>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => new Date(qtFeedTime(b) ?? 0).getTime() - new Date(qtFeedTime(a) ?? 0).getTime());
+}
+
+async function fetchQtFeedRows(supabase: ReturnType<typeof createClient>, visibilityPattern: string) {
+  const queryWithSharedAt = await supabase
+    .from("qt_records")
+    .select("*")
+    .ilike("visibility", visibilityPattern)
+    .order("shared_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+
+  if (!queryWithSharedAt.error) return sortQtFeedRows(queryWithSharedAt.data ?? []);
+
+  if (!/shared_at/i.test(queryWithSharedAt.error.message ?? "")) throw queryWithSharedAt.error;
+  console.warn("qt_records.shared_at column is not available yet. Falling back to created_at ordering:", queryWithSharedAt.error.message);
+
+  const fallback = await supabase
+    .from("qt_records")
+    .select("*")
+    .ilike("visibility", visibilityPattern)
+    .order("created_at", { ascending: false })
+    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+
+  if (fallback.error) throw fallback.error;
+  return sortQtFeedRows(fallback.data ?? []);
+}
+
 function latestSharedContentTime(rows?: any[] | null): string | null {
   if (!rows || rows.length === 0) return null;
   return rows
@@ -1300,13 +1333,11 @@ export default function CommunityPage() {
       }
 
       // 전체 공개 묵상 나눔
-      const { data: qtData } = await supabase.from("qt_records")
-        .select("*").ilike("visibility", "%all%")
-        .order("created_at", { ascending: false }).limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+      const qtData = await fetchQtFeedRows(supabase, "%all%");
       if (qtData) {
         const profMap = await fetchProfiles(supabase, qtData);
         const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
-        setQtShares(withProfs);
+        setQtShares(sortQtFeedRows(withProfs));
         void loadQtPhotoUrls(supabase, withProfs);
         // 반응 카운트 로드
         const qtIds = qtData.map((r: any) => r.id);
@@ -1416,17 +1447,15 @@ export default function CommunityPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const currentHiddenKeys = hiddenKeys;
     const currentHiddenUserIds = hiddenUserIds;
-    const { data } = await supabase.from("qt_records")
-      .select("*").ilike("visibility", `%group_${group.id}%`)
-      .order("created_at", { ascending: false }).limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+    const data = await fetchQtFeedRows(supabase, `%group_${group.id}%`);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
       const withProfs = filterHiddenItems("qt", data.map((r: any) => ({
         ...r,
         profiles: profMap[r.user_id] ?? null,
-        isUnreadInGroup: isLaterThan(r.created_at, previousSeenAt),
+        isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
       })), currentHiddenKeys, currentHiddenUserIds);
-      setGroupQts(withProfs);
+      setGroupQts(sortQtFeedRows(withProfs));
       void loadQtPhotoUrls(supabase, withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);

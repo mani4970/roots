@@ -1812,10 +1812,19 @@ function QTWriteContent() {
       if (completedRecord) {
         if (selectedDate === getLocalDateString()) {
           if (typeof options.visibility === "string") {
-            const { error: visibilityError } = await supabase.from("qt_records")
-              .update({ visibility: options.visibility })
+            const sharedAt = options.visibility === "private" ? null : new Date().toISOString();
+            let { error: visibilityError } = await supabase.from("qt_records")
+              .update({ visibility: options.visibility, shared_at: sharedAt })
               .eq("id", completedRecord.id)
               .eq("user_id", user.id);
+            if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
+              console.warn("qt_records.shared_at column is not available yet. Retrying visibility update without shared_at:", visibilityError.message);
+              const retry = await supabase.from("qt_records")
+                .update({ visibility: options.visibility })
+                .eq("id", completedRecord.id)
+                .eq("user_id", user.id);
+              visibilityError = retry.error;
+            }
             if (visibilityError) {
               console.warn("말씀 묵상 그룹/전체 공유 저장 실패:", visibilityError);
               showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
