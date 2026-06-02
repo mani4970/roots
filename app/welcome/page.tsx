@@ -24,7 +24,7 @@ const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.roots
 
 const TEXTS: Record<Lang, {
   tagline: string;
-  descParts: [string, string, string];
+  descParts: string[];
   growthEyebrow: string;
   growthTitle: string;
   growthSub: string;
@@ -46,13 +46,12 @@ const TEXTS: Record<Lang, {
   ko: {
     tagline: "말씀에 뿌리를 내려요",
     descParts: [
-      "QT를 통해 매일 말씀과 동행하고",
-      "기도를 하나님께 올려드리고",
-      "오늘의 결단으로 말씀을 삶에 심어보세요.",
+      "말씀 묵상을 통해 매일 말씀과 동행하고",
+      "기도로 하나님께 찾고 구해보세요.",
     ],
     growthEyebrow: "나의 정원",
     growthTitle: "100일 동안 자라는\n나의 정원",
-    growthSub: "QT를 완료할 때마다 겨자씨 한 알이 자라요.\n100일 후에는 공중의 새들이 깃들이는 나무처럼\n말씀의 정원이 풍성하게 자라납니다.",
+    growthSub: "말씀 묵상을 완료할 때마다 겨자씨 한 알이 자라요.\n100일 후에는 공중의 새들이 깃들이는 나무들이\n풍성한 말씀의 정원이 완성됩니다.",
     growthStart: "시작",
     growthEnd: "100일 후",
     badgeLabel: "성령의 열매와 신앙의 결실",
@@ -60,12 +59,12 @@ const TEXTS: Record<Lang, {
     badgeNames: ["사랑", "희락", "화평", "오래 참음", "자비", "양선", "충성", "온유", "절제"],
     faithBadgeNames: ["모세", "다윗", "요셉", "말씀 배달부", "말씀의 평안"],
     featuresLabel: "기능",
-    f1t: "큐티",
-    f1s: "6단계, 자유형식, 주일예배 QT를\n상황에 맞게 기록합니다.",
+    f1t: "말씀 묵상",
+    f1s: "6단계, 자유형식, 사진 기록, 주일예배 묵상 등\n상황에 맞게 기록합니다.",
     f2t: "기도",
-    f2s: "기도 제목을 기록하고\n응답의 순간을 남깁니다.",
+    f2s: "기도 제목을 기록하고, 중보하고,\n응답의 순간을 간증으로 남깁니다.",
     f3t: "공동체",
-    f3s: "서로를 위해 기도하고\n말씀의 여정을 나눕니다.",
+    f3s: "동역자 맺기와 그룹 생성을 통해\n서로를 위해 기도하고 묵상을 나누며\n신앙의 여정을 함께 나아갑니다.",
     verseRef: "시편 1:1–2",
     verse: "복 있는 사람은 오직 여호와의\n율법을 즐거워하여 그의 율법을\n주야로 묵상하는도다",
     btnStart: "시작하기",
@@ -79,13 +78,12 @@ const TEXTS: Record<Lang, {
   en: {
     tagline: "Root yourself in the Word",
     descParts: [
-      "Walk with God’s Word daily through QT,",
-      "bring your prayers to God,",
-      "and plant today’s decision in your life.",
+      "Walk with God’s Word each day through Bible reflection,",
+      "and seek Him in prayer.",
     ],
     growthEyebrow: "My Garden",
     growthTitle: "A garden that grows\nfor 100 days",
-    growthSub: "Every completed QT helps a mustard seed grow.\nAfter 100 days, it becomes a tree where birds can nest\nand your garden of the Word grows abundantly.",
+    growthSub: "Every completed Bible reflection helps a mustard seed grow.\nAfter 100 days, trees where birds can nest\ncomplete a flourishing garden of the Word.",
     growthStart: "Start",
     growthEnd: "After 100 days",
     badgeLabel: "Fruits of the Spirit and faith milestones",
@@ -93,12 +91,12 @@ const TEXTS: Record<Lang, {
     badgeNames: ["Love", "Joy", "Peace", "Patience", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"],
     faithBadgeNames: ["Moses", "David", "Joseph", "Word Carrier", "Peace in the Word"],
     featuresLabel: "Features",
-    f1t: "Quiet Time",
-    f1s: "Use a 6-step guide, free writing,\nor Sunday worship notes.",
+    f1t: "Bible Reflection",
+    f1s: "Record with a 6-step guide, free writing, photo records,\nor Sunday worship reflection.",
     f2t: "Prayer",
-    f2s: "Keep prayer requests and\nrecord answered prayers.",
+    f2s: "Record prayer requests, intercede for others,\nand keep answered prayers as testimonies.",
     f3t: "Community",
-    f3s: "Pray for one another\nand share your walk with Scripture.",
+    f3s: "Connect with faith partners and create groups\nto pray for one another, share reflections,\nand walk the journey of faith together.",
     verseRef: "Psalm 1:1–2",
     verse: "Blessed is the one whose delight\nis in the law of the LORD,\nand who meditates on his law day and night.",
     btnStart: "Get Started",
@@ -112,13 +110,12 @@ const TEXTS: Record<Lang, {
   de: {
     tagline: "Im Wort Wurzeln schlagen",
     descParts: [
-      "Gehen Sie täglich durch QT mit dem Wort,",
-      "bringen Sie Ihre Gebete zu Gott,",
-      "und pflanzen Sie die heutige Entscheidung ins Leben.",
+      "Gehen Sie durch Stille Zeit täglich mit dem Wort,",
+      "und suchen und bitten Sie Gott im Gebet.",
     ],
     growthEyebrow: "Mein Garten",
     growthTitle: "Ein Garten, der\n100 Tage wächst",
-    growthSub: "Mit jeder abgeschlossenen QT wächst ein Senfkorn.\nNach 100 Tagen wird es zu einem Baum, in dem die Vögel nisten,\nund Ihr Garten im Wort wächst reich.",
+    growthSub: "Mit jeder abgeschlossenen Stillen Zeit wächst ein Senfkorn.\nNach 100 Tagen entstehen Bäume, in denen die Vögel nisten,\nund ein reicher Garten des Wortes wird vollendet.",
     growthStart: "Start",
     growthEnd: "Nach 100 Tagen",
     badgeLabel: "Früchte des Geistes und Glaubensschritte",
@@ -127,11 +124,11 @@ const TEXTS: Record<Lang, {
     faithBadgeNames: ["Mose", "David", "Josef", "Wortüberbringer", "Ruhe im Wort"],
     featuresLabel: "Funktionen",
     f1t: "Stille Zeit",
-    f1s: "6-Schritte-Guide, freies Schreiben\nund Notizen zum Sonntagsgottesdienst.",
+    f1s: "Halten Sie Ihre Stille Zeit mit 6-Schritte-Guide, freiem Schreiben,\nFotoaufzeichnung oder Sonntagsgottesdienst-Reflexion fest.",
     f2t: "Gebet",
-    f2s: "Gebetsanliegen festhalten\nund Erhörungen bewahren.",
-    f3t: "Gemeinde",
-    f3s: "Füreinander beten\nund den Weg im Wort teilen.",
+    f2s: "Gebetsanliegen festhalten, Fürbitte leisten\nund Erhörungen als Zeugnis bewahren.",
+    f3t: "Gemeinschaft",
+    f3s: "Finden Sie Glaubenspartner und erstellen Sie Gruppen,\num füreinander zu beten, Reflexionen zu teilen\nund gemeinsam im Glauben weiterzugehen.",
     verseRef: "Psalm 1,1–2",
     verse: "Wohl dem, der Lust hat am Gesetz\ndes HERRN und über sein Gesetz\nnachsinnt Tag und Nacht.",
     btnStart: "Jetzt starten",
@@ -143,15 +140,14 @@ const TEXTS: Record<Lang, {
     footer2: "Ohne Werbung",
   },
   fr: {
-    tagline: "Enracinez-vous dans la Parole aujourd’hui",
+    tagline: "Enracinez-vous dans la Parole",
     descParts: [
-      "Marchez avec la Parole par le QT,",
-      "confiez vos sujets de prière à Dieu,",
-      "et plantez la décision du jour dans votre vie.",
+      "Marchez chaque jour avec la Parole par la méditation biblique,",
+      "et cherchez Dieu dans la prière.",
     ],
     growthEyebrow: "Mon jardin",
     growthTitle: "Un jardin qui grandit\npendant 100 jours",
-    growthSub: "À chaque QT terminé, un grain de moutarde grandit.\nAprès 100 jours, il devient un arbre où les oiseaux peuvent se poser\net votre jardin de la Parole grandit avec abondance.",
+    growthSub: "À chaque méditation biblique terminée, un grain de moutarde grandit.\nAprès 100 jours, des arbres où les oiseaux peuvent se poser\ncomplètent un jardin abondant de la Parole.",
     growthStart: "Début",
     growthEnd: "Après 100 jours",
     badgeLabel: "Fruits de l’Esprit et étapes de foi",
@@ -159,12 +155,12 @@ const TEXTS: Record<Lang, {
     badgeNames: ["Amour", "Joie", "Paix", "Patience", "Bienveillance", "Bonté", "Fidélité", "Douceur", "Maîtrise"],
     faithBadgeNames: ["Moïse", "David", "Joseph", "Porteur de la Parole", "Paix dans la Parole"],
     featuresLabel: "Fonctions",
-    f1t: "Méditation",
-    f1s: "Méditez la Parole en 6 étapes\net appliquez-la dans votre vie.\nForme libre & culte du dimanche",
+    f1t: "Méditation biblique",
+    f1s: "Notez votre méditation en 6 étapes, en forme libre,\navec une photo ou pour le culte du dimanche.",
     f2t: "Prière",
-    f2s: "Notez vos sujets de prière et\ntémoignez des prières exaucées",
+    f2s: "Notez vos sujets de prière, intercédez,\net gardez les réponses comme témoignages.",
     f3t: "Communauté",
-    f3s: "Priez les uns pour les autres, partagez\nles méditations et grandissez ensemble",
+    f3s: "Créez des liens avec des partenaires de foi et des groupes\npour prier les uns pour les autres, partager les méditations\net avancer ensemble dans la foi.",
     verseRef: "Psaume 1:1–2",
     verse: "Heureux l'homme qui trouve son plaisir\ndans la loi de l'Éternel,\net qui la médite jour et nuit !",
     btnStart: "Commencer",
@@ -347,11 +343,12 @@ export default function WelcomePage() {
           </h1>
           <p className={styles.heroTitleSub}>{tx.tagline}</p>
           <p className={styles.heroDesc}>
-            {tx.descParts[0]}
-            <br />
-            {tx.descParts[1]}
-            <br />
-            <strong className={styles.heroDescStrong}>{tx.descParts[2]}</strong>
+            {tx.descParts.map((part, index) => (
+              <span key={`${part}-${index}`} className={index === tx.descParts.length - 1 ? styles.heroDescStrong : undefined}>
+                {part}
+                {index < tx.descParts.length - 1 && <br />}
+              </span>
+            ))}
           </p>
         </div>
 
