@@ -36,6 +36,8 @@ const NOTIFICATION_IDS = {
 };
 const NOTIFICATION_LOOKAHEAD_DAYS = 14;
 const ROOTS_NOTIFICATION_CHANNEL_ID = "roots-daily-reminders";
+const ROOTS_NOTIFICATION_SMALL_ICON = "ic_stat_roots_notification";
+const ROOTS_NOTIFICATION_ICON_COLOR = "#6B8E5A";
 
 export const DEFAULT_NOTIFICATION_SETTINGS: RootsNotificationSettings = {
   enabled: false,
@@ -179,14 +181,10 @@ function notificationText(lang: Lang) {
 
 async function cancelRootsNotifications() {
   if (!isNativeNotificationsAvailable()) return;
-  const notifications = [
-    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.morningBase + index })),
-    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.prayerBase + index })),
-    ...Array.from({ length: NOTIFICATION_LOOKAHEAD_DAYS }, (_unused, index) => ({ id: NOTIFICATION_IDS.eveningBase + index })),
-    // Legacy repeating notification ids from the first notification implementation.
-    { id: 11001 },
-    { id: 11003 },
-  ];
+  // Cancel the current 14-day schedules and a wider legacy id range.
+  // Older builds used a few repeating ids in the same range; clearing the full Roots
+  // notification band prevents old reminders from firing at unexpected times.
+  const notifications = Array.from({ length: 300 }, (_unused, index) => ({ id: NOTIFICATION_IDS.morningBase + index }));
   try {
     await LocalNotifications.cancel({ notifications });
   } catch {
@@ -206,6 +204,7 @@ async function ensureAndroidNotificationChannel(lang: Lang) {
       importance: 4,
       visibility: 1,
       lights: true,
+      lightColor: ROOTS_NOTIFICATION_ICON_COLOR,
       vibration: true,
     });
   } catch (error) {
@@ -230,6 +229,20 @@ async function ensureNotificationPermission(): Promise<NotificationApplyResult> 
   }
 }
 
+function exactScheduleAt(at: Date): Parameters<typeof LocalNotifications.schedule>[0]["notifications"][number]["schedule"] {
+  // allowWhileIdle helps Android deliver scheduled reminders closer to the selected
+  // time instead of delaying them heavily while the device is idle or optimizing battery.
+  return { at, allowWhileIdle: true } as Parameters<typeof LocalNotifications.schedule>[0]["notifications"][number]["schedule"];
+}
+
+function rootsNotificationVisuals() {
+  if (Capacitor.getPlatform() !== "android") return {};
+  return {
+    smallIcon: ROOTS_NOTIFICATION_SMALL_ICON,
+    iconColor: ROOTS_NOTIFICATION_ICON_COLOR,
+  } as Partial<Parameters<typeof LocalNotifications.schedule>[0]["notifications"][number]>;
+}
+
 export async function applyNotificationSettings(settings: RootsNotificationSettings, lang: Lang): Promise<NotificationApplyResult> {
   const normalized = normalizeSettings(settings);
   saveNotificationSettings(normalized);
@@ -249,6 +262,7 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
   const now = new Date();
   const completedDates = getCompletedReflectionDates();
   const androidChannel = Capacitor.getPlatform() === "android" ? ROOTS_NOTIFICATION_CHANNEL_ID : undefined;
+  const androidVisuals = rootsNotificationVisuals();
 
   for (let offset = 0; offset < NOTIFICATION_LOOKAHEAD_DAYS; offset += 1) {
     if (normalized.morningEnabled) {
@@ -258,10 +272,11 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
           id: NOTIFICATION_IDS.morningBase + offset,
           title: text.roots,
           body: text.morning,
-          schedule: { at },
+          schedule: exactScheduleAt(at),
           extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
           autoCancel: true,
           channelId: androidChannel,
+          ...androidVisuals,
         });
       }
     }
@@ -273,10 +288,11 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
           id: NOTIFICATION_IDS.prayerBase + offset,
           title: text.prayerTitle,
           body: text.prayer,
-          schedule: { at },
+          schedule: exactScheduleAt(at),
           extra: { target: "prayer" satisfies NotificationTarget, kind: "prayer" },
           autoCancel: true,
           channelId: androidChannel,
+          ...androidVisuals,
         });
       }
     }
@@ -290,10 +306,11 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
             id: NOTIFICATION_IDS.eveningBase + offset,
             title: text.eveningTitle,
             body: text.evening,
-            schedule: { at },
+            schedule: exactScheduleAt(at),
             extra: { target: "reflection" satisfies NotificationTarget, kind: "evening_reflection" },
             autoCancel: true,
             channelId: androidChannel,
+            ...androidVisuals,
           });
         }
       }
