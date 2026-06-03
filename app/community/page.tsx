@@ -2032,7 +2032,7 @@ export default function CommunityPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {visiblePartnerQts.map(r => (
                   <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
-                    {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
+                    <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -2129,7 +2129,6 @@ export default function CommunityPage() {
           )}
         </div>
 
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
         {renderProfileModal()}
         {renderActionMenu()}
@@ -2236,7 +2235,7 @@ export default function CommunityPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {visibleGroupQts.map(r => (
                     <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
-                      {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
+                      <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                         <div style={{ position: "absolute", top: 18, right: 18, display: "flex", alignItems: "center", gap: 6 }}>
@@ -2414,7 +2413,6 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
         <BottomNav />
       </div>
@@ -2572,7 +2570,7 @@ export default function CommunityPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {visibleAllQts.map(r => (
                       <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
-                        {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
+                        <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
