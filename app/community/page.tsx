@@ -866,7 +866,7 @@ export default function CommunityPage() {
       void loadQtPhotoUrls(supabase, visibleFeedItems(`group-${selectedGroup.id}-qt`, groupQts));
       return;
     }
-    if (tab === "partners" && selectedPartner?.partner_id) {
+    if (tab === "partner" && selectedPartner?.partner_id) {
       void loadQtPhotoUrls(supabase, visibleFeedItems(`partner-${selectedPartner.partner_id}-qt`, partnerQts));
     }
   }, [tab, selectedGroup?.id, selectedPartner?.partner_id, qtShares, groupQts, partnerQts, visibleFeedCounts]);
