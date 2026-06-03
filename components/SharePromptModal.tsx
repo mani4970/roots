@@ -94,7 +94,6 @@ export default function SharePromptModal({
           <img
             src={partner.avatar_url}
             alt=""
-            loading="lazy"
             decoding="async"
             draggable={false}
             onContextMenu={(e) => e.preventDefault()}

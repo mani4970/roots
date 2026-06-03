@@ -148,7 +148,6 @@ function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: 
     <img
       src={url}
       alt={name ?? "프로필"}
-      loading="lazy"
       decoding="async"
       draggable={false}
       onDragStart={(event) => event.preventDefault()}
@@ -1921,6 +1920,18 @@ export default function CommunityPage() {
     );
   }
 
+  function renderSharedOverlayModals() {
+    return (
+      <>
+        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
+        {renderProfileModal()}
+        {renderActionMenu()}
+        {renderSafetyConfirmModal()}
+        {renderManageModal()}
+      </>
+    );
+  }
+
   const TABS: { id: typeof tab; label: string }[] = [{ id: "partner", label: c("community_tab_partner") }, { id: "group", label: c("community_tab_group") }, { id: "all", label: c("community_tab_all") }];
   const groupPrayingPrayers = groupPrayers.filter((p: any) => !p.is_answered);
   const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
@@ -2126,10 +2137,7 @@ export default function CommunityPage() {
         </div>
 
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
-        {renderProfileModal()}
-        {renderActionMenu()}
-        {renderSafetyConfirmModal()}
-        {renderManageModal()}
+        {renderSharedOverlayModals()}
         <BottomNav />
       </div>
     );
@@ -2322,10 +2330,7 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
-        {renderProfileModal()}
-        {renderActionMenu()}
-        {renderSafetyConfirmModal()}
-        {renderManageModal()}
+        {renderSharedOverlayModals()}
         {showGroupMembers && selectedGroup && (
           <div
             onClick={() => setShowGroupMembers(false)}
@@ -2709,11 +2714,7 @@ export default function CommunityPage() {
         )}
       </div>
 
-      {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
-      {renderProfileModal()}
-      {renderActionMenu()}
-      {renderSafetyConfirmModal()}
-      {renderManageModal()}
+      {renderSharedOverlayModals()}
 
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
