@@ -30,7 +30,7 @@ type ShareScope = "all" | "group" | "partner";
 
 const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
-const COMMUNITY_FEED_PREFETCH_LIMIT = 300;
+const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
 type CommunitySectionKey = "qt" | "praying" | "answered";
 
 function isLaterThan(left?: string | null, right?: string | null) {
@@ -868,6 +868,30 @@ export default function CommunityPage() {
     );
   }
 
+  useEffect(() => {
+    const supabase = createClient();
+
+    if (selectedPartner?.partner_id) {
+      if (partnerDetailTab === "qt") {
+        const key = `partner-${selectedPartner.partner_id}-qt`;
+        void loadQtPhotoUrls(supabase, visibleFeedItems(key, partnerQts));
+      }
+      return;
+    }
+
+    if (selectedGroup?.id) {
+      if (groupDetailTab === "qt") {
+        const key = `group-${selectedGroup.id}-qt`;
+        void loadQtPhotoUrls(supabase, visibleFeedItems(key, groupQts));
+      }
+      return;
+    }
+
+    if (tab === "all" && allTab === "qt") {
+      void loadQtPhotoUrls(supabase, visibleFeedItems("all-qt", qtShares));
+    }
+  }, [tab, allTab, selectedGroup?.id, groupDetailTab, selectedPartner?.partner_id, partnerDetailTab, qtShares, groupQts, partnerQts, visibleFeedCounts, qtPhotoUrls]);
+
   function allSectionSeenKey(uid: string) {
     return `roots_community_all_section_seen_${uid}`;
   }
@@ -1027,7 +1051,6 @@ export default function CommunityPage() {
 
         const visibleRows = filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds);
         setPartnerQts(visibleRows);
-        void loadQtPhotoUrls(supabase, visibleRows);
 
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
         setQtReactionCounts(prev => ({ ...prev, ...counts }));
@@ -1338,7 +1361,6 @@ export default function CommunityPage() {
         const profMap = await fetchProfiles(supabase, qtData);
         const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
         setQtShares(sortQtFeedRows(withProfs));
-        void loadQtPhotoUrls(supabase, withProfs);
         // 반응 카운트 로드
         const qtIds = qtData.map((r: any) => r.id);
         const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
@@ -1409,7 +1431,7 @@ export default function CommunityPage() {
           latestQtAt = latestQt?.created_at ?? null;
 
           const { data: latestPrayerRows } = await supabase.from("prayer_items")
-            .select("*")
+            .select("created_at,shared_at,answered_at,is_answered")
             .ilike("visibility", `%group_${g.id}%`);
           latestPrayerAt = latestSharedContentTime(latestPrayerRows);
         }
@@ -1456,7 +1478,6 @@ export default function CommunityPage() {
         isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
       })), currentHiddenKeys, currentHiddenUserIds);
       setGroupQts(sortQtFeedRows(withProfs));
-      void loadQtPhotoUrls(supabase, withProfs);
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
       const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
