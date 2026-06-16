@@ -94,6 +94,7 @@ export default function SharePromptModal({
           <img
             src={partner.avatar_url}
             alt=""
+            decoding="async"
             draggable={false}
             onContextMenu={(e) => e.preventDefault()}
             style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, flexShrink: 0, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}

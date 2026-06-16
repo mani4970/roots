@@ -122,6 +122,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "시작 절": { de: "Anfangsvers", en: "Start verse", fr: "Verset de début" },
   "끝 절": { de: "Endvers", en: "End verse", fr: "Verset de fin" },
   "말씀 불러오기": { de: "Abschnitt laden", en: "Load passage", fr: "Charger le passage" },
+  "선택한 본문 불러오기": { de: "Ausgewählten Bibeltext laden", en: "Load selected passage", fr: "Charger le passage sélectionné" },
   "불러오는 중...": { de: "Wird geladen...", en: "Loading...", fr: "Chargement..." },
   "말씀 없이 자유롭게 작성하기": { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage", fr: "Écrire librement sans passage" },
   "큐티할 말씀을 먼저 선택해요": { de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage" },
@@ -138,6 +139,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !" },
   "결단": { de: "Entschluss", en: "Resolution", fr: "Décision" },
   "말씀 추가하기 (여러 본문일 경우)": { de: "Abschnitt hinzufügen (bei mehreren Texten)", en: "Add passage (for multiple passages)", fr: "Ajouter un passage (si plusieurs passages)" },
+  "선택한 본문 추가": { de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné" },
+  "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.": { de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
   "성품": { de: "Charakter", en: "Character", fr: "Caractère" },
   "행동": { de: "Handlung", en: "action", fr: "Action" },
   "은 마음을 정하는 것,": { de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
@@ -1182,8 +1185,11 @@ function QTWriteContent() {
         {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
         <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</>}
+          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("선택한 본문 추가", lang)}</>}
         </button>
+        <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, marginTop: -4 }}>
+          {trQT("여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", lang)}
+        </p>
 
         {passages.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1196,8 +1202,8 @@ function QTWriteContent() {
           </div>
         )}
 
-        <button onClick={continueWithSelectedPassages} disabled={loadingBible || (!bibleRef && passages.length === 0)} className="btn-sage">
-          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("말씀 불러오기", lang)}</>}
+        <button onClick={continueWithSelectedPassages} disabled={loadingBible} className="btn-sage">
+          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} />{trQT("선택한 본문 불러오기", lang)}</>}
         </button>
       </div>
     );
@@ -2333,9 +2339,12 @@ function QTWriteContent() {
                       </div>
                     );
                   })()}
-                  <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("말씀 추가하기 (여러 본문일 경우)", lang)}</>}
+                  <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("선택한 본문 추가", lang)}</>}
                   </button>
+                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 8px" }}>
+                    {trQT("여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", lang)}
+                  </p>
                   {passages.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
                       {passages.map((p, i) => (
@@ -2346,8 +2355,8 @@ function QTWriteContent() {
                       ))}
                     </div>
                   )}
-                  <button onClick={continueWithSelectedPassages} disabled={loadingBible || (!bibleRef && passages.length === 0)} className="btn-sage" style={{ marginBottom: 8 }}>
-                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} /> {trQT("말씀 불러오기", lang)}</>}
+                  <button onClick={continueWithSelectedPassages} disabled={loadingBible} className="btn-sage" style={{ marginBottom: 8 }}>
+                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} /> {trQT("선택한 본문 불러오기", lang)}</>}
                   </button>
                   {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
                 </div>

@@ -148,6 +148,7 @@ function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: 
     <img
       src={url}
       alt={name ?? "프로필"}
+      decoding="async"
       draggable={false}
       onDragStart={(event) => event.preventDefault()}
       onContextMenu={(event) => event.preventDefault()}
@@ -854,20 +855,6 @@ export default function CommunityPage() {
     return items.slice(0, getVisibleFeedCount(key));
   }
 
-  function renderFeedLoadMore(key: string, total: number) {
-    const visibleCount = getVisibleFeedCount(key);
-    if (total <= visibleCount) return null;
-    return (
-      <button
-        onClick={() => showMoreFeedItems(key)}
-        className="btn-outline"
-        style={{ width: "100%", marginTop: 4 }}
-      >
-        {c("community_manage_more")}
-      </button>
-    );
-  }
-
   useEffect(() => {
     const supabase = createClient();
 
@@ -891,6 +878,20 @@ export default function CommunityPage() {
       void loadQtPhotoUrls(supabase, visibleFeedItems("all-qt", qtShares));
     }
   }, [tab, allTab, selectedGroup?.id, groupDetailTab, selectedPartner?.partner_id, partnerDetailTab, qtShares, groupQts, partnerQts, visibleFeedCounts, qtPhotoUrls]);
+
+  function renderFeedLoadMore(key: string, total: number) {
+    const visibleCount = getVisibleFeedCount(key);
+    if (total <= visibleCount) return null;
+    return (
+      <button
+        onClick={() => showMoreFeedItems(key)}
+        className="btn-outline"
+        style={{ width: "100%", marginTop: 4 }}
+      >
+        {c("community_manage_more")}
+      </button>
+    );
+  }
 
   function allSectionSeenKey(uid: string) {
     return `roots_community_all_section_seen_${uid}`;
@@ -1861,7 +1862,7 @@ export default function CommunityPage() {
         }}
         style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", textAlign: "left" }}
       >
-        <img src={src} alt={alt || "photo reflection"} style={style} />
+        <img src={src} alt={alt || "photo reflection"} loading="lazy" decoding="async" style={style} />
       </button>
     );
   }
@@ -1922,6 +1923,18 @@ export default function CommunityPage() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  function renderSharedOverlayModals() {
+    return (
+      <>
+        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
+        {renderProfileModal()}
+        {renderActionMenu()}
+        {renderSafetyConfirmModal()}
+        {renderManageModal()}
+      </>
     );
   }
 
@@ -2129,12 +2142,8 @@ export default function CommunityPage() {
           )}
         </div>
 
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
-        {renderProfileModal()}
-        {renderActionMenu()}
-        {renderSafetyConfirmModal()}
-        {renderManageModal()}
+        {renderSharedOverlayModals()}
         <BottomNav />
       </div>
     );
@@ -2327,10 +2336,7 @@ export default function CommunityPage() {
             )}
           </div>
         </div>
-        {renderProfileModal()}
-        {renderActionMenu()}
-        {renderSafetyConfirmModal()}
-        {renderManageModal()}
+        {renderSharedOverlayModals()}
         {showGroupMembers && selectedGroup && (
           <div
             onClick={() => setShowGroupMembers(false)}
@@ -2359,7 +2365,7 @@ export default function CommunityPage() {
                   groupMemberProfiles.map((member: any) => (
                     <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0" }}>
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
+                        <img src={member.avatar_url} alt="" loading="lazy" decoding="async" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
                       ) : (
                         <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <Users size={17} />
@@ -2414,7 +2420,6 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
         {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
         <BottomNav />
       </div>
@@ -2715,11 +2720,7 @@ export default function CommunityPage() {
         )}
       </div>
 
-      {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
-      {renderProfileModal()}
-      {renderActionMenu()}
-      {renderSafetyConfirmModal()}
-      {renderManageModal()}
+      {renderSharedOverlayModals()}
 
       {showGroupForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
