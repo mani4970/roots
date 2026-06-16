@@ -33,3 +33,5 @@ pnpm-debug.log*
 *.keystore
 android/key.properties
 android/keystores/
+.vercel
+.env*
