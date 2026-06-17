@@ -798,16 +798,25 @@ export default function ProfilePage() {
       </div>
 
       {/* 법적/지원 링크 */}
-      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-        <a href="/impressum" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_impressum", lang)}</a>
-        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
-        <a href="/privacy" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_privacy", lang)}</a>
-        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
-        <a href="/terms" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_terms", lang)}</a>
-        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
-        <a href="/support" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_support", lang)}</a>
-        <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>
-        <a href="/account-deletion" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}>{t("profile_account_deletion", lang)}</a>
+      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 0, flexWrap: "wrap" }}>
+        {[
+          { href: "/impressum", label: t("profile_impressum", lang) },
+          { href: "/privacy", label: t("profile_privacy", lang) },
+          { href: "/terms", label: t("profile_terms", lang) },
+          { href: "/support", label: t("profile_support", lang) },
+          { href: "/account-deletion", label: t("profile_account_deletion", lang) },
+        ].map((link, index) => (
+          <span key={link.href} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            {index > 0 && <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>}
+            <button
+              type="button"
+              onClick={() => router.push(link.href)}
+              style={{ padding: "6px 2px", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
+            >
+              {link.label}
+            </button>
+          </span>
+        ))}
       </div>
 
       <div style={{ height: 80 }} />
