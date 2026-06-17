@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
@@ -241,8 +241,43 @@ export default function CommunityPage() {
   const [allSectionSeenAt, setAllSectionSeenAt] = useState<Record<CommunitySectionKey, string | null>>({ qt: null, praying: null, answered: null });
   const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
   const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
+  const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+
+  function pushCommunityDetailHistory(kind: "partner" | "group") {
+    if (typeof window === "undefined") return;
+    if (communityDetailHistoryRef.current) return;
+    try {
+      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...currentState, rootsCommunityDetail: kind }, "", window.location.href);
+      communityDetailHistoryRef.current = kind;
+    } catch {
+      communityDetailHistoryRef.current = kind;
+    }
+  }
+
+  function clearCommunityDetailHistory(kind?: "partner" | "group") {
+    if (!kind || communityDetailHistoryRef.current === kind) communityDetailHistoryRef.current = null;
+  }
+
+  useEffect(() => {
+    function handleCommunityPopState() {
+      const activeDetail = communityDetailHistoryRef.current;
+      if (activeDetail === "partner") {
+        clearCommunityDetailHistory("partner");
+        resetPartnerDetailState();
+        return;
+      }
+      if (activeDetail === "group") {
+        clearCommunityDetailHistory("group");
+        resetGroupDetailState();
+      }
+    }
+
+    window.addEventListener("popstate", handleCommunityPopState);
+    return () => window.removeEventListener("popstate", handleCommunityPopState);
+  }, []);
 
   function contentKey(kind: "qt" | "prayer", id: string) {
     return `${kind}:${id}`;
@@ -369,7 +404,7 @@ export default function CommunityPage() {
     );
   }
 
-  function closeGroupDetail() {
+  function resetGroupDetailState() {
     setActionMenu(null);
     setShowGroupActionMenu(false);
     setShowGroupMembers(false);
@@ -382,7 +417,16 @@ export default function CommunityPage() {
     setDetailQt(null);
   }
 
-  function closePartnerDetail() {
+  function closeGroupDetail() {
+    if (communityDetailHistoryRef.current === "group" && typeof window !== "undefined") {
+      window.history.back();
+      return;
+    }
+    clearCommunityDetailHistory("group");
+    resetGroupDetailState();
+  }
+
+  function resetPartnerDetailState() {
     setActionMenu(null);
     setSafetyConfirm(null);
     closeManageModal();
@@ -391,6 +435,15 @@ export default function CommunityPage() {
     setPartnerQts([]);
     setPartnerPrayers([]);
     setDetailQt(null);
+  }
+
+  function closePartnerDetail() {
+    if (communityDetailHistoryRef.current === "partner" && typeof window !== "undefined") {
+      window.history.back();
+      return;
+    }
+    clearCommunityDetailHistory("partner");
+    resetPartnerDetailState();
   }
 
   function openPrayerEdit(item: any, event?: any, scope?: ShareScope, groupId?: string, partnerId?: string) {
@@ -963,6 +1016,7 @@ export default function CommunityPage() {
     return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: "var(--sage)", boxShadow: "0 0 0 2px rgba(122,157,122,0.14)", flexShrink: 0 }} />;
   }
   async function openPartnerDetail(partner: any) {
+    pushCommunityDetailHistory("partner");
     const openedAt = new Date().toISOString();
     const previousSeenAt = partner.last_seen_shared_at ?? null;
     setSelectedPartner({ ...partner, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt });
@@ -1453,6 +1507,7 @@ export default function CommunityPage() {
   }
 
   async function loadGroupDetail(group: any) {
+    pushCommunityDetailHistory("group");
     setGroupDetailTab(group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt");
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
@@ -1776,6 +1831,7 @@ export default function CommunityPage() {
     const leftGroupId = selectedGroup.id;
     const wasPublic = !!selectedGroup.is_public;
     updateFavoriteCache(userId, leftGroupId, false);
+    clearCommunityDetailHistory("group");
     setSelectedGroup(null);
     setGroupQts([]);
     setGroupPrayers([]);

@@ -134,14 +134,14 @@ function ResultContent() {
   }, [langReady, lang, selectedEmotion]);
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "var(--native-bottom-system-bar, 0px)" }}>
       <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
       <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("result_loading", lang)}</p>
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40, position: "relative" }} className="fade-in">
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(40px + var(--native-bottom-system-bar, 0px))", position: "relative" }} className="fade-in">
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -177,6 +177,8 @@ function ResultContent() {
           {t('result_home_sub', lang)}
         </p>
       </div>
+
+      <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, height: "var(--native-bottom-system-bar, 0px)", background: "var(--bg)", pointerEvents: "none", zIndex: 45 }} />
 
       {/* 하트 콘페티 - 4곳에서 순차 폭발, 한 번만 재생 */}
       <HeartBurst />
