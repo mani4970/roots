@@ -1,0 +1,144 @@
+-- 27_public_table_grants_cleanup_plan_1_4.sql
+-- Roots 1.4 Supabase public table GRANT cleanup plan.
+--
+-- REVIEW / PLAN ONLY.
+-- Do NOT run this file blindly in production.
+-- The executable cleanup SQL below is intentionally commented out.
+--
+-- Why this exists:
+-- - Supabase Data API access requires explicit table grants plus RLS.
+-- - Current production audit shows RLS is enabled, but table grants are overly broad.
+-- - Most public tables grant anon/authenticated:
+--   DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE.
+-- - This is not immediate proof of row exposure because RLS is on, but grants should move
+--   toward least privilege before/around Supabase's 2026 Data API grant behavior changes.
+--
+-- Recommended rollout:
+-- 1) Run 26_security_grants_rls_audit_20260617.sql and save the output.
+-- 2) Review function/RPC grants before changing default function privileges.
+-- 3) Phase 1: remove anonymous write/admin grants and remove admin-like grants from authenticated.
+-- 4) Regression test the app.
+-- 5) Phase 2: reduce anonymous SELECT and duplicate public-role policies after invite/public flows are verified.
+--
+-- Regression checklist after any production grant/RLS change:
+-- - login/signup/OAuth/password reset
+-- - Home load and qt_schedule load
+-- - Bible Reflection: 6-step, freeform, Sunday, photo
+-- - progress/streak/garden/watering/badge flow
+-- - prayer create/edit/share/answered/pray together/likes
+-- - community all/group/partner feeds and reactions
+-- - group create/join/favorite/seen/leave/invite
+-- - partner request/accept/remove/share prompt
+-- - reports/hide content/hide users
+-- - profile photo upload/reset/delete
+-- - account deletion flow
+
+-- ---------------------------------------------------------------------------
+-- Observed tables and suggested authenticated grants.
+-- ---------------------------------------------------------------------------
+-- companion_preferences: select, insert, update, delete
+-- companions: select, insert, update, delete
+-- content_reports: select, insert
+-- content_reports_moderation_queue: service_role only
+-- daily_checkins: select, insert, update
+-- daily_prayer_completions: select, insert, update, delete
+-- feedback: insert (select optional for own feedback; current app only inserts)
+-- follows: select, insert, delete (legacy/if still used)
+-- group_members: select, insert, delete
+-- groups: select, insert, update, delete
+-- hidden_community_items: select, insert, update, delete
+-- hidden_community_users: select, insert, update, delete
+-- prayer_item_recipients: select, insert, delete
+-- prayer_items: select, insert, update, delete
+-- prayer_likes: select, insert, delete
+-- profiles: select, insert, update, delete
+-- qt_reactions: select, insert, update, delete
+-- qt_record_recipients: select, insert, delete
+-- qt_records: select, insert, update, delete
+-- qt_schedule: select
+-- user_prayer_logs: select, insert, delete
+
+-- ---------------------------------------------------------------------------
+-- PHASE 1 CANDIDATE SQL — DO NOT RUN UNTIL EXPLICITLY REVIEWED.
+-- This phase keeps anon SELECT for now to reduce the chance of breaking public invite flows,
+-- but removes anonymous write/admin privileges and removes admin-like privileges from
+-- authenticated app users.
+-- ---------------------------------------------------------------------------
+
+-- begin;
+--
+-- -- 1) Remove admin-like privileges from anon/authenticated.
+-- revoke truncate, references, trigger on all tables in schema public from anon;
+-- revoke truncate, references, trigger on all tables in schema public from authenticated;
+--
+-- -- 2) Remove anonymous writes from all current public tables.
+-- revoke insert, update, delete on all tables in schema public from anon;
+--
+-- -- 3) Keep explicit authenticated CRUD grants for current app tables.
+-- grant select, insert, update, delete on table public.companion_preferences to authenticated;
+-- grant select, insert, update, delete on table public.companions to authenticated;
+-- grant select, insert on table public.content_reports to authenticated;
+-- grant select, insert, update on table public.daily_checkins to authenticated;
+-- grant select, insert, update, delete on table public.daily_prayer_completions to authenticated;
+-- grant insert on table public.feedback to authenticated;
+-- grant select, insert, delete on table public.follows to authenticated;
+-- grant select, insert, delete on table public.group_members to authenticated;
+-- grant select, insert, update, delete on table public.groups to authenticated;
+-- grant select, insert, update, delete on table public.hidden_community_items to authenticated;
+-- grant select, insert, update, delete on table public.hidden_community_users to authenticated;
+-- grant select, insert, delete on table public.prayer_item_recipients to authenticated;
+-- grant select, insert, update, delete on table public.prayer_items to authenticated;
+-- grant select, insert, delete on table public.prayer_likes to authenticated;
+-- grant select, insert, update, delete on table public.profiles to authenticated;
+-- grant select, insert, update, delete on table public.qt_reactions to authenticated;
+-- grant select, insert, delete on table public.qt_record_recipients to authenticated;
+-- grant select, insert, update, delete on table public.qt_records to authenticated;
+-- grant select on table public.qt_schedule to authenticated;
+-- grant select, insert, delete on table public.user_prayer_logs to authenticated;
+--
+-- -- 4) Ensure service_role has operational CRUD access to current public tables/views.
+-- grant select, insert, update, delete on table public.companion_preferences to service_role;
+-- grant select, insert, update, delete on table public.companions to service_role;
+-- grant select, insert, update, delete on table public.content_reports to service_role;
+-- grant select on table public.content_reports_moderation_queue to service_role;
+-- grant select, insert, update, delete on table public.daily_checkins to service_role;
+-- grant select, insert, update, delete on table public.daily_prayer_completions to service_role;
+-- grant select, insert, update, delete on table public.feedback to service_role;
+-- grant select, insert, update, delete on table public.follows to service_role;
+-- grant select, insert, update, delete on table public.group_members to service_role;
+-- grant select, insert, update, delete on table public.groups to service_role;
+-- grant select, insert, update, delete on table public.hidden_community_items to service_role;
+-- grant select, insert, update, delete on table public.hidden_community_users to service_role;
+-- grant select, insert, update, delete on table public.prayer_item_recipients to service_role;
+-- grant select, insert, update, delete on table public.prayer_items to service_role;
+-- grant select, insert, update, delete on table public.prayer_likes to service_role;
+-- grant select, insert, update, delete on table public.profiles to service_role;
+-- grant select, insert, update, delete on table public.qt_reactions to service_role;
+-- grant select, insert, update, delete on table public.qt_record_recipients to service_role;
+-- grant select, insert, update, delete on table public.qt_records to service_role;
+-- grant select, insert, update, delete on table public.qt_schedule to service_role;
+-- grant select, insert, update, delete on table public.user_prayer_logs to service_role;
+--
+-- commit;
+
+-- ---------------------------------------------------------------------------
+-- PHASE 2 TODO — after public invite/profile flows are verified.
+-- ---------------------------------------------------------------------------
+-- - Replace unauthenticated group invite reads with RPC if needed.
+-- - Then consider revoking anon SELECT from most public tables.
+-- - Review public-role SELECT policies such as profiles_select / 타인 프로필 조회.
+-- - Remove duplicate legacy policies once current replacements are proven.
+-- - Add explicit grants to every future migration that creates a table.
+
+-- ---------------------------------------------------------------------------
+-- DEFAULT PRIVILEGES TODO — review before running.
+-- ---------------------------------------------------------------------------
+-- Supabase recommends opting out of automatic future Data API exposure by changing
+-- default privileges. This does not affect existing tables, but future migrations must
+-- include explicit grants or the app will not be able to use new tables via supabase-js.
+--
+-- alter default privileges for role postgres in schema public
+--   revoke select, insert, update, delete on tables from anon, authenticated, service_role;
+--
+-- alter default privileges for role postgres in schema public
+--   revoke execute on functions from anon, authenticated, service_role;
