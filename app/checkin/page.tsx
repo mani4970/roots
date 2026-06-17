@@ -51,7 +51,7 @@ export default function CheckinPage() {
   const selectedItem = EMOTIONS.flatMap(g => g.items).find(e => e.id === selected);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 140 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(140px + var(--native-bottom-system-bar, 0px))", position: "relative" }}>
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>{t("back", lang)}</span>
@@ -102,8 +102,10 @@ export default function CheckinPage() {
         ))}
       </div>
 
+      <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, height: "var(--native-bottom-system-bar, 0px)", background: "var(--bg)", pointerEvents: "none", zIndex: 45 }} />
+
       {selected && selectedItem && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "var(--bg2)", borderTop: "1px solid var(--border)", padding: "14px 16px 28px", zIndex: 50 }}>
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "var(--bg2)", borderTop: "1px solid var(--border)", padding: "14px 16px calc(28px + var(--native-bottom-system-bar, 0px))", zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", background: "var(--bg3)", borderRadius: 12 }}>
             <img src={selectedItem.img} alt={selectedItem.label} style={{ width: 32, height: 32, objectFit: "contain" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{selectedItem.label}</span>
