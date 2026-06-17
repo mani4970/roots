@@ -1,0 +1,126 @@
+-- 28_public_function_grants_cleanup_plan_1_4.sql
+-- Roots 1.4 Supabase public function/RPC GRANT cleanup plan.
+--
+-- REVIEW / PLAN ONLY.
+-- Do NOT run this file blindly in production.
+-- The executable cleanup SQL below is intentionally commented out.
+--
+-- Context from 2026-06-17 function/RPC grant audit:
+-- - Several RPC/helper functions currently grant EXECUTE to anon/authenticated/service_role.
+-- - Trigger functions also show PUBLIC EXECUTE via raw ACL entries like "{=X/postgres,...}".
+-- - get_group_invite(p_group_id uuid) likely needs anon EXECUTE for unauthenticated invite/join pages.
+-- - Mutating group-preference/group-seen RPCs should not be executable by anon.
+-- - Trigger-only functions should not be directly executable by PUBLIC/anon/authenticated.
+--
+-- Important:
+-- - Function grants and table grants are separate from RLS.
+-- - RLS policies may call helper functions, so do not remove helper EXECUTE too aggressively.
+-- - Phase 1 below keeps helper functions broad enough to avoid breaking RLS/public invite flows.
+-- - Phase 2 should tighten helpers after app flows and policies are verified.
+
+-- ---------------------------------------------------------------------------
+-- OBSERVED FUNCTIONS FROM AUDIT
+-- ---------------------------------------------------------------------------
+-- can_share_prayer_visibility(p_visibility text): anon/authenticated/postgres/service_role
+-- can_view_prayer_item(p_visibility text, p_owner_id uuid): anon/authenticated/postgres/service_role
+-- can_view_qt_record(p_visibility text, p_owner_id uuid): anon/authenticated/postgres/service_role
+-- get_group_invite(p_group_id uuid): anon/authenticated/postgres/service_role
+-- get_my_group_preferences(): anon/authenticated/postgres/service_role
+-- guard_companion_updates(): PUBLIC/anon/authenticated/postgres/service_role
+-- handle_new_user(): PUBLIC/anon/authenticated/postgres/service_role
+-- increment_prayer_count(prayer_id uuid): authenticated/postgres/service_role
+-- is_group_member(p_group_id uuid, p_user_id uuid): anon/authenticated/postgres/service_role
+-- leave_group(p_group_id uuid): anon/authenticated/postgres/service_role
+-- mark_group_qt_seen(p_group_id uuid): anon/authenticated/postgres/service_role
+-- mark_group_qt_seen_v2(p_group_id uuid): anon/authenticated/postgres/service_role
+-- set_group_favorite(p_group_id uuid, p_is_favorite boolean): anon/authenticated/postgres/service_role
+-- set_group_favorite_v2(p_group_id uuid, p_is_favorite boolean): anon/authenticated/postgres/service_role
+-- touch_companions_updated_at(): PUBLIC/anon/authenticated/postgres/service_role
+
+-- ---------------------------------------------------------------------------
+-- PHASE 1 CANDIDATE SQL — DO NOT RUN UNTIL EXPLICITLY REVIEWED.
+-- Goal:
+-- - Keep get_group_invite available to anon for invite/join flows.
+-- - Keep view/helper functions unchanged for now to reduce risk of breaking RLS.
+-- - Remove anon EXECUTE from mutating user RPCs.
+-- - Remove direct PUBLIC/anon/authenticated EXECUTE from trigger-only functions.
+-- ---------------------------------------------------------------------------
+
+-- begin;
+--
+-- -- Keep unauthenticated group invite lookup working.
+-- grant execute on function public.get_group_invite(uuid) to anon;
+-- grant execute on function public.get_group_invite(uuid) to authenticated;
+-- grant execute on function public.get_group_invite(uuid) to service_role;
+--
+-- -- get_my_group_preferences is a "my account" RPC and should not be anonymous.
+-- revoke execute on function public.get_my_group_preferences() from anon;
+-- grant execute on function public.get_my_group_preferences() to authenticated;
+-- grant execute on function public.get_my_group_preferences() to service_role;
+--
+-- -- Mutating group preference / group read-state RPCs should not be executable by anon.
+-- revoke execute on function public.leave_group(uuid) from anon;
+-- revoke execute on function public.mark_group_qt_seen(uuid) from anon;
+-- revoke execute on function public.mark_group_qt_seen_v2(uuid) from anon;
+-- revoke execute on function public.set_group_favorite(uuid, boolean) from anon;
+-- revoke execute on function public.set_group_favorite_v2(uuid, boolean) from anon;
+--
+-- grant execute on function public.leave_group(uuid) to authenticated;
+-- grant execute on function public.mark_group_qt_seen(uuid) to authenticated;
+-- grant execute on function public.mark_group_qt_seen_v2(uuid) to authenticated;
+-- grant execute on function public.set_group_favorite(uuid, boolean) to authenticated;
+-- grant execute on function public.set_group_favorite_v2(uuid, boolean) to authenticated;
+--
+-- grant execute on function public.leave_group(uuid) to service_role;
+-- grant execute on function public.mark_group_qt_seen(uuid) to service_role;
+-- grant execute on function public.mark_group_qt_seen_v2(uuid) to service_role;
+-- grant execute on function public.set_group_favorite(uuid, boolean) to service_role;
+-- grant execute on function public.set_group_favorite_v2(uuid, boolean) to service_role;
+--
+-- -- Trigger-only functions should not be callable directly by public app roles.
+-- -- Trigger execution itself should not require app roles to have direct EXECUTE grants.
+-- revoke execute on function public.guard_companion_updates() from PUBLIC;
+-- revoke execute on function public.guard_companion_updates() from anon;
+-- revoke execute on function public.guard_companion_updates() from authenticated;
+--
+-- revoke execute on function public.handle_new_user() from PUBLIC;
+-- revoke execute on function public.handle_new_user() from anon;
+-- revoke execute on function public.handle_new_user() from authenticated;
+--
+-- revoke execute on function public.touch_companions_updated_at() from PUBLIC;
+-- revoke execute on function public.touch_companions_updated_at() from anon;
+-- revoke execute on function public.touch_companions_updated_at() from authenticated;
+--
+-- -- Leave these helper functions unchanged in Phase 1.
+-- -- They are likely used by RLS policies and/or public invite visibility paths.
+-- -- Review their policy usage before tightening:
+-- --   can_share_prayer_visibility(text)
+-- --   can_view_prayer_item(text, uuid)
+-- --   can_view_qt_record(text, uuid)
+-- --   is_group_member(uuid, uuid)
+--
+-- commit;
+
+-- ---------------------------------------------------------------------------
+-- POST-PHASE-1 REGRESSION CHECKLIST
+-- ---------------------------------------------------------------------------
+-- - Logged-out group invite/join page still loads.
+-- - Logged-in group invite/join still works.
+-- - Group favorite toggle works.
+-- - Group seen/unread markers update.
+-- - Leave group works.
+-- - Partner request/accept/remove still works.
+-- - New signup still creates profile via handle_new_user trigger.
+-- - Bible Reflection and prayer feeds still load.
+-- - Community/group/partner feeds still load and reactions still work.
+
+-- ---------------------------------------------------------------------------
+-- PHASE 2 TODO
+-- ---------------------------------------------------------------------------
+-- - Inspect which RLS policies call can_view_qt_record/can_view_prayer_item/is_group_member.
+-- - If logged-out users never need those helpers through Data API, revoke anon EXECUTE.
+-- - Review duplicate/legacy public-role policies after invite/public flows are verified.
+-- - Consider default function privileges for future migrations:
+--     alter default privileges for role postgres in schema public
+--       revoke execute on functions from PUBLIC;
+--   Only after every required RPC has explicit grants in migration files.
