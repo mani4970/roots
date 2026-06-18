@@ -723,6 +723,8 @@ export const T = {
   home_action_reflection_done: { ko: "오늘 말씀 묵상 완료!", de: "Stille Zeit fertig!", en: "Reflection complete!", fr: "Méditation terminée !" },
   home_action_view_record: { ko: "묵상 보러 가기", de: "Ansehen", en: "View", fr: "Voir" },
   home_action_prayer: { ko: "기도하기", de: "Beten", en: "Pray", fr: "Prier" },
+  home_shortcut_notifications: { ko: "알림 설정", de: "Benachrichtigungen", en: "Notifications", fr: "Notifications" },
+  home_shortcut_companions: { ko: "나의 동역자 보기", de: "Glaubenspartner ansehen", en: "View faith partners", fr: "Voir les partenaires de foi" },
   home_qt_today_title: { ko: "오늘의 QT", de: "Heutige QT", en: "Today’s QT", fr: "QT du jour" },
   home_qt_today_sub: { ko: "말씀과 동행하며 정원을 가꿔요.", de: "Gehen Sie mit dem Wort und pflegen Sie Ihren Garten.", en: "Walk with the Word and tend your garden.", fr: "Marchez avec la Parole et prenez soin de votre jardin." },
   home_qt_start_today: { ko: "오늘 큐티 하기", de: "Heute QT machen", en: "Do today’s QT", fr: "Faire le QT du jour" },

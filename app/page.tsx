@@ -10,6 +10,7 @@ import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
+import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -18,7 +19,7 @@ import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
-import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus } from "lucide-react";
+import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
@@ -181,6 +182,7 @@ export default function HomePage() {
   const [homePrayerSharePartners, setHomePrayerSharePartners] = useState<ShareTargetPartner[]>([]);
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
 
   function showToast(message: string) {
@@ -1147,6 +1149,14 @@ export default function HomePage() {
         onClose={closeCelebration}
       />
 
+
+      {showNotificationSettingsModal && (
+        <NotificationSettingsModal
+          onClose={() => setShowNotificationSettingsModal(false)}
+          onSaved={(message) => showToast(message)}
+        />
+      )}
+
       {showHomePrayerSharePrompt && (
         <SharePromptModal
           title={t("prayer_complete_share_title", lang)}
@@ -1502,6 +1512,58 @@ export default function HomePage() {
         </div>
       )}
 
+      <div style={{ padding: "0 16px 14px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setShowNotificationSettingsModal(true)}
+            style={{
+              minHeight: 42,
+              borderRadius: 14,
+              padding: "9px 10px",
+              background: "#FFF7E8",
+              border: "1px solid rgba(213,166,83,0.34)",
+              color: "#6F4E24",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              fontSize: 12,
+              fontWeight: 850,
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+              boxShadow: "0 8px 18px rgba(88, 64, 28, 0.04)",
+            }}
+          >
+            <Bell size={14} strokeWidth={2.4} />
+            <span>{t("home_shortcut_notifications", lang)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/companions")}
+            style={{
+              minHeight: 42,
+              borderRadius: 14,
+              padding: "9px 10px",
+              background: "#FFF7E8",
+              border: "1px solid rgba(213,166,83,0.34)",
+              color: "#6F4E24",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              fontSize: 12,
+              fontWeight: 850,
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+              boxShadow: "0 8px 18px rgba(88, 64, 28, 0.04)",
+            }}
+          >
+            <Users size={14} strokeWidth={2.4} />
+            <span>{t("home_shortcut_companions", lang)}</span>
+          </button>
+        </div>
+      </div>
 
 
       <BottomNav />
