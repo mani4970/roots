@@ -204,7 +204,6 @@ function PhotoReflectionContent() {
     setEndChapter(1);
     setStartVerse(1);
     setEndVerse(1);
-    setExtraRefs([]);
   }, [book]);
 
   useEffect(() => {
