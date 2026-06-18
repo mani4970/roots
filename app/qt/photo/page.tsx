@@ -283,6 +283,17 @@ function PhotoReflectionContent() {
     setShareTargets(prev => prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]);
   }
 
+  async function recordTodayPhotoProgress(supabase: ReturnType<typeof createClient>, userId: string) {
+    const progress = await recordBibleReflectionProgress(supabase, userId, today);
+    if (progress.updated) {
+      if (progress.awardedBadges.length > 0) {
+        storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(progress.awardedBadges));
+      }
+      storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
+    }
+    return progress.updated;
+  }
+
   async function savePhotoReflection(options: CompletePhotoOptions = {}) {
     if (!file || saving) {
       if (!file) showNotice(pc("needPhoto", lang));
@@ -309,6 +320,25 @@ function PhotoReflectionContent() {
         .limit(1);
       if (existingError) throw existingError;
       if ((existingRows ?? []).length > 0) {
+        if (targetDate === today) {
+          try {
+            const recoveredProgress = await recordTodayPhotoProgress(supabase, user.id);
+            if (recoveredProgress) {
+              try {
+                await markBibleReflectionCompletedForNotifications(today, lang);
+              } catch (notificationError) {
+                console.warn("photo reflection notification completion update failed", notificationError);
+              }
+              setShowShareModal(false);
+              router.push("/qt/complete");
+              return;
+            }
+          } catch (progressError) {
+            console.warn("photo reflection progress recovery failed", progressError);
+            showNotice(pc("progressError", lang));
+            return;
+          }
+        }
         showNotice(pc("alreadyDone", lang));
         router.push("/qt");
         return;
@@ -351,11 +381,7 @@ function PhotoReflectionContent() {
 
       if (targetDate === today) {
         try {
-          const progress = await recordBibleReflectionProgress(supabase, user.id, today);
-          if (progress.awardedBadges.length > 0) {
-            storageSet(getPendingAwardedBadgesKey(user.id, today), JSON.stringify(progress.awardedBadges));
-          }
-          storageSet(`qt_completion_pending_watering_${user.id}_${today}`, "true");
+          await recordTodayPhotoProgress(supabase, user.id);
         } catch (progressError) {
           console.warn("photo reflection progress failed", progressError);
           showNotice(pc("progressError", lang));
@@ -561,6 +587,8 @@ function PhotoReflectionContent() {
           partners={partners}
           selectedTargets={shareTargets}
           saving={saving || loadingShareOptions}
+          loadingGroups={loadingShareOptions}
+          loadingPartners={loadingShareOptions}
           onToggleTarget={toggleTarget}
           onClose={() => !saving && setShowShareModal(false)}
           onPrivate={() => { void savePhotoReflection({ visibility: "private", partnerRecipientIds: [] }); }}

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
+import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { ArrowLeft, Check, Copy, Loader2, Share2, UserMinus, UserPlus, X } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -177,6 +178,7 @@ function CompanionsContent() {
         if (error) throw error;
       }
 
+      clearSharePromptOptionsCache();
       showToast(c("companions_invite_accepted"));
       await loadAll();
     } catch (error: any) {
@@ -193,6 +195,7 @@ function CompanionsContent() {
       const supabase = createClient();
       const { error } = await supabase.from("companions").update({ status, responded_at: new Date().toISOString() }).eq("id", row.id);
       if (error) throw error;
+      if (status === "accepted") clearSharePromptOptionsCache();
       showToast(status === "accepted" ? c("companions_request_accepted") : c("companions_request_declined"));
       await loadAll();
     } catch (error) {
@@ -209,6 +212,7 @@ function CompanionsContent() {
       const supabase = createClient();
       const { error } = await supabase.from("companions").delete().eq("id", row.id);
       if (error) throw error;
+      if (row.status === "accepted") clearSharePromptOptionsCache();
       showToast(row.status === "accepted" ? c("companions_removed") : c("companions_request_cancelled"));
       await loadAll();
     } catch (error) {

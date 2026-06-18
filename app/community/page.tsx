@@ -11,6 +11,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
+import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
@@ -1844,6 +1845,7 @@ export default function CommunityPage() {
     if (error || !newGroup) { setSavingGroup(false); return; }
     const { error: memberError } = await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
     if (memberError) { setSavingGroup(false); return; }
+    clearSharePromptOptionsCache();
     // 베드로 배지는 첫 그룹 생성, 동행 배지는 그룹 5개 참여 시 지급합니다.
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1878,7 +1880,12 @@ export default function CommunityPage() {
   async function joinGroup(groupId: string) {
     if (!userId) return;
     const supabase = createClient();
-    await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
+    const { error: joinError } = await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
+    if (joinError) {
+      console.warn("그룹 참여 실패:", joinError.message);
+      return;
+    }
+    clearSharePromptOptionsCache();
     const joinedAt = new Date().toISOString();
     setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false } : g)));
     if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false }));
@@ -1988,6 +1995,7 @@ export default function CommunityPage() {
       return;
     }
 
+    clearSharePromptOptionsCache();
     setShowLeaveConfirm(false);
     setShowGroupActionMenu(false);
     setShowGroupMembers(false);
