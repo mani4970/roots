@@ -84,6 +84,136 @@ function latestSharedContentTime(rows?: any[] | null): string | null {
     .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0] as string | null;
 }
 
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => typeof value === "string" && value.length > 0)));
+}
+
+function chunkArray<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+function groupIdsFromVisibility(value: string | null | undefined, allowedGroupIds: Set<string>) {
+  return String(value ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith("group_"))
+    .map((part) => part.replace(/^group_/, ""))
+    .filter((groupId) => allowedGroupIds.has(groupId));
+}
+
+function addLatestTime(target: Record<string, string | null>, groupId: string, time: string | null) {
+  if (!time) return;
+  if (!target[groupId] || new Date(time).getTime() > new Date(target[groupId] as string).getTime()) {
+    target[groupId] = time;
+  }
+}
+
+async function fetchGroupMemberCounts(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+  const counts: Record<string, number> = {};
+  if (groupIds.length === 0) return counts;
+
+  for (const chunk of chunkArray(groupIds, 100)) {
+    const { data, error } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .in("group_id", chunk);
+
+    if (error) {
+      console.warn("그룹 멤버 수 일괄 조회 실패:", error.message);
+      continue;
+    }
+
+    (data ?? []).forEach((row: any) => {
+      const groupId = String(row.group_id ?? "");
+      if (groupId) counts[groupId] = (counts[groupId] ?? 0) + 1;
+    });
+  }
+
+  return counts;
+}
+
+async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+  const latestByGroup: Record<string, string | null> = {};
+  const allowedGroupIds = new Set(groupIds);
+  if (groupIds.length === 0) return latestByGroup;
+
+  for (const chunk of chunkArray(groupIds, 35)) {
+    const visibilityFilter = chunk.map((groupId) => `visibility.ilike.%group_${groupId}%`).join(",");
+    const limit = Math.min(1000, Math.max(200, chunk.length * 25));
+    let rows: any[] = [];
+
+    const withSharedAt = await supabase
+      .from("qt_records")
+      .select("visibility,created_at,shared_at")
+      .or(visibilityFilter)
+      .order("shared_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (withSharedAt.error) {
+      if (!/shared_at/i.test(withSharedAt.error.message ?? "")) {
+        console.warn("그룹 최신 묵상 일괄 조회 실패:", withSharedAt.error.message);
+        continue;
+      }
+
+      const fallback = await supabase
+        .from("qt_records")
+        .select("visibility,created_at")
+        .or(visibilityFilter)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (fallback.error) {
+        console.warn("그룹 최신 묵상 fallback 조회 실패:", fallback.error.message);
+        continue;
+      }
+      rows = fallback.data ?? [];
+    } else {
+      rows = withSharedAt.data ?? [];
+    }
+
+    rows.forEach((row: any) => {
+      const time = qtFeedTime(row);
+      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach((groupId) => addLatestTime(latestByGroup, groupId, time));
+    });
+  }
+
+  return latestByGroup;
+}
+
+async function fetchLatestPrayerTimesByGroup(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+  const latestByGroup: Record<string, string | null> = {};
+  const allowedGroupIds = new Set(groupIds);
+  if (groupIds.length === 0) return latestByGroup;
+
+  for (const chunk of chunkArray(groupIds, 35)) {
+    const visibilityFilter = chunk.map((groupId) => `visibility.ilike.%group_${groupId}%`).join(",");
+    const limit = Math.min(1000, Math.max(200, chunk.length * 25));
+    const { data, error } = await supabase
+      .from("prayer_items")
+      .select("visibility,created_at,shared_at,answered_at,is_answered")
+      .or(visibilityFilter)
+      .order("shared_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn("그룹 최신 기도 일괄 조회 실패:", error.message);
+      continue;
+    }
+
+    (data ?? []).forEach((row: any) => {
+      const time = sharedContentTime(row);
+      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach((groupId) => addLatestTime(latestByGroup, groupId, time));
+    });
+  }
+
+  return latestByGroup;
+}
+
 function sortGroupsForDisplay(groups: any[]) {
   return [...groups].sort((a, b) => {
     const aIsMember = !!a.isMember;
@@ -207,6 +337,7 @@ export default function CommunityPage() {
   // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
   const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>({});
   const [qtPhotoUrls, setQtPhotoUrls] = useState<Record<string, string>>({});
+  const qtPhotoUrlRequestingRef = useRef<Set<string>>(new Set());
 
   // 그룹
   const [showGroupForm, setShowGroupForm] = useState(false);
@@ -881,16 +1012,49 @@ export default function CommunityPage() {
   }
 
   async function loadQtPhotoUrls(supabase: any, rows: any[]) {
-    const photoRows = rows.filter((row: any) => row?.photo_path && !qtPhotoUrls[row.id]);
+    const photoRows = rows.filter((row: any) => {
+      const rowId = String(row?.id ?? "");
+      return rowId && row?.photo_path && !qtPhotoUrls[rowId] && !qtPhotoUrlRequestingRef.current.has(rowId);
+    });
     if (photoRows.length === 0) return;
-    const entries = await Promise.all(photoRows.map(async (row: any) => {
-      const { data } = await supabase.storage.from("qt-photos").createSignedUrl(row.photo_path, 60 * 60);
-      return [row.id, data?.signedUrl ?? ""] as const;
-    }));
-    setQtPhotoUrls(prev => ({
-      ...prev,
-      ...Object.fromEntries(entries.filter(([, url]) => !!url)),
-    }));
+
+    photoRows.forEach((row: any) => qtPhotoUrlRequestingRef.current.add(String(row.id)));
+
+    try {
+      const uniquePaths = uniqueStrings(photoRows.map((row: any) => row.photo_path));
+      const pathUrlMap: Record<string, string> = {};
+
+      if (uniquePaths.length > 0) {
+        const { data, error } = await supabase.storage.from("qt-photos").createSignedUrls(uniquePaths, 60 * 60);
+
+        if (error) {
+          console.warn("사진 묵상 signed URL 일괄 생성 실패. 개별 생성으로 fallback:", error.message);
+          const fallbackEntries = await Promise.all(uniquePaths.map(async (path) => {
+            const { data: signed } = await supabase.storage.from("qt-photos").createSignedUrl(path, 60 * 60);
+            return [path, signed?.signedUrl ?? ""] as const;
+          }));
+          fallbackEntries.forEach(([path, signedUrl]) => { if (signedUrl) pathUrlMap[path] = signedUrl; });
+        } else {
+          (data ?? []).forEach((item: any, index: number) => {
+            const path = String(item?.path ?? uniquePaths[index] ?? "");
+            if (path && item?.signedUrl) pathUrlMap[path] = item.signedUrl;
+          });
+        }
+      }
+
+      const entries = photoRows
+        .map((row: any) => [String(row.id), pathUrlMap[String(row.photo_path)] ?? ""] as const)
+        .filter(([, url]) => !!url);
+
+      if (entries.length > 0) {
+        setQtPhotoUrls(prev => ({
+          ...prev,
+          ...Object.fromEntries(entries),
+        }));
+      }
+    } finally {
+      photoRows.forEach((row: any) => qtPhotoUrlRequestingRef.current.delete(String(row.id)));
+    }
   }
 
   function getVisibleFeedCount(key: string) {
@@ -1467,36 +1631,29 @@ export default function CommunityPage() {
 
       const all = [...(publicGroups ?? []), ...myPrivateGroups];
       const unique = all.filter((g, i, arr) => arr.findIndex(x => x.id === g.id) === i);
-      const withMeta = await Promise.all(unique.map(async (g) => {
+      const uniqueGroupIds = uniqueStrings(unique.map((g: any) => String(g.id ?? "")));
+      const joinedGroupIds = uniqueStrings(unique
+        .filter((g: any) => !!memberMap[g.id])
+        .map((g: any) => String(g.id ?? "")));
+
+      const [memberCounts, latestQtByGroup, latestPrayerByGroup] = await Promise.all([
+        fetchGroupMemberCounts(supabase, uniqueGroupIds),
+        fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
+        fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
+      ]);
+
+      const withMeta = unique.map((g) => {
         const memberMeta = memberMap[g.id];
         const isMember = !!memberMeta;
-        const { count } = await supabase.from("group_members")
-          .select("*", { count: "exact", head: true }).eq("group_id", g.id);
-
-        let latestQtAt: string | null = null;
-        let latestPrayerAt: string | null = null;
         const lastSeenGroupAt = memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null;
-        if (isMember) {
-          const { data: latestQt } = await supabase.from("qt_records")
-            .select("created_at")
-            .ilike("visibility", `%group_${g.id}%`)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          latestQtAt = latestQt?.created_at ?? null;
-
-          const { data: latestPrayerRows } = await supabase.from("prayer_items")
-            .select("created_at,shared_at,answered_at,is_answered")
-            .ilike("visibility", `%group_${g.id}%`);
-          latestPrayerAt = latestSharedContentTime(latestPrayerRows);
-        }
-
+        const latestQtAt = latestQtByGroup[g.id] ?? null;
+        const latestPrayerAt = latestPrayerByGroup[g.id] ?? null;
         const hasNewQtShare = isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
         const hasNewPrayer = isMember && isLaterThan(latestPrayerAt, lastSeenGroupAt);
 
         return {
           ...g,
-          member_count: count ?? 0,
+          member_count: memberCounts[g.id] ?? 0,
           isMember,
           isFavorite: !!memberMeta?.is_favorite,
           last_seen_qt_at: lastSeenGroupAt,
@@ -1507,7 +1664,7 @@ export default function CommunityPage() {
           hasNewContent: hasNewQtShare || hasNewPrayer,
           hasNewQt: hasNewQtShare || hasNewPrayer,
         };
-      }));
+      });
       setGroups(sortGroupsForDisplay(withMeta));
     }
     setLoading(false);
