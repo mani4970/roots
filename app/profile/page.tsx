@@ -556,18 +556,12 @@ export default function ProfilePage() {
     return bEarned - aEarned;
   });
   const previewFaithBadges = sortedFaithBadges.slice(0, 6);
-  const previewSpiritFruitBadges = SPIRIT_FRUIT_BADGES.slice(0, 6);
   const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
     setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned });
-  }
-
-  function openSpiritFruitBadgeDetail(b: SpiritFruitBadge) {
-    const earned = profile?.[b.key] ?? false;
-    setSelectedBadge({ img: getSpiritFruitBadgeImg(b.name), title: b.name, desc: t(b.descKey, lang), earned });
   }
 
 
@@ -629,28 +623,6 @@ export default function ProfilePage() {
               })}
             </div>
 
-            <div className="sec-label" style={{ marginBottom: 10 }}>
-              {t("profile_spirit_fruits", lang)}
-              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-              {SPIRIT_FRUIT_BADGES.map(b => {
-                const earned = profile?.[b.key] ?? false;
-                return (
-                  <button
-                    key={b.name}
-                    onClick={() => openSpiritFruitBadgeDetail(b)}
-                    style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
-                  >
-                    <div style={{ width: 66, height: 66, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                      <img src={getSpiritFruitBadgeImg(b.name)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                    </div>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{b.name}</div>
-                    <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}
@@ -810,35 +782,36 @@ export default function ProfilePage() {
 
       {/* 성령의 열매 배지 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span>
-            {t("profile_spirit_fruits", lang)}
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowBadgeGallery(true)}
-            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
-          >
-            {t("profile_badges_view_all", lang)}
-          </button>
+        <div className="sec-label">
+          {t("profile_spirit_fruits", lang)}
+          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
         </div>
-        <div className="card" style={{ padding: "16px 14px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-            {previewSpiritFruitBadges.map(b => {
+        <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
+          <button
+            onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
+            aria-label={lang === "ko" ? "이전 배지" : lang === "de" ? "Vorherige Abzeichen" : lang === "fr" ? "Badges précédents" : "Previous badges"}
+            style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
+          >‹</button>
+          <button
+            onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
+            aria-label={lang === "ko" ? "다음 배지" : lang === "de" ? "Nächste Abzeichen" : lang === "fr" ? "Badges suivants" : "Next badges"}
+            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
+          >›</button>
+          <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
+            {SPIRIT_FRUIT_BADGES.map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
-                <button
+                <div
                   key={b.name}
-                  onClick={() => openSpiritFruitBadgeDetail(b)}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76 }}
                 >
-                  <div style={{ width: 66, height: 66, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                  <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
                     <img src={getSpiritFruitBadgeImg(b.name)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{b.name}</div>
-                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
-                </button>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
+                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
+                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
+                </div>
               );
             })}
           </div>

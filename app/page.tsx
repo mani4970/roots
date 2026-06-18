@@ -1281,31 +1281,33 @@ export default function HomePage() {
             onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
             className={todayDone.qt ? "card-sage" : "card"}
             style={{
-              minHeight: 104,
-              borderRadius: 22,
-              padding: "14px 10px",
+              minHeight: 68,
+              borderRadius: 18,
+              padding: "9px 10px",
               border: todayDone.qt ? "1px solid rgba(122,157,122,0.22)" : "1px solid var(--border)",
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
+              justifyContent: "flex-start",
+              gap: 10,
               cursor: "pointer",
               textAlign: "center",
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <div style={{ width: 50, height: 50, borderRadius: 17, background: todayDone.qt ? "rgba(122,157,122,0.16)" : "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/icon-qt.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} />
+            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: todayDone.qt ? "rgba(122,157,122,0.16)" : "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/icon-qt.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text)", lineHeight: 1.25, whiteSpace: "pre-line" }}>
-              {reflectionActionTitle}
-            </div>
-            {reflectionActionSub && (
-              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.2 }}>
-                {reflectionActionSub}
+            <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+              <div style={{ fontSize: todayDone.qt ? 13 : 14, fontWeight: 900, color: "var(--text)", lineHeight: 1.18, wordBreak: "keep-all" }}>
+                {reflectionActionTitle}
               </div>
-            )}
+              {reflectionActionSub && (
+                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.15, wordBreak: "keep-all" }}>
+                  {reflectionActionSub}
+                </div>
+              )}
+            </div>
           </button>
 
           <button
@@ -1313,24 +1315,24 @@ export default function HomePage() {
             onClick={() => router.push("/prayer")}
             className="card"
             style={{
-              minHeight: 104,
-              borderRadius: 22,
-              padding: "14px 10px",
+              minHeight: 68,
+              borderRadius: 18,
+              padding: "9px 10px",
               border: "1px solid var(--border)",
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
+              justifyContent: "flex-start",
+              gap: 10,
               cursor: "pointer",
               textAlign: "center",
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <div style={{ width: 50, height: 50, borderRadius: 17, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/icon-pray.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} />
+            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/icon-pray.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text)", lineHeight: 1.25 }}>
+            <div style={{ minWidth: 0, flex: 1, fontSize: 14, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
               {t("home_action_prayer", lang)}
             </div>
           </button>
