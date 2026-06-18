@@ -21,6 +21,7 @@ type CompletePhotoOptions = {
 };
 
 const PHOTO_BUCKET = "qt-photos";
+const PHOTO_MAX_INPUT_SIZE = 15 * 1024 * 1024;
 const BOOKS = [...OT_BOOKS, ...NT_BOOKS];
 
 const PHOTO_COPY = {
@@ -47,6 +48,8 @@ const PHOTO_COPY = {
   addPassageHelp: { ko: "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
   saveError: { ko: "사진 묵상 저장에 실패했어요. 다시 시도해주세요.", de: "Die Foto-Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "Could not save the photo reflection. Please try again.", fr: "Impossible d’enregistrer la méditation photo. Veuillez réessayer." },
   needPhoto: { ko: "사진을 먼저 선택해주세요.", de: "Bitte wähle zuerst ein Foto aus.", en: "Please choose a photo first.", fr: "Veuillez d’abord choisir une photo." },
+  unsupportedPhoto: { ko: "이미지 파일만 선택할 수 있어요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image." },
+  photoTooLarge: { ko: "15MB 이하의 사진만 선택할 수 있어요.", de: "Bitte wähle ein Foto bis 15 MB aus.", en: "Please choose a photo up to 15 MB.", fr: "Veuillez choisir une photo de 15 Mo maximum." },
   alreadyDone: { ko: "해당 날짜의 말씀 묵상 기록이 이미 있어요.", de: "Für dieses Datum gibt es bereits eine Reflexion.", en: "You already have a Bible reflection for this date.", fr: "Vous avez déjà une méditation biblique pour cette date." },
   progressError: { ko: "말씀동행 반영에 실패했어요. 다시 완료해주세요.", de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
 } as const;
@@ -221,15 +224,25 @@ function PhotoReflectionContent() {
     window.setTimeout(() => setNotice(null), 2600);
   }
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
+    event.currentTarget.value = "";
     if (!selected) return;
     if (!selected.type.startsWith("image/")) {
-      showNotice(pc("needPhoto", lang));
+      showNotice(pc("unsupportedPhoto", lang));
+      return;
+    }
+    if (selected.size > PHOTO_MAX_INPUT_SIZE) {
+      showNotice(pc("photoTooLarge", lang));
       return;
     }
     setFile(selected);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(selected));
   }
 
@@ -285,6 +298,7 @@ function PhotoReflectionContent() {
 
     setSaving(true);
     let uploadedPath: string | null = null;
+    let insertedRecordId: string | null = null;
     try {
       const { data: existingRows, error: existingError } = await supabase
         .from("qt_records")
@@ -329,6 +343,7 @@ function PhotoReflectionContent() {
 
       const recordId = insertedRecord?.id;
       if (!recordId) throw new Error("Photo record id missing");
+      insertedRecordId = String(recordId);
 
       if (Array.isArray(options.partnerRecipientIds)) {
         await replaceQtRecordRecipients(supabase, recordId, user.id, options.partnerRecipientIds);
@@ -362,6 +377,14 @@ function PhotoReflectionContent() {
       router.push(`/qt/record?id=${recordId}`);
     } catch (error) {
       console.error("photo reflection save failed", error);
+      if (insertedRecordId) {
+        const { error: rollbackError } = await supabase
+          .from("qt_records")
+          .delete()
+          .eq("id", insertedRecordId)
+          .eq("user_id", user.id);
+        if (rollbackError) console.warn("photo reflection record rollback failed", rollbackError);
+      }
       if (uploadedPath) {
         await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]).catch(() => undefined);
       }

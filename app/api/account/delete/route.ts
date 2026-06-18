@@ -47,6 +47,11 @@ function avatarPathFromPublicUrl(publicUrl: string | null | undefined, userId: s
   return path.startsWith(`${userId}/`) ? path : null;
 }
 
+function ownedStoragePath(path: string | null | undefined, userId: string) {
+  const cleanPath = removeCacheSuffix(path).replace(/^\/+/, "");
+  return cleanPath.startsWith(`${userId}/`) ? cleanPath : null;
+}
+
 export async function POST() {
   const cookieStore = cookies();
 
@@ -99,7 +104,7 @@ export async function POST() {
   const [{ data: profile }, { data: prayers }, { data: qts }, { data: ownedGroups }] = await Promise.all([
     admin.from("profiles").select("avatar_url").eq("id", userId).maybeSingle(),
     admin.from("prayer_items").select("id").eq("user_id", userId),
-    admin.from("qt_records").select("id").eq("user_id", userId),
+    admin.from("qt_records").select("id, photo_path").eq("user_id", userId),
     admin.from("groups").select("id").eq("created_by", userId),
   ]);
 
@@ -108,8 +113,13 @@ export async function POST() {
   const ownedGroupIds = (ownedGroups ?? []).map((row: any) => row.id).filter(Boolean);
 
   const avatarPaths = new Set<string>();
+  const qtPhotoPaths = new Set<string>();
   const avatarPath = avatarPathFromPublicUrl((profile as any)?.avatar_url, userId);
   if (avatarPath) avatarPaths.add(avatarPath);
+  (qts ?? []).forEach((row: any) => {
+    const photoPath = ownedStoragePath(row?.photo_path, userId);
+    if (photoPath) qtPhotoPaths.add(photoPath);
+  });
 
   const { data: avatarFiles } = await admin.storage.from("avatars").list(userId);
   (avatarFiles ?? []).forEach((file: any) => {
@@ -119,6 +129,12 @@ export async function POST() {
   if (avatarPaths.size > 0) {
     await runStep(errors, "delete avatar files", () =>
       admin.storage.from("avatars").remove(Array.from(avatarPaths))
+    );
+  }
+
+  if (qtPhotoPaths.size > 0) {
+    await runStep(errors, "delete qt photo files", () =>
+      admin.storage.from("qt-photos").remove(Array.from(qtPhotoPaths))
     );
   }
 
