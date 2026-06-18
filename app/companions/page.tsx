@@ -3,11 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import ConfettiBurst from "@/components/ConfettiBurst";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
+import { checkAndAwardCompanionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { ArrowLeft, Check, Copy, Loader2, Share2, UserMinus, UserPlus, X } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -64,6 +66,7 @@ function CompanionsContent() {
   const [inviteProfile, setInviteProfile] = useState<ProfileRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<CompanionWithProfile | null>(null);
+  const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
 
   const inviteUrl = useMemo(() => userId ? `${ROOTS_WEB_ORIGIN}/companions?invite=${userId}` : ROOTS_WEB_ORIGIN, [userId]);
 
@@ -180,6 +183,12 @@ function CompanionsContent() {
 
       clearSharePromptOptionsCache();
       showToast(c("companions_invite_accepted"));
+      try {
+        const awarded = await checkAndAwardCompanionBadge(supabase, userId);
+        if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+      } catch (badgeError) {
+        console.warn("동역자 보상 배지 확인 실패:", badgeError);
+      }
       await loadAll();
     } catch (error: any) {
       console.error("동행 초대 수락 실패:", error);
@@ -195,7 +204,15 @@ function CompanionsContent() {
       const supabase = createClient();
       const { error } = await supabase.from("companions").update({ status, responded_at: new Date().toISOString() }).eq("id", row.id);
       if (error) throw error;
-      if (status === "accepted") clearSharePromptOptionsCache();
+      if (status === "accepted") {
+        clearSharePromptOptionsCache();
+        try {
+          const awarded = await checkAndAwardCompanionBadge(supabase, userId);
+          if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+        } catch (badgeError) {
+          console.warn("동역자 보상 배지 확인 실패:", badgeError);
+        }
+      }
       showToast(status === "accepted" ? c("companions_request_accepted") : c("companions_request_declined"));
       await loadAll();
     } catch (error) {
@@ -268,6 +285,20 @@ function CompanionsContent() {
       {toast && (
         <div style={{ position: "fixed", top: 74, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "rgba(37,44,38,0.94)", color: "white", padding: "10px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: "0 10px 26px rgba(0,0,0,0.22)", maxWidth: "calc(100vw - 40px)", textAlign: "center" }}>
           {toast}
+        </div>
+      )}
+
+      {badgePopup && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", padding: 20 }}>
+          <ConfettiBurst />
+          <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.35)", padding: "26px 22px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
+            <div style={{ width: 118, height: 118, margin: "0 auto 16px", borderRadius: "50%", background: "linear-gradient(135deg, rgba(232,197,71,0.18), rgba(122,157,122,0.16))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 850, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: 18 }}>{badgePopup.msg}</p>
+            <button onClick={() => setBadgePopup(null)} className="btn-sage" style={{ width: "100%" }}>{t("badge_thanks", lang)}</button>
+          </div>
         </div>
       )}
 

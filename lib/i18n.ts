@@ -478,6 +478,16 @@ export const T = {
   badge_qt_bird_desc: { ko: "큐티 나눔 30회",       de: "30 geteilte QTs", en: "30 QTs shared", fr: "30 QT partagés" },
   badge_word_peace_title: { ko: "말씀의 평안",          de: "Ruhe im Wort", en: "Peace in the Word", fr: "Paix dans la Parole" },
   badge_word_peace_desc: { ko: "큐티 나눔 50회",       de: "50 geteilte QTs", en: "50 QTs shared", fr: "50 QT partagés" },
+  badge_jesus_love_title: { ko: "예수님 사랑", de: "Jesu Liebe", en: "Jesus' Love", fr: "L’amour de Jésus" },
+  badge_jesus_love_desc: { ko: "묵상 리액션 50회", de: "50 Reaktionen auf Stille Zeit", en: "50 Bible reflection reactions", fr: "50 réactions aux méditations" },
+  badge_jesus_and_me_title: { ko: "예수님과 나", de: "Jesus und ich", en: "Jesus and Me", fr: "Jésus et moi" },
+  badge_jesus_and_me_desc: { ko: "기도 응답 30회", de: "30 Gebetserhörungen", en: "30 answered prayers", fr: "30 prières exaucées" },
+  badge_receive_my_love_title: { ko: "받아랏, 내 사랑", de: "Nimm meine Liebe", en: "Here, My Love", fr: "Voici mon amour" },
+  badge_receive_my_love_desc: { ko: "동역자 10명", de: "10 Glaubenspartner", en: "10 faith partners", fr: "10 partenaires de foi" },
+  badge_prayer_cheer_title: { ko: "화이팅", de: "Weiter so", en: "Keep Going", fr: "Courage" },
+  badge_prayer_cheer_desc: { ko: "함께 기도 60회", de: "60 gemeinsame Gebete", en: "60 prayers together", fr: "60 prières ensemble" },
+  badge_word_fruit_title: { ko: "말씀 열매", de: "Frucht des Wortes", en: "Fruit of the Word", fr: "Fruit de la Parole" },
+  badge_word_fruit_desc: { ko: "오늘의 말씀 50회", de: "50 Worte des Tages", en: "50 Today's Word check-ins", fr: "50 paroles du jour" },
   badge_angel_title: { ko: "천사",                de: "Engel", en: "Angel", fr: "Ange" },
   badge_angel_desc: { ko: "1000일 QT 완료", de: "1000 QTs abgeschlossen", en: "Completed 1000 QTs", fr: "1000 QT accomplis" },
 
@@ -496,6 +506,11 @@ export const T = {
   badge_qt_bird_msg: { ko: "30번의 QT 나눔으로 말씀의 은혜를 전한 당신,\n당신의 나눔이 누군가의 하루에\n하나님의 말씀을 배달하는 통로가 되길 축복해요.", de: "Mit 30 geteilten QTs haben Sie die Gnade des Wortes weitergegeben.\nMöge Ihr Teilen für den Tag eines Menschen\nein Weg sein, durch den Gottes Wort ankommt.", en: "Through 30 shared QTs, you have carried the grace of the Word.\nMay your sharing become a way God’s Word\nreaches someone’s day.", fr: "Par 30 QT partagés, vous avez transmis la grâce de la Parole.\nQue votre partage devienne un chemin\npar lequel la Parole de Dieu rejoint la journée de quelqu’un." },
   badge_word_peace_msg: { ko: "50번의 QT 나눔으로 말씀 안의 평안을 나눈 당신,\n나무 아래 쉬는 루츠우먼처럼\n하나님의 말씀 안에서 참 쉼을 누리길 축복해요.", de: "Mit 50 geteilten QTs haben Sie Frieden im Wort weitergegeben.\nWie Rootswoman, die unter dem Baum ruht,\nmögen Sie wahre Ruhe in Gottes Wort finden.", en: "Through 50 shared QTs, you have shared peace in the Word.\nLike Rootswoman resting under the tree,\nmay you find true rest in God’s Word.", fr: "Par 50 QT partagés, vous avez transmis la paix dans la Parole.\nComme Rootswoman se reposant sous l’arbre,\npuissiez-vous trouver le vrai repos dans la Parole de Dieu." },
   badge_angel_msg: { ko: "1000일 동안 말씀과 동행한 당신,\n다시 돌아오고 또 걸어온 모든 날을 하나님이 기억하세요.\n당신의 삶이 누군가에게 하늘의 위로가 되길 축복해요.", de: "1000 Tage sind Sie mit dem Wort gegangen.\nGott erinnert sich an jeden Tag, an dem Sie zurückgekommen und weitergegangen sind.\nMöge Ihr Leben für andere ein Trost des Himmels sein.", en: "For 1000 days, you have walked with the Word.\nGod remembers every day you returned and kept walking.\nMay your life become heavenly comfort to someone else.", fr: "Pendant 1000 jours, vous avez marché avec la Parole.\nDieu se souvient de chaque retour et de chaque pas.\nQue votre vie devienne une consolation du ciel pour quelqu’un." },
+  badge_jesus_love_msg: { ko: "예수님이 부어주신 사랑을 전하는 당신을 축복합니다.", de: "Segen für dich, der die Liebe weitergibt, die Jesus ausgegossen hat.", en: "Blessings on you as you share the love Jesus has poured out.", fr: "Soyez béni(e) en partageant l’amour que Jésus a déversé." },
+  badge_jesus_and_me_msg: { ko: "힘써 기도하며 하나님이 주신 은혜를 간증으로 열심히 기록한 당신을 축복합니다.", de: "Segen für dich, der im Gebet bleibt und Gottes Gnade treu als Zeugnis festhält.", en: "Blessings on you for praying faithfully and recording God’s grace as testimony.", fr: "Soyez béni(e) pour vos prières fidèles et vos témoignages de la grâce de Dieu." },
+  badge_receive_my_love_msg: { ko: "함께 성장해나갈 10명의 동역자를 찾은 당신을 축복합니다.", de: "Segen für dich, der 10 Glaubenspartner gefunden hat, mit denen du weiter wachsen kannst.", en: "Blessings on you for finding 10 faith partners to grow with.", fr: "Soyez béni(e) pour avoir trouvé 10 partenaires de foi avec qui grandir." },
+  badge_prayer_cheer_msg: { ko: "다른 이들을 위해 열심으로 기도하는 당신, 축복합니다!", de: "Segen für dich, der eifrig für andere betet!", en: "Blessings on you as you pray earnestly for others!", fr: "Soyez béni(e) en priant avec ferveur pour les autres !" },
+  badge_word_fruit_msg: { ko: "오늘 주시는 말씀을 항상 사모하는 당신을 축복합니다.", de: "Segen für dich, der sich täglich nach dem Wort sehnt, das Gott heute schenkt.", en: "Blessings on you for longing for the Word God gives today.", fr: "Soyez béni(e) pour votre soif de la Parole que Dieu donne aujourd’hui." },
 
   // 뱃지 획득 팝업 타이틀
   badge_popup_rootsman: { ko: "루츠맨 배지 획득! 🧑‍🌾",       de: "Rootsman-Abzeichen! 🧑‍🌾", en: "Rootsman Badge! 🧑‍🌾", fr: "Badge Rootsman ! 🧑‍🌾" },
@@ -505,6 +520,11 @@ export const T = {
   badge_popup_angel: { ko: "천사 배지 획득! 👼",           de: "Engel-Abzeichen! 👼", en: "Angel Badge! 👼", fr: "Badge Ange ! 👼" },
   badge_popup_joseph: { ko: "요셉 배지 획득! 🌈",           de: "Josef-Abzeichen! 🌈", en: "Joseph Badge! 🌈", fr: "Badge Joseph ! 🌈" },
   badge_popup_qt_bird: { ko: "말씀 배달부 배지 획득! 🕊️",    de: "Wortüberbringer-Abzeichen! 🕊️", en: "Word Carrier Badge! 🕊️", fr: "Badge Porteur de la Parole ! 🕊️" },
+  badge_popup_jesus_love: { ko: "예수님 사랑 배지 획득! 💛", de: "Abzeichen Jesu Liebe! 💛", en: "Jesus' Love Badge! 💛", fr: "Badge L’amour de Jésus ! 💛" },
+  badge_popup_jesus_and_me: { ko: "예수님과 나 배지 획득! ✨", de: "Abzeichen Jesus und ich! ✨", en: "Jesus and Me Badge! ✨", fr: "Badge Jésus et moi ! ✨" },
+  badge_popup_receive_my_love: { ko: "받아랏, 내 사랑 배지 획득! 🫶", de: "Abzeichen Nimm meine Liebe! 🫶", en: "Here, My Love Badge! 🫶", fr: "Badge Voici mon amour ! 🫶" },
+  badge_popup_prayer_cheer: { ko: "화이팅 배지 획득! 💪", de: "Weiter so-Abzeichen! 💪", en: "Keep Going Badge! 💪", fr: "Badge Courage ! 💪" },
+  badge_popup_word_fruit: { ko: "말씀 열매 배지 획득! 🌱", de: "Frucht des Wortes-Abzeichen! 🌱", en: "Fruit of the Word Badge! 🌱", fr: "Badge Fruit de la Parole ! 🌱" },
 
   // ── 온보딩 ──
   onboarding_title1: { ko: "Christian Roots에 오신 걸 환영합니다", de: "Willkommen bei Christian Roots", en: "Welcome to Christian Roots", fr: "Bienvenue sur Christian Roots" },

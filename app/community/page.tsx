@@ -12,6 +12,7 @@ import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
+import { checkAndAwardPrayTogetherBadge, checkAndAwardQtReactionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
@@ -1780,6 +1781,16 @@ export default function CommunityPage() {
         cur[reactionId] = (cur[reactionId] ?? 0) + 1;
         return { ...prev, [qtId]: cur };
       });
+
+      try {
+        const awarded = await checkAndAwardQtReactionBadge(supabase, user.id);
+        if (awarded) {
+          const popup = getRewardBadgePopup(awarded, lang);
+          setBadgePopup(popup);
+        }
+      } catch (error) {
+        console.warn("묵상 리액션 보상 배지 확인 실패:", error);
+      }
     }
   }
 
@@ -1820,6 +1831,7 @@ export default function CommunityPage() {
     setAnsweredPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
 
     // 바울 뱃지 체크 (함께 기도 30번)
+    let existingPrayerBadgeAwarded = false;
     try {
       const { data: prof } = await supabase.from("profiles")
         .select("badge_paul").eq("id", user.id).single();
@@ -1828,10 +1840,21 @@ export default function CommunityPage() {
           .select("id").eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
           await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
+          existingPrayerBadgeAwarded = true;
           setBadgePopup({ img: "/badge_paul.webp", title: c("community_badge_paul_title"), msg: t("badge_paul_msg", lang) });
         }
       }
     } catch (e) {}
+
+    try {
+      const awarded = await checkAndAwardPrayTogetherBadge(supabase, user.id);
+      if (awarded && !existingPrayerBadgeAwarded) {
+        const popup = getRewardBadgePopup(awarded, lang);
+        setBadgePopup(popup);
+      }
+    } catch (error) {
+      console.warn("함께 기도 보상 배지 확인 실패:", error);
+    }
   }
 
   async function createGroup() {

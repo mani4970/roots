@@ -10,6 +10,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2 } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
+import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -511,12 +512,24 @@ function PrayerPageContent() {
         return;
       }
       // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
+      let existingAnsweredBadgeAwarded = false;
       if (user) {
         const { data: prof } = await supabase.from("profiles")
           .select("badge_noah").eq("id", user.id).single();
         if (!prof?.badge_noah) {
           await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
+          existingAnsweredBadgeAwarded = true;
           setBadgePopup({ img: "/badge_noah.webp", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+        }
+
+        try {
+          const awarded = await checkAndAwardAnsweredPrayerBadge(supabase, user.id);
+          if (awarded && !existingAnsweredBadgeAwarded) {
+            const popup = getRewardBadgePopup(awarded, lang);
+            setBadgePopup(popup);
+          }
+        } catch (badgeError) {
+          console.warn("기도 응답 보상 배지 확인 실패:", badgeError);
         }
       }
       setTestimonyPrayerId(null);

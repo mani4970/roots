@@ -9,6 +9,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
+import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -65,6 +66,7 @@ const FAITH_BADGES = [
   { key: "badge_qt_bird", img: "/qt_bird.webp", titleKey: "badge_qt_bird_title", descKey: "badge_qt_bird_desc" },
   { key: "badge_word_peace", img: "/badge_rootswoman_rest.webp", titleKey: "badge_word_peace_title", descKey: "badge_word_peace_desc" },
   { key: "badge_angel", img: "/angel.webp", titleKey: "badge_angel_title", descKey: "badge_angel_desc" },
+  ...NEW_REWARD_BADGES,
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
 const SPIRIT_FRUIT_BADGES = [
@@ -177,6 +179,15 @@ export default function ProfilePage() {
         if (!badgeError) {
           setProfile((current: any) => ({ ...(current ?? p), ...badgeUpdates }));
         }
+      }
+
+      try {
+        const newRewardBadgeUpdates = await repairNewRewardBadges(supabase, user.id);
+        if (Object.keys(newRewardBadgeUpdates).length > 0) {
+          setProfile((current: any) => ({ ...(current ?? p), ...newRewardBadgeUpdates }));
+        }
+      } catch (error) {
+        console.warn("새 보상 배지 보정 실패:", error);
       }
     }
 

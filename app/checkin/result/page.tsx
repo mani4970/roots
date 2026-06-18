@@ -9,6 +9,8 @@ import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { storageGet } from "@/lib/clientStorage";
 import HeartBurst from "@/components/HeartBurst";
+import ConfettiBurst from "@/components/ConfettiBurst";
+import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 
 function ResultContent() {
   const params = useSearchParams();
@@ -18,6 +20,7 @@ function ResultContent() {
   const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
 
   // lang이 localStorage에서 확정될 때까지 대기
   const [langReady, setLangReady] = useState(false);
@@ -66,6 +69,12 @@ function ResultContent() {
             verse: existingVerse,
             reference: existingReference,
           });
+          try {
+            const awarded = await checkAndAwardDailyWordBadge(supabase, user.id);
+            if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+          } catch (badgeError) {
+            console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
+          }
           setLoading(false);
           return;
         }
@@ -120,6 +129,13 @@ function ResultContent() {
           verse,
           reference,
         }, { onConflict: "user_id,date" });
+
+        try {
+          const awarded = await checkAndAwardDailyWordBadge(supabase, user.id);
+          if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+        } catch (badgeError) {
+          console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
+        }
 
       } catch {
         setResult({
@@ -179,6 +195,20 @@ function ResultContent() {
       </div>
 
       <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, height: "var(--native-bottom-system-bar, 0px)", background: "var(--bg)", pointerEvents: "none", zIndex: 45 }} />
+
+      {badgePopup && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", padding: 20 }}>
+          <ConfettiBurst />
+          <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.35)", padding: "26px 22px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
+            <div style={{ width: 118, height: 118, margin: "0 auto 16px", borderRadius: "50%", background: "linear-gradient(135deg, rgba(232,197,71,0.18), rgba(122,157,122,0.16))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 850, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: 18 }}>{badgePopup.msg}</p>
+            <button onClick={() => setBadgePopup(null)} className="btn-sage" style={{ width: "100%" }}>{t("badge_thanks", lang)}</button>
+          </div>
+        </div>
+      )}
 
       {/* 하트 콘페티 - 4곳에서 순차 폭발, 한 번만 재생 */}
       <HeartBurst />

@@ -33,11 +33,9 @@ export function saveLangLocally(lang: Lang): number {
  * isLang() 으로 검증하므로 DB나 client storage에 예전 값/지원 안 하는 언어가 있어도 안전.
  */
 export function useLang(): Lang {
-  const [lang, setLang] = useState<Lang>(() => {
-    if (typeof window === "undefined") return FALLBACK_LANG;
-    const stored = storageGet(STORAGE_KEY);
-    return isLang(stored) ? stored : FALLBACK_LANG;
-  });
+  // Keep the first server render and first client hydration render identical.
+  // The saved/client language is applied right after hydration in the effect below.
+  const [lang, setLang] = useState<Lang>(FALLBACK_LANG);
 
   useEffect(() => {
     function handleLangChanged(event: Event) {
