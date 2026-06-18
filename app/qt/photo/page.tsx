@@ -13,6 +13,7 @@ import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
+import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 
 type CompletePhotoOptions = {
   visibility?: string;
@@ -233,52 +234,11 @@ function PhotoReflectionContent() {
   }
 
   async function loadShareOptions() {
-    const supabase = createClient();
     setLoadingShareOptions(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: memberships } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id);
-      const groupIds = (memberships ?? []).map((m: any) => m.group_id).filter(Boolean);
-      if (groupIds.length > 0) {
-        const { data: groupRows } = await supabase
-          .from("groups")
-          .select("id,name,is_public")
-          .in("id", groupIds)
-          .order("created_at", { ascending: false });
-        setGroups((groupRows ?? []).map((g: any) => ({ id: String(g.id), name: String(g.name), is_public: !!g.is_public })));
-      } else {
-        setGroups([]);
-      }
-
-      const { data: companionRows } = await supabase
-        .from("companions")
-        .select("requester_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-      const partnerIds = Array.from(new Set((companionRows ?? [])
-        .map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id)
-        .filter(Boolean)
-      ));
-      if (partnerIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, name, avatar_url")
-          .in("id", partnerIds);
-        const profileMap: Record<string, any> = {};
-        (profiles ?? []).forEach((profile: any) => { profileMap[String(profile.id)] = profile; });
-        setPartners(partnerIds.map((partnerId: any) => ({
-          id: String(partnerId),
-          name: String(profileMap[partnerId]?.name ?? t("profile_default_name", lang)),
-          avatar_url: profileMap[partnerId]?.avatar_url ?? null,
-        })));
-      } else {
-        setPartners([]);
-      }
+      const options = await loadSharePromptOptions(t("profile_default_name", lang));
+      setGroups(options.groups);
+      setPartners(options.partners);
     } catch (error) {
       console.error("photo reflection share options load failed", error);
       setGroups([]);

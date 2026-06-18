@@ -12,6 +12,7 @@ import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
+import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
@@ -547,57 +548,9 @@ export default function HomePage() {
   async function loadHomePrayerShareOptions() {
     setLoadingHomePrayerShareOptions(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setHomePrayerShareGroups([]);
-        setHomePrayerSharePartners([]);
-        return;
-      }
-
-      const { data: memberRows } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id);
-      const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
-      if (groupIds.length > 0) {
-        const { data: groups } = await supabase
-          .from("groups")
-          .select("id, name, is_public")
-          .in("id", groupIds);
-        setHomePrayerShareGroups((groups ?? []).map((group: any) => ({
-          id: String(group.id),
-          name: String(group.name ?? ""),
-          is_public: !!group.is_public,
-        })));
-      } else {
-        setHomePrayerShareGroups([]);
-      }
-
-      const { data: companionRows } = await supabase
-        .from("companions")
-        .select("requester_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-      const partnerIds = Array.from(new Set((companionRows ?? [])
-        .map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id)
-        .filter(Boolean)
-      ));
-      if (partnerIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, name, avatar_url")
-          .in("id", partnerIds);
-        const profileMap: Record<string, any> = {};
-        (profiles ?? []).forEach((profile: any) => { profileMap[String(profile.id)] = profile; });
-        setHomePrayerSharePartners(partnerIds.map((partnerId: any) => ({
-          id: String(partnerId),
-          name: String(profileMap[partnerId]?.name ?? t("profile_default_name", lang)),
-          avatar_url: profileMap[partnerId]?.avatar_url ?? null,
-        })));
-      } else {
-        setHomePrayerSharePartners([]);
-      }
+      const options = await loadSharePromptOptions(t("profile_default_name", lang));
+      setHomePrayerShareGroups(options.groups);
+      setHomePrayerSharePartners(options.partners);
     } catch (error) {
       console.error("home prayer share options load failed", error);
       setHomePrayerShareGroups([]);
