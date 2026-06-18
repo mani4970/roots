@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type TouchEvent, type WheelEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -81,6 +81,13 @@ const SPIRIT_FRUIT_BADGES = [
   { key: "badge_self_control", name: "Self-Control", descKey: "fruit_selfctrl", fruit: "🍓" },
 ] as const satisfies readonly { key: string; name: string; descKey: TKey; fruit: string }[];
 
+type FaithBadge = (typeof FAITH_BADGES)[number];
+type SpiritFruitBadge = (typeof SPIRIT_FRUIT_BADGES)[number];
+
+function getSpiritFruitBadgeImg(name: string) {
+  return `/badge_${name.toLowerCase().replace("-", "_")}.webp`;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const lang = useLang();
@@ -112,6 +119,9 @@ export default function ProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
+  const [showBadgeGallery, setShowBadgeGallery] = useState(false);
+  const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const calendarWheelLockRef = useRef(0);
 
   function showToast(message: string) {
     setToast(message);
@@ -228,6 +238,30 @@ export default function ProfilePage() {
     if (targetMonth > currentMonth) return;
     setCalendarMonth(targetMonth);
     if (profileUserId) void loadQtRecordsForMonth(profileUserId, targetMonth, { showSpinner: true });
+  }
+
+  function handleCalendarTouchStart(e: TouchEvent<HTMLDivElement>) {
+    const touch = e.touches[0];
+    calendarTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleCalendarTouchEnd(e: TouchEvent<HTMLDivElement>) {
+    const start = calendarTouchStartRef.current;
+    calendarTouchStartRef.current = null;
+    const touch = e.changedTouches[0];
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    changeCalendarMonth(dx < 0 ? 1 : -1);
+  }
+
+  function handleCalendarWheel(e: WheelEvent<HTMLDivElement>) {
+    if (Math.abs(e.deltaX) < 26 || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+    const now = Date.now();
+    if (now < calendarWheelLockRef.current) return;
+    calendarWheelLockRef.current = now + 520;
+    changeCalendarMonth(e.deltaX > 0 ? 1 : -1);
   }
 
   async function saveName() {
@@ -516,6 +550,25 @@ export default function ProfilePage() {
   const calendarMonthLabel = calendarMonth.toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { year: "numeric", month: "long" });
   const qtCompletedDayCount = new Set(qtRecords.map(record => record.date)).size;
   const isViewingCurrentMonth = isSameCalendarMonth(calendarMonth, new Date());
+  const sortedFaithBadges = [...FAITH_BADGES].sort((a, b) => {
+    const aEarned = profile?.[a.key] ? 1 : 0;
+    const bEarned = profile?.[b.key] ? 1 : 0;
+    return bEarned - aEarned;
+  });
+  const previewFaithBadges = sortedFaithBadges.slice(0, 6);
+  const previewSpiritFruitBadges = SPIRIT_FRUIT_BADGES.slice(0, 6);
+  const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
+  const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
+
+  function openFaithBadgeDetail(b: FaithBadge) {
+    const earned = profile?.[b.key] ?? false;
+    setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned });
+  }
+
+  function openSpiritFruitBadgeDetail(b: SpiritFruitBadge) {
+    const earned = profile?.[b.key] ?? false;
+    setSelectedBadge({ img: getSpiritFruitBadgeImg(b.name), title: b.name, desc: t(b.descKey, lang), earned });
+  }
 
 
   if (loading) return (
@@ -529,6 +582,76 @@ export default function ProfilePage() {
       {toast && (
         <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
+        </div>
+      )}
+
+      {showBadgeGallery && (
+        <div
+          onClick={() => setShowBadgeGallery(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 250, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+          >
+            <button
+              onClick={() => setShowBadgeGallery(false)}
+              aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ paddingRight: 36, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 6 }}>{t("profile_badge_gallery_title", lang)}</h3>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{t("profile_badge_gallery_sub", lang)}</p>
+            </div>
+
+            <div className="sec-label" style={{ marginBottom: 10 }}>
+              {t("profile_faith_fruits", lang)}
+              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {FAITH_BADGES.length}</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+              {sortedFaithBadges.map(b => {
+                const earned = profile?.[b.key] ?? false;
+                return (
+                  <button
+                    key={b.key}
+                    onClick={() => openFaithBadgeDetail(b)}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <div style={{ width: 72, height: 72, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                      <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
+                    <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="sec-label" style={{ marginBottom: 10 }}>
+              {t("profile_spirit_fruits", lang)}
+              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+              {SPIRIT_FRUIT_BADGES.map(b => {
+                const earned = profile?.[b.key] ?? false;
+                return (
+                  <button
+                    key={b.name}
+                    onClick={() => openSpiritFruitBadgeDetail(b)}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <div style={{ width: 66, height: 66, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                      <img src={getSpiritFruitBadgeImg(b.name)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{b.name}</div>
+                    <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -648,38 +771,36 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 신앙의 결실 뱃지 - 가로 스크롤 */}
+      {/* 신앙의 결실 배지 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">{t("profile_faith_fruits", lang)}</div>
-        <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
-          {/* 좌우 화살표 */}
-          <button onClick={() => { const el = document.getElementById("faith-badge-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
-            style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>‹</button>
-          <button onClick={() => { const el = document.getElementById("faith-badge-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
-            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>›</button>
-          <div id="faith-badge-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
-            {[...FAITH_BADGES].sort((a, b) => {
-              const aEarned = profile?.[a.key] ? 1 : 0;
-              const bEarned = profile?.[b.key] ? 1 : 0;
-              return bEarned - aEarned;
-            }).map(b => {
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span>
+            {t("profile_faith_fruits", lang)}
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {FAITH_BADGES.length}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowBadgeGallery(true)}
+            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+          >
+            {t("profile_badges_view_all", lang)}
+          </button>
+        </div>
+        <div className="card" style={{ padding: "16px 14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {previewFaithBadges.map(b => {
               const earned = profile?.[b.key] ?? false;
               return (
                 <button
                   key={b.key}
-                  onClick={() => setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned })}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 96, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  onClick={() => openFaithBadgeDetail(b)}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
-                  <div style={{ width: 88, height: 88, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img
-                      src={b.img}
-                      alt={t(b.titleKey, lang)}
-                      style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }}
-                    />
+                  <div style={{ width: 72, height: 72, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                    <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{t(b.titleKey, lang)}</div>
-                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
-                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
+                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
                 </button>
               );
             })}
@@ -688,58 +809,46 @@ export default function ProfilePage() {
       </div>
 
       {/* 성령의 열매 배지 */}
-      {(() => {
-        const BADGES = SPIRIT_FRUIT_BADGES;
-        const earnedCount = BADGES.filter(b => profile?.[b.key]).length;
-        return (
-          <div style={{ padding: "14px 16px 0" }}>
-            <div className="sec-label">
-              {t("profile_spirit_fruits", lang)}
-              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedCount} / 9</span>
-            </div>
-            <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
-              {/* 좌우 화살표 */}
-              <button
-                onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
-                style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
-              >‹</button>
-              <button
-                onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
-                style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
-              >›</button>
-              <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
-                {BADGES.map((b, i) => {
-                  const earned = profile?.[b.key] ?? false;
-                  return (
-                    <button
-                      key={b.name}
-                      onClick={() => setSelectedBadge({ img: `/badge_${b.name.toLowerCase().replace("-","_")}.webp`, title: b.name, desc: t(b.descKey, lang), earned })}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
-                    >
-                      {/* 미획득 상태에서도 이름/설명은 읽기 쉽게 유지하고, 배지 이미지만 흐릿하게 표시 */}
-                      <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                        <img
-                          src={`/badge_${b.name.toLowerCase().replace("-","_")}.webp`}
-                          alt={b.name}
-                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                        />
-                      </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
-                      <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
-                      {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
-                    </button>
-                  );
-                })}
-              </div>
-              {earnedCount === 0 && (
-                <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
-                  {t("profile_spirit_fruit_first_hint", lang)}
-                </p>
-              )}
-            </div>
+      <div style={{ padding: "14px 16px 0" }}>
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span>
+            {t("profile_spirit_fruits", lang)}
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowBadgeGallery(true)}
+            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+          >
+            {t("profile_badges_view_all", lang)}
+          </button>
+        </div>
+        <div className="card" style={{ padding: "16px 14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {previewSpiritFruitBadges.map(b => {
+              const earned = profile?.[b.key] ?? false;
+              return (
+                <button
+                  key={b.name}
+                  onClick={() => openSpiritFruitBadgeDetail(b)}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div style={{ width: 66, height: 66, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
+                    <img src={getSpiritFruitBadgeImg(b.name)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{b.name}</div>
+                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
+                </button>
+              );
+            })}
           </div>
-        );
-      })()}
+          {earnedSpiritFruitCount === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
+              {t("profile_spirit_fruit_first_hint", lang)}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* 말씀 묵상 현황 달력 */}
       <div style={{ padding: "14px 16px 0" }}>
@@ -766,7 +875,14 @@ export default function ProfilePage() {
             style={{ width: 32, height: 32, flexShrink: 0, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: isViewingCurrentMonth ? "not-allowed" : "pointer", opacity: isViewingCurrentMonth ? 0.35 : 1, fontSize: 18, lineHeight: 1 }}
           >›</button>
         </div>
-        <div className="card" style={{ position: "relative" }} aria-busy={loadingQtCalendar}>
+        <div
+          className="card"
+          style={{ position: "relative", touchAction: "pan-y" }}
+          aria-busy={loadingQtCalendar}
+          onTouchStart={handleCalendarTouchStart}
+          onTouchEnd={handleCalendarTouchEnd}
+          onWheel={handleCalendarWheel}
+        >
           {loadingQtCalendar && (
             <div style={{ position: "absolute", top: 12, right: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Loader2 size={13} style={{ color: "var(--sage)" }} className="spin" />

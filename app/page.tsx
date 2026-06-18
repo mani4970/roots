@@ -888,16 +888,10 @@ export default function HomePage() {
     router.push("/qt");
   }
 
-  const qtCardSubText = todayDone.qt
-    ? t("home_qt_completed_sub", lang).replace(". ", ".\n")
-    : t("home_qt_today_sub", lang);
-  const homePrayerGoLabel = lang === "ko"
-    ? "기도 하러 가기"
-    : lang === "de"
-    ? "Zum Gebet"
-    : lang === "fr"
-    ? "Aller à la prière"
-    : "Go to prayer";
+  const reflectionActionTitle = todayDone.qt
+    ? t("home_action_reflection_done", lang)
+    : t("home_action_reflection_start", lang);
+  const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !showRootsManPopup;
 
@@ -1281,27 +1275,64 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_routine_section", lang)}</div>
-        <div className={todayDone.qt ? "card-sage" : "card"} style={{ borderRadius: 22, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <img src="/icon-qt.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", lineHeight: 1.35, marginBottom: 4 }}>
-                {todayDone.qt ? t("home_qt_completed_title", lang) : t("home_qt_today_title", lang)}
-              </div>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.55, whiteSpace: "pre-line" }}>
-                {qtCardSubText}
-              </div>
-            </div>
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <button
+            type="button"
             onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
-            className={todayDone.qt ? "btn-outline" : "btn-sage"}
-            style={{ width: "100%", minHeight: 46, marginTop: 14 }}
+            className={todayDone.qt ? "card-sage" : "card"}
+            style={{
+              minHeight: 104,
+              borderRadius: 22,
+              padding: "14px 10px",
+              border: todayDone.qt ? "1px solid rgba(122,157,122,0.22)" : "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              cursor: "pointer",
+              textAlign: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
           >
-            {todayDone.qt ? t("home_qt_view_record", lang) : t("home_qt_start_today", lang)}
+            <div style={{ width: 50, height: 50, borderRadius: 17, background: todayDone.qt ? "rgba(122,157,122,0.16)" : "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/icon-qt.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} />
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text)", lineHeight: 1.25, whiteSpace: "pre-line" }}>
+              {reflectionActionTitle}
+            </div>
+            {reflectionActionSub && (
+              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.2 }}>
+                {reflectionActionSub}
+              </div>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/prayer")}
+            className="card"
+            style={{
+              minHeight: 104,
+              borderRadius: 22,
+              padding: "14px 10px",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              cursor: "pointer",
+              textAlign: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <div style={{ width: 50, height: 50, borderRadius: 17, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src="/icon-pray.webp" alt="" width={38} height={38} style={{ objectFit: "contain" }} />
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text)", lineHeight: 1.25 }}>
+              {t("home_action_prayer", lang)}
+            </div>
           </button>
         </div>
 
@@ -1400,32 +1431,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div ref={prayerSectionRef} style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_prayer_section", lang)}</div>
-        <div className="card" style={{ padding: "18px", borderRadius: 22 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
-            <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <img src="/icon-pray.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 6 }}>
-                {t("home_prayer_desc", lang)}
-              </div>
-              <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65 }}>
-                {t("home_prayer_hint", lang)}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={openPrayerRequest} className="btn-sage" style={{ flex: 1, minHeight: 46 }}>
-              {t("home_prayer_write_option", lang)}
-            </button>
-            <button onClick={() => router.push("/prayer")} className="btn-outline" style={{ flex: 1, minHeight: 46 }}>
-              {homePrayerGoLabel}
-            </button>
-          </div>
-        </div>
-      </div>
 
 
       {(todayDone.qt || myDecisions.length > 0) && (
