@@ -9,6 +9,7 @@ import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { storageGet } from "@/lib/clientStorage";
 import HeartBurst from "@/components/HeartBurst";
+import BottomNav from "@/components/BottomNav";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 
@@ -150,14 +151,15 @@ function ResultContent() {
   }, [langReady, lang, selectedEmotion]);
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "var(--native-bottom-system-bar, 0px)" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
       <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
       <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("result_loading", lang)}</p>
+      <BottomNav />
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(40px + var(--native-bottom-system-bar, 0px))", position: "relative" }} className="fade-in">
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(120px + var(--bottom-nav-bottom-padding))", position: "relative" }} className="fade-in">
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -194,8 +196,6 @@ function ResultContent() {
         </p>
       </div>
 
-      <div aria-hidden="true" style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, height: "var(--native-bottom-system-bar, 0px)", background: "var(--bg)", pointerEvents: "none", zIndex: 45 }} />
-
       {badgePopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", padding: 20 }}>
           <ConfettiBurst />
@@ -212,6 +212,7 @@ function ResultContent() {
 
       {/* 하트 콘페티 - 4곳에서 순차 폭발, 한 번만 재생 */}
       <HeartBurst />
+      <BottomNav />
     </div>
   );
 }
@@ -219,8 +220,9 @@ function ResultContent() {
 export default function ResultPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
         <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
+        <BottomNav />
       </div>
     }>
       <ResultContent />
