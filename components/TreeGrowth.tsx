@@ -1,59 +1,26 @@
 "use client";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import RootsMan from "./RootsMan";
+import RewardMapAction from "./RewardMapAction";
 import { useLang } from "@/lib/useLang";
-import { t, type Lang, type TKey } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
+import {
+  getRewardMapBackground,
+  getRewardMapFallbackTitleKey,
+  getRewardMapProgressInTen,
+  getRewardMapProgressPercent,
+  getRewardMapStage,
+  getRewardMapTitleKey,
+  getVisibleRewardMapCycles,
+  type RewardMapCycle,
+} from "@/lib/rewardMaps";
 
 interface TreeGrowthProps {
   days: number;
   lastCheckin: string | null;
   showRootsMan?: boolean;
-}
-
-function getCycleInfo(days: number) {
-  if (days <= 0) return { cycleDay: 0, cycleIndex: 0 };
-  // A garden cycle completes every 100 QT days.
-  // 0 day in a cycle is the seed stage (tree1/dark1), then 1-10 uses tree2, ... 91-99 uses tree11.
-  // On the 100th QT day, the fruit badge is awarded and the next garden begins from seed stage.
-  const cycleIndex = Math.floor(days / 100);
-  const cycleDay = days % 100;
-  return { cycleDay, cycleIndex };
-}
-
-function getImgIndex(cycleDay: number) {
-  if (cycleDay === 0) return 1;
-  return Math.min(Math.ceil(cycleDay / 10) + 1, 11);
-}
-
-const STAGE_LABEL_KEYS: readonly TKey[] = [
-  "tree_stage_0", "tree_stage_1", "tree_stage_2", "tree_stage_3", "tree_stage_4",
-  "tree_stage_5", "tree_stage_6", "tree_stage_7", "tree_stage_8", "tree_stage_9", "tree_stage_10",
-];
-const STAGE_DESC_KEYS: readonly TKey[] = [
-  "tree_desc_0", "tree_desc_1", "tree_desc_2", "tree_desc_3", "tree_desc_4",
-  "tree_desc_5", "tree_desc_6", "tree_desc_7", "tree_desc_8", "tree_desc_9", "tree_desc_10",
-];
-
-function getTreeState(days: number, lastCheckin: string | null, lang: Lang) {
-  let daysSince = 0;
-  if (lastCheckin) {
-    const last = parseLocalDateString(lastCheckin);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    last.setHours(0, 0, 0, 0);
-    daysSince = Math.floor((today.getTime() - last.getTime()) / 86400000);
-  }
-  const { cycleDay, cycleIndex } = getCycleInfo(days);
-  const img = days === 0 ? 1 : getImgIndex(cycleDay);
-  return {
-    img, cycleDay, cycleIndex,
-    stage: {
-      label: t(STAGE_LABEL_KEYS[img - 1], lang),
-      desc:  t(STAGE_DESC_KEYS[img - 1], lang),
-    },
-    daysSince,
-  };
+  ownerName?: string;
 }
 
 const NIGHT_START_HOUR = 19;
@@ -64,15 +31,46 @@ function isNightTime() {
   return h >= NIGHT_START_HOUR || h < NIGHT_END_HOUR;
 }
 
-export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: TreeGrowthProps) {
+function getDaysSinceLastCheckin(lastCheckin: string | null) {
+  if (!lastCheckin) return 0;
+  const last = parseLocalDateString(lastCheckin);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  last.setHours(0, 0, 0, 0);
+  return Math.floor((today.getTime() - last.getTime()) / 86400000);
+}
+
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName }: TreeGrowthProps) {
   const lang = useLang();
-  const { img, cycleDay, cycleIndex, stage, daysSince } = getTreeState(days, lastCheckin, lang);
+  const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
+  const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const owner = ownerName?.trim() || t("profile_default_name", lang);
   const isNight = isNightTime();
-  const imgSrc = isNight ? `/dark${img}.webp` : `/tree${img}.webp`;
+  const daysSince = getDaysSinceLastCheckin(lastCheckin);
   const isAway = daysSince >= 3;
 
-  const dayInCycle = cycleDay % 10 === 0 && cycleDay > 0 ? 10 : cycleDay % 10;
-  const periodProgress = (dayInCycle / 10) * 100;
+  useEffect(() => {
+    const nextIndex = Math.max(cycles.length - 1, 0);
+    setSelectedIndex(nextIndex);
+    const node = scrollerRef.current;
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "auto" });
+    });
+  }, [cycles.length, days]);
+
+  function handleScroll() {
+    const node = scrollerRef.current;
+    if (!node || node.clientWidth <= 0) return;
+    const index = Math.round(node.scrollLeft / node.clientWidth);
+    setSelectedIndex(Math.max(0, Math.min(index, cycles.length - 1)));
+  }
+
+  const selectedCycle = cycles[selectedIndex] ?? cycles[cycles.length - 1] ?? cycles[0];
+  const selectedStage = selectedCycle ? getRewardMapStage(selectedCycle) : null;
+  const progressInTen = selectedCycle ? getRewardMapProgressInTen(selectedCycle) : 0;
+  const periodProgress = selectedCycle ? getRewardMapProgressPercent(selectedCycle) : 0;
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -85,31 +83,101 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false }: 
         </div>
       )}
 
-      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        <Image src={imgSrc} alt={stage.label} fill style={{ objectFit: "cover" }} priority />
-
-        <div style={{ position: "absolute", top: 10, left: 10, background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 20, zIndex: 6 }}>
-          {stage.label}
-        </div>
-        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.8)", color: "#EAEAEA", fontSize: 10, fontWeight: 600, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
-          {t("tree_day_count", lang, { n: days })}
-        </div>
-        {cycleIndex > 0 && (
-          <div style={{ position: "absolute", top: 36, right: 10, background: "rgba(232,197,71,0.9)", color: "#1a1c1e", fontSize: 9, fontWeight: 700, padding: "3px 10px", borderRadius: 20, zIndex: 6 }}>
-            🌟 {t("tree_garden_n", lang, { n: cycleIndex + 1 })}
-          </div>
-        )}
-
-        <RootsMan trigger={showRootsMan} />
+      <div
+        ref={scrollerRef}
+        onScroll={handleScroll}
+        style={{
+          display: "flex",
+          overflowX: "auto",
+          scrollSnapType: "x mandatory",
+          scrollBehavior: "smooth",
+          WebkitOverflowScrolling: "touch",
+          borderRadius: 20,
+        }}
+      >
+        {cycles.map((cycle) => (
+          <RewardMapCard
+            key={cycle.cycleIndex}
+            cycle={cycle}
+            days={days}
+            isNight={isNight}
+            owner={owner}
+            showAction={showRootsMan && cycle.isCurrent}
+          />
+        ))}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px" }}>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>{stage.desc}</span>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>{t("tree_progress", lang, { n: dayInCycle })}</span>
-      </div>
+      {cycles.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>
+          {cycles.map((cycle, index) => (
+            <button
+              key={cycle.cycleIndex}
+              onClick={() => {
+                setSelectedIndex(index);
+                scrollerRef.current?.scrollTo({ left: (scrollerRef.current?.clientWidth ?? 0) * index, behavior: "smooth" });
+              }}
+              aria-label={`${index + 1}`}
+              style={{
+                width: index === selectedIndex ? 18 : 7,
+                height: 7,
+                borderRadius: 999,
+                border: "none",
+                padding: 0,
+                background: index === selectedIndex ? "var(--sage)" : "rgba(122,157,122,0.24)",
+                cursor: "pointer",
+                transition: "width 160ms ease",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {selectedStage && (
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 8, padding: "0 2px" }}>
+          <span style={{ fontSize: 11, color: "var(--text3)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {t(selectedStage.descKey, lang)}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text3)", flexShrink: 0 }}>{t("tree_progress", lang, { n: progressInTen })}</span>
+        </div>
+      )}
 
       <div className="progress-bar" style={{ marginTop: 6 }}>
         <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function RewardMapCard({ cycle, days, isNight, owner, showAction }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean }) {
+  const lang = useLang();
+  const stage = getRewardMapStage(cycle);
+  const titleKey = getRewardMapTitleKey(cycle.kind);
+  const fallbackTitleKey = getRewardMapFallbackTitleKey(cycle.kind);
+  const title = t(titleKey, lang, { name: owner });
+  const imgSrc = getRewardMapBackground(cycle, isNight);
+  const rangeLabel = cycle.isCurrent
+    ? t("tree_day_count", lang, { n: days })
+    : t("reward_map_day_range", lang, { start: cycle.startDay, end: cycle.endDay });
+
+  return (
+    <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
+      <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
+        <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
+
+        <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
+          <div style={{ background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 800, padding: "4px 12px", borderRadius: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.12)" }}>
+            {title}
+          </div>
+          <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
+            {t(stage.labelKey, lang)}
+          </div>
+        </div>
+
+        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(26,28,30,0.8)", color: "#EAEAEA", fontSize: 10, fontWeight: 650, padding: "4px 12px", borderRadius: 20, backdropFilter: "blur(4px)", zIndex: 6 }}>
+          {rangeLabel}
+        </div>
+
+        <RewardMapAction trigger={showAction} action={stage.action} />
       </div>
     </div>
   );

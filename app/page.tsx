@@ -23,6 +23,7 @@ import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, Messa
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapTitleKey } from "@/lib/rewardMaps";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -1229,8 +1230,9 @@ export default function HomePage() {
           <div className="header-title">
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
-              const full = t("home_garden_my", lang, { name });
-              const emWord = t("home_garden_keyword", lang);
+              const currentRewardMap = getCurrentRewardMapCycle(profile?.streak_days ?? 0);
+              const full = t(getRewardMapTitleKey(currentRewardMap.kind), lang, { name });
+              const emWord = t(getRewardMapKeywordKey(currentRewardMap.kind), lang);
               const idx = full.lastIndexOf(emWord);
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;
@@ -1281,7 +1283,7 @@ export default function HomePage() {
       </div>
 
       <div ref={treeSectionRef}>
-        <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} />
+        <TreeGrowth days={profile?.streak_days ?? 0} lastCheckin={profile?.last_checkin ?? null} showRootsMan={showRootsMan} ownerName={profile?.name ?? t("profile_default_name", lang)} />
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
