@@ -47,13 +47,13 @@ const ARK_WALK_SPRITE: ArkSpriteSheet = {
 };
 
 const ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
-  src: "/images/reward-maps/peace-ark/sprites/rootsman_carry_wood_walk_sheet.png",
+  src: "/images/reward-maps/peace-ark/sprites/rootsman_carry_wood_walk_sheet_clean.png",
   frames: 6,
-  sheetWidth: 1916,
+  sheetWidth: 2160,
   sheetHeight: 821,
-  frameWidthPx: 319,
-  renderWidth: 42,
-  intervalMs: 210,
+  frameWidthPx: 360,
+  renderWidth: 40,
+  intervalMs: 230,
 };
 
 const ARK_HAMMER_SPRITE: ArkSpriteSheet = {
@@ -70,9 +70,9 @@ const ARK_WAVE_BIRD_SPRITE: ArkSpriteSheet = {
   frames: 4,
   sheetWidth: 1802,
   sheetHeight: 872,
-  frameWidthPx: 450,
-  renderWidth: 40,
-  intervalMs: 300,
+  frameWidthPx: 450.5,
+  renderWidth: 34,
+  intervalMs: 330,
 };
 
 const ARK_PRAY_SPRITE: ArkSpriteSheet = {
@@ -80,10 +80,16 @@ const ARK_PRAY_SPRITE: ArkSpriteSheet = {
   frames: 4,
   sheetWidth: 1881,
   sheetHeight: 836,
-  frameWidthPx: 470,
-  renderWidth: 40,
-  intervalMs: 330,
+  frameWidthPx: 470.25,
+  renderWidth: 34,
+  intervalMs: 360,
 };
+const ARK_DECK_WALK_SPRITE: ArkSpriteSheet = {
+  ...ARK_WALK_SPRITE,
+  renderWidth: 32,
+  intervalMs: 230,
+};
+
 
 const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> = {
   arkCarryWood: {
@@ -114,29 +120,30 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     exitFlip: true,
   },
   arkWaveBird: {
-    enterFrom: "70%",
-    actionLeft: "63%",
-    exitTo: "70%",
-    bottom: "55%",
-    enterMs: 1650,
-    exitMs: 1500,
+    enterFrom: "76%",
+    actionLeft: "66%",
+    exitTo: "76%",
+    bottom: "39%",
+    enterMs: 1700,
+    exitMs: 1550,
     actionLoops: 5,
-    enterSprite: ARK_WALK_SPRITE,
+    enterSprite: ARK_DECK_WALK_SPRITE,
     actionSprite: ARK_WAVE_BIRD_SPRITE,
-    exitSprite: ARK_WALK_SPRITE,
+    exitSprite: ARK_DECK_WALK_SPRITE,
     exitFlip: true,
   },
   arkPray: {
-    enterFrom: "47%",
-    actionLeft: "50%",
-    exitTo: "47%",
-    bottom: "8%",
-    enterMs: 1200,
-    exitMs: 1100,
+    enterFrom: "72%",
+    actionLeft: "57%",
+    exitTo: "72%",
+    bottom: "10%",
+    enterMs: 1750,
+    exitMs: 1600,
     actionLoops: 5,
-    enterSprite: ARK_WALK_SPRITE,
+    enterSprite: ARK_DECK_WALK_SPRITE,
     actionSprite: ARK_PRAY_SPRITE,
-    exitSprite: ARK_WALK_SPRITE,
+    exitSprite: ARK_DECK_WALK_SPRITE,
+    exitFlip: true,
   },
 };
 
