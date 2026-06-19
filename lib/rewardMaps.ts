@@ -185,7 +185,7 @@ export function getRewardMapBackground(cycle: RewardMapCycle, isNight: boolean):
 }
 
 export function getArkActionForStage(stageNumber: number): RewardMapActionKind {
-  if (stageNumber <= 2) return "arkCarryWood";
+  if (stageNumber === 1) return "arkCarryWood";
   if (stageNumber <= 8) return "arkHammer";
   if (stageNumber === 9) return "arkWaveBird";
   return "arkPray";
