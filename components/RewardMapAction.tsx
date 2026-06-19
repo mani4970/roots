@@ -43,7 +43,7 @@ const ARK_WALK_SPRITE: ArkSpriteSheet = {
   sheetWidth: 2172,
   sheetHeight: 724,
   renderWidth: 38,
-  intervalMs: 210,
+  intervalMs: 280,
 };
 
 const ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
@@ -53,7 +53,7 @@ const ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
   sheetHeight: 821,
   frameWidthPx: 360,
   renderWidth: 40,
-  intervalMs: 230,
+  intervalMs: 310,
 };
 
 const ARK_HAMMER_SPRITE: ArkSpriteSheet = {
@@ -62,7 +62,7 @@ const ARK_HAMMER_SPRITE: ArkSpriteSheet = {
   sheetWidth: 2172,
   sheetHeight: 724,
   renderWidth: 40,
-  intervalMs: 260,
+  intervalMs: 340,
 };
 
 const ARK_WAVE_BIRD_SPRITE: ArkSpriteSheet = {
@@ -72,7 +72,7 @@ const ARK_WAVE_BIRD_SPRITE: ArkSpriteSheet = {
   sheetHeight: 872,
   frameWidthPx: 450.5,
   renderWidth: 34,
-  intervalMs: 330,
+  intervalMs: 420,
 };
 
 const ARK_PRAY_SPRITE: ArkSpriteSheet = {
@@ -82,12 +82,12 @@ const ARK_PRAY_SPRITE: ArkSpriteSheet = {
   sheetHeight: 836,
   frameWidthPx: 470.25,
   renderWidth: 34,
-  intervalMs: 360,
+  intervalMs: 450,
 };
 const ARK_DECK_WALK_SPRITE: ArkSpriteSheet = {
   ...ARK_WALK_SPRITE,
   renderWidth: 32,
-  intervalMs: 230,
+  intervalMs: 300,
 };
 
 
@@ -97,10 +97,10 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     actionLeft: "58%",
     exitTo: "104%",
     bottom: "7%",
-    enterMs: 3200,
-    exitMs: 2900,
+    enterMs: 4600,
+    exitMs: 4200,
     actionLoops: 1,
-    actionPauseMs: 220,
+    actionPauseMs: 520,
     enterSprite: ARK_CARRY_WOOD_SPRITE,
     actionSprite: ARK_WALK_SPRITE,
     exitSprite: ARK_WALK_SPRITE,
@@ -111,8 +111,8 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     actionLeft: "57%",
     exitTo: "104%",
     bottom: "7%",
-    enterMs: 3100,
-    exitMs: 2850,
+    enterMs: 4400,
+    exitMs: 4000,
     actionLoops: 4,
     enterSprite: ARK_WALK_SPRITE,
     actionSprite: ARK_HAMMER_SPRITE,
@@ -124,8 +124,8 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     actionLeft: "66%",
     exitTo: "76%",
     bottom: "39%",
-    enterMs: 1700,
-    exitMs: 1550,
+    enterMs: 2600,
+    exitMs: 2300,
     actionLoops: 5,
     enterSprite: ARK_DECK_WALK_SPRITE,
     actionSprite: ARK_WAVE_BIRD_SPRITE,
@@ -137,8 +137,8 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     actionLeft: "57%",
     exitTo: "72%",
     bottom: "10%",
-    enterMs: 1750,
-    exitMs: 1600,
+    enterMs: 2700,
+    exitMs: 2400,
     actionLoops: 5,
     enterSprite: ARK_DECK_WALK_SPRITE,
     actionSprite: ARK_PRAY_SPRITE,
