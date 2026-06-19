@@ -20,6 +20,21 @@ type ArkSpriteConfig = {
   loopCount: number;
 };
 
+type ArkPhase = "enter" | "action" | "exit";
+
+const ARK_ENTER_MS = 900;
+const ARK_EXIT_MS = 820;
+const ARK_EXIT_LEFT = "108%";
+
+const ARK_WALK_SPRITE: Omit<ArkSpriteConfig, "left" | "bottom" | "loopCount"> = {
+  src: "/images/reward-maps/peace-ark/sprites/rootsman_walk_sheet.png",
+  frames: 6,
+  sheetWidth: 2172,
+  sheetHeight: 724,
+  renderWidth: 74,
+  intervalMs: 120,
+};
+
 const ARK_SPRITES: Partial<Record<RewardMapActionKind, ArkSpriteConfig>> = {
   arkCarryWood: {
     src: "/images/reward-maps/peace-ark/sprites/rootsman_carry_wood_walk_sheet.png",
@@ -68,68 +83,102 @@ const ARK_SPRITES: Partial<Record<RewardMapActionKind, ArkSpriteConfig>> = {
 };
 
 function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkSpriteConfig }) {
-  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<ArkPhase | null>(null);
   const [frame, setFrame] = useState(0);
+  const [left, setLeft] = useState(ARK_EXIT_LEFT);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasRunRef = useRef(false);
+
+  function clearAnimationTimers() {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    timersRef.current.forEach((timer) => clearTimeout(timer));
+    timersRef.current = [];
+  }
+
+  function startFrameLoop(frames: number, intervalMs: number) {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    let tick = 0;
+    setFrame(0);
+    intervalRef.current = setInterval(() => {
+      tick += 1;
+      setFrame(tick % frames);
+    }, intervalMs);
+  }
+
+  function schedule(callback: () => void, delay: number) {
+    const timer = setTimeout(callback, delay);
+    timersRef.current.push(timer);
+  }
 
   useEffect(() => {
     if (!trigger) {
+      clearAnimationTimers();
       hasRunRef.current = false;
-      setVisible(false);
+      setPhase(null);
       setFrame(0);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      setLeft(ARK_EXIT_LEFT);
       return;
     }
 
     if (hasRunRef.current) return;
     hasRunRef.current = true;
-    setVisible(true);
-    setFrame(0);
+    clearAnimationTimers();
 
-    let tick = 0;
-    const totalTicks = config.frames * config.loopCount;
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      tick += 1;
-      setFrame(tick % config.frames);
-      if (tick >= totalTicks) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        window.setTimeout(() => {
-          setVisible(false);
-          hasRunRef.current = false;
-        }, 600);
-      }
-    }, config.intervalMs);
+    const actionMs = config.frames * config.loopCount * config.intervalMs;
+
+    setPhase("enter");
+    setLeft(ARK_EXIT_LEFT);
+    startFrameLoop(ARK_WALK_SPRITE.frames, ARK_WALK_SPRITE.intervalMs);
+    schedule(() => setLeft(config.left), 40);
+
+    schedule(() => {
+      startFrameLoop(config.frames, config.intervalMs);
+      setPhase("action");
+      setLeft(config.left);
+    }, ARK_ENTER_MS);
+
+    schedule(() => {
+      startFrameLoop(ARK_WALK_SPRITE.frames, ARK_WALK_SPRITE.intervalMs);
+      setPhase("exit");
+      setLeft(config.left);
+      schedule(() => setLeft(ARK_EXIT_LEFT), 40);
+    }, ARK_ENTER_MS + actionMs);
+
+    schedule(() => {
+      clearAnimationTimers();
+      setPhase(null);
+      setFrame(0);
+      setLeft(ARK_EXIT_LEFT);
+      hasRunRef.current = false;
+    }, ARK_ENTER_MS + actionMs + ARK_EXIT_MS + 80);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearAnimationTimers();
     };
   }, [trigger, config]);
 
-  if (!visible) return null;
+  if (!phase) return null;
 
-  const frameWidth = config.sheetWidth / config.frames;
-  const scale = config.renderWidth / frameWidth;
-  const renderHeight = Math.round(config.sheetHeight * scale);
+  const sprite = phase === "action" ? config : ARK_WALK_SPRITE;
+  const frameWidth = sprite.sheetWidth / sprite.frames;
+  const scale = sprite.renderWidth / frameWidth;
+  const renderHeight = Math.round(sprite.sheetHeight * scale);
+  const transition = phase === "action" ? undefined : `left ${phase === "enter" ? ARK_ENTER_MS : ARK_EXIT_MS}ms ease-in-out`;
+  const isExit = phase === "exit";
 
   return (
     <div
       style={{
         position: "absolute",
-        left: config.left,
+        left,
         bottom: config.bottom,
-        transform: "translateX(-50%)",
-        width: config.renderWidth,
+        transform: `translateX(-50%)${isExit ? " scaleX(-1)" : ""}`,
+        transition,
+        width: sprite.renderWidth,
         height: renderHeight,
         overflow: "hidden",
         imageRendering: "pixelated",
@@ -138,14 +187,14 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkSpr
       }}
     >
       <img
-        src={config.src}
+        src={sprite.src}
         alt="Rootsman"
         style={{
           position: "absolute",
           top: 0,
           left: -frame * frameWidth * scale,
-          width: config.sheetWidth * scale,
-          height: config.sheetHeight * scale,
+          width: sprite.sheetWidth * scale,
+          height: sprite.sheetHeight * scale,
           imageRendering: "pixelated",
         }}
       />

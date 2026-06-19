@@ -21,6 +21,7 @@ interface TreeGrowthProps {
   lastCheckin: string | null;
   showRootsMan?: boolean;
   ownerName?: string;
+  onActiveCycleChange?: (cycle: RewardMapCycle) => void;
 }
 
 const NIGHT_START_HOUR = 19;
@@ -40,7 +41,7 @@ function getDaysSinceLastCheckin(lastCheckin: string | null) {
   return Math.floor((today.getTime() - last.getTime()) / 86400000);
 }
 
-export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName, onActiveCycleChange }: TreeGrowthProps) {
   const lang = useLang();
   const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
@@ -71,6 +72,11 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const selectedStage = selectedCycle ? getRewardMapStage(selectedCycle) : null;
   const progressInTen = selectedCycle ? getRewardMapProgressInTen(selectedCycle) : 0;
   const periodProgress = selectedCycle ? getRewardMapProgressPercent(selectedCycle) : 0;
+
+  useEffect(() => {
+    if (!selectedCycle) return;
+    onActiveCycleChange?.(selectedCycle);
+  }, [onActiveCycleChange, selectedCycle?.cycleIndex, selectedCycle?.kind]);
 
   return (
     <div style={{ margin: "0 16px 14px" }}>
@@ -165,9 +171,6 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction }: { cycle: Rew
         <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
-          <div style={{ background: "var(--sage)", color: "var(--bg)", fontSize: 10, fontWeight: 800, padding: "4px 12px", borderRadius: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.12)" }}>
-            {title}
-          </div>
           <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
             {t(stage.labelKey, lang)}
           </div>
