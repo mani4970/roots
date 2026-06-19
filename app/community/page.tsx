@@ -383,6 +383,17 @@ export default function CommunityPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showChallengeRequestForm, setShowChallengeRequestForm] = useState(false);
+  const [challengeTitle, setChallengeTitle] = useState("");
+  const [challengeStartDate, setChallengeStartDate] = useState("");
+  const [challengeDurationDays, setChallengeDurationDays] = useState("30");
+  const [challengeDescription, setChallengeDescription] = useState("");
+  const [challengeBadgeIdea, setChallengeBadgeIdea] = useState("");
+  const [challengeContactEmail, setChallengeContactEmail] = useState("");
+  const [challengeExtraQuestions, setChallengeExtraQuestions] = useState("");
+  const [challengeSaving, setChallengeSaving] = useState(false);
+  const [challengeError, setChallengeError] = useState("");
+  const [challengeSuccess, setChallengeSuccess] = useState<null | { mailto: string }>(null);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
@@ -471,6 +482,92 @@ export default function CommunityPage() {
     return c("community_member_count", { count });
   }
 
+  function localDateInputValue(offsetDays = 1) {
+    const date = new Date();
+    date.setDate(date.getDate() + offsetDays);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function resetChallengeRequestForm() {
+    setShowChallengeRequestForm(false);
+    setChallengeError("");
+    setChallengeSuccess(null);
+    setChallengeTitle("");
+    setChallengeStartDate("");
+    setChallengeDurationDays("30");
+    setChallengeDescription("");
+    setChallengeBadgeIdea("");
+    setChallengeExtraQuestions("");
+  }
+
+  function openChallengeRequestForm() {
+    if (!selectedGroup?.id || !selectedGroup.isMember) return;
+    setChallengeError("");
+    setChallengeSuccess(null);
+    setChallengeTitle(c("group_challenge_default_title", { groupName: selectedGroup.name ?? "" }));
+    setChallengeStartDate(localDateInputValue(1));
+    setChallengeDurationDays("30");
+    setChallengeDescription("");
+    setChallengeBadgeIdea("");
+    setChallengeExtraQuestions("");
+    setShowChallengeRequestForm(true);
+  }
+
+  function buildChallengeMailto(email: string) {
+    const groupName = selectedGroup?.name ?? "";
+    const subject = c("group_challenge_email_subject", { groupName });
+    const body = c("group_challenge_email_body", {
+      groupName,
+      title: challengeTitle.trim(),
+      startDate: challengeStartDate,
+      duration: Number(challengeDurationDays || 0),
+      contactEmail: email,
+      description: challengeDescription.trim() || "-",
+      badgeIdea: challengeBadgeIdea.trim() || "-",
+      extraQuestions: challengeExtraQuestions.trim() || "-",
+    });
+    return `mailto:support@christian-roots.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  async function submitChallengeRequest() {
+    if (!selectedGroup?.id || !userId || challengeSaving) return;
+    const title = challengeTitle.trim();
+    const email = challengeContactEmail.trim();
+    const duration = Number(challengeDurationDays);
+    if (!title || !challengeStartDate || !email || !Number.isFinite(duration) || duration < 1) {
+      setChallengeError(c("group_challenge_required_error"));
+      return;
+    }
+
+    setChallengeSaving(true);
+    setChallengeError("");
+    const supabase = createClient();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("not authenticated");
+      const { error } = await supabase.from("group_challenge_requests").insert({
+        group_id: selectedGroup.id,
+        requester_id: user.id,
+        requester_email: email,
+        title,
+        requested_start_date: challengeStartDate,
+        duration_days: duration,
+        description: challengeDescription.trim() || null,
+        badge_idea: challengeBadgeIdea.trim() || null,
+        extra_questions: challengeExtraQuestions.trim() || null,
+      });
+      if (error) throw error;
+      setChallengeSuccess({ mailto: buildChallengeMailto(email) });
+    } catch (error) {
+      console.error("group challenge request failed", error);
+      setChallengeError(c("group_challenge_save_error"));
+    } finally {
+      setChallengeSaving(false);
+    }
+  }
 
   async function openAuthorProfile(profile: any, authorId?: string | null, event?: React.MouseEvent) {
     event?.preventDefault();
@@ -577,6 +674,7 @@ export default function CommunityPage() {
     setShowGroupActionMenu(false);
     setShowGroupMembers(false);
     setGroupMemberProfiles([]);
+    resetChallengeRequestForm();
     closeManageModal();
     setSelectedGroup(null);
     setGroupQts([]);
@@ -1431,6 +1529,7 @@ export default function CommunityPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
+    setChallengeContactEmail(prev => prev || user.email || "");
     setAllSectionSeenAt(storageGetJson<Record<CommunitySectionKey, string | null>>(allSectionSeenKey(user.id), { qt: null, praying: null, answered: null }));
 
     const { data: hiddenRows } = await supabase.from("hidden_community_items")
@@ -2205,6 +2304,87 @@ export default function CommunityPage() {
     );
   }
 
+  function renderChallengeRequestModal() {
+    if (!showChallengeRequestForm || !selectedGroup) return null;
+    return (
+      <div onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} style={{ position: "fixed", inset: 0, zIndex: 285, background: "rgba(26,28,30,0.68)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, maxHeight: "86vh", overflowY: "auto", background: "var(--bg2)", borderRadius: 26, padding: 22, border: "1px solid var(--border)", boxShadow: "0 22px 70px rgba(0,0,0,0.28)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 5 }}>{selectedGroup.name}</p>
+              <h2 style={{ fontSize: 19, fontWeight: 850, color: "var(--text)", marginBottom: 5 }}>{c("group_challenge_modal_title")}</h2>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55, whiteSpace: "pre-line" }}>{c("group_challenge_modal_sub")}</p>
+            </div>
+            <button onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} disabled={challengeSaving} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: challengeSaving ? "default" : "pointer", flexShrink: 0, opacity: challengeSaving ? 0.6 : 1 }}>
+              <X size={17} />
+            </button>
+          </div>
+
+          {challengeSuccess ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.28)", background: "rgba(122,157,122,0.10)", padding: 18, textAlign: "center" }}>
+                <div style={{ width: 46, height: 46, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                  <CheckCircle2 size={24} />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{c("group_challenge_success_title")}</h3>
+                <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{c("group_challenge_success_message")}</p>
+              </div>
+              <a href={challengeSuccess.mailto} style={{ width: "100%", borderRadius: 16, background: "var(--sage)", color: "white", textDecoration: "none", padding: "13px 14px", fontSize: 14, fontWeight: 850, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <MailIcon />
+                {c("group_challenge_success_mail_btn")}
+              </a>
+              <button onClick={resetChallengeRequestForm} className="btn-outline" style={{ width: "100%" }}>{c("group_challenge_close")}</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
+                <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 110px", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
+                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
+                  <input type="number" min={1} max={120} className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} />
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginTop: -4 }}>{c("group_challenge_duration_hint")}</p>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_description_label")}</label>
+                <textarea className="textarea-field" rows={3} value={challengeDescription} onChange={(e) => setChallengeDescription(e.target.value)} placeholder={c("group_challenge_description_placeholder")} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_badge_idea_label")}</label>
+                <textarea className="textarea-field" rows={3} value={challengeBadgeIdea} onChange={(e) => setChallengeBadgeIdea(e.target.value)} placeholder={c("group_challenge_badge_idea_placeholder")} />
+                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginTop: 6 }}>{c("group_challenge_badge_idea_hint")}</p>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_email_label")}</label>
+                <input type="email" className="input-field" value={challengeContactEmail} onChange={(e) => setChallengeContactEmail(e.target.value)} placeholder="name@example.com" />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_extra_label")}</label>
+                <textarea className="textarea-field" rows={3} value={challengeExtraQuestions} onChange={(e) => setChallengeExtraQuestions(e.target.value)} placeholder={c("group_challenge_extra_placeholder")} />
+              </div>
+              {challengeError && <p style={{ fontSize: 12, color: "#B35F5F", lineHeight: 1.5 }}>{challengeError}</p>}
+              <button onClick={submitChallengeRequest} disabled={challengeSaving} className="btn-sage" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: challengeSaving ? 0.65 : 1 }}>
+                {challengeSaving ? <Loader2 size={16} className="spin" /> : null}
+                {challengeSaving ? c("group_challenge_saving") : c("group_challenge_submit")}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function MailIcon() {
+    return <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1 }}>✉️</span>;
+  }
+
   function renderSharedOverlayModals() {
     return (
       <>
@@ -2213,6 +2393,7 @@ export default function CommunityPage() {
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
         {renderManageModal()}
+        {renderChallengeRequestModal()}
       </>
     );
   }
@@ -2489,6 +2670,18 @@ export default function CommunityPage() {
         <div style={{ padding: "4px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
           {!selectedGroup.isMember && (
             <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ width: "100%" }}>{c("community_join")}</button>
+          )}
+
+          {selectedGroup.isMember && (
+            <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))", padding: "16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 13 }}>
+              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 7px", minWidth: 0 }}>{c("group_challenge_card_title")}</p>
+                <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, whiteSpace: "pre-line", margin: 0 }}>{c("group_challenge_card_body")}</p>
+              </div>
+              <button onClick={openChallengeRequestForm} style={{ flex: "0 0 auto", border: "none", borderRadius: 16, background: "var(--sage)", color: "white", padding: "11px 16px", minWidth: 82, fontSize: 12, fontWeight: 850, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {c("group_challenge_apply_btn")}
+              </button>
+            </div>
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>

@@ -136,6 +136,87 @@ export const T = {
   community_no_group_qts: { ko: "아직 이 그룹에 나눈 묵상이 없어요", de: "Noch keine geteilten Stillen Zeiten in dieser Gruppe", en: "No shared reflections in this group yet", fr: "Aucune méditation partagée dans ce groupe pour l’instant" },
   community_no_group_prayers: { ko: "아직 이 그룹에 나눈 기도 제목이 없어요", de: "Noch keine geteilten Gebetsanliegen in dieser Gruppe", en: "No shared prayer requests in this group yet", fr: "Aucun sujet de prière partagé dans ce groupe pour l’instant" },
   community_no_group_answered_prayers: { ko: "아직 이 그룹에 나눈 기도 응답이 없어요", de: "Noch keine geteilten erhörten Gebete in dieser Gruppe", en: "No shared answered prayers in this group yet", fr: "Aucune prière exaucée partagée dans ce groupe pour l’instant" },
+  group_challenge_card_title: { ko: "그룹 챌린지", de: "Gruppen-Challenge", en: "Group challenge", fr: "Défi de groupe" },
+  group_challenge_card_body: { ko: "그룹원들과 묵상 챌린지를 해보세요.\n완주한 그룹원에게 특별 배지가 주어집니다.", de: "Startet gemeinsam eine Challenge.\nWer abschließt, erhält ein Abzeichen.", en: "Try a group challenge together.\nFinish it to receive a badge.", fr: "Lancez un défi ensemble.\nTerminez-le pour obtenir un badge." },
+  group_challenge_apply_btn: { ko: "신청하기", de: "Beantragen", en: "Request", fr: "Demander" },
+  group_challenge_modal_title: { ko: "묵상 챌린지 신청", de: "Stille-Zeit-Challenge beantragen", en: "Request a Bible Reflection challenge", fr: "Demander un défi de méditation" },
+  group_challenge_modal_sub: { ko: "그룹 멤버 누구나 신청할 수 있어요.\n신청 후 배지 디자인과 일정은 운영자가 메일로 확인해요.", de: "Jedes Gruppenmitglied kann eine Challenge beantragen.\nDanach stimmt das Team Abzeichen und Termine per E-Mail ab.", en: "Any group member can request a challenge.\nAfterward, the team will confirm the badge design and schedule by email.", fr: "Chaque membre du groupe peut demander un défi.\nL’équipe confirmera ensuite le badge et le calendrier par e-mail." },
+  group_challenge_default_title: { ko: "{groupName} 묵상 챌린지", de: "{groupName} Stille-Zeit-Challenge", en: "{groupName} Bible Reflection Challenge", fr: "Défi de méditation biblique de {groupName}" },
+  group_challenge_title_label: { ko: "챌린지 이름", de: "Name der Challenge", en: "Challenge name", fr: "Nom du défi" },
+  group_challenge_title_placeholder: { ko: "예: 7월 매일 말씀 묵상 챌린지", de: "z. B. Stille Zeit im Juli", en: "e.g. July daily Bible Reflection challenge", fr: "ex. Défi de méditation quotidienne de juillet" },
+  group_challenge_start_label: { ko: "희망 시작일", de: "Gewünschter Start", en: "Preferred start date", fr: "Date de début souhaitée" },
+  group_challenge_duration_label: { ko: "기간", de: "Dauer", en: "Duration", fr: "Durée" },
+  group_challenge_duration_hint: { ko: "보통 한 달 기준으로 진행해요. 일수는 운영자가 최종 확인합니다.", de: "Üblich ist etwa ein Monat. Die genaue Dauer wird vom Team bestätigt.", en: "Usually this is about one month. The team will confirm the final duration.", fr: "En général, le défi dure environ un mois. L’équipe confirmera la durée finale." },
+  group_challenge_description_label: { ko: "챌린지 설명", de: "Beschreibung", en: "Challenge description", fr: "Description du défi" },
+  group_challenge_description_placeholder: { ko: "어떤 마음으로 챌린지를 열고 싶은지 적어주세요.", de: "Beschreibe kurz, warum ihr diese Challenge starten möchtet.", en: "Share why your group would like to start this challenge.", fr: "Expliquez pourquoi votre groupe souhaite lancer ce défi." },
+  group_challenge_badge_idea_label: { ko: "배지 아이디어", de: "Idee für das Abzeichen", en: "Badge idea", fr: "Idée de badge" },
+  group_challenge_badge_idea_placeholder: { ko: "원하는 배지 느낌, 이름, 문구가 있다면 적어주세요.", de: "Teile gewünschte Stimmung, Namen oder Text für das Abzeichen.", en: "Share the badge style, name, or wording you have in mind.", fr: "Indiquez le style, le nom ou le texte souhaité pour le badge." },
+  group_challenge_badge_idea_hint: { ko: "혹시 배지 이미지가 이미 있다면, 운영자에게 미리 알려주세요.", de: "Falls es bereits ein Abzeichenbild gibt, teile es dem Team bitte vorab mit.", en: "If you already have a badge image, please let the team know in advance.", fr: "Si vous avez déjà une image de badge, merci d’en informer l’équipe à l’avance." },
+  group_challenge_email_label: { ko: "연락받을 이메일", de: "E-Mail für Rückfragen", en: "Contact email", fr: "E-mail de contact" },
+  group_challenge_extra_label: { ko: "추가 문의사항", de: "Weitere Fragen", en: "Additional questions", fr: "Questions supplémentaires" },
+  group_challenge_extra_placeholder: { ko: "운영자에게 더 전하고 싶은 내용이 있다면 적어주세요.", de: "Gibt es noch etwas, das das Team wissen sollte?", en: "Add anything else you would like the team to know.", fr: "Ajoutez toute autre information utile pour l’équipe." },
+  group_challenge_submit: { ko: "신청 접수하기", de: "Anfrage senden", en: "Submit request", fr: "Envoyer la demande" },
+  group_challenge_saving: { ko: "접수 중...", de: "Wird gesendet...", en: "Submitting...", fr: "Envoi..." },
+  group_challenge_required_error: { ko: "챌린지 이름, 시작일, 기간, 이메일을 확인해주세요.", de: "Bitte prüfe Name, Startdatum, Dauer und E-Mail.", en: "Please check the challenge name, start date, duration, and email.", fr: "Veuillez vérifier le nom, la date de début, la durée et l’e-mail." },
+  group_challenge_save_error: { ko: "신청을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", de: "Die Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut.", en: "Could not save the request. Please try again later.", fr: "Impossible d’enregistrer la demande. Veuillez réessayer plus tard." },
+  group_challenge_success_title: { ko: "신청이 접수되었어요", de: "Anfrage erhalten", en: "Request received", fr: "Demande reçue" },
+  group_challenge_success_message: { ko: "신청이 접수되었어요. 배지 디자인과 일정 확인을 위해 보내주신 메일로 연락드릴게요.", de: "Deine Anfrage wurde gespeichert. Wir melden uns per E-Mail, um Abzeichen und Termine abzustimmen.", en: "Your request has been received. We’ll contact you by email to confirm the badge design and schedule.", fr: "Votre demande a été reçue. Nous vous contacterons par e-mail pour confirmer le badge et le calendrier." },
+  group_challenge_success_mail_btn: { ko: "메일로 신청 내용 보내기", de: "Anfrage per E-Mail senden", en: "Send request by email", fr: "Envoyer la demande par e-mail" },
+  group_challenge_close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
+  group_challenge_email_subject: { ko: "[Roots 그룹 챌린지] {groupName}", de: "[Roots Gruppen-Challenge] {groupName}", en: "[Roots Group Challenge] {groupName}", fr: "[Défi de groupe Roots] {groupName}" },
+  group_challenge_email_body: { ko: `그룹: {groupName}
+챌린지 이름: {title}
+희망 시작일: {startDate}
+기간: {duration}일
+연락 이메일: {contactEmail}
+
+챌린지 설명:
+{description}
+
+배지 아이디어:
+{badgeIdea}
+
+추가 문의사항:
+{extraQuestions}`, de: `Gruppe: {groupName}
+Challenge: {title}
+Gewünschter Start: {startDate}
+Dauer: {duration} Tage
+Kontakt-E-Mail: {contactEmail}
+
+Beschreibung:
+{description}
+
+Idee für das Abzeichen:
+{badgeIdea}
+
+Weitere Fragen:
+{extraQuestions}`, en: `Group: {groupName}
+Challenge name: {title}
+Preferred start date: {startDate}
+Duration: {duration} days
+Contact email: {contactEmail}
+
+Description:
+{description}
+
+Badge idea:
+{badgeIdea}
+
+Additional questions:
+{extraQuestions}`, fr: `Groupe : {groupName}
+Nom du défi : {title}
+Date de début souhaitée : {startDate}
+Durée : {duration} jours
+E-mail de contact : {contactEmail}
+
+Description :
+{description}
+
+Idée de badge :
+{badgeIdea}
+
+Questions supplémentaires :
+{extraQuestions}` },
   community_manage_unshare: { ko: "공유 취소", de: "Teilen beenden", en: "Unshare", fr: "Annuler le partage" },
   community_manage_qt_edit: { ko: "큐티 수정", de: "QT bearbeiten", en: "Edit QT", fr: "Modifier le QT" },
   community_manage_prayer_edit: { ko: "기도 수정", de: "Gebet bearbeiten", en: "Edit prayer", fr: "Modifier la prière" },
