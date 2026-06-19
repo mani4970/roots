@@ -160,7 +160,7 @@ export const T = {
   group_challenge_required_error: { ko: "챌린지 이름, 시작일, 기간, 이메일을 확인해주세요.", de: "Bitte prüfe Name, Startdatum, Dauer und E-Mail.", en: "Please check the challenge name, start date, duration, and email.", fr: "Veuillez vérifier le nom, la date de début, la durée et l’e-mail." },
   group_challenge_save_error: { ko: "신청을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", de: "Die Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut.", en: "Could not save the request. Please try again later.", fr: "Impossible d’enregistrer la demande. Veuillez réessayer plus tard." },
   group_challenge_success_title: { ko: "신청이 접수되었어요", de: "Anfrage erhalten", en: "Request received", fr: "Demande reçue" },
-  group_challenge_success_message: { ko: "신청이 접수되었어요. 배지 디자인과 일정 확인을 위해 보내주신 메일로 연락드릴게요.", de: "Deine Anfrage wurde gespeichert. Wir melden uns per E-Mail, um Abzeichen und Termine abzustimmen.", en: "Your request has been received. We’ll contact you by email to confirm the badge design and schedule.", fr: "Votre demande a été reçue. Nous vous contacterons par e-mail pour confirmer le badge et le calendrier." },
+  group_challenge_success_message: { ko: "운영자가 신청 내용을 확인한 뒤, 보내주신 메일로 연락드릴게요.", de: "Das Team prüft deine Anfrage und meldet sich danach per E-Mail.", en: "The team will review your request and contact you by email.", fr: "L’équipe examinera votre demande, puis vous contactera par e-mail." },
   group_challenge_success_confirm: { ko: "확인", de: "OK", en: "OK", fr: "OK" },
   group_challenge_close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
   community_manage_unshare: { ko: "공유 취소", de: "Teilen beenden", en: "Unshare", fr: "Annuler le partage" },
