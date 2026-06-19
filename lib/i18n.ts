@@ -771,6 +771,14 @@ export const T = {
   reward_map_day_range: { ko: "{start}~{end}일", de: "Tag {start}-{end}", en: "Days {start}-{end}", fr: "Jours {start}-{end}" },
   reward_map_future_stage: { ko: "준비 중", de: "In Vorbereitung", en: "Coming soon", fr: "À venir" },
   reward_map_future_desc: { ko: "다음 말씀 여정을 준비하고 있어요", de: "Die nächste Wortreise wird vorbereitet", en: "The next Word journey is being prepared", fr: "Le prochain chemin avec la Parole se prépare" },
+  reward_map_completion_title: { ko: "100일 동안 하나님과 동행한 당신을 축복합니다.", de: "Gesegnet seien Ihre 100 Tage mit Gott.", en: "Blessings on your 100 days walking with God.", fr: "Soyez béni(e) pour ces 100 jours avec Dieu." },
+  reward_map_completion_sub: { ko: "완성된 {map}을 보러 가세요!\n곧 새로운 맵이 시작됩니다!", de: "Vollendet: {map}.\nBald beginnt eine neue Karte!", en: "Go see your completed {map}!\nA new map will begin soon!", fr: "Carte terminée : {map}.\nUne nouvelle carte commencera bientôt !" },
+  reward_map_completion_btn: { ko: "완성된 {map} 보러 가기", de: "{map} ansehen", en: "View completed {map}", fr: "Voir {map}" },
+  reward_map_start_title: { ko: "앞으로 100일간 새로운 맵이 진행됩니다.", de: "Für die nächsten 100 Tage beginnt eine neue Karte.", en: "A new map will unfold over the next 100 days.", fr: "Une nouvelle carte commence pour les 100 prochains jours." },
+  reward_map_start_peace_ark_sub: { ko: "방주를 만들어가요.", de: "Bauen wir die Arche.", en: "Let’s build the ark.", fr: "Construisons l’arche." },
+  reward_map_start_garden_sub: { ko: "새로운 말씀 정원을 가꿔가요.", de: "Pflegen wir einen neuen Wortgarten.", en: "Let’s grow a new Word garden.", fr: "Cultivons un nouveau jardin de la Parole." },
+  reward_map_start_default_sub: { ko: "새로운 말씀 여정을 걸어가요.", de: "Gehen wir einen neuen Wortweg.", en: "Let’s walk a new Word journey.", fr: "Marchons sur un nouveau chemin avec la Parole." },
+  reward_map_start_btn: { ko: "확인", de: "Weiter", en: "Continue", fr: "Continuer" },
 
   // ── Peace Ark reward map ──
   peace_ark_stage_1: { ko: "재료 준비", de: "Material", en: "Materials", fr: "Matériaux" },

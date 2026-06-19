@@ -37,10 +37,32 @@ export function getRewardMapKind(cycleIndex: number): RewardMapKind {
   return MAP_SEQUENCE[((cycleIndex % MAP_SEQUENCE.length) + MAP_SEQUENCE.length) % MAP_SEQUENCE.length];
 }
 
+export function getRewardMapCycleIndexForDays(days: number): number {
+  const safeDays = Math.max(0, Math.floor(days || 0));
+  if (safeDays <= 0) return 0;
+  return Math.floor((safeDays - 1) / REWARD_MAP_CYCLE_DAYS);
+}
+
+export function getRewardMapProgressDay(days: number): number {
+  const safeDays = Math.max(0, Math.floor(days || 0));
+  if (safeDays <= 0) return 0;
+  return ((safeDays - 1) % REWARD_MAP_CYCLE_DAYS) + 1;
+}
+
+export function isRewardMapCompletionDay(days: number): boolean {
+  const safeDays = Math.max(0, Math.floor(days || 0));
+  return safeDays > 0 && safeDays % REWARD_MAP_CYCLE_DAYS === 0;
+}
+
+export function isRewardMapStartDay(days: number): boolean {
+  const safeDays = Math.max(0, Math.floor(days || 0));
+  return safeDays > REWARD_MAP_CYCLE_DAYS && getRewardMapProgressDay(safeDays) === 1;
+}
+
 export function getCurrentRewardMapCycle(days: number): RewardMapCycle {
   const safeDays = Math.max(0, Math.floor(days || 0));
-  const cycleIndex = Math.floor(safeDays / REWARD_MAP_CYCLE_DAYS);
-  const progressDay = safeDays % REWARD_MAP_CYCLE_DAYS;
+  const cycleIndex = getRewardMapCycleIndexForDays(safeDays);
+  const progressDay = getRewardMapProgressDay(safeDays);
   return buildRewardMapCycle(cycleIndex, progressDay, true);
 }
 
@@ -71,7 +93,7 @@ function buildRewardMapCycle(cycleIndex: number, progressDay: number, isCurrent:
     endDay,
     progressDay: Math.max(0, Math.min(progressDay, REWARD_MAP_CYCLE_DAYS)),
     isCurrent,
-    isComplete: !isCurrent,
+    isComplete: !isCurrent || progressDay >= REWARD_MAP_CYCLE_DAYS,
   };
 }
 
@@ -91,6 +113,12 @@ export function getRewardMapFallbackTitleKey(kind: RewardMapKind): TKey {
   if (kind === "peaceArk") return "reward_map_fallback_peace_ark";
   if (kind === "garden") return "reward_map_fallback_garden";
   return "reward_map_fallback_journey";
+}
+
+export function getRewardMapStartSubKey(kind: RewardMapKind): TKey {
+  if (kind === "peaceArk") return "reward_map_start_peace_ark_sub";
+  if (kind === "garden") return "reward_map_start_garden_sub";
+  return "reward_map_start_default_sub";
 }
 
 const GARDEN_STAGE_LABEL_KEYS: readonly TKey[] = [

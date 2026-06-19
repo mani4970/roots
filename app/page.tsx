@@ -23,7 +23,7 @@ import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, Messa
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
-import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapTitleKey, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
+import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -95,6 +95,12 @@ type HomeQTState = {
   todaySchedule: QTSchedule | null;
 };
 
+type RewardMapNoticeState = {
+  type: "complete" | "start";
+  days: number;
+  kind: RewardMapKind;
+};
+
 type ChapterPopupState = {
   show: boolean;
   loading: boolean;
@@ -136,6 +142,42 @@ function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
   } catch {
     return fallback;
   }
+}
+
+function RewardMapNoticePopup({ notice, onClose }: { notice: RewardMapNoticeState | null; onClose: () => void }) {
+  const lang = useLang();
+  if (!notice) return null;
+
+  const mapKeyword = t(getRewardMapKeywordKey(notice.kind), lang);
+  const isComplete = notice.type === "complete";
+  const title = isComplete ? t("reward_map_completion_title", lang) : t("reward_map_start_title", lang);
+  const message = isComplete
+    ? t("reward_map_completion_sub", lang, { map: mapKeyword })
+    : t(getRewardMapStartSubKey(notice.kind), lang);
+  const button = isComplete
+    ? t("reward_map_completion_btn", lang, { map: mapKeyword })
+    : t("reward_map_start_btn", lang);
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 198, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.86)", backdropFilter: "blur(8px)", padding: "0 28px" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 350, padding: "30px 24px 24px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
+        <div style={{ width: 70, height: 70, borderRadius: 24, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "hidden" }}>
+          <img src={isComplete ? "/roots-logo-transparent-160.png" : "/rootsman.webp"} alt="Roots" width={52} height={52} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
+        </div>
+        <h2 style={{ fontSize: 20, fontWeight: 850, color: "var(--text)", lineHeight: 1.35, marginBottom: 12, whiteSpace: "pre-line" }}>
+          {title}
+        </h2>
+        <div style={{ padding: "13px 15px", background: "var(--sage-light)", borderRadius: 16, border: "1px solid rgba(122,157,122,0.28)", marginBottom: 18 }}>
+          <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.75, whiteSpace: "pre-line" }}>
+            {message}
+          </p>
+        </div>
+        <button onClick={onClose} style={{ width: "100%", padding: "13px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          {button}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -200,6 +242,8 @@ export default function HomePage() {
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
+  const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
+  const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [rewardMapPreviewDays, setRewardMapPreviewDays] = useState<number | null>(null);
   const [rewardMapPreviewAvailable, setRewardMapPreviewAvailable] = useState(false);
 
@@ -408,36 +452,56 @@ export default function HomePage() {
       const pendingBadgeKeys = consumePendingAwardedBadges(userId, today);
       pendingBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
 
-      const progressedOrAlreadyDone = await updateStreak(today);
-      if (!progressedOrAlreadyDone) return;
+      const nextStreakDays = await updateStreak(today);
+      if (nextStreakDays === null) return;
       celebrationShownRef.current = true;
       storageSet(celebratedKey, "true");
       storageRemove(completionWateringKey);
       storageRemove(legacyCompletionWateringKey);
-      requestRootsManExperience();
+      requestPostReflectionRewardExperience(nextStreakDays);
     })().finally(() => {
       progressUpdateInFlightRef.current = false;
     });
   }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
 
-  async function updateStreak(today: string): Promise<boolean> {
+  async function updateStreak(today: string): Promise<number | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return null;
 
     try {
       const result = await recordBibleReflectionProgress(supabase, user.id, today);
       result.awardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
       if (result.profile) setProfile(result.profile);
-      return true;
+      const nextDays = Number(result.profile?.streak_days ?? 0);
+      return Number.isFinite(nextDays) && nextDays > 0 ? nextDays : null;
     } catch (error) {
       console.warn("말씀 묵상 progress 업데이트 실패:", error);
-      return false;
+      return null;
     }
   }
 
+  function requestPostReflectionRewardExperience(streakDays: number) {
+    const currentMap = getCurrentRewardMapCycle(streakDays);
+
+    if (isRewardMapCompletionDay(streakDays)) {
+      pendingRewardMapNoticeRef.current = { type: "complete", days: streakDays, kind: currentMap.kind };
+      setRootsManRequestToken(token => token + 1);
+      return;
+    }
+
+    if (isRewardMapStartDay(streakDays)) {
+      pendingRewardMapNoticeRef.current = { type: "start", days: streakDays, kind: currentMap.kind };
+      pendingRootsManRef.current = true;
+      setRootsManRequestToken(token => token + 1);
+      return;
+    }
+
+    requestRootsManExperience();
+  }
+
   function showNextProgressPopup(): boolean {
-    if (!profile || badgePopup || gardenPopup.show) return false;
+    if (!profile || badgePopup || gardenPopup.show || rewardMapNotice) return false;
 
     const newly = newlyAwardedBadgesRef.current;
     const streak = profile?.streak_days ?? 0;
@@ -493,16 +557,23 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (!profile || celebration.show || showRootsManPopup) return;
+    if (!profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
 
     const openedProgressPopup = showNextProgressPopup();
     if (openedProgressPopup) return;
+
+    if (pendingRewardMapNoticeRef.current && !badgePopup && !gardenPopup.show) {
+      const nextNotice = pendingRewardMapNoticeRef.current;
+      pendingRewardMapNoticeRef.current = null;
+      setRewardMapNotice(nextNotice);
+      return;
+    }
 
     if (pendingRootsManRef.current && !badgePopup && !gardenPopup.show) {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [profile, celebration.show, badgePopup, gardenPopup.show, showRootsManPopup, rootsManRequestToken]);
+  }, [profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -527,6 +598,25 @@ export default function HomePage() {
   function requestRootsManExperience() {
     pendingRootsManRef.current = true;
     setRootsManRequestToken(token => token + 1);
+  }
+
+  function closeRewardMapNotice() {
+    const notice = rewardMapNotice;
+    setRewardMapNotice(null);
+
+    if (notice?.type === "start" && pendingRootsManRef.current) {
+      pendingRootsManRef.current = false;
+      openRootsManExperience();
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (treeSectionRef.current) {
+        treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
   }
 
   function closeCelebration() {
@@ -940,7 +1030,7 @@ export default function HomePage() {
     : t("home_action_reflection_start", lang);
   const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
-  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !showRootsManPopup;
+  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -1236,8 +1326,10 @@ export default function HomePage() {
         />
       )}
 
+      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
+
       <RootsManPopup
-        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show}
+        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
         streakDays={rewardMapDisplayDays}
         onGoGarden={() => {
           setShowRootsMan(true);
@@ -1339,7 +1431,7 @@ export default function HomePage() {
         <div style={{ margin: "0 16px 14px", padding: "10px 12px", border: "1px dashed rgba(196,149,106,0.45)", borderRadius: 16, background: "rgba(196,149,106,0.08)" }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: "var(--terra-dark)", marginBottom: 8 }}>로컬 보상맵 미리보기</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {[74, 101, 171, 181, 191].map((days) => (
+            {[74, 100, 101, 171, 181, 191, 200, 201].map((days) => (
               <button
                 key={days}
                 type="button"
