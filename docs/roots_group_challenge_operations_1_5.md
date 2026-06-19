@@ -81,3 +81,27 @@ Do not change:
 - existing badge award logic
 
 Future challenge progress should read completed Bible Reflection records for judgment only. It must not create or modify progress.
+
+## Completion and badge awarding flow
+
+The group challenge completion flow is separate from the core Bible Reflection progress/streak flow.
+
+After an operator-approved challenge is created in `group_challenges`, create the automatic participant snapshot for that challenge using:
+
+```text
+supabase/36_group_challenge_award_operations_1_5.sql
+```
+
+The snapshot represents the group members who are included in that challenge. In the MVP, members do not press a separate join button.
+
+When a challenge has ended, the app may call `claim_group_challenge_award` from the group detail screen. The function:
+
+```text
+- checks that the challenge has ended
+- checks that the user is in the participant snapshot
+- counts distinct non-draft qt_records.date values in the challenge period
+- inserts one row into group_challenge_awards if every date is complete
+- prevents duplicate awards with a unique challenge_id + user_id constraint
+```
+
+This does not update `qt_records`, `profiles.streak_days`, `profiles.total_days`, or `profiles.last_checkin`.

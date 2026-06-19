@@ -396,6 +396,8 @@ export default function CommunityPage() {
   const [challengeSuccess, setChallengeSuccess] = useState(false);
   const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
   const [groupChallengeProgress, setGroupChallengeProgress] = useState<Record<string, { doneDays: number; totalDays: number }>>({});
+  const [groupChallengeAwardPopup, setGroupChallengeAwardPopup] = useState<null | { challengeTitle: string; groupName: string; badgeName: string; badgeImagePath?: string | null }>(null);
+  const claimedGroupChallengeAwardIdsRef = useRef<Set<string>>(new Set());
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
@@ -543,6 +545,49 @@ export default function CommunityPage() {
   function challengeProgressPercent(progress?: { doneDays: number; totalDays: number }) {
     if (!progress?.totalDays) return 0;
     return Math.max(0, Math.min(100, Math.round((progress.doneDays / progress.totalDays) * 100)));
+  }
+
+  function groupChallengeBadgeImageSrc(path?: string | null) {
+    const value = String(path ?? "").trim();
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value) || value.startsWith("/")) return value;
+    return `/${value.replace(/^public\//, "")}`;
+  }
+
+  function isChallengeCompleteForUser(progress?: { doneDays: number; totalDays: number }) {
+    return !!progress?.totalDays && progress.doneDays >= progress.totalDays;
+  }
+
+  async function claimCompletedGroupChallengeAwards(
+    supabase: ReturnType<typeof createClient>,
+    challenges: any[],
+    progressByChallenge: Record<string, { doneDays: number; totalDays: number }>,
+    groupName: string
+  ) {
+    for (const challenge of challenges) {
+      const challengeId = String(challenge?.id ?? "");
+      if (!challengeId || claimedGroupChallengeAwardIdsRef.current.has(challengeId)) continue;
+      if (challengeDisplayStatus(challenge) !== "completed") continue;
+      if (!isChallengeCompleteForUser(progressByChallenge[challengeId])) continue;
+
+      claimedGroupChallengeAwardIdsRef.current.add(challengeId);
+      const { data, error } = await supabase.rpc("claim_group_challenge_award", { p_challenge_id: challengeId });
+      if (error) {
+        console.warn("그룹 챌린지 배지 지급 확인 실패:", error.message);
+        continue;
+      }
+
+      const result = (data ?? {}) as any;
+      if (!result?.awarded || result?.already_awarded) continue;
+
+      setGroupChallengeAwardPopup({
+        challengeTitle: result.challenge_title ?? challenge.title ?? "",
+        groupName: result.group_name ?? groupName ?? "",
+        badgeName: result.badge_name ?? challenge.badge_name ?? challenge.title ?? "",
+        badgeImagePath: result.badge_image_path ?? challenge.badge_image_path ?? null,
+      });
+      break;
+    }
   }
 
   async function fetchGroupChallengeProgress(supabase: ReturnType<typeof createClient>, challenges: any[], currentUserId: string) {
@@ -1908,7 +1953,7 @@ export default function CommunityPage() {
         .from("group_challenges")
         .select("id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status")
         .eq("group_id", group.id)
-        .in("status", ["scheduled", "active"])
+        .in("status", ["scheduled", "active", "completed"])
         .order("start_date", { ascending: true })
         .limit(5);
       if (challengeError) {
@@ -1921,6 +1966,7 @@ export default function CommunityPage() {
         if (user?.id && nextChallenges.length > 0) {
           const progress = await fetchGroupChallengeProgress(supabase, nextChallenges, user.id);
           setGroupChallengeProgress(progress);
+          await claimCompletedGroupChallengeAwards(supabase, nextChallenges, progress, group.name ?? "");
         } else {
           setGroupChallengeProgress({});
         }
@@ -3034,6 +3080,29 @@ export default function CommunityPage() {
                   {c("community_leave")}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {groupChallengeAwardPopup && (
+          <div onClick={() => setGroupChallengeAwardPopup(null)} style={{ position: "fixed", inset: 0, zIndex: 245, background: "rgba(26,28,30,0.86)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+            <ConfettiBurst variant="fixed" zIndex={246} />
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.38)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)", padding: "30px 23px 24px", textAlign: "center" }}>
+              <div style={{ width: 116, height: 116, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ? (
+                  <img src={groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ?? undefined} alt={groupChallengeAwardPopup.badgeName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                ) : (
+                  <div style={{ width: 104, height: 104, borderRadius: 28, background: "rgba(232,197,71,0.16)", color: "rgba(189,139,30,0.95)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(232,197,71,0.34)" }}>
+                    <Star size={48} strokeWidth={1.7} />
+                  </div>
+                )}
+              </div>
+              <h2 style={{ fontSize: 20, fontWeight: 900, color: "rgba(189,139,30,0.98)", margin: "0 0 8px", lineHeight: 1.3 }}>{c("group_challenge_award_popup_title")}</h2>
+              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, margin: "0 0 4px" }}>{groupChallengeAwardPopup.challengeTitle}</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 14px" }}>{groupChallengeAwardPopup.groupName}</p>
+              <div style={{ padding: "14px 15px", borderRadius: 16, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 18 }}>
+                <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.68, margin: 0 }}>{c("group_challenge_award_popup_body")}</p>
+              </div>
+              <button onClick={() => setGroupChallengeAwardPopup(null)} className="btn-sage" style={{ width: "100%" }}>{c("group_challenge_award_popup_btn")}</button>
             </div>
           </div>
         )}
