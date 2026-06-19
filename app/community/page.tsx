@@ -393,7 +393,7 @@ export default function CommunityPage() {
   const [challengeExtraQuestions, setChallengeExtraQuestions] = useState("");
   const [challengeSaving, setChallengeSaving] = useState(false);
   const [challengeError, setChallengeError] = useState("");
-  const [challengeSuccess, setChallengeSuccess] = useState<null | { mailto: string }>(null);
+  const [challengeSuccess, setChallengeSuccess] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
@@ -494,7 +494,7 @@ export default function CommunityPage() {
   function resetChallengeRequestForm() {
     setShowChallengeRequestForm(false);
     setChallengeError("");
-    setChallengeSuccess(null);
+    setChallengeSuccess(false);
     setChallengeTitle("");
     setChallengeStartDate("");
     setChallengeDurationDays("30");
@@ -506,7 +506,7 @@ export default function CommunityPage() {
   function openChallengeRequestForm() {
     if (!selectedGroup?.id || !selectedGroup.isMember) return;
     setChallengeError("");
-    setChallengeSuccess(null);
+    setChallengeSuccess(false);
     setChallengeTitle(c("group_challenge_default_title", { groupName: selectedGroup.name ?? "" }));
     setChallengeStartDate(localDateInputValue(1));
     setChallengeDurationDays("30");
@@ -514,22 +514,6 @@ export default function CommunityPage() {
     setChallengeBadgeIdea("");
     setChallengeExtraQuestions("");
     setShowChallengeRequestForm(true);
-  }
-
-  function buildChallengeMailto(email: string) {
-    const groupName = selectedGroup?.name ?? "";
-    const subject = c("group_challenge_email_subject", { groupName });
-    const body = c("group_challenge_email_body", {
-      groupName,
-      title: challengeTitle.trim(),
-      startDate: challengeStartDate,
-      duration: Number(challengeDurationDays || 0),
-      contactEmail: email,
-      description: challengeDescription.trim() || "-",
-      badgeIdea: challengeBadgeIdea.trim() || "-",
-      extraQuestions: challengeExtraQuestions.trim() || "-",
-    });
-    return `mailto:support@christian-roots.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   async function submitChallengeRequest() {
@@ -560,7 +544,7 @@ export default function CommunityPage() {
         extra_questions: challengeExtraQuestions.trim() || null,
       });
       if (error) throw error;
-      setChallengeSuccess({ mailto: buildChallengeMailto(email) });
+      setChallengeSuccess(true);
     } catch (error) {
       console.error("group challenge request failed", error);
       setChallengeError(c("group_challenge_save_error"));
@@ -2329,11 +2313,7 @@ export default function CommunityPage() {
                 <h3 style={{ fontSize: 17, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{c("group_challenge_success_title")}</h3>
                 <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{c("group_challenge_success_message")}</p>
               </div>
-              <a href={challengeSuccess.mailto} style={{ width: "100%", borderRadius: 16, background: "var(--sage)", color: "white", textDecoration: "none", padding: "13px 14px", fontSize: 14, fontWeight: 850, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <MailIcon />
-                {c("group_challenge_success_mail_btn")}
-              </a>
-              <button onClick={resetChallengeRequestForm} className="btn-outline" style={{ width: "100%" }}>{c("group_challenge_close")}</button>
+              <button onClick={resetChallengeRequestForm} className="btn-sage" style={{ width: "100%" }}>{c("group_challenge_success_confirm")}</button>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2381,9 +2361,6 @@ export default function CommunityPage() {
     );
   }
 
-  function MailIcon() {
-    return <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1 }}>✉️</span>;
-  }
 
   function renderSharedOverlayModals() {
     return (

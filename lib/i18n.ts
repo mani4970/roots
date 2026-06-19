@@ -161,62 +161,8 @@ export const T = {
   group_challenge_save_error: { ko: "신청을 저장하지 못했어요. 잠시 후 다시 시도해주세요.", de: "Die Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut.", en: "Could not save the request. Please try again later.", fr: "Impossible d’enregistrer la demande. Veuillez réessayer plus tard." },
   group_challenge_success_title: { ko: "신청이 접수되었어요", de: "Anfrage erhalten", en: "Request received", fr: "Demande reçue" },
   group_challenge_success_message: { ko: "신청이 접수되었어요. 배지 디자인과 일정 확인을 위해 보내주신 메일로 연락드릴게요.", de: "Deine Anfrage wurde gespeichert. Wir melden uns per E-Mail, um Abzeichen und Termine abzustimmen.", en: "Your request has been received. We’ll contact you by email to confirm the badge design and schedule.", fr: "Votre demande a été reçue. Nous vous contacterons par e-mail pour confirmer le badge et le calendrier." },
-  group_challenge_success_mail_btn: { ko: "메일로 신청 내용 보내기", de: "Anfrage per E-Mail senden", en: "Send request by email", fr: "Envoyer la demande par e-mail" },
+  group_challenge_success_confirm: { ko: "확인", de: "OK", en: "OK", fr: "OK" },
   group_challenge_close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
-  group_challenge_email_subject: { ko: "[Roots 그룹 챌린지] {groupName}", de: "[Roots Gruppen-Challenge] {groupName}", en: "[Roots Group Challenge] {groupName}", fr: "[Défi de groupe Roots] {groupName}" },
-  group_challenge_email_body: { ko: `그룹: {groupName}
-챌린지 이름: {title}
-희망 시작일: {startDate}
-기간: {duration}일
-연락 이메일: {contactEmail}
-
-챌린지 설명:
-{description}
-
-배지 아이디어:
-{badgeIdea}
-
-추가 문의사항:
-{extraQuestions}`, de: `Gruppe: {groupName}
-Challenge: {title}
-Gewünschter Start: {startDate}
-Dauer: {duration} Tage
-Kontakt-E-Mail: {contactEmail}
-
-Beschreibung:
-{description}
-
-Idee für das Abzeichen:
-{badgeIdea}
-
-Weitere Fragen:
-{extraQuestions}`, en: `Group: {groupName}
-Challenge name: {title}
-Preferred start date: {startDate}
-Duration: {duration} days
-Contact email: {contactEmail}
-
-Description:
-{description}
-
-Badge idea:
-{badgeIdea}
-
-Additional questions:
-{extraQuestions}`, fr: `Groupe : {groupName}
-Nom du défi : {title}
-Date de début souhaitée : {startDate}
-Durée : {duration} jours
-E-mail de contact : {contactEmail}
-
-Description :
-{description}
-
-Idée de badge :
-{badgeIdea}
-
-Questions supplémentaires :
-{extraQuestions}` },
   community_manage_unshare: { ko: "공유 취소", de: "Teilen beenden", en: "Unshare", fr: "Annuler le partage" },
   community_manage_qt_edit: { ko: "큐티 수정", de: "QT bearbeiten", en: "Edit QT", fr: "Modifier le QT" },
   community_manage_prayer_edit: { ko: "기도 수정", de: "Gebet bearbeiten", en: "Edit prayer", fr: "Modifier la prière" },
