@@ -394,6 +394,8 @@ export default function CommunityPage() {
   const [challengeSaving, setChallengeSaving] = useState(false);
   const [challengeError, setChallengeError] = useState("");
   const [challengeSuccess, setChallengeSuccess] = useState(false);
+  const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
+  const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
@@ -489,6 +491,34 @@ export default function CommunityPage() {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  }
+
+  function formatChallengeDate(value?: string | null) {
+    if (!value) return "";
+    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" });
+  }
+
+  function challengeDateRange(challenge: any) {
+    const start = formatChallengeDate(challenge?.start_date);
+    const end = formatChallengeDate(challenge?.end_date);
+    if (start && end) return `${start} – ${end}`;
+    return start || end || "";
+  }
+
+  function challengeDisplayStatus(challenge: any): "scheduled" | "active" | "completed" {
+    const today = localDateInputValue(0);
+    const start = String(challenge?.start_date ?? "");
+    const end = String(challenge?.end_date ?? "");
+    if (challenge?.status === "completed" || (end && today > end)) return "completed";
+    if (start && today < start) return "scheduled";
+    return "active";
+  }
+
+  function challengeStatusLabel(challenge: any) {
+    const status = challengeDisplayStatus(challenge);
+    if (status === "completed") return c("group_challenge_status_completed");
+    if (status === "scheduled") return c("group_challenge_status_scheduled");
+    return c("group_challenge_status_active");
   }
 
   function resetChallengeRequestForm() {
@@ -661,6 +691,8 @@ export default function CommunityPage() {
     resetChallengeRequestForm();
     closeManageModal();
     setSelectedGroup(null);
+    setGroupChallenges([]);
+    setLoadingGroupChallenges(false);
     setGroupQts([]);
     setGroupPrayers([]);
     setGroupDetailTab("qt");
@@ -1796,12 +1828,34 @@ export default function CommunityPage() {
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
+    setGroupChallenges([]);
+    setLoadingGroupChallenges(!!group.isMember);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const currentHiddenKeys = hiddenKeys;
     const currentHiddenUserIds = hiddenUserIds;
+
+    if (group.isMember) {
+      const { data: challengeRows, error: challengeError } = await supabase
+        .from("group_challenges")
+        .select("id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status")
+        .eq("group_id", group.id)
+        .in("status", ["scheduled", "active"])
+        .order("start_date", { ascending: true })
+        .limit(5);
+      if (challengeError) {
+        console.warn("그룹 챌린지 조회 실패:", challengeError.message);
+        setGroupChallenges([]);
+      } else {
+        setGroupChallenges(challengeRows ?? []);
+      }
+    } else {
+      setGroupChallenges([]);
+    }
+    setLoadingGroupChallenges(false);
+
     const data = await fetchQtFeedRows(supabase, `%group_${group.id}%`);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
@@ -2145,6 +2199,8 @@ export default function CommunityPage() {
     updateFavoriteCache(userId, leftGroupId, false);
     clearCommunityDetailHistory("group");
     setSelectedGroup(null);
+    setGroupChallenges([]);
+    setLoadingGroupChallenges(false);
     setGroupQts([]);
     setGroupPrayers([]);
     setGroupDetailTab("qt");
@@ -2650,15 +2706,42 @@ export default function CommunityPage() {
           )}
 
           {selectedGroup.isMember && (
-            <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))", padding: "16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 13 }}>
-              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 7px", minWidth: 0 }}>{c("group_challenge_card_title")}</p>
-                <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, whiteSpace: "pre-line", margin: 0 }}>{c("group_challenge_card_body")}</p>
+            <>
+              {(loadingGroupChallenges || groupChallenges.length > 0) && (
+                <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "var(--bg2)", padding: "15px 15px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0 }}>{c("group_challenge_approved_section_title")}</p>
+                    {loadingGroupChallenges && <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} />}
+                  </div>
+                  {!loadingGroupChallenges && groupChallenges.map((challenge) => (
+                    <div key={challenge.id} style={{ borderRadius: 17, border: "1px solid var(--border)", background: "rgba(255,255,255,0.62)", padding: "13px 13px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 7 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>{challenge.title}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 700 }}>{challengeDateRange(challenge)}</p>
+                        </div>
+                        <span style={{ flexShrink: 0, borderRadius: 999, padding: "4px 8px", background: challengeDisplayStatus(challenge) === "active" ? "var(--sage-light)" : "var(--bg3)", color: challengeDisplayStatus(challenge) === "active" ? "var(--sage-dark)" : "var(--text3)", fontSize: 10, fontWeight: 850 }}>
+                          {challengeStatusLabel(challenge)}
+                        </span>
+                      </div>
+                      {challenge.description && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: "0 0 7px" }}>{challenge.description}</p>}
+                      {challenge.badge_name && <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0 }}>{c("group_challenge_badge_prefix", { badgeName: challenge.badge_name })}</p>}
+                      <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: challenge.badge_name ? "6px 0 0" : 0 }}>{c("group_challenge_auto_participation_note")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))", padding: "16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 13 }}>
+                <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 7px", minWidth: 0 }}>{c("group_challenge_card_title")}</p>
+                  <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, whiteSpace: "pre-line", margin: 0 }}>{c("group_challenge_card_body")}</p>
+                </div>
+                <button onClick={openChallengeRequestForm} style={{ flex: "0 0 auto", border: "none", borderRadius: 16, background: "var(--sage)", color: "white", padding: "11px 16px", minWidth: 82, fontSize: 12, fontWeight: 850, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  {c("group_challenge_apply_btn")}
+                </button>
               </div>
-              <button onClick={openChallengeRequestForm} style={{ flex: "0 0 auto", border: "none", borderRadius: 16, background: "var(--sage)", color: "white", padding: "11px 16px", minWidth: 82, fontSize: 12, fontWeight: 850, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {c("group_challenge_apply_btn")}
-              </button>
-            </div>
+            </>
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>

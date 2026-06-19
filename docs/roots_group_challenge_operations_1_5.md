@@ -6,9 +6,9 @@ This document describes the current 1.5 scope. It does not change app behavior b
 
 ## Current scope
 
-The 1.5 MVP accepts group challenge requests only.
+The 1.5 MVP now has two safe steps.
 
-Current flow:
+Request intake flow:
 
 ```text
 Group detail
@@ -20,7 +20,16 @@ Group detail
 → Operator contacts the requester by the supplied email
 ```
 
+Approval/display flow:
+
+```text
+Operator finalizes title, dates, and badge copy by email
+→ Operator creates a row in Supabase group_challenges
+→ Group members can see the approved challenge in group detail
+```
+
 There is no automatic email in this MVP. The email address is collected so the operator can follow up manually about schedule, badge design, and wording.
+Approved challenges are displayed only after the operator creates the `group_challenges` row.
 
 ## User-facing rules
 
@@ -43,12 +52,14 @@ There is no automatic email in this MVP. The email address is collected so the o
    - badge name and copy
    - whether the challenge is approved or rejected
 5. After contact, optionally mark the request as `contacted` using one of the commented UPDATE examples.
+6. When the title, dates, and badge copy are finalized, use `supabase/34_group_challenge_approval_queries_1_5.sql` to create a `group_challenges` row.
+7. The approved challenge will then appear in the group detail screen for group members.
 
 ## Not included yet
 
-These are future steps, not part of the current request MVP:
+These are future steps, not part of the current request/display MVP:
 
-- approved challenge creation UI
+- approved challenge creation UI inside the app
 - automatic email sending
 - group member automatic participation snapshot
 - challenge progress calculation
