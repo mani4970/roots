@@ -7,6 +7,10 @@
 -- Usage:
 -- 1. Run the SELECT queries in Supabase SQL Editor when you need to review requests.
 -- 2. Copy and edit one UPDATE statement at a time only after you have contacted the requester.
+--
+-- Note:
+-- Roots profiles use the column name `name` for the visible user name.
+-- Do not use `display_name` here.
 
 -- Pending requests, newest first.
 select
@@ -21,7 +25,7 @@ select
   gcr.badge_idea,
   gcr.extra_questions,
   g.name as group_name,
-  p.display_name as requester_name
+  coalesce(nullif(p.name, ''), gcr.requester_email) as requester_name
 from public.group_challenge_requests gcr
 left join public.groups g on g.id = gcr.group_id
 left join public.profiles p on p.id = gcr.requester_id
@@ -39,7 +43,7 @@ select
   gcr.duration_days,
   gcr.requester_email,
   g.name as group_name,
-  p.display_name as requester_name
+  coalesce(nullif(p.name, ''), gcr.requester_email) as requester_name
 from public.group_challenge_requests gcr
 left join public.groups g on g.id = gcr.group_id
 left join public.profiles p on p.id = gcr.requester_id
