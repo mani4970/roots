@@ -210,8 +210,8 @@ function ResultContent() {
         </div>
       )}
 
-      {/* 하트 콘페티 - 4곳에서 순차 폭발, 한 번만 재생 */}
-      <HeartBurst />
+      {/* 하트 콘페티 - 오늘의 말씀 결과 진입 시 항상 한 번 재생 */}
+      <HeartBurst zIndex={80} />
       <BottomNav />
     </div>
   );
