@@ -53,8 +53,32 @@ function sortQtFeedRows<T extends Record<string, any>>(rows: T[]): T[] {
   return [...rows].sort((a, b) => new Date(qtFeedTime(b) ?? 0).getTime() - new Date(qtFeedTime(a) ?? 0).getTime());
 }
 
+function mergeRowsById<T extends Record<string, any>>(rowSets: Array<T[] | null | undefined>): T[] {
+  const map = new Map<string, T>();
+  rowSets.forEach((rows) => {
+    (rows ?? []).forEach((row) => {
+      const id = String(row?.id ?? "");
+      if (!id) return;
+      map.set(id, { ...(map.get(id) ?? {}), ...row });
+    });
+  });
+  return Array.from(map.values());
+}
+
 async function fetchQtFeedRows(supabase: ReturnType<typeof createClient>, visibilityPattern: string) {
-  const queryWithSharedAt = await supabase
+  // 중요한 이유: 오래된 공유 기록은 shared_at이 null일 수 있습니다.
+  // shared_at 기준 쿼리만 limit 하면 null shared_at 기록이 뒤로 밀려 그룹/전체 피드에서 사라져 보일 수 있으므로,
+  // created_at 기준 쿼리도 함께 가져와 합친 뒤 클라이언트에서 shared_at ?? created_at 기준으로 정렬합니다.
+  const createdAtQuery = await supabase
+    .from("qt_records")
+    .select("*")
+    .ilike("visibility", visibilityPattern)
+    .order("created_at", { ascending: false })
+    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+
+  if (createdAtQuery.error) throw createdAtQuery.error;
+
+  const sharedAtQuery = await supabase
     .from("qt_records")
     .select("*")
     .ilike("visibility", visibilityPattern)
@@ -62,20 +86,16 @@ async function fetchQtFeedRows(supabase: ReturnType<typeof createClient>, visibi
     .order("created_at", { ascending: false })
     .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
-  if (!queryWithSharedAt.error) return sortQtFeedRows(queryWithSharedAt.data ?? []);
+  if (sharedAtQuery.error) {
+    if (/shared_at/i.test(sharedAtQuery.error.message ?? "")) {
+      console.warn("qt_records.shared_at column is not available yet. Falling back to created_at ordering:", sharedAtQuery.error.message);
+    } else {
+      console.warn("qt_records shared_at ordering failed. Falling back to created_at ordering:", sharedAtQuery.error.message);
+    }
+  }
 
-  if (!/shared_at/i.test(queryWithSharedAt.error.message ?? "")) throw queryWithSharedAt.error;
-  console.warn("qt_records.shared_at column is not available yet. Falling back to created_at ordering:", queryWithSharedAt.error.message);
-
-  const fallback = await supabase
-    .from("qt_records")
-    .select("*")
-    .ilike("visibility", visibilityPattern)
-    .order("created_at", { ascending: false })
-    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
-
-  if (fallback.error) throw fallback.error;
-  return sortQtFeedRows(fallback.data ?? []);
+  return sortQtFeedRows(mergeRowsById([createdAtQuery.data ?? [], sharedAtQuery.error ? [] : sharedAtQuery.data ?? []]))
+    .slice(0, COMMUNITY_FEED_PREFETCH_LIMIT);
 }
 
 function latestSharedContentTime(rows?: any[] | null): string | null {
@@ -145,11 +165,40 @@ async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClien
   for (const chunk of chunkArray(groupIds, 35)) {
     const visibilityFilter = chunk.map((groupId) => `visibility.ilike.%group_${groupId}%`).join(",");
     const limit = Math.min(1000, Math.max(200, chunk.length * 25));
-    let rows: any[] = [];
+    let createdAtRows: any[] = [];
+    let sharedAtRows: any[] = [];
+
+    const createdAt = await supabase
+      .from("qt_records")
+      .select("id,visibility,created_at,shared_at")
+      .or(visibilityFilter)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (createdAt.error) {
+      if (/shared_at/i.test(createdAt.error.message ?? "")) {
+        const fallback = await supabase
+          .from("qt_records")
+          .select("id,visibility,created_at")
+          .or(visibilityFilter)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (fallback.error) {
+          console.warn("그룹 최신 묵상 fallback 조회 실패:", fallback.error.message);
+          continue;
+        }
+        createdAtRows = fallback.data ?? [];
+      } else {
+        console.warn("그룹 최신 묵상 created_at 조회 실패:", createdAt.error.message);
+        continue;
+      }
+    } else {
+      createdAtRows = createdAt.data ?? [];
+    }
 
     const withSharedAt = await supabase
       .from("qt_records")
-      .select("visibility,created_at,shared_at")
+      .select("id,visibility,created_at,shared_at")
       .or(visibilityFilter)
       .order("shared_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
@@ -157,27 +206,13 @@ async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClien
 
     if (withSharedAt.error) {
       if (!/shared_at/i.test(withSharedAt.error.message ?? "")) {
-        console.warn("그룹 최신 묵상 일괄 조회 실패:", withSharedAt.error.message);
-        continue;
+        console.warn("그룹 최신 묵상 shared_at 조회 실패:", withSharedAt.error.message);
       }
-
-      const fallback = await supabase
-        .from("qt_records")
-        .select("visibility,created_at")
-        .or(visibilityFilter)
-        .order("created_at", { ascending: false })
-        .limit(limit);
-
-      if (fallback.error) {
-        console.warn("그룹 최신 묵상 fallback 조회 실패:", fallback.error.message);
-        continue;
-      }
-      rows = fallback.data ?? [];
     } else {
-      rows = withSharedAt.data ?? [];
+      sharedAtRows = withSharedAt.data ?? [];
     }
 
-    rows.forEach((row: any) => {
+    mergeRowsById([createdAtRows, sharedAtRows]).forEach((row: any) => {
       const time = qtFeedTime(row);
       groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach((groupId) => addLatestTime(latestByGroup, groupId, time));
     });
