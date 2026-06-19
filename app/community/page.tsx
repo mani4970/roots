@@ -395,6 +395,7 @@ export default function CommunityPage() {
   const [challengeError, setChallengeError] = useState("");
   const [challengeSuccess, setChallengeSuccess] = useState(false);
   const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
+  const [groupChallengeProgress, setGroupChallengeProgress] = useState<Record<string, { doneDays: number; totalDays: number }>>({});
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
@@ -519,6 +520,70 @@ export default function CommunityPage() {
     if (status === "completed") return c("group_challenge_status_completed");
     if (status === "scheduled") return c("group_challenge_status_scheduled");
     return c("group_challenge_status_active");
+  }
+
+  function dateToUtcDay(value?: string | null) {
+    if (!value) return null;
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return Date.UTC(year, month - 1, day);
+  }
+
+  function utcDayToDateString(value: number) {
+    return new Date(value).toISOString().slice(0, 10);
+  }
+
+  function challengeTotalDays(challenge: any) {
+    const start = dateToUtcDay(challenge?.start_date);
+    const end = dateToUtcDay(challenge?.end_date);
+    if (start === null || end === null || end < start) return 0;
+    return Math.floor((end - start) / 86400000) + 1;
+  }
+
+  function challengeProgressPercent(progress?: { doneDays: number; totalDays: number }) {
+    if (!progress?.totalDays) return 0;
+    return Math.max(0, Math.min(100, Math.round((progress.doneDays / progress.totalDays) * 100)));
+  }
+
+  async function fetchGroupChallengeProgress(supabase: ReturnType<typeof createClient>, challenges: any[], currentUserId: string) {
+    const datedChallenges = challenges.filter((challenge) => challenge?.start_date && challenge?.end_date);
+    if (datedChallenges.length === 0) return {} as Record<string, { doneDays: number; totalDays: number }>;
+
+    const startDates = datedChallenges.map((challenge) => String(challenge.start_date)).sort();
+    const endDates = datedChallenges.map((challenge) => String(challenge.end_date)).sort();
+    const minStart = startDates[0];
+    const maxEnd = endDates[endDates.length - 1];
+
+    const { data, error } = await supabase
+      .from("qt_records")
+      .select("date")
+      .eq("user_id", currentUserId)
+      .eq("is_draft", false)
+      .gte("date", minStart)
+      .lte("date", maxEnd);
+
+    if (error) {
+      console.warn("그룹 챌린지 진행도 조회 실패:", error.message);
+      return {} as Record<string, { doneDays: number; totalDays: number }>;
+    }
+
+    const completedDates = new Set((data ?? []).map((row: any) => String(row.date ?? "")).filter(Boolean));
+    const progress: Record<string, { doneDays: number; totalDays: number }> = {};
+
+    datedChallenges.forEach((challenge) => {
+      const id = String(challenge.id ?? "");
+      const start = dateToUtcDay(challenge.start_date);
+      const end = dateToUtcDay(challenge.end_date);
+      if (!id || start === null || end === null || end < start) return;
+
+      let doneDays = 0;
+      for (let day = start; day <= end; day += 86400000) {
+        if (completedDates.has(utcDayToDateString(day))) doneDays += 1;
+      }
+      progress[id] = { doneDays, totalDays: challengeTotalDays(challenge) };
+    });
+
+    return progress;
   }
 
   function resetChallengeRequestForm() {
@@ -1829,6 +1894,7 @@ export default function CommunityPage() {
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
     setGroupChallenges([]);
+    setGroupChallengeProgress({});
     setLoadingGroupChallenges(!!group.isMember);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
@@ -1848,11 +1914,20 @@ export default function CommunityPage() {
       if (challengeError) {
         console.warn("그룹 챌린지 조회 실패:", challengeError.message);
         setGroupChallenges([]);
+        setGroupChallengeProgress({});
       } else {
-        setGroupChallenges(challengeRows ?? []);
+        const nextChallenges = challengeRows ?? [];
+        setGroupChallenges(nextChallenges);
+        if (user?.id && nextChallenges.length > 0) {
+          const progress = await fetchGroupChallengeProgress(supabase, nextChallenges, user.id);
+          setGroupChallengeProgress(progress);
+        } else {
+          setGroupChallengeProgress({});
+        }
       }
     } else {
       setGroupChallenges([]);
+      setGroupChallengeProgress({});
     }
     setLoadingGroupChallenges(false);
 
@@ -2727,6 +2802,16 @@ export default function CommunityPage() {
                       {challenge.description && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: "0 0 7px" }}>{challenge.description}</p>}
                       {challenge.badge_name && <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0 }}>{c("group_challenge_badge_prefix", { badgeName: challenge.badge_name })}</p>}
                       <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: challenge.badge_name ? "6px 0 0" : 0 }}>{c("group_challenge_auto_participation_note")}</p>
+                      {groupChallengeProgress[challenge.id] && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 850, color: "var(--sage-dark)" }}>{c("group_challenge_progress_day", { day: groupChallengeProgress[challenge.id].doneDays })}</span>
+                          </div>
+                          <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "rgba(122,157,122,0.16)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${challengeProgressPercent(groupChallengeProgress[challenge.id])}%`, borderRadius: 999, background: "var(--sage)" }} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

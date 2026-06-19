@@ -168,6 +168,7 @@ export const T = {
   group_challenge_status_completed: { ko: "완료", de: "Abgeschlossen", en: "Completed", fr: "Terminé" },
   group_challenge_badge_prefix: { ko: "특별 배지: {badgeName}", de: "Besonderes Abzeichen: {badgeName}", en: "Special badge: {badgeName}", fr: "Badge spécial : {badgeName}" },
   group_challenge_auto_participation_note: { ko: "그룹 멤버는 자동으로 함께 참여해요.", de: "Gruppenmitglieder nehmen automatisch gemeinsam teil.", en: "Group members take part together automatically.", fr: "Les membres du groupe participent automatiquement ensemble." },
+  group_challenge_progress_day: { ko: "챌린지 참여 {day}일째", de: "Tag {day} der Challenge", en: "Day {day} of the challenge", fr: "Jour {day} du défi" },
   group_challenge_close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
   community_manage_unshare: { ko: "공유 취소", de: "Teilen beenden", en: "Unshare", fr: "Annuler le partage" },
   community_manage_qt_edit: { ko: "큐티 수정", de: "QT bearbeiten", en: "Edit QT", fr: "Modifier le QT" },
