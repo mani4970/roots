@@ -48,20 +48,6 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
   return "tree_sub_100";
 }
 
-const REWARD_MAP_PREVIEW_DAYS_KEY = "roots_reward_map_preview_days";
-
-function canUseRewardMapPreview() {
-  if (typeof window === "undefined") return false;
-  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-}
-
-function parseRewardMapPreviewDays(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  return Math.max(0, Math.min(Math.floor(parsed), 500));
-}
-
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -244,8 +230,6 @@ export default function HomePage() {
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
-  const [rewardMapPreviewDays, setRewardMapPreviewDays] = useState<number | null>(null);
-  const [rewardMapPreviewAvailable, setRewardMapPreviewAvailable] = useState(false);
 
   function showToast(message: string) {
     setToast(message);
@@ -256,35 +240,10 @@ export default function HomePage() {
   const hasMyDecisions = myDecisions.length > 0;
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
   const wordWalkDone = todayDone.qt;
-  const rewardMapDisplayDays = rewardMapPreviewDays ?? (profile?.streak_days ?? 0);
+  const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
 
   useEffect(() => { load(); }, []);
-
-  useEffect(() => {
-    if (!canUseRewardMapPreview()) return;
-    setRewardMapPreviewAvailable(true);
-    setRewardMapPreviewDays(parseRewardMapPreviewDays(storageGet(REWARD_MAP_PREVIEW_DAYS_KEY)));
-  }, []);
-
-  function setLocalRewardMapPreview(days: number | null) {
-    if (!canUseRewardMapPreview()) return;
-    if (days === null) {
-      storageRemove(REWARD_MAP_PREVIEW_DAYS_KEY);
-      setRewardMapPreviewDays(null);
-      setActiveRewardMapKind(null);
-      return;
-    }
-    storageSet(REWARD_MAP_PREVIEW_DAYS_KEY, String(days));
-    setRewardMapPreviewDays(days);
-    setActiveRewardMapKind(null);
-  }
-
-  function triggerRewardMapPreviewAction() {
-    if (!canUseRewardMapPreview()) return;
-    setShowRootsMan(false);
-    requestAnimationFrame(() => setShowRootsMan(true));
-  }
 
   async function load() {
     if (typeof window !== "undefined") {
@@ -1426,26 +1385,6 @@ export default function HomePage() {
           onActiveCycleChange={(cycle: RewardMapCycle) => setActiveRewardMapKind(cycle.kind)}
         />
       </div>
-
-      {rewardMapPreviewAvailable && (
-        <div style={{ margin: "0 16px 14px", padding: "10px 12px", border: "1px dashed rgba(196,149,106,0.45)", borderRadius: 16, background: "rgba(196,149,106,0.08)" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--terra-dark)", marginBottom: 8 }}>로컬 보상맵 미리보기</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {[74, 100, 101, 171, 181, 191, 200, 201].map((days) => (
-              <button
-                key={days}
-                type="button"
-                onClick={() => setLocalRewardMapPreview(days)}
-                style={{ padding: "6px 9px", borderRadius: 999, border: "1px solid rgba(122,157,122,0.28)", background: rewardMapPreviewDays === days ? "var(--sage)" : "var(--bg2)", color: rewardMapPreviewDays === days ? "var(--bg)" : "var(--text2)", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
-              >
-                {days}일
-              </button>
-            ))}
-            <button type="button" onClick={triggerRewardMapPreviewAction} style={{ padding: "6px 9px", borderRadius: 999, border: "1px solid rgba(122,157,122,0.28)", background: "var(--bg2)", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>보상 UI 실행</button>
-            <button type="button" onClick={() => setLocalRewardMapPreview(null)} style={{ padding: "6px 9px", borderRadius: 999, border: "1px solid rgba(120,90,60,0.18)", background: "transparent", color: "var(--text3)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>해제</button>
-          </div>
-        </div>
-      )}
 
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_routine_section", lang)}</div>
