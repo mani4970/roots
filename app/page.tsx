@@ -1285,6 +1285,7 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
+        <div className="sec-label">{t("home_routine_section", lang)}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <button
             type="button"
