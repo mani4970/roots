@@ -13,6 +13,7 @@ type ArkSpriteSheet = {
   frames: number;
   sheetWidth: number;
   sheetHeight: number;
+  frameWidthPx?: number;
   renderWidth: number;
   intervalMs: number;
 };
@@ -41,8 +42,8 @@ const ARK_WALK_SPRITE: ArkSpriteSheet = {
   frames: 6,
   sheetWidth: 2172,
   sheetHeight: 724,
-  renderWidth: 46,
-  intervalMs: 160,
+  renderWidth: 38,
+  intervalMs: 210,
 };
 
 const ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
@@ -50,8 +51,9 @@ const ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
   frames: 6,
   sheetWidth: 1916,
   sheetHeight: 821,
-  renderWidth: 50,
-  intervalMs: 165,
+  frameWidthPx: 319,
+  renderWidth: 42,
+  intervalMs: 210,
 };
 
 const ARK_HAMMER_SPRITE: ArkSpriteSheet = {
@@ -59,8 +61,8 @@ const ARK_HAMMER_SPRITE: ArkSpriteSheet = {
   frames: 6,
   sheetWidth: 2172,
   sheetHeight: 724,
-  renderWidth: 50,
-  intervalMs: 220,
+  renderWidth: 40,
+  intervalMs: 260,
 };
 
 const ARK_WAVE_BIRD_SPRITE: ArkSpriteSheet = {
@@ -68,8 +70,9 @@ const ARK_WAVE_BIRD_SPRITE: ArkSpriteSheet = {
   frames: 4,
   sheetWidth: 1802,
   sheetHeight: 872,
-  renderWidth: 52,
-  intervalMs: 260,
+  frameWidthPx: 450,
+  renderWidth: 40,
+  intervalMs: 300,
 };
 
 const ARK_PRAY_SPRITE: ArkSpriteSheet = {
@@ -77,20 +80,21 @@ const ARK_PRAY_SPRITE: ArkSpriteSheet = {
   frames: 4,
   sheetWidth: 1881,
   sheetHeight: 836,
-  renderWidth: 52,
-  intervalMs: 300,
+  frameWidthPx: 470,
+  renderWidth: 40,
+  intervalMs: 330,
 };
 
 const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> = {
   arkCarryWood: {
     enterFrom: "104%",
-    actionLeft: "49%",
+    actionLeft: "58%",
     exitTo: "104%",
-    bottom: "11%",
-    enterMs: 2400,
-    exitMs: 2100,
+    bottom: "7%",
+    enterMs: 3200,
+    exitMs: 2900,
     actionLoops: 1,
-    actionPauseMs: 520,
+    actionPauseMs: 220,
     enterSprite: ARK_CARRY_WOOD_SPRITE,
     actionSprite: ARK_WALK_SPRITE,
     exitSprite: ARK_WALK_SPRITE,
@@ -98,11 +102,11 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
   },
   arkHammer: {
     enterFrom: "104%",
-    actionLeft: "50%",
+    actionLeft: "57%",
     exitTo: "104%",
-    bottom: "12%",
-    enterMs: 2300,
-    exitMs: 2050,
+    bottom: "7%",
+    enterMs: 3100,
+    exitMs: 2850,
     actionLoops: 4,
     enterSprite: ARK_WALK_SPRITE,
     actionSprite: ARK_HAMMER_SPRITE,
@@ -110,12 +114,12 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     exitFlip: true,
   },
   arkWaveBird: {
-    enterFrom: "71%",
-    actionLeft: "62%",
-    exitTo: "71%",
-    bottom: "57%",
-    enterMs: 1300,
-    exitMs: 1200,
+    enterFrom: "70%",
+    actionLeft: "63%",
+    exitTo: "70%",
+    bottom: "55%",
+    enterMs: 1650,
+    exitMs: 1500,
     actionLoops: 5,
     enterSprite: ARK_WALK_SPRITE,
     actionSprite: ARK_WAVE_BIRD_SPRITE,
@@ -123,17 +127,16 @@ const ARK_MOTION_CONFIGS: Partial<Record<RewardMapActionKind, ArkMotionConfig>> 
     exitFlip: true,
   },
   arkPray: {
-    enterFrom: "18%",
-    actionLeft: "34%",
-    exitTo: "18%",
-    bottom: "12%",
-    enterMs: 1600,
-    exitMs: 1500,
+    enterFrom: "47%",
+    actionLeft: "50%",
+    exitTo: "47%",
+    bottom: "8%",
+    enterMs: 1200,
+    exitMs: 1100,
     actionLoops: 5,
     enterSprite: ARK_WALK_SPRITE,
     actionSprite: ARK_PRAY_SPRITE,
     exitSprite: ARK_WALK_SPRITE,
-    enterFlip: true,
   },
 };
 
@@ -219,7 +222,7 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
   if (!phase) return null;
 
   const sprite = phase === "enter" ? config.enterSprite : phase === "action" ? config.actionSprite : config.exitSprite;
-  const frameWidth = sprite.sheetWidth / sprite.frames;
+  const frameWidth = sprite.frameWidthPx ?? sprite.sheetWidth / sprite.frames;
   const scale = sprite.renderWidth / frameWidth;
   const renderHeight = Math.round(sprite.sheetHeight * scale);
   const transition = phase === "action" ? undefined : `left ${phase === "enter" ? config.enterMs : config.exitMs}ms ease-in-out`;

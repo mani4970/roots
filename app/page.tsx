@@ -1339,7 +1339,7 @@ export default function HomePage() {
         <div style={{ margin: "0 16px 14px", padding: "10px 12px", border: "1px dashed rgba(196,149,106,0.45)", borderRadius: 16, background: "rgba(196,149,106,0.08)" }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: "var(--terra-dark)", marginBottom: 8 }}>로컬 보상맵 미리보기</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {[74, 101, 171, 191].map((days) => (
+            {[74, 101, 171, 181, 191].map((days) => (
               <button
                 key={days}
                 type="button"
