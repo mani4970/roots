@@ -30,6 +30,7 @@ Operator finalizes title, dates, and badge copy by email
 
 There is no automatic email in this MVP. The email address is collected so the operator can follow up manually about schedule, badge design, and wording.
 Approved challenges are displayed only after the operator creates the `group_challenges` row.
+Badge images are operator-managed and should be uploaded to the `group-challenge-badges` Storage bucket before the approved challenge row is finalized.
 
 ## User-facing rules
 
@@ -52,19 +53,21 @@ Approved challenges are displayed only after the operator creates the `group_cha
    - badge name and copy
    - whether the challenge is approved or rejected
 5. After contact, optionally mark the request as `contacted` using one of the commented UPDATE examples.
-6. When the title, dates, and badge copy are finalized, use `supabase/34_group_challenge_approval_queries_1_5.sql` to create a `group_challenges` row.
-7. The approved challenge will then appear in the group detail screen for group members.
+6. Upload the finalized badge image to Supabase Storage bucket `group-challenge-badges`.
+7. Use the Storage object path, for example `approved-badges/2026-07-berlin-bible-reflection.webp`, as `group_challenges.badge_image_path`.
+8. When the title, dates, badge copy, and badge image path are finalized, use `supabase/34_group_challenge_approval_queries_1_5.sql` to create a `group_challenges` row.
+9. The approved challenge will then appear in the group detail screen for group members.
 
-## Not included yet
+## Current limits
 
-These are future steps, not part of the current request/display MVP:
+These are still not included in the app UI:
 
 - approved challenge creation UI inside the app
 - automatic email sending
-- group member automatic participation snapshot
-- challenge progress calculation
-- challenge completion badge awarding
+- direct badge image upload by regular users
 - admin dashboard
+
+The MVP now includes request intake, operator-approved challenge display, challenge progress display, participant snapshots, award claiming, and profile display for earned group challenge badges.
 
 ## Non-negotiable rules
 
@@ -105,3 +108,27 @@ When a challenge has ended, the app may call `claim_group_challenge_award` from 
 ```
 
 This does not update `qt_records`, `profiles.streak_days`, `profiles.total_days`, or `profiles.last_checkin`.
+
+
+## Badge image storage
+
+Run `supabase/37_group_challenge_badge_storage_1_5.sql` once before using Storage-backed group challenge badge images.
+
+Recommended operator flow:
+
+```text
+1. Create the final badge image as PNG or WebP.
+2. Upload it to Supabase Storage bucket group-challenge-badges.
+3. Use a tidy object path such as approved-badges/2026-07-berlin-bible-reflection.webp.
+4. Put that object path in group_challenges.badge_image_path.
+```
+
+The app supports these badge image path formats:
+
+```text
+approved-badges/file.webp              -> group-challenge-badges Storage bucket
+group-challenge-badges/file.webp       -> group-challenge-badges Storage bucket
+storage://group-challenge-badges/file.webp -> group-challenge-badges Storage bucket
+https://example.com/file.webp           -> direct URL
+/public-image.webp or public/public-image.webp -> app public folder fallback
+```

@@ -6,8 +6,9 @@
 --
 -- Usage:
 -- 1. Run the SELECT query to review pending/contacted requests.
--- 2. Contact the requester by email and finalize title, dates, badge name, and copy.
--- 3. Copy ONE commented INSERT/UPDATE block, replace the placeholders, and run it carefully.
+-- 2. Contact the requester by email and finalize title, dates, badge name, copy, and badge image.
+-- 3. Upload the final badge image to the group-challenge-badges Storage bucket.
+-- 4. Copy ONE commented INSERT/UPDATE block, replace the placeholders, and run it carefully.
 
 -- Requests that are ready for operator review or approval.
 select
@@ -58,7 +59,8 @@ order by gcr.created_at desc;
 --   date 'YYYY-MM-DD',
 --   'FINAL_BADGE_NAME',
 --   'FINAL_BADGE_DESCRIPTION',
---   null,
+--   -- Use either a Storage path such as approved-badges/file.webp, a full https:// URL, or a /public-path image.
+--   'approved-badges/YYYY-MM-DD-final-badge.webp',
 --   'scheduled',
 --   'Approved by operator on YYYY-MM-DD.'
 -- from public.group_challenge_requests gcr

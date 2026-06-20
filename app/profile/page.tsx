@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
+import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
@@ -96,12 +97,7 @@ type GroupChallengeProfileBadge = {
 };
 
 function getGroupChallengeBadgeImg(path?: string | null) {
-  const fallback = "/badge_roots_together.webp";
-  const value = path?.trim();
-  if (!value) return fallback;
-  if (/^https?:\/\//i.test(value) || value.startsWith("/")) return value;
-  if (value.startsWith("public/")) return `/${value.slice("public/".length)}`;
-  return `/${value.replace(/^\/+/, "")}`;
+  return getGroupChallengeBadgeImageSrc(path) ?? "/badge_roots_together.webp";
 }
 
 function getSpiritFruitBadgeImg(name: string) {
