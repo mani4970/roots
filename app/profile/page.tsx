@@ -84,6 +84,26 @@ const SPIRIT_FRUIT_BADGES = [
 type FaithBadge = (typeof FAITH_BADGES)[number];
 type SpiritFruitBadge = (typeof SPIRIT_FRUIT_BADGES)[number];
 
+type GroupChallengeProfileBadge = {
+  id: string;
+  challengeId: string;
+  groupId: string;
+  title: string;
+  groupName: string;
+  badgeName: string;
+  badgeImagePath: string | null;
+  awardedAt: string;
+};
+
+function getGroupChallengeBadgeImg(path?: string | null) {
+  const fallback = "/badge_roots_together.webp";
+  const value = path?.trim();
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value) || value.startsWith("/")) return value;
+  if (value.startsWith("public/")) return `/${value.slice("public/".length)}`;
+  return `/${value.replace(/^\/+/, "")}`;
+}
+
 function getSpiritFruitBadgeImg(name: string) {
   return `/badge_${name.toLowerCase().replace("-", "_")}.webp`;
 }
@@ -120,6 +140,7 @@ export default function ProfilePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
+  const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
 
@@ -146,6 +167,7 @@ export default function ProfilePage() {
       setNewName(p.name ?? "");
     }
     await loadQtRecordsForMonth(user.id, calendarMonth);
+    await loadGroupChallengeBadgesForProfile(user.id);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     let prayerSharedCnt = 0;
     if (prayers) {
@@ -202,6 +224,67 @@ export default function ProfilePage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadGroupChallengeBadgesForProfile(userId: string) {
+    const supabase = createClient();
+    const { data: awards, error } = await supabase.from("group_challenge_awards")
+      .select("id, challenge_id, group_id, badge_name, badge_description, badge_image_path, awarded_at")
+      .eq("user_id", userId)
+      .order("awarded_at", { ascending: false });
+
+    if (error) {
+      console.warn("그룹 챌린지 배지 조회 실패:", error);
+      setGroupChallengeBadges([]);
+      return;
+    }
+
+    const awardRows = (awards ?? []) as any[];
+    if (awardRows.length === 0) {
+      setGroupChallengeBadges([]);
+      return;
+    }
+
+    const challengeIds = Array.from(new Set(awardRows.map(row => row.challenge_id).filter(Boolean)));
+    const groupIds = Array.from(new Set(awardRows.map(row => row.group_id).filter(Boolean)));
+
+    let challengeRows: any[] = [];
+    if (challengeIds.length > 0) {
+      const { data, error: challengeError } = await supabase.from("group_challenges")
+        .select("id,title")
+        .in("id", challengeIds);
+      if (challengeError) {
+        console.warn("그룹 챌린지 제목 조회 실패:", challengeError);
+      } else {
+        challengeRows = data ?? [];
+      }
+    }
+
+    let groupRows: any[] = [];
+    if (groupIds.length > 0) {
+      const { data, error: groupError } = await supabase.from("groups")
+        .select("id,name")
+        .in("id", groupIds);
+      if (groupError) {
+        console.warn("그룹 챌린지 그룹명 조회 실패:", groupError);
+      } else {
+        groupRows = data ?? [];
+      }
+    }
+
+    const challengeTitleMap = new Map(challengeRows.map(row => [row.id, row.title]));
+    const groupNameMap = new Map(groupRows.map(row => [row.id, row.name]));
+
+    setGroupChallengeBadges(awardRows.map(row => ({
+      id: row.id,
+      challengeId: row.challenge_id,
+      groupId: row.group_id,
+      title: challengeTitleMap.get(row.challenge_id) || row.badge_name || t("group_challenge_card_title", lang),
+      groupName: groupNameMap.get(row.group_id) || t("community_unknown", lang),
+      badgeName: row.badge_name || "",
+      badgeImagePath: row.badge_image_path ?? null,
+      awardedAt: row.awarded_at,
+    })));
   }
 
   async function loadQtRecordsForMonth(userId: string, monthDate: Date, options: { showSpinner?: boolean } = {}) {
@@ -779,6 +862,38 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {groupChallengeBadges.length > 0 && (
+        <div style={{ padding: "14px 16px 0" }}>
+          <div className="sec-label">{t("profile_group_challenge_badges", lang)}</div>
+          <div className="card" style={{ padding: "16px 14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+              {groupChallengeBadges.map(badge => (
+                <div key={badge.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
+                  <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img
+                      src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
+                      alt={badge.badgeName || badge.title}
+                      onError={(event) => {
+                        const fallback = "/badge_roots_together.webp";
+                        if (event.currentTarget.src.endsWith(fallback)) return;
+                        event.currentTarget.src = fallback;
+                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    />
+                  </div>
+                  <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {badge.title}
+                  </div>
+                  <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {badge.groupName}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 성령의 열매 배지 */}
       <div style={{ padding: "14px 16px 0" }}>
