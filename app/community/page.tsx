@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
+import { GROUP_CHALLENGE_BADGE_FALLBACK, getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
@@ -396,6 +397,7 @@ export default function CommunityPage() {
   const [challengeSuccess, setChallengeSuccess] = useState(false);
   const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
   const [groupChallengeProgress, setGroupChallengeProgress] = useState<Record<string, { doneDays: number; totalDays: number }>>({});
+  const [myGroupChallengeRequestStatuses, setMyGroupChallengeRequestStatuses] = useState<Record<string, string>>({});
   const [groupChallengeAwardPopup, setGroupChallengeAwardPopup] = useState<null | { challengeTitle: string; groupName: string; badgeName: string; badgeImagePath?: string | null }>(null);
   const claimedGroupChallengeAwardIdsRef = useRef<Set<string>>(new Set());
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
@@ -547,11 +549,22 @@ export default function CommunityPage() {
     return Math.max(0, Math.min(100, Math.round((progress.doneDays / progress.totalDays) * 100)));
   }
 
+  function hasActiveGroupChallengeRequest(groupId?: string | null) {
+    if (!groupId) return false;
+    return ["pending", "contacted", "approved"].includes(myGroupChallengeRequestStatuses[groupId]);
+  }
+
+  function setGroupChallengeRequestStatus(groupId: string, status?: string | null) {
+    setMyGroupChallengeRequestStatuses((prev) => {
+      const next = { ...prev };
+      if (status) next[groupId] = status;
+      else delete next[groupId];
+      return next;
+    });
+  }
+
   function groupChallengeBadgeImageSrc(path?: string | null) {
-    const value = String(path ?? "").trim();
-    if (!value) return null;
-    if (/^https?:\/\//i.test(value) || value.startsWith("/")) return value;
-    return `/${value.replace(/^public\//, "")}`;
+    return getGroupChallengeBadgeImageSrc(path, { fallback: null });
   }
 
   function isChallengeCompleteForUser(progress?: { doneDays: number; totalDays: number }) {
@@ -644,7 +657,7 @@ export default function CommunityPage() {
   }
 
   function openChallengeRequestForm() {
-    if (!selectedGroup?.id || !selectedGroup.isMember) return;
+    if (!selectedGroup?.id || !selectedGroup.isMember || hasActiveGroupChallengeRequest(selectedGroup.id)) return;
     setChallengeError("");
     setChallengeSuccess(false);
     setChallengeTitle(c("group_challenge_default_title", { groupName: selectedGroup.name ?? "" }));
@@ -684,6 +697,7 @@ export default function CommunityPage() {
         extra_questions: challengeExtraQuestions.trim() || null,
       });
       if (error) throw error;
+      setGroupChallengeRequestStatus(selectedGroup.id, "pending");
       setChallengeSuccess(true);
     } catch (error) {
       console.error("group challenge request failed", error);
@@ -1949,6 +1963,25 @@ export default function CommunityPage() {
     const currentHiddenUserIds = hiddenUserIds;
 
     if (group.isMember) {
+      if (user?.id) {
+        const { data: requestRows, error: requestError } = await supabase
+          .from("group_challenge_requests")
+          .select("status,created_at")
+          .eq("group_id", group.id)
+          .eq("requester_id", user.id)
+          .in("status", ["pending", "contacted", "approved"])
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (requestError) {
+          console.warn("그룹 챌린지 신청 상태 조회 실패:", requestError.message);
+          setGroupChallengeRequestStatus(group.id, null);
+        } else {
+          setGroupChallengeRequestStatus(group.id, requestRows?.[0]?.status ?? null);
+        }
+      } else {
+        setGroupChallengeRequestStatus(group.id, null);
+      }
+
       const { data: challengeRows, error: challengeError } = await supabase
         .from("group_challenges")
         .select("id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status")
@@ -1972,6 +2005,7 @@ export default function CommunityPage() {
         }
       }
     } else {
+      setGroupChallengeRequestStatus(group.id, null);
       setGroupChallenges([]);
       setGroupChallengeProgress({});
     }
@@ -2846,8 +2880,25 @@ export default function CommunityPage() {
                         </span>
                       </div>
                       {challenge.description && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: "0 0 7px" }}>{challenge.description}</p>}
-                      {challenge.badge_name && <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0 }}>{c("group_challenge_badge_prefix", { badgeName: challenge.badge_name })}</p>}
-                      <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: challenge.badge_name ? "6px 0 0" : 0 }}>{c("group_challenge_auto_participation_note")}</p>
+                      {(challenge.badge_name || challenge.badge_image_path) && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: challenge.description ? 7 : 0 }}>
+                          {groupChallengeBadgeImageSrc(challenge.badge_image_path) && (
+                            <div style={{ width: 34, height: 34, borderRadius: 12, background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.24)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                              <img
+                                src={groupChallengeBadgeImageSrc(challenge.badge_image_path) ?? undefined}
+                                alt={challenge.badge_name || challenge.title}
+                                onError={(event) => {
+                                  if (event.currentTarget.src.endsWith(GROUP_CHALLENGE_BADGE_FALLBACK)) return;
+                                  event.currentTarget.src = GROUP_CHALLENGE_BADGE_FALLBACK;
+                                }}
+                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                              />
+                            </div>
+                          )}
+                          {challenge.badge_name && <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0 }}>{c("group_challenge_badge_prefix", { badgeName: challenge.badge_name })}</p>}
+                        </div>
+                      )}
+                      <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: (challenge.badge_name || challenge.badge_image_path) ? "6px 0 0" : 0 }}>{c("group_challenge_auto_participation_note")}</p>
                       {groupChallengeProgress[challenge.id] && (
                         <div style={{ marginTop: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
@@ -2868,8 +2919,25 @@ export default function CommunityPage() {
                   <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 7px", minWidth: 0 }}>{c("group_challenge_card_title")}</p>
                   <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, whiteSpace: "pre-line", margin: 0 }}>{c("group_challenge_card_body")}</p>
                 </div>
-                <button onClick={openChallengeRequestForm} style={{ flex: "0 0 auto", border: "none", borderRadius: 16, background: "var(--sage)", color: "white", padding: "11px 16px", minWidth: 82, fontSize: 12, fontWeight: 850, cursor: "pointer", whiteSpace: "nowrap" }}>
-                  {c("group_challenge_apply_btn")}
+                <button
+                  onClick={openChallengeRequestForm}
+                  disabled={hasActiveGroupChallengeRequest(selectedGroup.id)}
+                  style={{
+                    flex: "0 0 auto",
+                    border: "none",
+                    borderRadius: 16,
+                    background: hasActiveGroupChallengeRequest(selectedGroup.id) ? "var(--bg3)" : "var(--sage)",
+                    color: hasActiveGroupChallengeRequest(selectedGroup.id) ? "var(--text3)" : "white",
+                    padding: "11px 16px",
+                    minWidth: 82,
+                    fontSize: 12,
+                    fontWeight: 850,
+                    cursor: hasActiveGroupChallengeRequest(selectedGroup.id) ? "default" : "pointer",
+                    whiteSpace: "nowrap",
+                    opacity: hasActiveGroupChallengeRequest(selectedGroup.id) ? 0.92 : 1,
+                  }}
+                >
+                  {hasActiveGroupChallengeRequest(selectedGroup.id) ? c("group_challenge_requested_btn") : c("group_challenge_apply_btn")}
                 </button>
               </div>
             </>
@@ -3089,7 +3157,15 @@ export default function CommunityPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.38)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)", padding: "30px 23px 24px", textAlign: "center" }}>
               <div style={{ width: 116, height: 116, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ? (
-                  <img src={groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ?? undefined} alt={groupChallengeAwardPopup.badgeName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  <img
+                    src={groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ?? undefined}
+                    alt={groupChallengeAwardPopup.badgeName}
+                    onError={(event) => {
+                      if (event.currentTarget.src.endsWith(GROUP_CHALLENGE_BADGE_FALLBACK)) return;
+                      event.currentTarget.src = GROUP_CHALLENGE_BADGE_FALLBACK;
+                    }}
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
                 ) : (
                   <div style={{ width: 104, height: 104, borderRadius: 28, background: "rgba(232,197,71,0.16)", color: "rgba(189,139,30,0.95)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(232,197,71,0.34)" }}>
                     <Star size={48} strokeWidth={1.7} />

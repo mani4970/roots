@@ -139,6 +139,7 @@ export const T = {
   group_challenge_card_title: { ko: "그룹 챌린지", de: "Gruppen-Challenge", en: "Group challenge", fr: "Défi de groupe" },
   group_challenge_card_body: { ko: "그룹원들과 묵상 챌린지를 해보세요.\n완주한 그룹원에게 특별 배지가 주어집니다.", de: "Startet gemeinsam eine Challenge.\nWer abschließt, erhält ein Abzeichen.", en: "Try a group challenge together.\nFinish it to receive a badge.", fr: "Lancez un défi ensemble.\nTerminez-le pour obtenir un badge." },
   group_challenge_apply_btn: { ko: "신청하기", de: "Beantragen", en: "Request", fr: "Demander" },
+  group_challenge_requested_btn: { ko: "신청완료", de: "Beantragt", en: "Requested", fr: "Demandé" },
   group_challenge_modal_title: { ko: "묵상 챌린지 신청", de: "Stille-Zeit-Challenge beantragen", en: "Request a Bible Reflection challenge", fr: "Demander un défi de méditation" },
   group_challenge_modal_sub: { ko: "그룹 멤버 누구나 신청할 수 있어요.\n신청 후 배지 디자인과 일정은 운영자가 메일로 확인해요.", de: "Jedes Gruppenmitglied kann eine Challenge beantragen.\nDanach stimmt das Team Abzeichen und Termine per E-Mail ab.", en: "Any group member can request a challenge.\nAfterward, the team will confirm the badge design and schedule by email.", fr: "Chaque membre du groupe peut demander un défi.\nL’équipe confirmera ensuite le badge et le calendrier par e-mail." },
   group_challenge_default_title: { ko: "{groupName} 묵상 챌린지", de: "{groupName} Stille-Zeit-Challenge", en: "{groupName} Bible Reflection Challenge", fr: "Défi de méditation biblique de {groupName}" },
