@@ -141,6 +141,7 @@ export default function ProfilePage() {
   const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
+  const [selectedGroupChallengeBadge, setSelectedGroupChallengeBadge] = useState<GroupChallengeProfileBadge | null>(null);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
 
@@ -150,6 +151,15 @@ export default function ProfilePage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#group-challenge-badges") return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("group-challenge-badges")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, groupChallengeBadges.length > 0 ? 260 : 700);
+    return () => window.clearTimeout(timer);
+  }, [groupChallengeBadges.length]);
 
   async function load() {
     const supabase = createClient();
@@ -742,6 +752,54 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {selectedGroupChallengeBadge && (
+        <div
+          onClick={() => setSelectedGroupChallengeBadge(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+          >
+            <button
+              onClick={() => setSelectedGroupChallengeBadge(null)}
+              aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ width: 132, height: 132, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={getGroupChallengeBadgeImg(selectedGroupChallengeBadge.badgeImagePath)}
+                alt={selectedGroupChallengeBadge.badgeName || selectedGroupChallengeBadge.title}
+                onError={(event) => {
+                  const fallback = "/badge_roots_together.webp";
+                  if (event.currentTarget.src.endsWith(fallback)) return;
+                  event.currentTarget.src = fallback;
+                }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", marginBottom: 12 }}>
+              {selectedGroupChallengeBadge.badgeName || t("profile_group_challenge_badge_detail_title", lang)}
+            </h3>
+            <div style={{ display: "grid", gap: 8, textAlign: "left", marginBottom: 16 }}>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_challenge", lang)}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedGroupChallengeBadge.title}</div>
+              </div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_group", lang)}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedGroupChallengeBadge.groupName}</div>
+              </div>
+            </div>
+            <button onClick={() => setSelectedGroupChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
+              {t("group_challenge_close", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
@@ -864,12 +922,17 @@ export default function ProfilePage() {
       </div>
 
       {groupChallengeBadges.length > 0 && (
-        <div style={{ padding: "14px 16px 0" }}>
+        <div id="group-challenge-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
           <div className="sec-label">{t("profile_group_challenge_badges", lang)}</div>
           <div className="card" style={{ padding: "16px 14px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
               {groupChallengeBadges.map(badge => (
-                <div key={badge.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
+                <button
+                  key={badge.id}
+                  type="button"
+                  onClick={() => setSelectedGroupChallengeBadge(badge)}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                >
                   <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
                       src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
@@ -888,7 +951,7 @@ export default function ProfilePage() {
                   <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {badge.groupName}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

@@ -3102,7 +3102,16 @@ export default function CommunityPage() {
               <div style={{ padding: "14px 15px", borderRadius: 16, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 18 }}>
                 <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.68, margin: 0 }}>{c("group_challenge_award_popup_body")}</p>
               </div>
-              <button onClick={() => setGroupChallengeAwardPopup(null)} className="btn-sage" style={{ width: "100%" }}>{c("group_challenge_award_popup_btn")}</button>
+              <button
+                onClick={() => {
+                  setGroupChallengeAwardPopup(null);
+                  router.push("/profile#group-challenge-badges");
+                }}
+                className="btn-sage"
+                style={{ width: "100%" }}
+              >
+                {c("group_challenge_award_popup_btn")}
+              </button>
             </div>
           </div>
         )}
