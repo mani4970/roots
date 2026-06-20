@@ -136,6 +136,7 @@ export default function ProfilePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
+  const [showGroupChallengeBadgeGallery, setShowGroupChallengeBadgeGallery] = useState(false);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
   const [selectedGroupChallengeBadge, setSelectedGroupChallengeBadge] = useState<GroupChallengeProfileBadge | null>(null);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -647,6 +648,8 @@ export default function ProfilePage() {
   const previewFaithBadges = sortedFaithBadges.slice(0, 6);
   const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
+  const previewGroupChallengeBadges = groupChallengeBadges.slice(0, 3);
+  const shouldShowGroupChallengeBadgeGalleryButton = groupChallengeBadges.length > previewGroupChallengeBadges.length;
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -712,6 +715,61 @@ export default function ProfilePage() {
               })}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {showGroupChallengeBadgeGallery && (
+        <div
+          onClick={() => setShowGroupChallengeBadgeGallery(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 250, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+          >
+            <button
+              onClick={() => setShowGroupChallengeBadgeGallery(false)}
+              aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ paddingRight: 36, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("profile_group_challenge_badges", lang)}</h3>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+              {groupChallengeBadges.map(badge => (
+                <button
+                  key={badge.id}
+                  type="button"
+                  onClick={() => {
+                    setShowGroupChallengeBadgeGallery(false);
+                    setSelectedGroupChallengeBadge(badge);
+                  }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div style={{ width: 72, height: 72, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img
+                      src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
+                      alt={badge.badgeName || badge.title}
+                      onError={(event) => {
+                        const fallback = "/badge_roots_together.webp";
+                        if (event.currentTarget.src.endsWith(fallback)) return;
+                        event.currentTarget.src = fallback;
+                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    />
+                  </div>
+                  <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {badge.title}
+                  </div>
+                  <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {badge.groupName}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -919,17 +977,28 @@ export default function ProfilePage() {
 
       {groupChallengeBadges.length > 0 && (
         <div id="group-challenge-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
-          <div className="sec-label">{t("profile_group_challenge_badges", lang)}</div>
-          <div className="card" style={{ padding: "16px 14px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
-              {groupChallengeBadges.map(badge => (
+          <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span>{t("profile_group_challenge_badges", lang)}</span>
+            {shouldShowGroupChallengeBadgeGalleryButton && (
+              <button
+                type="button"
+                onClick={() => setShowGroupChallengeBadgeGallery(true)}
+                style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+              >
+                {t("profile_badges_view_all", lang)}
+              </button>
+            )}
+          </div>
+          <div className="card" style={{ padding: "18px 14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 92px))", gap: 14, justifyContent: "center" }}>
+              {previewGroupChallengeBadges.map(badge => (
                 <button
                   key={badge.id}
                   type="button"
                   onClick={() => setSelectedGroupChallengeBadge(badge)}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
-                  <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 78, height: 78, marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
                       src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
                       alt={badge.badgeName || badge.title}
