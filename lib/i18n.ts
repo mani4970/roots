@@ -173,6 +173,8 @@ export const T = {
   group_challenge_status_active: { ko: "진행 중", de: "Läuft", en: "Active", fr: "En cours" },
   group_challenge_status_completed: { ko: "완료", de: "Abgeschlossen", en: "Completed", fr: "Terminé" },
   group_challenge_badge_prefix: { ko: "특별 배지: {badgeName}", de: "Besonderes Abzeichen: {badgeName}", en: "Special badge: {badgeName}", fr: "Badge spécial : {badgeName}" },
+  group_challenge_special_badge_teaser: { ko: "챌린지를 완주하면 스페셜 배지가 지급됩니다!", de: "Schließe die Challenge ab und erhalte ein besonderes Abzeichen!", en: "Complete the challenge to receive a special badge!", fr: "Terminez le défi pour recevoir un badge spécial !" },
+  group_challenge_special_badge_mystery_alt: { ko: "스페셜 배지 미리보기", de: "Vorschau auf besonderes Abzeichen", en: "Special badge preview", fr: "Aperçu du badge spécial" },
   group_challenge_auto_participation_note: { ko: "그룹 멤버는 자동으로 함께 참여해요.", de: "Gruppenmitglieder nehmen automatisch gemeinsam teil.", en: "Group members take part together automatically.", fr: "Les membres du groupe participent automatiquement ensemble." },
   group_challenge_progress_day: { ko: "챌린지 참여 {day}일째", de: "Tag {day} der Challenge", en: "Day {day} of the challenge", fr: "Jour {day} du défi" },
   group_challenge_award_popup_title: { ko: "챌린지 완주!", de: "Challenge abgeschlossen!", en: "Challenge completed!", fr: "Défi terminé !" },
