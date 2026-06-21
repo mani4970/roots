@@ -2951,24 +2951,26 @@ export default function CommunityPage() {
                   </div>
                   {!loadingGroupChallenges && visibleGroupChallengeCards().map((challenge) => (
                     <div key={challenge.id} style={{ borderRadius: 17, border: "1px solid var(--border)", background: "rgba(255,255,255,0.62)", padding: "12px 13px" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 7 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>{challenge.title}</p>
-                          <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 700 }}>{challengeDateRange(challenge)}</p>
-                        </div>
-                        <span style={{ flexShrink: 0, borderRadius: 999, padding: "4px 8px", background: challengeDisplayStatus(challenge) === "active" ? "var(--sage-light)" : "var(--bg3)", color: challengeDisplayStatus(challenge) === "active" ? "var(--sage-dark)" : "var(--text3)", fontSize: 10, fontWeight: 850 }}>
-                          {challengeStatusLabel(challenge)}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 0 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 12, background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.24)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+                        <div style={{ width: 62, height: 62, borderRadius: 18, background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.24)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                           <img
                             src="/images/group-challenges/mystery-badge.png"
                             alt=""
                             style={{ width: "100%", height: "100%", objectFit: "contain" }}
                           />
                         </div>
-                        <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0, lineHeight: 1.45 }}>{c("group_challenge_special_badge_teaser")}</p>
+                        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>{challenge.title}</p>
+                              <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 700 }}>{challengeDateRange(challenge)}</p>
+                            </div>
+                            <span style={{ flexShrink: 0, borderRadius: 999, padding: "4px 8px", background: challengeDisplayStatus(challenge) === "active" ? "var(--sage-light)" : "var(--bg3)", color: challengeDisplayStatus(challenge) === "active" ? "var(--sage-dark)" : "var(--text3)", fontSize: 10, fontWeight: 850 }}>
+                              {challengeStatusLabel(challenge)}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: "8px 0 0", lineHeight: 1.45 }}>{c("group_challenge_special_badge_teaser")}</p>
+                        </div>
                       </div>
                       {groupChallengeProgress[challenge.id] && (
                         <div style={{ marginTop: 10 }}>
