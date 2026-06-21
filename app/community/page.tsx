@@ -2939,11 +2939,18 @@ export default function CommunityPage() {
               {(loadingGroupChallenges || visibleGroupChallengeCards().length > 0) && (
                 <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "var(--bg2)", padding: "15px 15px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0 }}>{c(groupChallengeSectionTitleKey(visibleGroupChallengeCards()))}</p>
+                    <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0, lineHeight: 1.35 }}>
+                      {c(groupChallengeSectionTitleKey(visibleGroupChallengeCards()))}
+                      {groupChallengeSectionTitleKey(visibleGroupChallengeCards()) === "group_challenge_approved_section_title" && (
+                        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text3)", lineHeight: 1.45 }}>
+                          {` (${c("group_challenge_auto_participation_note")})`}
+                        </span>
+                      )}
+                    </p>
                     {loadingGroupChallenges && <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} />}
                   </div>
                   {!loadingGroupChallenges && visibleGroupChallengeCards().map((challenge) => (
-                    <div key={challenge.id} style={{ borderRadius: 17, border: "1px solid var(--border)", background: "rgba(255,255,255,0.62)", padding: "13px 13px 12px" }}>
+                    <div key={challenge.id} style={{ borderRadius: 17, border: "1px solid var(--border)", background: "rgba(255,255,255,0.62)", padding: "12px 13px" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 7 }}>
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>{challenge.title}</p>
@@ -2953,9 +2960,8 @@ export default function CommunityPage() {
                           {challengeStatusLabel(challenge)}
                         </span>
                       </div>
-                      {challenge.description && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: "0 0 7px" }}>{challenge.description}</p>}
                       {(challenge.badge_name || challenge.badge_image_path) && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: challenge.description ? 7 : 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 0 }}>
                           {groupChallengeBadgeImageSrc(challenge.badge_image_path) && (
                             <div style={{ width: 34, height: 34, borderRadius: 12, background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.24)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                               <img
@@ -2972,7 +2978,6 @@ export default function CommunityPage() {
                           {challenge.badge_name && <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0 }}>{c("group_challenge_badge_prefix", { badgeName: challenge.badge_name })}</p>}
                         </div>
                       )}
-                      <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: (challenge.badge_name || challenge.badge_image_path) ? "6px 0 0" : 0 }}>{c("group_challenge_auto_participation_note")}</p>
                       {groupChallengeProgress[challenge.id] && (
                         <div style={{ marginTop: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
