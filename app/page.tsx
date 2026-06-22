@@ -522,7 +522,7 @@ export default function HomePage() {
     try {
       const result = await recordBibleReflectionProgress(supabase, user.id, today);
       result.awardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
-      if (result.profile) setProfile(result.profile);
+      if (result.profile) setProfile((prev: any) => ({ ...(prev ?? {}), ...result.profile }));
       const nextDays = Number(result.profile?.streak_days ?? 0);
       return Number.isFinite(nextDays) && nextDays > 0 ? nextDays : null;
     } catch (error) {

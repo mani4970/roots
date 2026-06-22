@@ -16,7 +16,7 @@ export type LegacyReflectionProgressResult = {
 };
 
 const PROFILE_PROGRESS_SELECT =
-  "streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose, badge_love, badge_peace, badge_joy, badge_goodness, badge_kindness, badge_patience, badge_faithfulness, badge_gentleness, badge_self_control";
+  "id, name, streak_days, total_days, last_checkin, badge_angel, badge_rootsman, badge_rootsman_bible, badge_david, badge_mose, badge_love, badge_peace, badge_joy, badge_goodness, badge_kindness, badge_patience, badge_faithfulness, badge_gentleness, badge_self_control";
 
 const SPIRIT_FRUIT_BADGE_COLUMNS = [
   "badge_love",
