@@ -649,7 +649,7 @@ export default function ProfilePage() {
   const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
   const previewGroupChallengeBadges = groupChallengeBadges.slice(0, 3);
-  const shouldShowGroupChallengeBadgeGalleryButton = groupChallengeBadges.length > previewGroupChallengeBadges.length;
+  const shouldShowGroupChallengeBadgeGalleryButton = groupChallengeBadges.length > 0;
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -990,7 +990,7 @@ export default function ProfilePage() {
             )}
           </div>
           <div className="card" style={{ padding: "18px 14px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 92px))", gap: 14, justifyContent: "center" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 92px))", gap: 14, justifyContent: "start" }}>
               {previewGroupChallengeBadges.map(badge => (
                 <button
                   key={badge.id}
