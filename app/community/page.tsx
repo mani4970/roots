@@ -2606,14 +2606,14 @@ export default function CommunityPage() {
                 <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
                 <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 110px", gap: 10 }}>
-                <div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 76px", gap: 8, alignItems: "end" }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
-                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} />
+                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} style={{ minWidth: 0, height: 52, padding: "12px 10px" }} />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
-                  <input type="number" min={1} max={120} className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} />
+                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ minWidth: 0, height: 52, padding: "12px 8px", textAlign: "center" }} />
                 </div>
               </div>
               <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginTop: -4 }}>{c("group_challenge_duration_hint")}</p>
