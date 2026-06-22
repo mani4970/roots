@@ -517,6 +517,12 @@ export default function CommunityPage() {
     return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" });
   }
 
+  function challengeRequestDateInputWidth() {
+    if (lang === "fr") return 142;
+    if (lang === "ko") return 150;
+    return 152;
+  }
+
   function challengeDateRange(challenge: any) {
     const start = formatChallengeDate(challenge?.start_date);
     const end = formatChallengeDate(challenge?.end_date);
@@ -2584,10 +2590,10 @@ export default function CommunityPage() {
       <div onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} style={{ position: "fixed", inset: 0, zIndex: 285, background: "rgba(26,28,30,0.68)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))" }}>
         <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, maxHeight: "86vh", overflowY: "auto", background: "var(--bg2)", borderRadius: 26, padding: 22, border: "1px solid var(--border)", boxShadow: "0 22px 70px rgba(0,0,0,0.28)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 5 }}>{selectedGroup.name}</p>
               <h2 style={{ fontSize: 19, fontWeight: 850, color: "var(--text)", marginBottom: 5 }}>{c("group_challenge_modal_title")}</h2>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55, whiteSpace: "pre-line" }}>{c("group_challenge_modal_sub")}</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("group_challenge_modal_sub")}</p>
             </div>
             <button onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} disabled={challengeSaving} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: challengeSaving ? "default" : "pointer", flexShrink: 0, opacity: challengeSaving ? 0.6 : 1 }}>
               <X size={17} />
@@ -2609,27 +2615,27 @@ export default function CommunityPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
-                <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} />
+                <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} style={{ height: 46, padding: "0 14px", fontSize: 15 }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
-                  <div style={{ position: "relative", width: 176, maxWidth: "100%" }}>
+                  <div style={{ position: "relative", width: challengeRequestDateInputWidth(), maxWidth: "100%" }}>
                     <input
                       type="date"
                       className="input-field"
                       value={challengeStartDate}
                       onChange={(e) => setChallengeStartDate(e.target.value)}
-                      style={{ width: "100%", minWidth: 0, padding: "14px 16px", fontSize: 16, color: "transparent", caretColor: "transparent", WebkitTextFillColor: "transparent" } as CSSProperties}
+                      style={{ width: "100%", height: 46, minWidth: 0, padding: "0 14px", boxSizing: "border-box", fontSize: 15, color: "transparent", caretColor: "transparent", WebkitTextFillColor: "transparent" } as CSSProperties}
                     />
-                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 14px", pointerEvents: "none", fontSize: 16, color: "var(--text)", whiteSpace: "nowrap" }}>
+                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, height: 46, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px", pointerEvents: "none", fontSize: 15, color: "var(--text)", whiteSpace: "nowrap" }}>
                       {formatChallengeRequestInputDate(challengeStartDate)}
                     </span>
                   </div>
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
-                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: 98, minWidth: 0, padding: "14px 16px", textAlign: "center", fontSize: 16 }} />
+                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: 86, height: 46, minWidth: 0, padding: "0 14px", textAlign: "center", fontSize: 15 }} />
                 </div>
               </div>
               <div>
