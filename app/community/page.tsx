@@ -512,6 +512,11 @@ export default function CommunityPage() {
     return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" });
   }
 
+  function formatChallengeRequestInputDate(value?: string | null) {
+    if (!value) return "";
+    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" });
+  }
+
   function challengeDateRange(challenge: any) {
     const start = formatChallengeDate(challenge?.start_date);
     const end = formatChallengeDate(challenge?.end_date);
@@ -720,7 +725,7 @@ export default function CommunityPage() {
     if (!selectedGroup?.id || !selectedGroup.isMember || hasActiveGroupChallengeRequest(selectedGroup.id)) return;
     setChallengeError("");
     setChallengeSuccess(false);
-    setChallengeTitle(c("group_challenge_default_title", { groupName: selectedGroup.name ?? "" }));
+    setChallengeTitle("");
     setChallengeStartDate(localDateInputValue(1));
     setChallengeDurationDays("30");
     setChallengeDescription("");
@@ -2606,14 +2611,25 @@ export default function CommunityPage() {
                 <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
                 <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ width: "100%", minWidth: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
-                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} style={{ width: "100%", minWidth: 0, height: 44, padding: "8px 12px", fontSize: 15 }} />
+                  <div style={{ position: "relative", width: 176, maxWidth: "100%" }}>
+                    <input
+                      type="date"
+                      className="input-field"
+                      value={challengeStartDate}
+                      onChange={(e) => setChallengeStartDate(e.target.value)}
+                      style={{ width: "100%", minWidth: 0, padding: "14px 16px", fontSize: 16, color: "transparent", caretColor: "transparent", WebkitTextFillColor: "transparent" } as CSSProperties}
+                    />
+                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 14px", pointerEvents: "none", fontSize: 16, color: "var(--text)", whiteSpace: "nowrap" }}>
+                      {formatChallengeRequestInputDate(challengeStartDate)}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ width: 126, minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
-                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: "100%", minWidth: 0, height: 44, padding: "8px 10px", textAlign: "center", fontSize: 15 }} />
+                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: 98, minWidth: 0, padding: "14px 16px", textAlign: "center", fontSize: 16 }} />
                 </div>
               </div>
               <div>
