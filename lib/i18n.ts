@@ -54,6 +54,9 @@ export const T = {
   home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision" },
   home_streak: { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}" },
   home_routine_complete: { ko: "오늘 QT를 완료했어요. 정원을 확인해보세요.", de: "Die heutige QT ist abgeschlossen. Schauen Sie in den Garten.", en: "Today's QT is complete. Take a look at your garden.", fr: "Le QT du jour est terminé. Regardez votre jardin." },
+  group_challenge_announcement_title: { ko: "그룹 챌린지가 시작됐어요!", de: "Gruppen-Challenges sind gestartet!", en: "Group challenges have started!", fr: "Les défis de groupe ont commencé !" },
+  group_challenge_announcement_body: { ko: "그룹원들과 함께 묵상 챌린지를 진행해보세요.\n완주하면 그룹만의 스페셜 배지를 받을 수 있답니다 😊", de: "Macht gemeinsam mit eurer Gruppe eine Stille-Zeit-Challenge.\nWenn ihr sie abschließt, bekommt ihr ein besonderes Abzeichen nur für eure Gruppe 😊", en: "Join a reflection challenge with your group.\nComplete it to receive a special badge just for your group 😊", fr: "Lancez un défi de méditation avec votre groupe.\nTerminez-le pour recevoir un badge spécial propre à votre groupe 😊" },
+  group_challenge_announcement_close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
 
   // ── 감정 체크인 ──
   checkin_title: { ko: "오늘 마음이\n어때요?",   de: "Wie fühlen\nSie sich?", en: "How are you\nfeeling?", fr: "Comment est votre\ncœur aujourd’hui ?" },

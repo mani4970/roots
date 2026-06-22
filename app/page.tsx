@@ -50,8 +50,13 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
+const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
+}
+
+function getGroupChallengeAnnouncementKey(userId: string) {
+  return `${GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
 }
 
 function getLegacyStorageKey(prefix: string, date: string) {
@@ -166,6 +171,35 @@ function RewardMapNoticePopup({ notice, onClose }: { notice: RewardMapNoticeStat
   );
 }
 
+function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
+  const lang = useLang();
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
+      <div style={{ width: "100%", maxWidth: 350, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "28px 22px 22px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
+        <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
+          {t("group_challenge_announcement_title", lang)}
+        </h2>
+        <div style={{ width: 118, height: 118, borderRadius: 32, background: "linear-gradient(180deg, rgba(255,246,213,0.92), rgba(255,246,213,0.52))", border: "1px solid rgba(232,197,71,0.36)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", overflow: "hidden" }}>
+          <img
+            src="/images/group-challenges/mystery-badge.png"
+            alt=""
+            aria-hidden="true"
+            style={{ width: 92, height: 92, objectFit: "contain", imageRendering: "pixelated" }}
+          />
+        </div>
+        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 20 }}>
+          {t("group_challenge_announcement_body", lang)}
+        </p>
+        <button onClick={onClose} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
+          {t("group_challenge_announcement_close", lang)}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -226,6 +260,7 @@ export default function HomePage() {
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
+  const [showGroupChallengeAnnouncement, setShowGroupChallengeAnnouncement] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
@@ -423,6 +458,62 @@ export default function HomePage() {
     });
   }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
 
+  useEffect(() => {
+    if (loading || !profile?.id || showGroupChallengeAnnouncement) return;
+    if (
+      showFirstLangPicker ||
+      showOnboarding ||
+      showWelcomeBack ||
+      celebration.show ||
+      !!badgePopup ||
+      gardenPopup.show ||
+      showRootsManPopup ||
+      !!rewardMapNotice ||
+      showNotificationSettingsModal ||
+      showHomeQTChoice ||
+      showHomeSundayQT ||
+      showHomeQTPassageChoice ||
+      showHomeQTPhotoPassageChoice ||
+      showHomePrayerCompose ||
+      showHomePrayerSharePrompt
+    ) {
+      return;
+    }
+
+    const today = getLocalDateString();
+    const hasPendingReflectionReward =
+      progressUpdateInFlightRef.current ||
+      pendingRootsManRef.current ||
+      !!pendingRewardMapNoticeRef.current ||
+      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
+      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
+
+    if (hasPendingReflectionReward) return;
+
+    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) {
+      setShowGroupChallengeAnnouncement(true);
+    }
+  }, [
+    loading,
+    profile?.id,
+    showGroupChallengeAnnouncement,
+    showFirstLangPicker,
+    showOnboarding,
+    showWelcomeBack,
+    celebration.show,
+    badgePopup,
+    gardenPopup.show,
+    showRootsManPopup,
+    rewardMapNotice,
+    showNotificationSettingsModal,
+    showHomeQTChoice,
+    showHomeSundayQT,
+    showHomeQTPassageChoice,
+    showHomeQTPhotoPassageChoice,
+    showHomePrayerCompose,
+    showHomePrayerSharePrompt,
+  ]);
+
   async function updateStreak(today: string): Promise<number | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -576,6 +667,13 @@ export default function HomePage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
+  }
+
+  function closeGroupChallengeAnnouncement() {
+    if (profile?.id) {
+      storageSet(getGroupChallengeAnnouncementKey(profile.id), "true");
+    }
+    setShowGroupChallengeAnnouncement(false);
   }
 
   function closeCelebration() {
@@ -1209,6 +1307,10 @@ export default function HomePage() {
         }} />
       )}
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+
+      {showGroupChallengeAnnouncement && (
+        <GroupChallengeAnnouncementPopup onClose={closeGroupChallengeAnnouncement} />
+      )}
 
       <WelcomeBackPopup
         show={showWelcomeBack}
