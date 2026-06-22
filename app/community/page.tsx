@@ -2593,7 +2593,9 @@ export default function CommunityPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 5 }}>{selectedGroup.name}</p>
               <h2 style={{ fontSize: 19, fontWeight: 850, color: "var(--text)", marginBottom: 5 }}>{c("group_challenge_modal_title")}</h2>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("group_challenge_modal_sub")}</p>
+              {!challengeSuccess && (
+                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("group_challenge_modal_sub")}</p>
+              )}
             </div>
             <button onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} disabled={challengeSaving} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: challengeSaving ? "default" : "pointer", flexShrink: 0, opacity: challengeSaving ? 0.6 : 1 }}>
               <X size={17} />
