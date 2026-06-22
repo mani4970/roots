@@ -353,6 +353,8 @@ const SECTIONS: { key: string; labelKey: TKey; sundayLabelKey?: TKey; italic?: b
   { key: "closing_prayer", labelKey: "community_qt_section_closing_prayer" },
 ];
 
+type CommunityModalHistoryKind = "qt-detail" | "photo-viewer";
+
 export default function CommunityPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"partner" | "group" | "all">("partner");
@@ -437,6 +439,7 @@ export default function CommunityPage() {
   const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
   const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
+  const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -456,8 +459,90 @@ export default function CommunityPage() {
     if (!kind || communityDetailHistoryRef.current === kind) communityDetailHistoryRef.current = null;
   }
 
+  function pushCommunityModalHistory(kind: CommunityModalHistoryKind) {
+    if (typeof window === "undefined") return;
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === kind) return;
+    try {
+      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState({ ...currentState, rootsCommunityModal: kind }, "", window.location.href);
+      communityModalHistoryStackRef.current = [...stack, kind];
+    } catch {
+      communityModalHistoryStackRef.current = [...stack, kind];
+    }
+  }
+
+  function popCommunityModalHistory() {
+    const stack = communityModalHistoryStackRef.current;
+    const activeModal = stack[stack.length - 1] ?? null;
+    if (activeModal) communityModalHistoryStackRef.current = stack.slice(0, -1);
+    return activeModal;
+  }
+
+  function clearCommunityModalHistory(kind?: CommunityModalHistoryKind) {
+    if (!kind) {
+      communityModalHistoryStackRef.current = [];
+      return;
+    }
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === kind) {
+      communityModalHistoryStackRef.current = stack.slice(0, -1);
+      return;
+    }
+    communityModalHistoryStackRef.current = stack.filter(item => item !== kind);
+  }
+
+  function openQtDetail(record: any) {
+    setActionMenu(null);
+    pushCommunityModalHistory("qt-detail");
+    setDetailQt(record);
+  }
+
+  function resetQtDetailState() {
+    clearCommunityModalHistory("qt-detail");
+    setDetailQt(null);
+  }
+
+  function closeQtDetail() {
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === "qt-detail" && typeof window !== "undefined") {
+      window.history.back();
+      return;
+    }
+    resetQtDetailState();
+  }
+
+  function openPhotoViewer(src: string, alt?: string) {
+    pushCommunityModalHistory("photo-viewer");
+    setPhotoViewer({ src, alt: alt || "photo reflection" });
+  }
+
+  function resetPhotoViewerState() {
+    clearCommunityModalHistory("photo-viewer");
+    setPhotoViewer(null);
+  }
+
+  function closePhotoViewer() {
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === "photo-viewer" && typeof window !== "undefined") {
+      window.history.back();
+      return;
+    }
+    resetPhotoViewerState();
+  }
+
   useEffect(() => {
     function handleCommunityPopState() {
+      const activeModal = popCommunityModalHistory();
+      if (activeModal === "photo-viewer") {
+        setPhotoViewer(null);
+        return;
+      }
+      if (activeModal === "qt-detail") {
+        setDetailQt(null);
+        return;
+      }
+
       const activeDetail = communityDetailHistoryRef.current;
       if (activeDetail === "partner") {
         clearCommunityDetailHistory("partner");
@@ -897,7 +982,7 @@ export default function CommunityPage() {
     setGroupQts([]);
     setGroupPrayers([]);
     setGroupDetailTab("qt");
-    setDetailQt(null);
+    resetQtDetailState();
   }
 
   function closeGroupDetail() {
@@ -917,7 +1002,7 @@ export default function CommunityPage() {
     setPartnerDetailTab("qt");
     setPartnerQts([]);
     setPartnerPrayers([]);
-    setDetailQt(null);
+    resetQtDetailState();
   }
 
   function closePartnerDetail() {
@@ -953,7 +1038,7 @@ export default function CommunityPage() {
       setQtShares(prev => prev.filter(item => item.id !== id));
       setGroupQts(prev => prev.filter(item => item.id !== id));
       setPartnerQts(prev => prev.filter(item => item.id !== id));
-      if (detailQt?.id === id) setDetailQt(null);
+      if (detailQt?.id === id) resetQtDetailState();
     } else {
       setPrayers(prev => prev.filter(item => item.id !== id));
       setGroupPrayers(prev => prev.filter(item => item.id !== id));
@@ -970,7 +1055,7 @@ export default function CommunityPage() {
     setGroupPrayers(prev => prev.filter(item => item.user_id !== authorId));
     setPartnerPrayers(prev => prev.filter(item => item.user_id !== authorId));
     setAnsweredPrayers(prev => prev.filter(item => item.user_id !== authorId));
-    if (detailQt?.user_id === authorId) setDetailQt(null);
+    if (detailQt?.user_id === authorId) resetQtDetailState();
   }
 
   async function confirmUnshare() {
@@ -994,7 +1079,7 @@ export default function CommunityPage() {
 
         if (isQt) {
           setPartnerQts(prev => prev.filter(item => item.id !== manageModal.item.id));
-          if (detailQt?.id === manageModal.item.id) setDetailQt(null);
+          if (detailQt?.id === manageModal.item.id) resetQtDetailState();
         } else {
           setPartnerPrayers(prev => prev.filter(item => item.id !== manageModal.item.id));
         }
@@ -1013,7 +1098,7 @@ export default function CommunityPage() {
         if (isQt) {
           setQtShares(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
           setGroupQts(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
-          if (detailQt?.id === manageModal.item.id && nextVisibility === "private") setDetailQt(null);
+          if (detailQt?.id === manageModal.item.id && nextVisibility === "private") resetQtDetailState();
         } else {
           setPrayers(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
           setGroupPrayers(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
@@ -2444,7 +2529,7 @@ export default function CommunityPage() {
     setGroupQts([]);
     setGroupPrayers([]);
     setGroupDetailTab("qt");
-    setDetailQt(null);
+    resetQtDetailState();
     setGroups(prev => sortGroupsForDisplay(prev
       .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
       .filter(g => wasPublic || g.id !== leftGroupId)
@@ -2516,7 +2601,7 @@ export default function CommunityPage() {
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          setPhotoViewer({ src, alt: alt || "photo reflection" });
+          openPhotoViewer(src, alt);
         }}
         style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", textAlign: "left" }}
       >
@@ -2528,8 +2613,8 @@ export default function CommunityPage() {
   // 큐티 전체보기 모달
   function QTDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, overflowY: "auto" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 16px 40px" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: "calc(-1 * var(--native-bottom-system-bar))", background: "rgba(0,0,0,0.88)", zIndex: 100, overflowY: "auto", overscrollBehavior: "contain" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+        <div style={{ minHeight: "calc(100dvh + var(--native-bottom-system-bar))", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 16px calc(40px + var(--native-bottom-system-bar))" }}>
           <div style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", width: "100%", maxWidth: 480, padding: "24px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2673,7 +2758,7 @@ export default function CommunityPage() {
   function renderSharedOverlayModals() {
     return (
       <>
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={() => setPhotoViewer(null)} />}
+        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={closePhotoViewer} />}
         {renderProfileModal()}
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
@@ -2789,7 +2874,7 @@ export default function CommunityPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {visiblePartnerQts.map(r => (
-                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
+                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
                     {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
@@ -2887,7 +2972,7 @@ export default function CommunityPage() {
           )}
         </div>
 
-        {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
+        {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
         {renderSharedOverlayModals()}
         <BottomNav />
       </div>
@@ -3083,7 +3168,7 @@ export default function CommunityPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {visibleGroupQts.map(r => (
-                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
+                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
                       {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
@@ -3299,7 +3384,7 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
-        {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
+        {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
         <BottomNav />
       </div>
     );
@@ -3455,7 +3540,7 @@ export default function CommunityPage() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {visibleAllQts.map(r => (
-                      <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => setDetailQt(r)}>
+                      <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
                         {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
@@ -3476,7 +3561,7 @@ export default function CommunityPage() {
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
-                {detailQt && <QTDetailModal r={detailQt} onClose={() => setDetailQt(null)} />}
+                {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
               </>
             ) : allTab === "praying" ? (
               prayers.length === 0 ? (

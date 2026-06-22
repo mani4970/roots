@@ -48,7 +48,7 @@ export default function PhotoViewerModal({ src, alt = "photo", onClose }: PhotoV
       role="dialog"
       aria-modal="true"
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", padding: 12, touchAction: "none" }}
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: "calc(-1 * var(--native-bottom-system-bar))", zIndex: 500, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", padding: 12, touchAction: "none" }}
     >
       <div
         onClick={(event) => event.stopPropagation()}
@@ -98,7 +98,7 @@ export default function PhotoViewerModal({ src, alt = "photo", onClose }: PhotoV
           <X size={21} />
         </button>
 
-        <div style={{ position: "absolute", left: "50%", bottom: "calc(18px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 999, background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.18)", color: "white" }}>
+        <div style={{ position: "absolute", left: "50%", bottom: "calc(18px + env(safe-area-inset-bottom) + var(--native-bottom-system-bar))", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 999, background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.18)", color: "white" }}>
           <button onClick={() => setClampedScale(scale - SCALE_STEP)} aria-label="Zoom out" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ZoomOut size={18} />
           </button>
