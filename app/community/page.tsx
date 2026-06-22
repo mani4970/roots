@@ -2606,17 +2606,16 @@ export default function CommunityPage() {
                 <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
                 <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} />
               </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "nowrap" }}>
-                <div style={{ flex: "0 0 168px", width: 168, minWidth: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ width: "100%", minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
-                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} style={{ width: "100%", minWidth: 0, height: 50, padding: "10px 9px", fontSize: 15 }} />
+                  <input type="date" className="input-field" value={challengeStartDate} onChange={(e) => setChallengeStartDate(e.target.value)} style={{ width: "100%", minWidth: 0, height: 44, padding: "8px 12px", fontSize: 15 }} />
                 </div>
-                <div style={{ flex: "0 0 88px", width: 88, minWidth: 0 }}>
+                <div style={{ width: 126, minWidth: 0 }}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
-                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: "100%", minWidth: 0, height: 50, padding: "10px 8px", textAlign: "center", fontSize: 15 }} />
+                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: "100%", minWidth: 0, height: 44, padding: "8px 10px", textAlign: "center", fontSize: 15 }} />
                 </div>
               </div>
-              <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginTop: -4 }}>{c("group_challenge_duration_hint")}</p>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_description_label")}</label>
                 <textarea className="textarea-field" rows={3} value={challengeDescription} onChange={(e) => setChallengeDescription(e.target.value)} placeholder={c("group_challenge_description_placeholder")} />
