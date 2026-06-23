@@ -50,9 +50,24 @@ function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
+const ONBOARDING_DONE_KEY = "onboarding_done";
+const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
+const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
+}
+
+function getOnboardingDoneKey(userId: string) {
+  return `${ONBOARDING_DONE_KEY_PREFIX}${userId}`;
+}
+
+function isRecentSignup(createdAt: string | null | undefined) {
+  if (!createdAt) return false;
+  const createdAtMs = Date.parse(createdAt);
+  if (!Number.isFinite(createdAtMs)) return false;
+  return Date.now() - createdAtMs < RECENT_SIGNUP_ONBOARDING_WINDOW_MS;
 }
 
 function getGroupChallengeAnnouncementKey(userId: string) {
@@ -414,16 +429,30 @@ export default function HomePage() {
     if (isFirstLaunch()) {
       setShowFirstLangPicker(true);
     }
-    if (!storageGet("onboarding_done")) { setShowOnboarding(true); }
+
+    const onboardingDoneKey = getOnboardingDoneKey(user.id);
+    const scopedOnboardingDone = storageGet(onboardingDoneKey);
+    const legacyOnboardingDone = storageGet(ONBOARDING_DONE_KEY);
+    const shouldMigrateLegacyOnboarding =
+      !!legacyOnboardingDone &&
+      !scopedOnboardingDone &&
+      !isRecentSignup(user.created_at);
+
+    if (shouldMigrateLegacyOnboarding) {
+      storageSet(onboardingDoneKey, "true");
+    } else if (!scopedOnboardingDone) {
+      setShowOnboarding(true);
+    }
+
     setLoading(false);
   }
 
   useEffect(() => {
-    const onboardingDone = storageGet("onboarding_done");
+    const userId = profile?.id;
+    const onboardingDone = userId ? storageGet(getOnboardingDoneKey(userId)) : null;
     if (loading || !wordWalkDone || !onboardingDone || celebrationShownRef.current || progressUpdateInFlightRef.current) return;
 
     const today = getLocalDateString();
-    const userId = profile?.id;
     if (!userId) return;
     const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, userId, today);
     const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
@@ -460,6 +489,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (loading || !profile?.id || showGroupChallengeAnnouncement) return;
+    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
@@ -674,6 +704,13 @@ export default function HomePage() {
       storageSet(getGroupChallengeAnnouncementKey(profile.id), "true");
     }
     setShowGroupChallengeAnnouncement(false);
+  }
+
+  function closeOnboarding() {
+    if (profile?.id) {
+      storageSet(getOnboardingDoneKey(profile.id), "true");
+    }
+    setShowOnboarding(false);
   }
 
   function closeCelebration() {
@@ -1306,7 +1343,7 @@ export default function HomePage() {
           setShowFirstLangPicker(false);
         }} />
       )}
-      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+      {showOnboarding && <Onboarding onClose={closeOnboarding} />}
 
       {showGroupChallengeAnnouncement && (
         <GroupChallengeAnnouncementPopup onClose={closeGroupChallengeAnnouncement} />
