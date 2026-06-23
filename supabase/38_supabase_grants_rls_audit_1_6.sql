@@ -332,4 +332,4 @@ select
   defaclacl as acl
 from pg_default_acl
 where defaclnamespace = 'public'::regnamespace
-order by role::text, object_type;
+order by defaclrole::regrole::text, defaclobjtype;
