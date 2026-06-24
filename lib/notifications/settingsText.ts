@@ -11,6 +11,8 @@ type NotificationSettingsText = {
   groupDescription: string;
   partnerTitle: string;
   partnerDescription: string;
+  pushPermissionDenied: string;
+  pushRegistrationFailed: string;
 };
 
 const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
@@ -25,6 +27,8 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
     groupDescription: "내가 참여한 그룹의 묵상과 기도 소식을 받아요.",
     partnerTitle: "동역자 알림",
     partnerDescription: "나의 동역자가 나눈 묵상과 기도 소식을 받아요.",
+    pushPermissionDenied: "핸드폰 알림 권한이 허용되지 않았어요. 기기 설정에서 Roots 알림을 허용해주세요.",
+    pushRegistrationFailed: "핸드폰 알림 준비 중 문제가 있었어요. 잠시 후 다시 시도해주세요.",
   },
   de: {
     modalDescription: "Lege Zeiten für Stille Zeit und Gebet fest und verwalte Community-Hinweise.",
@@ -37,6 +41,8 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
     groupDescription: "Erhalte Hinweise zu Stille Zeit und Gebet in deinen Gruppen.",
     partnerTitle: "Partnerbenachrichtigungen",
     partnerDescription: "Erhalte Hinweise zu Stille Zeit und Gebet deiner Glaubenspartner.",
+    pushPermissionDenied: "Die Handy-Benachrichtigungen sind nicht erlaubt. Bitte erlaube Roots-Benachrichtigungen in den Geräteeinstellungen.",
+    pushRegistrationFailed: "Beim Vorbereiten der Handy-Benachrichtigungen ist ein Problem aufgetreten. Bitte versuche es später erneut.",
   },
   en: {
     modalDescription: "Set your Bible Reflection and prayer times, and manage community notifications.",
@@ -49,6 +55,8 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
     groupDescription: "Receive Bible Reflection and prayer updates from groups you joined.",
     partnerTitle: "Faith partner notifications",
     partnerDescription: "Receive Bible Reflection and prayer updates from your faith partners.",
+    pushPermissionDenied: "Phone notifications are not allowed. Please allow Roots notifications in your device settings.",
+    pushRegistrationFailed: "There was a problem preparing phone notifications. Please try again later.",
   },
   fr: {
     modalDescription: "Définissez vos temps de méditation biblique et de prière, et gérez les notifications de la communauté.",
@@ -61,6 +69,8 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
     groupDescription: "Recevez les méditations et prières des groupes que vous avez rejoints.",
     partnerTitle: "Notifications de partenaires",
     partnerDescription: "Recevez les méditations et prières de vos partenaires de foi.",
+    pushPermissionDenied: "Les notifications du téléphone ne sont pas autorisées. Veuillez autoriser les notifications Roots dans les réglages de l’appareil.",
+    pushRegistrationFailed: "Un problème est survenu lors de la préparation des notifications du téléphone. Veuillez réessayer plus tard.",
   },
 };
 

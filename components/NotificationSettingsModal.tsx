@@ -19,6 +19,10 @@ import {
   type RootsPushNotificationPreferences,
 } from "@/lib/notifications/preferences";
 import { getNotificationSettingsText } from "@/lib/notifications/settingsText";
+import {
+  disableCurrentUserPushTokens,
+  registerCurrentDeviceForPushNotifications,
+} from "@/lib/notifications/pushTokens";
 
 type Props = {
   onClose: () => void;
@@ -177,15 +181,28 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
       const normalizedPushPreferences = normalizePushPreferences(pushPreferences);
       await savePushNotificationPreferences(normalizedPushPreferences);
       setPushPreferences(normalizedPushPreferences);
+
+      let pushWarning = "";
+      if (normalizedPushPreferences.pushEnabled) {
+        const pushRegistration = await registerCurrentDeviceForPushNotifications();
+        if (!pushRegistration.ok && pushRegistration.status === "permission_denied") {
+          pushWarning = pushText.pushPermissionDenied;
+        } else if (!pushRegistration.ok && pushRegistration.status === "registration_failed") {
+          pushWarning = pushText.pushRegistrationFailed;
+        }
+      } else {
+        await disableCurrentUserPushTokens();
+      }
+
       const result = await applyNotificationSettings(settings, lang);
       if (!notificationsAvailable || result.permission === "unavailable") {
-        setMessage(t("notifications_native_only", lang));
+        setMessage(pushWarning || t("notifications_native_only", lang));
       } else if (settings.enabled && result.permission !== "granted") {
         setMessage(t("notifications_permission_denied", lang));
       } else {
-        const okMessage = t("notifications_saved", lang);
+        const okMessage = pushWarning || t("notifications_saved", lang);
         setMessage(okMessage);
-        onSaved?.(okMessage);
+        if (!pushWarning) onSaved?.(okMessage);
       }
     } catch (error) {
       console.error("알림 설정 저장 실패:", error);

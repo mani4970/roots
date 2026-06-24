@@ -1,3 +1,4 @@
+/// <reference types="@capacitor/push-notifications" />
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const appUrl = process.env.CAPACITOR_SERVER_URL || "https://www.christian-roots.com";
@@ -19,6 +20,9 @@ const config: CapacitorConfig = {
     LocalNotifications: {
       smallIcon: "ic_stat_roots_notification",
       iconColor: "#6B8E5A",
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
     },
     SplashScreen: {
       launchAutoHide: true,
