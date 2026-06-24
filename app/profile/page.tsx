@@ -10,6 +10,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
+import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
@@ -519,6 +520,12 @@ export default function ProfilePage() {
 
   async function logout() {
     try {
+      try {
+        await disableCurrentUserPushTokens();
+      } catch (pushError) {
+        console.warn("푸시 알림 토큰 비활성화 실패:", pushError);
+      }
+
       const supabase = createClient();
       await supabase.auth.signOut();
       router.push("/welcome");
