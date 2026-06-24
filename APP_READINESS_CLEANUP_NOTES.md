@@ -38,7 +38,7 @@ Implemented a server-side account deletion route:
 Profile deletion now calls the server route instead of deleting only a few client-side rows:
 - app/profile/page.tsx
 
-The route uses the logged-in Supabase session to identify the user, then uses the server-only service role key to delete:
+The route uses the logged-in Supabase session to identify the user, then uses the server-only Supabase Secret key to delete:
 - avatar files in the avatars bucket
 - prayer likes/logs related to the user and the user's prayers
 - QT reactions related to the user and the user's QT records
@@ -52,9 +52,9 @@ The route uses the logged-in Supabase session to identify the user, then uses th
 - Supabase Auth user
 
 Required production environment variable:
-- SUPABASE_SERVICE_ROLE_KEY
+- SUPABASE_SECRET_KEY
 
 Important:
-- SUPABASE_SERVICE_ROLE_KEY must stay server-only.
+- SUPABASE_SECRET_KEY must stay server-only.
 - Do not prefix it with NEXT_PUBLIC_.
-- See .env.example.
+- Use the new Supabase Secret key value (`sb_secret_...`) in `.env.local` and Vercel; do not use legacy `service_role` JWT keys.

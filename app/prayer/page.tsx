@@ -11,6 +11,7 @@ import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2 } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
 import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -325,6 +326,14 @@ function PrayerPageContent() {
         throw prayerCompletionError;
       }
 
+      if (insertedPrayer?.id) {
+        await createPrayerShareNotificationsBestEffort({
+          prayerItemId: String(insertedPrayer.id),
+          visibility,
+          partnerRecipientIds,
+        });
+      }
+
       setNewPrayer("");
       setShowForm(false);
       setShowCreateSharePrompt(false);
@@ -451,6 +460,14 @@ function PrayerPageContent() {
         return;
       }
 
+      if (!privateOnly) {
+        await createPrayerShareNotificationsBestEffort({
+          prayerItemId: sharePrayerId,
+          visibility: newVisibility,
+          partnerRecipientIds,
+        });
+      }
+
       // 중보기도 요청 배지 체크
       // 전체 공개와 그룹 공유 모두 중보기도 요청으로 인정합니다.
       const { data: prof } = await supabase.from("profiles")
@@ -502,6 +519,7 @@ function PrayerPageContent() {
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const currentPrayer = prayers.find((prayer: any) => String(prayer.id) === String(testimonyPrayerId));
       const { error } = await supabase.from("prayer_items").update({
         is_answered: true,
         testimony: testimonyText.trim(),
@@ -510,6 +528,23 @@ function PrayerPageContent() {
       if (error) {
         setNotice(c("prayer_error_answered"));
         return;
+      }
+
+      if (user) {
+        try {
+          const { data: recipientRows } = await supabase
+            .from("prayer_item_recipients")
+            .select("recipient_id")
+            .eq("prayer_item_id", testimonyPrayerId)
+            .eq("owner_id", user.id);
+          await createAnsweredPrayerNotificationsBestEffort({
+            prayerItemId: testimonyPrayerId,
+            visibility: currentPrayer?.visibility ?? null,
+            partnerRecipientIds: (recipientRows ?? []).map((row: any) => String(row.recipient_id)).filter(Boolean),
+          });
+        } catch (notificationError) {
+          console.warn("기도 응답 알림 생성 실패:", notificationError);
+        }
       }
       // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
       let existingAnsweredBadgeAwarded = false;

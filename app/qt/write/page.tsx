@@ -14,6 +14,7 @@ import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANS
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -1810,6 +1811,12 @@ function QTWriteContent() {
             console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
           }
 
+          await createBibleReflectionShareNotificationsBestEffort({
+            qtRecordId: String(completedRecord.id),
+            visibility: options.visibility,
+            partnerRecipientIds: options.partnerRecipientIds,
+          });
+
           setShowCompleteSharePrompt(false);
           setCompleteShareTargets([]);
           router.push("/qt/complete");
@@ -1873,6 +1880,13 @@ function QTWriteContent() {
         } catch (notificationError) {
           console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
         }
+      }
+      if (completedRecordId) {
+        await createBibleReflectionShareNotificationsBestEffort({
+          qtRecordId: completedRecordId,
+          visibility: options.visibility,
+          partnerRecipientIds: options.partnerRecipientIds,
+        });
       }
       setShowCompleteSharePrompt(false);
       setCompleteShareTargets([]);

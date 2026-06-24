@@ -14,6 +14,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 
 type CompletePhotoOptions = {
   visibility?: string;
@@ -393,10 +394,22 @@ function PhotoReflectionContent() {
           console.warn("photo reflection notification completion update failed", notificationError);
         }
 
+        await createBibleReflectionShareNotificationsBestEffort({
+          qtRecordId: insertedRecordId,
+          visibility,
+          partnerRecipientIds: options.partnerRecipientIds,
+        });
+
         setShowShareModal(false);
         router.push("/qt/complete");
         return;
       }
+
+      await createBibleReflectionShareNotificationsBestEffort({
+        qtRecordId: insertedRecordId,
+        visibility,
+        partnerRecipientIds: options.partnerRecipientIds,
+      });
 
       setShowShareModal(false);
       router.push(`/qt/record?id=${recordId}`);

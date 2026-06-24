@@ -12,6 +12,7 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { copyText } from "@/lib/nativeShare";
 import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
+import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 
 
 // QT Record 전용 라벨 매핑
@@ -243,6 +244,14 @@ function RecordContent() {
       if (error) throw error;
 
       await replaceQtRecipients(supabase, id, user.id, partnerRecipientIds);
+
+      if (!privateOnly) {
+        await createBibleReflectionShareNotificationsBestEffort({
+          qtRecordId: id,
+          visibility: newVisibility,
+          partnerRecipientIds,
+        });
+      }
 
       setRecord((r: any) => ({ ...r, visibility: newVisibility, shared_at: sharedAt }));
       setSharedTargets(privateOnly ? [] : Array.from(new Set(selectedTargets)));
