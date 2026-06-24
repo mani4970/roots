@@ -3,6 +3,22 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const appUrl = process.env.CAPACITOR_SERVER_URL || "https://www.christian-roots.com";
 
+function getAllowedNavigationHosts(url: string) {
+  const hosts = new Set([
+    "christian-roots.com",
+    "www.christian-roots.com",
+  ]);
+
+  try {
+    const hostname = new URL(url).hostname;
+    if (hostname) hosts.add(hostname);
+  } catch {
+    // Keep the stable production hosts if the URL is not parseable.
+  }
+
+  return Array.from(hosts);
+}
+
 const config: CapacitorConfig = {
   appId: "com.rootspuce.app",
   appName: "Roots",
@@ -11,10 +27,7 @@ const config: CapacitorConfig = {
     url: appUrl,
     cleartext: false,
     androidScheme: "https",
-    allowNavigation: [
-      "christian-roots.com",
-      "www.christian-roots.com",
-    ],
+    allowNavigation: getAllowedNavigationHosts(appUrl),
   },
   plugins: {
     LocalNotifications: {
