@@ -38,7 +38,11 @@ function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onC
       disabled={disabled}
       style={{
         width: 48,
+        minWidth: 48,
+        maxWidth: 48,
         height: 28,
+        flex: "0 0 48px",
+        boxSizing: "border-box",
         borderRadius: 999,
         border: "none",
         background: checked ? "var(--sage)" : "var(--bg3)",
@@ -51,7 +55,7 @@ function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onC
         transition: "all .18s ease",
       }}
     >
-      <span style={{ width: 22, height: 22, borderRadius: "50%", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }} />
+      <span style={{ width: 22, height: 22, flex: "0 0 22px", borderRadius: "50%", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }} />
     </button>
   );
 }
@@ -238,7 +242,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
 
         <div style={{ borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{t("notifications_master_toggle", lang)}</p>
               <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.devicePermissionDescription}</p>
             </div>
@@ -276,7 +280,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
 
         <div style={{ borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.pushTitle}</p>
               <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.pushDescription}</p>
             </div>
