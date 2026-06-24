@@ -129,8 +129,6 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   const notificationsAvailable = useMemo(() => isLocalNotificationsAvailable(), []);
   const disabled = !settings.enabled;
   const pushDisabled = loadingPushPreferences || !pushPreferences.pushEnabled;
-  const groupPushDisabled = pushDisabled || !pushPreferences.groupNotificationsEnabled;
-  const partnerPushDisabled = pushDisabled || !pushPreferences.partnerNotificationsEnabled;
 
   useEffect(() => {
     let cancelled = false;
@@ -156,15 +154,29 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
     setSettings(current => ({ ...current, ...next }));
   }
 
+  function normalizePushPreferences(preferences: RootsPushNotificationPreferences): RootsPushNotificationPreferences {
+    return {
+      ...preferences,
+      groupQtEnabled: preferences.groupNotificationsEnabled,
+      groupPrayerEnabled: preferences.groupNotificationsEnabled,
+      groupAnsweredPrayerEnabled: preferences.groupNotificationsEnabled,
+      partnerQtEnabled: preferences.partnerNotificationsEnabled,
+      partnerPrayerEnabled: preferences.partnerNotificationsEnabled,
+      partnerAnsweredPrayerEnabled: preferences.partnerNotificationsEnabled,
+    };
+  }
+
   function updatePush(next: Partial<RootsPushNotificationPreferences>) {
-    setPushPreferences(current => ({ ...current, ...next }));
+    setPushPreferences(current => normalizePushPreferences({ ...current, ...next }));
   }
 
   async function save() {
     setSaving(true);
     setMessage("");
     try {
-      await savePushNotificationPreferences(pushPreferences);
+      const normalizedPushPreferences = normalizePushPreferences(pushPreferences);
+      await savePushNotificationPreferences(normalizedPushPreferences);
+      setPushPreferences(normalizedPushPreferences);
       const result = await applyNotificationSettings(settings, lang);
       if (!notificationsAvailable || result.permission === "unavailable") {
         setMessage(t("notifications_native_only", lang));
@@ -193,7 +205,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             </div>
             <div style={{ minWidth: 0 }}>
               <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("notifications_title", lang)}</h3>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{t("notifications_intro", lang)}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.modalDescription}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -211,7 +223,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div>
               <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{t("notifications_master_toggle", lang)}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{t("notifications_master_hint", lang)}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.devicePermissionDescription}</p>
             </div>
             <Toggle checked={settings.enabled} onChange={(value) => update({ enabled: value })} />
           </div>
@@ -227,7 +239,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           />
           <TimeRow
             title={t("notifications_evening_title", lang)}
-            description={t("notifications_evening_desc", lang)}
+            description={pushText.eveningReminderDescription}
             enabled={settings.eveningEnabled}
             time={timeToInputValue(settings.eveningTime)}
             disabled={disabled}
@@ -261,27 +273,6 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             disabled={pushDisabled}
             onEnabledChange={(value) => updatePush({ groupNotificationsEnabled: value })}
           />
-          <ToggleRow
-            title={pushText.groupQtTitle}
-            description={pushText.groupQtDescription}
-            enabled={pushPreferences.groupQtEnabled}
-            disabled={groupPushDisabled}
-            onEnabledChange={(value) => updatePush({ groupQtEnabled: value })}
-          />
-          <ToggleRow
-            title={pushText.groupPrayerTitle}
-            description={pushText.groupPrayerDescription}
-            enabled={pushPreferences.groupPrayerEnabled}
-            disabled={groupPushDisabled}
-            onEnabledChange={(value) => updatePush({ groupPrayerEnabled: value })}
-          />
-          <ToggleRow
-            title={pushText.groupAnsweredPrayerTitle}
-            description={pushText.groupAnsweredPrayerDescription}
-            enabled={pushPreferences.groupAnsweredPrayerEnabled}
-            disabled={groupPushDisabled}
-            onEnabledChange={(value) => updatePush({ groupAnsweredPrayerEnabled: value })}
-          />
 
           <ToggleRow
             title={pushText.partnerTitle}
@@ -289,27 +280,6 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             enabled={pushPreferences.partnerNotificationsEnabled}
             disabled={pushDisabled}
             onEnabledChange={(value) => updatePush({ partnerNotificationsEnabled: value })}
-          />
-          <ToggleRow
-            title={pushText.partnerQtTitle}
-            description={pushText.partnerQtDescription}
-            enabled={pushPreferences.partnerQtEnabled}
-            disabled={partnerPushDisabled}
-            onEnabledChange={(value) => updatePush({ partnerQtEnabled: value })}
-          />
-          <ToggleRow
-            title={pushText.partnerPrayerTitle}
-            description={pushText.partnerPrayerDescription}
-            enabled={pushPreferences.partnerPrayerEnabled}
-            disabled={partnerPushDisabled}
-            onEnabledChange={(value) => updatePush({ partnerPrayerEnabled: value })}
-          />
-          <ToggleRow
-            title={pushText.partnerAnsweredPrayerTitle}
-            description={pushText.partnerAnsweredPrayerDescription}
-            enabled={pushPreferences.partnerAnsweredPrayerEnabled}
-            disabled={partnerPushDisabled}
-            onEnabledChange={(value) => updatePush({ partnerAnsweredPrayerEnabled: value })}
           />
         </div>
 
