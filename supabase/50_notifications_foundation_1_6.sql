@@ -137,7 +137,7 @@ create table if not exists public.notifications (
   body text not null check (char_length(body) between 1 and 240),
   deep_link text not null check (char_length(deep_link) between 1 and 500),
   push_status text not null default 'pending' check (push_status in ('pending', 'sent', 'failed', 'skipped')),
-  push_sent_at timestamptz,
+  pushed_at timestamptz,
   push_error text,
   read_at timestamptz,
   created_at timestamptz not null default now(),

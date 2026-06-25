@@ -143,7 +143,7 @@ Suggested `notifications` shape:
 - `body text not null`
 - `deep_link text not null`
 - `push_status text not null default 'pending'`
-- `push_sent_at timestamptz null`
+- `pushed_at timestamptz null`
 - `push_error text null`
 - `read_at timestamptz null`
 - `created_at timestamptz not null default now()`
@@ -244,7 +244,7 @@ Recommended delivery path:
 - Supabase Database Webhook or explicit Edge Function invocation calls push delivery
 - Edge Function reads recipient push tokens with service_role
 - Edge Function sends FCM/APNs-compatible push payload
-- delivery result updates `notifications.push_status`, `push_sent_at`, `push_error`
+- delivery result updates `notifications.push_status`, `pushed_at`, `push_error`
 
 Push delivery must not depend on the client remaining open.
 

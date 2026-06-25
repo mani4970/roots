@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import type { Lang } from "@/lib/i18n";
+import { dispatchNotificationsByIds } from "@/lib/notifications/serverPush";
 import {
   getNotificationTemplate,
   NOTIFICATION_EVENT_TYPES,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/notifications/templates";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type NotificationScope = "group" | "partner";
 
@@ -139,8 +141,21 @@ function duplicateKey(recipientId: string, scopeTargetId: string) {
   return `${recipientId}:${scopeTargetId}`;
 }
 
-function deepLinkFor(scope: NotificationScope) {
-  return scope === "group" ? "/community?tab=group" : "/community?tab=partner";
+function sectionForEventType(type: NotificationEventType): "qt" | "praying" | "answered" {
+  if (type.endsWith("prayer_answered")) return "answered";
+  if (type.endsWith("prayer_shared")) return "praying";
+  return "qt";
+}
+
+function deepLinkFor(type: NotificationEventType, scope: NotificationScope, targetId: string) {
+  const section = sectionForEventType(type);
+  const params = new URLSearchParams({
+    tab: scope,
+    section,
+  });
+  if (scope === "group") params.set("groupId", targetId);
+  else params.set("partnerId", targetId);
+  return `/community?${params.toString()}`;
 }
 
 async function createServerSupabaseClient() {
@@ -377,7 +392,7 @@ export async function POST(request: NextRequest) {
               locale,
               title: template.title,
               body: template.body,
-              deep_link: deepLinkFor("group"),
+              deep_link: deepLinkFor(eventType, "group", groupId),
               push_status: "pending",
             });
           }
@@ -444,7 +459,7 @@ export async function POST(request: NextRequest) {
               locale,
               title: template.title,
               body: template.body,
-              deep_link: deepLinkFor("partner"),
+              deep_link: deepLinkFor(eventType, "partner", actorId),
               push_status: "pending",
             });
           }
@@ -452,12 +467,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let insertedIds: string[] = [];
     if (rows.length > 0) {
-      const { error: insertError } = await admin.from("notifications").insert(rows);
+      const { data: insertedRows, error: insertError } = await admin
+        .from("notifications")
+        .insert(rows)
+        .select("id");
       if (insertError) throw insertError;
+      insertedIds = (insertedRows ?? []).map((row: any) => String(row.id)).filter(Boolean);
     }
 
-    return NextResponse.json({ ok: true, inserted: rows.length, skipped });
+    let pushDispatch = null;
+    if (insertedIds.length > 0) {
+      try {
+        pushDispatch = await dispatchNotificationsByIds(admin, insertedIds);
+      } catch (dispatchError) {
+        console.warn("Roots push dispatch skipped", dispatchError);
+        pushDispatch = {
+          configured: true,
+          attempted: 0,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+          pending: insertedIds.length,
+          error: dispatchError instanceof Error ? dispatchError.message : "Push dispatch failed",
+        };
+      }
+    }
+
+    return NextResponse.json({ ok: true, inserted: rows.length, skipped, pushDispatch });
   } catch (error) {
     console.error("Roots notification creation failed", error);
     return NextResponse.json(

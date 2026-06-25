@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
@@ -355,8 +355,9 @@ const SECTIONS: { key: string; labelKey: TKey; sundayLabelKey?: TKey; italic?: b
 
 type CommunityModalHistoryKind = "qt-detail" | "photo-viewer";
 
-export default function CommunityPage() {
+function CommunityPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"partner" | "group" | "all">("partner");
   const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
   const lang = useLang();
@@ -440,8 +441,14 @@ export default function CommunityPage() {
   const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
+  const handledNotificationRouteRef = useRef<string | null>(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+
+  function normalizeCommunitySection(value: string | null): CommunitySectionKey {
+    if (value === "praying" || value === "answered") return value;
+    return "qt";
+  }
 
   function pushCommunityDetailHistory(kind: "partner" | "group") {
     if (typeof window === "undefined") return;
@@ -1625,12 +1632,45 @@ export default function CommunityPage() {
     if (!show) return null;
     return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: "var(--sage)", boxShadow: "0 0 0 2px rgba(122,157,122,0.14)", flexShrink: 0 }} />;
   }
-  async function openPartnerDetail(partner: any) {
+
+  useEffect(() => {
+    if (loading) return;
+
+    const targetTab = searchParams.get("tab");
+    const section = normalizeCommunitySection(searchParams.get("section"));
+
+    if (targetTab === "group") {
+      const groupId = searchParams.get("groupId");
+      if (!groupId) return;
+      const signature = `group:${groupId}:${section}`;
+      if (handledNotificationRouteRef.current === signature) return;
+      const group = groups.find((item: any) => String(item.id) === groupId);
+      if (!group) return;
+      handledNotificationRouteRef.current = signature;
+      setTab("group");
+      void loadGroupDetail(group, section);
+      return;
+    }
+
+    if (targetTab === "partner") {
+      const partnerId = searchParams.get("partnerId");
+      if (!partnerId) return;
+      const signature = `partner:${partnerId}:${section}`;
+      if (handledNotificationRouteRef.current === signature) return;
+      const partner = partners.find((item: any) => String(item.partner_id) === partnerId);
+      if (!partner) return;
+      handledNotificationRouteRef.current = signature;
+      setTab("partner");
+      void openPartnerDetail(partner, section);
+    }
+  }, [loading, searchParams, groups, partners]);
+
+  async function openPartnerDetail(partner: any, preferredSection?: CommunitySectionKey) {
     pushCommunityDetailHistory("partner");
     const openedAt = new Date().toISOString();
     const previousSeenAt = partner.last_seen_shared_at ?? null;
     setSelectedPartner({ ...partner, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt });
-    setPartnerDetailTab(partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt");
+    setPartnerDetailTab(preferredSection ?? (partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt"));
     setPartnerQts([]);
     setPartnerPrayers([]);
     setLoadingPartnerQts(true);
@@ -2108,9 +2148,9 @@ export default function CommunityPage() {
     setLoading(false);
   }
 
-  async function loadGroupDetail(group: any) {
+  async function loadGroupDetail(group: any, preferredSection?: CommunitySectionKey) {
     pushCommunityDetailHistory("group");
-    setGroupDetailTab(group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt");
+    setGroupDetailTab(preferredSection ?? (group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt"));
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
@@ -3726,5 +3766,13 @@ export default function CommunityPage() {
       )}
       <BottomNav />
     </div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={null}>
+      <CommunityPageContent />
+    </Suspense>
   );
 }
