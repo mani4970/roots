@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { useLang } from "@/lib/useLang";
 import { refreshNotificationSchedule, setupNotificationTapRouting, type NotificationTarget } from "@/lib/localNotifications";
 
@@ -9,6 +11,27 @@ function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
   if (target === "reflection") return "/qt";
   return "/";
+}
+
+function safeInAppPath(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || !trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  return trimmed;
+}
+
+function getPushDeepLink(data: unknown) {
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+  return safeInAppPath(record.deepLink) || safeInAppPath(record.deep_link);
+}
+
+function isNativePushAvailable() {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("PushNotifications");
+  } catch {
+    return false;
+  }
 }
 
 export default function NotificationBridge() {
@@ -36,6 +59,35 @@ export default function NotificationBridge() {
     return () => {
       mounted = false;
       cleanup?.();
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!isNativePushAvailable()) return;
+
+    let mounted = true;
+    let listener: { remove: () => Promise<void> } | undefined;
+
+    PushNotifications.addListener("pushNotificationActionPerformed", (event) => {
+      const deepLink = getPushDeepLink(event.notification?.data);
+      if (!deepLink) {
+        router.push("/");
+        return;
+      }
+      router.push(deepLink);
+    }).then((handle) => {
+      if (!mounted) {
+        void handle.remove();
+        return;
+      }
+      listener = handle;
+    }).catch((error) => {
+      console.warn("Roots push notification tap listener failed", error);
+    });
+
+    return () => {
+      mounted = false;
+      void listener?.remove();
     };
   }, [router]);
 

@@ -1,0 +1,270 @@
+-- 49_supabase_cleanup_status_and_next_steps_1_6.sql
+-- Roots 1.6 Supabase cleanup status and next steps.
+--
+-- STATUS: DOCUMENTATION / PLAN ONLY.
+-- This file intentionally contains comments only.
+-- Do NOT paste this file into Supabase SQL Editor as an execution script.
+-- There are no REVOKE, GRANT, ALTER POLICY, DROP, CREATE, or UPDATE commands here.
+--
+-- Purpose:
+-- - Record the completed Roots 1.6 Supabase GRANT/RLS/security cleanup work.
+-- - Record what is intentionally deferred.
+-- - Preserve the rule for all future migrations:
+--   every new public table migration must include explicit GRANTs, RLS enabled, and policies.
+-- - Prevent accidental broad cleanup in sensitive feed/progress areas.
+
+-- ---------------------------------------------------------------------------
+-- 1. Non-negotiable project safety rules.
+-- ---------------------------------------------------------------------------
+--
+-- Always work from the latest safe zip.
+-- Keep production/main stable.
+-- Do not run broad REVOKE/GRANT changes.
+-- Do not mix Supabase cleanup with feature patches such as notifications.
+-- Do not change Bible Reflection completion/progress/streak logic in cleanup work.
+-- Do not change qt_records, daily_checkins, profiles, or progress/streak functions
+-- unless there is a separate, reviewed, purpose-built plan.
+-- Do not change community feed visibility, sharing visibility helpers, or RLS policies
+-- as part of a broad grants cleanup.
+-- Do not change group challenge award/progress RPC logic in cleanup work.
+-- Do not change qt-photos storage privacy. The qt-photos bucket must remain private.
+-- Do not remove anon access from get_group_invite() until logged-out invite behavior
+-- has a separate reviewed replacement/test plan.
+
+-- ---------------------------------------------------------------------------
+-- 2. Supabase Data API explicit GRANT rule for future migrations.
+-- ---------------------------------------------------------------------------
+--
+-- Supabase public schema table access through the Data API requires database GRANTs
+-- in addition to RLS. RLS controls row-level access after the role can access the
+-- object; RLS alone is not a replacement for GRANT.
+--
+-- Therefore, for every future Roots migration that creates a new public table:
+--
+-- Required:
+--   1) Enable RLS on the table.
+--   2) Add the required RLS policies.
+--   3) Add explicit GRANTs for authenticated and service_role as needed.
+--   4) Keep anon grants absent/minimal unless the table truly supports a logged-out flow.
+--   5) Add any required function EXECUTE grants explicitly.
+--   6) Test the related app flow after applying the migration.
+--
+-- Preferred pattern for normal logged-in user tables:
+--
+--   alter table public.example_table enable row level security;
+--
+--   grant select, insert, update, delete
+--   on table public.example_table
+--   to authenticated;
+--
+--   grant all privileges
+--   on table public.example_table
+--   to service_role;
+--
+--   -- Add purpose-specific policies here.
+--
+-- Only add anon table grants for flows that must work while logged out, such as
+-- a carefully reviewed invite/landing preview. Document why anon is needed.
+
+-- ---------------------------------------------------------------------------
+-- 3. Completed 1.6 cleanup status.
+-- ---------------------------------------------------------------------------
+--
+-- 38_supabase_grants_rls_audit_1_6.sql
+--   - Audit file used to inventory table/function grants, RLS, policies, and defaults.
+--
+-- 39_supabase_cleanup_execution_checklist_1_6.sql
+--   - Safety checklist and planning reference.
+--
+-- 40_default_privileges_cleanup_plan_1_6.sql
+--   - Planning/audit for future default privileges.
+--
+-- 41_table_grants_cleanup_batch1_plan_1_6.sql
+--   - Planning file for table grant cleanup.
+--
+-- 42_default_privileges_cleanup_execute_1_6.sql
+--   - Attempted default privileges cleanup.
+--   - Result: deferred because Supabase SQL Editor returned:
+--     ERROR 42501: permission denied to change default privileges.
+--   - This is not considered an app-breaking issue.
+--   - Do not rerun 42 until Supabase support/permissions are clarified.
+--
+-- 43_table_grants_cleanup_batch1_anon_execute_1_6.sql
+--   - Targeted 9 newer/support tables:
+--       companion_preferences
+--       companions
+--       content_reports
+--       hidden_community_items
+--       hidden_community_users
+--       group_challenges
+--       group_challenge_requests
+--       group_challenge_participants
+--       group_challenge_awards
+--   - Precheck showed no anon table grants on these 9 tables.
+--   - Result: no execution needed.
+--
+-- 44_table_grants_cleanup_batch2_authenticated_admin_privileges_1_6.sql
+--   - On the same 9 newer/support tables, removed from authenticated only:
+--       TRUNCATE
+--       REFERENCES
+--       TRIGGER
+--   - Kept authenticated:
+--       SELECT
+--       INSERT
+--       UPDATE
+--       DELETE
+--   - Postcheck showed expected remaining privileges.
+--   - App regression check reported no issues.
+--
+-- 45_function_grants_cleanup_batch3_group_rpc_anon_execute_1_6.sql
+--   - Removed anon EXECUTE from logged-in-only group RPCs:
+--       get_my_group_preferences()
+--       leave_group(uuid)
+--       mark_group_qt_seen(uuid)
+--       mark_group_qt_seen_v2(uuid)
+--       set_group_favorite(uuid, boolean)
+--       set_group_favorite_v2(uuid, boolean)
+--   - Kept authenticated/postgres/service_role EXECUTE.
+--   - get_group_invite() was not touched.
+--   - App regression check reported no issues.
+--
+-- 46_function_grants_cleanup_batch4_trigger_only_execute_1_6.sql
+--   - Removed PUBLIC/anon/authenticated direct EXECUTE from companion trigger functions:
+--       guard_companion_updates()
+--       touch_companions_updated_at()
+--   - Kept postgres/service_role.
+--   - handle_new_user() was intentionally separated into batch 47.
+--   - App regression check reported no issues.
+--
+-- 47_function_grants_cleanup_batch5_handle_new_user_execute_1_6.sql
+--   - For handle_new_user():
+--       granted EXECUTE explicitly to supabase_auth_admin first
+--       removed PUBLIC/anon/authenticated direct EXECUTE
+--   - Kept postgres/service_role/supabase_auth_admin.
+--   - Signup test passed.
+--   - App regression check reported no issues.
+--
+-- 48_function_grants_cleanup_batch6_visibility_helper_audit_1_6.sql
+--   - Audit-only file for visibility/helper functions:
+--       can_share_prayer_visibility(text)
+--       can_view_prayer_item(text, uuid)
+--       can_view_qt_record(text, uuid)
+--       is_group_member(uuid, uuid)
+--   - Audit showed these helpers are SECURITY DEFINER functions and still have
+--     anon/authenticated/postgres/service_role EXECUTE.
+--   - Audit also showed they are used inside RLS policies for sensitive feed/visibility
+--     areas such as groups, group_members, qt_records, qt_reactions, prayer_items,
+--     prayer_likes, and user_prayer_logs.
+--   - Some policies are scoped to PUBLIC.
+--   - Result: do not revoke helper EXECUTE or related core table grants yet.
+--   - This area needs separate careful RLS/feed planning.
+
+-- ---------------------------------------------------------------------------
+-- 4. Production hotfix incorporated during cleanup pause.
+-- ---------------------------------------------------------------------------
+--
+-- A main hotfix was applied and then merged/pulled into feature/roots-1.6:
+--   - Onboarding completion state changed from global localStorage key:
+--       onboarding_done
+--     to user-specific key:
+--       onboarding_done_<userId>
+--   - Group challenge intro popup is gated until the user-specific onboarding key
+--     exists.
+--   - Expected new-user order:
+--       signup -> onboarding first -> group challenge intro popup after onboarding
+--   - User tested and confirmed the hotfix works.
+--
+-- This hotfix is not a Supabase cleanup change, but it is recorded here because
+-- it happened during the 1.6 cleanup pass and must remain in feature/roots-1.6.
+
+-- ---------------------------------------------------------------------------
+-- 5. Deferred / do-not-touch areas.
+-- ---------------------------------------------------------------------------
+--
+-- Deferred:
+--   - 42 default privileges cleanup:
+--       blocked by permission denied.
+--       not urgent for current existing tables.
+--       revisit with Supabase support/owner permissions.
+--
+-- Do not touch without a separate plan:
+--   - visibility/helper functions from 48
+--   - core feed table anon grants from 48 audit:
+--       groups
+--       group_members
+--       qt_records
+--       qt_reactions
+--       prayer_items
+--       prayer_likes
+--       user_prayer_logs
+--   - RLS policies with roles {public}
+--   - get_group_invite()
+--   - claim_group_challenge_award()
+--   - progress/streak related records/functions
+--   - qt_records / daily_checkins / profiles policies
+--   - community all/group/partner feed queries
+--   - storage bucket privacy
+
+-- ---------------------------------------------------------------------------
+-- 6. Risk interpretation for Supabase October explicit-GRANT change.
+-- ---------------------------------------------------------------------------
+--
+-- The October rollout risk is mainly about future/new public schema tables not being
+-- exposed to the Data API unless explicit GRANTs exist.
+--
+-- The 48 audit area is not currently a "missing grant will suddenly break in October"
+-- problem. It is the opposite: existing core feed tables/helpers already have broad
+-- grants. The risk there is security-hardening complexity and app breakage if grants
+-- or helper EXECUTE privileges are removed without redesigning policy roles.
+--
+-- Therefore:
+--   - Existing production functionality should not break simply because 48 is deferred.
+--   - Future new table migrations must use explicit GRANT + RLS + policy.
+--   - 48-related cleanup should be planned separately and tested thoroughly.
+
+-- ---------------------------------------------------------------------------
+-- 7. Recommended next work order.
+-- ---------------------------------------------------------------------------
+--
+-- Option A: stop Supabase execution cleanup here and proceed to 1.6 notification planning.
+--   - Recommended if app is stable after 44-47.
+--   - Keep 48 as audit evidence and 49 as status documentation.
+--   - Do not mix notification feature commits with further database cleanup execution.
+--
+-- Option B: create a later separate feed/RLS planning branch or batch.
+--   - First map every policy using visibility helpers.
+--   - Decide whether policies should be restricted from PUBLIC to authenticated.
+--   - Verify logged-out invite/public group behavior before changing anon.
+--   - Create one tiny execution batch at a time.
+--   - Regression test:
+--       login
+--       signup
+--       onboarding
+--       home
+--       Bible Reflection save/complete/progress
+--       community all feed
+--       partner feed
+--       group feed
+--       prayer create/share/answered
+--       group invite/join
+--       group challenge card/progress/award
+--       profile badges/photos
+--
+-- Option C: revisit 42 default privileges only after permission path is clear.
+--   - Do not keep retrying the same SQL Editor command.
+--   - Need Supabase support/owner-role confirmation or a safe documented alternative.
+
+-- ---------------------------------------------------------------------------
+-- 8. Release note for developers.
+-- ---------------------------------------------------------------------------
+--
+-- As of this file, the safe 1.6 cleanup checkpoint is:
+--   - 44 complete
+--   - 45 complete
+--   - 46 complete
+--   - 47 complete
+--   - 48 audit complete, no execution
+--   - 42 deferred
+--   - onboarding main hotfix merged into 1.6
+--
+-- Continue only from a latest safe zip.

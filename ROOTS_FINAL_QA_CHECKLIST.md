@@ -187,8 +187,8 @@ NIGHT_END_HOUR = 6
 - [ ] private group은 멤버가 아닌 사용자에게 보이지 않는다.
 - [ ] group_members 정보가 관련 없는 사용자에게 넓게 노출되지 않는다.
 - [ ] prayer_count는 클라이언트 직접 update가 아니라 RPC를 통해 처리된다.
-- [ ] service role key는 Vercel에서 Sensitive로 설정되어 있다.
-- [ ] service role key가 `NEXT_PUBLIC_` 이름으로 존재하지 않는다.
+- [ ] Supabase Secret key(`sb_secret_...`)는 Vercel에서 Sensitive로 설정되어 있다.
+- [ ] Supabase Secret key가 `NEXT_PUBLIC_` 이름으로 존재하지 않는다.
 
 ### 14. 환경변수
 
@@ -196,7 +196,7 @@ Vercel Production에 필요한 값:
 
 - [ ] `NEXT_PUBLIC_SUPABASE_URL`
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] `SUPABASE_SECRET_KEY`
 
 삭제/불필요:
 
