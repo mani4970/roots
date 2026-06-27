@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef, type ReactNode } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -53,6 +54,7 @@ const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
+const NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_6_notifications_seen_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -72,6 +74,18 @@ function isRecentSignup(createdAt: string | null | undefined) {
 
 function getGroupChallengeAnnouncementKey(userId: string) {
   return `${GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
+}
+
+function getNotificationIntroAnnouncementKey(userId: string) {
+  return `${NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
+}
+
+function isNativePushAvailable() {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("PushNotifications");
+  } catch {
+    return false;
+  }
 }
 
 function getLegacyStorageKey(prefix: string, date: string) {
@@ -214,6 +228,39 @@ function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
+function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLater: () => void; onOpenSettings: () => void }) {
+  const lang = useLang();
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 209, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
+      <div style={{ width: "100%", maxWidth: 350, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "28px 22px 22px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
+        <div style={{ width: 118, height: 118, borderRadius: 32, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", overflow: "hidden" }}>
+          <img
+            src="/notification-bell-intro.png"
+            alt=""
+            aria-hidden="true"
+            style={{ width: 108, height: 108, objectFit: "contain" }}
+          />
+        </div>
+        <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
+          {t("notification_intro_announcement_title", lang)}
+        </h2>
+        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 20 }}>
+          {t("notification_intro_announcement_body", lang)}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
+            {t("notification_intro_announcement_open_settings", lang)}
+          </button>
+          <button onClick={onLater} className="btn-outline" style={{ width: "100%", minHeight: 46, justifyContent: "center" }}>
+            {t("notification_intro_announcement_later", lang)}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function HomePage() {
   const router = useRouter();
@@ -276,6 +323,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showGroupChallengeAnnouncement, setShowGroupChallengeAnnouncement] = useState(false);
+  const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
@@ -544,6 +592,66 @@ export default function HomePage() {
     showHomePrayerSharePrompt,
   ]);
 
+  useEffect(() => {
+    if (loading || !profile?.id || showGroupChallengeAnnouncement || showNotificationIntroAnnouncement) return;
+    if (!isNativePushAvailable()) return;
+    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
+    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
+    if (
+      showFirstLangPicker ||
+      showOnboarding ||
+      showWelcomeBack ||
+      celebration.show ||
+      !!badgePopup ||
+      gardenPopup.show ||
+      showRootsManPopup ||
+      !!rewardMapNotice ||
+      showNotificationSettingsModal ||
+      showHomeQTChoice ||
+      showHomeSundayQT ||
+      showHomeQTPassageChoice ||
+      showHomeQTPhotoPassageChoice ||
+      showHomePrayerCompose ||
+      showHomePrayerSharePrompt
+    ) {
+      return;
+    }
+
+    const today = getLocalDateString();
+    const hasPendingReflectionReward =
+      progressUpdateInFlightRef.current ||
+      pendingRootsManRef.current ||
+      !!pendingRewardMapNoticeRef.current ||
+      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
+      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
+
+    if (hasPendingReflectionReward) return;
+
+    if (!storageGet(getNotificationIntroAnnouncementKey(profile.id))) {
+      setShowNotificationIntroAnnouncement(true);
+    }
+  }, [
+    loading,
+    profile?.id,
+    showGroupChallengeAnnouncement,
+    showNotificationIntroAnnouncement,
+    showFirstLangPicker,
+    showOnboarding,
+    showWelcomeBack,
+    celebration.show,
+    badgePopup,
+    gardenPopup.show,
+    showRootsManPopup,
+    rewardMapNotice,
+    showNotificationSettingsModal,
+    showHomeQTChoice,
+    showHomeSundayQT,
+    showHomeQTPassageChoice,
+    showHomeQTPhotoPassageChoice,
+    showHomePrayerCompose,
+    showHomePrayerSharePrompt,
+  ]);
+
   async function updateStreak(today: string): Promise<number | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -704,6 +812,16 @@ export default function HomePage() {
       storageSet(getGroupChallengeAnnouncementKey(profile.id), "true");
     }
     setShowGroupChallengeAnnouncement(false);
+  }
+
+  function closeNotificationIntroAnnouncement(openSettings = false) {
+    if (profile?.id) {
+      storageSet(getNotificationIntroAnnouncementKey(profile.id), "true");
+    }
+    setShowNotificationIntroAnnouncement(false);
+    if (openSettings) {
+      requestAnimationFrame(() => setShowNotificationSettingsModal(true));
+    }
   }
 
   function closeOnboarding() {
@@ -1347,6 +1465,13 @@ export default function HomePage() {
 
       {showGroupChallengeAnnouncement && (
         <GroupChallengeAnnouncementPopup onClose={closeGroupChallengeAnnouncement} />
+      )}
+
+      {showNotificationIntroAnnouncement && (
+        <NotificationIntroAnnouncementPopup
+          onLater={() => closeNotificationIntroAnnouncement(false)}
+          onOpenSettings={() => closeNotificationIntroAnnouncement(true)}
+        />
       )}
 
       <WelcomeBackPopup
