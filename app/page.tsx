@@ -25,6 +25,7 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
+import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -230,6 +231,7 @@ function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
 
 function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLater: () => void; onOpenSettings: () => void }) {
   const lang = useLang();
+  const copy = getNotificationIntroPopupText(lang);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 209, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
@@ -243,17 +245,17 @@ function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLat
           />
         </div>
         <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
-          {t("notification_intro_announcement_title", lang)}
+          {copy.title}
         </h2>
         <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 20 }}>
-          {t("notification_intro_announcement_body", lang)}
+          {copy.body}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
-            {t("notification_intro_announcement_open_settings", lang)}
+            {copy.openSettings}
           </button>
           <button onClick={onLater} className="btn-outline" style={{ width: "100%", minHeight: 46, justifyContent: "center" }}>
-            {t("notification_intro_announcement_later", lang)}
+            {copy.later}
           </button>
         </div>
       </div>
