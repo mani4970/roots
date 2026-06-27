@@ -236,12 +236,12 @@ function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLat
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 209, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
       <div style={{ width: "100%", maxWidth: 350, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "28px 22px 22px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
-        <div style={{ width: 118, height: 118, borderRadius: 32, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", overflow: "hidden" }}>
+        <div style={{ width: 86, height: 86, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "visible" }}>
           <img
             src="/notification-bell-intro.png"
             alt=""
             aria-hidden="true"
-            style={{ width: 108, height: 108, objectFit: "contain" }}
+            style={{ width: 78, height: 78, objectFit: "contain" }}
           />
         </div>
         <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
