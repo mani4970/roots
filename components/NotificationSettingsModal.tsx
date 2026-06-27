@@ -234,6 +234,10 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
+        <div style={{ borderRadius: 16, background: "rgba(122,157,122,0.12)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", padding: "12px 13px", fontSize: 12, fontWeight: 750, lineHeight: 1.65, whiteSpace: "pre-line", marginBottom: 12 }}>
+          {pushText.updateNotice}
+        </div>
+
         {!notificationsAvailable && (
           <div style={{ borderRadius: 16, background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.24)", color: "var(--text2)", padding: "11px 12px", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
             {t("notifications_native_only", lang)}

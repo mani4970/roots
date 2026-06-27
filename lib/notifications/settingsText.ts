@@ -2,6 +2,7 @@ import type { Lang } from "@/lib/i18n";
 
 type NotificationSettingsText = {
   modalDescription: string;
+  updateNotice: string;
   devicePermissionDescription: string;
   eveningReminderDescription: string;
   loadFailed: string;
@@ -18,6 +19,7 @@ type NotificationSettingsText = {
 const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
   ko: {
     modalDescription: "말씀 묵상과 기도의 시간, 그리고 커뮤니티의 알림을 설정해보세요.",
+    updateNotice: "푸시 알림은 최신 앱에서 사용할 수 있어요.\nApp Store 혹은 Google Play에서 업데이트 해주세요.",
     devicePermissionDescription: "기기 알림 권한을 설정합니다",
     eveningReminderDescription: "하루가 끝나기 전, 오늘의 묵상 리마인드 해드려요",
     loadFailed: "동역자/그룹 알림 설정을 불러오지 못했어요.",
@@ -32,6 +34,7 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
   },
   de: {
     modalDescription: "Lege Zeiten für Stille Zeit und Gebet fest und verwalte Community-Hinweise.",
+    updateNotice: "Push-Benachrichtigungen sind in der neuesten App verfügbar.\nBitte aktualisiere Roots im App Store oder bei Google Play.",
     devicePermissionDescription: "Richte die Benachrichtigungsberechtigung des Geräts ein.",
     eveningReminderDescription: "Vor Tagesende erinnern wir dich an die heutige Stille Zeit.",
     loadFailed: "Einstellungen für Partner- und Gruppenbenachrichtigungen konnten nicht geladen werden.",
@@ -46,6 +49,7 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
   },
   en: {
     modalDescription: "Set your Bible Reflection and prayer times, and manage community notifications.",
+    updateNotice: "Push notifications are available in the latest app.\nPlease update Roots from the App Store or Google Play.",
     devicePermissionDescription: "Set your device notification permission.",
     eveningReminderDescription: "Before the day ends, we’ll remind you about today’s reflection.",
     loadFailed: "Could not load partner and group notification settings.",
@@ -60,6 +64,7 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
   },
   fr: {
     modalDescription: "Définissez vos temps de méditation biblique et de prière, et gérez les notifications de la communauté.",
+    updateNotice: "Les notifications push sont disponibles dans la dernière version de l’app.\nMettez Roots à jour depuis l’App Store ou Google Play.",
     devicePermissionDescription: "Configurez l’autorisation de notification de l’appareil.",
     eveningReminderDescription: "Avant la fin de la journée, nous vous rappellerons la méditation du jour.",
     loadFailed: "Impossible de charger les notifications de partenaires et de groupes.",
