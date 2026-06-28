@@ -55,7 +55,7 @@ const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
-const NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_6_notifications_seen_";
+const NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_6_notifications_update_notice_seen_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -247,8 +247,11 @@ function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLat
         <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
           {copy.title}
         </h2>
-        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 20 }}>
+        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 12 }}>
           {copy.body}
+        </p>
+        <p style={{ fontSize: 12.5, color: "#D94A38", fontWeight: 800, lineHeight: 1.65, whiteSpace: "pre-line", marginBottom: 20 }}>
+          {copy.updateNotice}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
@@ -1278,9 +1281,9 @@ export default function HomePage() {
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
           <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, paddingRight: 42 }}>
+              <div style={{ width: "100%", minWidth: 0 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", lineHeight: 1.35, marginBottom: 6, overflowWrap: "break-word" }}>
                   {showHomeSundayQT ? t("home_qt_sunday_title", lang) : showHomeQTPhotoPassageChoice ? t("qt_photo_passage_choice_title", lang) : showHomeQTPassageChoice ? t("qt_passage_choice_title", lang) : t("home_qt_choice_title", lang)}
                 </h2>
                 {!(showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
