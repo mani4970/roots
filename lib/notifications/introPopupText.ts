@@ -6,6 +6,7 @@ type NotificationIntroPopupText = {
   updateNotice: string;
   openSettings: string;
   later: string;
+  dismissForever: string;
 };
 
 const NOTIFICATION_INTRO_POPUP_TEXT: Record<NotificationIntroLang, NotificationIntroPopupText> = {
@@ -15,6 +16,7 @@ const NOTIFICATION_INTRO_POPUP_TEXT: Record<NotificationIntroLang, NotificationI
     updateNotice: "푸시 알림은 최신 앱에서 사용할 수 있어요.\nApp Store 혹은 Google Play에서 업데이트 해주세요.",
     openSettings: "알림 설정하러 가기",
     later: "나중에",
+    dismissForever: "다시 보지 않기",
   },
   de: {
     title: "Die neue Benachrichtigungsfunktion ist da",
@@ -22,6 +24,7 @@ const NOTIFICATION_INTRO_POPUP_TEXT: Record<NotificationIntroLang, NotificationI
     updateNotice: "Push-Benachrichtigungen sind in der neuesten App verfügbar.\nBitte aktualisiere Roots im App Store oder bei Google Play.",
     openSettings: "Zu den Benachrichtigungseinstellungen",
     later: "Später",
+    dismissForever: "Nicht mehr anzeigen",
   },
   en: {
     title: "A new notification feature has arrived",
@@ -29,6 +32,7 @@ const NOTIFICATION_INTRO_POPUP_TEXT: Record<NotificationIntroLang, NotificationI
     updateNotice: "Push notifications are available in the latest app.\nPlease update Roots from the App Store or Google Play.",
     openSettings: "Go to notification settings",
     later: "Later",
+    dismissForever: "Don’t show again",
   },
   fr: {
     title: "La nouvelle fonction de notification est arrivée",
@@ -36,6 +40,7 @@ const NOTIFICATION_INTRO_POPUP_TEXT: Record<NotificationIntroLang, NotificationI
     updateNotice: "Les notifications push sont disponibles dans la dernière version de l’app.\nMettez Roots à jour depuis l’App Store ou Google Play.",
     openSettings: "Aller aux réglages des notifications",
     later: "Plus tard",
+    dismissForever: "Ne plus afficher",
   },
 };
 

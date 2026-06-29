@@ -55,7 +55,9 @@ const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
-const NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_6_notifications_update_notice_seen_";
+const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
+const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -77,13 +79,35 @@ function getGroupChallengeAnnouncementKey(userId: string) {
   return `${GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
 }
 
-function getNotificationIntroAnnouncementKey(userId: string) {
-  return `${NOTIFICATION_INTRO_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
+function getNotificationIntroCampaignBaseKey(userId: string) {
+  return `${NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX}${userId}`;
 }
 
-function isNativePushAvailable() {
+function getNotificationIntroCampaignKeys(userId: string) {
+  const base = getNotificationIntroCampaignBaseKey(userId);
+  return {
+    dismissed: `${base}_dismissed`,
+    firstSeenAt: `${base}_first_seen_at`,
+    snoozedUntil: `${base}_snoozed_until`,
+  };
+}
+
+function parseStorageTime(value: string | null) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getNextLocalDayStartMs() {
+  const next = new Date();
+  next.setDate(next.getDate() + 1);
+  next.setHours(0, 0, 0, 0);
+  return next.getTime();
+}
+
+function isNativeAppRuntime() {
   try {
-    return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("PushNotifications");
+    return Capacitor.isNativePlatform();
   } catch {
     return false;
   }
@@ -229,7 +253,15 @@ function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
-function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLater: () => void; onOpenSettings: () => void }) {
+function NotificationIntroAnnouncementPopup({
+  onLater,
+  onOpenSettings,
+  onDismissForever,
+}: {
+  onLater: () => void;
+  onOpenSettings: () => void;
+  onDismissForever: () => void;
+}) {
   const lang = useLang();
   const copy = getNotificationIntroPopupText(lang);
 
@@ -259,6 +291,12 @@ function NotificationIntroAnnouncementPopup({ onLater, onOpenSettings }: { onLat
           </button>
           <button onClick={onLater} className="btn-outline" style={{ width: "100%", minHeight: 46, justifyContent: "center" }}>
             {copy.later}
+          </button>
+          <button
+            onClick={onDismissForever}
+            style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12.5, fontWeight: 750, padding: "4px 0", cursor: "pointer" }}
+          >
+            {copy.dismissForever}
           </button>
         </div>
       </div>
@@ -599,7 +637,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (loading || !profile?.id || showGroupChallengeAnnouncement || showNotificationIntroAnnouncement) return;
-    if (!isNativePushAvailable()) return;
+    if (!isNativeAppRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
     if (
@@ -632,9 +670,26 @@ export default function HomePage() {
 
     if (hasPendingReflectionReward) return;
 
-    if (!storageGet(getNotificationIntroAnnouncementKey(profile.id))) {
-      setShowNotificationIntroAnnouncement(true);
+    const keys = getNotificationIntroCampaignKeys(profile.id);
+    if (storageGet(keys.dismissed)) return;
+
+    const now = Date.now();
+    let firstSeenAt = parseStorageTime(storageGet(keys.firstSeenAt));
+    if (!firstSeenAt) {
+      firstSeenAt = now;
+      storageSet(keys.firstSeenAt, String(firstSeenAt));
     }
+
+    if (now - firstSeenAt > NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS) {
+      storageSet(keys.dismissed, "expired");
+      storageRemove(keys.snoozedUntil);
+      return;
+    }
+
+    const snoozedUntil = parseStorageTime(storageGet(keys.snoozedUntil));
+    if (snoozedUntil && now < snoozedUntil) return;
+
+    setShowNotificationIntroAnnouncement(true);
   }, [
     loading,
     profile?.id,
@@ -819,12 +874,18 @@ export default function HomePage() {
     setShowGroupChallengeAnnouncement(false);
   }
 
-  function closeNotificationIntroAnnouncement(openSettings = false) {
+  function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
     if (profile?.id) {
-      storageSet(getNotificationIntroAnnouncementKey(profile.id), "true");
+      const keys = getNotificationIntroCampaignKeys(profile.id);
+      if (action === "later") {
+        storageSet(keys.snoozedUntil, String(getNextLocalDayStartMs() || Date.now() + NOTIFICATION_INTRO_SNOOZE_MS));
+      } else {
+        storageSet(keys.dismissed, "true");
+        storageRemove(keys.snoozedUntil);
+      }
     }
     setShowNotificationIntroAnnouncement(false);
-    if (openSettings) {
+    if (action === "openSettings") {
       requestAnimationFrame(() => setShowNotificationSettingsModal(true));
     }
   }
@@ -1474,8 +1535,9 @@ export default function HomePage() {
 
       {showNotificationIntroAnnouncement && (
         <NotificationIntroAnnouncementPopup
-          onLater={() => closeNotificationIntroAnnouncement(false)}
-          onOpenSettings={() => closeNotificationIntroAnnouncement(true)}
+          onLater={() => closeNotificationIntroAnnouncement("later")}
+          onOpenSettings={() => closeNotificationIntroAnnouncement("openSettings")}
+          onDismissForever={() => closeNotificationIntroAnnouncement("dismissForever")}
         />
       )}
 
