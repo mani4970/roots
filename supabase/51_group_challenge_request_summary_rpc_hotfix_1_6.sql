@@ -54,6 +54,11 @@ as $$
   limit 1;
 $$;
 
-revoke all on function public.get_group_challenge_request_summary(uuid) from public;
+-- PostgreSQL grants EXECUTE on new functions to PUBLIC by default, and Supabase
+-- role grants can still leave anon visible in information_schema. Revoke both the
+-- PUBLIC pseudo-role and the anon role explicitly before adding the required grants.
+revoke execute on function public.get_group_challenge_request_summary(uuid) from public;
+revoke execute on function public.get_group_challenge_request_summary(uuid) from anon;
+
 grant execute on function public.get_group_challenge_request_summary(uuid) to authenticated;
 grant execute on function public.get_group_challenge_request_summary(uuid) to service_role;
