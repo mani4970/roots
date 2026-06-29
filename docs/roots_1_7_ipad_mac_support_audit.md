@@ -21,20 +21,20 @@ Do not mix this with:
 
 ### iOS target settings
 
-Current Xcode project settings show:
+Current Xcode project settings for 1.7 now show:
 
 ```text
-TARGETED_DEVICE_FAMILY = 1
+TARGETED_DEVICE_FAMILY = 1,2
 SUPPORTS_MACCATALYST = NO
-SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO
+SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES
 ```
 
 Interpretation:
 
-- The app is currently configured as iPhone-only.
-- iPad support is not enabled yet.
-- Mac Catalyst is not enabled.
-- Apple Silicon Mac availability should be evaluated through App Store Connect first, not by enabling Mac Catalyst.
+- The app is now configured for iPhone + iPad.
+- Apple Silicon Mac support is enabled through the "Designed for iPhone/iPad" path.
+- Mac Catalyst remains disabled.
+- This is not a separate native macOS app and should not be treated as a Mac Catalyst port.
 
 ### Capacitor mode
 
@@ -78,23 +78,28 @@ For 1.7 this is acceptable as a first support step, as long as:
 
 ### Phase 2 — iPad minimum support
 
-Goal: allow iPad support only if the app remains stable with the current centered-phone layout.
+Goal: support iPad while keeping the current centered-phone layout stable.
 
-Potential later setting change:
+Implemented in 1.7:
 
 ```text
 TARGETED_DEVICE_FAMILY = 1,2
 ```
 
-Do not change this before iPad simulator/device QA.
+The current approach intentionally keeps the app content at the existing mobile width and only polishes iPad-specific spacing/background behavior.
 
-### Phase 3 — Apple Silicon Mac availability audit
+### Phase 3 — Apple Silicon Mac availability
 
 Do not enable Mac Catalyst for 1.7.
 
-First evaluate Apple Silicon Mac availability in App Store Connect.
+Implemented in 1.7:
 
-The likely 1.7 Mac goal should be:
+```text
+SUPPORTS_MACCATALYST = NO
+SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES
+```
+
+The 1.7 Mac goal is:
 
 ```text
 Make the iPhone/iPad app available on Apple Silicon Mac if it behaves acceptably.
@@ -186,6 +191,7 @@ If Apple Silicon Mac availability is enabled:
 
 - App Store Connect availability setting must be checked.
 - Mac behavior should be verified before enabling broadly.
+- Push notification behavior on Mac should not be promised as a 1.7 goal.
 
 ## Recommendation
 
@@ -194,9 +200,8 @@ For Roots 1.7, do not jump straight to broad device support.
 Recommended order:
 
 1. Commit this audit.
-2. Run iPad simulator QA with current iPhone-only settings as a baseline.
-3. If acceptable, test enabling iPad device family in a small patch.
-4. Verify iPad build / UI.
-5. Decide whether to submit iPad support in 1.7.
-6. Evaluate Apple Silicon Mac availability after iPad support is stable.
+2. Run iPad simulator QA.
+3. Verify iPad build / UI.
+4. Verify Apple Silicon Mac launch with the Designed for iPad path.
+5. Submit 1.7 as iPad + Apple Silicon Mac support if QA passes.
 
