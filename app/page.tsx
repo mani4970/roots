@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -59,6 +60,8 @@ const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notificat
 const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+const ROOTS_APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
+const ROOTS_GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
@@ -110,6 +113,30 @@ function isNativeAppRuntime() {
     return Capacitor.isNativePlatform();
   } catch {
     return false;
+  }
+}
+
+function getRootsStoreUrl() {
+  try {
+    return Capacitor.getPlatform() === "android" ? ROOTS_GOOGLE_PLAY_URL : ROOTS_APP_STORE_URL;
+  } catch {
+    return ROOTS_APP_STORE_URL;
+  }
+}
+
+async function openRootsStorePage() {
+  const url = getRootsStoreUrl();
+  try {
+    if (isNativeAppRuntime() && typeof Capacitor.isPluginAvailable === "function" && Capacitor.isPluginAvailable("Browser")) {
+      await Browser.open({ url });
+      return;
+    }
+  } catch {
+    // Fall back to a normal browser navigation below.
+  }
+
+  if (typeof window !== "undefined") {
+    window.location.href = url;
   }
 }
 
@@ -255,11 +282,11 @@ function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
 
 function NotificationIntroAnnouncementPopup({
   onLater,
-  onOpenSettings,
+  onOpenStore,
   onDismissForever,
 }: {
   onLater: () => void;
-  onOpenSettings: () => void;
+  onOpenStore: () => void;
   onDismissForever: () => void;
 }) {
   const lang = useLang();
@@ -286,7 +313,7 @@ function NotificationIntroAnnouncementPopup({
           {copy.updateNotice}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
+          <button onClick={onOpenStore} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
             {copy.openSettings}
           </button>
           <button onClick={onLater} className="btn-outline" style={{ width: "100%", minHeight: 46, justifyContent: "center" }}>
@@ -874,7 +901,7 @@ export default function HomePage() {
     setShowGroupChallengeAnnouncement(false);
   }
 
-  function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
+  async function closeNotificationIntroAnnouncement(action: "openStore" | "later" | "dismissForever") {
     if (profile?.id) {
       const keys = getNotificationIntroCampaignKeys(profile.id);
       if (action === "later") {
@@ -885,8 +912,8 @@ export default function HomePage() {
       }
     }
     setShowNotificationIntroAnnouncement(false);
-    if (action === "openSettings") {
-      requestAnimationFrame(() => setShowNotificationSettingsModal(true));
+    if (action === "openStore") {
+      await openRootsStorePage();
     }
   }
 
@@ -1535,9 +1562,9 @@ export default function HomePage() {
 
       {showNotificationIntroAnnouncement && (
         <NotificationIntroAnnouncementPopup
-          onLater={() => closeNotificationIntroAnnouncement("later")}
-          onOpenSettings={() => closeNotificationIntroAnnouncement("openSettings")}
-          onDismissForever={() => closeNotificationIntroAnnouncement("dismissForever")}
+          onLater={() => void closeNotificationIntroAnnouncement("later")}
+          onOpenStore={() => void closeNotificationIntroAnnouncement("openStore")}
+          onDismissForever={() => void closeNotificationIntroAnnouncement("dismissForever")}
         />
       )}
 
