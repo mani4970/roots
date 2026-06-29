@@ -13,6 +13,14 @@ export default function NativeStatusBar() {
 
     document.documentElement.setAttribute("data-native-app", "true");
     document.documentElement.setAttribute("data-native-platform", Capacitor.getPlatform());
+    const shortestScreenSide = Math.min(
+      window.screen?.width || window.innerWidth,
+      window.screen?.height || window.innerHeight,
+    );
+    document.documentElement.setAttribute(
+      "data-native-form-factor",
+      shortestScreenSide >= 768 ? "tablet" : "phone",
+    );
 
     function applyNativeStatusBar() {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";

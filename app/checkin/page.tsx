@@ -53,7 +53,7 @@ export default function CheckinPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: selected ? "calc(210px + var(--bottom-nav-bottom-padding))" : "calc(104px + var(--bottom-nav-bottom-padding))", position: "relative" }}>
-      <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>{t("back", lang)}</span>
         </button>

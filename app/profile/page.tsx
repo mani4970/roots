@@ -861,7 +861,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div style={{ background: "var(--bg)", padding: "56px 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
           aria-label={t("profile_account_settings", lang)}

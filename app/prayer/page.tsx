@@ -672,7 +672,7 @@ function PrayerPageContent() {
       )}
 
       {/* 헤더 */}
-      <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 0", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("prayer_title", lang)}</h1>
         <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
           {c("prayer_sub_line1")}<br />

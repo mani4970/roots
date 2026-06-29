@@ -288,7 +288,7 @@ export default function QTPage() {
         </div>
       )}
 
-      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{t("qt_title", lang)}</h1>
           <div style={{ position: "relative" }}>

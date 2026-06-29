@@ -1677,7 +1677,7 @@ export default function HomePage() {
         }}
       />
 
-      <div style={{ background: "var(--bg)", padding: "56px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ fontSize: 13, color: "var(--text3)", marginBottom: 4 }}>{t(getGreetingKey(), lang)}</div>
           <div className="header-title">

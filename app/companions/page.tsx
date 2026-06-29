@@ -281,7 +281,7 @@ function CompanionsContent() {
   }
 
   return (
-    <main className="page-wrap" style={{ minHeight: "100dvh", padding: "56px 16px 112px", background: "var(--bg)" }}>
+    <main className="page-wrap" style={{ minHeight: "100dvh", padding: "var(--roots-page-top-padding) 16px 112px", background: "var(--bg)" }}>
       {toast && (
         <div style={{ position: "fixed", top: 74, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "rgba(37,44,38,0.94)", color: "white", padding: "10px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, boxShadow: "0 10px 26px rgba(0,0,0,0.22)", maxWidth: "calc(100vw - 40px)", textAlign: "center" }}>
           {toast}

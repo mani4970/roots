@@ -2876,7 +2876,7 @@ function CommunityPageContent() {
 
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 8px" }}>
+        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
           <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -3047,7 +3047,7 @@ function CommunityPageContent() {
     const visibleGroupPrayers = visibleFeedItems(groupPrayerFeedKey, groupPrayersForCurrentTab);
     return (
       <div className="page">
-        <div style={{ background: "var(--bg)", padding: "56px 20px 8px" }}>
+        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
           <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
@@ -3470,7 +3470,7 @@ function CommunityPageContent() {
           </div>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "56px 20px 0", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 0", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{c("community_title")}</h1>

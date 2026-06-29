@@ -15,7 +15,7 @@ export default function PrivacyPage() {
   const lang = useLang();
   const copy = COPY[lang] ?? COPY.ko;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "56px 24px 60px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "var(--roots-page-top-padding) 24px 60px" }}>
       <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer", marginBottom: 20 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{copy.back}</span>
       </button>

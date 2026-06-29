@@ -432,7 +432,7 @@ function RecordContent() {
           </div>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "56px 20px 18px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
         </button>

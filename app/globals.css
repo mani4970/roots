@@ -7,6 +7,7 @@
   --native-bottom-system-bar: 0px;
   --bottom-nav-safe-extra: max(0px, var(--safe-area-bottom));
   --bottom-nav-bottom-padding: max(8px, var(--bottom-nav-safe-extra));
+  --roots-page-top-padding: 56px;
   /* 라이트 모드 (기본) — 따뜻한 베이지 톤 */
   --bg: #FAF6F0;
   --bg2: #FFFFFF;
@@ -50,6 +51,7 @@
 
 html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--html-bg); }
 html[data-native-platform="android"] { --bottom-nav-safe-extra: max(0px, var(--safe-area-bottom)); --native-bottom-system-bar: 48px; }
+html[data-native-platform="ios"][data-native-form-factor="tablet"] { --roots-page-top-padding: 40px; }
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }

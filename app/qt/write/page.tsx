@@ -1937,7 +1937,7 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "56px 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
@@ -2097,7 +2097,7 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={hasPassage ? resetFreePassageSelection : () => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{hasPassage ? trQT("이전", lang) : trQT("나가기", lang)}</span>
@@ -2206,7 +2206,7 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
@@ -2451,7 +2451,7 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "56px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
