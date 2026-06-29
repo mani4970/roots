@@ -1644,10 +1644,16 @@ function CommunityPageContent() {
       if (!groupId) return;
       const signature = `group:${groupId}:${section}`;
       if (handledNotificationRouteRef.current === signature) return;
+
+      if (tab !== "group") setTab("group");
+      if (selectedPartner) {
+        clearCommunityDetailHistory("partner");
+        resetPartnerDetailState();
+      }
+
       const group = groups.find((item: any) => String(item.id) === groupId);
       if (!group) return;
       handledNotificationRouteRef.current = signature;
-      setTab("group");
       void loadGroupDetail(group, section);
       return;
     }
@@ -1657,13 +1663,19 @@ function CommunityPageContent() {
       if (!partnerId) return;
       const signature = `partner:${partnerId}:${section}`;
       if (handledNotificationRouteRef.current === signature) return;
+
+      if (tab !== "partner") setTab("partner");
+      if (selectedGroup) {
+        clearCommunityDetailHistory("group");
+        resetGroupDetailState();
+      }
+
       const partner = partners.find((item: any) => String(item.partner_id) === partnerId);
       if (!partner) return;
       handledNotificationRouteRef.current = signature;
-      setTab("partner");
       void openPartnerDetail(partner, section);
     }
-  }, [loading, searchParams, groups, partners]);
+  }, [loading, searchParams, groups, partners, tab, selectedPartner, selectedGroup]);
 
   async function openPartnerDetail(partner: any, preferredSection?: CommunitySectionKey) {
     pushCommunityDetailHistory("partner");
@@ -2166,28 +2178,37 @@ function CommunityPageContent() {
 
     if (group.isMember) {
       if (user?.id) {
-        const { data: requestRows, error: requestError } = await supabase
-          .from("group_challenge_requests")
-          .select("id,status,title,requested_start_date,duration_days,created_at")
-          .eq("group_id", group.id)
-          .eq("requester_id", user.id)
-          .in("status", ["pending", "contacted", "approved"])
-          .order("created_at", { ascending: false })
-          .limit(1);
-        if (requestError) {
-          console.warn("그룹 챌린지 신청 상태 조회 실패:", requestError.message);
-          setGroupChallengeRequestStatus(group.id, null);
+        let latestRequest: any | null = null;
+        const { data: summaryRows, error: summaryError } = await supabase
+          .rpc("get_group_challenge_request_summary", { p_group_id: group.id });
+
+        if (summaryError) {
+          console.warn("그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:", summaryError.message);
+          const { data: requestRows, error: requestError } = await supabase
+            .from("group_challenge_requests")
+            .select("id,status,title,requested_start_date,duration_days,created_at")
+            .eq("group_id", group.id)
+            .eq("requester_id", user.id)
+            .in("status", ["pending", "contacted", "approved"])
+            .order("created_at", { ascending: false })
+            .limit(1);
+          if (requestError) {
+            console.warn("그룹 챌린지 신청 상태 조회 실패:", requestError.message);
+          } else {
+            latestRequest = requestRows?.[0] ?? null;
+          }
         } else {
-          const latestRequest = requestRows?.[0] ?? null;
-          setGroupChallengeRequest(group.id, latestRequest ? {
-            id: latestRequest.id,
-            status: latestRequest.status,
-            title: latestRequest.title,
-            requested_start_date: latestRequest.requested_start_date,
-            duration_days: latestRequest.duration_days,
-            created_at: latestRequest.created_at,
-          } : null);
+          latestRequest = Array.isArray(summaryRows) ? summaryRows[0] ?? null : null;
         }
+
+        setGroupChallengeRequest(group.id, latestRequest ? {
+          id: latestRequest.id,
+          status: latestRequest.status,
+          title: latestRequest.title,
+          requested_start_date: latestRequest.requested_start_date,
+          duration_days: latestRequest.duration_days,
+          created_at: latestRequest.created_at,
+        } : null);
       } else {
         setGroupChallengeRequestStatus(group.id, null);
       }
