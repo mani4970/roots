@@ -15,6 +15,7 @@ import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { checkAndAwardPrayTogetherBadge, checkAndAwardQtReactionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
+import { getLoveHeartToastText } from "@/lib/loveHeartText";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
@@ -45,27 +46,6 @@ const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
 type CommunitySectionKey = "qt" | "praying" | "answered";
-
-const LOVE_HEART_TOASTS: Record<LoveHeartSourceType, Record<"ko" | "en" | "de" | "fr", string>> = {
-  qt_reaction: {
-    ko: "축복의 마음을 남겼어요 💛 +1",
-    en: "You left a blessing 💛 +1",
-    de: "Du hast einen Segen hinterlassen 💛 +1",
-    fr: "Vous avez laissé une bénédiction 💛 +1",
-  },
-  prayer_intercession: {
-    ko: "중보기도 결단했어요 💛 +1",
-    en: "You committed to pray 💛 +1",
-    de: "Du hast Fürbitte zugesagt 💛 +1",
-    fr: "Vous vous êtes engagé à prier 💛 +1",
-  },
-  answered_prayer_gratitude: {
-    ko: "함께 감사했어요 💛 +1",
-    en: "You gave thanks together 💛 +1",
-    de: "Du hast mitgedankt 💛 +1",
-    fr: "Vous avez rendu grâce ensemble 💛 +1",
-  },
-};
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -469,14 +449,9 @@ function CommunityPageContent() {
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
-  function loveHeartToastText(sourceType: LoveHeartSourceType) {
-    const localized = LOVE_HEART_TOASTS[sourceType];
-    return localized[lang as "ko" | "en" | "de" | "fr"] ?? localized.en;
-  }
-
   function showLoveHeartToast(sourceType: LoveHeartSourceType) {
     if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
-    setLoveHeartToast(loveHeartToastText(sourceType));
+    setLoveHeartToast(getLoveHeartToastText(sourceType, lang));
     loveHeartToastTimerRef.current = window.setTimeout(() => {
       setLoveHeartToast(null);
       loveHeartToastTimerRef.current = null;
