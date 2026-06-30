@@ -133,18 +133,21 @@ Recommended MVP placement:
 
 ### Primary placement — profile header pill
 
-Place a small pill below the user's name / 말씀동행 line.
+Place a small pill near the user's name / 말씀동행 line.
+
+Do not label the main profile UI as "사랑 하트". Keep it simple and symbolic.
 
 Example:
 
 ```text
-💛 사랑 하트 12
+💛 +12
 ```
 
 Reason:
 
 - Easy to find.
-- Feels like a personal spiritual encouragement balance.
+- Cleaner than adding another text-heavy stat label.
+- Feels like a small personal encouragement balance.
 - Does not require changing the existing three-card faith journey grid.
 
 ### Later placement — dedicated Love Hearts card
@@ -377,7 +380,8 @@ Do not show the toast when:
 
 MVP:
 
-- show the user's current Love Heart balance in the profile header as a small pill
+- show the user's current Love Heart balance in the profile header as a small symbolic pill, e.g. `💛 +12`
+- do not label the pill as "사랑 하트" in the main profile UI
 - no shop / spending flow yet
 
 Future:
