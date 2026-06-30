@@ -306,3 +306,14 @@ supabase/52_love_hearts_foundation_1_8.sql
 ```
 
 That migration creates the wallet/event tables and award RPC, but does not modify community UI yet.
+
+
+## UI connection implementation notes
+
+The first UI connection patch keeps the existing reaction tables as the source of truth and adds only a best-effort reward layer:
+
+- `reactToQT(...)` updates `qt_reactions`, then calls `award_love_heart_once('qt_reaction', qtId)`.
+- `prayTogether(...)` inserts into `user_prayer_logs`, then calls `award_love_heart_once('prayer_intercession', prayerId)`.
+- `likeAnsweredPrayer(...)` inserts into `prayer_likes`, then calls `award_love_heart_once('answered_prayer_gratitude', prayerId)`.
+
+The RPC remains responsible for duplicate blocking, self-target blocking, and verifying that the underlying interaction row exists. UI calls are best-effort and must not block or change the original community reaction behavior.

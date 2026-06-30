@@ -12,6 +12,7 @@ import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
+import { getLoveHeartBalance } from "@/lib/loveHearts";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -123,6 +124,7 @@ export default function ProfilePage() {
   const [loadingQtCalendar, setLoadingQtCalendar] = useState(false);
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const [qtShareCount, setQtShareCount] = useState(0);
+  const [loveHeartBalance, setLoveHeartBalance] = useState(0);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [userEmail, setUserEmail] = useState("");
@@ -165,6 +167,12 @@ export default function ProfilePage() {
     if (!user) { router.push("/welcome"); return; }
     setUserEmail(user.email ?? "");
     setProfileUserId(user.id);
+    try {
+      setLoveHeartBalance(await getLoveHeartBalance(supabase, user.id));
+    } catch (error) {
+      console.warn("사랑 하트 조회 실패:", error);
+      setLoveHeartBalance(0);
+    }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
@@ -915,7 +923,12 @@ export default function ProfilePage() {
                 {profile?.name ?? t("profile_default_name", lang)}
               </h1>
             )}
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 3 }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
+              <span aria-label="Love Hearts" style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.26)", color: "rgba(232,197,71,0.98)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
+                💛 +{loveHeartBalance}
+              </span>
+            </div>
             {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>

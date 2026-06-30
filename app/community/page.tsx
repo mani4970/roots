@@ -14,6 +14,7 @@ import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { checkAndAwardPrayTogetherBadge, checkAndAwardQtReactionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
@@ -44,6 +45,27 @@ const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
 type CommunitySectionKey = "qt" | "praying" | "answered";
+
+const LOVE_HEART_TOASTS: Record<LoveHeartSourceType, Record<"ko" | "en" | "de" | "fr", string>> = {
+  qt_reaction: {
+    ko: "축복의 마음을 남겼어요 💛 +1",
+    en: "You left a blessing 💛 +1",
+    de: "Du hast einen Segen hinterlassen 💛 +1",
+    fr: "Vous avez laissé une bénédiction 💛 +1",
+  },
+  prayer_intercession: {
+    ko: "중보기도 결단했어요 💛 +1",
+    en: "You committed to pray 💛 +1",
+    de: "Du hast Fürbitte zugesagt 💛 +1",
+    fr: "Vous vous êtes engagé à prier 💛 +1",
+  },
+  answered_prayer_gratitude: {
+    ko: "함께 감사했어요 💛 +1",
+    en: "You gave thanks together 💛 +1",
+    de: "Du hast mitgedankt 💛 +1",
+    fr: "Vous avez rendu grâce ensemble 💛 +1",
+  },
+};
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -362,6 +384,8 @@ function CommunityPageContent() {
   const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
+  const loveHeartToastTimerRef = useRef<number | null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
@@ -444,6 +468,35 @@ function CommunityPageContent() {
   const handledNotificationRouteRef = useRef<string | null>(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+
+  function loveHeartToastText(sourceType: LoveHeartSourceType) {
+    const localized = LOVE_HEART_TOASTS[sourceType];
+    return localized[lang as "ko" | "en" | "de" | "fr"] ?? localized.en;
+  }
+
+  function showLoveHeartToast(sourceType: LoveHeartSourceType) {
+    if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
+    setLoveHeartToast(loveHeartToastText(sourceType));
+    loveHeartToastTimerRef.current = window.setTimeout(() => {
+      setLoveHeartToast(null);
+      loveHeartToastTimerRef.current = null;
+    }, 2200);
+  }
+
+  async function awardCommunityLoveHeart(supabase: any, sourceType: LoveHeartSourceType, sourceId: string) {
+    try {
+      const result = await awardLoveHeartOnce(supabase, sourceType, sourceId);
+      if (result?.awarded) showLoveHeartToast(sourceType);
+    } catch (error) {
+      console.warn("사랑 하트 적립 실패:", error);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
+    };
+  }, []);
 
   function normalizeCommunitySection(value: string | null): CommunitySectionKey {
     if (value === "praying" || value === "answered") return value;
@@ -1416,6 +1469,7 @@ function CommunityPageContent() {
     setAnsweredPrayers(prev => bumpLikeCount(prev));
     setGroupPrayers(prev => bumpLikeCount(prev));
     setPartnerPrayers(prev => bumpLikeCount(prev));
+    void awardCommunityLoveHeart(supabase, "answered_prayer_gratitude", prayerId);
   }
 
   function PrayerLikeButton({ prayer }: { prayer: any }) {
@@ -2339,6 +2393,7 @@ function CommunityPageContent() {
         cur[reactionId] = (cur[reactionId] ?? 0) + 1;
         return { ...prev, [qtId]: cur };
       });
+      void awardCommunityLoveHeart(supabase, "qt_reaction", qtId);
 
       try {
         const awarded = await checkAndAwardQtReactionBadge(supabase, user.id);
@@ -2387,6 +2442,7 @@ function CommunityPageContent() {
     setGroupPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
     setPartnerPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
     setAnsweredPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
+    void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
 
     // 바울 뱃지 체크 (함께 기도 30번)
     let existingPrayerBadgeAwarded = false;
@@ -3453,6 +3509,11 @@ function CommunityPageContent() {
 
   return (
     <div className="page">
+      {loveHeartToast && (
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid rgba(232,197,71,0.36)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 800, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {loveHeartToast}
+        </div>
+      )}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />

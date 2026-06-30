@@ -478,3 +478,23 @@ Possible later unlocks:
 
 Avoid competitive or status-heavy designs.
 
+
+
+## UI connection patch status
+
+Implemented in the UI connection patch:
+
+- `lib/loveHearts.ts` centralizes `award_love_heart_once(...)` and profile balance lookup.
+- `app/community/page.tsx` calls the award RPC only after a successful new reaction/intercession/gratitude action.
+- Love Heart toast wording remains:
+  - QT reaction: `축복의 마음을 남겼어요 💛 +1`
+  - Prayer intercession: `중보기도 결단했어요 💛 +1`
+  - Answered prayer gratitude: `함께 감사했어요 💛 +1`
+- `app/profile/page.tsx` displays the balance as `💛 +N` near the profile streak line without the visible label “사랑 하트”.
+
+Still intentionally not implemented in 1.8 MVP:
+
+- spending hearts;
+- cosmetic shop;
+- historical backfill;
+- progress/streak integration.
