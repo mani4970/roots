@@ -162,6 +162,39 @@ After the decoration/shop system exists, add a dedicated card below faith journe
 
 Do not add a full shop UI in the first Love Hearts MVP.
 
+
+## Existing reaction flow audit
+
+A detailed audit was added after checking the current 1.8 code paths.
+
+```text
+docs/roots_1_8_love_hearts_reaction_flow_audit.md
+```
+
+Audited integration points:
+
+```text
+qt_reactions -> app/community/page.tsx -> reactToQT(...)
+user_prayer_logs -> app/community/page.tsx -> prayTogether(...)
+prayer_likes -> app/community/page.tsx -> likeAnsweredPrayer(...)
+```
+
+Recommended implementation order:
+
+```text
+1. Supabase foundation: wallet, ledger, award RPC
+2. Client calls after existing reactions succeed
+3. Profile header display: 💛 +12
+```
+
+Open decision before implementation:
+
+```text
+Start Love Hearts from the 1.8 release onward, or backfill past reactions?
+```
+
+Recommended MVP: start from the 1.8 release onward.
+
 ## Data model recommendation
 
 Do not mutate existing reaction tables to store balances.
