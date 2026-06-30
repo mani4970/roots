@@ -2624,7 +2624,7 @@ function CommunityPageContent() {
     const result = await shareInviteContent({
       title: c("community_app_invite_share_title"),
       text: c("community_app_invite_share_text"),
-      url: `${APP_URL}/welcome`,
+      url: `${APP_URL}/welcome?from=invite`,
     });
     if (result === "copied") {
       setCopiedId("app");

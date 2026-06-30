@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { Loader2 } from "lucide-react";
+import { isInAppBrowser } from "@/lib/inAppBrowser";
+
+const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 type GroupInvite = {
   name: string;
@@ -25,6 +29,7 @@ function JoinContent() {
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -32,6 +37,9 @@ function JoinContent() {
     async function load() {
       if (!groupId) { setNotFound(true); setLoading(false); return; }
       const supabase = createClient();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!currentUser);
+
       const loadWithExistingPolicies = async () => {
         // 공개 그룹이면 로그인 없이 조회 가능
         const { data: pub } = await supabase.from("groups")
@@ -46,10 +54,8 @@ function JoinContent() {
           return;
         }
 
-        // 비공개 그룹: 로그인 여부 확인
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          // 비로그인 → 그룹 이름 없이 로그인 유도
+        // 비공개 그룹: 비로그인 상태에서도 초대 랜딩은 유지
+        if (!currentUser) {
           setGroupName(t("join_private", lang));
           setIsPublic(false);
           return;
@@ -86,8 +92,7 @@ function JoinContent() {
       }
 
       if (!inviteError) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        if (!currentUser) {
           setGroupName(t("join_private", lang));
           setIsPublic(false);
         } else {
@@ -116,7 +121,7 @@ function JoinContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push(`/login?redirect=/join?group=${groupId}`);
+        router.push(`/login?redirect=${encodeURIComponent(`/join?group=${groupId}`)}`);
         return;
       }
       const { data: existing } = await supabase.from("group_members")
@@ -171,27 +176,53 @@ function JoinContent() {
             <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 8 }}>{t("join_moving_community", lang)}</p>
           </div>
         ) : (
-          <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>
+          <div style={{ background: "var(--bg2)", borderRadius: 22, padding: "26px 22px", border: "1px solid var(--border)", boxShadow: "0 16px 38px rgba(50,45,38,0.08)" }}>
+            <p style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 850, marginBottom: 8 }}>
               {isPublic ? t("join_invite", lang) : t("join_private_invite", lang)}
             </p>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{groupName}</h2>
-            {groupDesc && <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 16 }}>{groupDesc}</p>}
+            <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 10 }}>
+              {t("join_landing_title", lang, { name: groupName })}
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>
+              {groupDesc || t("join_landing_body", lang)}
+            </p>
             {memberCount > 0 && (
-              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>👥 {t("join_members_joined", lang, { count: memberCount })}</p>
+              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>👥 {t("join_members_joined", lang, { count: memberCount })}</p>
             )}
             {!isPublic && (
-              <div style={{ background: "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
+              <div style={{ background: "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: "1px solid rgba(196,149,106,0.2)" }}>
                 <p style={{ fontSize: 12, color: "var(--terra-dark)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
                   {t("join_private_notice", lang)}
                 </p>
               </div>
             )}
+            {isInAppBrowser() && (
+              <div style={{ background: "rgba(122,157,122,0.10)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: "1px solid rgba(122,157,122,0.18)" }}>
+                <p style={{ fontSize: 11.5, color: "var(--sage-dark)", lineHeight: 1.55 }}>
+                  {t("join_in_app_browser_hint", lang)}
+                </p>
+              </div>
+            )}
             <button className="btn-sage" onClick={join} disabled={joining} style={{ width: "100%" }}>
-              {joining ? <Loader2 size={16} className="spin" /> : t("join_btn", lang)}
+              {joining ? <Loader2 size={16} className="spin" /> : isLoggedIn ? t("join_btn", lang) : t("join_auth_btn", lang)}
             </button>
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12, lineHeight: 1.55 }}>
               {t("join_no_account_hint", lang)}
+            </p>
+            <div style={{ height: 1, background: "var(--border)", margin: "18px 0 14px" }} />
+            <p style={{ fontSize: 12, color: "var(--text3)", fontWeight: 750, marginBottom: 10 }}>
+              {t("join_app_download_prompt", lang)}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <span></span><span>App Store</span>
+              </a>
+              <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <span>▶</span><span>Google Play</span>
+              </a>
+            </div>
+            <p style={{ fontSize: 10.5, color: "var(--text3)", lineHeight: 1.55, marginTop: 10 }}>
+              {t("join_app_download_hint", lang)}
             </p>
           </div>
         )}

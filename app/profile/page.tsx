@@ -538,7 +538,7 @@ export default function ProfilePage() {
   async function shareApp() {
     const title = t("profile_invite_title", lang);
     const text = t("profile_invite_text", lang);
-    const result = await shareInviteContent({ title, text, url: `${ROOTS_WEB_ORIGIN}/welcome` });
+    const result = await shareInviteContent({ title, text, url: `${ROOTS_WEB_ORIGIN}/welcome?from=invite` });
     if (result === "copied") {
       showToast(t("profile_invite_copied", lang));
     }

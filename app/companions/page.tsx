@@ -8,11 +8,14 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
+import { isInAppBrowser } from "@/lib/inAppBrowser";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { checkAndAwardCompanionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { ArrowLeft, Check, Copy, Loader2, Share2, UserMinus, UserPlus, X } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
+const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 type ProfileRow = {
   id: string;
@@ -68,7 +71,7 @@ function CompanionsContent() {
   const [removeTarget, setRemoveTarget] = useState<CompanionWithProfile | null>(null);
   const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
 
-  const inviteUrl = useMemo(() => userId ? `${ROOTS_WEB_ORIGIN}/companions?invite=${userId}` : ROOTS_WEB_ORIGIN, [userId]);
+  const inviteUrl = useMemo(() => userId ? `${ROOTS_WEB_ORIGIN}/companions?invite=${userId}` : `${ROOTS_WEB_ORIGIN}/welcome?from=invite`, [userId]);
 
   function showToast(message: string) {
     setToast(message);
@@ -108,6 +111,15 @@ function CompanionsContent() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      if (inviteUserId) {
+        setUserId("");
+        setMyProfile(null);
+        setRows([]);
+        setProfiles({});
+        setInviteProfile(null);
+        setLoading(false);
+        return;
+      }
       router.push(`/welcome?redirect=${encodeURIComponent(currentCompanionsRedirectPath())}`);
       return;
     }
@@ -276,6 +288,44 @@ function CompanionsContent() {
     return (
       <main className="page-wrap" style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Loader2 className="spin" size={22} style={{ color: "var(--sage)" }} />
+      </main>
+    );
+  }
+
+  if (!userId && inviteUserId) {
+    const redirectPath = currentCompanionsRedirectPath();
+    return (
+      <main className="page-wrap" style={{ minHeight: "100dvh", padding: "56px 20px 36px", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
+          <img src="/roots-logo-transparent-160.png" alt="Roots" width={72} height={72} style={{ objectFit: "contain", marginBottom: 16 }} />
+          <div className="card" style={{ padding: "26px 22px", borderRadius: 24, border: "1px solid rgba(122,157,122,0.26)", background: "linear-gradient(180deg, var(--bg2), var(--sage-light))", boxShadow: "0 16px 38px rgba(50,45,38,0.08)" }}>
+            <p style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 850, marginBottom: 8 }}>{c("companions_invite_received")}</p>
+            <h1 style={{ fontSize: 21, lineHeight: 1.35, fontWeight: 900, color: "var(--text)", marginBottom: 10 }}>{c("companions_invite_landing_title")}</h1>
+            <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text2)", marginBottom: 16 }}>{c("companions_invite_landing_body")}</p>
+            {isInAppBrowser() && (
+              <div style={{ background: "rgba(244,239,224,0.64)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: "1px solid rgba(122,157,122,0.18)", textAlign: "left" }}>
+                <p style={{ fontSize: 11.5, color: "var(--sage-dark)", lineHeight: 1.55 }}>{c("invite_in_app_browser_hint")}</p>
+              </div>
+            )}
+            <button onClick={() => router.push(`/signup?redirect=${encodeURIComponent(redirectPath)}`)} className="btn-sage" style={{ width: "100%", marginBottom: 10 }}>
+              {c("companions_invite_landing_primary")}
+            </button>
+            <button onClick={() => router.push(`/login?redirect=${encodeURIComponent(redirectPath)}`)} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", fontSize: 13, fontWeight: 850, cursor: "pointer" }}>
+              {c("invite_login_existing")}
+            </button>
+            <div style={{ height: 1, background: "rgba(122,157,122,0.22)", margin: "18px 0 14px" }} />
+            <p style={{ fontSize: 12, color: "var(--text3)", fontWeight: 750, marginBottom: 10 }}>{c("invite_app_download_prompt")}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <span></span><span>App Store</span>
+              </a>
+              <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <span>▶</span><span>Google Play</span>
+              </a>
+            </div>
+            <p style={{ fontSize: 10.5, color: "var(--text3)", lineHeight: 1.55, marginTop: 10 }}>{c("invite_app_download_hint")}</p>
+          </div>
+        </div>
       </main>
     );
   }

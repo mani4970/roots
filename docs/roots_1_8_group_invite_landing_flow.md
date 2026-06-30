@@ -168,3 +168,34 @@ Group invite link
 ```
 
 This preserves the invitation context, works inside KakaoTalk, and avoids forcing new users into the App Store before they understand why they were invited.
+
+## 2026-06-30 scope update: invite flows should share one pattern
+
+The same product principle should apply to all invite types, but each invite should keep its own context.
+
+```text
+Group invite
+→ /join?group=<group_id>
+→ group-specific invite landing
+→ signup/login if needed
+→ join group
+
+Faith partner invite
+→ /companions?invite=<user_id>
+→ faith-partner invite landing when logged out
+→ signup/login if needed
+→ accept invite / connect as faith partners
+
+General app invite
+→ /welcome?from=invite
+→ public Roots welcome/download page
+→ signup/login or app download
+```
+
+Do not send every invite to a generic landing page first. The invite page should preserve why the person clicked the link.
+
+### Implementation note
+
+For the MVP, companion invites can show a generic logged-out invite landing without exposing the inviter profile publicly. Once the user signs up or logs in, the existing authenticated `/companions?invite=...` flow can load the inviter profile and complete the connection.
+
+App invites do not need a separate database-backed page. `/welcome?from=invite` is enough for now because the invitation is for the app itself, not for a specific group or person.
