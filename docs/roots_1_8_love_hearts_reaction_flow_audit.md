@@ -281,10 +281,11 @@ There are two possible choices:
 1. Start Love Hearts from 1.8 release onward.
 2. Backfill historical `qt_reactions`, `user_prayer_logs`, and `prayer_likes` into `love_heart_events`.
 
-Recommended MVP decision:
+MVP decision:
 
 ```text
 Start from 1.8 release onward.
+Do not backfill historical interactions in the first Love Hearts release.
 ```
 
 Reason:
@@ -298,10 +299,10 @@ If the user wants historical credit later, add a separate reviewed backfill migr
 
 ## Next recommended patch
 
-The next safe patch should be a Supabase migration only:
+The Supabase foundation migration is:
 
 ```text
 supabase/52_love_hearts_foundation_1_8.sql
 ```
 
-That migration should create the wallet/event tables and award RPC, but should not modify community UI yet.
+That migration creates the wallet/event tables and award RPC, but does not modify community UI yet.

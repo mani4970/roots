@@ -187,13 +187,12 @@ Recommended implementation order:
 3. Profile header display: 💛 +12
 ```
 
-Open decision before implementation:
+Implementation decision:
 
 ```text
-Start Love Hearts from the 1.8 release onward, or backfill past reactions?
+Start Love Hearts from the 1.8 release onward.
+Do not backfill past reactions in the MVP.
 ```
-
-Recommended MVP: start from the 1.8 release onward.
 
 ## Data model recommendation
 
@@ -422,6 +421,24 @@ Future:
 - add a dedicated Love Hearts detail card
 - add recent Love Heart history
 - connect Love Hearts to Rootsman / garden decoration unlocks
+
+## Supabase foundation
+
+The first database foundation migration is:
+
+```text
+supabase/52_love_hearts_foundation_1_8.sql
+```
+
+It adds:
+
+```text
+love_heart_wallets
+love_heart_events
+award_love_heart_once(p_source_type text, p_source_id uuid)
+```
+
+This migration does not connect client UI yet. It only prepares the ledger, wallet, RLS, grants, and award RPC.
 
 ## Suggested 1.8 MVP scope
 
