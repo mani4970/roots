@@ -2,13 +2,21 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { useLang } from "@/lib/useLang";
+import { saveLangLocally, useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
+import InviteLanguageSwitcher from "@/components/InviteLanguageSwitcher";
+import {
+  getInviteLandingText,
+  normalizeInviteLandingLang,
+  resolveInviteLandingLang,
+  type InviteLandingLang,
+} from "@/lib/inviteLandingText";
 import { Loader2 } from "lucide-react";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
 
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
-const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
+const GOOGLE_PLAY_URL =
+  "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 type GroupInvite = {
   name: string;
@@ -19,9 +27,12 @@ type GroupInvite = {
 
 function JoinContent() {
   const router = useRouter();
-  const lang = useLang();
+  const savedLang = useLang();
   const params = useSearchParams();
   const groupId = params.get("group");
+  const langParam = params.get("lang");
+  const [inviteLang, setInviteLang] = useState<InviteLandingLang>(savedLang);
+  const inviteText = getInviteLandingText(inviteLang);
   const [memberCount, setMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -34,42 +45,86 @@ function JoinContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const browserLanguage =
+      typeof navigator !== "undefined" ? navigator.language : null;
+    const nextLang = resolveInviteLandingLang(
+      langParam,
+      savedLang,
+      browserLanguage,
+    );
+    setInviteLang(nextLang);
+    if (normalizeInviteLandingLang(langParam)) saveLangLocally(nextLang);
+  }, [langParam, savedLang]);
+
+  function currentJoinRedirectPath() {
+    const nextParams = new URLSearchParams(params.toString());
+    if (!nextParams.get("lang")) nextParams.set("lang", inviteLang);
+    const query = nextParams.toString();
+    return `/join${query ? `?${query}` : ""}`;
+  }
+
+  function changeInviteLang(nextLang: InviteLandingLang) {
+    saveLangLocally(nextLang);
+    setInviteLang(nextLang);
+    const nextParams = new URLSearchParams(params.toString());
+    nextParams.set("lang", nextLang);
+    router.replace(`/join?${nextParams.toString()}`, { scroll: false });
+  }
+
+  useEffect(() => {
     async function load() {
-      if (!groupId) { setNotFound(true); setLoading(false); return; }
+      if (!groupId) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
       const supabase = createClient();
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       setIsLoggedIn(!!currentUser);
 
       const loadWithExistingPolicies = async () => {
         // 공개 그룹이면 로그인 없이 조회 가능
-        const { data: pub } = await supabase.from("groups")
-          .select("*").eq("id", groupId).eq("is_public", true).maybeSingle();
+        const { data: pub } = await supabase
+          .from("groups")
+          .select("*")
+          .eq("id", groupId)
+          .eq("is_public", true)
+          .maybeSingle();
         if (pub) {
           setGroupName(pub.name);
           setGroupDesc(pub.description ?? "");
           setIsPublic(true);
-          const { count } = await supabase.from("group_members")
-            .select("*", { count: "exact", head: true }).eq("group_id", groupId);
+          const { count } = await supabase
+            .from("group_members")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", groupId);
           setMemberCount(count ?? 0);
           return;
         }
 
         // 비공개 그룹: 비로그인 상태에서도 초대 랜딩은 유지
         if (!currentUser) {
-          setGroupName(t("join_private", lang));
+          setGroupName(inviteText.privateGroupName);
           setIsPublic(false);
           return;
         }
 
         // 로그인됨 → 비공개 그룹 조회 시도
-        const { data: priv } = await supabase.from("groups")
-          .select("*").eq("id", groupId).maybeSingle();
+        const { data: priv } = await supabase
+          .from("groups")
+          .select("*")
+          .eq("id", groupId)
+          .maybeSingle();
         if (priv) {
           setGroupName(priv.name);
           setGroupDesc(priv.description ?? "");
           setIsPublic(false);
-          const { count } = await supabase.from("group_members")
-            .select("*", { count: "exact", head: true }).eq("group_id", groupId);
+          const { count } = await supabase
+            .from("group_members")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", groupId);
           setMemberCount(count ?? 0);
         } else {
           setNotFound(true);
@@ -78,76 +133,105 @@ function JoinContent() {
 
       try {
         const { data: inviteRow, error: inviteError } = await supabase
-        .rpc("get_group_invite", { p_group_id: groupId })
-        .maybeSingle();
-      const invite = inviteRow as unknown as GroupInvite | null;
+          .rpc("get_group_invite", { p_group_id: groupId })
+          .maybeSingle();
+        const invite = inviteRow as unknown as GroupInvite | null;
 
-      if (!inviteError && invite) {
-        setGroupName(invite.name);
-        setGroupDesc(invite.description ?? "");
-        setIsPublic(invite.is_public);
-        setMemberCount(invite.member_count ?? 0);
-        setLoading(false);
-        return;
-      }
-
-      if (!inviteError) {
-        if (!currentUser) {
-          setGroupName(t("join_private", lang));
-          setIsPublic(false);
-        } else {
-          setNotFound(true);
+        if (!inviteError && invite) {
+          setGroupName(invite.name);
+          setGroupDesc(invite.description ?? "");
+          setIsPublic(invite.is_public);
+          setMemberCount(invite.member_count ?? 0);
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
-      }
 
-      // SQL 패치 적용 전 배포되어도 기존 초대 링크 흐름이 깨지지 않도록 fallback 유지
-      await loadWithExistingPolicies();
-      setLoading(false);
+        if (!inviteError) {
+          if (!currentUser) {
+            setGroupName(inviteText.privateGroupName);
+            setIsPublic(false);
+          } else {
+            setNotFound(true);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // SQL 패치 적용 전 배포되어도 기존 초대 링크 흐름이 깨지지 않도록 fallback 유지
+        await loadWithExistingPolicies();
+        setLoading(false);
       } catch (error) {
         console.error("join invite load failed", error);
-        setErrorMessage(t("join_error_load", lang));
+        setErrorMessage(t("join_error_load", inviteLang));
         setLoading(false);
       }
     }
     load();
-  }, [groupId, lang]);
+  }, [groupId, inviteLang, inviteText.privateGroupName]);
 
   async function join() {
     setJoining(true);
     setErrorMessage(null);
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        router.push(`/login?redirect=${encodeURIComponent(`/join?group=${groupId}`)}`);
+        router.push(
+          `/login?redirect=${encodeURIComponent(currentJoinRedirectPath())}`,
+        );
         return;
       }
-      const { data: existing } = await supabase.from("group_members")
-        .select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
+      const { data: existing } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .maybeSingle();
       if (!existing) {
-        const { error } = await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id });
+        const { error } = await supabase
+          .from("group_members")
+          .insert({ group_id: groupId, user_id: user.id });
         if (error) throw error;
       }
       setJoined(true);
       setTimeout(() => router.push("/community"), 2000);
     } catch (error) {
       console.error("join group failed", error);
-      setErrorMessage(t("join_error_submit", lang));
+      setErrorMessage(t("join_error_submit", inviteLang));
     } finally {
       setJoining(false);
     }
   }
 
-  if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+      </div>
+    );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--bg)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 24px",
+      }}
+    >
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
         <img
           src="/roots-logo-transparent-160.png"
@@ -156,73 +240,244 @@ function JoinContent() {
           height={72}
           style={{ objectFit: "contain", marginBottom: 16 }}
         />
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Roots</h1>
-        <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 28 }}>{t("home_loading_sub", lang)}</p>
+        <h1
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: "var(--text)",
+            marginBottom: 8,
+          }}
+        >
+          Roots
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 18 }}>
+          {inviteText.brandTagline}
+        </p>
+        <InviteLanguageSwitcher
+          value={inviteLang}
+          onChange={changeInviteLang}
+          ariaLabel={inviteText.languageAria}
+        />
 
         {errorMessage && (
-          <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", border: "1px solid rgba(196,149,106,0.22)", marginBottom: 12 }}>
-            <p style={{ fontSize: 12, color: "var(--terra-dark)", lineHeight: 1.6 }}>{errorMessage}</p>
+          <div
+            style={{
+              background: "var(--terra-light)",
+              borderRadius: 14,
+              padding: "12px 14px",
+              border: "1px solid rgba(196,149,106,0.22)",
+              marginBottom: 12,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--terra-dark)",
+                lineHeight: 1.6,
+              }}
+            >
+              {errorMessage}
+            </p>
           </div>
         )}
         {notFound ? (
-          <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "24px", border: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 16, color: "var(--text3)" }}>{t("join_not_found", lang)}</p>
-            <button className="btn-sage" style={{ marginTop: 16 }} onClick={() => router.push("/")}>{t("join_home", lang)}</button>
+          <div
+            style={{
+              background: "var(--bg2)",
+              borderRadius: 20,
+              padding: "24px",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <p style={{ fontSize: 16, color: "var(--text3)" }}>
+              {t("join_not_found", inviteLang)}
+            </p>
+            <button
+              className="btn-sage"
+              style={{ marginTop: 16 }}
+              onClick={() => router.push("/")}
+            >
+              {t("join_home", inviteLang)}
+            </button>
           </div>
         ) : joined ? (
-          <div style={{ background: "var(--bg2)", borderRadius: 20, padding: "28px", border: "1px solid var(--border)" }}>
+          <div
+            style={{
+              background: "var(--bg2)",
+              borderRadius: 20,
+              padding: "28px",
+              border: "1px solid var(--border)",
+            }}
+          >
             <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--sage-dark)" }}>{t("join_success", lang)}</p>
-            <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 8 }}>{t("join_moving_community", lang)}</p>
+            <p
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--sage-dark)",
+              }}
+            >
+              {t("join_success", inviteLang)}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 8 }}>
+              {t("join_moving_community", inviteLang)}
+            </p>
           </div>
         ) : (
-          <div style={{ background: "var(--bg2)", borderRadius: 22, padding: "26px 22px", border: "1px solid var(--border)", boxShadow: "0 16px 38px rgba(50,45,38,0.08)" }}>
-            <p style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 850, marginBottom: 8 }}>
-              {isPublic ? t("join_invite", lang) : t("join_private_invite", lang)}
-            </p>
-            <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 10 }}>
-              {t("join_landing_title", lang, { name: groupName })}
+          <div
+            style={{
+              background: "var(--bg2)",
+              borderRadius: 22,
+              padding: "26px 22px",
+              border: "1px solid var(--border)",
+              boxShadow: "0 16px 38px rgba(50,45,38,0.08)",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 21,
+                fontWeight: 900,
+                color: "var(--text)",
+                lineHeight: 1.35,
+                marginBottom: 10,
+              }}
+            >
+              {inviteText.groupTitle(groupName)}
             </h2>
-            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>
-              {groupDesc || t("join_landing_body", lang)}
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text2)",
+                lineHeight: 1.65,
+                marginBottom: 16,
+              }}
+            >
+              {groupDesc || inviteText.groupBody}
             </p>
             {memberCount > 0 && (
-              <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>👥 {t("join_members_joined", lang, { count: memberCount })}</p>
-            )}
-            {!isPublic && (
-              <div style={{ background: "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: "1px solid rgba(196,149,106,0.2)" }}>
-                <p style={{ fontSize: 12, color: "var(--terra-dark)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
-                  {t("join_private_notice", lang)}
-                </p>
-              </div>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text3)",
+                  marginBottom: 16,
+                }}
+              >
+                👥 {inviteText.groupMembers(memberCount)}
+              </p>
             )}
             {isInAppBrowser() && (
-              <div style={{ background: "rgba(122,157,122,0.10)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: "1px solid rgba(122,157,122,0.18)" }}>
-                <p style={{ fontSize: 11.5, color: "var(--sage-dark)", lineHeight: 1.55 }}>
-                  {t("join_in_app_browser_hint", lang)}
+              <div
+                style={{
+                  background: "rgba(122,157,122,0.10)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  marginBottom: 14,
+                  border: "1px solid rgba(122,157,122,0.18)",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11.5,
+                    color: "var(--sage-dark)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {inviteText.inAppBrowserHint}
                 </p>
               </div>
             )}
-            <button className="btn-sage" onClick={join} disabled={joining} style={{ width: "100%" }}>
-              {joining ? <Loader2 size={16} className="spin" /> : isLoggedIn ? t("join_btn", lang) : t("join_auth_btn", lang)}
+            <button
+              className="btn-sage"
+              onClick={join}
+              disabled={joining}
+              style={{ width: "100%" }}
+            >
+              {joining ? (
+                <Loader2 size={16} className="spin" />
+              ) : isLoggedIn ? (
+                inviteText.groupJoinButton
+              ) : (
+                inviteText.groupJoinAuthButton
+              )}
             </button>
-            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 12, lineHeight: 1.55 }}>
-              {t("join_no_account_hint", lang)}
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--text3)",
+                marginTop: 12,
+                lineHeight: 1.55,
+              }}
+            >
+              {inviteText.groupAfterAuthHint}
             </p>
-            <div style={{ height: 1, background: "var(--border)", margin: "18px 0 14px" }} />
-            <p style={{ fontSize: 12, color: "var(--text3)", fontWeight: 750, marginBottom: 10 }}>
-              {t("join_app_download_prompt", lang)}
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
-                <span></span><span>App Store</span>
+            <div
+              style={{
+                height: 1,
+                background: "var(--border)",
+                margin: "18px 0 14px",
+              }}
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+              }}
+            >
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: "none",
+                  padding: "10px 8px",
+                  borderRadius: 13,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg3)",
+                  color: "var(--text)",
+                  fontSize: 12,
+                  fontWeight: 850,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span></span>
+                <span>App Store</span>
               </a>
-              <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", padding: "10px 8px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 12, fontWeight: 850, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
-                <span>▶</span><span>Google Play</span>
+              <a
+                href={GOOGLE_PLAY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: "none",
+                  padding: "10px 8px",
+                  borderRadius: 13,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg3)",
+                  color: "var(--text)",
+                  fontSize: 12,
+                  fontWeight: 850,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span>▶</span>
+                <span>Google Play</span>
               </a>
             </div>
-            <p style={{ fontSize: 10.5, color: "var(--text3)", lineHeight: 1.55, marginTop: 10 }}>
-              {t("join_app_download_hint", lang)}
+            <p
+              style={{
+                fontSize: 10.5,
+                color: "var(--text3)",
+                lineHeight: 1.55,
+                marginTop: 10,
+              }}
+            >
+              {inviteText.groupAppDownloadHint}
             </p>
           </div>
         )}
@@ -233,7 +488,25 @@ function JoinContent() {
 
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Loader2
+            size={24}
+            style={{ color: "var(--sage)" }}
+            className="spin"
+          />
+        </div>
+      }
+    >
       <JoinContent />
     </Suspense>
   );

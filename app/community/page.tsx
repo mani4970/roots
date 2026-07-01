@@ -1,5 +1,11 @@
 "use client";
-import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
@@ -8,15 +14,46 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
-import { GROUP_CHALLENGE_BADGE_FALLBACK, getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
+import {
+  GROUP_CHALLENGE_BADGE_FALLBACK,
+  getGroupChallengeBadgeImageSrc,
+} from "@/lib/groupChallengeBadges";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
-import { checkAndAwardPrayTogetherBadge, checkAndAwardQtReactionBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import {
+  checkAndAwardPrayTogetherBadge,
+  checkAndAwardQtReactionBadge,
+  getRewardBadgePopup,
+} from "@/lib/rewardBadges";
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { getLoveHeartToastText } from "@/lib/loveHeartText";
-import { Loader2, Plus, X, Users, Share2, Copy, Check, ChevronRight, ArrowLeft, Sparkles, Heart, HandHeart, BookOpen, CheckCircle2, Star, LogOut, AlertTriangle, Edit3, Trash2, MoreHorizontal, Flag, EyeOff, UserPlus } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  X,
+  Users,
+  Share2,
+  Copy,
+  Check,
+  ChevronRight,
+  ArrowLeft,
+  Sparkles,
+  Heart,
+  HandHeart,
+  BookOpen,
+  CheckCircle2,
+  Star,
+  LogOut,
+  AlertTriangle,
+  Edit3,
+  Trash2,
+  MoreHorizontal,
+  Flag,
+  EyeOff,
+  UserPlus,
+} from "lucide-react";
 
 const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
   { id: "bless", labelKey: "community_reaction_bless" },
@@ -26,8 +63,10 @@ const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
 
 function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
   const color = selected ? "var(--sage-dark)" : "currentColor";
-  if (id === "bless") return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
-  if (id === "cheer") return <Heart size={14} strokeWidth={1.9} style={{ color }} />;
+  if (id === "bless")
+    return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
+  if (id === "cheer")
+    return <Heart size={14} strokeWidth={1.9} style={{ color }} />;
   return <HandHeart size={14} strokeWidth={1.9} style={{ color }} />;
 }
 
@@ -62,10 +101,16 @@ function qtFeedTime(row: any): string | null {
 }
 
 function sortQtFeedRows<T extends Record<string, any>>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => new Date(qtFeedTime(b) ?? 0).getTime() - new Date(qtFeedTime(a) ?? 0).getTime());
+  return [...rows].sort(
+    (a, b) =>
+      new Date(qtFeedTime(b) ?? 0).getTime() -
+      new Date(qtFeedTime(a) ?? 0).getTime(),
+  );
 }
 
-function mergeRowsById<T extends Record<string, any>>(rowSets: Array<T[] | null | undefined>): T[] {
+function mergeRowsById<T extends Record<string, any>>(
+  rowSets: Array<T[] | null | undefined>,
+): T[] {
   const map = new Map<string, T>();
   rowSets.forEach((rows) => {
     (rows ?? []).forEach((row) => {
@@ -77,7 +122,10 @@ function mergeRowsById<T extends Record<string, any>>(rowSets: Array<T[] | null 
   return Array.from(map.values());
 }
 
-async function fetchQtFeedRows(supabase: ReturnType<typeof createClient>, visibilityPattern: string) {
+async function fetchQtFeedRows(
+  supabase: ReturnType<typeof createClient>,
+  visibilityPattern: string,
+) {
   // 중요한 이유: 오래된 공유 기록은 shared_at이 null일 수 있습니다.
   // shared_at 기준 쿼리만 limit 하면 null shared_at 기록이 뒤로 밀려 그룹/전체 피드에서 사라져 보일 수 있으므로,
   // created_at 기준 쿼리도 함께 가져와 합친 뒤 클라이언트에서 shared_at ?? created_at 기준으로 정렬합니다.
@@ -100,14 +148,24 @@ async function fetchQtFeedRows(supabase: ReturnType<typeof createClient>, visibi
 
   if (sharedAtQuery.error) {
     if (/shared_at/i.test(sharedAtQuery.error.message ?? "")) {
-      console.warn("qt_records.shared_at column is not available yet. Falling back to created_at ordering:", sharedAtQuery.error.message);
+      console.warn(
+        "qt_records.shared_at column is not available yet. Falling back to created_at ordering:",
+        sharedAtQuery.error.message,
+      );
     } else {
-      console.warn("qt_records shared_at ordering failed. Falling back to created_at ordering:", sharedAtQuery.error.message);
+      console.warn(
+        "qt_records shared_at ordering failed. Falling back to created_at ordering:",
+        sharedAtQuery.error.message,
+      );
     }
   }
 
-  return sortQtFeedRows(mergeRowsById([createdAtQuery.data ?? [], sharedAtQuery.error ? [] : sharedAtQuery.data ?? []]))
-    .slice(0, COMMUNITY_FEED_PREFETCH_LIMIT);
+  return sortQtFeedRows(
+    mergeRowsById([
+      createdAtQuery.data ?? [],
+      sharedAtQuery.error ? [] : (sharedAtQuery.data ?? []),
+    ]),
+  ).slice(0, COMMUNITY_FEED_PREFETCH_LIMIT);
 }
 
 function latestSharedContentTime(rows?: any[] | null): string | null {
@@ -115,21 +173,34 @@ function latestSharedContentTime(rows?: any[] | null): string | null {
   return rows
     .map(sharedContentTime)
     .filter(Boolean)
-    .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0] as string | null;
+    .sort(
+      (a, b) =>
+        new Date(b as string).getTime() - new Date(a as string).getTime(),
+    )[0] as string | null;
 }
 
-
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.filter((value): value is string => typeof value === "string" && value.length > 0)));
+  return Array.from(
+    new Set(
+      values.filter(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0,
+      ),
+    ),
+  );
 }
 
 function chunkArray<T>(items: T[], size: number) {
   const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size)
+    chunks.push(items.slice(i, i + size));
   return chunks;
 }
 
-function groupIdsFromVisibility(value: string | null | undefined, allowedGroupIds: Set<string>) {
+function groupIdsFromVisibility(
+  value: string | null | undefined,
+  allowedGroupIds: Set<string>,
+) {
   return String(value ?? "")
     .split(",")
     .map((part) => part.trim())
@@ -138,14 +209,24 @@ function groupIdsFromVisibility(value: string | null | undefined, allowedGroupId
     .filter((groupId) => allowedGroupIds.has(groupId));
 }
 
-function addLatestTime(target: Record<string, string | null>, groupId: string, time: string | null) {
+function addLatestTime(
+  target: Record<string, string | null>,
+  groupId: string,
+  time: string | null,
+) {
   if (!time) return;
-  if (!target[groupId] || new Date(time).getTime() > new Date(target[groupId] as string).getTime()) {
+  if (
+    !target[groupId] ||
+    new Date(time).getTime() > new Date(target[groupId] as string).getTime()
+  ) {
     target[groupId] = time;
   }
 }
 
-async function fetchGroupMemberCounts(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+async function fetchGroupMemberCounts(
+  supabase: ReturnType<typeof createClient>,
+  groupIds: string[],
+) {
   const counts: Record<string, number> = {};
   if (groupIds.length === 0) return counts;
 
@@ -169,13 +250,18 @@ async function fetchGroupMemberCounts(supabase: ReturnType<typeof createClient>,
   return counts;
 }
 
-async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+async function fetchLatestQtTimesByGroup(
+  supabase: ReturnType<typeof createClient>,
+  groupIds: string[],
+) {
   const latestByGroup: Record<string, string | null> = {};
   const allowedGroupIds = new Set(groupIds);
   if (groupIds.length === 0) return latestByGroup;
 
   for (const chunk of chunkArray(groupIds, 35)) {
-    const visibilityFilter = chunk.map((groupId) => `visibility.ilike.%group_${groupId}%`).join(",");
+    const visibilityFilter = chunk
+      .map((groupId) => `visibility.ilike.%group_${groupId}%`)
+      .join(",");
     const limit = Math.min(1000, Math.max(200, chunk.length * 25));
     let createdAtRows: any[] = [];
     let sharedAtRows: any[] = [];
@@ -196,12 +282,18 @@ async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClien
           .order("created_at", { ascending: false })
           .limit(limit);
         if (fallback.error) {
-          console.warn("그룹 최신 묵상 fallback 조회 실패:", fallback.error.message);
+          console.warn(
+            "그룹 최신 묵상 fallback 조회 실패:",
+            fallback.error.message,
+          );
           continue;
         }
         createdAtRows = fallback.data ?? [];
       } else {
-        console.warn("그룹 최신 묵상 created_at 조회 실패:", createdAt.error.message);
+        console.warn(
+          "그룹 최신 묵상 created_at 조회 실패:",
+          createdAt.error.message,
+        );
         continue;
       }
     } else {
@@ -218,7 +310,10 @@ async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClien
 
     if (withSharedAt.error) {
       if (!/shared_at/i.test(withSharedAt.error.message ?? "")) {
-        console.warn("그룹 최신 묵상 shared_at 조회 실패:", withSharedAt.error.message);
+        console.warn(
+          "그룹 최신 묵상 shared_at 조회 실패:",
+          withSharedAt.error.message,
+        );
       }
     } else {
       sharedAtRows = withSharedAt.data ?? [];
@@ -226,20 +321,27 @@ async function fetchLatestQtTimesByGroup(supabase: ReturnType<typeof createClien
 
     mergeRowsById([createdAtRows, sharedAtRows]).forEach((row: any) => {
       const time = qtFeedTime(row);
-      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach((groupId) => addLatestTime(latestByGroup, groupId, time));
+      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach(
+        (groupId) => addLatestTime(latestByGroup, groupId, time),
+      );
     });
   }
 
   return latestByGroup;
 }
 
-async function fetchLatestPrayerTimesByGroup(supabase: ReturnType<typeof createClient>, groupIds: string[]) {
+async function fetchLatestPrayerTimesByGroup(
+  supabase: ReturnType<typeof createClient>,
+  groupIds: string[],
+) {
   const latestByGroup: Record<string, string | null> = {};
   const allowedGroupIds = new Set(groupIds);
   if (groupIds.length === 0) return latestByGroup;
 
   for (const chunk of chunkArray(groupIds, 35)) {
-    const visibilityFilter = chunk.map((groupId) => `visibility.ilike.%group_${groupId}%`).join(",");
+    const visibilityFilter = chunk
+      .map((groupId) => `visibility.ilike.%group_${groupId}%`)
+      .join(",");
     const limit = Math.min(1000, Math.max(200, chunk.length * 25));
     const { data, error } = await supabase
       .from("prayer_items")
@@ -256,7 +358,9 @@ async function fetchLatestPrayerTimesByGroup(supabase: ReturnType<typeof createC
 
     (data ?? []).forEach((row: any) => {
       const time = sharedContentTime(row);
-      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach((groupId) => addLatestTime(latestByGroup, groupId, time));
+      groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach(
+        (groupId) => addLatestTime(latestByGroup, groupId, time),
+      );
     });
   }
 
@@ -278,7 +382,10 @@ function sortGroupsForDisplay(groups: any[]) {
       if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
     }
 
-    return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+    return (
+      new Date(b.created_at ?? 0).getTime() -
+      new Date(a.created_at ?? 0).getTime()
+    );
   });
 }
 
@@ -288,7 +395,22 @@ function sortPartnersForDisplay(partners: any[]) {
     const bHasNew = !!b.hasNewContent;
     if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
     if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
-    return new Date(b.latest_partner_activity_at ?? b.responded_at ?? b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.latest_partner_activity_at ?? a.responded_at ?? a.updated_at ?? a.created_at ?? 0).getTime();
+    return (
+      new Date(
+        b.latest_partner_activity_at ??
+          b.responded_at ??
+          b.updated_at ??
+          b.created_at ??
+          0,
+      ).getTime() -
+      new Date(
+        a.latest_partner_activity_at ??
+          a.responded_at ??
+          a.updated_at ??
+          a.created_at ??
+          0,
+      ).getTime()
+    );
   });
 }
 
@@ -304,7 +426,11 @@ function writeFavoriteCache(userId: string, groupIds: string[]) {
   storageSetJson(favoriteCacheKey(userId), Array.from(new Set(groupIds)));
 }
 
-function updateFavoriteCache(userId: string, groupId: string, isFavorite: boolean) {
+function updateFavoriteCache(
+  userId: string,
+  groupId: string,
+  isFavorite: boolean,
+) {
   const current = readFavoriteCache(userId);
   const next = isFavorite
     ? Array.from(new Set([...current, groupId]))
@@ -312,7 +438,16 @@ function updateFavoriteCache(userId: string, groupId: string, isFavorite: boolea
   writeFavoriteCache(userId, next);
 }
 
-function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: number; emoji?: string }) {
+function Avatar({
+  url,
+  name,
+  size = 28,
+}: {
+  url?: string;
+  name?: string;
+  size?: number;
+  emoji?: string;
+}) {
   const safeAvatarStyle = {
     width: size,
     height: size,
@@ -323,35 +458,68 @@ function Avatar({ url, name, size = 28 }: { url?: string; name?: string; size?: 
     WebkitTouchCallout: "none",
   } as const;
 
-  if (url) return (
-    <img
-      src={url}
-      alt={name ?? "프로필"}
-      decoding="async"
-      draggable={false}
-      onDragStart={(event) => event.preventDefault()}
-      onContextMenu={(event) => event.preventDefault()}
-      style={safeAvatarStyle}
-    />
-  );
+  if (url)
+    return (
+      <img
+        src={url}
+        alt={name ?? "프로필"}
+        decoding="async"
+        draggable={false}
+        onDragStart={(event) => event.preventDefault()}
+        onContextMenu={(event) => event.preventDefault()}
+        style={safeAvatarStyle}
+      />
+    );
   const initial = (name?.trim()?.[0] ?? "R").toUpperCase();
   return (
     <div
       onContextMenu={(event) => event.preventDefault()}
-      style={{ ...safeAvatarStyle, background: "var(--sage-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{
+        ...safeAvatarStyle,
+        background: "var(--sage-light)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      <span style={{ fontSize: size * 0.36, fontWeight: 800, color: "var(--sage-dark)" }}>{initial}</span>
+      <span
+        style={{
+          fontSize: size * 0.36,
+          fontWeight: 800,
+          color: "var(--sage-dark)",
+        }}
+      >
+        {initial}
+      </span>
     </div>
   );
 }
 
-const SECTIONS: { key: string; labelKey: TKey; sundayLabelKey?: TKey; italic?: boolean; isDecision?: boolean }[] = [
+const SECTIONS: {
+  key: string;
+  labelKey: TKey;
+  sundayLabelKey?: TKey;
+  italic?: boolean;
+  isDecision?: boolean;
+}[] = [
   { key: "opening_prayer", labelKey: "community_qt_section_opening_prayer" },
-  { key: "summary", labelKey: "community_qt_section_summary", sundayLabelKey: "community_qt_section_sermon_summary" },
-  { key: "key_verse", labelKey: "community_qt_section_key_verse", italic: true },
+  {
+    key: "summary",
+    labelKey: "community_qt_section_summary",
+    sundayLabelKey: "community_qt_section_sermon_summary",
+  },
+  {
+    key: "key_verse",
+    labelKey: "community_qt_section_key_verse",
+    italic: true,
+  },
   { key: "meditation", labelKey: "community_qt_section_meditation" },
   { key: "application", labelKey: "community_qt_section_application" },
-  { key: "decision", labelKey: "community_qt_section_decision", isDecision: true },
+  {
+    key: "decision",
+    labelKey: "community_qt_section_decision",
+    isDecision: true,
+  },
   { key: "closing_prayer", labelKey: "community_qt_section_closing_prayer" },
 ];
 
@@ -363,7 +531,11 @@ function CommunityPageContent() {
   const [tab, setTab] = useState<"partner" | "group" | "all">("partner");
   const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
   const lang = useLang();
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const [badgePopup, setBadgePopup] = useState<{
+    img: string;
+    title: string;
+    msg: string;
+  } | null>(null);
   const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
   const loveHeartToastTimerRef = useRef<number | null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -372,7 +544,9 @@ function CommunityPageContent() {
   const [groups, setGroups] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
-  const [partnerDetailTab, setPartnerDetailTab] = useState<"qt" | "praying" | "answered">("qt");
+  const [partnerDetailTab, setPartnerDetailTab] = useState<
+    "qt" | "praying" | "answered"
+  >("qt");
   const [partnerQts, setPartnerQts] = useState<any[]>([]);
   const [partnerPrayers, setPartnerPrayers] = useState<any[]>([]);
   const [loadingPartnerQts, setLoadingPartnerQts] = useState(false);
@@ -387,9 +561,13 @@ function CommunityPageContent() {
   const [likedPrayerIds, setLikedPrayerIds] = useState<string[]>([]);
 
   // 큐티 반응: { [qtId]: { bless: 3, cheer: 1, pray: 2 } }
-  const [qtReactionCounts, setQtReactionCounts] = useState<Record<string, Record<string, number>>>({});
+  const [qtReactionCounts, setQtReactionCounts] = useState<
+    Record<string, Record<string, number>>
+  >({});
   // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
-  const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>({});
+  const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>(
+    {},
+  );
   const [qtPhotoUrls, setQtPhotoUrls] = useState<Record<string, string>>({});
   const qtPhotoUrlRequestingRef = useRef<Set<string>>(new Set());
 
@@ -400,7 +578,8 @@ function CommunityPageContent() {
   const [isPublic, setIsPublic] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showChallengeRequestForm, setShowChallengeRequestForm] = useState(false);
+  const [showChallengeRequestForm, setShowChallengeRequestForm] =
+    useState(false);
   const [challengeTitle, setChallengeTitle] = useState("");
   const [challengeStartDate, setChallengeStartDate] = useState("");
   const [challengeDurationDays, setChallengeDurationDays] = useState("30");
@@ -412,15 +591,27 @@ function CommunityPageContent() {
   const [challengeError, setChallengeError] = useState("");
   const [challengeSuccess, setChallengeSuccess] = useState(false);
   const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
-  const [groupChallengeProgress, setGroupChallengeProgress] = useState<Record<string, { doneDays: number; totalDays: number }>>({});
-  const [myGroupChallengeRequests, setMyGroupChallengeRequests] = useState<Record<string, GroupChallengeRequestSummary>>({});
-  const [groupChallengeAwardPopup, setGroupChallengeAwardPopup] = useState<null | { challengeTitle: string; groupName: string; badgeName: string; badgeImagePath?: string | null }>(null);
+  const [groupChallengeProgress, setGroupChallengeProgress] = useState<
+    Record<string, { doneDays: number; totalDays: number }>
+  >({});
+  const [myGroupChallengeRequests, setMyGroupChallengeRequests] = useState<
+    Record<string, GroupChallengeRequestSummary>
+  >({});
+  const [groupChallengeAwardPopup, setGroupChallengeAwardPopup] =
+    useState<null | {
+      challengeTitle: string;
+      groupName: string;
+      badgeName: string;
+      badgeImagePath?: string | null;
+    }>(null);
   const claimedGroupChallengeAwardIdsRef = useRef<Set<string>>(new Set());
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
-  const [groupDetailTab, setGroupDetailTab] = useState<"qt" | "praying" | "answered">("qt");
+  const [groupDetailTab, setGroupDetailTab] = useState<
+    "qt" | "praying" | "answered"
+  >("qt");
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
   const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
@@ -430,27 +621,67 @@ function CommunityPageContent() {
   const [groupMemberProfiles, setGroupMemberProfiles] = useState<any[]>([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
-  const [partnerFavoriteSavingIds, setPartnerFavoriteSavingIds] = useState<string[]>([]);
+  const [partnerFavoriteSavingIds, setPartnerFavoriteSavingIds] = useState<
+    string[]
+  >([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
-  const [manageModal, setManageModal] = useState<null | { kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit"; item: any; scope?: ShareScope; groupId?: string; partnerId?: string }>(null);
+  const [manageModal, setManageModal] = useState<null | {
+    kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit";
+    item: any;
+    scope?: ShareScope;
+    groupId?: string;
+    partnerId?: string;
+  }>(null);
   const [manageText, setManageText] = useState("");
   const [manageSaving, setManageSaving] = useState(false);
-  const [actionMenu, setActionMenu] = useState<null | { kind: "qt" | "prayer"; item: any; scope?: ShareScope; groupId?: string; partnerId?: string }>(null);
-  const [safetyConfirm, setSafetyConfirm] = useState<null | { action: "report" | "hide-item" | "hide-author"; kind: "qt" | "prayer"; item: any }>(null);
+  const [actionMenu, setActionMenu] = useState<null | {
+    kind: "qt" | "prayer";
+    item: any;
+    scope?: ShareScope;
+    groupId?: string;
+    partnerId?: string;
+  }>(null);
+  const [safetyConfirm, setSafetyConfirm] = useState<null | {
+    action: "report" | "hide-item" | "hide-author";
+    kind: "qt" | "prayer";
+    item: any;
+  }>(null);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
-  const [visibleFeedCounts, setVisibleFeedCounts] = useState<Record<string, number>>({});
-  const [allSectionSeenAt, setAllSectionSeenAt] = useState<Record<CommunitySectionKey, string | null>>({ qt: null, praying: null, answered: null });
-  const [profileModal, setProfileModal] = useState<null | { profile: any; userId: string; relationStatus: "loading" | "self" | "none" | "accepted" | "pending_sent" | "pending_received" | "declined"; relationId?: string; saving?: boolean }>(null);
-  const [photoViewer, setPhotoViewer] = useState<null | { src: string; alt?: string }>(null);
+  const [visibleFeedCounts, setVisibleFeedCounts] = useState<
+    Record<string, number>
+  >({});
+  const [allSectionSeenAt, setAllSectionSeenAt] = useState<
+    Record<CommunitySectionKey, string | null>
+  >({ qt: null, praying: null, answered: null });
+  const [profileModal, setProfileModal] = useState<null | {
+    profile: any;
+    userId: string;
+    relationStatus:
+      | "loading"
+      | "self"
+      | "none"
+      | "accepted"
+      | "pending_sent"
+      | "pending_received"
+      | "declined";
+    relationId?: string;
+    saving?: boolean;
+  }>(null);
+  const [photoViewer, setPhotoViewer] = useState<null | {
+    src: string;
+    alt?: string;
+  }>(null);
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
   const handledNotificationRouteRef = useRef<string | null>(null);
 
-  const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+  const c = (key: TKey, vars?: Record<string, string | number>) =>
+    t(key, lang, vars);
 
   function showLoveHeartToast(sourceType: LoveHeartSourceType) {
-    if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
+    if (loveHeartToastTimerRef.current)
+      window.clearTimeout(loveHeartToastTimerRef.current);
     setLoveHeartToast(getLoveHeartToastText(sourceType, lang));
     loveHeartToastTimerRef.current = window.setTimeout(() => {
       setLoveHeartToast(null);
@@ -458,7 +689,11 @@ function CommunityPageContent() {
     }, 2200);
   }
 
-  async function awardCommunityLoveHeart(supabase: any, sourceType: LoveHeartSourceType, sourceId: string) {
+  async function awardCommunityLoveHeart(
+    supabase: any,
+    sourceType: LoveHeartSourceType,
+    sourceId: string,
+  ) {
     try {
       const result = await awardLoveHeartOnce(supabase, sourceType, sourceId);
       if (result?.awarded) showLoveHeartToast(sourceType);
@@ -470,7 +705,27 @@ function CommunityPageContent() {
   function renderLoveHeartToast() {
     if (!loveHeartToast) return null;
     return (
-      <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid rgba(232,197,71,0.36)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 800, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <div
+        style={{
+          position: "fixed",
+          top: 18,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 240,
+          background: "var(--bg2)",
+          color: "var(--text)",
+          border: "1px solid rgba(232,197,71,0.36)",
+          borderRadius: 999,
+          padding: "10px 16px",
+          fontSize: 13,
+          fontWeight: 800,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          whiteSpace: "nowrap",
+          maxWidth: "calc(100vw - 32px)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {loveHeartToast}
       </div>
     );
@@ -478,11 +733,14 @@ function CommunityPageContent() {
 
   useEffect(() => {
     return () => {
-      if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
+      if (loveHeartToastTimerRef.current)
+        window.clearTimeout(loveHeartToastTimerRef.current);
     };
   }, []);
 
-  function normalizeCommunitySection(value: string | null): CommunitySectionKey {
+  function normalizeCommunitySection(
+    value: string | null,
+  ): CommunitySectionKey {
     if (value === "praying" || value === "answered") return value;
     return "qt";
   }
@@ -491,8 +749,15 @@ function CommunityPageContent() {
     if (typeof window === "undefined") return;
     if (communityDetailHistoryRef.current) return;
     try {
-      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
-      window.history.pushState({ ...currentState, rootsCommunityDetail: kind }, "", window.location.href);
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      window.history.pushState(
+        { ...currentState, rootsCommunityDetail: kind },
+        "",
+        window.location.href,
+      );
       communityDetailHistoryRef.current = kind;
     } catch {
       communityDetailHistoryRef.current = kind;
@@ -500,7 +765,8 @@ function CommunityPageContent() {
   }
 
   function clearCommunityDetailHistory(kind?: "partner" | "group") {
-    if (!kind || communityDetailHistoryRef.current === kind) communityDetailHistoryRef.current = null;
+    if (!kind || communityDetailHistoryRef.current === kind)
+      communityDetailHistoryRef.current = null;
   }
 
   function pushCommunityModalHistory(kind: CommunityModalHistoryKind) {
@@ -508,8 +774,15 @@ function CommunityPageContent() {
     const stack = communityModalHistoryStackRef.current;
     if (stack[stack.length - 1] === kind) return;
     try {
-      const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
-      window.history.pushState({ ...currentState, rootsCommunityModal: kind }, "", window.location.href);
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      window.history.pushState(
+        { ...currentState, rootsCommunityModal: kind },
+        "",
+        window.location.href,
+      );
       communityModalHistoryStackRef.current = [...stack, kind];
     } catch {
       communityModalHistoryStackRef.current = [...stack, kind];
@@ -533,7 +806,9 @@ function CommunityPageContent() {
       communityModalHistoryStackRef.current = stack.slice(0, -1);
       return;
     }
-    communityModalHistoryStackRef.current = stack.filter(item => item !== kind);
+    communityModalHistoryStackRef.current = stack.filter(
+      (item) => item !== kind,
+    );
   }
 
   function openQtDetail(record: any) {
@@ -549,7 +824,10 @@ function CommunityPageContent() {
 
   function closeQtDetail() {
     const stack = communityModalHistoryStackRef.current;
-    if (stack[stack.length - 1] === "qt-detail" && typeof window !== "undefined") {
+    if (
+      stack[stack.length - 1] === "qt-detail" &&
+      typeof window !== "undefined"
+    ) {
       window.history.back();
       return;
     }
@@ -568,7 +846,10 @@ function CommunityPageContent() {
 
   function closePhotoViewer() {
     const stack = communityModalHistoryStackRef.current;
-    if (stack[stack.length - 1] === "photo-viewer" && typeof window !== "undefined") {
+    if (
+      stack[stack.length - 1] === "photo-viewer" &&
+      typeof window !== "undefined"
+    ) {
       window.history.back();
       return;
     }
@@ -600,15 +881,25 @@ function CommunityPageContent() {
     }
 
     window.addEventListener("popstate", handleCommunityPopState);
-    return () => window.removeEventListener("popstate", handleCommunityPopState);
+    return () =>
+      window.removeEventListener("popstate", handleCommunityPopState);
   }, []);
 
   function contentKey(kind: "qt" | "prayer", id: string) {
     return `${kind}:${id}`;
   }
 
-  function filterHiddenItems(kind: "qt" | "prayer", rows: any[], keys = hiddenKeys, authorIds = hiddenUserIds) {
-    return rows.filter((row: any) => !keys.includes(contentKey(kind, row.id)) && !authorIds.includes(row.user_id));
+  function filterHiddenItems(
+    kind: "qt" | "prayer",
+    rows: any[],
+    keys = hiddenKeys,
+    authorIds = hiddenUserIds,
+  ) {
+    return rows.filter(
+      (row: any) =>
+        !keys.includes(contentKey(kind, row.id)) &&
+        !authorIds.includes(row.user_id),
+    );
   }
 
   function visibilityTargets(value?: string | null) {
@@ -618,8 +909,13 @@ function CommunityPageContent() {
       .filter((part) => part && part !== "private");
   }
 
-  function removeVisibilityTarget(value: string | null | undefined, target: string) {
-    const nextTargets = visibilityTargets(value).filter((part) => part !== target);
+  function removeVisibilityTarget(
+    value: string | null | undefined,
+    target: string,
+  ) {
+    const nextTargets = visibilityTargets(value).filter(
+      (part) => part !== target,
+    );
     return nextTargets.length > 0 ? nextTargets.join(",") : "private";
   }
 
@@ -638,12 +934,19 @@ function CommunityPageContent() {
 
   function formatChallengeDate(value?: string | null) {
     if (!value) return "";
-    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" });
+    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), {
+      month: "short",
+      day: "numeric",
+    });
   }
 
   function formatChallengeRequestInputDate(value?: string | null) {
     if (!value) return "";
-    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" });
+    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   }
 
   function challengeRequestDateInputWidth() {
@@ -659,11 +962,14 @@ function CommunityPageContent() {
     return start || end || "";
   }
 
-  function challengeDisplayStatus(challenge: any): "scheduled" | "active" | "completed" {
+  function challengeDisplayStatus(
+    challenge: any,
+  ): "scheduled" | "active" | "completed" {
     const today = localDateInputValue(0);
     const start = String(challenge?.start_date ?? "");
     const end = String(challenge?.end_date ?? "");
-    if (challenge?.status === "completed" || (end && today > end)) return "completed";
+    if (challenge?.status === "completed" || (end && today > end))
+      return "completed";
     if (start && today < start) return "scheduled";
     return "active";
   }
@@ -693,9 +999,15 @@ function CommunityPageContent() {
     return Math.floor((end - start) / 86400000) + 1;
   }
 
-  function challengeProgressPercent(progress?: { doneDays: number; totalDays: number }) {
+  function challengeProgressPercent(progress?: {
+    doneDays: number;
+    totalDays: number;
+  }) {
     if (!progress?.totalDays) return 0;
-    return Math.max(0, Math.min(100, Math.round((progress.doneDays / progress.totalDays) * 100)));
+    return Math.max(
+      0,
+      Math.min(100, Math.round((progress.doneDays / progress.totalDays) * 100)),
+    );
   }
 
   function groupChallengeRequestFor(groupId?: string | null) {
@@ -713,7 +1025,9 @@ function CommunityPageContent() {
     if (request?.status !== "approved") return null;
     const requestId = request.id ? String(request.id) : "";
     if (!requestId) return request;
-    const hasLinkedChallenge = groupChallenges.some((challenge) => String(challenge?.request_id ?? "") === requestId);
+    const hasLinkedChallenge = groupChallenges.some(
+      (challenge) => String(challenge?.request_id ?? "") === requestId,
+    );
     return hasLinkedChallenge ? null : request;
   }
 
@@ -736,7 +1050,10 @@ function CommunityPageContent() {
   }
 
   function shouldShowGroupChallengeCard(challenge: any) {
-    return challengeDisplayStatus(challenge) !== "completed" || isRecentCompletedGroupChallenge(challenge);
+    return (
+      challengeDisplayStatus(challenge) !== "completed" ||
+      isRecentCompletedGroupChallenge(challenge)
+    );
   }
 
   function visibleGroupChallengeCards() {
@@ -744,13 +1061,21 @@ function CommunityPageContent() {
   }
 
   function groupChallengeSectionTitleKey(challenges: any[]): TKey {
-    if (challenges.length > 0 && challenges.every((challenge) => challengeDisplayStatus(challenge) === "completed")) {
+    if (
+      challenges.length > 0 &&
+      challenges.every(
+        (challenge) => challengeDisplayStatus(challenge) === "completed",
+      )
+    ) {
       return "group_challenge_recent_completed_section_title";
     }
     return "group_challenge_approved_section_title";
   }
 
-  function setGroupChallengeRequest(groupId: string, request?: GroupChallengeRequestSummary | null) {
+  function setGroupChallengeRequest(
+    groupId: string,
+    request?: GroupChallengeRequestSummary | null,
+  ) {
     setMyGroupChallengeRequests((prev) => {
       const next = { ...prev };
       if (request?.status) next[groupId] = request;
@@ -759,7 +1084,10 @@ function CommunityPageContent() {
     });
   }
 
-  function setGroupChallengeRequestStatus(groupId: string, status?: string | null) {
+  function setGroupChallengeRequestStatus(
+    groupId: string,
+    status?: string | null,
+  ) {
     setGroupChallengeRequest(groupId, status ? { status } : null);
   }
 
@@ -767,24 +1095,38 @@ function CommunityPageContent() {
     return getGroupChallengeBadgeImageSrc(path, { fallback: null });
   }
 
-  function isChallengeCompleteForUser(progress?: { doneDays: number; totalDays: number }) {
+  function isChallengeCompleteForUser(progress?: {
+    doneDays: number;
+    totalDays: number;
+  }) {
     return !!progress?.totalDays && progress.doneDays >= progress.totalDays;
   }
 
   async function claimCompletedGroupChallengeAwards(
     supabase: ReturnType<typeof createClient>,
     challenges: any[],
-    progressByChallenge: Record<string, { doneDays: number; totalDays: number }>,
-    groupName: string
+    progressByChallenge: Record<
+      string,
+      { doneDays: number; totalDays: number }
+    >,
+    groupName: string,
   ) {
     for (const challenge of challenges) {
       const challengeId = String(challenge?.id ?? "");
-      if (!challengeId || claimedGroupChallengeAwardIdsRef.current.has(challengeId)) continue;
+      if (
+        !challengeId ||
+        claimedGroupChallengeAwardIdsRef.current.has(challengeId)
+      )
+        continue;
       if (challengeDisplayStatus(challenge) !== "completed") continue;
-      if (!isChallengeCompleteForUser(progressByChallenge[challengeId])) continue;
+      if (!isChallengeCompleteForUser(progressByChallenge[challengeId]))
+        continue;
 
       claimedGroupChallengeAwardIdsRef.current.add(challengeId);
-      const { data, error } = await supabase.rpc("claim_group_challenge_award", { p_challenge_id: challengeId });
+      const { data, error } = await supabase.rpc(
+        "claim_group_challenge_award",
+        { p_challenge_id: challengeId },
+      );
       if (error) {
         console.warn("그룹 챌린지 배지 지급 확인 실패:", error.message);
         continue;
@@ -796,19 +1138,32 @@ function CommunityPageContent() {
       setGroupChallengeAwardPopup({
         challengeTitle: result.challenge_title ?? challenge.title ?? "",
         groupName: result.group_name ?? groupName ?? "",
-        badgeName: result.badge_name ?? challenge.badge_name ?? challenge.title ?? "",
-        badgeImagePath: result.badge_image_path ?? challenge.badge_image_path ?? null,
+        badgeName:
+          result.badge_name ?? challenge.badge_name ?? challenge.title ?? "",
+        badgeImagePath:
+          result.badge_image_path ?? challenge.badge_image_path ?? null,
       });
       break;
     }
   }
 
-  async function fetchGroupChallengeProgress(supabase: ReturnType<typeof createClient>, challenges: any[], currentUserId: string) {
-    const datedChallenges = challenges.filter((challenge) => challenge?.start_date && challenge?.end_date);
-    if (datedChallenges.length === 0) return {} as Record<string, { doneDays: number; totalDays: number }>;
+  async function fetchGroupChallengeProgress(
+    supabase: ReturnType<typeof createClient>,
+    challenges: any[],
+    currentUserId: string,
+  ) {
+    const datedChallenges = challenges.filter(
+      (challenge) => challenge?.start_date && challenge?.end_date,
+    );
+    if (datedChallenges.length === 0)
+      return {} as Record<string, { doneDays: number; totalDays: number }>;
 
-    const startDates = datedChallenges.map((challenge) => String(challenge.start_date)).sort();
-    const endDates = datedChallenges.map((challenge) => String(challenge.end_date)).sort();
+    const startDates = datedChallenges
+      .map((challenge) => String(challenge.start_date))
+      .sort();
+    const endDates = datedChallenges
+      .map((challenge) => String(challenge.end_date))
+      .sort();
     const minStart = startDates[0];
     const maxEnd = endDates[endDates.length - 1];
 
@@ -825,8 +1180,11 @@ function CommunityPageContent() {
       return {} as Record<string, { doneDays: number; totalDays: number }>;
     }
 
-    const completedDates = new Set((data ?? []).map((row: any) => String(row.date ?? "")).filter(Boolean));
-    const progress: Record<string, { doneDays: number; totalDays: number }> = {};
+    const completedDates = new Set(
+      (data ?? []).map((row: any) => String(row.date ?? "")).filter(Boolean),
+    );
+    const progress: Record<string, { doneDays: number; totalDays: number }> =
+      {};
 
     datedChallenges.forEach((challenge) => {
       const id = String(challenge.id ?? "");
@@ -857,7 +1215,12 @@ function CommunityPageContent() {
   }
 
   function openChallengeRequestForm() {
-    if (!selectedGroup?.id || !selectedGroup.isMember || hasActiveGroupChallengeRequest(selectedGroup.id)) return;
+    if (
+      !selectedGroup?.id ||
+      !selectedGroup.isMember ||
+      hasActiveGroupChallengeRequest(selectedGroup.id)
+    )
+      return;
     setChallengeError("");
     setChallengeSuccess(false);
     setChallengeTitle("");
@@ -874,7 +1237,13 @@ function CommunityPageContent() {
     const title = challengeTitle.trim();
     const email = challengeContactEmail.trim();
     const duration = Number(challengeDurationDays);
-    if (!title || !challengeStartDate || !email || !Number.isFinite(duration) || duration < 1) {
+    if (
+      !title ||
+      !challengeStartDate ||
+      !email ||
+      !Number.isFinite(duration) ||
+      duration < 1
+    ) {
       setChallengeError(c("group_challenge_required_error"));
       return;
     }
@@ -883,7 +1252,9 @@ function CommunityPageContent() {
     setChallengeError("");
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("not authenticated");
       const { error } = await supabase.from("group_challenge_requests").insert({
         group_id: selectedGroup.id,
@@ -913,13 +1284,26 @@ function CommunityPageContent() {
     }
   }
 
-  async function openAuthorProfile(profile: any, authorId?: string | null, event?: React.MouseEvent) {
+  async function openAuthorProfile(
+    profile: any,
+    authorId?: string | null,
+    event?: React.MouseEvent,
+  ) {
     event?.preventDefault();
     event?.stopPropagation();
     if (!authorId) return;
 
-    const fallbackProfile = profile ?? { id: authorId, name: c("community_unknown"), avatar_url: null, streak_days: 0 };
-    setProfileModal({ profile: { ...fallbackProfile, id: authorId }, userId: authorId, relationStatus: authorId === userId ? "self" : "loading" });
+    const fallbackProfile = profile ?? {
+      id: authorId,
+      name: c("community_unknown"),
+      avatar_url: null,
+      streak_days: 0,
+    };
+    setProfileModal({
+      profile: { ...fallbackProfile, id: authorId },
+      userId: authorId,
+      relationStatus: authorId === userId ? "self" : "loading",
+    });
     if (!userId || authorId === userId) return;
 
     try {
@@ -927,48 +1311,131 @@ function CommunityPageContent() {
       const { data, error } = await supabase
         .from("companions")
         .select("id,requester_id,receiver_id,status")
-        .or(`and(requester_id.eq.${userId},receiver_id.eq.${authorId}),and(requester_id.eq.${authorId},receiver_id.eq.${userId})`)
+        .or(
+          `and(requester_id.eq.${userId},receiver_id.eq.${authorId}),and(requester_id.eq.${authorId},receiver_id.eq.${userId})`,
+        )
         .order("created_at", { ascending: false })
         .limit(1);
       if (error) throw error;
       const relation = (data ?? [])[0] as any | undefined;
-      let relationStatus: "none" | "accepted" | "pending_sent" | "pending_received" | "declined" = "none";
+      let relationStatus:
+        "none" | "accepted" | "pending_sent" | "pending_received" | "declined" =
+        "none";
       if (relation?.status === "accepted") relationStatus = "accepted";
-      else if (relation?.status === "pending") relationStatus = relation.requester_id === userId ? "pending_sent" : "pending_received";
+      else if (relation?.status === "pending")
+        relationStatus =
+          relation.requester_id === userId
+            ? "pending_sent"
+            : "pending_received";
       else if (relation?.status === "declined") relationStatus = "declined";
-      setProfileModal(current => current?.userId === authorId ? { ...current, relationStatus, relationId: relation?.id } : current);
+      setProfileModal((current) =>
+        current?.userId === authorId
+          ? { ...current, relationStatus, relationId: relation?.id }
+          : current,
+      );
     } catch (error) {
       console.warn("프로필 동역자 상태 조회 실패:", error);
-      setProfileModal(current => current?.userId === authorId ? { ...current, relationStatus: "none" } : current);
+      setProfileModal((current) =>
+        current?.userId === authorId
+          ? { ...current, relationStatus: "none" }
+          : current,
+      );
     }
   }
 
-  function AuthorIdentity({ profile, authorId }: { profile: any; authorId?: string | null }) {
+  function AuthorIdentity({
+    profile,
+    authorId,
+  }: {
+    profile: any;
+    authorId?: string | null;
+  }) {
     const canOpen = !!authorId;
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-        <button type="button" onClick={(event) => openAuthorProfile(profile, authorId, event)} disabled={!canOpen} aria-label={c("community_profile_view")} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: "none", background: "transparent", cursor: canOpen ? "pointer" : "default", flexShrink: 0 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}
+      >
+        <button
+          type="button"
+          onClick={(event) => openAuthorProfile(profile, authorId, event)}
+          disabled={!canOpen}
+          aria-label={c("community_profile_view")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: canOpen ? "pointer" : "default",
+            flexShrink: 0,
+          }}
+        >
           <Avatar url={profile?.avatar_url} name={profile?.name} />
         </button>
-        <button type="button" onClick={(event) => openAuthorProfile(profile, authorId, event)} disabled={!canOpen} style={{ minWidth: 0, padding: 0, border: "none", background: "transparent", cursor: canOpen ? "pointer" : "default", textAlign: "left" }}>
-          <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.name ?? (c("community_unknown"))}</span>
+        <button
+          type="button"
+          onClick={(event) => openAuthorProfile(profile, authorId, event)}
+          disabled={!canOpen}
+          style={{
+            minWidth: 0,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: canOpen ? "pointer" : "default",
+            textAlign: "left",
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text2)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {profile?.name ?? c("community_unknown")}
+          </span>
         </button>
       </div>
     );
   }
 
   async function sendCompanionRequestFromProfile() {
-    if (!profileModal || !userId || profileModal.userId === userId || profileModal.saving) return;
+    if (
+      !profileModal ||
+      !userId ||
+      profileModal.userId === userId ||
+      profileModal.saving
+    )
+      return;
     const targetId = profileModal.userId;
-    setProfileModal(current => current?.userId === targetId ? { ...current, saving: true } : current);
+    setProfileModal((current) =>
+      current?.userId === targetId ? { ...current, saving: true } : current,
+    );
     try {
       const supabase = createClient();
-      const { error } = await supabase.from("companions").insert({ requester_id: userId, receiver_id: targetId, status: "pending" });
+      const { error } = await supabase
+        .from("companions")
+        .insert({
+          requester_id: userId,
+          receiver_id: targetId,
+          status: "pending",
+        });
       if (error) throw error;
-      setProfileModal(current => current?.userId === targetId ? { ...current, relationStatus: "pending_sent", saving: false } : current);
+      setProfileModal((current) =>
+        current?.userId === targetId
+          ? { ...current, relationStatus: "pending_sent", saving: false }
+          : current,
+      );
     } catch (error) {
       console.error("동역자 신청 실패:", error);
-      setProfileModal(current => current?.userId === targetId ? { ...current, saving: false } : current);
+      setProfileModal((current) =>
+        current?.userId === targetId ? { ...current, saving: false } : current,
+      );
     }
   }
 
@@ -977,33 +1444,180 @@ function CommunityPageContent() {
     const name = profileModal.profile?.name || c("profile_default_name");
     const streakDays = profileModal.profile?.streak_days ?? 0;
     return (
-      <div onClick={() => setProfileModal(null)} style={{ position: "fixed", inset: 0, zIndex: 330, background: "rgba(26,28,30,0.68)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 14px calc(16px + env(safe-area-inset-bottom))" }}>
-        <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", borderRadius: 26, padding: 20, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.24)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)" }}>{c("community_profile_modal_title")}</h2>
-            <button onClick={() => setProfileModal(null)} style={{ width: 32, height: 32, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg3)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}><X size={18} /></button>
+      <div
+        onClick={() => setProfileModal(null)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 330,
+          background: "rgba(26,28,30,0.68)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          padding: "0 14px calc(16px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            background: "var(--bg2)",
+            borderRadius: 26,
+            padding: 20,
+            border: "1px solid var(--border)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.24)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)" }}>
+              {c("community_profile_modal_title")}
+            </h2>
+            <button
+              onClick={() => setProfileModal(null)}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                border: "1px solid var(--border)",
+                background: "var(--bg3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text3)",
+                cursor: "pointer",
+              }}
+            >
+              <X size={18} />
+            </button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10 }}>
-            <Avatar url={profileModal.profile?.avatar_url} name={name} size={76} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: 10,
+            }}
+          >
+            <Avatar
+              url={profileModal.profile?.avatar_url}
+              name={name}
+              size={76}
+            />
             <div>
-              <p style={{ fontSize: 20, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{name}</p>
-              <p style={{ fontSize: 12, color: "var(--text3)", fontWeight: 700 }}>{t("profile_streak", lang, { n: streakDays })}</p>
+              <p
+                style={{
+                  fontSize: 20,
+                  fontWeight: 850,
+                  color: "var(--text)",
+                  marginBottom: 4,
+                }}
+              >
+                {name}
+              </p>
+              <p
+                style={{ fontSize: 12, color: "var(--text3)", fontWeight: 700 }}
+              >
+                {t("profile_streak", lang, { n: streakDays })}
+              </p>
             </div>
           </div>
           <div style={{ marginTop: 20 }}>
             {profileModal.relationStatus === "loading" ? (
-              <button className="btn-outline" disabled style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.65 }}><Loader2 size={16} className="spin" /> {c("community_profile_checking")}</button>
+              <button
+                className="btn-outline"
+                disabled
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  opacity: 0.65,
+                }}
+              >
+                <Loader2 size={16} className="spin" />{" "}
+                {c("community_profile_checking")}
+              </button>
             ) : profileModal.relationStatus === "self" ? (
-              <div style={{ padding: "12px 14px", borderRadius: 16, background: "var(--bg3)", color: "var(--text3)", fontSize: 13, fontWeight: 700, textAlign: "center" }}>{c("community_profile_self")}</div>
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  background: "var(--bg3)",
+                  color: "var(--text3)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textAlign: "center",
+                }}
+              >
+                {c("community_profile_self")}
+              </div>
             ) : profileModal.relationStatus === "accepted" ? (
-              <div style={{ padding: "12px 14px", borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", fontSize: 13, fontWeight: 800, textAlign: "center" }}>{c("community_profile_already_partner")}</div>
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  background: "var(--sage-light)",
+                  color: "var(--sage-dark)",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  textAlign: "center",
+                }}
+              >
+                {c("community_profile_already_partner")}
+              </div>
             ) : profileModal.relationStatus === "pending_sent" ? (
-              <div style={{ padding: "12px 14px", borderRadius: 16, background: "rgba(232,197,71,0.12)", color: "var(--terra-dark)", fontSize: 13, fontWeight: 800, textAlign: "center" }}>{c("community_profile_request_sent")}</div>
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  background: "rgba(232,197,71,0.12)",
+                  color: "var(--terra-dark)",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  textAlign: "center",
+                }}
+              >
+                {c("community_profile_request_sent")}
+              </div>
             ) : profileModal.relationStatus === "pending_received" ? (
-              <button onClick={() => router.push("/companions")} className="btn-sage" style={{ width: "100%" }}>{c("community_profile_request_received")}</button>
+              <button
+                onClick={() => router.push("/companions")}
+                className="btn-sage"
+                style={{ width: "100%" }}
+              >
+                {c("community_profile_request_received")}
+              </button>
             ) : (
-              <button onClick={sendCompanionRequestFromProfile} disabled={!!profileModal.saving} className="btn-sage" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: profileModal.saving ? 0.65 : 1 }}>
-                {profileModal.saving ? <Loader2 size={16} className="spin" /> : <UserPlus size={16} />}
+              <button
+                onClick={sendCompanionRequestFromProfile}
+                disabled={!!profileModal.saving}
+                className="btn-sage"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  opacity: profileModal.saving ? 0.65 : 1,
+                }}
+              >
+                {profileModal.saving ? (
+                  <Loader2 size={16} className="spin" />
+                ) : (
+                  <UserPlus size={16} />
+                )}
                 {c("community_profile_request_button")}
               </button>
             )}
@@ -1030,7 +1644,10 @@ function CommunityPageContent() {
   }
 
   function closeGroupDetail() {
-    if (communityDetailHistoryRef.current === "group" && typeof window !== "undefined") {
+    if (
+      communityDetailHistoryRef.current === "group" &&
+      typeof window !== "undefined"
+    ) {
       window.history.back();
       return;
     }
@@ -1050,7 +1667,10 @@ function CommunityPageContent() {
   }
 
   function closePartnerDetail() {
-    if (communityDetailHistoryRef.current === "partner" && typeof window !== "undefined") {
+    if (
+      communityDetailHistoryRef.current === "partner" &&
+      typeof window !== "undefined"
+    ) {
       window.history.back();
       return;
     }
@@ -1058,14 +1678,27 @@ function CommunityPageContent() {
     resetPartnerDetailState();
   }
 
-  function openPrayerEdit(item: any, event?: any, scope?: ShareScope, groupId?: string, partnerId?: string) {
+  function openPrayerEdit(
+    item: any,
+    event?: any,
+    scope?: ShareScope,
+    groupId?: string,
+    partnerId?: string,
+  ) {
     event?.stopPropagation?.();
     setActionMenu(null);
     setManageText(item.content ?? "");
     setManageModal({ kind: "prayer-edit", item, scope, groupId, partnerId });
   }
 
-  function openManage(kind: "qt-unshare" | "qt-edit" | "prayer-unshare", item: any, event?: any, scope?: ShareScope, groupId?: string, partnerId?: string) {
+  function openManage(
+    kind: "qt-unshare" | "qt-edit" | "prayer-unshare",
+    item: any,
+    event?: any,
+    scope?: ShareScope,
+    groupId?: string,
+    partnerId?: string,
+  ) {
     event?.stopPropagation?.();
     setActionMenu(null);
     setManageModal({ kind, item, scope, groupId, partnerId });
@@ -1079,39 +1712,52 @@ function CommunityPageContent() {
 
   function removeSharedItem(kind: "qt" | "prayer", id: string) {
     if (kind === "qt") {
-      setQtShares(prev => prev.filter(item => item.id !== id));
-      setGroupQts(prev => prev.filter(item => item.id !== id));
-      setPartnerQts(prev => prev.filter(item => item.id !== id));
+      setQtShares((prev) => prev.filter((item) => item.id !== id));
+      setGroupQts((prev) => prev.filter((item) => item.id !== id));
+      setPartnerQts((prev) => prev.filter((item) => item.id !== id));
       if (detailQt?.id === id) resetQtDetailState();
     } else {
-      setPrayers(prev => prev.filter(item => item.id !== id));
-      setGroupPrayers(prev => prev.filter(item => item.id !== id));
-      setPartnerPrayers(prev => prev.filter(item => item.id !== id));
-      setAnsweredPrayers(prev => prev.filter(item => item.id !== id));
+      setPrayers((prev) => prev.filter((item) => item.id !== id));
+      setGroupPrayers((prev) => prev.filter((item) => item.id !== id));
+      setPartnerPrayers((prev) => prev.filter((item) => item.id !== id));
+      setAnsweredPrayers((prev) => prev.filter((item) => item.id !== id));
     }
   }
 
   function removeSharedAuthor(authorId: string) {
-    setQtShares(prev => prev.filter(item => item.user_id !== authorId));
-    setGroupQts(prev => prev.filter(item => item.user_id !== authorId));
-    setPartnerQts(prev => prev.filter(item => item.user_id !== authorId));
-    setPrayers(prev => prev.filter(item => item.user_id !== authorId));
-    setGroupPrayers(prev => prev.filter(item => item.user_id !== authorId));
-    setPartnerPrayers(prev => prev.filter(item => item.user_id !== authorId));
-    setAnsweredPrayers(prev => prev.filter(item => item.user_id !== authorId));
+    setQtShares((prev) => prev.filter((item) => item.user_id !== authorId));
+    setGroupQts((prev) => prev.filter((item) => item.user_id !== authorId));
+    setPartnerQts((prev) => prev.filter((item) => item.user_id !== authorId));
+    setPrayers((prev) => prev.filter((item) => item.user_id !== authorId));
+    setGroupPrayers((prev) => prev.filter((item) => item.user_id !== authorId));
+    setPartnerPrayers((prev) =>
+      prev.filter((item) => item.user_id !== authorId),
+    );
+    setAnsweredPrayers((prev) =>
+      prev.filter((item) => item.user_id !== authorId),
+    );
     if (detailQt?.user_id === authorId) resetQtDetailState();
   }
 
   async function confirmUnshare() {
-    if (!manageModal || (manageModal.kind !== "qt-unshare" && manageModal.kind !== "prayer-unshare")) return;
+    if (
+      !manageModal ||
+      (manageModal.kind !== "qt-unshare" &&
+        manageModal.kind !== "prayer-unshare")
+    )
+      return;
     setManageSaving(true);
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const isQt = manageModal.kind === "qt-unshare";
       if (manageModal.scope === "partner" && manageModal.partnerId) {
-        const recipientTable = isQt ? "qt_record_recipients" : "prayer_item_recipients";
+        const recipientTable = isQt
+          ? "qt_record_recipients"
+          : "prayer_item_recipients";
         const recordColumn = isQt ? "qt_record_id" : "prayer_item_id";
         const { error } = await supabase
           .from(recipientTable)
@@ -1122,15 +1768,25 @@ function CommunityPageContent() {
         if (error) throw error;
 
         if (isQt) {
-          setPartnerQts(prev => prev.filter(item => item.id !== manageModal.item.id));
+          setPartnerQts((prev) =>
+            prev.filter((item) => item.id !== manageModal.item.id),
+          );
           if (detailQt?.id === manageModal.item.id) resetQtDetailState();
         } else {
-          setPartnerPrayers(prev => prev.filter(item => item.id !== manageModal.item.id));
+          setPartnerPrayers((prev) =>
+            prev.filter((item) => item.id !== manageModal.item.id),
+          );
         }
       } else {
         const table = isQt ? "qt_records" : "prayer_items";
-        const target = manageModal.scope === "group" && manageModal.groupId ? `group_${manageModal.groupId}` : "all";
-        const nextVisibility = removeVisibilityTarget(manageModal.item.visibility, target);
+        const target =
+          manageModal.scope === "group" && manageModal.groupId
+            ? `group_${manageModal.groupId}`
+            : "all";
+        const nextVisibility = removeVisibilityTarget(
+          manageModal.item.visibility,
+          target,
+        );
         const { error } = await supabase
           .from(table)
           .update({ visibility: nextVisibility })
@@ -1138,15 +1794,38 @@ function CommunityPageContent() {
           .eq("user_id", user.id);
         if (error) throw error;
 
-        const updateVisibility = (item: any) => item.id === manageModal.item.id ? { ...item, visibility: nextVisibility } : item;
+        const updateVisibility = (item: any) =>
+          item.id === manageModal.item.id
+            ? { ...item, visibility: nextVisibility }
+            : item;
         if (isQt) {
-          setQtShares(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
-          setGroupQts(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
-          if (detailQt?.id === manageModal.item.id && nextVisibility === "private") resetQtDetailState();
+          setQtShares((prev) =>
+            target === "all"
+              ? prev.filter((item) => item.id !== manageModal.item.id)
+              : prev.map(updateVisibility),
+          );
+          setGroupQts((prev) =>
+            target !== "all"
+              ? prev.filter((item) => item.id !== manageModal.item.id)
+              : prev.map(updateVisibility),
+          );
+          if (
+            detailQt?.id === manageModal.item.id &&
+            nextVisibility === "private"
+          )
+            resetQtDetailState();
         } else {
-          setPrayers(prev => target === "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
-          setGroupPrayers(prev => target !== "all" ? prev.filter(item => item.id !== manageModal.item.id) : prev.map(updateVisibility));
-          setAnsweredPrayers(prev => prev.map(updateVisibility));
+          setPrayers((prev) =>
+            target === "all"
+              ? prev.filter((item) => item.id !== manageModal.item.id)
+              : prev.map(updateVisibility),
+          );
+          setGroupPrayers((prev) =>
+            target !== "all"
+              ? prev.filter((item) => item.id !== manageModal.item.id)
+              : prev.map(updateVisibility),
+          );
+          setAnsweredPrayers((prev) => prev.map(updateVisibility));
         }
       }
       closeManageModal();
@@ -1158,11 +1837,18 @@ function CommunityPageContent() {
   }
 
   async function savePrayerEdit() {
-    if (!manageModal || manageModal.kind !== "prayer-edit" || !manageText.trim()) return;
+    if (
+      !manageModal ||
+      manageModal.kind !== "prayer-edit" ||
+      !manageText.trim()
+    )
+      return;
     setManageSaving(true);
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const nextContent = manageText.trim();
       const { error } = await supabase
@@ -1171,11 +1857,14 @@ function CommunityPageContent() {
         .eq("id", manageModal.item.id)
         .eq("user_id", user.id);
       if (error) throw error;
-      const updateItem = (item: any) => item.id === manageModal.item.id ? { ...item, content: nextContent } : item;
-      setPrayers(prev => prev.map(updateItem));
-      setGroupPrayers(prev => prev.map(updateItem));
-      setPartnerPrayers(prev => prev.map(updateItem));
-      setAnsweredPrayers(prev => prev.map(updateItem));
+      const updateItem = (item: any) =>
+        item.id === manageModal.item.id
+          ? { ...item, content: nextContent }
+          : item;
+      setPrayers((prev) => prev.map(updateItem));
+      setGroupPrayers((prev) => prev.map(updateItem));
+      setPartnerPrayers((prev) => prev.map(updateItem));
+      setAnsweredPrayers((prev) => prev.map(updateItem));
       closeManageModal();
     } catch (error) {
       console.error("community prayer edit failed", error);
@@ -1189,20 +1878,52 @@ function CommunityPageContent() {
     router.push(`/qt/write?editId=${manageModal.item.id}`);
   }
 
-  function CardMenu({ kind, item, scope = "all", groupId, partnerId }: { kind: "qt" | "prayer"; item: any; scope?: ShareScope; groupId?: string; partnerId?: string }) {
+  function CardMenu({
+    kind,
+    item,
+    scope = "all",
+    groupId,
+    partnerId,
+  }: {
+    kind: "qt" | "prayer";
+    item: any;
+    scope?: ShareScope;
+    groupId?: string;
+    partnerId?: string;
+  }) {
     return (
       <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActionMenu({ kind, item, scope, groupId, partnerId }); }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setActionMenu({ kind, item, scope, groupId, partnerId });
+        }}
         aria-label="Manage content"
-        style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0 }}
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 999,
+          border: "none",
+          background: "transparent",
+          color: "var(--text3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          flexShrink: 0,
+          padding: 0,
+        }}
       >
         <MoreHorizontal size={16} />
       </button>
     );
   }
 
-
-  async function hideItem(kind: "qt" | "prayer", item: any, shouldReport = false) {
+  async function hideItem(
+    kind: "qt" | "prayer",
+    item: any,
+    shouldReport = false,
+  ) {
     if (!userId) return;
     setManageSaving(true);
     const supabase = createClient();
@@ -1216,13 +1937,16 @@ function CommunityPageContent() {
           reason: "inappropriate",
         });
       }
-      await supabase.from("hidden_community_items").upsert({
-        user_id: userId,
-        content_type: kind,
-        content_id: item.id,
-      }, { onConflict: "user_id,content_type,content_id" });
+      await supabase.from("hidden_community_items").upsert(
+        {
+          user_id: userId,
+          content_type: kind,
+          content_id: item.id,
+        },
+        { onConflict: "user_id,content_type,content_id" },
+      );
       const key = contentKey(kind, item.id);
-      setHiddenKeys(prev => prev.includes(key) ? prev : [...prev, key]);
+      setHiddenKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
       removeSharedItem(kind, item.id);
       setActionMenu(null);
     } catch (error) {
@@ -1232,7 +1956,11 @@ function CommunityPageContent() {
     }
   }
 
-  function openSafetyConfirm(action: "report" | "hide-item" | "hide-author", kind: "qt" | "prayer", item: any) {
+  function openSafetyConfirm(
+    action: "report" | "hide-item" | "hide-author",
+    kind: "qt" | "prayer",
+    item: any,
+  ) {
     setActionMenu(null);
     setSafetyConfirm({ action, kind, item });
   }
@@ -1260,11 +1988,16 @@ function CommunityPageContent() {
     setManageSaving(true);
     const supabase = createClient();
     try {
-      await supabase.from("hidden_community_users").upsert({
-        user_id: userId,
-        hidden_user_id: item.user_id,
-      }, { onConflict: "user_id,hidden_user_id" });
-      setHiddenUserIds(prev => prev.includes(item.user_id) ? prev : [...prev, item.user_id]);
+      await supabase.from("hidden_community_users").upsert(
+        {
+          user_id: userId,
+          hidden_user_id: item.user_id,
+        },
+        { onConflict: "user_id,hidden_user_id" },
+      );
+      setHiddenUserIds((prev) =>
+        prev.includes(item.user_id) ? prev : [...prev, item.user_id],
+      );
       removeSharedAuthor(item.user_id);
       setActionMenu(null);
     } catch (error) {
@@ -1279,32 +2012,184 @@ function CommunityPageContent() {
     const { kind, item, scope, groupId, partnerId } = actionMenu;
     const isMine = !!userId && item.user_id === userId;
     return (
-      <div onClick={() => setActionMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 270, background: "rgba(26,28,30,0.58)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(18px + env(safe-area-inset-bottom))" }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "14px", boxShadow: "0 18px 52px rgba(0,0,0,0.28)" }}>
-          <p style={{ fontSize: 13, color: "var(--text3)", fontWeight: 800, padding: "4px 6px 10px" }}>{isMine ? c("community_manage_my_share") : c("community_manage_other_content")}</p>
+      <div
+        onClick={() => setActionMenu(null)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 270,
+          background: "rgba(26,28,30,0.58)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          padding: "0 16px calc(18px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            background: "var(--bg2)",
+            border: "1px solid var(--border)",
+            borderRadius: 24,
+            padding: "14px",
+            boxShadow: "0 18px 52px rgba(0,0,0,0.28)",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text3)",
+              fontWeight: 800,
+              padding: "4px 6px 10px",
+            }}
+          >
+            {isMine
+              ? c("community_manage_my_share")
+              : c("community_manage_other_content")}
+          </p>
           {isMine ? (
             <>
-              <button onClick={() => openManage(kind === "qt" ? "qt-unshare" : "prayer-unshare", item, undefined, scope, groupId, partnerId)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button
+                onClick={() =>
+                  openManage(
+                    kind === "qt" ? "qt-unshare" : "prayer-unshare",
+                    item,
+                    undefined,
+                    scope,
+                    groupId,
+                    partnerId,
+                  )
+                }
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 12px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: "transparent",
+                  color: "#B35F5F",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
                 <Trash2 size={17} /> {c("community_manage_unshare")}
               </button>
-              <button onClick={() => kind === "qt" ? openManage("qt-edit", item, undefined, scope, groupId, partnerId) : openPrayerEdit(item, undefined, scope, groupId, partnerId)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
-                <Edit3 size={17} /> {kind === "qt" ? c("community_manage_qt_edit") : c("community_manage_prayer_edit")}
+              <button
+                onClick={() =>
+                  kind === "qt"
+                    ? openManage(
+                        "qt-edit",
+                        item,
+                        undefined,
+                        scope,
+                        groupId,
+                        partnerId,
+                      )
+                    : openPrayerEdit(item, undefined, scope, groupId, partnerId)
+                }
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 12px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--sage-dark)",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <Edit3 size={17} />{" "}
+                {kind === "qt"
+                  ? c("community_manage_qt_edit")
+                  : c("community_manage_prayer_edit")}
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => openSafetyConfirm("report", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button
+                onClick={() => openSafetyConfirm("report", kind, item)}
+                disabled={manageSaving}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 12px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: "transparent",
+                  color: "#B35F5F",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
                 <Flag size={17} /> {c("community_report")}
               </button>
-              <button onClick={() => openSafetyConfirm("hide-item", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button
+                onClick={() => openSafetyConfirm("hide-item", kind, item)}
+                disabled={manageSaving}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 12px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--text2)",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
                 <EyeOff size={17} /> {c("community_hide_content")}
               </button>
-              <button onClick={() => openSafetyConfirm("hide-author", kind, item)} disabled={manageSaving} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text2)", fontSize: 14, fontWeight: 800, cursor: "pointer", textAlign: "left" }}>
+              <button
+                onClick={() => openSafetyConfirm("hide-author", kind, item)}
+                disabled={manageSaving}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 12px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--text2)",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
                 <EyeOff size={17} /> {c("community_hide_user_content")}
               </button>
             </>
           )}
-          <button onClick={() => setActionMenu(null)} className="btn-outline" style={{ width: "100%", marginTop: 8 }}>{c("community_cancel")}</button>
+          <button
+            onClick={() => setActionMenu(null)}
+            className="btn-outline"
+            style={{ width: "100%", marginTop: 8 }}
+          >
+            {c("community_cancel")}
+          </button>
         </div>
       </div>
     );
@@ -1323,21 +2208,89 @@ function CommunityPageContent() {
       : safetyConfirm.action === "hide-item"
         ? c("community_hide_content_confirm_msg")
         : c("community_hide_user_confirm_msg");
-    const actionText = isReport ? c("community_report_confirm_action") : c("community_hide_confirm_action");
+    const actionText = isReport
+      ? c("community_report_confirm_action")
+      : c("community_hide_confirm_action");
 
     return (
-      <div onClick={closeSafetyConfirm} style={{ position: "fixed", inset: 0, zIndex: 280, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{title}</h2>
-          <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>{msg}</p>
+      <div
+        onClick={closeSafetyConfirm}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 280,
+          background: "rgba(26,28,30,0.72)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 22px",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 380,
+            background: "var(--bg2)",
+            borderRadius: 24,
+            padding: 22,
+            border: "1px solid var(--border)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: "var(--text)",
+              marginBottom: 8,
+            }}
+          >
+            {title}
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text2)",
+              lineHeight: 1.65,
+              marginBottom: 16,
+            }}
+          >
+            {msg}
+          </p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={closeSafetyConfirm} disabled={manageSaving} className="btn-outline" style={{ flex: 1 }}>{c("community_cancel")}</button>
+            <button
+              onClick={closeSafetyConfirm}
+              disabled={manageSaving}
+              className="btn-outline"
+              style={{ flex: 1 }}
+            >
+              {c("community_cancel")}
+            </button>
             <button
               onClick={confirmSafetyAction}
               disabled={manageSaving}
-              style={{ flex: 1, border: "none", borderRadius: 14, background: isReport ? "rgba(196,106,106,0.14)" : "var(--sage)", color: isReport ? "#B35F5F" : "white", fontSize: 14, fontWeight: 800, cursor: manageSaving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              style={{
+                flex: 1,
+                border: "none",
+                borderRadius: 14,
+                background: isReport ? "rgba(196,106,106,0.14)" : "var(--sage)",
+                color: isReport ? "#B35F5F" : "white",
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: manageSaving ? "default" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
             >
-              {manageSaving ? <Loader2 size={15} className="spin" /> : actionText}
+              {manageSaving ? (
+                <Loader2 size={15} className="spin" />
+              ) : (
+                actionText
+              )}
             </button>
           </div>
         </div>
@@ -1349,26 +2302,70 @@ function CommunityPageContent() {
     if (!manageModal) return null;
     const isQt = manageModal.kind.startsWith("qt");
     const isEdit = manageModal.kind.endsWith("edit");
-    const title = manageModal.kind === "qt-unshare"
-      ? c("community_manage_qt_unshare_title")
-      : manageModal.kind === "prayer-unshare"
-        ? c("community_manage_prayer_unshare_title")
-        : manageModal.kind === "qt-edit"
-          ? c("community_manage_qt_edit_title")
-          : c("community_manage_prayer_edit_title");
-    const msg = manageModal.kind === "qt-unshare"
-      ? c("community_manage_qt_unshare_msg")
-      : manageModal.kind === "prayer-unshare"
-        ? c("community_manage_prayer_unshare_msg")
-        : manageModal.kind === "qt-edit"
-          ? c("community_manage_qt_edit_msg")
-          : c("community_manage_prayer_edit_msg");
+    const title =
+      manageModal.kind === "qt-unshare"
+        ? c("community_manage_qt_unshare_title")
+        : manageModal.kind === "prayer-unshare"
+          ? c("community_manage_prayer_unshare_title")
+          : manageModal.kind === "qt-edit"
+            ? c("community_manage_qt_edit_title")
+            : c("community_manage_prayer_edit_title");
+    const msg =
+      manageModal.kind === "qt-unshare"
+        ? c("community_manage_qt_unshare_msg")
+        : manageModal.kind === "prayer-unshare"
+          ? c("community_manage_prayer_unshare_msg")
+          : manageModal.kind === "qt-edit"
+            ? c("community_manage_qt_edit_msg")
+            : c("community_manage_prayer_edit_msg");
 
     return (
-      <div onClick={closeManageModal} style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{title}</h2>
-          <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 16 }}>{msg}</p>
+      <div
+        onClick={closeManageModal}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 260,
+          background: "rgba(26,28,30,0.72)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 22px",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 380,
+            background: "var(--bg2)",
+            borderRadius: 24,
+            padding: 22,
+            border: "1px solid var(--border)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: "var(--text)",
+              marginBottom: 8,
+            }}
+          >
+            {title}
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text2)",
+              lineHeight: 1.65,
+              marginBottom: 16,
+            }}
+          >
+            {msg}
+          </p>
           {manageModal.kind === "prayer-edit" && (
             <textarea
               className="textarea-field"
@@ -1380,14 +2377,53 @@ function CommunityPageContent() {
             />
           )}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={closeManageModal} disabled={manageSaving} className="btn-outline" style={{ flex: 1 }}>{c("community_cancel")}</button>
             <button
-              onClick={manageModal.kind === "qt-edit" ? goEditQt : manageModal.kind === "prayer-edit" ? savePrayerEdit : confirmUnshare}
-              disabled={manageSaving || (manageModal.kind === "prayer-edit" && !manageText.trim())}
-              className={isEdit ? "btn-sage" : ""}
-              style={isEdit ? { flex: 1 } : { flex: 1, border: "none", borderRadius: 14, background: "rgba(196,106,106,0.14)", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: manageSaving ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              onClick={closeManageModal}
+              disabled={manageSaving}
+              className="btn-outline"
+              style={{ flex: 1 }}
             >
-              {manageSaving ? <Loader2 size={15} className="spin" /> : isEdit ? c("community_manage_continue") : c("community_manage_unshare")}
+              {c("community_cancel")}
+            </button>
+            <button
+              onClick={
+                manageModal.kind === "qt-edit"
+                  ? goEditQt
+                  : manageModal.kind === "prayer-edit"
+                    ? savePrayerEdit
+                    : confirmUnshare
+              }
+              disabled={
+                manageSaving ||
+                (manageModal.kind === "prayer-edit" && !manageText.trim())
+              }
+              className={isEdit ? "btn-sage" : ""}
+              style={
+                isEdit
+                  ? { flex: 1 }
+                  : {
+                      flex: 1,
+                      border: "none",
+                      borderRadius: 14,
+                      background: "rgba(196,106,106,0.14)",
+                      color: "#B35F5F",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: manageSaving ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }
+              }
+            >
+              {manageSaving ? (
+                <Loader2 size={15} className="spin" />
+              ) : isEdit ? (
+                c("community_manage_continue")
+              ) : (
+                c("community_manage_unshare")
+              )}
             </button>
           </div>
         </div>
@@ -1398,17 +2434,26 @@ function CommunityPageContent() {
   function prayerActionText(prayer: any, alreadyPrayed: boolean) {
     const count = prayer.prayer_count ?? 0;
     if (alreadyPrayed) {
-      return count > 0 ? c("community_prayed_with_count", { count }) : c("community_prayed");
+      return count > 0
+        ? c("community_prayed_with_count", { count })
+        : c("community_prayed");
     }
-    return count > 0 ? c("community_pray_together_with_count", { count }) : c("community_pray_together");
+    return count > 0
+      ? c("community_pray_together_with_count", { count })
+      : c("community_pray_together");
   }
 
   function answeredPrayerCountText(count: number) {
     return c("community_answered_prayer_count", { count });
   }
 
-  async function fetchPrayerLikeMeta(supabase: any, prayerIds: string[], uid: string) {
-    if (prayerIds.length === 0) return { counts: {} as Record<string, number>, mine: [] as string[] };
+  async function fetchPrayerLikeMeta(
+    supabase: any,
+    prayerIds: string[],
+    uid: string,
+  ) {
+    if (prayerIds.length === 0)
+      return { counts: {} as Record<string, number>, mine: [] as string[] };
 
     const { data: likes, error } = await supabase
       .from("prayer_likes")
@@ -1440,35 +2485,74 @@ function CommunityPageContent() {
 
     if (error) {
       if (error.code === "23505") {
-        setLikedPrayerIds(prev => prev.includes(prayerId) ? prev : [...prev, prayerId]);
+        setLikedPrayerIds((prev) =>
+          prev.includes(prayerId) ? prev : [...prev, prayerId],
+        );
       }
       return;
     }
 
-    const bumpLikeCount = (items: any[]) => items.map((item: any) =>
-      item.id === prayerId ? { ...item, like_count: (item.like_count ?? 0) + 1 } : item
-    );
+    const bumpLikeCount = (items: any[]) =>
+      items.map((item: any) =>
+        item.id === prayerId
+          ? { ...item, like_count: (item.like_count ?? 0) + 1 }
+          : item,
+      );
 
-    setLikedPrayerIds(prev => prev.includes(prayerId) ? prev : [...prev, prayerId]);
-    setAnsweredPrayers(prev => bumpLikeCount(prev));
-    setGroupPrayers(prev => bumpLikeCount(prev));
-    setPartnerPrayers(prev => bumpLikeCount(prev));
-    void awardCommunityLoveHeart(supabase, "answered_prayer_gratitude", prayerId);
+    setLikedPrayerIds((prev) =>
+      prev.includes(prayerId) ? prev : [...prev, prayerId],
+    );
+    setAnsweredPrayers((prev) => bumpLikeCount(prev));
+    setGroupPrayers((prev) => bumpLikeCount(prev));
+    setPartnerPrayers((prev) => bumpLikeCount(prev));
+    void awardCommunityLoveHeart(
+      supabase,
+      "answered_prayer_gratitude",
+      prayerId,
+    );
   }
 
   function PrayerLikeButton({ prayer }: { prayer: any }) {
     const liked = likedPrayerIds.includes(prayer.id);
     return (
       <button
-        onClick={() => { void likeAnsweredPrayer(prayer.id); }}
+        onClick={() => {
+          void likeAnsweredPrayer(prayer.id);
+        }}
         disabled={liked}
-        style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: liked ? "default" : "pointer", padding: "4px 8px", borderRadius: 20 }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          background: "none",
+          border: "none",
+          cursor: liked ? "default" : "pointer",
+          padding: "4px 8px",
+          borderRadius: 20,
+        }}
       >
-        <span style={{ fontSize: 18, color: liked ? "#E05050" : "var(--text3)", transition: "transform 0.2s", transform: liked ? "scale(1.1)" : "scale(1)" }}>
-          <Heart size={17} strokeWidth={1.9} fill={liked ? "#E05050" : "none"} />
+        <span
+          style={{
+            fontSize: 18,
+            color: liked ? "#E05050" : "var(--text3)",
+            transition: "transform 0.2s",
+            transform: liked ? "scale(1.1)" : "scale(1)",
+          }}
+        >
+          <Heart
+            size={17}
+            strokeWidth={1.9}
+            fill={liked ? "#E05050" : "none"}
+          />
         </span>
         {(prayer.like_count ?? 0) > 0 && (
-          <span style={{ fontSize: 12, color: liked ? "#E05050" : "var(--text3)", fontWeight: 700 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: liked ? "#E05050" : "var(--text3)",
+              fontWeight: 700,
+            }}
+          >
             {prayer.like_count}
           </span>
         )}
@@ -1476,46 +2560,80 @@ function CommunityPageContent() {
     );
   }
 
-  useEffect(() => { loadData(); }, [tab]);
+  useEffect(() => {
+    loadData();
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "all" || !userId) return;
     markAllSectionSeen(allTab);
-  }, [tab, allTab, userId, qtShares.length, prayers.length, answeredPrayers.length]);
+  }, [
+    tab,
+    allTab,
+    userId,
+    qtShares.length,
+    prayers.length,
+    answeredPrayers.length,
+  ]);
 
   // 프로필 fetch 헬퍼
   async function fetchProfiles(supabase: any, data: any[]) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
     if (uids.length === 0) return {};
-    const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url, streak_days").in("id", uids);
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url, streak_days")
+      .in("id", uids);
     const map: Record<string, any> = {};
-    (profs ?? []).forEach((p: any) => { map[p.id] = p; });
+    (profs ?? []).forEach((p: any) => {
+      map[p.id] = p;
+    });
     return map;
   }
 
   async function loadQtPhotoUrls(supabase: any, rows: any[]) {
     const photoRows = rows.filter((row: any) => {
       const rowId = String(row?.id ?? "");
-      return rowId && row?.photo_path && !qtPhotoUrls[rowId] && !qtPhotoUrlRequestingRef.current.has(rowId);
+      return (
+        rowId &&
+        row?.photo_path &&
+        !qtPhotoUrls[rowId] &&
+        !qtPhotoUrlRequestingRef.current.has(rowId)
+      );
     });
     if (photoRows.length === 0) return;
 
-    photoRows.forEach((row: any) => qtPhotoUrlRequestingRef.current.add(String(row.id)));
+    photoRows.forEach((row: any) =>
+      qtPhotoUrlRequestingRef.current.add(String(row.id)),
+    );
 
     try {
-      const uniquePaths = uniqueStrings(photoRows.map((row: any) => row.photo_path));
+      const uniquePaths = uniqueStrings(
+        photoRows.map((row: any) => row.photo_path),
+      );
       const pathUrlMap: Record<string, string> = {};
 
       if (uniquePaths.length > 0) {
-        const { data, error } = await supabase.storage.from("qt-photos").createSignedUrls(uniquePaths, 60 * 60);
+        const { data, error } = await supabase.storage
+          .from("qt-photos")
+          .createSignedUrls(uniquePaths, 60 * 60);
 
         if (error) {
-          console.warn("사진 묵상 signed URL 일괄 생성 실패. 개별 생성으로 fallback:", error.message);
-          const fallbackEntries = await Promise.all(uniquePaths.map(async (path) => {
-            const { data: signed } = await supabase.storage.from("qt-photos").createSignedUrl(path, 60 * 60);
-            return [path, signed?.signedUrl ?? ""] as const;
-          }));
-          fallbackEntries.forEach(([path, signedUrl]) => { if (signedUrl) pathUrlMap[path] = signedUrl; });
+          console.warn(
+            "사진 묵상 signed URL 일괄 생성 실패. 개별 생성으로 fallback:",
+            error.message,
+          );
+          const fallbackEntries = await Promise.all(
+            uniquePaths.map(async (path) => {
+              const { data: signed } = await supabase.storage
+                .from("qt-photos")
+                .createSignedUrl(path, 60 * 60);
+              return [path, signed?.signedUrl ?? ""] as const;
+            }),
+          );
+          fallbackEntries.forEach(([path, signedUrl]) => {
+            if (signedUrl) pathUrlMap[path] = signedUrl;
+          });
         } else {
           (data ?? []).forEach((item: any, index: number) => {
             const path = String(item?.path ?? uniquePaths[index] ?? "");
@@ -1525,17 +2643,22 @@ function CommunityPageContent() {
       }
 
       const entries = photoRows
-        .map((row: any) => [String(row.id), pathUrlMap[String(row.photo_path)] ?? ""] as const)
+        .map(
+          (row: any) =>
+            [String(row.id), pathUrlMap[String(row.photo_path)] ?? ""] as const,
+        )
         .filter(([, url]) => !!url);
 
       if (entries.length > 0) {
-        setQtPhotoUrls(prev => ({
+        setQtPhotoUrls((prev) => ({
           ...prev,
           ...Object.fromEntries(entries),
         }));
       }
     } finally {
-      photoRows.forEach((row: any) => qtPhotoUrlRequestingRef.current.delete(String(row.id)));
+      photoRows.forEach((row: any) =>
+        qtPhotoUrlRequestingRef.current.delete(String(row.id)),
+      );
     }
   }
 
@@ -1544,7 +2667,7 @@ function CommunityPageContent() {
   }
 
   function showMoreFeedItems(key: string) {
-    setVisibleFeedCounts(prev => ({
+    setVisibleFeedCounts((prev) => ({
       ...prev,
       [key]: (prev[key] ?? COMMUNITY_FEED_PAGE_SIZE) + COMMUNITY_FEED_PAGE_SIZE,
     }));
@@ -1576,7 +2699,19 @@ function CommunityPageContent() {
     if (tab === "all" && allTab === "qt") {
       void loadQtPhotoUrls(supabase, visibleFeedItems("all-qt", qtShares));
     }
-  }, [tab, allTab, selectedGroup?.id, groupDetailTab, selectedPartner?.partner_id, partnerDetailTab, qtShares, groupQts, partnerQts, visibleFeedCounts, qtPhotoUrls]);
+  }, [
+    tab,
+    allTab,
+    selectedGroup?.id,
+    groupDetailTab,
+    selectedPartner?.partner_id,
+    partnerDetailTab,
+    qtShares,
+    groupQts,
+    partnerQts,
+    visibleFeedCounts,
+    qtPhotoUrls,
+  ]);
 
   function renderFeedLoadMore(key: string, total: number) {
     const visibleCount = getVisibleFeedCount(key);
@@ -1596,31 +2731,42 @@ function CommunityPageContent() {
     return `roots_community_all_section_seen_${uid}`;
   }
 
-  function latestContentTime(rows: any[], field: "qt" | "prayer" | "answered" = "qt") {
+  function latestContentTime(
+    rows: any[],
+    field: "qt" | "prayer" | "answered" = "qt",
+  ) {
     if (!rows || rows.length === 0) return null;
     const times = rows
       .map((row: any) => {
-        if (field === "answered") return row.answered_at ?? row.created_at ?? null;
+        if (field === "answered")
+          return row.answered_at ?? row.created_at ?? null;
         if (field === "prayer") return sharedContentTime(row);
         return row.created_at ?? null;
       })
-      .filter((value): value is string => typeof value === "string" && value.length > 0);
-    return times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+      .filter(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0,
+      );
+    return (
+      times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ??
+      null
+    );
   }
 
   function hasAllSectionNew(section: CommunitySectionKey) {
-    const latest = section === "qt"
-      ? latestContentTime(qtShares, "qt")
-      : section === "answered"
-        ? latestContentTime(answeredPrayers, "answered")
-        : latestContentTime(prayers, "prayer");
+    const latest =
+      section === "qt"
+        ? latestContentTime(qtShares, "qt")
+        : section === "answered"
+          ? latestContentTime(answeredPrayers, "answered")
+          : latestContentTime(prayers, "prayer");
     return isLaterThan(latest, allSectionSeenAt[section]);
   }
 
   function markAllSectionSeen(section: CommunitySectionKey) {
     if (!userId) return;
     const seenAt = new Date().toISOString();
-    setAllSectionSeenAt(prev => {
+    setAllSectionSeenAt((prev) => {
       const next = { ...prev, [section]: seenAt };
       storageSetJson(allSectionSeenKey(userId), next);
       return next;
@@ -1633,42 +2779,74 @@ function CommunityPageContent() {
   }
 
   function hasUnreadPartnerSection(section: CommunitySectionKey) {
-    if (section === "qt") return partnerQts.some((row: any) => !!row.isUnreadInPartner);
-    return partnerPrayers.some((row: any) => section === "answered" ? !!row.is_answered && !!row.isUnreadInPartner : !row.is_answered && !!row.isUnreadInPartner);
+    if (section === "qt")
+      return partnerQts.some((row: any) => !!row.isUnreadInPartner);
+    return partnerPrayers.some((row: any) =>
+      section === "answered"
+        ? !!row.is_answered && !!row.isUnreadInPartner
+        : !row.is_answered && !!row.isUnreadInPartner,
+    );
   }
 
   function selectPartnerSection(section: CommunitySectionKey) {
     setPartnerDetailTab(section);
     if (section === "qt") {
-      setPartnerQts(prev => prev.map((row: any) => ({ ...row, isUnreadInPartner: false })));
+      setPartnerQts((prev) =>
+        prev.map((row: any) => ({ ...row, isUnreadInPartner: false })),
+      );
       return;
     }
-    setPartnerPrayers(prev => prev.map((row: any) => {
-      const matches = section === "answered" ? !!row.is_answered : !row.is_answered;
-      return matches ? { ...row, isUnreadInPartner: false } : row;
-    }));
+    setPartnerPrayers((prev) =>
+      prev.map((row: any) => {
+        const matches =
+          section === "answered" ? !!row.is_answered : !row.is_answered;
+        return matches ? { ...row, isUnreadInPartner: false } : row;
+      }),
+    );
   }
 
   function hasUnreadGroupSection(section: CommunitySectionKey) {
-    if (section === "qt") return groupQts.some((row: any) => !!row.isUnreadInGroup);
-    return groupPrayers.some((row: any) => section === "answered" ? !!row.is_answered && !!row.isUnreadInGroup : !row.is_answered && !!row.isUnreadInGroup);
+    if (section === "qt")
+      return groupQts.some((row: any) => !!row.isUnreadInGroup);
+    return groupPrayers.some((row: any) =>
+      section === "answered"
+        ? !!row.is_answered && !!row.isUnreadInGroup
+        : !row.is_answered && !!row.isUnreadInGroup,
+    );
   }
 
   function selectGroupSection(section: CommunitySectionKey) {
     setGroupDetailTab(section);
     if (section === "qt") {
-      setGroupQts(prev => prev.map((row: any) => ({ ...row, isUnreadInGroup: false })));
+      setGroupQts((prev) =>
+        prev.map((row: any) => ({ ...row, isUnreadInGroup: false })),
+      );
       return;
     }
-    setGroupPrayers(prev => prev.map((row: any) => {
-      const matches = section === "answered" ? !!row.is_answered : !row.is_answered;
-      return matches ? { ...row, isUnreadInGroup: false } : row;
-    }));
+    setGroupPrayers((prev) =>
+      prev.map((row: any) => {
+        const matches =
+          section === "answered" ? !!row.is_answered : !row.is_answered;
+        return matches ? { ...row, isUnreadInGroup: false } : row;
+      }),
+    );
   }
 
   function SectionUnreadDot({ show }: { show: boolean }) {
     if (!show) return null;
-    return <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: "var(--sage)", boxShadow: "0 0 0 2px rgba(122,157,122,0.14)", flexShrink: 0 }} />;
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: 999,
+          background: "var(--sage)",
+          boxShadow: "0 0 0 2px rgba(122,157,122,0.14)",
+          flexShrink: 0,
+        }}
+      />
+    );
   }
 
   useEffect(() => {
@@ -1708,19 +2886,41 @@ function CommunityPageContent() {
         resetGroupDetailState();
       }
 
-      const partner = partners.find((item: any) => String(item.partner_id) === partnerId);
+      const partner = partners.find(
+        (item: any) => String(item.partner_id) === partnerId,
+      );
       if (!partner) return;
       handledNotificationRouteRef.current = signature;
       void openPartnerDetail(partner, section);
     }
-  }, [loading, searchParams, groups, partners, tab, selectedPartner, selectedGroup]);
+  }, [
+    loading,
+    searchParams,
+    groups,
+    partners,
+    tab,
+    selectedPartner,
+    selectedGroup,
+  ]);
 
-  async function openPartnerDetail(partner: any, preferredSection?: CommunitySectionKey) {
+  async function openPartnerDetail(
+    partner: any,
+    preferredSection?: CommunitySectionKey,
+  ) {
     pushCommunityDetailHistory("partner");
     const openedAt = new Date().toISOString();
     const previousSeenAt = partner.last_seen_shared_at ?? null;
-    setSelectedPartner({ ...partner, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt });
-    setPartnerDetailTab(preferredSection ?? (partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt"));
+    setSelectedPartner({
+      ...partner,
+      hasNewContent: false,
+      hasNewQtShare: false,
+      hasNewPrayer: false,
+      last_seen_shared_at: openedAt,
+    });
+    setPartnerDetailTab(
+      preferredSection ??
+        (partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt"),
+    );
     setPartnerQts([]);
     setPartnerPrayers([]);
     setLoadingPartnerQts(true);
@@ -1734,26 +2934,46 @@ function CommunityPageContent() {
     }
 
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       setLoadingPartnerQts(false);
       setLoadingPartnerPrayers(false);
       return;
     }
 
-    setPartners(prev => sortPartnersForDisplay(prev.map(item => item.partner_id === partnerId ? { ...item, hasNewContent: false, hasNewQtShare: false, hasNewPrayer: false, last_seen_shared_at: openedAt } : item)));
+    setPartners((prev) =>
+      sortPartnersForDisplay(
+        prev.map((item) =>
+          item.partner_id === partnerId
+            ? {
+                ...item,
+                hasNewContent: false,
+                hasNewQtShare: false,
+                hasNewPrayer: false,
+                last_seen_shared_at: openedAt,
+              }
+            : item,
+        ),
+      ),
+    );
 
     try {
       const { error: seenError } = await supabase
         .from("companion_preferences")
-        .upsert({
-          user_id: user.id,
-          companion_user_id: partnerId,
-          is_favorite: !!partner.isFavorite,
-          last_seen_shared_at: openedAt,
-          updated_at: openedAt,
-        }, { onConflict: "user_id,companion_user_id" });
-      if (seenError) console.warn("동역자 읽음 상태 저장 실패:", seenError.message);
+        .upsert(
+          {
+            user_id: user.id,
+            companion_user_id: partnerId,
+            is_favorite: !!partner.isFavorite,
+            last_seen_shared_at: openedAt,
+            updated_at: openedAt,
+          },
+          { onConflict: "user_id,companion_user_id" },
+        );
+      if (seenError)
+        console.warn("동역자 읽음 상태 저장 실패:", seenError.message);
     } catch (error) {
       console.warn("동역자 읽음 상태 저장 중 예외:", error);
     }
@@ -1765,16 +2985,26 @@ function CommunityPageContent() {
       const { data: qtRecipientRows, error: qtRecipientError } = await supabase
         .from("qt_record_recipients")
         .select("qt_record_id,owner_id,recipient_id,created_at")
-        .or(`and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`)
+        .or(
+          `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
+        )
         .order("created_at", { ascending: false })
         .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
       if (qtRecipientError) throw qtRecipientError;
-      const qtIds = Array.from(new Set((qtRecipientRows ?? []).map((row: any) => row.qt_record_id).filter(Boolean)));
+      const qtIds = Array.from(
+        new Set(
+          (qtRecipientRows ?? [])
+            .map((row: any) => row.qt_record_id)
+            .filter(Boolean),
+        ),
+      );
 
       if (qtIds.length > 0) {
         const recipientMap: Record<string, any> = {};
-        (qtRecipientRows ?? []).forEach((row: any) => { recipientMap[row.qt_record_id] = row; });
+        (qtRecipientRows ?? []).forEach((row: any) => {
+          recipientMap[row.qt_record_id] = row;
+        });
 
         const { data: qtRows, error: qtError } = await supabase
           .from("qt_records")
@@ -1784,23 +3014,41 @@ function CommunityPageContent() {
 
         if (qtError) throw qtError;
         const profMap = await fetchProfiles(supabase, qtRows ?? []);
-        const rowsWithProfiles = (qtRows ?? []).map((row: any) => {
-          const recipient = recipientMap[row.id] ?? null;
-          const partnerSharedAt = recipient?.created_at ?? row.created_at;
-          return {
-            ...row,
-            profiles: profMap[row.user_id] ?? null,
-            partnerSharedAt,
-            isUnreadInPartner: recipient?.owner_id === partnerId && recipient?.recipient_id === user.id && isLaterThan(partnerSharedAt, previousSeenAt),
-          };
-        }).sort((a: any, b: any) => new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() - new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime());
+        const rowsWithProfiles = (qtRows ?? [])
+          .map((row: any) => {
+            const recipient = recipientMap[row.id] ?? null;
+            const partnerSharedAt = recipient?.created_at ?? row.created_at;
+            return {
+              ...row,
+              profiles: profMap[row.user_id] ?? null,
+              partnerSharedAt,
+              isUnreadInPartner:
+                recipient?.owner_id === partnerId &&
+                recipient?.recipient_id === user.id &&
+                isLaterThan(partnerSharedAt, previousSeenAt),
+            };
+          })
+          .sort(
+            (a: any, b: any) =>
+              new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() -
+              new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime(),
+          );
 
-        const visibleRows = filterHiddenItems("qt", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds);
+        const visibleRows = filterHiddenItems(
+          "qt",
+          rowsWithProfiles,
+          currentHiddenKeys,
+          currentHiddenUserIds,
+        );
         setPartnerQts(visibleRows);
 
-        const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
-        setQtReactionCounts(prev => ({ ...prev, ...counts }));
-        setMyQtReactions(prev => ({ ...prev, ...mine }));
+        const { counts, mine } = await fetchQtReactions(
+          supabase,
+          qtIds,
+          user.id,
+        );
+        setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+        setMyQtReactions((prev) => ({ ...prev, ...mine }));
       } else {
         setPartnerQts([]);
       }
@@ -1812,19 +3060,30 @@ function CommunityPageContent() {
     }
 
     try {
-      const { data: prayerRecipientRows, error: prayerRecipientError } = await supabase
-        .from("prayer_item_recipients")
-        .select("prayer_item_id,owner_id,recipient_id,created_at")
-        .or(`and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`)
-        .order("created_at", { ascending: false })
-        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+      const { data: prayerRecipientRows, error: prayerRecipientError } =
+        await supabase
+          .from("prayer_item_recipients")
+          .select("prayer_item_id,owner_id,recipient_id,created_at")
+          .or(
+            `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
+          )
+          .order("created_at", { ascending: false })
+          .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
       if (prayerRecipientError) throw prayerRecipientError;
-      const prayerIds = Array.from(new Set((prayerRecipientRows ?? []).map((row: any) => row.prayer_item_id).filter(Boolean)));
+      const prayerIds = Array.from(
+        new Set(
+          (prayerRecipientRows ?? [])
+            .map((row: any) => row.prayer_item_id)
+            .filter(Boolean),
+        ),
+      );
 
       if (prayerIds.length > 0) {
         const recipientMap: Record<string, any> = {};
-        (prayerRecipientRows ?? []).forEach((row: any) => { recipientMap[row.prayer_item_id] = row; });
+        (prayerRecipientRows ?? []).forEach((row: any) => {
+          recipientMap[row.prayer_item_id] = row;
+        });
 
         const { data: prayerRows, error: prayerError } = await supabase
           .from("prayer_items")
@@ -1835,24 +3094,53 @@ function CommunityPageContent() {
 
         if (prayerError) throw prayerError;
         const profMap = await fetchProfiles(supabase, prayerRows ?? []);
-        const answeredIds = (prayerRows ?? []).filter((row: any) => !!row.is_answered).map((row: any) => row.id);
-        const { counts: likeCounts, mine: myLikedIds } = await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
+        const answeredIds = (prayerRows ?? [])
+          .filter((row: any) => !!row.is_answered)
+          .map((row: any) => row.id);
+        const { counts: likeCounts, mine: myLikedIds } =
+          await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
         if (myLikedIds.length > 0) {
-          setLikedPrayerIds(prev => Array.from(new Set([...prev, ...myLikedIds])));
+          setLikedPrayerIds((prev) =>
+            Array.from(new Set([...prev, ...myLikedIds])),
+          );
         }
-        const rowsWithProfiles = (prayerRows ?? []).map((row: any) => {
-          const recipient = recipientMap[row.id] ?? null;
-          const partnerSharedAt = recipient?.created_at ?? row.created_at;
-          return {
-            ...row,
-            like_count: likeCounts[row.id] ?? row.like_count ?? 0,
-            profiles: profMap[row.user_id] ?? null,
-            partnerSharedAt,
-            isUnreadInPartner: recipient?.owner_id === partnerId && recipient?.recipient_id === user.id && isLaterThan(partnerSharedAt, previousSeenAt),
-          };
-        }).sort((a: any, b: any) => new Date((b.is_answered ? b.answered_at : b.partnerSharedAt) ?? b.created_at ?? 0).getTime() - new Date((a.is_answered ? a.answered_at : a.partnerSharedAt) ?? a.created_at ?? 0).getTime());
+        const rowsWithProfiles = (prayerRows ?? [])
+          .map((row: any) => {
+            const recipient = recipientMap[row.id] ?? null;
+            const partnerSharedAt = recipient?.created_at ?? row.created_at;
+            return {
+              ...row,
+              like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+              profiles: profMap[row.user_id] ?? null,
+              partnerSharedAt,
+              isUnreadInPartner:
+                recipient?.owner_id === partnerId &&
+                recipient?.recipient_id === user.id &&
+                isLaterThan(partnerSharedAt, previousSeenAt),
+            };
+          })
+          .sort(
+            (a: any, b: any) =>
+              new Date(
+                (b.is_answered ? b.answered_at : b.partnerSharedAt) ??
+                  b.created_at ??
+                  0,
+              ).getTime() -
+              new Date(
+                (a.is_answered ? a.answered_at : a.partnerSharedAt) ??
+                  a.created_at ??
+                  0,
+              ).getTime(),
+          );
 
-        setPartnerPrayers(filterHiddenItems("prayer", rowsWithProfiles, currentHiddenKeys, currentHiddenUserIds));
+        setPartnerPrayers(
+          filterHiddenItems(
+            "prayer",
+            rowsWithProfiles,
+            currentHiddenKeys,
+            currentHiddenUserIds,
+          ),
+        );
       } else {
         setPartnerPrayers([]);
       }
@@ -1875,7 +3163,9 @@ function CommunityPageContent() {
         .eq("group_id", group.id);
 
       if (error) throw error;
-      const memberIds = Array.from(new Set((rows ?? []).map((row: any) => row.user_id).filter(Boolean)));
+      const memberIds = Array.from(
+        new Set((rows ?? []).map((row: any) => row.user_id).filter(Boolean)),
+      );
       if (memberIds.length === 0) {
         setGroupMemberProfiles([]);
         return;
@@ -1887,8 +3177,19 @@ function CommunityPageContent() {
         .in("id", memberIds);
 
       const profileMap: Record<string, any> = {};
-      (profs ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
-      setGroupMemberProfiles(memberIds.map((id: string) => profileMap[id] ?? { id, name: c("community_member_unknown"), avatar_url: null }));
+      (profs ?? []).forEach((profile: any) => {
+        profileMap[profile.id] = profile;
+      });
+      setGroupMemberProfiles(
+        memberIds.map(
+          (id: string) =>
+            profileMap[id] ?? {
+              id,
+              name: c("community_member_unknown"),
+              avatar_url: null,
+            },
+        ),
+      );
     } catch (error) {
       console.warn("그룹 참여자 조회 실패:", error);
       setGroupMemberProfiles([]);
@@ -1900,7 +3201,8 @@ function CommunityPageContent() {
   // qt_reactions 로드 헬퍼 - qtIds 목록의 반응 카운트 + 내 반응 가져오기
   async function fetchQtReactions(supabase: any, qtIds: string[], uid: string) {
     if (qtIds.length === 0) return { counts: {}, mine: {} };
-    const { data: rxData } = await supabase.from("qt_reactions")
+    const { data: rxData } = await supabase
+      .from("qt_reactions")
       .select("qt_id, reaction, user_id")
       .in("qt_id", qtIds);
 
@@ -1918,27 +3220,45 @@ function CommunityPageContent() {
   async function loadData() {
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     setUserId(user.id);
-    setChallengeContactEmail(prev => prev || user.email || "");
-    setAllSectionSeenAt(storageGetJson<Record<CommunitySectionKey, string | null>>(allSectionSeenKey(user.id), { qt: null, praying: null, answered: null }));
+    setChallengeContactEmail((prev) => prev || user.email || "");
+    setAllSectionSeenAt(
+      storageGetJson<Record<CommunitySectionKey, string | null>>(
+        allSectionSeenKey(user.id),
+        { qt: null, praying: null, answered: null },
+      ),
+    );
 
-    const { data: hiddenRows } = await supabase.from("hidden_community_items")
+    const { data: hiddenRows } = await supabase
+      .from("hidden_community_items")
       .select("content_type,content_id")
       .eq("user_id", user.id);
-    const loadedHiddenKeys = (hiddenRows ?? []).map((row: any) => `${row.content_type}:${row.content_id}`);
+    const loadedHiddenKeys = (hiddenRows ?? []).map(
+      (row: any) => `${row.content_type}:${row.content_id}`,
+    );
     setHiddenKeys(loadedHiddenKeys);
 
-    const { data: hiddenUserRows } = await supabase.from("hidden_community_users")
+    const { data: hiddenUserRows } = await supabase
+      .from("hidden_community_users")
       .select("hidden_user_id")
       .eq("user_id", user.id);
-    const loadedHiddenUserIds = (hiddenUserRows ?? []).map((row: any) => row.hidden_user_id).filter(Boolean);
+    const loadedHiddenUserIds = (hiddenUserRows ?? [])
+      .map((row: any) => row.hidden_user_id)
+      .filter(Boolean);
     setHiddenUserIds(loadedHiddenUserIds);
 
     // prayedIds: DB에서 로드
-    const { data: prayLogs } = await supabase.from("user_prayer_logs")
-      .select("prayer_id").eq("user_id", user.id);
+    const { data: prayLogs } = await supabase
+      .from("user_prayer_logs")
+      .select("prayer_id")
+      .eq("user_id", user.id);
     const dbPrayed = (prayLogs ?? []).map((r: any) => r.prayer_id);
     setPrayedIds(dbPrayed);
     storageSetJson(`comm_prayed_${user.id}`, dbPrayed);
@@ -1946,7 +3266,9 @@ function CommunityPageContent() {
     if (tab === "partner") {
       const { data: companionRows, error: companionError } = await supabase
         .from("companions")
-        .select("id,requester_id,receiver_id,status,created_at,updated_at,responded_at")
+        .select(
+          "id,requester_id,receiver_id,status,created_at,updated_at,responded_at",
+        )
         .eq("status", "accepted")
         .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
@@ -1956,14 +3278,26 @@ function CommunityPageContent() {
         setPartners([]);
       } else {
         const rows = companionRows ?? [];
-        const partnerIds = Array.from(new Set(rows.map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id).filter(Boolean)));
+        const partnerIds = Array.from(
+          new Set(
+            rows
+              .map((row: any) =>
+                row.requester_id === user.id
+                  ? row.receiver_id
+                  : row.requester_id,
+              )
+              .filter(Boolean),
+          ),
+        );
         let profileMap: Record<string, any> = {};
         if (partnerIds.length > 0) {
           const { data: profileRows } = await supabase
             .from("profiles")
             .select("id,name,avatar_url,streak_days")
             .in("id", partnerIds);
-          (profileRows ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
+          (profileRows ?? []).forEach((profile: any) => {
+            profileMap[profile.id] = profile;
+          });
         }
         let favoritePartnerIds = new Set<string>();
         const partnerPreferenceMap: Record<string, any> = {};
@@ -1971,12 +3305,17 @@ function CommunityPageContent() {
           let preferenceRows: any[] | null = null;
           const { data, error: preferenceError } = await supabase
             .from("companion_preferences")
-            .select("companion_user_id,is_favorite,last_seen_shared_at,created_at")
+            .select(
+              "companion_user_id,is_favorite,last_seen_shared_at,created_at",
+            )
             .eq("user_id", user.id)
             .in("companion_user_id", partnerIds);
 
           if (preferenceError) {
-            console.warn("동역자 선호도/읽음 상태 조회 실패. 기존 컬럼으로 fallback:", preferenceError.message);
+            console.warn(
+              "동역자 선호도/읽음 상태 조회 실패. 기존 컬럼으로 fallback:",
+              preferenceError.message,
+            );
             const { data: fallbackRows, error: fallbackError } = await supabase
               .from("companion_preferences")
               .select("companion_user_id,is_favorite,created_at")
@@ -1994,87 +3333,127 @@ function CommunityPageContent() {
           (preferenceRows ?? []).forEach((row: any) => {
             partnerPreferenceMap[row.companion_user_id] = row;
           });
-          favoritePartnerIds = new Set((preferenceRows ?? [])
-            .filter((row: any) => !!row.is_favorite)
-            .map((row: any) => row.companion_user_id)
-            .filter(Boolean));
+          favoritePartnerIds = new Set(
+            (preferenceRows ?? [])
+              .filter((row: any) => !!row.is_favorite)
+              .map((row: any) => row.companion_user_id)
+              .filter(Boolean),
+          );
         }
 
         const latestPartnerQtAt: Record<string, string | null> = {};
         const latestPartnerPrayerAt: Record<string, string | null> = {};
         if (partnerIds.length > 0) {
-          const { data: qtRecipientRows, error: qtRecipientError } = await supabase
-            .from("qt_record_recipients")
-            .select("owner_id,recipient_id,created_at")
-            .eq("recipient_id", user.id)
-            .in("owner_id", partnerIds)
-            .order("created_at", { ascending: false })
-            .limit(200);
+          const { data: qtRecipientRows, error: qtRecipientError } =
+            await supabase
+              .from("qt_record_recipients")
+              .select("owner_id,recipient_id,created_at")
+              .eq("recipient_id", user.id)
+              .in("owner_id", partnerIds)
+              .order("created_at", { ascending: false })
+              .limit(200);
           if (qtRecipientError) {
             console.warn("동역자 새 묵상 조회 실패:", qtRecipientError.message);
           } else {
             (qtRecipientRows ?? []).forEach((row: any) => {
-              if (!latestPartnerQtAt[row.owner_id]) latestPartnerQtAt[row.owner_id] = row.created_at ?? null;
+              if (!latestPartnerQtAt[row.owner_id])
+                latestPartnerQtAt[row.owner_id] = row.created_at ?? null;
             });
           }
 
-          const { data: prayerRecipientRows, error: prayerRecipientError } = await supabase
-            .from("prayer_item_recipients")
-            .select("owner_id,recipient_id,created_at")
-            .eq("recipient_id", user.id)
-            .in("owner_id", partnerIds)
-            .order("created_at", { ascending: false })
-            .limit(200);
+          const { data: prayerRecipientRows, error: prayerRecipientError } =
+            await supabase
+              .from("prayer_item_recipients")
+              .select("owner_id,recipient_id,created_at")
+              .eq("recipient_id", user.id)
+              .in("owner_id", partnerIds)
+              .order("created_at", { ascending: false })
+              .limit(200);
           if (prayerRecipientError) {
-            console.warn("동역자 새 기도 조회 실패:", prayerRecipientError.message);
+            console.warn(
+              "동역자 새 기도 조회 실패:",
+              prayerRecipientError.message,
+            );
           } else {
             (prayerRecipientRows ?? []).forEach((row: any) => {
-              if (!latestPartnerPrayerAt[row.owner_id]) latestPartnerPrayerAt[row.owner_id] = row.created_at ?? null;
+              if (!latestPartnerPrayerAt[row.owner_id])
+                latestPartnerPrayerAt[row.owner_id] = row.created_at ?? null;
             });
           }
         }
 
-        setPartners(sortPartnersForDisplay(rows.map((row: any) => {
-          const partnerId = row.requester_id === user.id ? row.receiver_id : row.requester_id;
-          const preference = partnerPreferenceMap[partnerId] ?? null;
-          const lastSeenPartnerAt = preference?.last_seen_shared_at ?? row.responded_at ?? row.created_at ?? null;
-          const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
-          const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
-          const latestPartnerActivityAt = latestSharedContentTime([
-            latestQtAt ? { created_at: latestQtAt } : null,
-            latestPrayerAt ? { created_at: latestPrayerAt } : null,
-          ].filter(Boolean) as any[]);
-          const hasNewQtShare = isLaterThan(latestQtAt, lastSeenPartnerAt);
-          const hasNewPrayer = isLaterThan(latestPrayerAt, lastSeenPartnerAt);
-          return {
-            ...row,
-            partner_id: partnerId,
-            profile: profileMap[partnerId] ?? null,
-            isFavorite: favoritePartnerIds.has(partnerId),
-            last_seen_shared_at: lastSeenPartnerAt,
-            latest_qt_at: latestQtAt,
-            latest_prayer_at: latestPrayerAt,
-            latest_partner_activity_at: latestPartnerActivityAt,
-            hasNewQtShare,
-            hasNewPrayer,
-            hasNewContent: hasNewQtShare || hasNewPrayer,
-          };
-        })));
+        setPartners(
+          sortPartnersForDisplay(
+            rows.map((row: any) => {
+              const partnerId =
+                row.requester_id === user.id
+                  ? row.receiver_id
+                  : row.requester_id;
+              const preference = partnerPreferenceMap[partnerId] ?? null;
+              const lastSeenPartnerAt =
+                preference?.last_seen_shared_at ??
+                row.responded_at ??
+                row.created_at ??
+                null;
+              const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
+              const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
+              const latestPartnerActivityAt = latestSharedContentTime(
+                [
+                  latestQtAt ? { created_at: latestQtAt } : null,
+                  latestPrayerAt ? { created_at: latestPrayerAt } : null,
+                ].filter(Boolean) as any[],
+              );
+              const hasNewQtShare = isLaterThan(latestQtAt, lastSeenPartnerAt);
+              const hasNewPrayer = isLaterThan(
+                latestPrayerAt,
+                lastSeenPartnerAt,
+              );
+              return {
+                ...row,
+                partner_id: partnerId,
+                profile: profileMap[partnerId] ?? null,
+                isFavorite: favoritePartnerIds.has(partnerId),
+                last_seen_shared_at: lastSeenPartnerAt,
+                latest_qt_at: latestQtAt,
+                latest_prayer_at: latestPrayerAt,
+                latest_partner_activity_at: latestPartnerActivityAt,
+                hasNewQtShare,
+                hasNewPrayer,
+                hasNewContent: hasNewQtShare || hasNewPrayer,
+              };
+            }),
+          ),
+        );
       }
-
     } else if (tab === "all") {
       // 기도 중 (미응답)
-      const { data } = await supabase.from("prayer_items")
-        .select("*").ilike("visibility", "%all%").eq("is_answered", false)
+      const { data } = await supabase
+        .from("prayer_items")
+        .select("*")
+        .ilike("visibility", "%all%")
+        .eq("is_answered", false)
         .order("created_at", { ascending: false })
         .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (data) {
         const profMap = await fetchProfiles(supabase, data);
-        setPrayers(filterHiddenItems("prayer", data.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds));
+        setPrayers(
+          filterHiddenItems(
+            "prayer",
+            data.map((r: any) => ({
+              ...r,
+              profiles: profMap[r.user_id] ?? null,
+            })),
+            loadedHiddenKeys,
+            loadedHiddenUserIds,
+          ),
+        );
       }
       // 응답됨 (간증 있는 것)
-      const { data: answered } = await supabase.from("prayer_items")
-        .select("*").ilike("visibility", "%all%").eq("is_answered", true)
+      const { data: answered } = await supabase
+        .from("prayer_items")
+        .select("*")
+        .ilike("visibility", "%all%")
+        .eq("is_answered", true)
         .order("answered_at", { ascending: false })
         .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (answered) {
@@ -2096,7 +3475,18 @@ function CommunityPageContent() {
         }
 
         setLikedPrayerIds(myLikedIds);
-        setAnsweredPrayers(filterHiddenItems("prayer", answered.map((r: any) => ({ ...r, like_count: likeCounts[r.id] ?? 0, profiles: profMap2[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds));
+        setAnsweredPrayers(
+          filterHiddenItems(
+            "prayer",
+            answered.map((r: any) => ({
+              ...r,
+              like_count: likeCounts[r.id] ?? 0,
+              profiles: profMap2[r.user_id] ?? null,
+            })),
+            loadedHiddenKeys,
+            loadedHiddenUserIds,
+          ),
+        );
       } else {
         setLikedPrayerIds([]);
         setAnsweredPrayers([]);
@@ -2106,30 +3496,52 @@ function CommunityPageContent() {
       const qtData = await fetchQtFeedRows(supabase, "%all%");
       if (qtData) {
         const profMap = await fetchProfiles(supabase, qtData);
-        const withProfs = filterHiddenItems("qt", qtData.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })), loadedHiddenKeys, loadedHiddenUserIds);
+        const withProfs = filterHiddenItems(
+          "qt",
+          qtData.map((r: any) => ({
+            ...r,
+            profiles: profMap[r.user_id] ?? null,
+          })),
+          loadedHiddenKeys,
+          loadedHiddenUserIds,
+        );
         setQtShares(sortQtFeedRows(withProfs));
         // 반응 카운트 로드
         const qtIds = qtData.map((r: any) => r.id);
-        const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
+        const { counts, mine } = await fetchQtReactions(
+          supabase,
+          qtIds,
+          user.id,
+        );
         setQtReactionCounts(counts);
         setMyQtReactions(mine);
       }
-
     } else if (tab === "group") {
       let memberRows: any[] = [];
       const favoriteCache = readFavoriteCache(user.id);
 
-      const { data: preferenceRows, error: preferenceError } = await supabase.rpc("get_my_group_preferences");
+      const { data: preferenceRows, error: preferenceError } =
+        await supabase.rpc("get_my_group_preferences");
 
       if (preferenceError) {
-        console.warn("그룹 선호도 RPC 조회 실패. 기존 조회로 fallback:", preferenceError.message);
-        const { data: fullMemberRows, error: fullMemberError } = await supabase.from("group_members")
-          .select("group_id,is_favorite,last_seen_qt_at,created_at").eq("user_id", user.id);
+        console.warn(
+          "그룹 선호도 RPC 조회 실패. 기존 조회로 fallback:",
+          preferenceError.message,
+        );
+        const { data: fullMemberRows, error: fullMemberError } = await supabase
+          .from("group_members")
+          .select("group_id,is_favorite,last_seen_qt_at,created_at")
+          .eq("user_id", user.id);
 
         if (fullMemberError) {
-          console.warn("group_members preference columns are not available yet:", fullMemberError.message);
-          const { data: fallbackRows } = await supabase.from("group_members")
-            .select("group_id").eq("user_id", user.id);
+          console.warn(
+            "group_members preference columns are not available yet:",
+            fullMemberError.message,
+          );
+          const { data: fallbackRows } = await supabase
+            .from("group_members")
+            .select("group_id")
+            .eq("user_id", user.id);
           memberRows = fallbackRows ?? [];
         } else {
           memberRows = fullMemberRows ?? [];
@@ -2142,42 +3554,59 @@ function CommunityPageContent() {
       memberRows.forEach((row: any) => {
         memberMap[row.group_id] = {
           ...row,
-          is_favorite: !!row.is_favorite || favoriteCache.includes(row.group_id),
+          is_favorite:
+            !!row.is_favorite || favoriteCache.includes(row.group_id),
         };
       });
       const myGroupIds = memberRows.map((r: any) => r.group_id);
 
-      const { data: publicGroups } = await supabase.from("groups")
-        .select("*").eq("is_public", true).order("created_at", { ascending: false });
+      const { data: publicGroups } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("is_public", true)
+        .order("created_at", { ascending: false });
 
       let myPrivateGroups: any[] = [];
       if (myGroupIds.length > 0) {
-        const { data } = await supabase.from("groups")
-          .select("*").eq("is_public", false).in("id", myGroupIds);
+        const { data } = await supabase
+          .from("groups")
+          .select("*")
+          .eq("is_public", false)
+          .in("id", myGroupIds);
         myPrivateGroups = data ?? [];
       }
 
       const all = [...(publicGroups ?? []), ...myPrivateGroups];
-      const unique = all.filter((g, i, arr) => arr.findIndex(x => x.id === g.id) === i);
-      const uniqueGroupIds = uniqueStrings(unique.map((g: any) => String(g.id ?? "")));
-      const joinedGroupIds = uniqueStrings(unique
-        .filter((g: any) => !!memberMap[g.id])
-        .map((g: any) => String(g.id ?? "")));
+      const unique = all.filter(
+        (g, i, arr) => arr.findIndex((x) => x.id === g.id) === i,
+      );
+      const uniqueGroupIds = uniqueStrings(
+        unique.map((g: any) => String(g.id ?? "")),
+      );
+      const joinedGroupIds = uniqueStrings(
+        unique
+          .filter((g: any) => !!memberMap[g.id])
+          .map((g: any) => String(g.id ?? "")),
+      );
 
-      const [memberCounts, latestQtByGroup, latestPrayerByGroup] = await Promise.all([
-        fetchGroupMemberCounts(supabase, uniqueGroupIds),
-        fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
-        fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
-      ]);
+      const [memberCounts, latestQtByGroup, latestPrayerByGroup] =
+        await Promise.all([
+          fetchGroupMemberCounts(supabase, uniqueGroupIds),
+          fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
+          fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
+        ]);
 
       const withMeta = unique.map((g) => {
         const memberMeta = memberMap[g.id];
         const isMember = !!memberMeta;
-        const lastSeenGroupAt = memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null;
+        const lastSeenGroupAt =
+          memberMeta?.last_seen_qt_at ?? memberMeta?.created_at ?? null;
         const latestQtAt = latestQtByGroup[g.id] ?? null;
         const latestPrayerAt = latestPrayerByGroup[g.id] ?? null;
-        const hasNewQtShare = isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
-        const hasNewPrayer = isMember && isLaterThan(latestPrayerAt, lastSeenGroupAt);
+        const hasNewQtShare =
+          isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
+        const hasNewPrayer =
+          isMember && isLaterThan(latestPrayerAt, lastSeenGroupAt);
 
         return {
           ...g,
@@ -2198,62 +3627,96 @@ function CommunityPageContent() {
     setLoading(false);
   }
 
-  async function loadGroupDetail(group: any, preferredSection?: CommunitySectionKey) {
+  async function loadGroupDetail(
+    group: any,
+    preferredSection?: CommunitySectionKey,
+  ) {
     pushCommunityDetailHistory("group");
-    setGroupDetailTab(preferredSection ?? (group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt"));
+    setGroupDetailTab(
+      preferredSection ??
+        (group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt"),
+    );
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
-    setSelectedGroup({ ...group, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: openedAt });
+    setSelectedGroup({
+      ...group,
+      hasNewQt: false,
+      hasNewQtShare: false,
+      hasNewPrayer: false,
+      hasNewContent: false,
+      last_seen_qt_at: openedAt,
+    });
     setGroupChallenges([]);
     setGroupChallengeProgress({});
     setLoadingGroupChallenges(!!group.isMember);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const currentHiddenKeys = hiddenKeys;
     const currentHiddenUserIds = hiddenUserIds;
 
     if (group.isMember) {
       if (user?.id) {
         let latestRequest: any | null = null;
-        const { data: summaryRows, error: summaryError } = await supabase
-          .rpc("get_group_challenge_request_summary", { p_group_id: group.id });
+        const { data: summaryRows, error: summaryError } = await supabase.rpc(
+          "get_group_challenge_request_summary",
+          { p_group_id: group.id },
+        );
 
         if (summaryError) {
-          console.warn("그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:", summaryError.message);
+          console.warn(
+            "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
+            summaryError.message,
+          );
           const { data: requestRows, error: requestError } = await supabase
             .from("group_challenge_requests")
-            .select("id,status,title,requested_start_date,duration_days,created_at")
+            .select(
+              "id,status,title,requested_start_date,duration_days,created_at",
+            )
             .eq("group_id", group.id)
             .eq("requester_id", user.id)
             .in("status", ["pending", "contacted", "approved"])
             .order("created_at", { ascending: false })
             .limit(1);
           if (requestError) {
-            console.warn("그룹 챌린지 신청 상태 조회 실패:", requestError.message);
+            console.warn(
+              "그룹 챌린지 신청 상태 조회 실패:",
+              requestError.message,
+            );
           } else {
             latestRequest = requestRows?.[0] ?? null;
           }
         } else {
-          latestRequest = Array.isArray(summaryRows) ? summaryRows[0] ?? null : null;
+          latestRequest = Array.isArray(summaryRows)
+            ? (summaryRows[0] ?? null)
+            : null;
         }
 
-        setGroupChallengeRequest(group.id, latestRequest ? {
-          id: latestRequest.id,
-          status: latestRequest.status,
-          title: latestRequest.title,
-          requested_start_date: latestRequest.requested_start_date,
-          duration_days: latestRequest.duration_days,
-          created_at: latestRequest.created_at,
-        } : null);
+        setGroupChallengeRequest(
+          group.id,
+          latestRequest
+            ? {
+                id: latestRequest.id,
+                status: latestRequest.status,
+                title: latestRequest.title,
+                requested_start_date: latestRequest.requested_start_date,
+                duration_days: latestRequest.duration_days,
+                created_at: latestRequest.created_at,
+              }
+            : null,
+        );
       } else {
         setGroupChallengeRequestStatus(group.id, null);
       }
 
       const { data: challengeRows, error: challengeError } = await supabase
         .from("group_challenges")
-        .select("id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status")
+        .select(
+          "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
+        )
         .eq("group_id", group.id)
         .in("status", ["scheduled", "active", "completed"])
         .order("start_date", { ascending: true })
@@ -2266,9 +3729,18 @@ function CommunityPageContent() {
         const nextChallenges = challengeRows ?? [];
         setGroupChallenges(nextChallenges);
         if (user?.id && nextChallenges.length > 0) {
-          const progress = await fetchGroupChallengeProgress(supabase, nextChallenges, user.id);
+          const progress = await fetchGroupChallengeProgress(
+            supabase,
+            nextChallenges,
+            user.id,
+          );
           setGroupChallengeProgress(progress);
-          await claimCompletedGroupChallengeAwards(supabase, nextChallenges, progress, group.name ?? "");
+          await claimCompletedGroupChallengeAwards(
+            supabase,
+            nextChallenges,
+            progress,
+            group.name ?? "",
+          );
         } else {
           setGroupChallengeProgress({});
         }
@@ -2283,33 +3755,62 @@ function CommunityPageContent() {
     const data = await fetchQtFeedRows(supabase, `%group_${group.id}%`);
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
-      const withProfs = filterHiddenItems("qt", data.map((r: any) => ({
-        ...r,
-        profiles: profMap[r.user_id] ?? null,
-        isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
-      })), currentHiddenKeys, currentHiddenUserIds);
+      const withProfs = filterHiddenItems(
+        "qt",
+        data.map((r: any) => ({
+          ...r,
+          profiles: profMap[r.user_id] ?? null,
+          isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
+        })),
+        currentHiddenKeys,
+        currentHiddenUserIds,
+      );
       setGroupQts(sortQtFeedRows(withProfs));
       // 반응 카운트 로드
       const qtIds = data.map((r: any) => r.id);
       const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
-      setQtReactionCounts(prev => ({ ...prev, ...counts }));
-      setMyQtReactions(prev => ({ ...prev, ...mine }));
+      setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+      setMyQtReactions((prev) => ({ ...prev, ...mine }));
 
       if (group.isMember) {
-        const { data: seenRows, error } = await supabase.rpc("mark_group_qt_seen_v2", { p_group_id: group.id });
+        const { data: seenRows, error } = await supabase.rpc(
+          "mark_group_qt_seen_v2",
+          { p_group_id: group.id },
+        );
         if (error) {
           console.warn("그룹 큐티 읽음 처리 실패:", error.message);
-          const { error: oldError } = await supabase.rpc("mark_group_qt_seen", { p_group_id: group.id });
-          if (oldError) console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
+          const { error: oldError } = await supabase.rpc("mark_group_qt_seen", {
+            p_group_id: group.id,
+          });
+          if (oldError)
+            console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
         }
-        const persistedSeenAt = Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at ? seenRows[0].last_seen_qt_at : openedAt;
-        setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, last_seen_qt_at: persistedSeenAt } : g)));
+        const persistedSeenAt =
+          Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
+            ? seenRows[0].last_seen_qt_at
+            : openedAt;
+        setGroups((prev) =>
+          sortGroupsForDisplay(
+            prev.map((g) =>
+              g.id === group.id
+                ? {
+                    ...g,
+                    hasNewQt: false,
+                    hasNewQtShare: false,
+                    hasNewPrayer: false,
+                    hasNewContent: false,
+                    last_seen_qt_at: persistedSeenAt,
+                  }
+                : g,
+            ),
+          ),
+        );
       }
     }
 
-
     if (user) {
-      const { data: prayerRows } = await supabase.from("prayer_items")
+      const { data: prayerRows } = await supabase
+        .from("prayer_items")
         .select("*")
         .ilike("visibility", `%group_${group.id}%`)
         .order("is_answered", { ascending: true })
@@ -2317,17 +3818,32 @@ function CommunityPageContent() {
         .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
       if (prayerRows) {
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
-        const answeredIds = prayerRows.filter((row: any) => !!row.is_answered).map((row: any) => row.id);
-        const { counts: likeCounts, mine: myLikedIds } = await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
+        const answeredIds = prayerRows
+          .filter((row: any) => !!row.is_answered)
+          .map((row: any) => row.id);
+        const { counts: likeCounts, mine: myLikedIds } =
+          await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
         if (myLikedIds.length > 0) {
-          setLikedPrayerIds(prev => Array.from(new Set([...prev, ...myLikedIds])));
+          setLikedPrayerIds((prev) =>
+            Array.from(new Set([...prev, ...myLikedIds])),
+          );
         }
-        setGroupPrayers(filterHiddenItems("prayer", prayerRows.map((row: any) => ({
-          ...row,
-          like_count: likeCounts[row.id] ?? row.like_count ?? 0,
-          profiles: prayerProfMap[row.user_id] ?? null,
-          isUnreadInGroup: isLaterThan(sharedContentTime(row), previousSeenAt),
-        })), currentHiddenKeys, currentHiddenUserIds));
+        setGroupPrayers(
+          filterHiddenItems(
+            "prayer",
+            prayerRows.map((row: any) => ({
+              ...row,
+              like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+              profiles: prayerProfMap[row.user_id] ?? null,
+              isUnreadInGroup: isLaterThan(
+                sharedContentTime(row),
+                previousSeenAt,
+              ),
+            })),
+            currentHiddenKeys,
+            currentHiddenUserIds,
+          ),
+        );
       } else {
         setGroupPrayers([]);
       }
@@ -2341,37 +3857,59 @@ function CommunityPageContent() {
   // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
   async function reactToQT(qtId: string, reactionId: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const myPrev = myQtReactions[qtId];
 
     if (myPrev === reactionId) {
       // 같은 반응 → 취소
-      const { error: delErr } = await supabase.from("qt_reactions")
-        .delete().eq("qt_id", qtId).eq("user_id", user.id);
-      if (delErr) { console.error("반응 취소 실패:", delErr); return; }
-      setMyQtReactions(prev => { const n = { ...prev }; delete n[qtId]; return n; });
-      setQtReactionCounts(prev => ({
+      const { error: delErr } = await supabase
+        .from("qt_reactions")
+        .delete()
+        .eq("qt_id", qtId)
+        .eq("user_id", user.id);
+      if (delErr) {
+        console.error("반응 취소 실패:", delErr);
+        return;
+      }
+      setMyQtReactions((prev) => {
+        const n = { ...prev };
+        delete n[qtId];
+        return n;
+      });
+      setQtReactionCounts((prev) => ({
         ...prev,
-        [qtId]: { ...prev[qtId], [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1) }
+        [qtId]: {
+          ...prev[qtId],
+          [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1),
+        },
       }));
     } else {
       // 새 반응 or 변경 — insert 먼저, 실패하면 update
-      const { error: upsertErr } = await supabase.from("qt_reactions").upsert(
-        { qt_id: qtId, user_id: user.id, reaction: reactionId },
-        { onConflict: "qt_id,user_id" }
-      );
+      const { error: upsertErr } = await supabase
+        .from("qt_reactions")
+        .upsert(
+          { qt_id: qtId, user_id: user.id, reaction: reactionId },
+          { onConflict: "qt_id,user_id" },
+        );
       if (upsertErr) {
         console.error("반응 저장 실패:", upsertErr);
         // onConflict가 안 먹히는 경우 update 시도
-        const { error: updateErr } = await supabase.from("qt_reactions")
+        const { error: updateErr } = await supabase
+          .from("qt_reactions")
           .update({ reaction: reactionId })
-          .eq("qt_id", qtId).eq("user_id", user.id);
-        if (updateErr) { console.error("반응 update도 실패:", updateErr); return; }
+          .eq("qt_id", qtId)
+          .eq("user_id", user.id);
+        if (updateErr) {
+          console.error("반응 update도 실패:", updateErr);
+          return;
+        }
       }
-      setMyQtReactions(prev => ({ ...prev, [qtId]: reactionId }));
-      setQtReactionCounts(prev => {
+      setMyQtReactions((prev) => ({ ...prev, [qtId]: reactionId }));
+      setQtReactionCounts((prev) => {
         const cur = { ...prev[qtId] };
         if (myPrev) cur[myPrev] = Math.max(0, (cur[myPrev] ?? 1) - 1);
         cur[reactionId] = (cur[reactionId] ?? 0) + 1;
@@ -2394,52 +3932,85 @@ function CommunityPageContent() {
   async function prayTogether(id: string) {
     if (prayedIds.includes(id)) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     // 중복 체크
-    const { data: existing } = await supabase.from("user_prayer_logs")
-      .select("id").eq("user_id", user.id).eq("prayer_id", id).maybeSingle();
+    const { data: existing } = await supabase
+      .from("user_prayer_logs")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("prayer_id", id)
+      .maybeSingle();
     if (existing) {
-      setPrayedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+      setPrayedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
       return;
     }
 
     // 로그 저장
-    const { error: logError } = await supabase.from("user_prayer_logs")
+    const { error: logError } = await supabase
+      .from("user_prayer_logs")
       .insert({ user_id: user.id, prayer_id: id });
     if (logError) {
-      if (logError.code === "23505") setPrayedIds(prev => [...prev, id]);
+      if (logError.code === "23505") setPrayedIds((prev) => [...prev, id]);
       return;
     }
 
     // 카운트 증가: DB 함수가 실제 로그 개수 기준으로 prayer_count를 동기화합니다.
     // RLS 보안을 위해 클라이언트에서 prayer_items.prayer_count를 직접 update하지 않습니다.
-    const { error: rpcError } = await supabase.rpc("increment_prayer_count", { prayer_id: id });
+    const { error: rpcError } = await supabase.rpc("increment_prayer_count", {
+      prayer_id: id,
+    });
     if (rpcError) console.error("기도 카운트 동기화 실패:", rpcError);
-    const { data: cur } = await supabase.from("prayer_items").select("prayer_count").eq("id", id).single();
+    const { data: cur } = await supabase
+      .from("prayer_items")
+      .select("prayer_count")
+      .eq("id", id)
+      .single();
     const newCount = cur?.prayer_count ?? 1;
 
-    setPrayedIds(prev => [...prev, id]);
+    setPrayedIds((prev) => [...prev, id]);
     storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
-    setPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
-    setGroupPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
-    setPartnerPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
-    setAnsweredPrayers(prev => prev.map(p => p.id === id ? { ...p, prayer_count: newCount } : p));
+    setPrayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+    );
+    setGroupPrayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+    );
+    setPartnerPrayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+    );
+    setAnsweredPrayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+    );
     void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
 
     // 바울 뱃지 체크 (함께 기도 30번)
     let existingPrayerBadgeAwarded = false;
     try {
-      const { data: prof } = await supabase.from("profiles")
-        .select("badge_paul").eq("id", user.id).single();
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("badge_paul")
+        .eq("id", user.id)
+        .single();
       if (!prof?.badge_paul) {
-        const { data: logs } = await supabase.from("user_prayer_logs")
-          .select("id").eq("user_id", user.id);
+        const { data: logs } = await supabase
+          .from("user_prayer_logs")
+          .select("id")
+          .eq("user_id", user.id);
         if ((logs?.length ?? 0) >= 30) {
-          await supabase.from("profiles").update({ badge_paul: true }).eq("id", user.id);
+          await supabase
+            .from("profiles")
+            .update({ badge_paul: true })
+            .eq("id", user.id);
           existingPrayerBadgeAwarded = true;
-          setBadgePopup({ img: "/badge_paul.webp", title: c("community_badge_paul_title"), msg: t("badge_paul_msg", lang) });
+          setBadgePopup({
+            img: "/badge_paul.webp",
+            title: c("community_badge_paul_title"),
+            msg: t("badge_paul_msg", lang),
+          });
         }
       }
     } catch (e) {}
@@ -2459,33 +4030,64 @@ function CommunityPageContent() {
     if (!groupName.trim() || !userId) return;
     setSavingGroup(true);
     const supabase = createClient();
-    const { data: newGroup, error } = await supabase.from("groups").insert({
-      name: groupName.trim(), description: groupDesc.trim() || null,
-      is_public: isPublic, created_by: userId,
-    }).select().single();
-    if (error || !newGroup) { setSavingGroup(false); return; }
-    const { error: memberError } = await supabase.from("group_members").insert({ group_id: newGroup.id, user_id: userId });
-    if (memberError) { setSavingGroup(false); return; }
+    const { data: newGroup, error } = await supabase
+      .from("groups")
+      .insert({
+        name: groupName.trim(),
+        description: groupDesc.trim() || null,
+        is_public: isPublic,
+        created_by: userId,
+      })
+      .select()
+      .single();
+    if (error || !newGroup) {
+      setSavingGroup(false);
+      return;
+    }
+    const { error: memberError } = await supabase
+      .from("group_members")
+      .insert({ group_id: newGroup.id, user_id: userId });
+    if (memberError) {
+      setSavingGroup(false);
+      return;
+    }
     clearSharePromptOptionsCache();
     // 베드로 배지는 첫 그룹 생성, 동행 배지는 그룹 5개 참여 시 지급합니다.
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: prof } = await supabase.from("profiles")
-          .select("badge_peter, badge_roots_together").eq("id", user.id).single();
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("badge_peter, badge_roots_together")
+          .eq("id", user.id)
+          .single();
         const updates: Record<string, boolean> = {};
         let popup: null | { img: string; title: string; msg: string } = null;
         if (!prof?.badge_peter) {
           updates.badge_peter = true;
-          popup = { img: "/badge_peter.webp", title: c("community_badge_peter_title"), msg: t("badge_peter_msg", lang) };
+          popup = {
+            img: "/badge_peter.webp",
+            title: c("community_badge_peter_title"),
+            msg: t("badge_peter_msg", lang),
+          };
         }
         if (!prof?.badge_roots_together) {
-          const { data: memberships } = await supabase.from("group_members")
-            .select("group_id").eq("user_id", user.id);
-          const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
+          const { data: memberships } = await supabase
+            .from("group_members")
+            .select("group_id")
+            .eq("user_id", user.id);
+          const joinedCount = new Set(
+            (memberships ?? []).map((row: any) => row.group_id).filter(Boolean),
+          ).size;
           if (joinedCount >= 5) {
             updates.badge_roots_together = true;
-            popup = { img: "/badge_roots_together.webp", title: c("community_badge_roots_together_title"), msg: t("badge_roots_together_msg", lang) };
+            popup = {
+              img: "/badge_roots_together.webp",
+              title: c("community_badge_roots_together_title"),
+              msg: t("badge_roots_together_msg", lang),
+            };
           }
         }
         if (Object.keys(updates).length > 0) {
@@ -2494,35 +4096,87 @@ function CommunityPageContent() {
         }
       }
     } catch (e) {}
-    setGroupName(""); setGroupDesc(""); setIsPublic(true); setShowGroupForm(false); setSavingGroup(false);
+    setGroupName("");
+    setGroupDesc("");
+    setIsPublic(true);
+    setShowGroupForm(false);
+    setSavingGroup(false);
     loadData();
   }
 
   async function joinGroup(groupId: string) {
     if (!userId) return;
     const supabase = createClient();
-    const { error: joinError } = await supabase.from("group_members").upsert({ group_id: groupId, user_id: userId }, { onConflict: "group_id,user_id" });
+    const { error: joinError } = await supabase
+      .from("group_members")
+      .upsert(
+        { group_id: groupId, user_id: userId },
+        { onConflict: "group_id,user_id" },
+      );
     if (joinError) {
       console.warn("그룹 참여 실패:", joinError.message);
       return;
     }
     clearSharePromptOptionsCache();
     const joinedAt = new Date().toISOString();
-    setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false } : g)));
-    if (selectedGroup?.id === groupId) setSelectedGroup((g: any) => ({ ...g, isMember: true, member_count: (g.member_count ?? 0) + 1, last_seen_qt_at: joinedAt, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false }));
+    setGroups((prev) =>
+      sortGroupsForDisplay(
+        prev.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                isMember: true,
+                member_count: (g.member_count ?? 0) + 1,
+                last_seen_qt_at: joinedAt,
+                hasNewQt: false,
+                hasNewQtShare: false,
+                hasNewPrayer: false,
+                hasNewContent: false,
+              }
+            : g,
+        ),
+      ),
+    );
+    if (selectedGroup?.id === groupId)
+      setSelectedGroup((g: any) => ({
+        ...g,
+        isMember: true,
+        member_count: (g.member_count ?? 0) + 1,
+        last_seen_qt_at: joinedAt,
+        hasNewQt: false,
+        hasNewQtShare: false,
+        hasNewPrayer: false,
+        hasNewContent: false,
+      }));
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: prof } = await supabase.from("profiles")
-          .select("badge_roots_together").eq("id", user.id).single();
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("badge_roots_together")
+          .eq("id", user.id)
+          .single();
         if (!prof?.badge_roots_together) {
-          const { data: memberships } = await supabase.from("group_members")
-            .select("group_id").eq("user_id", user.id);
-          const joinedCount = new Set((memberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
+          const { data: memberships } = await supabase
+            .from("group_members")
+            .select("group_id")
+            .eq("user_id", user.id);
+          const joinedCount = new Set(
+            (memberships ?? []).map((row: any) => row.group_id).filter(Boolean),
+          ).size;
           if (joinedCount >= 5) {
-            await supabase.from("profiles").update({ badge_roots_together: true }).eq("id", user.id);
-            setBadgePopup({ img: "/badge_roots_together.webp", title: c("community_badge_roots_together_title"), msg: t("badge_roots_together_msg", lang) });
+            await supabase
+              .from("profiles")
+              .update({ badge_roots_together: true })
+              .eq("id", user.id);
+            setBadgePopup({
+              img: "/badge_roots_together.webp",
+              title: c("community_badge_roots_together_title"),
+              msg: t("badge_roots_together_msg", lang),
+            });
           }
         }
       }
@@ -2531,85 +4185,126 @@ function CommunityPageContent() {
 
   async function toggleFavoriteGroup(group: any, event?: any) {
     event?.stopPropagation?.();
-    if (!userId || !group.isMember || favoriteSavingIds.includes(group.id)) return;
+    if (!userId || !group.isMember || favoriteSavingIds.includes(group.id))
+      return;
 
     const previousFavorite = !!group.isFavorite;
     const nextFavorite = !previousFavorite;
 
     const applyFavoriteState = (value: boolean) => {
-      setGroups(prev => sortGroupsForDisplay(prev.map(g => g.id === group.id ? { ...g, isFavorite: value } : g)));
-      if (selectedGroup?.id === group.id) setSelectedGroup((g: any) => ({ ...g, isFavorite: value }));
+      setGroups((prev) =>
+        sortGroupsForDisplay(
+          prev.map((g) =>
+            g.id === group.id ? { ...g, isFavorite: value } : g,
+          ),
+        ),
+      );
+      if (selectedGroup?.id === group.id)
+        setSelectedGroup((g: any) => ({ ...g, isFavorite: value }));
     };
 
-    setFavoriteSavingIds(prev => prev.includes(group.id) ? prev : [...prev, group.id]);
+    setFavoriteSavingIds((prev) =>
+      prev.includes(group.id) ? prev : [...prev, group.id],
+    );
     applyFavoriteState(nextFavorite);
 
     const supabase = createClient();
-    const { data: savedRows, error } = await supabase.rpc("set_group_favorite_v2", { p_group_id: group.id, p_is_favorite: nextFavorite });
+    const { data: savedRows, error } = await supabase.rpc(
+      "set_group_favorite_v2",
+      { p_group_id: group.id, p_is_favorite: nextFavorite },
+    );
 
     if (error) {
-      console.warn("즐겨찾기 저장 v2 실패. 기존 RPC로 fallback:", error.message);
-      const { error: legacyError } = await supabase.rpc("set_group_favorite", { p_group_id: group.id, p_is_favorite: nextFavorite });
+      console.warn(
+        "즐겨찾기 저장 v2 실패. 기존 RPC로 fallback:",
+        error.message,
+      );
+      const { error: legacyError } = await supabase.rpc("set_group_favorite", {
+        p_group_id: group.id,
+        p_is_favorite: nextFavorite,
+      });
       if (legacyError) {
         console.warn("즐겨찾기 저장 실패:", legacyError.message);
         applyFavoriteState(previousFavorite);
         updateFavoriteCache(userId, group.id, previousFavorite);
-        setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
+        setFavoriteSavingIds((prev) => prev.filter((id) => id !== group.id));
         return;
       }
     }
 
-    const persistedFavorite = Array.isArray(savedRows) && typeof savedRows[0]?.is_favorite === "boolean"
-      ? savedRows[0].is_favorite
-      : nextFavorite;
+    const persistedFavorite =
+      Array.isArray(savedRows) && typeof savedRows[0]?.is_favorite === "boolean"
+        ? savedRows[0].is_favorite
+        : nextFavorite;
 
     updateFavoriteCache(userId, group.id, persistedFavorite);
     applyFavoriteState(persistedFavorite);
-    setFavoriteSavingIds(prev => prev.filter(id => id !== group.id));
+    setFavoriteSavingIds((prev) => prev.filter((id) => id !== group.id));
   }
 
   async function toggleFavoritePartner(partner: any, event?: any) {
     event?.stopPropagation?.();
-    if (!userId || !partner?.partner_id || partnerFavoriteSavingIds.includes(partner.partner_id)) return;
+    if (
+      !userId ||
+      !partner?.partner_id ||
+      partnerFavoriteSavingIds.includes(partner.partner_id)
+    )
+      return;
 
     const previousFavorite = !!partner.isFavorite;
     const nextFavorite = !previousFavorite;
     const partnerId = partner.partner_id;
 
     const applyFavoriteState = (value: boolean) => {
-      setPartners(prev => sortPartnersForDisplay(prev.map(item => item.partner_id === partnerId ? { ...item, isFavorite: value } : item)));
-      if (selectedPartner?.partner_id === partnerId) setSelectedPartner((current: any) => ({ ...current, isFavorite: value }));
+      setPartners((prev) =>
+        sortPartnersForDisplay(
+          prev.map((item) =>
+            item.partner_id === partnerId
+              ? { ...item, isFavorite: value }
+              : item,
+          ),
+        ),
+      );
+      if (selectedPartner?.partner_id === partnerId)
+        setSelectedPartner((current: any) => ({
+          ...current,
+          isFavorite: value,
+        }));
     };
 
-    setPartnerFavoriteSavingIds(prev => prev.includes(partnerId) ? prev : [...prev, partnerId]);
+    setPartnerFavoriteSavingIds((prev) =>
+      prev.includes(partnerId) ? prev : [...prev, partnerId],
+    );
     applyFavoriteState(nextFavorite);
 
     const supabase = createClient();
-    const { error } = await supabase
-      .from("companion_preferences")
-      .upsert(
-        {
-          user_id: userId,
-          companion_user_id: partnerId,
-          is_favorite: nextFavorite,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,companion_user_id" }
-      );
+    const { error } = await supabase.from("companion_preferences").upsert(
+      {
+        user_id: userId,
+        companion_user_id: partnerId,
+        is_favorite: nextFavorite,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,companion_user_id" },
+    );
 
     if (error) {
       console.warn("동역자 즐겨찾기 저장 실패:", error.message);
       applyFavoriteState(previousFavorite);
     }
 
-    setPartnerFavoriteSavingIds(prev => prev.filter(id => id !== partnerId));
+    setPartnerFavoriteSavingIds((prev) =>
+      prev.filter((id) => id !== partnerId),
+    );
   }
 
   async function leaveSelectedGroup() {
     if (!selectedGroup?.id || !userId || leavingGroup) return;
     setLeavingGroup(true);
     const supabase = createClient();
-    const { error } = await supabase.rpc("leave_group", { p_group_id: selectedGroup.id });
+    const { error } = await supabase.rpc("leave_group", {
+      p_group_id: selectedGroup.id,
+    });
     if (error) {
       console.warn("그룹 나가기 실패:", error.message);
       setLeavingGroup(false);
@@ -2631,15 +4326,35 @@ function CommunityPageContent() {
     setGroupPrayers([]);
     setGroupDetailTab("qt");
     resetQtDetailState();
-    setGroups(prev => sortGroupsForDisplay(prev
-      .map(g => g.id === leftGroupId ? { ...g, isMember: false, isFavorite: false, hasNewQt: false, hasNewQtShare: false, hasNewPrayer: false, hasNewContent: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g)
-      .filter(g => wasPublic || g.id !== leftGroupId)
-    ));
+    setGroups((prev) =>
+      sortGroupsForDisplay(
+        prev
+          .map((g) =>
+            g.id === leftGroupId
+              ? {
+                  ...g,
+                  isMember: false,
+                  isFavorite: false,
+                  hasNewQt: false,
+                  hasNewQtShare: false,
+                  hasNewPrayer: false,
+                  hasNewContent: false,
+                  member_count: Math.max(0, (g.member_count ?? 1) - 1),
+                }
+              : g,
+          )
+          .filter((g) => wasPublic || g.id !== leftGroupId),
+      ),
+    );
     setLeavingGroup(false);
   }
 
+  function groupInviteUrl(groupId: string) {
+    return `${APP_URL}/join?group=${groupId}&lang=${lang}`;
+  }
+
   async function copyInviteLink(groupId: string) {
-    const copied = await copyText(`${APP_URL}/join?group=${groupId}`);
+    const copied = await copyText(groupInviteUrl(groupId));
     if (copied) {
       setCopiedId(groupId);
       setTimeout(() => setCopiedId(null), 2000);
@@ -2647,8 +4362,11 @@ function CommunityPageContent() {
   }
 
   async function shareInvite(group: any) {
-    const inviteUrl = `${APP_URL}/join?group=${group.id}`;
-    const text = c("community_group_invite_share_text", { name: group.name, url: inviteUrl });
+    const inviteUrl = groupInviteUrl(group.id);
+    const text = c("community_group_invite_share_text", {
+      name: group.name,
+      url: inviteUrl,
+    });
     const result = await shareInviteContent({
       title: c("community_group_invite_share_title", { name: group.name }),
       text,
@@ -2673,29 +4391,69 @@ function CommunityPageContent() {
   }
 
   // 반응 버튼 컴포넌트
-  function ReactionButtons({ qtId, onReact }: { qtId: string; onReact: (qtId: string, rx: string) => void }) {
+  function ReactionButtons({
+    qtId,
+    onReact,
+  }: {
+    qtId: string;
+    onReact: (qtId: string, rx: string) => void;
+  }) {
     const counts = qtReactionCounts[qtId] ?? {};
     const myRx = myQtReactions[qtId];
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     return (
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {REACTIONS.map(reaction => {
+        {REACTIONS.map((reaction) => {
           const count = counts[reaction.id] ?? 0;
           const isSelected = myRx === reaction.id;
           return (
-            <button key={reaction.id} onClick={() => onReact(qtId, reaction.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 11px", borderRadius: 20, border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", fontSize: 12, color: isSelected ? "var(--sage-dark)" : "var(--text3)", fontWeight: isSelected ? 700 : 400, transition: "all 0.15s" }}>
+            <button
+              key={reaction.id}
+              onClick={() => onReact(qtId, reaction.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "6px 11px",
+                borderRadius: 20,
+                border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`,
+                background: isSelected ? "var(--sage-light)" : "var(--bg3)",
+                cursor: "pointer",
+                fontSize: 12,
+                color: isSelected ? "var(--sage-dark)" : "var(--text3)",
+                fontWeight: isSelected ? 700 : 400,
+                transition: "all 0.15s",
+              }}
+            >
               <ReactionIcon id={reaction.id} selected={isSelected} />
               <span>{c(reaction.labelKey)}</span>
-              {count > 0 && <span style={{ fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--text2)", marginLeft: 2 }}>{count}</span>}
+              {count > 0 && (
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: isSelected ? "var(--sage-dark)" : "var(--text2)",
+                    marginLeft: 2,
+                  }}
+                >
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
-
       </div>
     );
   }
 
-  function PhotoReflectionImage({ src, alt, style }: { src: string; alt?: string; style?: CSSProperties }) {
+  function PhotoReflectionImage({
+    src,
+    alt,
+    style,
+  }: {
+    src: string;
+    alt?: string;
+    style?: CSSProperties;
+  }) {
     return (
       <button
         type="button"
@@ -2704,9 +4462,23 @@ function CommunityPageContent() {
           event.stopPropagation();
           openPhotoViewer(src, alt);
         }}
-        style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", textAlign: "left" }}
+        style={{
+          width: "100%",
+          display: "block",
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          cursor: "zoom-in",
+          textAlign: "left",
+        }}
       >
-        <img src={src} alt={alt || "photo reflection"} loading="lazy" decoding="async" style={style} />
+        <img
+          src={src}
+          alt={alt || "photo reflection"}
+          loading="lazy"
+          decoding="async"
+          style={style}
+        />
       </button>
     );
   }
@@ -2714,54 +4486,256 @@ function CommunityPageContent() {
   // 큐티 전체보기 모달
   function QTDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
     return (
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: "calc(-1 * var(--native-bottom-system-bar))", background: "rgba(0,0,0,0.88)", zIndex: 100, overflowY: "auto", overscrollBehavior: "contain" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-        <div style={{ minHeight: "calc(100dvh + var(--native-bottom-system-bar))", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 16px calc(40px + var(--native-bottom-system-bar))" }}>
-          <div style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", width: "100%", maxWidth: 480, padding: "24px 20px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: "calc(-1 * var(--native-bottom-system-bar))",
+          background: "rgba(0,0,0,0.88)",
+          zIndex: 100,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          style={{
+            minHeight: "calc(100dvh + var(--native-bottom-system-bar))",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            padding: "20px 16px calc(40px + var(--native-bottom-system-bar))",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--bg2)",
+              borderRadius: 24,
+              border: "1px solid var(--border)",
+              width: "100%",
+              maxWidth: 480,
+              padding: "24px 20px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name} size={36} />
+                <Avatar
+                  url={r.profiles?.avatar_url}
+                  name={r.profiles?.name}
+                  size={36}
+                />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{r.profiles?.name ?? (c("community_unknown"))}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "long", day: "numeric", weekday: "short" })}</p>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "var(--text)",
+                    }}
+                  >
+                    {r.profiles?.name ?? c("community_unknown")}
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>
+                    {parseLocalDateString(r.date).toLocaleDateString(
+                      getDateLocale(lang),
+                      { month: "long", day: "numeric", weekday: "short" },
+                    )}
+                  </p>
                 </div>
               </div>
-              <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={22} /></button>
+              <button
+                onClick={onClose}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text3)",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={22} />
+              </button>
             </div>
             {r.bible_ref && (
-              <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid rgba(196,149,106,0.2)" }}>
-                <p style={{ fontSize: 16, fontWeight: 800, color: "var(--terra-dark)" }}>{translateBibleRef(r.bible_ref, lang)}</p>
-                {r.key_verse && <p style={{ fontSize: 13, color: "var(--terra-dark)", lineHeight: 1.7, marginTop: 6, fontStyle: "italic", whiteSpace: "pre-line" }}>"{r.key_verse}"</p>}
+              <div
+                style={{
+                  background: "var(--terra-light)",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  marginBottom: 16,
+                  border: "1px solid rgba(196,149,106,0.2)",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: "var(--terra-dark)",
+                  }}
+                >
+                  {translateBibleRef(r.bible_ref, lang)}
+                </p>
+                {r.key_verse && (
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--terra-dark)",
+                      lineHeight: 1.7,
+                      marginTop: 6,
+                      fontStyle: "italic",
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    "{r.key_verse}"
+                  </p>
+                )}
               </div>
             )}
             {r.photo_path && (
               <div style={{ marginBottom: 16 }}>
                 {qtPhotoUrls[r.id] ? (
-                  <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                  <PhotoReflectionImage
+                    src={qtPhotoUrls[r.id]}
+                    alt="photo reflection"
+                    style={{
+                      width: "100%",
+                      maxHeight: 520,
+                      objectFit: "contain",
+                      borderRadius: 18,
+                      border: "1px solid var(--border)",
+                      background: "var(--bg3)",
+                    }}
+                  />
                 ) : (
-                  <div style={{ padding: 24, borderRadius: 16, background: "var(--bg3)", color: "var(--text3)", fontSize: 13, textAlign: "center" }}>사진을 불러오는 중이에요.</div>
+                  <div
+                    style={{
+                      padding: 24,
+                      borderRadius: 16,
+                      background: "var(--bg3)",
+                      color: "var(--text3)",
+                      fontSize: 13,
+                      textAlign: "center",
+                    }}
+                  >
+                    사진을 불러오는 중이에요.
+                  </div>
                 )}
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.filter(s => s.key !== "key_verse" && r[s.key]).sort((a, b) => { if (r.qt_mode === "sunday") { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); } return 0; }).map(({ key, labelKey, sundayLabelKey, italic, isDecision }) => { const displayLabelKey = key === "summary" && r.qt_mode === "sunday" && sundayLabelKey ? sundayLabelKey : labelKey; return (
-                <div key={key}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>{c(displayLabelKey)}</p>
-                  {isDecision ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      {r[key].split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
-                        <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
-                          <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}.</span> {d}
+              {SECTIONS.filter((s) => s.key !== "key_verse" && r[s.key])
+                .sort((a, b) => {
+                  if (r.qt_mode === "sunday") {
+                    const order = [
+                      "opening_prayer",
+                      "meditation",
+                      "application",
+                      "decision",
+                      "closing_prayer",
+                      "summary",
+                    ];
+                    return order.indexOf(a.key) - order.indexOf(b.key);
+                  }
+                  return 0;
+                })
+                .map(
+                  ({ key, labelKey, sundayLabelKey, italic, isDecision }) => {
+                    const displayLabelKey =
+                      key === "summary" &&
+                      r.qt_mode === "sunday" &&
+                      sundayLabelKey
+                        ? sundayLabelKey
+                        : labelKey;
+                    return (
+                      <div key={key}>
+                        <p
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "var(--text3)",
+                            letterSpacing: "1px",
+                            textTransform: "uppercase",
+                            marginBottom: 6,
+                          }}
+                        >
+                          {c(displayLabelKey)}
                         </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>{r[key]}</p>
-                  )}
-                </div>
-              ); })}
+                        {isDecision ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 5,
+                            }}
+                          >
+                            {r[key]
+                              .split("\n")
+                              .filter((d: string) => d.trim())
+                              .map((d: string, i: number) => (
+                                <p
+                                  key={i}
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--text)",
+                                    lineHeight: 1.6,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: "var(--sage-dark)",
+                                    }}
+                                  >
+                                    {i + 1}.
+                                  </span>{" "}
+                                  {d}
+                                </p>
+                              ))}
+                          </div>
+                        ) : (
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "var(--text)",
+                              lineHeight: 1.7,
+                              fontStyle: italic ? "italic" : "normal",
+                              whiteSpace: "pre-line",
+                            }}
+                          >
+                            {r[key]}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
             </div>
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 16 }}>
-              <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 10, fontWeight: 600 }}>{c("community_react_to_qt")}</p>
+            <div
+              style={{
+                borderTop: "1px solid var(--border)",
+                marginTop: 20,
+                paddingTop: 16,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--text3)",
+                  marginBottom: 10,
+                  fontWeight: 600,
+                }}
+              >
+                {c("community_react_to_qt")}
+              </p>
               <ReactionButtons qtId={r.id} onReact={reactToQT} />
             </div>
           </div>
@@ -2773,80 +4747,390 @@ function CommunityPageContent() {
   function renderChallengeRequestModal() {
     if (!showChallengeRequestForm || !selectedGroup) return null;
     return (
-      <div onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} style={{ position: "fixed", inset: 0, zIndex: 285, background: "rgba(26,28,30,0.68)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))" }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, maxHeight: "86vh", overflowY: "auto", background: "var(--bg2)", borderRadius: 26, padding: 22, border: "1px solid var(--border)", boxShadow: "0 22px 70px rgba(0,0,0,0.28)" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+      <div
+        onClick={() => !challengeSaving && setShowChallengeRequestForm(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 285,
+          background: "rgba(26,28,30,0.68)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "18px 18px calc(18px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 430,
+            maxHeight: "86vh",
+            overflowY: "auto",
+            background: "var(--bg2)",
+            borderRadius: 26,
+            padding: 22,
+            border: "1px solid var(--border)",
+            boxShadow: "0 22px 70px rgba(0,0,0,0.28)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 5 }}>{selectedGroup.name}</p>
-              <h2 style={{ fontSize: 19, fontWeight: 850, color: "var(--text)", marginBottom: 5 }}>{c("group_challenge_modal_title")}</h2>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "var(--sage-dark)",
+                  letterSpacing: "0.8px",
+                  textTransform: "uppercase",
+                  marginBottom: 5,
+                }}
+              >
+                {selectedGroup.name}
+              </p>
+              <h2
+                style={{
+                  fontSize: 19,
+                  fontWeight: 850,
+                  color: "var(--text)",
+                  marginBottom: 5,
+                }}
+              >
+                {c("group_challenge_modal_title")}
+              </h2>
               {!challengeSuccess && (
-                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("group_challenge_modal_sub")}</p>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text3)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {c("group_challenge_modal_sub")}
+                </p>
               )}
             </div>
-            <button onClick={() => !challengeSaving && setShowChallengeRequestForm(false)} disabled={challengeSaving} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: challengeSaving ? "default" : "pointer", flexShrink: 0, opacity: challengeSaving ? 0.6 : 1 }}>
+            <button
+              onClick={() =>
+                !challengeSaving && setShowChallengeRequestForm(false)
+              }
+              disabled={challengeSaving}
+              aria-label="Close"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 999,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: challengeSaving ? "default" : "pointer",
+                flexShrink: 0,
+                opacity: challengeSaving ? 0.6 : 1,
+              }}
+            >
               <X size={17} />
             </button>
           </div>
 
           {challengeSuccess ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.28)", background: "rgba(122,157,122,0.10)", padding: 18, textAlign: "center" }}>
-                <div style={{ width: 46, height: 46, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+              <div
+                style={{
+                  borderRadius: 20,
+                  border: "1px solid rgba(122,157,122,0.28)",
+                  background: "rgba(122,157,122,0.10)",
+                  padding: 18,
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 999,
+                    background: "var(--sage-light)",
+                    color: "var(--sage-dark)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 10,
+                  }}
+                >
                   <CheckCircle2 size={24} />
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{c("group_challenge_success_title")}</h3>
-                <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65 }}>{c("group_challenge_success_message")}</p>
+                <h3
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 850,
+                    color: "var(--text)",
+                    marginBottom: 8,
+                  }}
+                >
+                  {c("group_challenge_success_title")}
+                </h3>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text2)",
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {c("group_challenge_success_message")}
+                </p>
               </div>
-              <button onClick={resetChallengeRequestForm} className="btn-sage" style={{ width: "100%" }}>{c("group_challenge_success_confirm")}</button>
+              <button
+                onClick={resetChallengeRequestForm}
+                className="btn-sage"
+                style={{ width: "100%" }}
+              >
+                {c("group_challenge_success_confirm")}
+              </button>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_title_label")}</label>
-                <input className="input-field" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} placeholder={c("group_challenge_title_placeholder")} style={{ height: 46, padding: "0 14px", fontSize: 15 }} />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("group_challenge_title_label")}
+                </label>
+                <input
+                  className="input-field"
+                  value={challengeTitle}
+                  onChange={(e) => setChallengeTitle(e.target.value)}
+                  placeholder={c("group_challenge_title_placeholder")}
+                  style={{ height: 46, padding: "0 14px", fontSize: 15 }}
+                />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 10,
+                }}
+              >
                 <div style={{ minWidth: 0 }}>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_start_label")}</label>
-                  <div style={{ position: "relative", width: challengeRequestDateInputWidth(), maxWidth: "100%" }}>
+                  <label
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "var(--text3)",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {c("group_challenge_start_label")}
+                  </label>
+                  <div
+                    style={{
+                      position: "relative",
+                      width: challengeRequestDateInputWidth(),
+                      maxWidth: "100%",
+                    }}
+                  >
                     <input
                       type="date"
                       className="input-field"
                       value={challengeStartDate}
                       onChange={(e) => setChallengeStartDate(e.target.value)}
-                      style={{ width: "100%", height: 46, minWidth: 0, padding: "0 14px", boxSizing: "border-box", fontSize: 15, color: "transparent", caretColor: "transparent", WebkitTextFillColor: "transparent" } as CSSProperties}
+                      style={
+                        {
+                          width: "100%",
+                          height: 46,
+                          minWidth: 0,
+                          padding: "0 14px",
+                          boxSizing: "border-box",
+                          fontSize: 15,
+                          color: "transparent",
+                          caretColor: "transparent",
+                          WebkitTextFillColor: "transparent",
+                        } as CSSProperties
+                      }
                     />
-                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, height: 46, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px", pointerEvents: "none", fontSize: 15, color: "var(--text)", whiteSpace: "nowrap" }}>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        height: 46,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 12px",
+                        pointerEvents: "none",
+                        fontSize: 15,
+                        color: "var(--text)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {formatChallengeRequestInputDate(challengeStartDate)}
                     </span>
                   </div>
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_duration_label")}</label>
-                  <input type="number" min={1} max={120} inputMode="numeric" className="input-field" value={challengeDurationDays} onChange={(e) => setChallengeDurationDays(e.target.value)} style={{ width: 86, height: 46, minWidth: 0, padding: "0 14px", textAlign: "center", fontSize: 15 }} />
+                  <label
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "var(--text3)",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {c("group_challenge_duration_label")}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    inputMode="numeric"
+                    className="input-field"
+                    value={challengeDurationDays}
+                    onChange={(e) => setChallengeDurationDays(e.target.value)}
+                    style={{
+                      width: 86,
+                      height: 46,
+                      minWidth: 0,
+                      padding: "0 14px",
+                      textAlign: "center",
+                      fontSize: 15,
+                    }}
+                  />
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_description_label")}</label>
-                <textarea className="textarea-field" rows={3} value={challengeDescription} onChange={(e) => setChallengeDescription(e.target.value)} placeholder={c("group_challenge_description_placeholder")} />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("group_challenge_description_label")}
+                </label>
+                <textarea
+                  className="textarea-field"
+                  rows={3}
+                  value={challengeDescription}
+                  onChange={(e) => setChallengeDescription(e.target.value)}
+                  placeholder={c("group_challenge_description_placeholder")}
+                />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_badge_idea_label")}</label>
-                <textarea className="textarea-field" rows={3} value={challengeBadgeIdea} onChange={(e) => setChallengeBadgeIdea(e.target.value)} placeholder={c("group_challenge_badge_idea_placeholder")} />
-                <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, marginTop: 6 }}>{c("group_challenge_badge_idea_hint")}</p>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("group_challenge_badge_idea_label")}
+                </label>
+                <textarea
+                  className="textarea-field"
+                  rows={3}
+                  value={challengeBadgeIdea}
+                  onChange={(e) => setChallengeBadgeIdea(e.target.value)}
+                  placeholder={c("group_challenge_badge_idea_placeholder")}
+                />
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text3)",
+                    lineHeight: 1.5,
+                    marginTop: 6,
+                  }}
+                >
+                  {c("group_challenge_badge_idea_hint")}
+                </p>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_email_label")}</label>
-                <input type="email" className="input-field" value={challengeContactEmail} onChange={(e) => setChallengeContactEmail(e.target.value)} placeholder="name@example.com" />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("group_challenge_email_label")}
+                </label>
+                <input
+                  type="email"
+                  className="input-field"
+                  value={challengeContactEmail}
+                  onChange={(e) => setChallengeContactEmail(e.target.value)}
+                  placeholder="name@example.com"
+                />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("group_challenge_extra_label")}</label>
-                <textarea className="textarea-field" rows={3} value={challengeExtraQuestions} onChange={(e) => setChallengeExtraQuestions(e.target.value)} placeholder={c("group_challenge_extra_placeholder")} />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("group_challenge_extra_label")}
+                </label>
+                <textarea
+                  className="textarea-field"
+                  rows={3}
+                  value={challengeExtraQuestions}
+                  onChange={(e) => setChallengeExtraQuestions(e.target.value)}
+                  placeholder={c("group_challenge_extra_placeholder")}
+                />
               </div>
-              {challengeError && <p style={{ fontSize: 12, color: "#B35F5F", lineHeight: 1.5 }}>{challengeError}</p>}
-              <button onClick={submitChallengeRequest} disabled={challengeSaving} className="btn-sage" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: challengeSaving ? 0.65 : 1 }}>
-                {challengeSaving ? <Loader2 size={16} className="spin" /> : null}
-                {challengeSaving ? c("group_challenge_saving") : c("group_challenge_submit")}
+              {challengeError && (
+                <p style={{ fontSize: 12, color: "#B35F5F", lineHeight: 1.5 }}>
+                  {challengeError}
+                </p>
+              )}
+              <button
+                onClick={submitChallengeRequest}
+                disabled={challengeSaving}
+                className="btn-sage"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  opacity: challengeSaving ? 0.65 : 1,
+                }}
+              >
+                {challengeSaving ? (
+                  <Loader2 size={16} className="spin" />
+                ) : null}
+                {challengeSaving
+                  ? c("group_challenge_saving")
+                  : c("group_challenge_submit")}
               </button>
             </div>
           )}
@@ -2855,11 +5139,16 @@ function CommunityPageContent() {
     );
   }
 
-
   function renderSharedOverlayModals() {
     return (
       <>
-        {photoViewer && <PhotoViewerModal src={photoViewer.src} alt={photoViewer.alt} onClose={closePhotoViewer} />}
+        {photoViewer && (
+          <PhotoViewerModal
+            src={photoViewer.src}
+            alt={photoViewer.alt}
+            onClose={closePhotoViewer}
+          />
+        )}
         {renderProfileModal()}
         {renderActionMenu()}
         {renderSafetyConfirmModal()}
@@ -2869,91 +5158,218 @@ function CommunityPageContent() {
     );
   }
 
-  const TABS: { id: typeof tab; label: string }[] = [{ id: "partner", label: c("community_tab_partner") }, { id: "group", label: c("community_tab_group") }, { id: "all", label: c("community_tab_all") }];
+  const TABS: { id: typeof tab; label: string }[] = [
+    { id: "partner", label: c("community_tab_partner") },
+    { id: "group", label: c("community_tab_group") },
+    { id: "all", label: c("community_tab_all") },
+  ];
   const groupPrayingPrayers = groupPrayers.filter((p: any) => !p.is_answered);
   const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
-  const groupPrayersForCurrentTab = groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
+  const groupPrayersForCurrentTab =
+    groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
   const allQtFeedKey = "all-qt";
   const allPrayingFeedKey = "all-praying";
   const allAnsweredFeedKey = "all-answered";
   const visibleAllQts = visibleFeedItems(allQtFeedKey, qtShares);
   const visibleAllPrayers = visibleFeedItems(allPrayingFeedKey, prayers);
-  const visibleAllAnsweredPrayers = visibleFeedItems(allAnsweredFeedKey, answeredPrayers);
+  const visibleAllAnsweredPrayers = visibleFeedItems(
+    allAnsweredFeedKey,
+    answeredPrayers,
+  );
 
   if (selectedPartner) {
     const partnerProfile = selectedPartner.profile ?? {};
     const partnerName = partnerProfile.name || c("profile_default_name");
-    const partnerPrayingPrayers = partnerPrayers.filter((prayer) => !prayer.is_answered);
-    const partnerAnsweredPrayers = partnerPrayers.filter((prayer) => prayer.is_answered);
-    const partnerPrayersForCurrentTab = partnerDetailTab === "answered" ? partnerAnsweredPrayers : partnerPrayingPrayers;
+    const partnerPrayingPrayers = partnerPrayers.filter(
+      (prayer) => !prayer.is_answered,
+    );
+    const partnerAnsweredPrayers = partnerPrayers.filter(
+      (prayer) => prayer.is_answered,
+    );
+    const partnerPrayersForCurrentTab =
+      partnerDetailTab === "answered"
+        ? partnerAnsweredPrayers
+        : partnerPrayingPrayers;
     const partnerQtFeedKey = `partner-${selectedPartner.partner_id}-qt`;
     const partnerPrayerFeedKey = `partner-${selectedPartner.partner_id}-${partnerDetailTab}`;
     const visiblePartnerQts = visibleFeedItems(partnerQtFeedKey, partnerQts);
-    const visiblePartnerPrayers = visibleFeedItems(partnerPrayerFeedKey, partnerPrayersForCurrentTab);
-    const partnerEmptyConfig = partnerDetailTab === "qt"
-      ? {
-          icon: <BookOpen size={24} />,
-          title: c("community_partner_empty_qt_title"),
-          body: c("community_partner_empty_qt_body"),
-          action: c("community_partner_empty_qt_action"),
-          path: "/qt",
-        }
-      : partnerDetailTab === "praying"
+    const visiblePartnerPrayers = visibleFeedItems(
+      partnerPrayerFeedKey,
+      partnerPrayersForCurrentTab,
+    );
+    const partnerEmptyConfig =
+      partnerDetailTab === "qt"
         ? {
-            icon: <HandHeart size={24} />,
-            title: c("community_partner_empty_praying_title"),
-            body: c("community_partner_empty_praying_body"),
-            action: c("community_partner_empty_praying_action"),
-            path: "/prayer",
+            icon: <BookOpen size={24} />,
+            title: c("community_partner_empty_qt_title"),
+            body: c("community_partner_empty_qt_body"),
+            action: c("community_partner_empty_qt_action"),
+            path: "/qt",
           }
-        : {
-            icon: <CheckCircle2 size={24} />,
-            title: c("community_partner_empty_answered_title"),
-            body: c("community_partner_empty_answered_body"),
-            action: c("community_partner_empty_answered_action"),
-            path: "/prayer",
-          };
+        : partnerDetailTab === "praying"
+          ? {
+              icon: <HandHeart size={24} />,
+              title: c("community_partner_empty_praying_title"),
+              body: c("community_partner_empty_praying_body"),
+              action: c("community_partner_empty_praying_action"),
+              path: "/prayer",
+            }
+          : {
+              icon: <CheckCircle2 size={24} />,
+              title: c("community_partner_empty_answered_title"),
+              body: c("community_partner_empty_answered_body"),
+              action: c("community_partner_empty_answered_action"),
+              path: "/prayer",
+            };
 
     return (
       <div className="page">
         {renderLoveHeartToast()}
-        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
-          <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+        <div
+          style={{
+            background: "var(--bg)",
+            padding: "var(--roots-page-top-padding) 20px 8px",
+          }}
+        >
+          <button
+            onClick={closePartnerDetail}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              color: "var(--text3)",
+              marginBottom: 14,
+              cursor: "pointer",
+            }}
+          >
+            <ArrowLeft size={18} />
+            <span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar url={partnerProfile.avatar_url} name={partnerName} size={48} />
+            <Avatar
+              url={partnerProfile.avatar_url}
+              name={partnerName}
+              size={48}
+            />
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partnerName}</h1>
-              <p style={{ fontSize: 12, color: "var(--text3)" }}>{t("profile_streak", lang, { n: partnerProfile.streak_days ?? 0 })}</p>
+              <h1
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: "var(--text)",
+                  marginBottom: 4,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {partnerName}
+              </h1>
+              <p style={{ fontSize: 12, color: "var(--text3)" }}>
+                {t("profile_streak", lang, {
+                  n: partnerProfile.streak_days ?? 0,
+                })}
+              </p>
             </div>
             <button
               onClick={(event) => toggleFavoritePartner(selectedPartner, event)}
-              disabled={partnerFavoriteSavingIds.includes(selectedPartner.partner_id)}
+              disabled={partnerFavoriteSavingIds.includes(
+                selectedPartner.partner_id,
+              )}
               aria-label={c("community_favorite")}
-              style={{ marginLeft: "auto", width: 32, height: 32, borderRadius: 999, border: `1px solid ${selectedPartner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedPartner.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedPartner.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: partnerFavoriteSavingIds.includes(selectedPartner.partner_id) ? "default" : "pointer", opacity: partnerFavoriteSavingIds.includes(selectedPartner.partner_id) ? 0.65 : 1, flexShrink: 0 }}
+              style={{
+                marginLeft: "auto",
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                border: `1px solid ${selectedPartner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                background: selectedPartner.isFavorite
+                  ? "rgba(232,197,71,0.12)"
+                  : "var(--bg2)",
+                color: selectedPartner.isFavorite
+                  ? "rgba(232,197,71,0.95)"
+                  : "var(--text3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: partnerFavoriteSavingIds.includes(
+                  selectedPartner.partner_id,
+                )
+                  ? "default"
+                  : "pointer",
+                opacity: partnerFavoriteSavingIds.includes(
+                  selectedPartner.partner_id,
+                )
+                  ? 0.65
+                  : 1,
+                flexShrink: 0,
+              }}
             >
-              <Star size={16} strokeWidth={1.9} fill={selectedPartner.isFavorite ? "currentColor" : "transparent"} />
+              <Star
+                size={16}
+                strokeWidth={1.9}
+                fill={
+                  selectedPartner.isFavorite ? "currentColor" : "transparent"
+                }
+              />
             </button>
           </div>
         </div>
 
-        <div style={{ padding: "4px 16px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          style={{
+            padding: "4px 16px 96px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
           <div style={{ display: "flex" }}>
-            {([
+            {[
               { key: "qt" as const, label: c("community_group_tab_qt") },
-              { key: "praying" as const, label: c("community_prayer_tab_praying") },
-              { key: "answered" as const, label: c("community_prayer_tab_answered") },
-            ]).map(({ key, label }) => {
+              {
+                key: "praying" as const,
+                label: c("community_prayer_tab_praying"),
+              },
+              {
+                key: "answered" as const,
+                label: c("community_prayer_tab_answered"),
+              },
+            ].map(({ key, label }) => {
               const active = partnerDetailTab === key;
               return (
                 <button
                   key={key}
                   onClick={() => selectPartnerSection(key)}
-                  style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0 10px",
+                    background: "none",
+                    border: "none",
+                    borderBottom: active
+                      ? "2px solid var(--sage)"
+                      : "2px solid transparent",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
-                  <SectionUnreadDot show={!active && hasUnreadPartnerSection(key)} />
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: active ? 700 : 400,
+                      color: active ? "var(--sage-dark)" : "var(--text3)",
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <SectionUnreadDot
+                    show={!active && hasUnreadPartnerSection(key)}
+                  />
                 </button>
               );
             })}
@@ -2961,40 +5377,218 @@ function CommunityPageContent() {
 
           {partnerDetailTab === "qt" ? (
             loadingPartnerQts ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: 24,
+                }}
+              >
+                <Loader2
+                  size={20}
+                  style={{ color: "var(--sage)" }}
+                  className="spin"
+                />
+              </div>
             ) : partnerQts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 18px", background: "var(--bg2)", borderRadius: 18, border: "1px solid var(--border)" }}>
-                <div style={{ width: 46, height: 46, borderRadius: 18, margin: "0 auto 12px", background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 18px",
+                  background: "var(--bg2)",
+                  borderRadius: 18,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 18,
+                    margin: "0 auto 12px",
+                    background: "var(--sage-light)",
+                    color: "var(--sage-dark)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   {partnerEmptyConfig.icon}
                 </div>
-                <h2 style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{partnerEmptyConfig.title}</h2>
-                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto 16px" }}>{partnerEmptyConfig.body}</p>
-                <button onClick={() => router.push(partnerEmptyConfig.path)} className="btn-sage" style={{ width: "100%", maxWidth: 300, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <h2
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 850,
+                    color: "var(--text)",
+                    marginBottom: 8,
+                  }}
+                >
+                  {partnerEmptyConfig.title}
+                </h2>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text3)",
+                    lineHeight: 1.65,
+                    maxWidth: 320,
+                    margin: "0 auto 16px",
+                  }}
+                >
+                  {partnerEmptyConfig.body}
+                </p>
+                <button
+                  onClick={() => router.push(partnerEmptyConfig.path)}
+                  className="btn-sage"
+                  style={{
+                    width: "100%",
+                    maxWidth: 300,
+                    margin: "0 auto",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   {partnerEmptyConfig.action}
                 </button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {visiblePartnerQts.map(r => (
-                  <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
-                    {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {visiblePartnerQts.map((r) => (
+                  <div
+                    key={r.id}
+                    className="card"
+                    style={{ cursor: "pointer", position: "relative" }}
+                    onClick={() => openQtDetail(r)}
+                  >
+                    {!r.photo_path && (
+                      <ChevronRight
+                        size={18}
+                        style={{
+                          position: "absolute",
+                          right: 14,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "var(--text3)",
+                          opacity: 0.65,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <AuthorIdentity
+                        profile={r.profiles}
+                        authorId={r.user_id}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          flexShrink: 0,
+                        }}
+                      >
                         {r.isUnreadInPartner && (
-                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 800,
+                              padding: "2px 7px",
+                              borderRadius: 10,
+                              background: "rgba(232,197,71,0.15)",
+                              color: "rgba(196,149,106,0.95)",
+                              border: "1px solid rgba(232,197,71,0.28)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {c("community_unread")}
                           </span>
                         )}
-                        <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                        <CardMenu kind="qt" item={r} scope="partner" partnerId={selectedPartner.partner_id} />
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "var(--text3)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {parseLocalDateString(r.date).toLocaleDateString(
+                            getDateLocale(lang),
+                            { month: "short", day: "numeric" },
+                          )}
+                        </span>
+                        <CardMenu
+                          kind="qt"
+                          item={r}
+                          scope="partner"
+                          partnerId={selectedPartner.partner_id}
+                        />
                       </div>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                    {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                    {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
-                    {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
-                    <div onClick={e => e.stopPropagation()}>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "var(--terra)",
+                        marginBottom: 4,
+                        paddingRight: 34,
+                      }}
+                    >
+                      {r.bible_ref
+                        ? translateBibleRef(r.bible_ref, lang)
+                        : c("community_free_meditation")}
+                    </p>
+                    {r.key_verse && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text2)",
+                          lineHeight: 1.6,
+                          fontStyle: "italic",
+                          marginBottom: 10,
+                          paddingRight: 34,
+                        }}
+                      >
+                        "{r.key_verse.slice(0, 60)}
+                        {r.key_verse.length > 60 ? "..." : ""}"
+                      </p>
+                    )}
+                    {r.photo_path && qtPhotoUrls[r.id] && (
+                      <PhotoReflectionImage
+                        src={qtPhotoUrls[r.id]}
+                        alt="photo reflection"
+                        style={{
+                          width: "100%",
+                          maxHeight: 220,
+                          objectFit: "cover",
+                          borderRadius: 14,
+                          border: "1px solid var(--border)",
+                          margin: "6px 0 10px",
+                        }}
+                      />
+                    )}
+                    {(r.photo_caption || (r.photo_path && r.meditation)) && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text2)",
+                          lineHeight: 1.6,
+                          marginBottom: 10,
+                          paddingRight: 34,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {r.photo_caption || r.meditation}
+                      </p>
+                    )}
+                    <div onClick={(e) => e.stopPropagation()}>
                       <ReactionButtons qtId={r.id} onReact={reactToQT} />
                     </div>
                   </div>
@@ -3002,75 +5596,274 @@ function CommunityPageContent() {
                 {renderFeedLoadMore(partnerQtFeedKey, partnerQts.length)}
               </div>
             )
+          ) : loadingPartnerPrayers ? (
+            <div
+              style={{ display: "flex", justifyContent: "center", padding: 24 }}
+            >
+              <Loader2
+                size={20}
+                style={{ color: "var(--sage)" }}
+                className="spin"
+              />
+            </div>
+          ) : partnerPrayersForCurrentTab.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "32px 18px",
+                background: "var(--bg2)",
+                borderRadius: 18,
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 18,
+                  margin: "0 auto 12px",
+                  background: "var(--sage-light)",
+                  color: "var(--sage-dark)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {partnerEmptyConfig.icon}
+              </div>
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 850,
+                  color: "var(--text)",
+                  marginBottom: 8,
+                }}
+              >
+                {partnerEmptyConfig.title}
+              </h2>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text3)",
+                  lineHeight: 1.65,
+                  maxWidth: 320,
+                  margin: "0 auto 16px",
+                }}
+              >
+                {partnerEmptyConfig.body}
+              </p>
+              <button
+                onClick={() => router.push(partnerEmptyConfig.path)}
+                className="btn-sage"
+                style={{
+                  width: "100%",
+                  maxWidth: 300,
+                  margin: "0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {partnerEmptyConfig.action}
+              </button>
+            </div>
           ) : (
-            loadingPartnerPrayers ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
-            ) : partnerPrayersForCurrentTab.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 18px", background: "var(--bg2)", borderRadius: 18, border: "1px solid var(--border)" }}>
-                <div style={{ width: 46, height: 46, borderRadius: 18, margin: "0 auto 12px", background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {partnerEmptyConfig.icon}
-                </div>
-                <h2 style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{partnerEmptyConfig.title}</h2>
-                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto 16px" }}>{partnerEmptyConfig.body}</p>
-                <button onClick={() => router.push(partnerEmptyConfig.path)} className="btn-sage" style={{ width: "100%", maxWidth: 300, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {partnerEmptyConfig.action}
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {visiblePartnerPrayers.map(p => (
-                  <div key={p.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                        {p.isUnreadInPartner && (
-                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
-                            {c("community_unread")}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                        <CardMenu kind="prayer" item={p} scope="partner" partnerId={selectedPartner.partner_id} />
-                      </div>
-                    </div>
-
-                    {p.is_answered && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                        <CheckCircle2 size={14} style={{ color: "var(--terra-dark)" }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)" }}>{c("community_answered")}</span>
-                        {(p.prayer_count ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, color: "var(--text3)" }}>{answeredPrayerCountText(p.prayer_count ?? 0)}</span>
-                        )}
-                      </div>
-                    )}
-
-                    <p style={{ fontSize: 13, lineHeight: 1.6, color: p.is_answered ? "var(--text2)" : "var(--text)", marginBottom: 12, whiteSpace: "pre-line", textDecoration: p.is_answered ? "line-through" : "none", opacity: p.is_answered ? 0.72 : 1 }}>{p.content}</p>
-
-                    {p.testimony && (
-                      <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{c("community_prayer_testimony")}</p>
-                        <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
-                      </div>
-                    )}
-
-                    {p.is_answered && (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                        <PrayerLikeButton prayer={p} />
-                      </div>
-                    )}
-
-                    {!p.is_answered && (
-                      <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
-                        <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
-                          {prayerActionText(p, prayedIds.includes(p.id))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {visiblePartnerPrayers.map((p) => (
+                <div key={p.id} className="card">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {p.isUnreadInPartner && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 800,
+                            padding: "2px 7px",
+                            borderRadius: 10,
+                            background: "rgba(232,197,71,0.15)",
+                            color: "rgba(196,149,106,0.95)",
+                            border: "1px solid rgba(232,197,71,0.28)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {c("community_unread")}
                         </span>
-                      </button>
-                    )}
+                      )}
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "var(--text3)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {new Date(
+                          p.answered_at ?? p.created_at,
+                        ).toLocaleDateString(getDateLocale(lang), {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                      <CardMenu
+                        kind="prayer"
+                        item={p}
+                        scope="partner"
+                        partnerId={selectedPartner.partner_id}
+                      />
+                    </div>
                   </div>
-                ))}
-                {renderFeedLoadMore(partnerPrayerFeedKey, partnerPrayersForCurrentTab.length)}
-              </div>
-            )
+
+                  {p.is_answered && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <CheckCircle2
+                        size={14}
+                        style={{ color: "var(--terra-dark)" }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--terra-dark)",
+                        }}
+                      >
+                        {c("community_answered")}
+                      </span>
+                      {(p.prayer_count ?? 0) > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                          {answeredPrayerCountText(p.prayer_count ?? 0)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                      color: p.is_answered ? "var(--text2)" : "var(--text)",
+                      marginBottom: 12,
+                      whiteSpace: "pre-line",
+                      textDecoration: p.is_answered ? "line-through" : "none",
+                      opacity: p.is_answered ? 0.72 : 1,
+                    }}
+                  >
+                    {p.content}
+                  </p>
+
+                  {p.testimony && (
+                    <div
+                      style={{
+                        background: "rgba(232,197,71,0.08)",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        border: "1px solid rgba(232,197,71,0.25)",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "rgba(232,197,71,0.9)",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {c("community_prayer_testimony")}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--text)",
+                          lineHeight: 1.6,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        "{p.testimony}"
+                      </p>
+                    </div>
+                  )}
+
+                  {p.is_answered && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <PrayerLikeButton prayer={p} />
+                    </div>
+                  )}
+
+                  {!p.is_answered && (
+                    <button
+                      onClick={() => prayTogether(p.id)}
+                      disabled={prayedIds.includes(p.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: 12,
+                        border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`,
+                        background: prayedIds.includes(p.id)
+                          ? "var(--sage-light)"
+                          : "var(--bg2)",
+                        cursor: prayedIds.includes(p.id)
+                          ? "default"
+                          : "pointer",
+                      }}
+                    >
+                      <span style={{ fontSize: 14 }}>
+                        {prayedIds.includes(p.id) ? (
+                          <CheckCircle2 size={14} />
+                        ) : (
+                          <HandHeart size={14} />
+                        )}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: prayedIds.includes(p.id)
+                            ? "var(--sage-dark)"
+                            : "var(--text2)",
+                        }}
+                      >
+                        {prayerActionText(p, prayedIds.includes(p.id))}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              ))}
+              {renderFeedLoadMore(
+                partnerPrayerFeedKey,
+                partnerPrayersForCurrentTab.length,
+              )}
+            </div>
           )}
         </div>
 
@@ -3085,157 +5878,631 @@ function CommunityPageContent() {
     const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
     const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
     const visibleGroupQts = visibleFeedItems(groupQtFeedKey, groupQts);
-    const visibleGroupPrayers = visibleFeedItems(groupPrayerFeedKey, groupPrayersForCurrentTab);
+    const visibleGroupPrayers = visibleFeedItems(
+      groupPrayerFeedKey,
+      groupPrayersForCurrentTab,
+    );
     return (
       <div className="page">
         {renderLoveHeartToast()}
-        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
-          <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-            <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+        <div
+          style={{
+            background: "var(--bg)",
+            padding: "var(--roots-page-top-padding) 20px 8px",
+          }}
+        >
+          <button
+            onClick={closeGroupDetail}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              color: "var(--text3)",
+              marginBottom: 14,
+              cursor: "pointer",
+            }}
+          >
+            <ArrowLeft size={18} />
+            <span style={{ fontSize: 13 }}>{t("back", lang)}</span>
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, position: "relative" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", minWidth: 0 }}>{selectedGroup.name}</h1>
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: selectedGroup.is_public ? "var(--sage-light)" : "var(--bg3)", color: selectedGroup.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${selectedGroup.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
-              {selectedGroup.is_public ? (c("community_public")) : (c("community_private"))}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+              position: "relative",
+            }}
+          >
+            <h1
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "var(--text)",
+                minWidth: 0,
+              }}
+            >
+              {selectedGroup.name}
+            </h1>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                padding: "2px 7px",
+                borderRadius: 10,
+                background: selectedGroup.is_public
+                  ? "var(--sage-light)"
+                  : "var(--bg3)",
+                color: selectedGroup.is_public
+                  ? "var(--sage-dark)"
+                  : "var(--text3)",
+                border: `1px solid ${selectedGroup.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}`,
+              }}
+            >
+              {selectedGroup.is_public
+                ? c("community_public")
+                : c("community_private")}
             </span>
             {selectedGroup.isMember && (
               <button
                 onClick={(e) => toggleFavoriteGroup(selectedGroup, e)}
                 disabled={favoriteSavingIds.includes(selectedGroup.id)}
                 aria-label={c("community_favorite")}
-                style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: selectedGroup.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg2)", color: selectedGroup.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(selectedGroup.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(selectedGroup.id) ? 0.65 : 1, flexShrink: 0 }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 999,
+                  border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                  background: selectedGroup.isFavorite
+                    ? "rgba(232,197,71,0.12)"
+                    : "var(--bg2)",
+                  color: selectedGroup.isFavorite
+                    ? "rgba(232,197,71,0.95)"
+                    : "var(--text3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: favoriteSavingIds.includes(selectedGroup.id)
+                    ? "default"
+                    : "pointer",
+                  opacity: favoriteSavingIds.includes(selectedGroup.id)
+                    ? 0.65
+                    : 1,
+                  flexShrink: 0,
+                }}
               >
-                <Star size={16} strokeWidth={1.9} fill={selectedGroup.isFavorite ? "currentColor" : "transparent"} />
+                <Star
+                  size={16}
+                  strokeWidth={1.9}
+                  fill={
+                    selectedGroup.isFavorite ? "currentColor" : "transparent"
+                  }
+                />
               </button>
             )}
             <button
-              onClick={() => setShowGroupActionMenu(prev => !prev)}
+              onClick={() => setShowGroupActionMenu((prev) => !prev)}
               aria-label={c("community_group_actions")}
-              style={{ marginLeft: "auto", width: 34, height: 34, border: "none", background: "transparent", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0 }}
+              style={{
+                marginLeft: "auto",
+                width: 34,
+                height: 34,
+                border: "none",
+                background: "transparent",
+                color: "var(--text3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: 0,
+                flexShrink: 0,
+              }}
             >
               <MoreHorizontal size={22} />
             </button>
             {showGroupActionMenu && (
-              <div style={{ position: "absolute", right: 0, top: 38, zIndex: 80, minWidth: 180, borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg2)", boxShadow: "0 16px 45px rgba(0,0,0,0.16)", padding: 8 }}>
-                <button onClick={() => { setShowGroupActionMenu(false); shareInvite(selectedGroup); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
-                  <Share2 size={15} />{c("community_invite")}
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 38,
+                  zIndex: 80,
+                  minWidth: 180,
+                  borderRadius: 18,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg2)",
+                  boxShadow: "0 16px 45px rgba(0,0,0,0.16)",
+                  padding: 8,
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setShowGroupActionMenu(false);
+                    shareInvite(selectedGroup);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "11px 10px",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--sage-dark)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <Share2 size={15} />
+                  {c("community_invite")}
                 </button>
-                <button onClick={() => { setShowGroupActionMenu(false); copyInviteLink(selectedGroup.id); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "var(--text2)", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
-                  {copiedId === selectedGroup.id ? <Check size={15} /> : <Copy size={15} />}
-                  {copiedId === selectedGroup.id ? c("community_copied") : c("community_copy_link")}
+                <button
+                  onClick={() => {
+                    setShowGroupActionMenu(false);
+                    copyInviteLink(selectedGroup.id);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "11px 10px",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--text2)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  {copiedId === selectedGroup.id ? (
+                    <Check size={15} />
+                  ) : (
+                    <Copy size={15} />
+                  )}
+                  {copiedId === selectedGroup.id
+                    ? c("community_copied")
+                    : c("community_copy_link")}
                 </button>
                 {selectedGroup.isMember && (
-                  <button onClick={() => { setShowGroupActionMenu(false); setShowLeaveConfirm(true); }} disabled={leavingGroup} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 10px", border: "none", background: "transparent", color: "#B35F5F", fontSize: 13, fontWeight: 800, cursor: leavingGroup ? "default" : "pointer", textAlign: "left", opacity: leavingGroup ? 0.65 : 1 }}>
-                    {leavingGroup ? <Loader2 size={15} className="spin" /> : <LogOut size={15} />}
+                  <button
+                    onClick={() => {
+                      setShowGroupActionMenu(false);
+                      setShowLeaveConfirm(true);
+                    }}
+                    disabled={leavingGroup}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      padding: "11px 10px",
+                      border: "none",
+                      background: "transparent",
+                      color: "#B35F5F",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: leavingGroup ? "default" : "pointer",
+                      textAlign: "left",
+                      opacity: leavingGroup ? 0.65 : 1,
+                    }}
+                  >
+                    {leavingGroup ? (
+                      <Loader2 size={15} className="spin" />
+                    ) : (
+                      <LogOut size={15} />
+                    )}
                     {c("community_leave_group")}
                   </button>
                 )}
               </div>
             )}
           </div>
-          {selectedGroup.description && <p style={{ fontSize: 13, color: "var(--text3)" }}>{selectedGroup.description}</p>}
-          <button onClick={() => openGroupMembers(selectedGroup)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, fontSize: 12, color: "var(--sage-dark)", marginTop: 6, fontWeight: 700, cursor: "pointer" }}>
+          {selectedGroup.description && (
+            <p style={{ fontSize: 13, color: "var(--text3)" }}>
+              {selectedGroup.description}
+            </p>
+          )}
+          <button
+            onClick={() => openGroupMembers(selectedGroup)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              padding: 0,
+              fontSize: 12,
+              color: "var(--sage-dark)",
+              marginTop: 6,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
             <span>{memberCountText(selectedGroup.member_count ?? 0)}</span>
             <ChevronRight size={14} />
           </button>
         </div>
 
-        <div style={{ padding: "4px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          style={{
+            padding: "4px 16px 0",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
           {!selectedGroup.isMember && (
-            <button onClick={() => joinGroup(selectedGroup.id)} className="btn-sage" style={{ width: "100%" }}>{c("community_join")}</button>
+            <button
+              onClick={() => joinGroup(selectedGroup.id)}
+              className="btn-sage"
+              style={{ width: "100%" }}
+            >
+              {c("community_join")}
+            </button>
           )}
 
           {selectedGroup.isMember && (
             <>
-              {(loadingGroupChallenges || visibleGroupChallengeCards().length > 0) && (
-                <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "var(--bg2)", padding: "15px 15px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0, lineHeight: 1.35 }}>
-                      {c(groupChallengeSectionTitleKey(visibleGroupChallengeCards()))}
-                      {groupChallengeSectionTitleKey(visibleGroupChallengeCards()) === "group_challenge_approved_section_title" && (
-                        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text3)", lineHeight: 1.45 }}>
+              {(loadingGroupChallenges ||
+                visibleGroupChallengeCards().length > 0) && (
+                <div
+                  style={{
+                    borderRadius: 20,
+                    border: "1px solid rgba(122,157,122,0.24)",
+                    background: "var(--bg2)",
+                    padding: "15px 15px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 11,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 850,
+                        color: "var(--text)",
+                        margin: 0,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {c(
+                        groupChallengeSectionTitleKey(
+                          visibleGroupChallengeCards(),
+                        ),
+                      )}
+                      {groupChallengeSectionTitleKey(
+                        visibleGroupChallengeCards(),
+                      ) === "group_challenge_approved_section_title" && (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: "var(--text3)",
+                            lineHeight: 1.45,
+                          }}
+                        >
                           {` (${c("group_challenge_auto_participation_note")})`}
                         </span>
                       )}
                     </p>
-                    {loadingGroupChallenges && <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} />}
+                    {loadingGroupChallenges && (
+                      <Loader2
+                        size={15}
+                        className="spin"
+                        style={{ color: "var(--sage)" }}
+                      />
+                    )}
                   </div>
-                  {!loadingGroupChallenges && visibleGroupChallengeCards().map((challenge) => (
-                    <div key={challenge.id} style={{ borderRadius: 17, border: "1px solid var(--border)", background: "rgba(255,255,255,0.62)", padding: "12px 13px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-                        <div style={{ width: 62, height: 62, borderRadius: 18, background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.24)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                          <img
-                            src="/images/group-challenges/mystery-badge.png"
-                            alt=""
-                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                          />
-                        </div>
-                        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>{challenge.title}</p>
-                              <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 700 }}>{challengeDateRange(challenge)}</p>
+                  {!loadingGroupChallenges &&
+                    visibleGroupChallengeCards().map((challenge) => (
+                      <div
+                        key={challenge.id}
+                        style={{
+                          borderRadius: 17,
+                          border: "1px solid var(--border)",
+                          background: "rgba(255,255,255,0.62)",
+                          padding: "12px 13px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 13,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 62,
+                              height: 62,
+                              borderRadius: 18,
+                              background: "rgba(232,197,71,0.12)",
+                              border: "1px solid rgba(232,197,71,0.24)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              overflow: "hidden",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <img
+                              src="/images/group-challenges/mystery-badge.png"
+                              alt=""
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "contain",
+                              }}
+                            />
+                          </div>
+                          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                gap: 8,
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <p
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 850,
+                                    color: "var(--text)",
+                                    margin: "0 0 4px",
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  {challenge.title}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: 11,
+                                    color: "var(--text3)",
+                                    margin: 0,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {challengeDateRange(challenge)}
+                                </p>
+                              </div>
+                              <span
+                                style={{
+                                  flexShrink: 0,
+                                  borderRadius: 999,
+                                  padding: "4px 8px",
+                                  background:
+                                    challengeDisplayStatus(challenge) ===
+                                    "active"
+                                      ? "var(--sage-light)"
+                                      : "var(--bg3)",
+                                  color:
+                                    challengeDisplayStatus(challenge) ===
+                                    "active"
+                                      ? "var(--sage-dark)"
+                                      : "var(--text3)",
+                                  fontSize: 10,
+                                  fontWeight: 850,
+                                }}
+                              >
+                                {challengeStatusLabel(challenge)}
+                              </span>
                             </div>
-                            <span style={{ flexShrink: 0, borderRadius: 999, padding: "4px 8px", background: challengeDisplayStatus(challenge) === "active" ? "var(--sage-light)" : "var(--bg3)", color: challengeDisplayStatus(challenge) === "active" ? "var(--sage-dark)" : "var(--text3)", fontSize: 10, fontWeight: 850 }}>
-                              {challengeStatusLabel(challenge)}
-                            </span>
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: "var(--terra-dark)",
+                                fontWeight: 800,
+                                margin: "8px 0 0",
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {c("group_challenge_special_badge_teaser")}
+                            </p>
                           </div>
-                          <p style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: "8px 0 0", lineHeight: 1.45 }}>{c("group_challenge_special_badge_teaser")}</p>
                         </div>
+                        {groupChallengeProgress[challenge.id] && (
+                          <div style={{ marginTop: 10 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                marginBottom: 6,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 850,
+                                  color: "var(--sage-dark)",
+                                }}
+                              >
+                                {c("group_challenge_progress_day", {
+                                  day: groupChallengeProgress[challenge.id]
+                                    .doneDays,
+                                })}
+                              </span>
+                            </div>
+                            <div
+                              aria-hidden="true"
+                              style={{
+                                height: 8,
+                                borderRadius: 999,
+                                background: "rgba(122,157,122,0.16)",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  height: "100%",
+                                  width: `${challengeProgressPercent(groupChallengeProgress[challenge.id])}%`,
+                                  borderRadius: 999,
+                                  background: "var(--sage)",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      {groupChallengeProgress[challenge.id] && (
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 850, color: "var(--sage-dark)" }}>{c("group_challenge_progress_day", { day: groupChallengeProgress[challenge.id].doneDays })}</span>
-                          </div>
-                          <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "rgba(122,157,122,0.16)", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${challengeProgressPercent(groupChallengeProgress[challenge.id])}%`, borderRadius: 999, background: "var(--sage)" }} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
 
-              {!loadingGroupChallenges && visibleGroupChallengeCards().length === 0 && preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
-                <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))", padding: "16px 15px", display: "flex", flexDirection: "column", gap: 8 }}>
-                  <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0 }}>{c("group_challenge_preparing_title")}</p>
-                  {preparingApprovedGroupChallengeRequest(selectedGroup.id)?.title && (
-                    <p style={{ fontSize: 13, fontWeight: 800, color: "var(--sage-dark)", margin: 0, lineHeight: 1.35 }}>{preparingApprovedGroupChallengeRequest(selectedGroup.id)?.title}</p>
-                  )}
-                  <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: 0 }}>{challengeRequestScheduleText(preparingApprovedGroupChallengeRequest(selectedGroup.id)!)}</p>
-                </div>
-              )}
-
-              {!loadingGroupChallenges && visibleGroupChallengeCards().length === 0 && !preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
-                <div style={{ borderRadius: 20, border: "1px solid rgba(122,157,122,0.24)", background: "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))", padding: "16px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 13 }}>
-                  <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: "0 0 7px", minWidth: 0 }}>{c("group_challenge_card_title")}</p>
-                    <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, whiteSpace: "pre-line", margin: 0 }}>{c("group_challenge_card_body")}</p>
-                  </div>
-                  <button
-                    onClick={openChallengeRequestForm}
-                    disabled={hasActiveGroupChallengeRequest(selectedGroup.id)}
+              {!loadingGroupChallenges &&
+                visibleGroupChallengeCards().length === 0 &&
+                preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
+                  <div
                     style={{
-                      flex: "0 0 auto",
-                      border: "none",
-                      borderRadius: 16,
-                      background: hasActiveGroupChallengeRequest(selectedGroup.id) ? "var(--bg3)" : "var(--sage)",
-                      color: hasActiveGroupChallengeRequest(selectedGroup.id) ? "var(--text3)" : "white",
-                      padding: "11px 16px",
-                      minWidth: 82,
-                      fontSize: 12,
-                      fontWeight: 850,
-                      cursor: hasActiveGroupChallengeRequest(selectedGroup.id) ? "default" : "pointer",
-                      whiteSpace: "nowrap",
-                      opacity: hasActiveGroupChallengeRequest(selectedGroup.id) ? 0.92 : 1,
+                      borderRadius: 20,
+                      border: "1px solid rgba(122,157,122,0.24)",
+                      background:
+                        "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))",
+                      padding: "16px 15px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
                     }}
                   >
-                    {hasActiveGroupChallengeRequest(selectedGroup.id) ? c("group_challenge_requested_btn") : c("group_challenge_apply_btn")}
-                  </button>
-                </div>
-              )}
+                    <p
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 850,
+                        color: "var(--text)",
+                        margin: 0,
+                      }}
+                    >
+                      {c("group_challenge_preparing_title")}
+                    </p>
+                    {preparingApprovedGroupChallengeRequest(selectedGroup.id)
+                      ?.title && (
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: "var(--sage-dark)",
+                          margin: 0,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {
+                          preparingApprovedGroupChallengeRequest(
+                            selectedGroup.id,
+                          )?.title
+                        }
+                      </p>
+                    )}
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text2)",
+                        lineHeight: 1.55,
+                        margin: 0,
+                      }}
+                    >
+                      {challengeRequestScheduleText(
+                        preparingApprovedGroupChallengeRequest(
+                          selectedGroup.id,
+                        )!,
+                      )}
+                    </p>
+                  </div>
+                )}
+
+              {!loadingGroupChallenges &&
+                visibleGroupChallengeCards().length === 0 &&
+                !preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
+                  <div
+                    style={{
+                      borderRadius: 20,
+                      border: "1px solid rgba(122,157,122,0.24)",
+                      background:
+                        "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))",
+                      padding: "16px 15px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 13,
+                    }}
+                  >
+                    <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 850,
+                          color: "var(--text)",
+                          margin: "0 0 7px",
+                          minWidth: 0,
+                        }}
+                      >
+                        {c("group_challenge_card_title")}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text2)",
+                          lineHeight: 1.55,
+                          whiteSpace: "pre-line",
+                          margin: 0,
+                        }}
+                      >
+                        {c("group_challenge_card_body")}
+                      </p>
+                    </div>
+                    <button
+                      onClick={openChallengeRequestForm}
+                      disabled={hasActiveGroupChallengeRequest(
+                        selectedGroup.id,
+                      )}
+                      style={{
+                        flex: "0 0 auto",
+                        border: "none",
+                        borderRadius: 16,
+                        background: hasActiveGroupChallengeRequest(
+                          selectedGroup.id,
+                        )
+                          ? "var(--bg3)"
+                          : "var(--sage)",
+                        color: hasActiveGroupChallengeRequest(selectedGroup.id)
+                          ? "var(--text3)"
+                          : "white",
+                        padding: "11px 16px",
+                        minWidth: 82,
+                        fontSize: 12,
+                        fontWeight: 850,
+                        cursor: hasActiveGroupChallengeRequest(selectedGroup.id)
+                          ? "default"
+                          : "pointer",
+                        whiteSpace: "nowrap",
+                        opacity: hasActiveGroupChallengeRequest(
+                          selectedGroup.id,
+                        )
+                          ? 0.92
+                          : 1,
+                      }}
+                    >
+                      {hasActiveGroupChallengeRequest(selectedGroup.id)
+                        ? c("group_challenge_requested_btn")
+                        : c("group_challenge_apply_btn")}
+                    </button>
+                  </div>
+                )}
             </>
           )}
 
@@ -3243,18 +6510,47 @@ function CommunityPageContent() {
             <div style={{ display: "flex", marginBottom: 12 }}>
               {[
                 { key: "qt" as const, label: c("community_group_tab_qt") },
-                { key: "praying" as const, label: c("community_prayer_tab_praying") },
-                { key: "answered" as const, label: c("community_prayer_tab_answered") },
+                {
+                  key: "praying" as const,
+                  label: c("community_prayer_tab_praying"),
+                },
+                {
+                  key: "answered" as const,
+                  label: c("community_prayer_tab_answered"),
+                },
               ].map(({ key, label }) => {
                 const active = groupDetailTab === key;
                 return (
                   <button
                     key={key}
                     onClick={() => selectGroupSection(key)}
-                    style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0 10px",
+                      background: "none",
+                      border: "none",
+                      borderBottom: active
+                        ? "2px solid var(--sage)"
+                        : "2px solid transparent",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
                   >
-                    <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
-                    <SectionUnreadDot show={!active && hasUnreadGroupSection(key)} />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 400,
+                        color: active ? "var(--sage-dark)" : "var(--text3)",
+                      }}
+                    >
+                      {label}
+                    </span>
+                    <SectionUnreadDot
+                      show={!active && hasUnreadGroupSection(key)}
+                    />
                   </button>
                 );
               })}
@@ -3262,34 +6558,171 @@ function CommunityPageContent() {
 
             {groupDetailTab === "qt" ? (
               loadingGroupQts ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    padding: 24,
+                  }}
+                >
+                  <Loader2
+                    size={20}
+                    style={{ color: "var(--sage)" }}
+                    className="spin"
+                  />
+                </div>
               ) : groupQts.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
-                  <BookOpen size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
-                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{c("community_no_group_qts")}</p>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "32px 0",
+                    background: "var(--bg2)",
+                    borderRadius: 16,
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <BookOpen
+                    size={24}
+                    style={{ color: "var(--text3)", marginBottom: 8 }}
+                  />
+                  <p style={{ fontSize: 13, color: "var(--text3)" }}>
+                    {c("community_no_group_qts")}
+                  </p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {visibleGroupQts.map(r => (
-                    <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
-                      {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
-                        <div style={{ position: "absolute", top: 18, right: 18, display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
+                  {visibleGroupQts.map((r) => (
+                    <div
+                      key={r.id}
+                      className="card"
+                      style={{ cursor: "pointer", position: "relative" }}
+                      onClick={() => openQtDetail(r)}
+                    >
+                      {!r.photo_path && (
+                        <ChevronRight
+                          size={18}
+                          style={{
+                            position: "absolute",
+                            right: 14,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "var(--text3)",
+                            opacity: 0.65,
+                            pointerEvents: "none",
+                          }}
+                        />
+                      )}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <AuthorIdentity
+                          profile={r.profiles}
+                          authorId={r.user_id}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 18,
+                            right: 18,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
                           {r.isUnreadInGroup && (
-                            <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 800,
+                                padding: "2px 7px",
+                                borderRadius: 10,
+                                background: "rgba(232,197,71,0.15)",
+                                color: "rgba(196,149,106,0.95)",
+                                border: "1px solid rgba(232,197,71,0.28)",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {c("community_unread")}
                             </span>
                           )}
-                          <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          <CardMenu kind="qt" item={r} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />
+                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                            {parseLocalDateString(r.date).toLocaleDateString(
+                              getDateLocale(lang),
+                              { month: "short", day: "numeric" },
+                            )}
+                          </span>
+                          <CardMenu
+                            kind="qt"
+                            item={r}
+                            scope={selectedGroup ? "group" : "all"}
+                            groupId={selectedGroup?.id}
+                          />
                         </div>
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                      {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                      {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
-                      {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
-                      <div onClick={e => e.stopPropagation()}>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "var(--terra)",
+                          marginBottom: 4,
+                          paddingRight: 34,
+                        }}
+                      >
+                        {r.bible_ref
+                          ? translateBibleRef(r.bible_ref, lang)
+                          : c("community_free_meditation")}
+                      </p>
+                      {r.key_verse && (
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "var(--text2)",
+                            lineHeight: 1.6,
+                            fontStyle: "italic",
+                            marginBottom: 10,
+                            paddingRight: 34,
+                          }}
+                        >
+                          "{r.key_verse.slice(0, 60)}
+                          {r.key_verse.length > 60 ? "..." : ""}"
+                        </p>
+                      )}
+                      {r.photo_path && qtPhotoUrls[r.id] && (
+                        <PhotoReflectionImage
+                          src={qtPhotoUrls[r.id]}
+                          alt="photo reflection"
+                          style={{
+                            width: "100%",
+                            maxHeight: 220,
+                            objectFit: "cover",
+                            borderRadius: 14,
+                            border: "1px solid var(--border)",
+                            margin: "6px 0 10px",
+                          }}
+                        />
+                      )}
+                      {(r.photo_caption || (r.photo_path && r.meditation)) && (
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "var(--text2)",
+                            lineHeight: 1.6,
+                            marginBottom: 10,
+                            paddingRight: 34,
+                            whiteSpace: "pre-line",
+                          }}
+                        >
+                          {r.photo_caption || r.meditation}
+                        </p>
+                      )}
+                      <div onClick={(e) => e.stopPropagation()}>
                         <ReactionButtons qtId={r.id} onReact={reactToQT} />
                       </div>
                     </div>
@@ -3297,69 +6730,243 @@ function CommunityPageContent() {
                   {renderFeedLoadMore(groupQtFeedKey, groupQts.length)}
                 </div>
               )
+            ) : loadingGroupPrayers ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: 24,
+                }}
+              >
+                <Loader2
+                  size={20}
+                  style={{ color: "var(--sage)" }}
+                  className="spin"
+                />
+              </div>
+            ) : groupPrayersForCurrentTab.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 0",
+                  background: "var(--bg2)",
+                  borderRadius: 16,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <HandHeart
+                  size={24}
+                  style={{ color: "var(--text3)", marginBottom: 8 }}
+                />
+                <p style={{ fontSize: 13, color: "var(--text3)" }}>
+                  {groupDetailTab === "answered"
+                    ? c("community_no_group_answered_prayers")
+                    : c("community_no_group_prayers")}
+                </p>
+              </div>
             ) : (
-              loadingGroupPrayers ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={20} style={{ color: "var(--sage)" }} className="spin" /></div>
-              ) : groupPrayersForCurrentTab.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", background: "var(--bg2)", borderRadius: 16, border: "1px solid var(--border)" }}>
-                  <HandHeart size={24} style={{ color: "var(--text3)", marginBottom: 8 }} />
-                  <p style={{ fontSize: 13, color: "var(--text3)" }}>{groupDetailTab === "answered" ? c("community_no_group_answered_prayers") : c("community_no_group_prayers")}</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {visibleGroupPrayers.map(p => (
-                    <div key={p.id} className="card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {p.isUnreadInGroup && (
-                            <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", whiteSpace: "nowrap" }}>
-                              {c("community_unread")}
-                            </span>
-                          )}
-                          <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(p.answered_at ?? p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          {!p.is_answered && <CardMenu kind="prayer" item={p} scope={selectedGroup ? "group" : "all"} groupId={selectedGroup?.id} />}
-                        </div>
-                      </div>
-
-                      {p.is_answered && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                          <CheckCircle2 size={14} style={{ color: "var(--terra-dark)" }} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)" }}>{c("community_answered")}</span>
-                          {(p.prayer_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{answeredPrayerCountText(p.prayer_count ?? 0)}</span>
-                          )}
-                        </div>
-                      )}
-
-                      <p style={{ fontSize: 13, lineHeight: 1.6, color: p.is_answered ? "var(--text2)" : "var(--text)", marginBottom: 12, whiteSpace: "pre-line", textDecoration: p.is_answered ? "line-through" : "none", opacity: p.is_answered ? 0.72 : 1 }}>{p.content}</p>
-
-                      {p.testimony && (
-                        <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{c("community_prayer_testimony")}</p>
-                          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
-                        </div>
-                      )}
-
-                      {p.is_answered && (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                          <PrayerLikeButton prayer={p} />
-                        </div>
-                      )}
-
-                      {!p.is_answered && (
-                        <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
-                          <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
-                            {prayerActionText(p, prayedIds.includes(p.id))}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {visibleGroupPrayers.map((p) => (
+                  <div key={p.id} className="card">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <AuthorIdentity
+                        profile={p.profiles}
+                        authorId={p.user_id}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {p.isUnreadInGroup && (
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 800,
+                              padding: "2px 7px",
+                              borderRadius: 10,
+                              background: "rgba(232,197,71,0.15)",
+                              color: "rgba(196,149,106,0.95)",
+                              border: "1px solid rgba(232,197,71,0.28)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {c("community_unread")}
                           </span>
-                        </button>
-                      )}
+                        )}
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "var(--text3)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {new Date(
+                            p.answered_at ?? p.created_at,
+                          ).toLocaleDateString(getDateLocale(lang), {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        {!p.is_answered && (
+                          <CardMenu
+                            kind="prayer"
+                            item={p}
+                            scope={selectedGroup ? "group" : "all"}
+                            groupId={selectedGroup?.id}
+                          />
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {renderFeedLoadMore(groupPrayerFeedKey, groupPrayersForCurrentTab.length)}
-                </div>
-              )
+
+                    {p.is_answered && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <CheckCircle2
+                          size={14}
+                          style={{ color: "var(--terra-dark)" }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--terra-dark)",
+                          }}
+                        >
+                          {c("community_answered")}
+                        </span>
+                        {(p.prayer_count ?? 0) > 0 && (
+                          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                            {answeredPrayerCountText(p.prayer_count ?? 0)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <p
+                      style={{
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        color: p.is_answered ? "var(--text2)" : "var(--text)",
+                        marginBottom: 12,
+                        whiteSpace: "pre-line",
+                        textDecoration: p.is_answered ? "line-through" : "none",
+                        opacity: p.is_answered ? 0.72 : 1,
+                      }}
+                    >
+                      {p.content}
+                    </p>
+
+                    {p.testimony && (
+                      <div
+                        style={{
+                          background: "rgba(232,197,71,0.08)",
+                          borderRadius: 12,
+                          padding: "10px 14px",
+                          border: "1px solid rgba(232,197,71,0.25)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "rgba(232,197,71,0.9)",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {c("community_prayer_testimony")}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text)",
+                            lineHeight: 1.6,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          "{p.testimony}"
+                        </p>
+                      </div>
+                    )}
+
+                    {p.is_answered && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <PrayerLikeButton prayer={p} />
+                      </div>
+                    )}
+
+                    {!p.is_answered && (
+                      <button
+                        onClick={() => prayTogether(p.id)}
+                        disabled={prayedIds.includes(p.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: 12,
+                          border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`,
+                          background: prayedIds.includes(p.id)
+                            ? "var(--sage-light)"
+                            : "var(--bg2)",
+                          cursor: prayedIds.includes(p.id)
+                            ? "default"
+                            : "pointer",
+                        }}
+                      >
+                        <span style={{ fontSize: 14 }}>
+                          {prayedIds.includes(p.id) ? (
+                            <CheckCircle2 size={14} />
+                          ) : (
+                            <HandHeart size={14} />
+                          )}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: prayedIds.includes(p.id)
+                              ? "var(--sage-dark)"
+                              : "var(--text2)",
+                          }}
+                        >
+                          {prayerActionText(p, prayedIds.includes(p.id))}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {renderFeedLoadMore(
+                  groupPrayerFeedKey,
+                  groupPrayersForCurrentTab.length,
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -3367,42 +6974,161 @@ function CommunityPageContent() {
         {showGroupMembers && selectedGroup && (
           <div
             onClick={() => setShowGroupMembers(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 215, background: "rgba(26,28,30,0.62)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 14px 18px" }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 215,
+              background: "rgba(26,28,30,0.62)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
+              padding: "0 14px 18px",
+            }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ width: "100%", maxWidth: 430, background: "var(--bg2)", borderRadius: 26, padding: 20, border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.24)" }}
+              style={{
+                width: "100%",
+                maxWidth: 430,
+                background: "var(--bg2)",
+                borderRadius: 26,
+                padding: 20,
+                border: "1px solid var(--border)",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.24)",
+              }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  marginBottom: 14,
+                }}
+              >
                 <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 3 }}>{c("community_members_title")}</h2>
-                  <p style={{ fontSize: 12, color: "var(--text3)" }}>{memberCountText(selectedGroup.member_count ?? groupMemberProfiles.length)}</p>
+                  <h2
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "var(--text)",
+                      marginBottom: 3,
+                    }}
+                  >
+                    {c("community_members_title")}
+                  </h2>
+                  <p style={{ fontSize: 12, color: "var(--text3)" }}>
+                    {memberCountText(
+                      selectedGroup.member_count ?? groupMemberProfiles.length,
+                    )}
+                  </p>
                 </div>
-                <button onClick={() => setShowGroupMembers(false)} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button
+                  onClick={() => setShowGroupMembers(false)}
+                  aria-label="Close"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 999,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg)",
+                    color: "var(--text3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
                   <X size={17} />
                 </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "52vh", overflowY: "auto" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  maxHeight: "52vh",
+                  overflowY: "auto",
+                }}
+              >
                 {loadingGroupMembers ? (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "22px 0", color: "var(--text3)", fontSize: 13 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      padding: "22px 0",
+                      color: "var(--text3)",
+                      fontSize: 13,
+                    }}
+                  >
                     <Loader2 size={16} className="spin" />
                     {c("community_members_loading")}
                   </div>
                 ) : groupMemberProfiles.length > 0 ? (
                   groupMemberProfiles.map((member: any) => (
-                    <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0" }}>
+                    <div
+                      key={member.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "9px 0",
+                      }}
+                    >
                       {member.avatar_url ? (
-                        <img src={member.avatar_url} alt="" loading="lazy" decoding="async" style={{ width: 38, height: 38, borderRadius: 999, objectFit: "cover", border: "1px solid var(--border)" }} />
+                        <img
+                          src={member.avatar_url}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 999,
+                            objectFit: "cover",
+                            border: "1px solid var(--border)",
+                          }}
+                        />
                       ) : (
-                        <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 999,
+                            background: "var(--sage-light)",
+                            color: "var(--sage-dark)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
                           <Users size={17} />
                         </div>
                       )}
-                      <span style={{ fontSize: 14, color: "var(--text)", fontWeight: 700 }}>{member.name || c("community_member_unknown")}</span>
+                      <span
+                        style={{
+                          fontSize: 14,
+                          color: "var(--text)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {member.name || c("community_member_unknown")}
+                      </span>
                     </div>
                   ))
                 ) : (
-                  <p style={{ fontSize: 13, color: "var(--text3)", padding: "12px 0" }}>{c("community_members_empty")}</p>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--text3)",
+                      padding: "12px 0",
+                    }}
+                  >
+                    {c("community_members_empty")}
+                  </p>
                 )}
               </div>
             </div>
@@ -3411,19 +7137,63 @@ function CommunityPageContent() {
         {showLeaveConfirm && selectedGroup && (
           <div
             onClick={() => !leavingGroup && setShowLeaveConfirm(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 220, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 22px" }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 220,
+              background: "rgba(26,28,30,0.72)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 22px",
+            }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", borderRadius: 24, padding: 22, border: "1px solid rgba(196,106,106,0.25)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}
+              style={{
+                width: "100%",
+                maxWidth: 360,
+                background: "var(--bg2)",
+                borderRadius: 24,
+                padding: 22,
+                border: "1px solid rgba(196,106,106,0.25)",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+              }}
             >
-              <div style={{ width: 48, height: 48, borderRadius: 999, background: "rgba(196,106,106,0.10)", color: "#B35F5F", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 999,
+                  background: "rgba(196,106,106,0.10)",
+                  color: "#B35F5F",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 14,
+                }}
+              >
                 <AlertTriangle size={23} strokeWidth={1.9} />
               </div>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: "var(--text)",
+                  marginBottom: 8,
+                }}
+              >
                 {c("community_leave_confirm_title")}
               </h2>
-              <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 18 }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text2)",
+                  lineHeight: 1.65,
+                  marginBottom: 18,
+                }}
+              >
                 {c("community_leave_confirm_msg", { name: selectedGroup.name })}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -3438,9 +7208,26 @@ function CommunityPageContent() {
                 <button
                   onClick={leaveSelectedGroup}
                   disabled={leavingGroup}
-                  style={{ flex: 1, border: "none", borderRadius: 14, background: "rgba(196,106,106,0.14)", color: "#B35F5F", fontSize: 14, fontWeight: 800, cursor: leavingGroup ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    borderRadius: 14,
+                    background: "rgba(196,106,106,0.14)",
+                    color: "#B35F5F",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: leavingGroup ? "default" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
                 >
-                  {leavingGroup ? <Loader2 size={15} className="spin" /> : <LogOut size={15} />}
+                  {leavingGroup ? (
+                    <Loader2 size={15} className="spin" />
+                  ) : (
+                    <LogOut size={15} />
+                  )}
                   {c("community_leave")}
                 </button>
               </div>
@@ -3448,31 +7235,138 @@ function CommunityPageContent() {
           </div>
         )}
         {groupChallengeAwardPopup && (
-          <div onClick={() => setGroupChallengeAwardPopup(null)} style={{ position: "fixed", inset: 0, zIndex: 245, background: "rgba(26,28,30,0.86)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+          <div
+            onClick={() => setGroupChallengeAwardPopup(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 245,
+              background: "rgba(26,28,30,0.86)",
+              backdropFilter: "blur(10px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 24px",
+            }}
+          >
             <ConfettiBurst variant="fixed" zIndex={246} />
-            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.38)", boxShadow: "0 20px 60px rgba(0,0,0,0.28)", padding: "30px 23px 24px", textAlign: "center" }}>
-              <div style={{ width: 116, height: 116, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: 340,
+                borderRadius: 28,
+                background: "var(--bg2)",
+                border: "1px solid rgba(232,197,71,0.38)",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+                padding: "30px 23px 24px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 116,
+                  height: 116,
+                  margin: "0 auto 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {groupChallengeBadgeImageSrc(
+                  groupChallengeAwardPopup.badgeImagePath,
+                ) ? (
                   <img
-                    src={groupChallengeBadgeImageSrc(groupChallengeAwardPopup.badgeImagePath) ?? undefined}
+                    src={
+                      groupChallengeBadgeImageSrc(
+                        groupChallengeAwardPopup.badgeImagePath,
+                      ) ?? undefined
+                    }
                     alt={groupChallengeAwardPopup.badgeName}
                     onError={(event) => {
-                      if (event.currentTarget.src.endsWith(GROUP_CHALLENGE_BADGE_FALLBACK)) return;
+                      if (
+                        event.currentTarget.src.endsWith(
+                          GROUP_CHALLENGE_BADGE_FALLBACK,
+                        )
+                      )
+                        return;
                       event.currentTarget.src = GROUP_CHALLENGE_BADGE_FALLBACK;
                     }}
-                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
                   />
                 ) : (
-                  <div style={{ width: 104, height: 104, borderRadius: 28, background: "rgba(232,197,71,0.16)", color: "rgba(189,139,30,0.95)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(232,197,71,0.34)" }}>
+                  <div
+                    style={{
+                      width: 104,
+                      height: 104,
+                      borderRadius: 28,
+                      background: "rgba(232,197,71,0.16)",
+                      color: "rgba(189,139,30,0.95)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px solid rgba(232,197,71,0.34)",
+                    }}
+                  >
                     <Star size={48} strokeWidth={1.7} />
                   </div>
                 )}
               </div>
-              <h2 style={{ fontSize: 20, fontWeight: 900, color: "rgba(189,139,30,0.98)", margin: "0 0 8px", lineHeight: 1.3 }}>{c("group_challenge_award_popup_title")}</h2>
-              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, margin: "0 0 4px" }}>{groupChallengeAwardPopup.challengeTitle}</p>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 14px" }}>{groupChallengeAwardPopup.groupName}</p>
-              <div style={{ padding: "14px 15px", borderRadius: 16, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 18 }}>
-                <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.68, margin: 0 }}>{c("group_challenge_award_popup_body")}</p>
+              <h2
+                style={{
+                  fontSize: 20,
+                  fontWeight: 900,
+                  color: "rgba(189,139,30,0.98)",
+                  margin: "0 0 8px",
+                  lineHeight: 1.3,
+                }}
+              >
+                {c("group_challenge_award_popup_title")}
+              </h2>
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 850,
+                  color: "var(--text)",
+                  lineHeight: 1.45,
+                  margin: "0 0 4px",
+                }}
+              >
+                {groupChallengeAwardPopup.challengeTitle}
+              </p>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text3)",
+                  lineHeight: 1.45,
+                  margin: "0 0 14px",
+                }}
+              >
+                {groupChallengeAwardPopup.groupName}
+              </p>
+              <div
+                style={{
+                  padding: "14px 15px",
+                  borderRadius: 16,
+                  background: "rgba(232,197,71,0.08)",
+                  border: "1px solid rgba(232,197,71,0.25)",
+                  marginBottom: 18,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "var(--text)",
+                    lineHeight: 1.68,
+                    margin: 0,
+                  }}
+                >
+                  {c("group_challenge_award_popup_body")}
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -3497,36 +7391,160 @@ function CommunityPageContent() {
     <div className="page">
       {renderLoveHeartToast()}
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div
+          onClick={() => setBadgePopup(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            background: "rgba(26,28,30,0.92)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 28px",
+          }}
+        >
           <ConfettiBurst variant="fixed" zIndex={201} />
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--bg2)",
+              borderRadius: 28,
+              border: "1px solid rgba(232,197,71,0.4)",
+              width: "100%",
+              maxWidth: 340,
+              padding: "32px 24px 28px",
+              textAlign: "center",
+            }}
+          >
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img
+                src={badgePopup.img}
+                alt="badge"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
-            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
-              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+            <h2
+              style={{
+                fontSize: 20,
+                fontWeight: 800,
+                color: "rgba(232,197,71,0.95)",
+                marginBottom: 10,
+                lineHeight: 1.3,
+              }}
+            >
+              {badgePopup.title}
+            </h2>
+            <div
+              style={{
+                padding: "14px 16px",
+                background: "rgba(232,197,71,0.08)",
+                borderRadius: 14,
+                border: "1px solid rgba(232,197,71,0.25)",
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}
+              >
+                {badgePopup.msg}
+              </p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button
+              onClick={() => setBadgePopup(null)}
+              style={{
+                width: "100%",
+                padding: "13px",
+                background: "rgba(232,197,71,0.9)",
+                color: "#1a1c1e",
+                border: "none",
+                borderRadius: 14,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
               {c("community_thanks")}
             </button>
           </div>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 0", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+      <div
+        style={{
+          background: "var(--bg)",
+          padding: "var(--roots-page-top-padding) 20px 0",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 4,
+          }}
+        >
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{c("community_title")}</h1>
-            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>{c("community_subtitle")}</p>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>
+              {c("community_title")}
+            </h1>
+            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>
+              {c("community_subtitle")}
+            </p>
           </div>
-          <button onClick={shareApp} style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 20, padding: "7px 12px", cursor: "pointer", marginTop: 4 }}>
+          <button
+            onClick={shareApp}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              background: "var(--sage-light)",
+              border: "1px solid rgba(122,157,122,0.3)",
+              borderRadius: 20,
+              padding: "7px 12px",
+              cursor: "pointer",
+              marginTop: 4,
+            }}
+          >
             <Share2 size={13} style={{ color: "var(--sage-dark)" }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--sage-dark)" }}>{c("community_app_invite")}</span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--sage-dark)",
+              }}
+            >
+              {c("community_app_invite")}
+            </span>
           </button>
         </div>
-        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginTop: 12 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", borderBottom: tab === t.id ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, color: tab === t.id ? "var(--sage-dark)" : "var(--text3)" }}>
+        <div
+          style={{
+            display: "flex",
+            borderBottom: "1px solid var(--border)",
+            marginTop: 12,
+          }}
+        >
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                background: "none",
+                border: "none",
+                borderBottom:
+                  tab === t.id
+                    ? "2px solid var(--sage)"
+                    : "2px solid transparent",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: tab === t.id ? 700 : 400,
+                color: tab === t.id ? "var(--sage-dark)" : "var(--text3)",
+              }}
+            >
               {t.label}
             </button>
           ))}
@@ -3535,37 +7553,119 @@ function CommunityPageContent() {
 
       <div style={{ padding: "16px 16px 0" }}>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>
-
+          <div
+            style={{ display: "flex", justifyContent: "center", padding: 40 }}
+          >
+            <Loader2
+              size={24}
+              style={{ color: "var(--sage)" }}
+              className="spin"
+            />
+          </div>
         ) : tab === "partner" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <button onClick={() => router.push("/companions")} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => router.push("/companions")}
+              className="btn-sage"
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
+            >
               <Plus size={16} /> {c("community_partner_invite_button")}
             </button>
 
             {partners.length === 0 ? (
               <>
-                <div className="card" style={{ padding: 18, border: "1px solid rgba(122,157,122,0.22)", background: "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div
+                  className="card"
+                  style={{
+                    padding: 18,
+                    border: "1px solid rgba(122,157,122,0.22)",
+                    background:
+                      "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 16,
+                        background: "var(--sage-light)",
+                        color: "var(--sage-dark)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
                       <Users size={20} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{c("community_partner_cta_title")}</h2>
-                      <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6, marginBottom: 14 }}>{c("community_partner_cta_body")}</p>
-                      <button onClick={() => router.push("/companions")} className="btn-outline">
+                      <h2
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: "var(--text)",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {c("community_partner_cta_title")}
+                      </h2>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--text3)",
+                          lineHeight: 1.6,
+                          marginBottom: 14,
+                        }}
+                      >
+                        {c("community_partner_cta_body")}
+                      </p>
+                      <button
+                        onClick={() => router.push("/companions")}
+                        className="btn-outline"
+                      >
                         {c("community_partner_manage_button")}
                       </button>
                     </div>
                   </div>
                 </div>
-                <div style={{ textAlign: "center", padding: "28px 16px", background: "var(--bg2)", borderRadius: 18, border: "1px dashed var(--border)" }}>
-                  <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{c("community_partner_feed_coming")}</p>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "28px 16px",
+                    background: "var(--bg2)",
+                    borderRadius: 18,
+                    border: "1px dashed var(--border)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--text3)",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {c("community_partner_feed_coming")}
+                  </p>
                 </div>
               </>
             ) : (
               <>
-                <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{c("community_partner_list_hint")}</p>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text3)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {c("community_partner_list_hint")}
+                </p>
                 {partners.map((partner) => {
                   const profile = partner.profile ?? {};
                   const partnerName = profile.name || c("profile_default_name");
@@ -3575,58 +7675,196 @@ function CommunityPageContent() {
                       onClick={() => openPartnerDetail(partner)}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(event) => { if (event.key === "Enter") openPartnerDetail(partner); }}
-                      style={{ width: "100%", padding: 14, borderRadius: 18, border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`, background: partner.hasNewContent ? "rgba(122,157,122,0.08)" : "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, textAlign: "left", cursor: "pointer" }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") openPartnerDetail(partner);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: 14,
+                        borderRadius: 18,
+                        border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`,
+                        background: partner.hasNewContent
+                          ? "rgba(122,157,122,0.08)"
+                          : "var(--bg2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          minWidth: 0,
+                        }}
+                      >
                         <button
-                          onClick={(event) => toggleFavoritePartner(partner, event)}
-                          disabled={partnerFavoriteSavingIds.includes(partner.partner_id)}
+                          onClick={(event) =>
+                            toggleFavoritePartner(partner, event)
+                          }
+                          disabled={partnerFavoriteSavingIds.includes(
+                            partner.partner_id,
+                          )}
                           aria-label={c("community_favorite")}
-                          style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${partner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: partner.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: partner.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: partnerFavoriteSavingIds.includes(partner.partner_id) ? "default" : "pointer", opacity: partnerFavoriteSavingIds.includes(partner.partner_id) ? 0.65 : 1, flexShrink: 0 }}
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 999,
+                            border: `1px solid ${partner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                            background: partner.isFavorite
+                              ? "rgba(232,197,71,0.12)"
+                              : "var(--bg3)",
+                            color: partner.isFavorite
+                              ? "rgba(232,197,71,0.95)"
+                              : "var(--text3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: partnerFavoriteSavingIds.includes(
+                              partner.partner_id,
+                            )
+                              ? "default"
+                              : "pointer",
+                            opacity: partnerFavoriteSavingIds.includes(
+                              partner.partner_id,
+                            )
+                              ? 0.65
+                              : 1,
+                            flexShrink: 0,
+                          }}
                         >
-                          <Star size={16} strokeWidth={1.9} fill={partner.isFavorite ? "currentColor" : "transparent"} />
+                          <Star
+                            size={16}
+                            strokeWidth={1.9}
+                            fill={
+                              partner.isFavorite
+                                ? "currentColor"
+                                : "transparent"
+                            }
+                          />
                         </button>
-                        <Avatar url={profile.avatar_url} name={partnerName} size={42} />
+                        <Avatar
+                          url={profile.avatar_url}
+                          name={partnerName}
+                          size={42}
+                        />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, minWidth: 0, flexWrap: "wrap" }}>
-                            <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{partnerName}</p>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              marginBottom: 3,
+                              minWidth: 0,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 850,
+                                color: "var(--text)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                minWidth: 0,
+                              }}
+                            >
+                              {partnerName}
+                            </p>
                             {partner.hasNewContent && (
-                              <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)", flexShrink: 0 }}>
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 800,
+                                  padding: "2px 7px",
+                                  borderRadius: 10,
+                                  background: "rgba(232,197,71,0.15)",
+                                  color: "rgba(196,149,106,0.95)",
+                                  border: "1px solid rgba(232,197,71,0.28)",
+                                  flexShrink: 0,
+                                }}
+                              >
                                 {c("community_new")}
                               </span>
                             )}
                           </div>
-                          <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_streak", lang, { n: profile.streak_days ?? 0 })}</p>
+                          <p style={{ fontSize: 11, color: "var(--text3)" }}>
+                            {t("profile_streak", lang, {
+                              n: profile.streak_days ?? 0,
+                            })}
+                          </p>
                         </div>
                       </div>
-                      <ChevronRight size={18} style={{ color: "var(--text3)", flexShrink: 0 }} />
+                      <ChevronRight
+                        size={18}
+                        style={{ color: "var(--text3)", flexShrink: 0 }}
+                      />
                     </div>
                   );
                 })}
-                <button onClick={() => router.push("/companions")} className="btn-outline">
+                <button
+                  onClick={() => router.push("/companions")}
+                  className="btn-outline"
+                >
                   {c("community_partner_manage_button")}
                 </button>
               </>
             )}
           </div>
-
         ) : tab === "all" ? (
           <>
-            <div style={{ display: "flex", marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
-              {([
+            <div
+              style={{
+                display: "flex",
+                marginBottom: 16,
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              {[
                 { key: "qt" as const, label: c("community_group_tab_qt") },
-                { key: "praying" as const, label: c("community_prayer_tab_praying") },
-                { key: "answered" as const, label: c("community_prayer_tab_answered") },
-              ]).map(({ key, label }) => {
+                {
+                  key: "praying" as const,
+                  label: c("community_prayer_tab_praying"),
+                },
+                {
+                  key: "answered" as const,
+                  label: c("community_prayer_tab_answered"),
+                },
+              ].map(({ key, label }) => {
                 const active = allTab === key;
                 return (
                   <button
                     key={key}
                     onClick={() => selectAllSection(key)}
-                    style={{ flex: 1, padding: "8px 0 10px", background: "none", border: "none", borderBottom: active ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0 10px",
+                      background: "none",
+                      border: "none",
+                      borderBottom: active
+                        ? "2px solid var(--sage)"
+                        : "2px solid transparent",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
                   >
-                    <span style={{ fontSize: 13, fontWeight: active ? 700 : 400, color: active ? "var(--sage-dark)" : "var(--text3)" }}>{label}</span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 400,
+                        color: active ? "var(--sage-dark)" : "var(--text3)",
+                      }}
+                    >
+                      {label}
+                    </span>
                     <SectionUnreadDot show={!active && hasAllSectionNew(key)} />
                   </button>
                 );
@@ -3635,29 +7873,142 @@ function CommunityPageContent() {
 
             {allTab === "qt" ? (
               <>
-                <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>{c("community_qt_shared_sub")}</p>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text3)",
+                    marginBottom: 12,
+                  }}
+                >
+                  {c("community_qt_shared_sub")}
+                </p>
                 {qtShares.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "48px 0" }}>
-                    <BookOpen size={30} style={{ color: "var(--text3)", marginBottom: 10 }} />
-                    <p style={{ color: "var(--text3)", fontSize: 14 }}>{c("community_no_shared_qts")}</p>
+                    <BookOpen
+                      size={30}
+                      style={{ color: "var(--text3)", marginBottom: 10 }}
+                    />
+                    <p style={{ color: "var(--text3)", fontSize: 14 }}>
+                      {c("community_no_shared_qts")}
+                    </p>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {visibleAllQts.map(r => (
-                      <div key={r.id} className="card" style={{ cursor: "pointer", position: "relative" }} onClick={() => openQtDetail(r)}>
-                        {!r.photo_path && <ChevronRight size={18} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text3)", opacity: 0.65, pointerEvents: "none" }} />}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <AuthorIdentity profile={r.profiles} authorId={r.user_id} />
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 10, color: "var(--text3)" }}>{parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    {visibleAllQts.map((r) => (
+                      <div
+                        key={r.id}
+                        className="card"
+                        style={{ cursor: "pointer", position: "relative" }}
+                        onClick={() => openQtDetail(r)}
+                      >
+                        {!r.photo_path && (
+                          <ChevronRight
+                            size={18}
+                            style={{
+                              position: "absolute",
+                              right: 14,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              color: "var(--text3)",
+                              opacity: 0.65,
+                              pointerEvents: "none",
+                            }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <AuthorIdentity
+                            profile={r.profiles}
+                            authorId={r.user_id}
+                          />
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <span
+                              style={{ fontSize: 10, color: "var(--text3)" }}
+                            >
+                              {parseLocalDateString(r.date).toLocaleDateString(
+                                getDateLocale(lang),
+                                { month: "short", day: "numeric" },
+                              )}
+                            </span>
                             <CardMenu kind="qt" item={r} scope="all" />
                           </div>
                         </div>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--terra)", marginBottom: 4, paddingRight: 34 }}>{r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (c("community_free_meditation"))}</p>
-                        {r.key_verse && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10, paddingRight: 34 }}>"{r.key_verse.slice(0, 60)}{r.key_verse.length > 60 ? "..." : ""}"</p>}
-                        {r.photo_path && qtPhotoUrls[r.id] && <PhotoReflectionImage src={qtPhotoUrls[r.id]} alt="photo reflection" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)", margin: "6px 0 10px" }} />}
-                        {(r.photo_caption || (r.photo_path && r.meditation)) && <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6, marginBottom: 10, paddingRight: 34, whiteSpace: "pre-line" }}>{r.photo_caption || r.meditation}</p>}
-                        <div onClick={e => e.stopPropagation()}>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: "var(--terra)",
+                            marginBottom: 4,
+                            paddingRight: 34,
+                          }}
+                        >
+                          {r.bible_ref
+                            ? translateBibleRef(r.bible_ref, lang)
+                            : c("community_free_meditation")}
+                        </p>
+                        {r.key_verse && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text2)",
+                              lineHeight: 1.6,
+                              fontStyle: "italic",
+                              marginBottom: 10,
+                              paddingRight: 34,
+                            }}
+                          >
+                            "{r.key_verse.slice(0, 60)}
+                            {r.key_verse.length > 60 ? "..." : ""}"
+                          </p>
+                        )}
+                        {r.photo_path && qtPhotoUrls[r.id] && (
+                          <PhotoReflectionImage
+                            src={qtPhotoUrls[r.id]}
+                            alt="photo reflection"
+                            style={{
+                              width: "100%",
+                              maxHeight: 220,
+                              objectFit: "cover",
+                              borderRadius: 14,
+                              border: "1px solid var(--border)",
+                              margin: "6px 0 10px",
+                            }}
+                          />
+                        )}
+                        {(r.photo_caption ||
+                          (r.photo_path && r.meditation)) && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text2)",
+                              lineHeight: 1.6,
+                              marginBottom: 10,
+                              paddingRight: 34,
+                              whiteSpace: "pre-line",
+                            }}
+                          >
+                            {r.photo_caption || r.meditation}
+                          </p>
+                        )}
+                        <div onClick={(e) => e.stopPropagation()}>
                           <ReactionButtons qtId={r.id} onReact={reactToQT} />
                         </div>
                       </div>
@@ -3665,29 +8016,104 @@ function CommunityPageContent() {
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
-                {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
+                {detailQt && (
+                  <QTDetailModal r={detailQt} onClose={closeQtDetail} />
+                )}
               </>
             ) : allTab === "praying" ? (
               prayers.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0" }}>
-                  <HandHeart size={30} style={{ color: "var(--text3)", marginBottom: 10 }} />
-                  <p style={{ color: "var(--text3)", fontSize: 14 }}>{c("community_no_prayers")}</p>
+                  <HandHeart
+                    size={30}
+                    style={{ color: "var(--text3)", marginBottom: 10 }}
+                  />
+                  <p style={{ color: "var(--text3)", fontSize: 14 }}>
+                    {c("community_no_prayers")}
+                  </p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {visibleAllPrayers.map(p => (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
+                  {visibleAllPrayers.map((p) => (
                     <div key={p.id} className="card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 10, color: "var(--text3)" }}>{new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
-                          {!p.is_answered && <CardMenu kind="prayer" item={p} scope="all" />}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <AuthorIdentity
+                          profile={p.profiles}
+                          authorId={p.user_id}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                            {new Date(p.created_at).toLocaleDateString(
+                              getDateLocale(lang),
+                              { month: "short", day: "numeric" },
+                            )}
+                          </span>
+                          {!p.is_answered && (
+                            <CardMenu kind="prayer" item={p} scope="all" />
+                          )}
                         </div>
                       </div>
-                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)", marginBottom: 12, whiteSpace: "pre-line" }}>{p.content}</p>
-                      <button onClick={() => prayTogether(p.id)} disabled={prayedIds.includes(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 12, border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`, background: prayedIds.includes(p.id) ? "var(--sage-light)" : "var(--bg2)", cursor: prayedIds.includes(p.id) ? "default" : "pointer" }}>
-                        <span style={{ fontSize: 14 }}>{prayedIds.includes(p.id) ? <CheckCircle2 size={14} /> : <HandHeart size={14} />}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: prayedIds.includes(p.id) ? "var(--sage-dark)" : "var(--text2)" }}>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          lineHeight: 1.6,
+                          color: "var(--text)",
+                          marginBottom: 12,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {p.content}
+                      </p>
+                      <button
+                        onClick={() => prayTogether(p.id)}
+                        disabled={prayedIds.includes(p.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: 12,
+                          border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`,
+                          background: prayedIds.includes(p.id)
+                            ? "var(--sage-light)"
+                            : "var(--bg2)",
+                          cursor: prayedIds.includes(p.id)
+                            ? "default"
+                            : "pointer",
+                        }}
+                      >
+                        <span style={{ fontSize: 14 }}>
+                          {prayedIds.includes(p.id) ? (
+                            <CheckCircle2 size={14} />
+                          ) : (
+                            <HandHeart size={14} />
+                          )}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: prayedIds.includes(p.id)
+                              ? "var(--sage-dark)"
+                              : "var(--text2)",
+                          }}
+                        >
                           {prayerActionText(p, prayedIds.includes(p.id))}
                         </span>
                       </button>
@@ -3696,91 +8122,289 @@ function CommunityPageContent() {
                   {renderFeedLoadMore(allPrayingFeedKey, prayers.length)}
                 </div>
               )
+            ) : answeredPrayers.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <p style={{ fontSize: 32, marginBottom: 10 }}>✨</p>
+                <p style={{ color: "var(--text3)", fontSize: 14 }}>
+                  {c("community_no_answered_prayers")}
+                </p>
+                <p
+                  style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}
+                >
+                  {c("community_no_answered_sub")}
+                </p>
+              </div>
             ) : (
-              answeredPrayers.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "48px 0" }}>
-                  <p style={{ fontSize: 32, marginBottom: 10 }}>✨</p>
-                  <p style={{ color: "var(--text3)", fontSize: 14 }}>{c("community_no_answered_prayers")}</p>
-                  <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>{c("community_no_answered_sub")}</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {visibleAllAnsweredPrayers.map(p => (
-                    <div key={p.id} className="card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                            {p.answered_at ? new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" }) : ""}
-                          </span>
-                        </div>
-                      </div>
-                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text2)", marginBottom: 8, whiteSpace: "pre-line", textDecoration: "line-through", opacity: 0.7 }}>{p.content}</p>
-                      {p.testimony && (
-                        <div style={{ background: "rgba(232,197,71,0.08)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 8 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(232,197,71,0.9)", marginBottom: 4 }}>{c("community_prayer_testimony")}</p>
-                          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{c("community_answered")}</span>
-                          {(p.prayer_count ?? 0) > 0 && (
-                            <span style={{ fontSize: 11, color: "var(--text3)" }}>{answeredPrayerCountText(p.prayer_count ?? 0)}</span>
-                          )}
-                        </div>
-                        <PrayerLikeButton prayer={p} />
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {visibleAllAnsweredPrayers.map((p) => (
+                  <div key={p.id} className="card">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <AuthorIdentity
+                        profile={p.profiles}
+                        authorId={p.user_id}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                          {p.answered_at
+                            ? new Date(p.answered_at).toLocaleDateString(
+                                getDateLocale(lang),
+                                { month: "short", day: "numeric" },
+                              )
+                            : ""}
+                        </span>
                       </div>
                     </div>
-                  ))}
-                  {renderFeedLoadMore(allAnsweredFeedKey, answeredPrayers.length)}
-                </div>
-              )
+                    <p
+                      style={{
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        color: "var(--text2)",
+                        marginBottom: 8,
+                        whiteSpace: "pre-line",
+                        textDecoration: "line-through",
+                        opacity: 0.7,
+                      }}
+                    >
+                      {p.content}
+                    </p>
+                    {p.testimony && (
+                      <div
+                        style={{
+                          background: "rgba(232,197,71,0.08)",
+                          borderRadius: 12,
+                          padding: "10px 14px",
+                          border: "1px solid rgba(232,197,71,0.25)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "rgba(232,197,71,0.9)",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {c("community_prayer_testimony")}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text)",
+                            lineHeight: 1.6,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          "{p.testimony}"
+                        </p>
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "var(--sage-dark)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {c("community_answered")}
+                        </span>
+                        {(p.prayer_count ?? 0) > 0 && (
+                          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                            {answeredPrayerCountText(p.prayer_count ?? 0)}
+                          </span>
+                        )}
+                      </div>
+                      <PrayerLikeButton prayer={p} />
+                    </div>
+                  </div>
+                ))}
+                {renderFeedLoadMore(allAnsweredFeedKey, answeredPrayers.length)}
+              </div>
             )}
           </>
-
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => setShowGroupForm(true)} className="btn-sage" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setShowGroupForm(true)}
+              className="btn-sage"
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
+            >
               <Plus size={16} /> {c("community_create_group")}
             </button>
             {groups.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <p style={{ fontSize: 32, marginBottom: 10 }}>👥</p>
-                <p style={{ color: "var(--text3)", fontSize: 14 }}>{c("community_no_groups")}</p>
+                <p style={{ color: "var(--text3)", fontSize: 14 }}>
+                  {c("community_no_groups")}
+                </p>
               </div>
             ) : (
-              groups.map(g => (
-                <div key={g.id} onClick={() => loadGroupDetail(g)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") loadGroupDetail(g); }} style={{ width: "100%", textAlign: "left", background: (g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.08)" : "var(--bg2)", border: `1px solid ${(g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.35)" : "var(--border)"}`, borderRadius: 16, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+              groups.map((g) => (
+                <div
+                  key={g.id}
+                  onClick={() => loadGroupDetail(g)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") loadGroupDetail(g);
+                  }}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    background:
+                      (g.hasNewContent ?? g.hasNewQt)
+                        ? "rgba(122,157,122,0.08)"
+                        : "var(--bg2)",
+                    border: `1px solid ${(g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.35)" : "var(--border)"}`,
+                    borderRadius: 16,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
                   {g.isMember && (
                     <button
                       onClick={(e) => toggleFavoriteGroup(g, e)}
                       disabled={favoriteSavingIds.includes(g.id)}
                       aria-label={c("community_favorite")}
-                      style={{ width: 30, height: 30, borderRadius: 999, border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`, background: g.isFavorite ? "rgba(232,197,71,0.12)" : "var(--bg3)", color: g.isFavorite ? "rgba(232,197,71,0.95)" : "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: favoriteSavingIds.includes(g.id) ? "default" : "pointer", opacity: favoriteSavingIds.includes(g.id) ? 0.65 : 1, flexShrink: 0 }}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 999,
+                        border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                        background: g.isFavorite
+                          ? "rgba(232,197,71,0.12)"
+                          : "var(--bg3)",
+                        color: g.isFavorite
+                          ? "rgba(232,197,71,0.95)"
+                          : "var(--text3)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: favoriteSavingIds.includes(g.id)
+                          ? "default"
+                          : "pointer",
+                        opacity: favoriteSavingIds.includes(g.id) ? 0.65 : 1,
+                        flexShrink: 0,
+                      }}
                     >
-                      <Star size={16} strokeWidth={1.9} fill={g.isFavorite ? "currentColor" : "transparent"} />
+                      <Star
+                        size={16}
+                        strokeWidth={1.9}
+                        fill={g.isFavorite ? "currentColor" : "transparent"}
+                      />
                     </button>
                   )}
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{g.name}</span>
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: g.is_public ? "var(--sage-light)" : "var(--bg3)", color: g.is_public ? "var(--sage-dark)" : "var(--text3)", border: `1px solid ${g.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}` }}>
-                        {g.is_public ? (c("community_public")) : (c("community_private"))}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 4,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "var(--text)",
+                        }}
+                      >
+                        {g.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: "2px 7px",
+                          borderRadius: 10,
+                          background: g.is_public
+                            ? "var(--sage-light)"
+                            : "var(--bg3)",
+                          color: g.is_public
+                            ? "var(--sage-dark)"
+                            : "var(--text3)",
+                          border: `1px solid ${g.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}`,
+                        }}
+                      >
+                        {g.is_public
+                          ? c("community_public")
+                          : c("community_private")}
                       </span>
                       {(g.hasNewContent ?? g.hasNewQt) && (
-                        <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 10, background: "rgba(232,197,71,0.15)", color: "rgba(196,149,106,0.95)", border: "1px solid rgba(232,197,71,0.28)" }}>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 800,
+                            padding: "2px 7px",
+                            borderRadius: 10,
+                            background: "rgba(232,197,71,0.15)",
+                            color: "rgba(196,149,106,0.95)",
+                            border: "1px solid rgba(232,197,71,0.28)",
+                          }}
+                        >
                           {c("community_new")}
                         </span>
                       )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 3 }}
+                    >
                       <Users size={11} style={{ color: "var(--text3)" }} />
-                      <span style={{ fontSize: 11, color: "var(--text3)" }}>{g.member_count}</span>
-                      {g.isMember && <span style={{ fontSize: 10, color: "var(--sage-dark)", fontWeight: 600, marginLeft: 6 }}>✓ {c("community_member")}</span>}
+                      <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                        {g.member_count}
+                      </span>
+                      {g.isMember && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "var(--sage-dark)",
+                            fontWeight: 600,
+                            marginLeft: 6,
+                          }}
+                        >
+                          ✓ {c("community_member")}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
+                  <ChevronRight
+                    size={16}
+                    style={{ color: "var(--text3)", flexShrink: 0 }}
+                  />
                 </div>
               ))
             )}
@@ -3791,37 +8415,184 @@ function CommunityPageContent() {
       {renderSharedOverlayModals()}
 
       {showGroupForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{c("community_create_group")}</h2>
-              <button onClick={() => setShowGroupForm(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 20px",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--bg2)",
+              width: "100%",
+              maxWidth: 390,
+              borderRadius: 24,
+              padding: 24,
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h2
+                style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}
+              >
+                {c("community_create_group")}
+              </h2>
+              <button
+                onClick={() => setShowGroupForm(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text3)",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={20} />
+              </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("community_group_name_label")}</label>
-                <input type="text" className="input-field" placeholder={c("community_group_name_placeholder")} value={groupName} onChange={e => setGroupName(e.target.value)} />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("community_group_name_label")}
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder={c("community_group_name_placeholder")}
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{c("community_group_desc_label")}</label>
-                <textarea className="textarea-field" rows={2} placeholder={c("community_group_desc_placeholder")} value={groupDesc} onChange={e => setGroupDesc(e.target.value)} />
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c("community_group_desc_label")}
+                </label>
+                <textarea
+                  className="textarea-field"
+                  rows={2}
+                  placeholder={c("community_group_desc_placeholder")}
+                  value={groupDesc}
+                  onChange={(e) => setGroupDesc(e.target.value)}
+                />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{c("community_visibility")}</label>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text3)",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  {c("community_visibility")}
+                </label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {[{ v: true, emoji: "🌍", label: c("community_public"), sub: c("community_public_sub") }, { v: false, emoji: "🔒", label: c("community_private"), sub: c("community_private_sub") }].map(opt => (
-                    <button key={String(opt.v)} onClick={() => setIsPublic(opt.v)} style={{ flex: 1, padding: "10px 8px", borderRadius: 12, border: `1px solid ${isPublic === opt.v ? "var(--sage)" : "var(--border)"}`, background: isPublic === opt.v ? "var(--sage-light)" : "var(--bg3)", cursor: "pointer", textAlign: "center" }}>
-                      <div style={{ fontSize: 16, marginBottom: 3 }}>{opt.emoji}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: isPublic === opt.v ? "var(--sage-dark)" : "var(--text)" }}>{opt.label}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>{opt.sub}</div>
+                  {[
+                    {
+                      v: true,
+                      emoji: "🌍",
+                      label: c("community_public"),
+                      sub: c("community_public_sub"),
+                    },
+                    {
+                      v: false,
+                      emoji: "🔒",
+                      label: c("community_private"),
+                      sub: c("community_private_sub"),
+                    },
+                  ].map((opt) => (
+                    <button
+                      key={String(opt.v)}
+                      onClick={() => setIsPublic(opt.v)}
+                      style={{
+                        flex: 1,
+                        padding: "10px 8px",
+                        borderRadius: 12,
+                        border: `1px solid ${isPublic === opt.v ? "var(--sage)" : "var(--border)"}`,
+                        background:
+                          isPublic === opt.v
+                            ? "var(--sage-light)"
+                            : "var(--bg3)",
+                        cursor: "pointer",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: 16, marginBottom: 3 }}>
+                        {opt.emoji}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color:
+                            isPublic === opt.v
+                              ? "var(--sage-dark)"
+                              : "var(--text)",
+                        }}
+                      >
+                        {opt.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "var(--text3)",
+                          marginTop: 2,
+                        }}
+                      >
+                        {opt.sub}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button className="btn-outline" onClick={() => setShowGroupForm(false)} style={{ flex: 1 }}>{c("community_cancel")}</button>
-                <button className="btn-sage" onClick={createGroup} disabled={savingGroup || !groupName.trim()} style={{ flex: 1 }}>
-                  {savingGroup ? <Loader2 size={16} className="spin" /> : (c("community_create"))}
+                <button
+                  className="btn-outline"
+                  onClick={() => setShowGroupForm(false)}
+                  style={{ flex: 1 }}
+                >
+                  {c("community_cancel")}
+                </button>
+                <button
+                  className="btn-sage"
+                  onClick={createGroup}
+                  disabled={savingGroup || !groupName.trim()}
+                  style={{ flex: 1 }}
+                >
+                  {savingGroup ? (
+                    <Loader2 size={16} className="spin" />
+                  ) : (
+                    c("community_create")
+                  )}
                 </button>
               </div>
             </div>
