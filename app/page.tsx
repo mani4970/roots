@@ -14,6 +14,7 @@ import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
+import LoveHeartIntroPopup from "@/components/LoveHeartIntroPopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
@@ -57,6 +58,7 @@ const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
+const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
 const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -84,6 +86,10 @@ function getGroupChallengeAnnouncementKey(userId: string) {
 
 function getNotificationIntroCampaignBaseKey(userId: string) {
   return `${NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX}${userId}`;
+}
+
+function getLoveHeartsIntroSeenKey(userId: string) {
+  return `${LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX}${userId}`;
 }
 
 function getNotificationIntroCampaignKeys(userId: string) {
@@ -393,6 +399,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showGroupChallengeAnnouncement, setShowGroupChallengeAnnouncement] = useState(false);
+  const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
@@ -663,10 +670,69 @@ export default function HomePage() {
   ]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showGroupChallengeAnnouncement || showNotificationIntroAnnouncement) return;
+    if (loading || !profile?.id || showGroupChallengeAnnouncement || showLoveHeartIntroAnnouncement) return;
+    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
+    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
+    if (
+      showFirstLangPicker ||
+      showOnboarding ||
+      showWelcomeBack ||
+      celebration.show ||
+      !!badgePopup ||
+      gardenPopup.show ||
+      showRootsManPopup ||
+      !!rewardMapNotice ||
+      showNotificationSettingsModal ||
+      showHomeQTChoice ||
+      showHomeSundayQT ||
+      showHomeQTPassageChoice ||
+      showHomeQTPhotoPassageChoice ||
+      showHomePrayerCompose ||
+      showHomePrayerSharePrompt
+    ) {
+      return;
+    }
+
+    const today = getLocalDateString();
+    const hasPendingReflectionReward =
+      progressUpdateInFlightRef.current ||
+      pendingRootsManRef.current ||
+      !!pendingRewardMapNoticeRef.current ||
+      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
+      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
+
+    if (hasPendingReflectionReward) return;
+    if (storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
+
+    setShowLoveHeartIntroAnnouncement(true);
+  }, [
+    loading,
+    profile?.id,
+    showGroupChallengeAnnouncement,
+    showLoveHeartIntroAnnouncement,
+    showFirstLangPicker,
+    showOnboarding,
+    showWelcomeBack,
+    celebration.show,
+    badgePopup,
+    gardenPopup.show,
+    showRootsManPopup,
+    rewardMapNotice,
+    showNotificationSettingsModal,
+    showHomeQTChoice,
+    showHomeSundayQT,
+    showHomeQTPassageChoice,
+    showHomeQTPhotoPassageChoice,
+    showHomePrayerCompose,
+    showHomePrayerSharePrompt,
+  ]);
+
+  useEffect(() => {
+    if (loading || !profile?.id || showGroupChallengeAnnouncement || showLoveHeartIntroAnnouncement || showNotificationIntroAnnouncement) return;
     if (!isNativeAppRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
+    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
@@ -721,6 +787,7 @@ export default function HomePage() {
     loading,
     profile?.id,
     showGroupChallengeAnnouncement,
+    showLoveHeartIntroAnnouncement,
     showNotificationIntroAnnouncement,
     showFirstLangPicker,
     showOnboarding,
@@ -899,6 +966,13 @@ export default function HomePage() {
       storageSet(getGroupChallengeAnnouncementKey(profile.id), "true");
     }
     setShowGroupChallengeAnnouncement(false);
+  }
+
+  function closeLoveHeartIntroAnnouncement() {
+    if (profile?.id) {
+      storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
+    }
+    setShowLoveHeartIntroAnnouncement(false);
   }
 
   async function closeNotificationIntroAnnouncement(action: "openStore" | "later" | "dismissForever") {
@@ -1558,6 +1632,10 @@ export default function HomePage() {
 
       {showGroupChallengeAnnouncement && (
         <GroupChallengeAnnouncementPopup onClose={closeGroupChallengeAnnouncement} />
+      )}
+
+      {showLoveHeartIntroAnnouncement && (
+        <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
       )}
 
       {showNotificationIntroAnnouncement && (
