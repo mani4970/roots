@@ -467,6 +467,15 @@ function CommunityPageContent() {
     }
   }
 
+  function renderLoveHeartToast() {
+    if (!loveHeartToast) return null;
+    return (
+      <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid rgba(232,197,71,0.36)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 800, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {loveHeartToast}
+      </div>
+    );
+  }
+
   useEffect(() => {
     return () => {
       if (loveHeartToastTimerRef.current) window.clearTimeout(loveHeartToastTimerRef.current);
@@ -2907,6 +2916,7 @@ function CommunityPageContent() {
 
     return (
       <div className="page">
+        {renderLoveHeartToast()}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
           <button onClick={closePartnerDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -3078,6 +3088,7 @@ function CommunityPageContent() {
     const visibleGroupPrayers = visibleFeedItems(groupPrayerFeedKey, groupPrayersForCurrentTab);
     return (
       <div className="page">
+        {renderLoveHeartToast()}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 8px" }}>
           <button onClick={closeGroupDetail} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
             <ArrowLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -3484,11 +3495,7 @@ function CommunityPageContent() {
 
   return (
     <div className="page">
-      {loveHeartToast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid rgba(232,197,71,0.36)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 800, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {loveHeartToast}
-        </div>
-      )}
+      {renderLoveHeartToast()}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
