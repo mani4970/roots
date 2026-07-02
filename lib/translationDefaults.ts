@@ -2,7 +2,7 @@ import type { Lang } from "@/lib/i18n";
 
 export const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
   ko: 92, // 개역개정
-  de: 97, // Hoffnung für Alle
+  de: 29, // Luther
   en: 80, // NIV
   fr: 26, // Louis Segond
 };

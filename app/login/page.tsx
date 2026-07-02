@@ -57,7 +57,7 @@ export default function LoginPage() {
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
     // preferred_translation도 갱신
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 29, en: 80, fr: 26 };
     const trId = defaultTr[lang] ?? 92;
     storageSet("roots_default_translation", String(trId));
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,7 +78,7 @@ export default function LoginPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 29, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());

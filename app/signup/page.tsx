@@ -52,7 +52,7 @@ export default function SignupPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const d: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
+    const d: Record<Lang, number> = { ko: 92, de: 29, en: 80, fr: 26 };
     storageSet("roots_default_translation", String(d[lang] ?? 92));
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
@@ -79,7 +79,7 @@ export default function SignupPage() {
     // 언어 설정도 함께 저장
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 26 };
+    const defaultTr: Record<Lang, number> = { ko: 92, de: 29, en: 80, fr: 26 };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
