@@ -66,6 +66,38 @@ After running 54:
   - `authenticated`: true
   - `service_role`: true
 
+
+
+## Batch 7 executed result
+
+Status: completed successfully on 2026-07-02 based on user-provided Supabase SQL Editor outputs.
+
+Observed result:
+
+```text
+C: cleanup execution succeeded
+D: recipient table admin-like grants postcheck returned success / zero rows
+E: claim_group_challenge_award(uuid) execute postcheck:
+   anon = false
+   authenticated = true
+   service_role = true
+```
+
+Conclusion:
+
+```text
+Batch 7 achieved its intended scope.
+Do not continue into default privileges or visibility-helper cleanup in the same pass.
+```
+
+Next Supabase action:
+
+```text
+Stop here for post-1.8 cleanup.
+Keep 42 default privileges and 48 visibility-helper areas deferred for separate planning.
+Continue applying explicit GRANT/RLS/policy rules to every future public table migration.
+```
+
 ## Regression checks after running 54
 
 Recommended app checks:
