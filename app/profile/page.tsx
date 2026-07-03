@@ -671,6 +671,27 @@ export default function ProfilePage() {
     setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned });
   }
 
+  function openSpiritFruitBadgeDetail(b: SpiritFruitBadge, index: number) {
+    const earned = profile?.[b.key] ?? false;
+    const fruitName = t(b.descKey, lang);
+    const targetDay = (index + 1) * 100;
+    const lockedDesc =
+      lang === "ko"
+        ? `${targetDay}일 말씀동행을 채우면 ${fruitName}의 열매를 받을 수 있어요.`
+        : lang === "de"
+          ? `Nach ${targetDay} Tagen im Wortweg können Sie die Frucht ${fruitName} erhalten.`
+          : lang === "fr"
+            ? `Après ${targetDay} jours de chemin avec la Parole, vous pourrez recevoir le fruit ${fruitName}.`
+            : `Complete ${targetDay} Word-walk days to receive the fruit of ${fruitName}.`;
+
+    setSelectedBadge({
+      img: getSpiritFruitBadgeImg(b.name),
+      title: fruitName,
+      desc: earned ? t("garden_badge_100days", lang, { n: targetDay, fruit: fruitName }) : lockedDesc,
+      earned,
+    });
+  }
+
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1061,20 +1082,23 @@ export default function ProfilePage() {
             style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
           >›</button>
           <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>
-            {SPIRIT_FRUIT_BADGES.map(b => {
+            {SPIRIT_FRUIT_BADGES.map((b, index) => {
               const earned = profile?.[b.key] ?? false;
+              const fruitName = t(b.descKey, lang);
               return (
-                <div
+                <button
                   key={b.name}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76 }}
+                  onClick={() => openSpiritFruitBadgeDetail(b, index)}
+                  aria-label={fruitName}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 68, height: 68, marginBottom: 6, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={getSpiritFruitBadgeImg(b.name)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <img src={getSpiritFruitBadgeImg(b.name)} alt={fruitName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
-                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{t(b.descKey, lang)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>
                   {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
-                </div>
+                </button>
               );
             })}
           </div>
