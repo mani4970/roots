@@ -10,6 +10,7 @@ import Celebration from "@/components/Celebration";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
+import AvatarChoiceModal from "@/components/AvatarChoiceModal";
 import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
@@ -28,6 +29,7 @@ import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
+import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -59,6 +61,9 @@ const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
+// TEST ONLY for feature/roots-1.8_v2_avatar_customization: keep showing the avatar picker while validating the flow.
+// Before merging this branch to main, set this back to false so a saved choice hides the picker.
+const FORCE_AVATAR_CHOICE_MODAL_FOR_BRANCH_PREVIEW = true;
 const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -401,6 +406,8 @@ export default function HomePage() {
   const [showGroupChallengeAnnouncement, setShowGroupChallengeAnnouncement] = useState(false);
   const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
+  const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
+  const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
@@ -410,6 +417,26 @@ export default function HomePage() {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
   }
+
+  async function saveAvatarChoice(avatarType: RootsAvatarType, markSeen = true) {
+    if (!profile?.id || savingAvatarChoice) return;
+    setSavingAvatarChoice(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_type: avatarType, avatar_choice_seen: markSeen })
+        .eq("id", profile.id);
+      if (error) throw error;
+      setProfile((prev: any) => prev ? { ...prev, avatar_type: avatarType, avatar_choice_seen: markSeen } : prev);
+      setShowAvatarChoiceModal(false);
+    } catch (error) {
+      console.error("캐릭터 선택 저장 실패:", error);
+      showToast(lang === "ko" ? "캐릭터 선택을 저장하지 못했어요." : lang === "de" ? "Die Charakterauswahl konnte nicht gespeichert werden." : lang === "fr" ? "Impossible d’enregistrer le personnage." : "Could not save your character choice.");
+    } finally {
+      setSavingAvatarChoice(false);
+    }
+  }
   const homeDecisionInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasMyDecisions = myDecisions.length > 0;
@@ -417,6 +444,7 @@ export default function HomePage() {
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
+  const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
 
   useEffect(() => { load(); }, []);
 
@@ -444,6 +472,9 @@ export default function HomePage() {
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       setProfile(p);
+      if (FORCE_AVATAR_CHOICE_MODAL_FOR_BRANCH_PREVIEW || (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true)) {
+        setShowAvatarChoiceModal(true);
+      }
       setHomeQTState(prev => ({
         ...prev,
         preferredTranslation: p.preferred_translation || 92,
@@ -1721,11 +1752,20 @@ export default function HomePage() {
         />
       )}
 
-      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
+      <AvatarChoiceModal
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showGroupChallengeAnnouncement && !showLoveHeartIntroAnnouncement && !showNotificationIntroAnnouncement}
+        selectedAvatar={currentAvatarType}
+        saving={savingAvatarChoice}
+        onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
+        onLater={() => void saveAvatarChoice("rootsman")}
+      />
+
+      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup && !showAvatarChoiceModal ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
 
       <RootsManPopup
-        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
+        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showAvatarChoiceModal}
         streakDays={rewardMapDisplayDays}
+        avatarType={currentAvatarType}
         onGoGarden={() => {
           setShowRootsMan(true);
           setShowRootsManPopup(false);
@@ -1819,6 +1859,7 @@ export default function HomePage() {
           showRootsMan={showRootsMan}
           ownerName={profile?.name ?? t("profile_default_name", lang)}
           onActiveCycleChange={(cycle: RewardMapCycle) => setActiveRewardMapKind(cycle.kind)}
+          avatarType={currentAvatarType}
         />
       </div>
 

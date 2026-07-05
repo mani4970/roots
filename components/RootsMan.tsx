@@ -1,19 +1,41 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
-// rootsman_transparent.webp: 1536x2776, 3x3 grid = 9 frames
-// Row 0 (top):    enter frames (right to left)
-// Row 1 (middle): watering frames
-// Row 2 (bottom): exit frames (left to right)
-const SHEET_W = 1536;
-const SHEET_H = 2776;
-const COLS = 3;
-const ROWS = 3;
-const FRAME_W = SHEET_W / COLS; // 512
-const FRAME_H = SHEET_H / ROWS; // ~925
-const RENDER_W = 60;
-const SCALE = RENDER_W / FRAME_W;
-const RENDER_H = Math.round(FRAME_H * SCALE);
+// The preview/production watering animation renders individual transparent frame images.
+// Walk frames are normalized to a fixed foot baseline and center point, so the wrapper
+// controls the travel motion while the frame cycle only shows the walking pose.
+const WALK_FRAME_W = 362;
+const WALK_FRAME_H = 724;
+const WATER_FRAME_W = 682;
+const WATER_FRAME_H = 682;
+
+const WALK_RENDER_W: Record<RootsAvatarType, number> = {
+  rootsman: 65,
+  rootswoman: 72,
+};
+
+const WATER_RENDER_W: Record<RootsAvatarType, number> = {
+  rootsman: 124,
+  rootswoman: 113,
+};
+
+const WATER_BOTTOM_OFFSET: Record<RootsAvatarType, number> = {
+  rootsman: 1,
+  rootswoman: 19,
+};
+
+// The wider watering frame contains the stream on the left. These offsets keep the body
+// anchored while the water pose changes. Values are source pixels.
+const WATER_FRAME_OFFSET_X: Record<RootsAvatarType, number[]> = {
+  rootsman: [0, -31, 0],
+  rootswoman: [0, 8, 40],
+};
+
+const WATER_FRAME_OFFSET_Y: Record<RootsAvatarType, number[]> = {
+  rootsman: [0, 0, 0],
+  rootswoman: [0, 0, 0],
+};
 
 const ENTER_START_X = 112;
 const WATER_X = 62;
@@ -21,50 +43,71 @@ const EXIT_END_X = 116;
 const WALK_STEP = 1.15;
 const WALK_INTERVAL = 45;
 const FRAME_TICK = 3;
+const WATER_INTERVAL = 280;
+const WATER_CYCLES = 18;
+const WALK_SETTLE_FRAME = 3;
 
-// 각 행을 독립적으로 사용 — 행 간 점프 없음
-const ENTER_FRAMES = [0, 1, 2]; // Row 0 only — sprite already enters right to left
-const WATER_FRAMES = [3, 4, 5]; // Row 1 only
-const EXIT_FRAMES = [6, 7, 8];  // Row 2 only
-
-function getFramePos(frameIdx: number) {
-  const col = frameIdx % COLS;
-  const row = Math.floor(frameIdx / COLS);
-  return { col, row };
-}
+const ENTER_FRAMES = [0, 1, 2, 3, 4, 5];
+const WATER_FRAMES = [0, 1, 2];
+const EXIT_FRAMES = ENTER_FRAMES;
 
 type Phase = "idle" | "enter" | "water" | "exit" | "done";
 
 interface RootsManProps {
   trigger: boolean;
+  avatarType?: RootsAvatarType | null;
+  startDelayMs?: number;
 }
 
-export default function RootsMan({ trigger }: RootsManProps) {
+function getFrameSrc(avatarType: RootsAvatarType, kind: "walk" | "water", frame: number) {
+  return `/images/reward-maps/garden/sprites/frames/${avatarType}/${kind}_${frame}.webp`;
+}
+
+function getAvatarFrameSources(avatarType: RootsAvatarType) {
+  return [
+    ...ENTER_FRAMES.map(frame => getFrameSrc(avatarType, "walk", frame)),
+    ...WATER_FRAMES.map(frame => getFrameSrc(avatarType, "water", frame)),
+  ];
+}
+
+export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: RootsManProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [frame, setFrame] = useState(1);
   const [posX, setPosX] = useState(ENTER_START_X);
   const [flipX, setFlipX] = useState(false);
-  const [opacity, setOpacity] = useState(1);
+  const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const hasRun = useRef(false);
 
   useEffect(() => {
-    if (trigger && !hasRun.current) {
-      hasRun.current = true;
-      scheduleTimeout(() => startAnimation(), 1200);
-    }
+    // Preload individual frames so walking does not pause the first time a frame is shown.
+    getAvatarFrameSources(normalizedAvatarType).forEach(src => {
+      const image = new Image();
+      image.src = src;
+    });
+  }, [normalizedAvatarType]);
+
+  useEffect(() => {
+    clearTimers();
+    clearInv();
+
     if (!trigger) {
-      hasRun.current = false;
-      clearTimers();
-      clearInv();
       setPhase("idle");
+      return () => {
+        clearTimers();
+        clearInv();
+      };
     }
+
+    // React Strict Mode mounts, cleans up, and mounts again in development.
+    // Do not guard this with a hasRun ref, or the first cleanup can cancel the only timer.
+    scheduleTimeout(() => startAnimation(), startDelayMs);
+
     return () => {
       clearTimers();
       clearInv();
     };
-  }, [trigger]);
+  }, [trigger, startDelayMs, normalizedAvatarType]);
 
   function clearInv() {
     if (intervalRef.current) {
@@ -89,7 +132,6 @@ export default function RootsMan({ trigger }: RootsManProps) {
   function startAnimation() {
     setPhase("enter");
     setFlipX(false);
-    setOpacity(1);
     setPosX(ENTER_START_X);
     setFrame(ENTER_FRAMES[0]);
 
@@ -105,7 +147,11 @@ export default function RootsMan({ trigger }: RootsManProps) {
       setFrame(ENTER_FRAMES[wf]);
       if (x <= WATER_X) {
         clearInv();
-        scheduleTimeout(() => startWatering(), 200);
+        setPosX(WATER_X);
+        // Settle on a neutral walk frame before switching to the watering art.
+        // This makes the enter -> water transition feel less abrupt.
+        setFrame(WALK_SETTLE_FRAME);
+        scheduleTimeout(() => startWatering(), 60);
       }
     }, WALK_INTERVAL);
   }
@@ -113,6 +159,8 @@ export default function RootsMan({ trigger }: RootsManProps) {
   function startWatering() {
     setPhase("water");
     setFlipX(false);
+    setPosX(WATER_X);
+    setFrame(WATER_FRAMES[0]);
     let wf = 0;
     let count = 0;
     clearInv();
@@ -120,18 +168,21 @@ export default function RootsMan({ trigger }: RootsManProps) {
       wf = (wf + 1) % WATER_FRAMES.length;
       count++;
       setFrame(WATER_FRAMES[wf]);
-      if (count >= 18) {
+      if (count >= WATER_CYCLES) {
         clearInv();
-        scheduleTimeout(() => startExit(), 800);
+        setFrame(WATER_FRAMES[0]);
+        scheduleTimeout(() => startExit(), 420);
       }
-    }, 280);
+    }, WATER_INTERVAL);
   }
 
   function startExit() {
     setPhase("exit");
-    setFlipX(false);
+    setFlipX(true);
+    setPosX(WATER_X);
+    setFrame(WALK_SETTLE_FRAME);
     let x = WATER_X;
-    let wf = 0;
+    let wf = WALK_SETTLE_FRAME;
     let tick = 0;
     clearInv();
     intervalRef.current = setInterval(() => {
@@ -143,42 +194,64 @@ export default function RootsMan({ trigger }: RootsManProps) {
       if (x >= EXIT_END_X) {
         clearInv();
         setPhase("done");
-        hasRun.current = false;
       }
     }, WALK_INTERVAL);
   }
 
   if (phase === "idle" || phase === "done") return null;
 
-  const { col, row } = getFramePos(frame);
+  const isWatering = phase === "water";
+  const sourceFrameW = isWatering ? WATER_FRAME_W : WALK_FRAME_W;
+  const sourceFrameH = isWatering ? WATER_FRAME_H : WALK_FRAME_H;
+  const renderW = isWatering ? WATER_RENDER_W[normalizedAvatarType] : WALK_RENDER_W[normalizedAvatarType];
+  const scale = renderW / sourceFrameW;
+  const renderH = Math.round(sourceFrameH * scale);
+  const frameSrc = getFrameSrc(normalizedAvatarType, isWatering ? "water" : "walk", frame);
+  const frameOffsetX = isWatering ? (WATER_FRAME_OFFSET_X[normalizedAvatarType][frame] ?? 0) * scale : 0;
+  const frameOffsetY = isWatering ? (WATER_FRAME_OFFSET_Y[normalizedAvatarType][frame] ?? 0) * scale : 0;
+  const bottomOffset = isWatering ? WATER_BOTTOM_OFFSET[normalizedAvatarType] : 0;
 
   return (
     <div style={{
       position: "absolute",
-      bottom: 18,
+      bottom: bottomOffset,
       left: `${posX}%`,
-      transform: "translateX(-50%)",
-      width: RENDER_W,
-      height: RENDER_H,
-      overflow: "hidden",
+      transform: "translate3d(-50%, 0, 0)",
+      width: renderW,
+      height: renderH,
+      overflow: "visible",
       imageRendering: "pixelated",
+      backfaceVisibility: "hidden",
+      willChange: "left, transform",
       zIndex: 10,
-      opacity,
+      pointerEvents: "none",
     }}>
-      <img
-        src="/rootsman_transparent.webp"
-        alt="roots-man"
-        style={{
-          position: "absolute",
-          top: -row * FRAME_H * SCALE,
-          left: -col * FRAME_W * SCALE,
-          width: SHEET_W * SCALE,
-          height: SHEET_H * SCALE,
-          imageRendering: "pixelated",
-          transform: flipX ? "scaleX(-1)" : "none",
-          transformOrigin: `${RENDER_W / 2}px center`,
-        }}
-      />
+      <div style={{
+        position: "relative",
+        width: renderW,
+        height: renderH,
+        transform: flipX ? "scaleX(-1)" : "none",
+        transformOrigin: "center bottom",
+        backfaceVisibility: "hidden",
+        imageRendering: "pixelated",
+      }}>
+        <img
+          src={frameSrc}
+          alt={normalizedAvatarType}
+          draggable={false}
+          style={{
+            position: "absolute",
+            top: frameOffsetY,
+            left: frameOffsetX,
+            width: renderW,
+            height: renderH,
+            imageRendering: "pixelated",
+            backfaceVisibility: "hidden",
+            willChange: "transform",
+            userSelect: "none",
+          }}
+        />
+      </div>
     </div>
   );
 }

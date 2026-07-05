@@ -2,11 +2,13 @@
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
+import { getRootsAvatarChoiceText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
 interface RootsManPopupProps {
   show: boolean;
   streakDays: number;
   onGoGarden: () => void;
+  avatarType?: RootsAvatarType | null;
 }
 
 const ROOTSMAN_MSG_KEYS: readonly TKey[] = [
@@ -28,7 +30,7 @@ function getGardenMessageKey(days: number): TKey {
   return ROOTSMAN_MSG_KEYS[stage - 1];
 }
 
-function getPopupCopy(streakDays: number) {
+function getPopupCopy(streakDays: number, avatarType: RootsAvatarType) {
   const currentMap = getCurrentRewardMapCycle(streakDays);
   if (currentMap.kind === "peaceArk") {
     const stage = getRewardMapStage(currentMap).stageNumber;
@@ -37,7 +39,7 @@ function getPopupCopy(streakDays: number) {
       checkKey: "rootsman_ark_check" as TKey,
       buttonKey: "rootsman_ark_btn" as TKey,
       messageKey: ROOTSMAN_ARK_MSG_KEYS[Math.max(0, Math.min(stage - 1, ROOTSMAN_ARK_MSG_KEYS.length - 1))],
-      image: "/rootsman.webp",
+      image: getRootsAvatarImageSrc(avatarType),
     };
   }
 
@@ -46,14 +48,15 @@ function getPopupCopy(streakDays: number) {
     checkKey: "rootsman_check" as TKey,
     buttonKey: "rootsman_btn" as TKey,
     messageKey: getGardenMessageKey(streakDays),
-    image: "/rootsman.webp",
+    image: getRootsAvatarImageSrc(avatarType),
   };
 }
 
-export default function RootsManPopup({ show, streakDays, onGoGarden }: RootsManPopupProps) {
+export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType }: RootsManPopupProps) {
   const lang = useLang();
   if (!show) return null;
-  const copy = getPopupCopy(streakDays);
+  const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
+  const copy = getPopupCopy(streakDays, normalizedAvatarType);
   const msg = t(copy.messageKey, lang);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
@@ -61,12 +64,12 @@ export default function RootsManPopup({ show, streakDays, onGoGarden }: RootsMan
         <div style={{ width: 88, height: 88, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid rgba(122,157,122,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "hidden" }}>
           <img
             src={copy.image}
-            alt="RootsMan"
+            alt={normalizedAvatarType}
             style={{ width: 74, height: 74, objectFit: "contain", imageRendering: "pixelated" }}
           />
         </div>
         <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
-          {t(copy.titleKey, lang)}
+{getCurrentRewardMapCycle(streakDays).kind === "garden" ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : t(copy.titleKey, lang)}
         </h3>
         <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{msg}</p>

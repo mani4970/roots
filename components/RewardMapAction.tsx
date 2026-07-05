@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import RootsMan from "./RootsMan";
 import type { RewardMapActionKind } from "@/lib/rewardMaps";
+import type { RootsAvatarType } from "@/lib/avatar";
 
 interface RewardMapActionProps {
   trigger: boolean;
   action: RewardMapActionKind;
+  avatarType?: RootsAvatarType | null;
 }
 
 type ArkSpriteSheet = {
@@ -267,8 +269,8 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
   );
 }
 
-export default function RewardMapAction({ trigger, action }: RewardMapActionProps) {
-  if (action === "gardenWater") return <RootsMan trigger={trigger} />;
+export default function RewardMapAction({ trigger, action, avatarType }: RewardMapActionProps) {
+  if (action === "gardenWater") return <RootsMan trigger={trigger} avatarType={avatarType} />;
   const config = ARK_MOTION_CONFIGS[action];
   if (!config) return null;
   return <ArkSpriteAction trigger={trigger} config={config} />;
