@@ -2,7 +2,7 @@
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
-import { getRootsAvatarChoiceText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { adaptRootsAvatarNameInText, getRootsAvatarChoiceText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
 interface RootsManPopupProps {
   show: boolean;
@@ -57,7 +57,10 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
   if (!show) return null;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const copy = getPopupCopy(streakDays, normalizedAvatarType);
-  const msg = t(copy.messageKey, lang);
+  const isGardenMap = getCurrentRewardMapCycle(streakDays).kind === "garden";
+  const msg = isGardenMap
+    ? adaptRootsAvatarNameInText(t(copy.messageKey, lang), normalizedAvatarType)
+    : t(copy.messageKey, lang);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
@@ -69,7 +72,7 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
           />
         </div>
         <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
-{getCurrentRewardMapCycle(streakDays).kind === "garden" ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : t(copy.titleKey, lang)}
+{isGardenMap ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : t(copy.titleKey, lang)}
         </h3>
         <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{msg}</p>

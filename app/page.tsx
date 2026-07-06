@@ -61,9 +61,6 @@ const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
-// TEST ONLY for feature/roots-1.8_v2_avatar_customization: keep showing the avatar picker while validating the flow.
-// Before merging this branch to main, set this back to false so a saved choice hides the picker.
-const FORCE_AVATAR_CHOICE_MODAL_FOR_BRANCH_PREVIEW = true;
 const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -472,7 +469,7 @@ export default function HomePage() {
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
       setProfile(p);
-      if (FORCE_AVATAR_CHOICE_MODAL_FOR_BRANCH_PREVIEW || (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true)) {
+      if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
         setShowAvatarChoiceModal(true);
       }
       setHomeQTState(prev => ({
@@ -1760,10 +1757,10 @@ export default function HomePage() {
         onLater={() => void saveAvatarChoice("rootsman")}
       />
 
-      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup && !showAvatarChoiceModal ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
+      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
 
       <RootsManPopup
-        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showAvatarChoiceModal}
+        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
         streakDays={rewardMapDisplayDays}
         avatarType={currentAvatarType}
         onGoGarden={() => {

@@ -57,18 +57,6 @@ const AVATAR_CHOICE_TEXT = {
     de: "Wählen Sie den Charakter, der Sie auf Ihrer Stille-Zeit-Reise begleitet. Sie können ihn später im Profil ändern.",
     fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique. Vous pourrez le changer plus tard dans votre profil.",
   },
-  rootsmanDesc: {
-    ko: "정원을 가꾸며 말씀 여정을 함께 걸어요.",
-    en: "Walk through the Word journey while tending the garden.",
-    de: "Gehen Sie den Weg mit dem Wort und pflegen Sie den Garten.",
-    fr: "Avancez dans la Parole en prenant soin du jardin.",
-  },
-  rootswomanDesc: {
-    ko: "정원을 가꾸며 말씀 여정을 함께 걸어요.",
-    en: "Walk through the Word journey while tending the garden.",
-    de: "Gehen Sie den Weg mit dem Wort und pflegen Sie den Garten.",
-    fr: "Avancez dans la Parole en prenant soin du jardin.",
-  },
   select: {
     ko: "선택하기",
     en: "Choose",
@@ -105,12 +93,6 @@ const AVATAR_CHOICE_TEXT = {
     de: "Mein Charakter",
     fr: "Mon personnage",
   },
-  profileSub: {
-    ko: "정원에서 함께 말씀 여정을 걸어갈 친구예요.",
-    en: "This friend walks with you through your garden and Bible reflection journey.",
-    de: "Diese Begleitung geht mit Ihnen durch Ihren Garten und die Stille Zeit.",
-    fr: "Ce compagnon marche avec vous dans votre jardin et votre méditation biblique.",
-  },
   change: {
     ko: "캐릭터 변경",
     en: "Change character",
@@ -145,8 +127,11 @@ export function getRootsAvatarChoiceText(key: keyof typeof AVATAR_CHOICE_TEXT, l
   return AVATAR_CHOICE_TEXT[key][safeLang(lang)];
 }
 
-export function getRootsAvatarChoiceDescription(avatarType: RootsAvatarType, lang: string): string {
-  return avatarType === "rootswoman"
-    ? getRootsAvatarChoiceText("rootswomanDesc", lang)
-    : getRootsAvatarChoiceText("rootsmanDesc", lang);
+export function adaptRootsAvatarNameInText(text: string, avatarType: unknown): string {
+  if (normalizeRootsAvatarType(avatarType) !== "rootswoman") return text;
+  return text
+    .replaceAll("루츠맨", "루츠우먼")
+    .replaceAll("RootsMan", "RootsWoman")
+    .replaceAll("Rootsman", "Rootswoman")
+    .replaceAll("rootsman", "rootswoman");
 }
