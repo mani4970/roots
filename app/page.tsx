@@ -29,7 +29,7 @@ import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
-import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -224,7 +224,7 @@ function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
   }
 }
 
-function RewardMapNoticePopup({ notice, onClose }: { notice: RewardMapNoticeState | null; onClose: () => void }) {
+function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardMapNoticeState | null; onClose: () => void; avatarType: RootsAvatarType }) {
   const lang = useLang();
   if (!notice) return null;
 
@@ -242,7 +242,7 @@ function RewardMapNoticePopup({ notice, onClose }: { notice: RewardMapNoticeStat
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 198, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.86)", backdropFilter: "blur(8px)", padding: "0 28px" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 350, padding: "30px 24px 24px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
         <div style={{ width: 70, height: 70, borderRadius: 24, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "hidden" }}>
-          <img src={isComplete ? "/roots-logo-transparent-160.png" : "/rootsman.webp"} alt="Roots" width={52} height={52} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
+          <img src={isComplete ? "/roots-logo-transparent-160.png" : getRootsAvatarImageSrc(avatarType)} alt="Roots" width={52} height={52} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 850, color: "var(--text)", lineHeight: 1.35, marginBottom: 12, whiteSpace: "pre-line" }}>
           {title}
@@ -1757,7 +1757,7 @@ export default function HomePage() {
         onLater={() => void saveAvatarChoice("rootsman")}
       />
 
-      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} />
+      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
 
       <RootsManPopup
         show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
