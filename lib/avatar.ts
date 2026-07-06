@@ -52,10 +52,10 @@ const AVATAR_CHOICE_TEXT = {
     fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique. Vous pourrez le changer plus tard dans votre profil.",
   },
   changeBody: {
-    ko: "말씀 여정을 함께할 캐릭터를 선택해보세요. 캐릭터는 프로필에서 바꿀 수 있습니다.",
-    en: "Choose the character who will walk with you through your Bible reflection journey. You can change this later in your profile.",
-    de: "Wählen Sie den Charakter, der Sie auf Ihrer Stille-Zeit-Reise begleitet. Sie können ihn später im Profil ändern.",
-    fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique. Vous pourrez le changer plus tard dans votre profil.",
+    ko: "말씀 여정을 함께할 캐릭터를 선택해보세요.",
+    en: "Choose the character who will walk with you through your Bible reflection journey.",
+    de: "Wählen Sie den Charakter, der Sie auf Ihrer Stille-Zeit-Reise begleitet.",
+    fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique.",
   },
   select: {
     ko: "선택하기",
