@@ -6,6 +6,7 @@ import PhotoViewerModal from "@/components/PhotoViewerModal";
 import BottomNav from "@/components/BottomNav";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
+import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -119,38 +120,16 @@ function RecordContent() {
           const v = data.visibility ?? "private";
           visibilityTargets = v !== "private" ? v.split(",").map((part: string) => part.trim()).filter(Boolean) : [];
         }
-        // 내가 속한 그룹 / 동역자 — Supabase에서 로드
+        // 내가 속한 그룹 / 동역자 — 공통 나눔 옵션 로더로 로드
+        // 완료 전 나눔 팝업과 기록 상세 나누기 팝업의 정렬 기준을 동일하게 유지합니다.
         if (user) {
-          const { data: memberRows } = await supabase.from("group_members")
-            .select("group_id").eq("user_id", user.id);
-          const gIds = (memberRows ?? []).map((r: any) => r.group_id).filter(Boolean);
-          if (gIds.length > 0) {
-            const { data: groupData } = await supabase.from("groups")
-              .select("id, name, is_public").in("id", gIds);
-            setMyGroups((groupData ?? []).map((group: any) => ({ id: String(group.id), name: String(group.name ?? ""), is_public: !!group.is_public })));
-          } else {
+          try {
+            const shareOptions = await loadSharePromptOptions(t("profile_default_name", lang));
+            setMyGroups(shareOptions.groups);
+            setMyPartners(shareOptions.partners);
+          } catch (shareOptionsError) {
+            console.error("qt record share options load failed", shareOptionsError);
             setMyGroups([]);
-          }
-
-          const { data: companionRows } = await supabase
-            .from("companions")
-            .select("requester_id, receiver_id, status")
-            .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
-            .eq("status", "accepted");
-          const partnerIds = Array.from(new Set((companionRows ?? []).map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id).filter(Boolean)));
-          if (partnerIds.length > 0) {
-            const { data: profiles } = await supabase
-              .from("profiles")
-              .select("id, name, avatar_url")
-              .in("id", partnerIds);
-            const profileMap: Record<string, any> = {};
-            (profiles ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
-            setMyPartners(partnerIds.map((partnerId: string) => ({
-              id: partnerId,
-              name: profileMap[partnerId]?.name ?? t("community_unknown", lang),
-              avatar_url: profileMap[partnerId]?.avatar_url ?? null,
-            })));
-          } else {
             setMyPartners([]);
           }
 

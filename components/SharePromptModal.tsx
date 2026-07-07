@@ -6,12 +6,14 @@ export type ShareTargetGroup = {
   id: string;
   name: string;
   is_public?: boolean | null;
+  isFavorite?: boolean | null;
 };
 
 export type ShareTargetPartner = {
   id: string;
   name: string;
   avatar_url?: string | null;
+  isFavorite?: boolean | null;
 };
 
 type SharePromptModalProps = {

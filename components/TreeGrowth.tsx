@@ -5,6 +5,7 @@ import RewardMapAction from "./RewardMapAction";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
+import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import {
   getRewardMapBackground,
   getRewardMapFallbackTitleKey,
@@ -22,6 +23,7 @@ interface TreeGrowthProps {
   showRootsMan?: boolean;
   ownerName?: string;
   onActiveCycleChange?: (cycle: RewardMapCycle) => void;
+  avatarType?: RootsAvatarType | null;
 }
 
 const NIGHT_START_HOUR = 19;
@@ -41,7 +43,7 @@ function getDaysSinceLastCheckin(lastCheckin: string | null) {
   return Math.floor((today.getTime() - last.getTime()) / 86400000);
 }
 
-export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName, onActiveCycleChange }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName, onActiveCycleChange, avatarType }: TreeGrowthProps) {
   const lang = useLang();
   const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
@@ -50,6 +52,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const isNight = isNightTime();
   const daysSince = getDaysSinceLastCheckin(lastCheckin);
   const isAway = daysSince >= 3;
+  const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
 
   useEffect(() => {
     const nextIndex = Math.max(cycles.length - 1, 0);
@@ -109,6 +112,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
             isNight={isNight}
             owner={owner}
             showAction={showRootsMan && cycle.isCurrent}
+            avatarType={normalizedAvatarType}
           />
         ))}
       </div>
@@ -154,13 +158,16 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   );
 }
 
-function RewardMapCard({ cycle, days, isNight, owner, showAction }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean }) {
+function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType }) {
   const lang = useLang();
   const stage = getRewardMapStage(cycle);
   const titleKey = getRewardMapTitleKey(cycle.kind);
   const fallbackTitleKey = getRewardMapFallbackTitleKey(cycle.kind);
   const title = t(titleKey, lang, { name: owner });
-  const imgSrc = getRewardMapBackground(cycle, isNight);
+  const defaultImgSrc = getRewardMapBackground(cycle, isNight);
+  const imgSrc = cycle.kind === "garden" && stage.stageNumber === 0
+    ? `/images/reward-maps/garden/avatar-variants/${avatarType}/day0_${isNight ? "evening" : "morning"}.webp`
+    : defaultImgSrc;
   const rangeLabel = cycle.isCurrent
     ? t("tree_day_count", lang, { n: days })
     : t("reward_map_day_range", lang, { start: cycle.startDay, end: cycle.endDay });
@@ -180,7 +187,7 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction }: { cycle: Rew
           {rangeLabel}
         </div>
 
-        <RewardMapAction trigger={showAction} action={stage.action} />
+        <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} />
       </div>
     </div>
   );

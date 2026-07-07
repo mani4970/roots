@@ -142,6 +142,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "결단": { de: "Entschluss", en: "Resolution", fr: "Décision" },
   "말씀 추가하기 (여러 본문일 경우)": { de: "Abschnitt hinzufügen (bei mehreren Texten)", en: "Add passage (for multiple passages)", fr: "Ajouter un passage (si plusieurs passages)" },
   "선택한 본문 추가": { de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné" },
+  "여러 본문 추가": { de: "Weiteren Bibeltext hinzufügen", en: "Add another passage", fr: "Ajouter un autre passage" },
+  "본문 선택 완료": { de: "Bibeltext-Auswahl abschließen", en: "Finish passage selection", fr: "Terminer la sélection du passage" },
   "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.": { de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
   "성품": { de: "Charakter", en: "Character", fr: "Caractère" },
   "행동": { de: "Handlung", en: "action", fr: "Action" },
@@ -1067,47 +1069,137 @@ function QTWriteContent() {
 
   const loadSundayPassage = loadPassage;
 
-  // 말씀 추가하기 (passages 배열에 추가)
+  function normalizePassageRef(ref: string) {
+    return String(ref ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  async function fetchCurrentSelectedPassageItem(): Promise<PassageItem | null> {
+    const effectiveEndChapter = crossChapter ? endChapter : chapter;
+
+    if (!crossChapter && parseInt(endV, 10) < parseInt(startV, 10)) {
+      setBibleError(trQT("끝 절이 시작 절보다 작아요", lang));
+      return null;
+    }
+
+    const koBook = (() => {
+      const all = [...OT_BOOKS, ...NT_BOOKS];
+      const loc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
+      const i = loc.indexOf(book);
+      return i >= 0 ? all[i] : book;
+    })();
+
+    let vers: PassageVerse[] = [];
+    let refStr = "";
+
+    if (crossChapter && effectiveEndChapter !== chapter) {
+      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chapter, 10) - 1] ?? 176;
+      const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
+      const d1 = await r1.json();
+      if (d1.error) throw new Error(d1.error);
+
+      const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
+      const d2 = await r2.json();
+      if (d2.error) throw new Error(d2.error);
+
+      vers = [
+        ...(d1.verses ?? []).map((v: any) => ({ ...v, num: `${chapter}:${v.num}` })),
+        ...(d2.verses ?? []).map((v: any) => ({ ...v, num: `${effectiveEndChapter}:${v.num}` })),
+      ];
+      refStr = `${book} ${chapter}:${startV}-${effectiveEndChapter}:${endV}`;
+    } else {
+      const r = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      vers = d.verses ?? [];
+      refStr = d.reference;
+    }
+
+    if (vers.length === 0 || !refStr) return null;
+
+    return {
+      book,
+      chapter,
+      startV,
+      endV,
+      endChapter: effectiveEndChapter,
+      cross: crossChapter,
+      verses: vers,
+      ref: refStr,
+    };
+  }
+
+  // 여러 본문 추가: 현재 선택 본문을 목록에 저장하고, 선택 화면에 머무른다.
   async function addPassage(options: { stayOnSelect?: boolean } = {}) {
-    setLoadingBible(true); setBibleError("");
+    setLoadingBible(true);
+    setBibleError("");
     try {
-      const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
-      let vers: PassageVerse[] = [];
-      let refStr = "";
-      const effectiveEndChapter = crossChapter ? endChapter : chapter;
-      if (crossChapter && effectiveEndChapter !== chapter) {
-        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
-        const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
-        const d1 = await r1.json();
-        const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
-        const d2 = await r2.json();
-        vers = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${effectiveEndChapter}:${v.num}`}))];
-        refStr = `${book} ${chapter}:${startV}-${effectiveEndChapter}:${endV}`;
-      } else {
-        const r = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
-        const d = await r.json();
-        vers = d.verses ?? []; refStr = d.reference;
-      }
-      if (vers.length > 0) {
-        const newP: PassageItem = { book, chapter, startV, endV, endChapter, cross: crossChapter, verses: vers, ref: refStr };
-        setPassages(prev => {
-          const next = [...prev, newP];
-          setActivePassageIndex(next.length - 1);
-          return next;
-        });
-        // 첫 번째 말씀이 없으면 메인으로도 설정
-        if (!bibleRef) {
-          setPassageVerses(vers);
-          setBibleRef(refStr);
-          if (!options.stayOnSelect) {
-            setBibleStep("done");
-            setSundayBibleStep("done");
-          }
+      const current = await fetchCurrentSelectedPassageItem();
+      if (!current) return;
+
+      const currentKey = normalizePassageRef(current.ref);
+      const existingIndex = passages.findIndex(p => normalizePassageRef(p.ref) === currentKey);
+      const nextPassages = existingIndex >= 0 ? passages : [...passages, current];
+
+      setPassages(nextPassages);
+      setActivePassageIndex(existingIndex >= 0 ? existingIndex : nextPassages.length - 1);
+
+      // 첫 번째 말씀이 없으면 메인으로도 설정
+      if (!bibleRef) {
+        setPassageVerses(current.verses);
+        setBibleRef(current.ref);
+        if (!options.stayOnSelect) {
+          setBibleStep("done");
+          setSundayBibleStep("done");
         }
-        if (mode === "sunday" && !options.stayOnSelect) setSundayBibleStep("done");
       }
-    } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
-    setLoadingBible(false);
+      if (mode === "sunday" && !options.stayOnSelect) setSundayBibleStep("done");
+    } catch {
+      setBibleError(trQT("본문을 불러오지 못했어요.", lang));
+    } finally {
+      setLoadingBible(false);
+    }
+  }
+
+  async function completeSundayPassageSelection() {
+    setLoadingBible(true);
+    setBibleError("");
+    try {
+      const current = await fetchCurrentSelectedPassageItem();
+      if (!current) {
+        if (!bibleError) setBibleError(trQT("본문을 불러오지 못했어요.", lang));
+        return;
+      }
+
+      const currentKey = normalizePassageRef(current.ref);
+      const existingIndex = passages.findIndex(p => normalizePassageRef(p.ref) === currentKey);
+
+      // 주일예배 묵상에서는 “여러 본문 추가”를 누른 본문만 passages 목록에 둔다.
+      // 일반적으로 “본문 선택 완료”만 누른 경우에는 bibleRef/passageVerses만 갱신해서,
+      // 설교 정보 탭으로 돌아와 다른 본문을 고르면 기존 단일 본문이 자연스럽게 교체된다.
+      const finalPassages = passages.length === 0
+        ? []
+        : existingIndex >= 0
+          ? passages
+          : [...passages, current];
+      const firstPassage = finalPassages[0] ?? current;
+
+      setPassages(finalPassages);
+      setActivePassageIndex(finalPassages.length > 0
+        ? Math.max(0, existingIndex >= 0 ? existingIndex : finalPassages.length - 1)
+        : 0
+      );
+      setPassageVerses(firstPassage.verses ?? current.verses);
+      setBibleRef(firstPassage.ref || current.ref);
+      setBibleStep("done");
+      setSundayBibleStep("done");
+      setSelectedVerseNums([]);
+      setKeyVerse("");
+      setCur(c => Math.min(c + 1, STEPS_SUNDAY.length - 1));
+    } catch {
+      setBibleError(trQT("본문을 불러오지 못했어요.", lang));
+    } finally {
+      setLoadingBible(false);
+    }
   }
 
   function continueWithSelectedPassages() {
@@ -1187,7 +1279,7 @@ function QTWriteContent() {
         {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
         <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("선택한 본문 추가", lang)}</>}
+          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT(includeSermonTitle ? "여러 본문 추가" : "선택한 본문 추가", lang)}</>}
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, marginTop: -4 }}>
           {trQT("여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", lang)}
@@ -2255,9 +2347,8 @@ function QTWriteContent() {
                 <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
                 <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
               </div>
-              {/* 성경 본문 불러오기 (6단계와 동일한 UI) */}
-              {sundayBibleStep === "select" ? (
-                <div>
+              {/* 성경 본문 선택: 완료 후 다시 설교 정보 탭으로 돌아와도 항상 재선택할 수 있게 한다. */}
+              <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("본문 말씀", lang)}</label>
                   <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 4 }}>{trQT("번역본", lang)}</label>
                   <BibleTranslationSelect />
@@ -2307,7 +2398,7 @@ function QTWriteContent() {
                     );
                   })()}
                   <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("선택한 본문 추가", lang)}</>}
+                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("여러 본문 추가", lang)}</>}
                   </button>
                   <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 8px" }}>
                     {trQT("여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", lang)}
@@ -2322,16 +2413,8 @@ function QTWriteContent() {
                       ))}
                     </div>
                   )}
-                  <button onClick={continueWithSelectedPassages} disabled={loadingBible} className="btn-sage" style={{ marginBottom: 8 }}>
-                    {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><BookOpen size={16} /> {trQT("선택한 본문 불러오기", lang)}</>}
-                  </button>
                   {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
                 </div>
-              ) : (
-                <div>
-                  {renderSelectedPassageViewer({ showTextSizeButtons: false })}
-                </div>
-              )}
             </div>
           )}
 
@@ -2394,7 +2477,22 @@ function QTWriteContent() {
                 {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
               </button>
             ) : (
-              <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
+              <button
+                onClick={() => {
+                  if (step.isSermonInfo) {
+                    void completeSundayPassageSelection();
+                    return;
+                  }
+                  setCur(c => c + 1);
+                }}
+                disabled={step.isSermonInfo && loadingBible}
+                className="btn-primary"
+                style={{ flex: cur > 0 ? 2 : 1 }}
+              >
+                {step.isSermonInfo
+                  ? (loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : trQT("본문 선택 완료", lang))
+                  : trQT("다음 단계 →", lang)}
+              </button>
             )}
           </div>
           {/* 임시저장 버튼 */}

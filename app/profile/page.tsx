@@ -10,9 +10,11 @@ import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
+import AvatarChoiceModal from "@/components/AvatarChoiceModal";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { getLoveHeartBalance } from "@/lib/loveHearts";
+import { getRootsAvatarChoiceText, getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -125,6 +127,8 @@ export default function ProfilePage() {
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const [qtShareCount, setQtShareCount] = useState(0);
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
+  const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
+  const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [userEmail, setUserEmail] = useState("");
@@ -630,6 +634,27 @@ export default function ProfilePage() {
     }
   }
 
+  async function saveAvatarChoice(avatarType: RootsAvatarType) {
+    if (!profile?.id || savingAvatarChoice) return;
+    setSavingAvatarChoice(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_type: avatarType, avatar_choice_seen: true })
+        .eq("id", profile.id);
+      if (error) throw error;
+      setProfile((prev: any) => prev ? { ...prev, avatar_type: avatarType, avatar_choice_seen: true } : prev);
+      setShowAvatarChoiceModal(false);
+      showToast(lang === "ko" ? "캐릭터가 변경되었어요." : lang === "de" ? "Der Charakter wurde geändert." : lang === "fr" ? "Le personnage a été modifié." : "Character updated.");
+    } catch (error) {
+      console.error("캐릭터 선택 저장 실패:", error);
+      showToast(lang === "ko" ? "캐릭터 선택을 저장하지 못했어요." : lang === "de" ? "Die Charakterauswahl konnte nicht gespeichert werden." : lang === "fr" ? "Impossible d’enregistrer le personnage." : "Could not save your character choice.");
+    } finally {
+      setSavingAvatarChoice(false);
+    }
+  }
+
   function renderCalendar() {
     const now = new Date();
     const year = calendarMonth.getFullYear();
@@ -665,6 +690,7 @@ export default function ProfilePage() {
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
   const previewGroupChallengeBadges = groupChallengeBadges.slice(0, 3);
   const shouldShowGroupChallengeBadgeGalleryButton = groupChallengeBadges.length > 0;
+  const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -706,6 +732,15 @@ export default function ProfilePage() {
           {toast}
         </div>
       )}
+
+      <AvatarChoiceModal
+        show={showAvatarChoiceModal}
+        mode="change"
+        selectedAvatar={currentAvatarType}
+        saving={savingAvatarChoice}
+        onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
+        onClose={() => { if (!savingAvatarChoice) setShowAvatarChoiceModal(false); }}
+      />
 
       {showBadgeGallery && (
         <div
@@ -976,6 +1011,24 @@ export default function ProfilePage() {
               <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 내 캐릭터 */}
+      <div style={{ padding: "14px 16px 0" }}>
+        <div className="sec-label">{getRootsAvatarChoiceText("profileTitle", lang)}</div>
+        <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, alignItems: "center", padding: "16px 14px", minHeight: 150 }}>
+          <div style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
+            <img src={getRootsAvatarImageSrc(currentAvatarType)} alt={getRootsAvatarLabel(currentAvatarType, lang)} style={{ width: "100%", maxWidth: 150, maxHeight: 152, objectFit: "contain", imageRendering: "pixelated" }} />
+          </div>
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
+            <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+              {getRootsAvatarChoiceText("change", lang)}
+            </button>
+            <button type="button" disabled style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 999, background: "var(--bg3)", color: "var(--text3)", padding: "10px 12px", fontSize: 12.5, fontWeight: 850, cursor: "not-allowed", opacity: 0.72, lineHeight: 1.25 }}>
+              {getRootsAvatarChoiceText("customizeSoon", lang)}
+            </button>
+          </div>
         </div>
       </div>
 
