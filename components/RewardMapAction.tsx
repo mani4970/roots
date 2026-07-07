@@ -63,7 +63,9 @@ const ROOTSMAN_ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
   sheetWidth: 2160,
   sheetHeight: 821,
   frameWidthPx: 360,
-  renderWidth: 40,
+  // The rebuilt Rootsman carry-wood art is slightly smaller than the regular walk sprite.
+  // Keep this adjustment local to Rootsman so Rootswoman's already-matched ark scale is unchanged.
+  renderWidth: 44,
   intervalMs: 310,
 };
 
@@ -307,6 +309,9 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
 
     return () => {
       clearAnimationTimers();
+      // React Strict Mode can run effect cleanup once before re-running the effect.
+      // Reset this guard so replayed ark animations can start again cleanly.
+      hasRunRef.current = false;
     };
   }, [trigger, config]);
 
