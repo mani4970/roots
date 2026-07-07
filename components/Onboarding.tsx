@@ -80,6 +80,8 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
   const slide = SLIDES[page];
   const isLast = page === SLIDES.length - 1;
+  const canGoPrevious = page > 0;
+  const canGoNext = page < SLIDES.length - 1;
 
   function completeOnboarding() {
     storageSet("onboarding_done", "true");
@@ -147,6 +149,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           minHeight: 560,
           maxHeight: "min(760px, calc(100dvh - 32px))",
           overflow: "hidden",
+          position: "relative",
           background:
             "radial-gradient(circle at 50% 44%, rgba(255,232,176,0.28), rgba(255,250,240,0) 46%), var(--bg2)",
           borderRadius: 30,
@@ -161,6 +164,80 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           userSelect: "none",
         }}
       >
+        {canGoPrevious ? (
+          <button
+            type="button"
+            aria-label="Previous onboarding slide"
+            onClick={(event) => {
+              event.stopPropagation();
+              goToPreviousSlide();
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            style={{
+              position: "absolute",
+              left: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 3,
+              width: 34,
+              height: 48,
+              border: "none",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(79,106,79,0.82)",
+              fontSize: 34,
+              fontWeight: 700,
+              lineHeight: "44px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            ‹
+          </button>
+        ) : null}
+
+        {canGoNext ? (
+          <button
+            type="button"
+            aria-label="Next onboarding slide"
+            onClick={(event) => {
+              event.stopPropagation();
+              goToNextSlide();
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 3,
+              width: 34,
+              height: 48,
+              border: "none",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(79,106,79,0.82)",
+              fontSize: 34,
+              fontWeight: 700,
+              lineHeight: "44px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            ›
+          </button>
+        ) : null}
+
         <div>
           <div
             style={{
