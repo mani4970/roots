@@ -1238,7 +1238,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 법적/지원 링크 */}
-      <div style={{ padding: "16px 16px 4px", display: "flex", justifyContent: "center", gap: 0, flexWrap: "wrap" }}>
+      <div style={{ padding: "16px 18px 4px", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px 0", flexWrap: "wrap" }}>
         {[
           { href: "/impressum", label: t("profile_impressum", lang) },
           { href: "/privacy", label: t("profile_privacy", lang) },
@@ -1246,15 +1246,15 @@ export default function ProfilePage() {
           { href: "/support", label: t("profile_support", lang) },
           { href: "/account-deletion", label: t("profile_account_deletion", lang) },
         ].map((link, index) => (
-          <span key={link.href} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-            {index > 0 && <span style={{ fontSize: 11, color: "var(--border)" }}>|</span>}
+          <span key={link.href} style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>
             <button
               type="button"
               onClick={() => router.push(link.href)}
-              style={{ padding: "6px 2px", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
+              style={{ padding: "6px 0", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
             >
               {link.label}
             </button>
+            {index < 4 && <span aria-hidden="true" style={{ margin: "0 10px", fontSize: 11, color: "var(--border)", userSelect: "none" }}>|</span>}
           </span>
         ))}
       </div>
