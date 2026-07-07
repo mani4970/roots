@@ -89,16 +89,48 @@ function getNotificationIntroCampaignKeys(userId: string) {
   const base = getNotificationIntroCampaignBaseKey(userId);
   return {
     dismissed: `${base}_dismissed`,
+    snoozedDate: `${base}_snoozed_date`,
+    sessionSeenDate: `${base}_session_seen_date`,
   };
 }
 
-
-function isNativeAppRuntime() {
+function sessionStorageGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
   try {
-    return Capacitor.isNativePlatform();
+    return window.sessionStorage.getItem(key);
   } catch {
-    return false;
+    return null;
   }
+}
+
+function sessionStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Session storage can be unavailable in restricted webviews.
+  }
+}
+
+function isLocalPreviewRuntime() {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname;
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
+    hostname.endsWith(".local")
+  );
+}
+
+function canShowNotificationIntroRuntime() {
+  try {
+    if (Capacitor.isNativePlatform()) return true;
+  } catch {
+    // Fall through to local preview check.
+  }
+  return isLocalPreviewRuntime();
 }
 
 function getLegacyStorageKey(prefix: string, date: string) {
@@ -331,7 +363,7 @@ export default function HomePage() {
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
-  const notificationIntroDismissedThisSessionRef = useRef(false);
+  const notificationIntroShownMarkerRef = useRef<string | null>(null);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
@@ -629,23 +661,27 @@ export default function HomePage() {
 
   useEffect(() => {
     if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showNotificationIntroAnnouncement) return;
-    if (!isNativeAppRuntime()) return;
+    if (!canShowNotificationIntroRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
       showWelcomeBack ||
+      showLangPicker ||
       celebration.show ||
       !!badgePopup ||
       gardenPopup.show ||
       showRootsManPopup ||
+      showRootsMan ||
       !!rewardMapNotice ||
       showNotificationSettingsModal ||
+      chapterPopup.show ||
       showHomeQTChoice ||
       showHomeSundayQT ||
       showHomeQTPassageChoice ||
       showHomeQTPhotoPassageChoice ||
+      showHomeQTGuide ||
       showHomePrayerCompose ||
       showHomePrayerSharePrompt
     ) {
@@ -664,8 +700,16 @@ export default function HomePage() {
 
     const keys = getNotificationIntroCampaignKeys(profile.id);
     if (storageGet(keys.dismissed)) return;
-    if (notificationIntroDismissedThisSessionRef.current) return;
 
+    const snoozedDate = storageGet(keys.snoozedDate);
+    if (snoozedDate && snoozedDate >= today) return;
+
+    const sessionMarker = `${profile.id}_${today}`;
+    if (notificationIntroShownMarkerRef.current === sessionMarker) return;
+    if (sessionStorageGet(keys.sessionSeenDate) === today) return;
+
+    notificationIntroShownMarkerRef.current = sessionMarker;
+    sessionStorageSet(keys.sessionSeenDate, today);
     setShowNotificationIntroAnnouncement(true);
   }, [
     loading,
@@ -675,16 +719,20 @@ export default function HomePage() {
     showFirstLangPicker,
     showOnboarding,
     showWelcomeBack,
+    showLangPicker,
     celebration.show,
     badgePopup,
     gardenPopup.show,
     showRootsManPopup,
+    showRootsMan,
     rewardMapNotice,
     showNotificationSettingsModal,
+    chapterPopup.show,
     showHomeQTChoice,
     showHomeSundayQT,
     showHomeQTPassageChoice,
     showHomeQTPhotoPassageChoice,
+    showHomeQTGuide,
     showHomePrayerCompose,
     showHomePrayerSharePrompt,
   ]);
@@ -852,11 +900,20 @@ export default function HomePage() {
   }
 
   function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
-    notificationIntroDismissedThisSessionRef.current = true;
-
-    if (profile?.id && action === "dismissForever") {
+    if (profile?.id) {
+      const today = getLocalDateString();
       const keys = getNotificationIntroCampaignKeys(profile.id);
-      storageSet(keys.dismissed, "true");
+      notificationIntroShownMarkerRef.current = `${profile.id}_${today}`;
+      sessionStorageSet(keys.sessionSeenDate, today);
+
+      if (action === "later") {
+        storageSet(keys.snoozedDate, today);
+      }
+
+      if (action === "dismissForever") {
+        storageSet(keys.dismissed, "true");
+        storageRemove(keys.snoozedDate);
+      }
     }
 
     setShowNotificationIntroAnnouncement(false);
