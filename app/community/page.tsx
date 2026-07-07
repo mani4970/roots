@@ -4238,6 +4238,7 @@ function CommunityPageContent() {
         : nextFavorite;
 
     updateFavoriteCache(userId, group.id, persistedFavorite);
+    clearSharePromptOptionsCache();
     applyFavoriteState(persistedFavorite);
     setFavoriteSavingIds((prev) => prev.filter((id) => id !== group.id));
   }
@@ -4291,6 +4292,8 @@ function CommunityPageContent() {
     if (error) {
       console.warn("동역자 즐겨찾기 저장 실패:", error.message);
       applyFavoriteState(previousFavorite);
+    } else {
+      clearSharePromptOptionsCache();
     }
 
     setPartnerFavoriteSavingIds((prev) =>
