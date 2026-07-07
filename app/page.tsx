@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -58,14 +57,9 @@ const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
-const GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "roots_announcement_1_5_group_challenge_seen_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
-const NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-const NOTIFICATION_INTRO_SNOOZE_MS = 24 * 60 * 60 * 1000;
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
-const ROOTS_APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
-const ROOTS_GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
@@ -82,10 +76,6 @@ function isRecentSignup(createdAt: string | null | undefined) {
   return Date.now() - createdAtMs < RECENT_SIGNUP_ONBOARDING_WINDOW_MS;
 }
 
-function getGroupChallengeAnnouncementKey(userId: string) {
-  return `${GROUP_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
-}
-
 function getNotificationIntroCampaignBaseKey(userId: string) {
   return `${NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX}${userId}`;
 }
@@ -98,53 +88,15 @@ function getNotificationIntroCampaignKeys(userId: string) {
   const base = getNotificationIntroCampaignBaseKey(userId);
   return {
     dismissed: `${base}_dismissed`,
-    firstSeenAt: `${base}_first_seen_at`,
-    snoozedUntil: `${base}_snoozed_until`,
   };
 }
 
-function parseStorageTime(value: string | null) {
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function getNextLocalDayStartMs() {
-  const next = new Date();
-  next.setDate(next.getDate() + 1);
-  next.setHours(0, 0, 0, 0);
-  return next.getTime();
-}
 
 function isNativeAppRuntime() {
   try {
     return Capacitor.isNativePlatform();
   } catch {
     return false;
-  }
-}
-
-function getRootsStoreUrl() {
-  try {
-    return Capacitor.getPlatform() === "android" ? ROOTS_GOOGLE_PLAY_URL : ROOTS_APP_STORE_URL;
-  } catch {
-    return ROOTS_APP_STORE_URL;
-  }
-}
-
-async function openRootsStorePage() {
-  const url = getRootsStoreUrl();
-  try {
-    if (isNativeAppRuntime() && typeof Capacitor.isPluginAvailable === "function" && Capacitor.isPluginAvailable("Browser")) {
-      await Browser.open({ url });
-      return;
-    }
-  } catch {
-    // Fall back to a normal browser navigation below.
-  }
-
-  if (typeof window !== "undefined") {
-    window.location.href = url;
   }
 }
 
@@ -260,41 +212,13 @@ function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardM
   );
 }
 
-function GroupChallengeAnnouncementPopup({ onClose }: { onClose: () => void }) {
-  const lang = useLang();
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
-      <div style={{ width: "100%", maxWidth: 350, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "28px 22px 22px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
-        <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
-          {t("group_challenge_announcement_title", lang)}
-        </h2>
-        <div style={{ width: 118, height: 118, borderRadius: 32, background: "linear-gradient(180deg, rgba(255,246,213,0.92), rgba(255,246,213,0.52))", border: "1px solid rgba(232,197,71,0.36)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", overflow: "hidden" }}>
-          <img
-            src="/images/group-challenges/mystery-badge.png"
-            alt=""
-            aria-hidden="true"
-            style={{ width: 92, height: 92, objectFit: "contain", imageRendering: "pixelated" }}
-          />
-        </div>
-        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 20 }}>
-          {t("group_challenge_announcement_body", lang)}
-        </p>
-        <button onClick={onClose} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
-          {t("group_challenge_announcement_close", lang)}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function NotificationIntroAnnouncementPopup({
+  onOpenSettings,
   onLater,
-  onOpenStore,
   onDismissForever,
 }: {
+  onOpenSettings: () => void;
   onLater: () => void;
-  onOpenStore: () => void;
   onDismissForever: () => void;
 }) {
   const lang = useLang();
@@ -321,10 +245,14 @@ function NotificationIntroAnnouncementPopup({
           {copy.updateNotice}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onOpenStore} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
+          <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
             {copy.openSettings}
           </button>
-          <button onClick={onLater} className="btn-outline" style={{ width: "100%", minHeight: 46, justifyContent: "center" }}>
+          <button
+            type="button"
+            onClick={onLater}
+            style={{ width: "100%", minHeight: 44, borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text2)", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+          >
             {copy.later}
           </button>
           <button
@@ -400,9 +328,9 @@ export default function HomePage() {
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
-  const [showGroupChallengeAnnouncement, setShowGroupChallengeAnnouncement] = useState(false);
   const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
+  const notificationIntroDismissedThisSessionRef = useRef(false);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
@@ -641,66 +569,8 @@ export default function HomePage() {
   }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showGroupChallengeAnnouncement) return;
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (
-      showFirstLangPicker ||
-      showOnboarding ||
-      showWelcomeBack ||
-      celebration.show ||
-      !!badgePopup ||
-      gardenPopup.show ||
-      showRootsManPopup ||
-      !!rewardMapNotice ||
-      showNotificationSettingsModal ||
-      showHomeQTChoice ||
-      showHomeSundayQT ||
-      showHomeQTPassageChoice ||
-      showHomeQTPhotoPassageChoice ||
-      showHomePrayerCompose ||
-      showHomePrayerSharePrompt
-    ) {
-      return;
-    }
-
-    const today = getLocalDateString();
-    const hasPendingReflectionReward =
-      progressUpdateInFlightRef.current ||
-      pendingRootsManRef.current ||
-      !!pendingRewardMapNoticeRef.current ||
-      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
-      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
-
-    if (hasPendingReflectionReward) return;
-
-    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) {
-      setShowGroupChallengeAnnouncement(true);
-    }
-  }, [
-    loading,
-    profile?.id,
-    showGroupChallengeAnnouncement,
-    showFirstLangPicker,
-    showOnboarding,
-    showWelcomeBack,
-    celebration.show,
-    badgePopup,
-    gardenPopup.show,
-    showRootsManPopup,
-    rewardMapNotice,
-    showNotificationSettingsModal,
-    showHomeQTChoice,
-    showHomeSundayQT,
-    showHomeQTPassageChoice,
-    showHomeQTPhotoPassageChoice,
-    showHomePrayerCompose,
-    showHomePrayerSharePrompt,
-  ]);
-
-  useEffect(() => {
-    if (loading || !profile?.id || showGroupChallengeAnnouncement || showLoveHeartIntroAnnouncement) return;
-    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
@@ -736,7 +606,6 @@ export default function HomePage() {
   }, [
     loading,
     profile?.id,
-    showGroupChallengeAnnouncement,
     showLoveHeartIntroAnnouncement,
     showFirstLangPicker,
     showOnboarding,
@@ -756,10 +625,9 @@ export default function HomePage() {
   ]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showGroupChallengeAnnouncement || showLoveHeartIntroAnnouncement || showNotificationIntroAnnouncement) return;
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showNotificationIntroAnnouncement) return;
     if (!isNativeAppRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (!storageGet(getGroupChallengeAnnouncementKey(profile.id))) return;
     if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
     if (
       showFirstLangPicker ||
@@ -793,28 +661,12 @@ export default function HomePage() {
 
     const keys = getNotificationIntroCampaignKeys(profile.id);
     if (storageGet(keys.dismissed)) return;
-
-    const now = Date.now();
-    let firstSeenAt = parseStorageTime(storageGet(keys.firstSeenAt));
-    if (!firstSeenAt) {
-      firstSeenAt = now;
-      storageSet(keys.firstSeenAt, String(firstSeenAt));
-    }
-
-    if (now - firstSeenAt > NOTIFICATION_INTRO_CAMPAIGN_DURATION_MS) {
-      storageSet(keys.dismissed, "expired");
-      storageRemove(keys.snoozedUntil);
-      return;
-    }
-
-    const snoozedUntil = parseStorageTime(storageGet(keys.snoozedUntil));
-    if (snoozedUntil && now < snoozedUntil) return;
+    if (notificationIntroDismissedThisSessionRef.current) return;
 
     setShowNotificationIntroAnnouncement(true);
   }, [
     loading,
     profile?.id,
-    showGroupChallengeAnnouncement,
     showLoveHeartIntroAnnouncement,
     showNotificationIntroAnnouncement,
     showFirstLangPicker,
@@ -989,13 +841,6 @@ export default function HomePage() {
     });
   }
 
-  function closeGroupChallengeAnnouncement() {
-    if (profile?.id) {
-      storageSet(getGroupChallengeAnnouncementKey(profile.id), "true");
-    }
-    setShowGroupChallengeAnnouncement(false);
-  }
-
   function closeLoveHeartIntroAnnouncement() {
     if (profile?.id) {
       storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
@@ -1003,19 +848,17 @@ export default function HomePage() {
     setShowLoveHeartIntroAnnouncement(false);
   }
 
-  async function closeNotificationIntroAnnouncement(action: "openStore" | "later" | "dismissForever") {
-    if (profile?.id) {
+  function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
+    notificationIntroDismissedThisSessionRef.current = true;
+
+    if (profile?.id && action === "dismissForever") {
       const keys = getNotificationIntroCampaignKeys(profile.id);
-      if (action === "later") {
-        storageSet(keys.snoozedUntil, String(getNextLocalDayStartMs() || Date.now() + NOTIFICATION_INTRO_SNOOZE_MS));
-      } else {
-        storageSet(keys.dismissed, "true");
-        storageRemove(keys.snoozedUntil);
-      }
+      storageSet(keys.dismissed, "true");
     }
+
     setShowNotificationIntroAnnouncement(false);
-    if (action === "openStore") {
-      await openRootsStorePage();
+    if (action === "openSettings") {
+      setShowNotificationSettingsModal(true);
     }
   }
 
@@ -1658,9 +1501,6 @@ export default function HomePage() {
       )}
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
 
-      {showGroupChallengeAnnouncement && (
-        <GroupChallengeAnnouncementPopup onClose={closeGroupChallengeAnnouncement} />
-      )}
 
       {showLoveHeartIntroAnnouncement && (
         <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
@@ -1668,9 +1508,9 @@ export default function HomePage() {
 
       {showNotificationIntroAnnouncement && (
         <NotificationIntroAnnouncementPopup
-          onLater={() => void closeNotificationIntroAnnouncement("later")}
-          onOpenStore={() => void closeNotificationIntroAnnouncement("openStore")}
-          onDismissForever={() => void closeNotificationIntroAnnouncement("dismissForever")}
+          onOpenSettings={() => closeNotificationIntroAnnouncement("openSettings")}
+          onLater={() => closeNotificationIntroAnnouncement("later")}
+          onDismissForever={() => closeNotificationIntroAnnouncement("dismissForever")}
         />
       )}
 
@@ -1750,7 +1590,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showGroupChallengeAnnouncement && !showLoveHeartIntroAnnouncement && !showNotificationIntroAnnouncement}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showLoveHeartIntroAnnouncement && !showNotificationIntroAnnouncement}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
