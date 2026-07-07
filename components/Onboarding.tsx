@@ -63,9 +63,11 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
         <div style={{ width: 44, height: 44, margin: "0 auto 16px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--sage-dark)", fontSize: 13, fontWeight: 800 }}>
           {String(page + 1).padStart(2, "0")}
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 14, lineHeight: 1.3 }}>
-          {slide.title}
-        </h2>
+        {slide.title && (
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 14, lineHeight: 1.3 }}>
+            {slide.title}
+          </h2>
+        )}
         <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.85, whiteSpace: "pre-line", marginBottom: slide.sub ? 14 : 32 }}>
           {slide.desc}
         </p>
