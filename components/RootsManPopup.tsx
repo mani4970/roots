@@ -58,9 +58,8 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const copy = getPopupCopy(streakDays, normalizedAvatarType);
   const isGardenMap = getCurrentRewardMapCycle(streakDays).kind === "garden";
-  const msg = isGardenMap
-    ? adaptRootsAvatarNameInText(t(copy.messageKey, lang), normalizedAvatarType)
-    : t(copy.messageKey, lang);
+  const title = adaptRootsAvatarNameInText(t(copy.titleKey, lang), normalizedAvatarType);
+  const msg = adaptRootsAvatarNameInText(t(copy.messageKey, lang), normalizedAvatarType);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
@@ -72,7 +71,7 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
           />
         </div>
         <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
-{isGardenMap ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : t(copy.titleKey, lang)}
+{isGardenMap ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : title}
         </h3>
         <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{msg}</p>
