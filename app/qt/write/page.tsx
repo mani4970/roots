@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
+import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
@@ -416,11 +417,28 @@ function QTWriteContent() {
   const autoSavingRef = useRef(false);
   const queuedAutoSaveRef = useRef<{ snapshot: DraftSnapshot; signature: string } | null>(null);
   const lastAutoSaveSignatureRef = useRef("");
+  const [draftBackupUserId, setDraftBackupUserId] = useState("");
+  const latestDraftSnapshotRef = useRef<DraftSnapshot | null>(null);
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
   const [freeSundayContext, setFreeSundayContext] = useState(() => initMode === "free" && initialSundayContext);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDraftBackupUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!cancelled) setDraftBackupUserId(user?.id ?? "");
+      } catch {
+        if (!cancelled) setDraftBackupUserId("");
+      }
+    };
+    void loadDraftBackupUser();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (activePassageIndex >= passages.length) {
@@ -819,12 +837,28 @@ function QTWriteContent() {
         setPageReady(true);
         return;
       }
-      const draft = drafts?.[0];
+      const localBackup = loadQTDraftBackup(user.id, selectedDate);
+      let draft = drafts?.[0] ?? null;
+      if (!draft && localBackup) {
+        draft = mergeQtDraftRowWithBackup({
+          qt_mode: localBackup.mode,
+          current_step: localBackup.currentStep,
+          bible_ref: "",
+          key_verse: "",
+          opening_prayer: "",
+          summary: "",
+          meditation: "",
+          application: "",
+          decision: "",
+          closing_prayer: "",
+        }, localBackup);
+      }
       if (!draft) {
         resetDraftState();
         setPageReady(true);
         return;
       }
+      draft = mergeQtDraftRowWithBackup(draft, localBackup);
 
       resetDraftState();
 
@@ -1238,7 +1272,7 @@ function QTWriteContent() {
         {includeSermonTitle && (
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
-            <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
+            <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => updateSermonTitleText(e.target.value)} />
           </div>
         )}
 
@@ -1379,10 +1413,46 @@ function QTWriteContent() {
     }
   }
 
-  function set(key: string, val: string) { setAnswers(p => ({ ...p, [key]: val })); }
-  function addDecision() { setDecisions(p => [...p, ""]); }
-  function removeDecision(i: number) { setDecisions(p => p.filter((_, idx) => idx !== i)); }
-  function updateDecision(i: number, val: string) { setDecisions(p => p.map((d, idx) => idx === i ? val : d)); }
+  function set(key: string, val: string) {
+    setAnswers(prev => {
+      const next = { ...prev, [key]: val };
+      persistDraftBackup({ ...getDraftSnapshot(), answers: next });
+      return next;
+    });
+  }
+  function addDecision() {
+    setDecisions(prev => {
+      const next = [...prev, ""];
+      persistDraftBackup({ ...getDraftSnapshot(), decisions: next });
+      return next;
+    });
+  }
+  function removeDecision(i: number) {
+    setDecisions(prev => {
+      const next = prev.filter((_, idx) => idx !== i);
+      persistDraftBackup({ ...getDraftSnapshot(), decisions: next.length > 0 ? next : [""] });
+      return next;
+    });
+  }
+  function updateDecision(i: number, val: string) {
+    setDecisions(prev => {
+      const next = prev.map((d, idx) => idx === i ? val : d);
+      persistDraftBackup({ ...getDraftSnapshot(), decisions: next });
+      return next;
+    });
+  }
+  function updateFreeText(val: string) {
+    setFreeText(val);
+    persistDraftBackup({ ...getDraftSnapshot(), freeText: val });
+  }
+  function updateKeyVerseText(val: string) {
+    setKeyVerse(val);
+    persistDraftBackup({ ...getDraftSnapshot(), keyVerse: val });
+  }
+  function updateSermonTitleText(val: string) {
+    setSermonTitle(val);
+    persistDraftBackup({ ...getDraftSnapshot(), sermonTitle: val });
+  }
 
   function getDraftSnapshot(): DraftSnapshot {
     return {
@@ -1409,6 +1479,26 @@ function QTWriteContent() {
       Object.values(snapshot.answers).some(value => value.trim()) ||
       snapshot.decisions.some(value => value.trim())
     );
+  }
+
+  function persistDraftBackup(snapshot: DraftSnapshot = getDraftSnapshot()) {
+    latestDraftSnapshotRef.current = snapshot;
+    if (!draftBackupUserId || snapshot.selectedDate !== todayStr || isEditMode || !hasDraftContent(snapshot)) return;
+
+    saveQTDraftBackup({
+      userId: draftBackupUserId,
+      date: snapshot.selectedDate,
+      mode: snapshot.mode,
+      currentStep: snapshot.currentStep,
+      bibleRef: snapshot.bibleRef,
+      keyVerse: snapshot.keyVerse,
+      answers: snapshot.answers,
+      decisions: snapshot.decisions,
+      freeText: snapshot.freeText,
+      sermonTitle: snapshot.sermonTitle,
+      passageRefs: snapshot.passageRefs,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   function getDraftSignature(snapshot: DraftSnapshot) {
@@ -1516,6 +1606,10 @@ function QTWriteContent() {
 
     if (!hasDraftContent(snapshot)) return false;
 
+    // WebView가 백그라운드로 내려가면 네트워크 임시저장이 중단될 수 있으므로,
+    // Supabase 저장을 시도하기 전에 먼저 기기 안에 최신 초안을 즉시 남긴다.
+    persistDraftBackup(snapshot);
+
     if (!markSaving && autoSavingRef.current) {
       queuedAutoSaveRef.current = { snapshot, signature };
       return false;
@@ -1616,6 +1710,33 @@ function QTWriteContent() {
       }
     }
   }
+
+  useEffect(() => {
+    if (isEditMode || !pageReady || selectedDate !== todayStr || !draftBackupUserId) return;
+    const snapshot = getDraftSnapshot();
+    latestDraftSnapshotRef.current = snapshot;
+    if (hasDraftContent(snapshot)) persistDraftBackup(snapshot);
+  }, [draftBackupUserId, isEditMode, pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+
+  useEffect(() => {
+    if (isEditMode || !draftBackupUserId) return;
+    const persistLatestBeforeLeave = () => {
+      const snapshot = latestDraftSnapshotRef.current ?? getDraftSnapshot();
+      persistDraftBackup(snapshot);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") persistLatestBeforeLeave();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", persistLatestBeforeLeave);
+    window.addEventListener("beforeunload", persistLatestBeforeLeave);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", persistLatestBeforeLeave);
+      window.removeEventListener("beforeunload", persistLatestBeforeLeave);
+    };
+  }, [draftBackupUserId, isEditMode, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     if (isEditMode || !pageReady || selectedDate !== todayStr) return;
@@ -1909,6 +2030,7 @@ function QTWriteContent() {
             partnerRecipientIds: options.partnerRecipientIds,
           });
 
+          removeQTDraftBackup(user.id, selectedDate);
           setShowCompleteSharePrompt(false);
           setCompleteShareTargets([]);
           router.push("/qt/complete");
@@ -1980,6 +2102,7 @@ function QTWriteContent() {
           partnerRecipientIds: options.partnerRecipientIds,
         });
       }
+      removeQTDraftBackup(user.id, selectedDate);
       setShowCompleteSharePrompt(false);
       setCompleteShareTargets([]);
       router.push("/qt/complete");
@@ -2215,7 +2338,7 @@ function QTWriteContent() {
           )}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
-            <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => setFreeText(e.target.value)} />
+            <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => updateFreeText(e.target.value)} />
           </div>
 
           <div>
@@ -2345,7 +2468,7 @@ function QTWriteContent() {
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
-                <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} />
+                <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => updateSermonTitleText(e.target.value)} />
               </div>
               {/* 성경 본문 선택: 완료 후 다시 설교 정보 탭으로 돌아와도 항상 재선택할 수 있게 한다. */}
               <div>
@@ -2660,7 +2783,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
             </label>
-            <textarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onChange={e => setKeyVerse(e.target.value)} />
+            <textarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onChange={e => updateKeyVerseText(e.target.value)} />
           </div>
         </div>
       )}

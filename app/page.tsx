@@ -29,6 +29,7 @@ import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
 import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -461,7 +462,9 @@ export default function HomePage() {
     const prayerChecked = !!prayerCompletion;
 
     const completedQt = qtRecords?.find((record: any) => !record.is_draft) ?? null;
-    const hasDraft = qtRecords?.some((record: any) => record.is_draft) ?? false;
+    const remoteDraftExists = qtRecords?.some((record: any) => record.is_draft) ?? false;
+    const localDraftExists = !!loadQTDraftBackup(user.id, today);
+    const hasDraft = !completedQt && (remoteDraftExists || localDraftExists);
     setCompletedQtRecordId(completedQt?.id ?? null);
 
     let todaySchedule: QTSchedule | null = null;

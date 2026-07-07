@@ -8,6 +8,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
+import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
@@ -134,7 +135,9 @@ export default function QTPage() {
         .eq("date", today)
         .order("created_at", { ascending: false });
       const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
-      const draftExists = !completedExists && !!todayRows?.some((row: any) => row.is_draft === true);
+      const remoteDraftExists = !!todayRows?.some((row: any) => row.is_draft === true);
+      const localDraftExists = !!loadQTDraftBackup(user.id, today);
+      const draftExists = !completedExists && (remoteDraftExists || localDraftExists);
       setTodayDone(completedExists);
       setHasDraft(draftExists);
       if (draftExists) setShowDraftPopup(true);
@@ -216,6 +219,7 @@ export default function QTPage() {
       const today = getLocalDateString();
       const { error } = await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
       if (error) throw error;
+      removeQTDraftBackup(user.id, today);
       setHasDraft(false);
       setShowDraftPopup(false);
       setShowStartModal(true);
