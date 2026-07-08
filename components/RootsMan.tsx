@@ -25,11 +25,12 @@ const WATER_BOTTOM_OFFSET: Record<RootsAvatarType, number> = {
   rootswoman: 19,
 };
 
-// The wider watering frame contains the stream on the left. These offsets keep the body
-// anchored while the water pose changes. Values are source pixels.
+// The wider watering frame contains the stream on the left. These source-pixel
+// offsets keep the character's body/head anchored while only the watering pose changes.
+// Without these per-frame anchors, the body shifts left/right during watering and looks shaky.
 const WATER_FRAME_OFFSET_X: Record<RootsAvatarType, number[]> = {
-  rootsman: [0, -31, 0],
-  rootswoman: [0, 8, 40],
+  rootsman: [0, -32, 17],
+  rootswoman: [0, 20, 61],
 };
 
 const WATER_FRAME_OFFSET_Y: Record<RootsAvatarType, number[]> = {
@@ -207,8 +208,10 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
   const scale = renderW / sourceFrameW;
   const renderH = Math.round(sourceFrameH * scale);
   const frameSrc = getFrameSrc(normalizedAvatarType, isWatering ? "water" : "walk", frame);
-  const frameOffsetX = isWatering ? (WATER_FRAME_OFFSET_X[normalizedAvatarType][frame] ?? 0) * scale : 0;
-  const frameOffsetY = isWatering ? (WATER_FRAME_OFFSET_Y[normalizedAvatarType][frame] ?? 0) * scale : 0;
+  const rawFrameOffsetX = isWatering ? (WATER_FRAME_OFFSET_X[normalizedAvatarType][frame] ?? 0) * scale : 0;
+  const rawFrameOffsetY = isWatering ? (WATER_FRAME_OFFSET_Y[normalizedAvatarType][frame] ?? 0) * scale : 0;
+  const frameOffsetX = Math.round(rawFrameOffsetX * 10) / 10;
+  const frameOffsetY = Math.round(rawFrameOffsetY * 10) / 10;
   const bottomOffset = isWatering ? WATER_BOTTOM_OFFSET[normalizedAvatarType] : 0;
 
   return (
@@ -241,10 +244,11 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
           draggable={false}
           style={{
             position: "absolute",
-            top: frameOffsetY,
-            left: frameOffsetX,
+            top: 0,
+            left: 0,
             width: renderW,
             height: renderH,
+            transform: `translate3d(${frameOffsetX}px, ${frameOffsetY}px, 0)`,
             imageRendering: "pixelated",
             backfaceVisibility: "hidden",
             willChange: "transform",
