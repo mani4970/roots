@@ -15,6 +15,7 @@ import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } fr
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 
 type CompletePhotoOptions = {
   visibility?: string;
@@ -289,6 +290,7 @@ function PhotoReflectionContent() {
       if (progress.awardedBadges.length > 0) {
         storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(progress.awardedBadges));
       }
+      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today);
       storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
     }
     return progress.updated;

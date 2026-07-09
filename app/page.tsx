@@ -30,6 +30,8 @@ import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubK
 import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
 import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
+import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import { getCompanionChallengeText } from "@/lib/companionChallengeText";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -60,6 +62,9 @@ const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
+const COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "companion_challenge_1_announcement_";
+const COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE = "2026-07-31";
+const COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE = "2026-07-09";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -83,6 +88,26 @@ function getNotificationIntroCampaignBaseKey(userId: string) {
 
 function getLoveHeartsIntroSeenKey(userId: string) {
   return `${LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX}${userId}`;
+}
+
+function getCompanionChallengeAnnouncementBaseKey(userId: string) {
+  return `${COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
+}
+
+function getCompanionChallengeAnnouncementKeys(userId: string) {
+  const base = getCompanionChallengeAnnouncementBaseKey(userId);
+  return {
+    dismissed: `${base}_dismissed`,
+    snoozedDate: `${base}_snoozed_date`,
+    sessionSeenDate: `${base}_session_seen_date`,
+  };
+}
+
+function isCompanionChallengeAnnouncementWindow(today: string) {
+  return (
+    today >= COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE &&
+    today <= COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE
+  );
 }
 
 function getNotificationIntroCampaignKeys(userId: string) {
@@ -301,6 +326,69 @@ function NotificationIntroAnnouncementPopup({
 }
 
 
+function CompanionChallengeAnnouncementPopup({
+  onConfirm,
+  onDismissForever,
+}: {
+  onConfirm: () => void;
+  onDismissForever: () => void;
+}) {
+  const lang = useLang();
+  const copy = getCompanionChallengeText(lang).announcement;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.84)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
+      <div style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.34)", borderRadius: 30, padding: "26px 20px 20px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.3)" }}>
+        <h2 style={{ fontSize: 23, fontWeight: 950, color: "var(--text)", lineHeight: 1.28, marginBottom: 16 }}>
+          {copy.title}
+        </h2>
+        <div style={{ borderRadius: 22, padding: "17px 14px 16px", background: "rgba(122,157,122,0.1)", border: "1px solid rgba(122,157,122,0.24)", marginBottom: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {copy.mainLines.map((line, index) => (
+              <p
+                key={`${line}_${index}`}
+                style={{ fontSize: index === 0 ? 17 : 15.5, color: "var(--text)", fontWeight: 950, lineHeight: 1.52, margin: 0 }}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "2px auto 14px", color: "rgba(189,139,30,0.98)", fontSize: 18, fontWeight: 950 }}>
+          <img
+            src="/images/group-challenges/mystery-badge.png"
+            alt=""
+            aria-hidden="true"
+            style={{ width: 48, height: 48, objectFit: "contain" }}
+          />
+          <span aria-hidden="true">&</span>
+          <span>💛 +10</span>
+        </div>
+        <div style={{ borderRadius: 18, padding: "11px 12px", background: "rgba(217,74,56,0.07)", border: "1px solid rgba(217,74,56,0.18)", marginBottom: 18, textAlign: "left" }}>
+          {copy.hints.map((hint, index) => (
+            <p key={`${hint}_${index}`} style={{ fontSize: 11.5, color: "var(--terra-dark)", fontWeight: 850, lineHeight: 1.55, margin: index === 0 ? 0 : "5px 0 0" }}>
+              {hint}
+            </p>
+          ))}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={onConfirm} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
+            {copy.confirm}
+          </button>
+          <button
+            type="button"
+            onClick={onDismissForever}
+            style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12.5, fontWeight: 800, padding: "4px 0", cursor: "pointer" }}
+          >
+            {copy.dismissForever}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -362,7 +450,9 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
+  const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
+  const companionChallengeAnnouncementShownMarkerRef = useRef<string | null>(null);
   const notificationIntroShownMarkerRef = useRef<string | null>(null);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
@@ -660,7 +750,87 @@ export default function HomePage() {
   ]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showNotificationIntroAnnouncement) return;
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showCompanionChallengeAnnouncement) return;
+    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
+    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
+    if (
+      showFirstLangPicker ||
+      showOnboarding ||
+      showWelcomeBack ||
+      showLangPicker ||
+      showCompanionChallengeAnnouncement ||
+      celebration.show ||
+      !!badgePopup ||
+      gardenPopup.show ||
+      showRootsManPopup ||
+      showRootsMan ||
+      !!rewardMapNotice ||
+      showNotificationSettingsModal ||
+      chapterPopup.show ||
+      showHomeQTChoice ||
+      showHomeSundayQT ||
+      showHomeQTPassageChoice ||
+      showHomeQTPhotoPassageChoice ||
+      showHomeQTGuide ||
+      showHomePrayerCompose ||
+      showHomePrayerSharePrompt
+    ) {
+      return;
+    }
+
+    const today = getLocalDateString();
+    if (!isCompanionChallengeAnnouncementWindow(today)) return;
+
+    const hasPendingReflectionReward =
+      progressUpdateInFlightRef.current ||
+      pendingRootsManRef.current ||
+      !!pendingRewardMapNoticeRef.current ||
+      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
+      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
+
+    if (hasPendingReflectionReward) return;
+
+    const keys = getCompanionChallengeAnnouncementKeys(profile.id);
+    if (storageGet(keys.dismissed)) return;
+
+    const snoozedDate = storageGet(keys.snoozedDate);
+    if (snoozedDate && snoozedDate >= today) return;
+
+    const sessionMarker = `${profile.id}_${today}`;
+    if (companionChallengeAnnouncementShownMarkerRef.current === sessionMarker) return;
+    if (sessionStorageGet(keys.sessionSeenDate) === today) return;
+
+    companionChallengeAnnouncementShownMarkerRef.current = sessionMarker;
+    sessionStorageSet(keys.sessionSeenDate, today);
+    setShowCompanionChallengeAnnouncement(true);
+  }, [
+    loading,
+    profile?.id,
+    showLoveHeartIntroAnnouncement,
+    showCompanionChallengeAnnouncement,
+    showFirstLangPicker,
+    showOnboarding,
+    showWelcomeBack,
+    showLangPicker,
+    celebration.show,
+    badgePopup,
+    gardenPopup.show,
+    showRootsManPopup,
+    showRootsMan,
+    rewardMapNotice,
+    showNotificationSettingsModal,
+    chapterPopup.show,
+    showHomeQTChoice,
+    showHomeSundayQT,
+    showHomeQTPassageChoice,
+    showHomeQTPhotoPassageChoice,
+    showHomeQTGuide,
+    showHomePrayerCompose,
+    showHomePrayerSharePrompt,
+  ]);
+
+  useEffect(() => {
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showCompanionChallengeAnnouncement || showNotificationIntroAnnouncement) return;
     if (!canShowNotificationIntroRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
@@ -669,6 +839,7 @@ export default function HomePage() {
       showOnboarding ||
       showWelcomeBack ||
       showLangPicker ||
+      showCompanionChallengeAnnouncement ||
       celebration.show ||
       !!badgePopup ||
       gardenPopup.show ||
@@ -715,6 +886,7 @@ export default function HomePage() {
     loading,
     profile?.id,
     showLoveHeartIntroAnnouncement,
+    showCompanionChallengeAnnouncement,
     showNotificationIntroAnnouncement,
     showFirstLangPicker,
     showOnboarding,
@@ -744,6 +916,7 @@ export default function HomePage() {
 
     try {
       const result = await recordBibleReflectionProgress(supabase, user.id, today);
+      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, completedQtRecordId);
       result.awardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
       if (result.profile) setProfile((prev: any) => ({ ...(prev ?? {}), ...result.profile }));
       const nextDays = Number(result.profile?.streak_days ?? 0);
@@ -897,6 +1070,26 @@ export default function HomePage() {
       storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
     }
     setShowLoveHeartIntroAnnouncement(false);
+  }
+
+  function closeCompanionChallengeAnnouncement(action: "confirm" | "dismissForever") {
+    if (profile?.id) {
+      const today = getLocalDateString();
+      const keys = getCompanionChallengeAnnouncementKeys(profile.id);
+      companionChallengeAnnouncementShownMarkerRef.current = `${profile.id}_${today}`;
+      sessionStorageSet(keys.sessionSeenDate, today);
+
+      if (action === "confirm") {
+        storageSet(keys.snoozedDate, today);
+      }
+
+      if (action === "dismissForever") {
+        storageSet(keys.dismissed, "true");
+        storageRemove(keys.snoozedDate);
+      }
+    }
+
+    setShowCompanionChallengeAnnouncement(false);
   }
 
   function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
@@ -1564,6 +1757,13 @@ export default function HomePage() {
 
       {showLoveHeartIntroAnnouncement && (
         <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
+      )}
+
+      {showCompanionChallengeAnnouncement && (
+        <CompanionChallengeAnnouncementPopup
+          onConfirm={() => closeCompanionChallengeAnnouncement("confirm")}
+          onDismissForever={() => closeCompanionChallengeAnnouncement("dismissForever")}
+        />
       )}
 
       {showNotificationIntroAnnouncement && (

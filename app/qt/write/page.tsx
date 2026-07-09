@@ -16,6 +16,7 @@ import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -1931,6 +1932,7 @@ function QTWriteContent() {
       if (progress.awardedBadges.length > 0) {
         storageSet(getPendingAwardedBadgesKey(userId, selectedDate), JSON.stringify(progress.awardedBadges));
       }
+      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, selectedDate);
       storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
       return true;
     } catch (progressError) {

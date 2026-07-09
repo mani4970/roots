@@ -404,6 +404,7 @@ export const T = {
   // ── 프로필 ──
   profile_faith_journey: { ko: "신앙 여정",           de: "Glaubensweg", en: "Faith Journey", fr: "Parcours de foi" },
   profile_faith_fruits: { ko: "신앙의 결실",         de: "Glaubensfrüchte", en: "Fruits of Faith", fr: "Fruits de la foi" },
+  profile_special_badges: { ko: "스페셜 배지", de: "Spezialabzeichen", en: "Special Badges", fr: "Badges spéciaux" },
   profile_group_challenge_badges: { ko: "그룹 챌린지 배지", de: "Gruppen-Challenge-Abzeichen", en: "Group Challenge Badges", fr: "Badges de défis de groupe" },
   profile_group_challenge_badge_detail_title: { ko: "그룹 챌린지 배지", de: "Gruppen-Challenge-Abzeichen", en: "Group Challenge Badge", fr: "Badge de défi de groupe" },
   profile_group_challenge_badge_detail_challenge: { ko: "챌린지", de: "Challenge", en: "Challenge", fr: "Défi" },

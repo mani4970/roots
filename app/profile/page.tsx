@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
+import { getCompanionChallengeBadgeImageSrc } from "@/lib/companionChallenges";
+import { getCompanionChallengeText } from "@/lib/companionChallengeText";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
@@ -100,8 +102,46 @@ type GroupChallengeProfileBadge = {
   awardedAt: string;
 };
 
+type CompanionChallengeProfileBadge = {
+  id: string;
+  challengeId: string;
+  companionUserId: string | null;
+  title: string;
+  companionName: string;
+  badgeName: string;
+  badgeImagePath: string | null;
+  heartsAwarded: number;
+  awardedAt: string;
+};
+
+type SpecialProfileBadge =
+  | {
+      kind: "group";
+      id: string;
+      title: string;
+      subtitle: string;
+      badgeName: string;
+      badgeImagePath: string | null;
+      badge: GroupChallengeProfileBadge;
+      awardedAt: string;
+    }
+  | {
+      kind: "companion";
+      id: string;
+      title: string;
+      subtitle: string;
+      badgeName: string;
+      badgeImagePath: string | null;
+      badge: CompanionChallengeProfileBadge;
+      awardedAt: string;
+    };
+
 function getGroupChallengeBadgeImg(path?: string | null) {
   return getGroupChallengeBadgeImageSrc(path) ?? "/badge_roots_together.webp";
+}
+
+function getCompanionChallengeBadgeImg(path?: string | null) {
+  return getCompanionChallengeBadgeImageSrc(path);
 }
 
 function getSpiritFruitBadgeImg(name: string) {
@@ -146,6 +186,8 @@ export default function ProfilePage() {
   const [showGroupChallengeBadgeGallery, setShowGroupChallengeBadgeGallery] = useState(false);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
   const [selectedGroupChallengeBadge, setSelectedGroupChallengeBadge] = useState<GroupChallengeProfileBadge | null>(null);
+  const [companionChallengeBadges, setCompanionChallengeBadges] = useState<CompanionChallengeProfileBadge[]>([]);
+  const [selectedCompanionChallengeBadge, setSelectedCompanionChallengeBadge] = useState<CompanionChallengeProfileBadge | null>(null);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
 
@@ -158,12 +200,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash !== "#group-challenge-badges") return;
+    const hash = window.location.hash;
+    if (hash !== "#special-badges" && hash !== "#group-challenge-badges" && hash !== "#companion-challenge-badges") return;
+    const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0;
     const timer = window.setTimeout(() => {
-      document.getElementById("group-challenge-badges")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, groupChallengeBadges.length > 0 ? 260 : 700);
+      document.getElementById("special-badges")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, hasRows ? 260 : 700);
     return () => window.clearTimeout(timer);
-  }, [groupChallengeBadges.length]);
+  }, [groupChallengeBadges.length, companionChallengeBadges.length]);
 
   async function load() {
     const supabase = createClient();
@@ -188,6 +232,7 @@ export default function ProfilePage() {
     }
     await loadQtRecordsForMonth(user.id, calendarMonth);
     await loadGroupChallengeBadgesForProfile(user.id);
+    await loadCompanionChallengeBadgesForProfile(user.id);
     const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
     let prayerSharedCnt = 0;
     if (prayers) {
@@ -303,6 +348,69 @@ export default function ProfilePage() {
       groupName: groupNameMap.get(row.group_id) || t("community_unknown", lang),
       badgeName: row.badge_name || "",
       badgeImagePath: row.badge_image_path ?? null,
+      awardedAt: row.awarded_at,
+    })));
+  }
+
+  async function loadCompanionChallengeBadgesForProfile(userId: string) {
+    const supabase = createClient();
+    const { data: awards, error } = await supabase.from("companion_challenge_awards")
+      .select("id, challenge_id, companion_user_id, badge_name, badge_description, badge_image_path, hearts_awarded, awarded_at")
+      .eq("user_id", userId)
+      .order("awarded_at", { ascending: false });
+
+    if (error) {
+      console.warn("동역자 챌린지 배지 조회 실패:", error);
+      setCompanionChallengeBadges([]);
+      return;
+    }
+
+    const awardRows = (awards ?? []) as any[];
+    if (awardRows.length === 0) {
+      setCompanionChallengeBadges([]);
+      return;
+    }
+
+    const challengeIds = Array.from(new Set(awardRows.map(row => row.challenge_id).filter(Boolean)));
+    const companionUserIds = Array.from(new Set(awardRows.map(row => row.companion_user_id).filter(Boolean)));
+
+    let challengeRows: any[] = [];
+    if (challengeIds.length > 0) {
+      const { data, error: challengeError } = await supabase.from("companion_challenges")
+        .select("id,title")
+        .in("id", challengeIds);
+      if (challengeError) {
+        console.warn("동역자 챌린지 제목 조회 실패:", challengeError);
+      } else {
+        challengeRows = data ?? [];
+      }
+    }
+
+    let companionRows: any[] = [];
+    if (companionUserIds.length > 0) {
+      const { data, error: companionError } = await supabase.from("profiles")
+        .select("id,name")
+        .in("id", companionUserIds);
+      if (companionError) {
+        console.warn("동역자 챌린지 동역자 이름 조회 실패:", companionError);
+      } else {
+        companionRows = data ?? [];
+      }
+    }
+
+    const challengeTitleMap = new Map(challengeRows.map(row => [row.id, row.title]));
+    const companionNameMap = new Map(companionRows.map(row => [row.id, row.name]));
+    const text = getCompanionChallengeText(lang);
+
+    setCompanionChallengeBadges(awardRows.map(row => ({
+      id: row.id,
+      challengeId: row.challenge_id,
+      companionUserId: row.companion_user_id ?? null,
+      title: challengeTitleMap.get(row.challenge_id) || row.badge_name || text.sectionTitle,
+      companionName: row.companion_user_id ? (companionNameMap.get(row.companion_user_id) || t("profile_default_name", lang)) : t("profile_default_name", lang),
+      badgeName: row.badge_name || "",
+      badgeImagePath: row.badge_image_path ?? null,
+      heartsAwarded: Number(row.hearts_awarded ?? 0),
       awardedAt: row.awarded_at,
     })));
   }
@@ -688,8 +796,31 @@ export default function ProfilePage() {
   const previewFaithBadges = sortedFaithBadges.slice(0, 6);
   const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
-  const previewGroupChallengeBadges = groupChallengeBadges.slice(0, 3);
-  const shouldShowGroupChallengeBadgeGalleryButton = groupChallengeBadges.length > 0;
+  const companionChallengeText = getCompanionChallengeText(lang);
+  const specialBadges: SpecialProfileBadge[] = [
+    ...groupChallengeBadges.map((badge): SpecialProfileBadge => ({
+      kind: "group",
+      id: `group_${badge.id}`,
+      title: badge.title,
+      subtitle: badge.groupName,
+      badgeName: badge.badgeName,
+      badgeImagePath: badge.badgeImagePath,
+      badge,
+      awardedAt: badge.awardedAt,
+    })),
+    ...companionChallengeBadges.map((badge): SpecialProfileBadge => ({
+      kind: "companion",
+      id: `companion_${badge.id}`,
+      title: badge.title,
+      subtitle: badge.companionName,
+      badgeName: badge.badgeName,
+      badgeImagePath: badge.badgeImagePath,
+      badge,
+      awardedAt: badge.awardedAt,
+    })),
+  ].sort((a, b) => Date.parse(b.awardedAt || "") - Date.parse(a.awardedAt || ""));
+  const previewSpecialBadges = specialBadges.slice(0, 3);
+  const shouldShowSpecialBadgeGalleryButton = specialBadges.length > 0;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
 
   function openFaithBadgeDetail(b: FaithBadge) {
@@ -807,25 +938,29 @@ export default function ProfilePage() {
               ×
             </button>
             <div style={{ paddingRight: 36, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("profile_group_challenge_badges", lang)}</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("profile_special_badges", lang)}</h3>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-              {groupChallengeBadges.map(badge => (
+              {specialBadges.map(item => (
                 <button
-                  key={badge.id}
+                  key={item.id}
                   type="button"
                   onClick={() => {
                     setShowGroupChallengeBadgeGallery(false);
-                    setSelectedGroupChallengeBadge(badge);
+                    if (item.kind === "group") {
+                      setSelectedGroupChallengeBadge(item.badge);
+                    } else {
+                      setSelectedCompanionChallengeBadge(item.badge);
+                    }
                   }}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 72, height: 72, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
-                      src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
-                      alt={badge.badgeName || badge.title}
+                      src={item.kind === "group" ? getGroupChallengeBadgeImg(item.badgeImagePath) : getCompanionChallengeBadgeImg(item.badgeImagePath)}
+                      alt={item.badgeName || item.title}
                       onError={(event) => {
-                        const fallback = "/badge_roots_together.webp";
+                        const fallback = item.kind === "group" ? "/badge_roots_together.webp" : "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
                         event.currentTarget.src = fallback;
                       }}
@@ -833,10 +968,10 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                    {badge.title}
+                    {item.title}
                   </div>
                   <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {badge.groupName}
+                    {item.subtitle}
                   </div>
                 </button>
               ))}
@@ -919,6 +1054,53 @@ export default function ProfilePage() {
               </div>
             </div>
             <button onClick={() => setSelectedGroupChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
+              {t("group_challenge_close", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedCompanionChallengeBadge && (
+        <div
+          onClick={() => setSelectedCompanionChallengeBadge(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+          >
+            <button
+              onClick={() => setSelectedCompanionChallengeBadge(null)}
+              aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ width: 132, height: 132, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={getCompanionChallengeBadgeImg(selectedCompanionChallengeBadge.badgeImagePath)}
+                alt={selectedCompanionChallengeBadge.badgeName || selectedCompanionChallengeBadge.title}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", marginBottom: 12 }}>
+              {selectedCompanionChallengeBadge.badgeName || companionChallengeText.sectionTitle}
+            </h3>
+            <div style={{ display: "grid", gap: 8, textAlign: "left", marginBottom: 16 }}>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.sectionTitle}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.title}</div>
+              </div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.partnerStatusLabel}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.companionName}</div>
+              </div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.22)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.heartsLabel}</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(189,139,30,0.98)", lineHeight: 1.35 }}>💛 +{selectedCompanionChallengeBadge.heartsAwarded}</div>
+              </div>
+            </div>
+            <button onClick={() => setSelectedCompanionChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
               {t("group_challenge_close", lang)}
             </button>
           </div>
@@ -1069,11 +1251,11 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {groupChallengeBadges.length > 0 && (
-        <div id="group-challenge-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
+      {specialBadges.length > 0 && (
+        <div id="special-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
           <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span>{t("profile_group_challenge_badges", lang)}</span>
-            {shouldShowGroupChallengeBadgeGalleryButton && (
+            <span>{t("profile_special_badges", lang)}</span>
+            {shouldShowSpecialBadgeGalleryButton && (
               <button
                 type="button"
                 onClick={() => setShowGroupChallengeBadgeGallery(true)}
@@ -1085,17 +1267,23 @@ export default function ProfilePage() {
           </div>
           <div className="card" style={{ padding: "18px 14px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 92px))", gap: 14, justifyContent: "start" }}>
-              {previewGroupChallengeBadges.map(badge => (
+              {previewSpecialBadges.map(item => (
                 <button
-                  key={badge.id}
+                  key={item.id}
                   type="button"
-                  onClick={() => setSelectedGroupChallengeBadge(badge)}
+                  onClick={() => {
+                    if (item.kind === "group") {
+                      setSelectedGroupChallengeBadge(item.badge);
+                    } else {
+                      setSelectedCompanionChallengeBadge(item.badge);
+                    }
+                  }}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 78, height: 78, marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
-                      src={getGroupChallengeBadgeImg(badge.badgeImagePath)}
-                      alt={badge.badgeName || badge.title}
+                      src={item.kind === "group" ? getGroupChallengeBadgeImg(item.badgeImagePath) : getCompanionChallengeBadgeImg(item.badgeImagePath)}
+                      alt={item.badgeName || item.title}
                       onError={(event) => {
                         const fallback = "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
@@ -1105,10 +1293,10 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                    {badge.title}
+                    {item.title}
                   </div>
                   <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {badge.groupName}
+                    {item.subtitle}
                   </div>
                 </button>
               ))}
