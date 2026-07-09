@@ -38,6 +38,7 @@ import {
   type CompanionChallengeStatus,
 } from "@/lib/companionChallenges";
 import {
+  getCompanionChallengeDisplayTitle,
   getCompanionChallengeStatusLabel,
   getCompanionChallengeText,
 } from "@/lib/companionChallengeText";
@@ -1254,10 +1255,18 @@ function CommunityPageContent() {
         partnerId,
       );
       if (result?.awarded && !result.alreadyAwarded) {
+        const displayTitle = getCompanionChallengeDisplayTitle(
+          {
+            challengeId: status.challengeId,
+            title: result.challengeTitle || status.title,
+            badgeName: result.badgeName || status.badgeName,
+          },
+          lang,
+        );
         setCompanionChallengeAwardPopup({
-          challengeTitle: result.challengeTitle || status.title,
+          challengeTitle: displayTitle,
           partnerName,
-          badgeName: result.badgeName || status.badgeName || status.title,
+          badgeName: displayTitle,
           badgeImagePath: result.badgeImagePath ?? status.badgeImagePath ?? null,
           rewardHearts: result.rewardHearts || status.rewardHearts || 0,
         });
@@ -5294,6 +5303,14 @@ function CommunityPageContent() {
     const badgeFallbackSrc = status.awarded
       ? COMPANION_CHALLENGE_BADGE_FALLBACK
       : COMPANION_CHALLENGE_MYSTERY_BADGE_SRC;
+    const displayTitle = getCompanionChallengeDisplayTitle(
+      {
+        challengeId: status.challengeId,
+        title: status.title,
+        badgeName: status.badgeName,
+      },
+      lang,
+    );
 
     return (
       <div
@@ -5323,7 +5340,7 @@ function CommunityPageContent() {
             {badgeSrc ? (
               <img
                 src={badgeSrc}
-                alt={status.awarded ? (status.badgeName || status.title) : t("group_challenge_special_badge_mystery_alt", lang)}
+                alt={status.awarded ? displayTitle : t("group_challenge_special_badge_mystery_alt", lang)}
                 onError={(event) => {
                   if (event.currentTarget.src.endsWith(badgeFallbackSrc))
                     return;
@@ -5339,7 +5356,7 @@ function CommunityPageContent() {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 900, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>
-                  {status.title || text.sectionTitle}
+                  {displayTitle}
                 </p>
                 <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 750 }}>
                   {formatChallengeDate(status.startDate)} – {formatChallengeDate(status.endDate)}

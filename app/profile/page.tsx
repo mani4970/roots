@@ -9,7 +9,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { getCompanionChallengeBadgeImageSrc } from "@/lib/companionChallenges";
-import { getCompanionChallengeText } from "@/lib/companionChallengeText";
+import { getCompanionChallengeDisplayTitle, getCompanionChallengeText } from "@/lib/companionChallengeText";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
@@ -406,7 +406,11 @@ export default function ProfilePage() {
       id: row.id,
       challengeId: row.challenge_id,
       companionUserId: row.companion_user_id ?? null,
-      title: challengeTitleMap.get(row.challenge_id) || row.badge_name || text.sectionTitle,
+      title: getCompanionChallengeDisplayTitle({
+        challengeId: row.challenge_id,
+        title: challengeTitleMap.get(row.challenge_id),
+        badgeName: row.badge_name,
+      }, lang),
       companionName: row.companion_user_id ? (companionNameMap.get(row.companion_user_id) || t("profile_default_name", lang)) : t("profile_default_name", lang),
       badgeName: row.badge_name || "",
       badgeImagePath: row.badge_image_path ?? null,

@@ -207,6 +207,71 @@ function normalizeLang(lang: string): CompanionChallengeLang {
   return "en";
 }
 
+
+const COMPANION_CHALLENGE_1_ID = "0d92d123-3fbd-48a7-b7f2-ebeee368f660";
+
+const CHALLENGE_TITLE_TEXT: Record<CompanionChallengeLang, Record<string, string>> = {
+  ko: {
+    companionChallenge1: "우리의 신앙 여정 Part 1",
+  },
+  en: {
+    companionChallenge1: "Our Faith Journey Part 1",
+  },
+  de: {
+    companionChallenge1: "Unsere Glaubensreise Teil 1",
+  },
+  fr: {
+    companionChallenge1: "Notre chemin de foi Partie 1",
+  },
+};
+
+type CompanionChallengeTitleInput = {
+  challengeId?: string | null;
+  title?: string | null;
+  badgeName?: string | null;
+};
+
+function normalizeTitleValue(value?: string | null) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isCompanionChallenge1Title(value?: string | null) {
+  const normalized = normalizeTitleValue(value);
+  return (
+    normalized === "우리의 신앙 여정 part 1" ||
+    normalized === "our faith journey part 1" ||
+    normalized === "unsere glaubensreise teil 1" ||
+    normalized === "notre chemin de foi partie 1"
+  );
+}
+
+export function getCompanionChallengeDisplayTitle(
+  challenge: CompanionChallengeTitleInput | string | null | undefined,
+  lang: Lang | string,
+) {
+  const normalizedLang = normalizeLang(String(lang));
+
+  if (typeof challenge === "string") {
+    return isCompanionChallenge1Title(challenge)
+      ? CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1
+      : challenge;
+  }
+
+  const challengeId = String(challenge?.challengeId ?? "").trim();
+  const title = String(challenge?.title ?? "").trim();
+  const badgeName = String(challenge?.badgeName ?? "").trim();
+
+  if (
+    challengeId === COMPANION_CHALLENGE_1_ID ||
+    isCompanionChallenge1Title(title) ||
+    isCompanionChallenge1Title(badgeName)
+  ) {
+    return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1;
+  }
+
+  return title || badgeName || TEXT[normalizedLang].sectionTitle;
+}
+
 export function getCompanionChallengeText(lang: Lang | string): CompanionChallengeText {
   return TEXT[normalizeLang(lang)];
 }
