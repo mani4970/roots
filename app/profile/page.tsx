@@ -885,6 +885,7 @@ export default function ProfilePage() {
         show={showHeartShop}
         lang={lang}
         heartBalance={loveHeartBalance}
+        onHeartBalanceChange={setLoveHeartBalance}
         onClose={() => setShowHeartShop(false)}
       />
 
