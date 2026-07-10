@@ -2,10 +2,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import RewardMapAction from "./RewardMapAction";
+import HeartShopMapFriends from "./HeartShopMapFriends";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import type { HeartShopItemId } from "@/lib/heartShopText";
 import {
   getRewardMapBackground,
   getRewardMapFallbackTitleKey,
@@ -24,6 +26,7 @@ interface TreeGrowthProps {
   ownerName?: string;
   onActiveCycleChange?: (cycle: RewardMapCycle) => void;
   avatarType?: RootsAvatarType | null;
+  heartShopItemIds?: HeartShopItemId[];
 }
 
 const NIGHT_START_HOUR = 19;
@@ -43,7 +46,7 @@ function getDaysSinceLastCheckin(lastCheckin: string | null) {
   return Math.floor((today.getTime() - last.getTime()) / 86400000);
 }
 
-export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName, onActiveCycleChange, avatarType }: TreeGrowthProps) {
+export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ownerName, onActiveCycleChange, avatarType, heartShopItemIds = [] }: TreeGrowthProps) {
   const lang = useLang();
   const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
@@ -113,6 +116,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
             owner={owner}
             showAction={showRootsMan && cycle.isCurrent}
             avatarType={normalizedAvatarType}
+            heartShopItemIds={cycle.isCurrent ? heartShopItemIds : []}
           />
         ))}
       </div>
@@ -158,7 +162,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   );
 }
 
-function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType }) {
+function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopItemId[] }) {
   const lang = useLang();
   const stage = getRewardMapStage(cycle);
   const titleKey = getRewardMapTitleKey(cycle.kind);
@@ -176,6 +180,8 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType }: 
     <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
         <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
+
+        <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} />
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
           <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>

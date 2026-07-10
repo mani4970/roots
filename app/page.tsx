@@ -32,6 +32,8 @@ import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType 
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { getCompanionChallengeText } from "@/lib/companionChallengeText";
+import { loadOwnedHeartShopItems } from "@/lib/heartShop";
+import type { HeartShopItemId } from "@/lib/heartShopText";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -458,6 +460,7 @@ export default function HomePage() {
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
+  const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopItemId[]>([]);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
 
@@ -516,6 +519,17 @@ export default function HomePage() {
     }
     const user = session?.user ?? null;
     if (!user) { router.push("/welcome"); return; }
+
+    void loadOwnedHeartShopItems(supabase)
+      .then(items => {
+        setEnabledHeartShopItemIds(items.filter(item => item.isEnabled).map(item => item.itemId));
+      })
+      .catch(error => {
+        // Heart Shop friends are a decoration layer only. A loading failure must never
+        // block Home, Bible Reflection progress, rewards, or watering.
+        console.warn("홈 사랑 상점 아이템 조회 실패:", error);
+        setEnabledHeartShopItemIds([]);
+      });
 
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
@@ -1957,6 +1971,7 @@ export default function HomePage() {
           ownerName={profile?.name ?? t("profile_default_name", lang)}
           onActiveCycleChange={(cycle: RewardMapCycle) => setActiveRewardMapKind(cycle.kind)}
           avatarType={currentAvatarType}
+          heartShopItemIds={enabledHeartShopItemIds}
         />
       </div>
 

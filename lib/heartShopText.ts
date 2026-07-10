@@ -24,6 +24,9 @@ export type HeartShopText = {
   ownedTab: string;
   purchaseButton: string;
   ownedButton: string;
+  previewBadge: string;
+  previewTitle: string;
+  closePreviewButton: string;
   cancelButton: string;
   purchaseAction: string;
   purchasingLabel: string;
@@ -57,6 +60,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "내 아이템",
     purchaseButton: "아이템 구매",
     ownedButton: "구매 완료",
+    previewBadge: "움직임 보기",
+    previewTitle: "움직이는 친구 미리보기",
+    closePreviewButton: "닫기",
     cancelButton: "취소",
     purchaseAction: "💛 {price}으로 구매",
     purchasingLabel: "구매 중...",
@@ -121,6 +127,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "My Items",
     purchaseButton: "Buy item",
     ownedButton: "Purchased",
+    previewBadge: "See movement",
+    previewTitle: "Animated friend preview",
+    closePreviewButton: "Close",
     cancelButton: "Cancel",
     purchaseAction: "Buy for 💛 {price}",
     purchasingLabel: "Purchasing...",
@@ -185,6 +194,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "Meine Items",
     purchaseButton: "Item kaufen",
     ownedButton: "Gekauft",
+    previewBadge: "Bewegung ansehen",
+    previewTitle: "Animierte Vorschau",
+    closePreviewButton: "Schließen",
     cancelButton: "Abbrechen",
     purchaseAction: "Für 💛 {price} kaufen",
     purchasingLabel: "Kauf läuft...",
@@ -249,6 +261,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "Mes objets",
     purchaseButton: "Acheter l’objet",
     ownedButton: "Acheté",
+    previewBadge: "Voir le mouvement",
+    previewTitle: "Aperçu animé",
+    closePreviewButton: "Fermer",
     cancelButton: "Annuler",
     purchaseAction: "Acheter pour 💛 {price}",
     purchasingLabel: "Achat en cours...",

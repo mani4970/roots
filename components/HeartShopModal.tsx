@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Gift, Loader2, PackageOpen, Sparkles } from "lucide-react";
+import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import type { Lang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase";
 import {
@@ -26,11 +27,17 @@ type HeartShopModalProps = {
   onClose: () => void;
 };
 
-type HeartShopHistoryKind = "shop" | "purchase" | "complete";
+type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
 
 function getCatalogItem(itemId: HeartShopItemId | null): HeartShopCatalogItem | null {
   if (!itemId) return null;
   return HEART_SHOP_CATALOG.find(item => item.id === itemId) ?? null;
+}
+
+function getLargeSpriteWidth(itemId: HeartShopItemId) {
+  if (itemId === "hindungi") return 112;
+  if (itemId === "kkumdeuli") return 150;
+  return 145;
 }
 
 export default function HeartShopModal({
@@ -46,6 +53,7 @@ export default function HeartShopModal({
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
   const [loadingOwned, setLoadingOwned] = useState(false);
+  const [previewItemId, setPreviewItemId] = useState<HeartShopItemId | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<HeartShopItemId | null>(null);
   const [completedItemId, setCompletedItemId] = useState<HeartShopItemId | null>(null);
   const [purchaseError, setPurchaseError] = useState("");
@@ -60,6 +68,7 @@ export default function HeartShopModal({
     [ownedItems],
   );
 
+  const previewItem = getCatalogItem(previewItemId);
   const selectedItem = getCatalogItem(selectedItemId);
   const completedItem = getCatalogItem(completedItemId);
 
@@ -128,9 +137,21 @@ export default function HeartShopModal({
     onCloseRef.current();
   }
 
+  function openPreview(itemId: HeartShopItemId) {
+    pushHeartShopHistory("preview");
+    setPreviewItemId(itemId);
+  }
+
   function openPurchase(itemId: HeartShopItemId) {
     setPurchaseError("");
     pushHeartShopHistory("purchase");
+    setSelectedItemId(itemId);
+  }
+
+  function openPurchaseFromPreview(itemId: HeartShopItemId) {
+    setPreviewItemId(null);
+    setPurchaseError("");
+    replaceHeartShopHistory("purchase");
     setSelectedItemId(itemId);
   }
 
@@ -141,6 +162,11 @@ export default function HeartShopModal({
       if (!activeLayer) return;
 
       historyStackRef.current = stack.slice(0, -1);
+
+      if (activeLayer === "preview") {
+        setPreviewItemId(null);
+        return;
+      }
 
       if (activeLayer === "purchase") {
         if (purchasingRef.current) {
@@ -177,6 +203,7 @@ export default function HeartShopModal({
     document.body.style.overflow = "hidden";
     setActiveTab("map");
     setNotice("");
+    setPreviewItemId(null);
     setSelectedItemId(null);
     setCompletedItemId(null);
     setPurchaseError("");
@@ -489,9 +516,15 @@ export default function HeartShopModal({
                         boxShadow: "0 8px 24px rgba(75,62,45,0.06)",
                       }}
                     >
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => openPreview(item.id)}
+                        aria-label={`${itemText.name} · ${text.previewBadge}`}
                         style={{
+                          position: "relative",
+                          width: "100%",
                           height: 112,
+                          padding: 0,
                           borderRadius: 18,
                           overflow: "hidden",
                           display: "flex",
@@ -500,6 +533,7 @@ export default function HeartShopModal({
                           background: "#fff",
                           border: "1px solid rgba(232,197,71,0.22)",
                           marginBottom: 10,
+                          cursor: "pointer",
                         }}
                       >
                         <img
@@ -512,7 +546,24 @@ export default function HeartShopModal({
                             imageRendering: "pixelated",
                           }}
                         />
-                      </div>
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: 7,
+                            bottom: 7,
+                            borderRadius: 999,
+                            padding: "4px 7px",
+                            background: "rgba(26,28,30,0.72)",
+                            color: "#fff",
+                            fontSize: 8.5,
+                            lineHeight: 1,
+                            fontWeight: 900,
+                            backdropFilter: "blur(4px)",
+                          }}
+                        >
+                          {text.previewBadge}
+                        </span>
+                      </button>
                       <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>
                         {itemText.name}
                       </h3>
@@ -733,6 +784,86 @@ export default function HeartShopModal({
         </main>
       </div>
 
+      {previewItem && (
+        <div
+          role="presentation"
+          onClick={closeTopHeartShopLayer}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 538,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "22px",
+            background: "rgba(28,29,30,0.58)",
+            backdropFilter: "blur(5px)",
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${text.previewTitle}: ${text.items[previewItem.id].name}`}
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              maxHeight: "calc(100dvh - 44px)",
+              overflowY: "auto",
+              borderRadius: 28,
+              background: "var(--bg2)",
+              border: "1px solid rgba(122,157,122,0.28)",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.3)",
+              padding: "20px 18px 18px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, background: "rgba(122,157,122,0.12)", color: "var(--sage-dark)", padding: "5px 9px", fontSize: 10, fontWeight: 900, marginBottom: 8 }}>
+              {text.previewTitle}
+            </div>
+            <div style={{ minHeight: 180, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+              <HeartShopFriendSprite
+                itemId={previewItem.id}
+                renderWidth={getLargeSpriteWidth(previewItem.id)}
+                alt={text.items[previewItem.id].name}
+              />
+            </div>
+            <h3 style={{ margin: "0 0 8px", color: "var(--text)", fontSize: 21, lineHeight: 1.35, fontWeight: 950 }}>
+              {text.items[previewItem.id].name}
+            </h3>
+            <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>
+              {text.items[previewItem.id].description}
+            </p>
+            <div style={{ marginTop: 12, color: "rgba(179,123,27,0.98)", fontSize: 16, fontWeight: 950 }}>
+              💛 {previewItem.price}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 9, marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={closeTopHeartShopLayer}
+                style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: "pointer" }}
+              >
+                {text.closePreviewButton}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (ownedById.has(previewItem.id)) {
+                    setActiveTab("owned");
+                    closeTopHeartShopLayer();
+                    return;
+                  }
+                  openPurchaseFromPreview(previewItem.id);
+                }}
+                style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--sage)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "white", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}
+              >
+                {ownedById.has(previewItem.id) ? text.ownedButton : text.purchaseButton}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedItem && (
         <div
           role="presentation"
@@ -767,8 +898,12 @@ export default function HeartShopModal({
               textAlign: "center",
             }}
           >
-            <div style={{ height: 150, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-              <img src={selectedItem.previewPath} alt={text.items[selectedItem.id].name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
+            <div style={{ minHeight: 170, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+              <HeartShopFriendSprite
+                itemId={selectedItem.id}
+                renderWidth={getLargeSpriteWidth(selectedItem.id)}
+                alt={text.items[selectedItem.id].name}
+              />
             </div>
             <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 950 }}>
               {text.items[selectedItem.id].purchaseTitle}
@@ -840,8 +975,12 @@ export default function HeartShopModal({
             <div style={{ width: 58, height: 58, borderRadius: "50%", margin: "0 auto 6px", background: "rgba(122,157,122,0.14)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--sage-dark)" }}>
               <CheckCircle2 size={31} />
             </div>
-            <div style={{ height: 145, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
-              <img src={completedItem.previewPath} alt={text.items[completedItem.id].name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
+            <div style={{ minHeight: 165, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+              <HeartShopFriendSprite
+                itemId={completedItem.id}
+                renderWidth={getLargeSpriteWidth(completedItem.id)}
+                alt={text.items[completedItem.id].name}
+              />
             </div>
             <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 950 }}>
               {text.items[completedItem.id].completeTitle}
