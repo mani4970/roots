@@ -15,6 +15,7 @@ import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import LoveHeartIntroPopup from "@/components/LoveHeartIntroPopup";
+import HeartShopIntroPopup from "@/components/HeartShopIntroPopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
@@ -64,6 +65,7 @@ const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
+const HEART_SHOP_INTRO_SEEN_KEY_PREFIX = "heart_shop_intro_seen_2_0_";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "companion_challenge_1_announcement_";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE = "2026-07-31";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE = "2026-07-09";
@@ -90,6 +92,10 @@ function getNotificationIntroCampaignBaseKey(userId: string) {
 
 function getLoveHeartsIntroSeenKey(userId: string) {
   return `${LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX}${userId}`;
+}
+
+function getHeartShopIntroSeenKey(userId: string) {
+  return `${HEART_SHOP_INTRO_SEEN_KEY_PREFIX}${userId}`;
 }
 
 function getCompanionChallengeAnnouncementBaseKey(userId: string) {
@@ -452,6 +458,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
+  const [showHeartShopIntroAnnouncement, setShowHeartShopIntroAnnouncement] = useState(false);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
   const companionChallengeAnnouncementShownMarkerRef = useRef<string | null>(null);
@@ -764,9 +771,76 @@ export default function HomePage() {
   ]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showCompanionChallengeAnnouncement) return;
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
+    if (
+      showFirstLangPicker ||
+      showOnboarding ||
+      showWelcomeBack ||
+      showLangPicker ||
+      celebration.show ||
+      !!badgePopup ||
+      gardenPopup.show ||
+      showRootsManPopup ||
+      showRootsMan ||
+      !!rewardMapNotice ||
+      showNotificationSettingsModal ||
+      chapterPopup.show ||
+      showHomeQTChoice ||
+      showHomeSundayQT ||
+      showHomeQTPassageChoice ||
+      showHomeQTPhotoPassageChoice ||
+      showHomeQTGuide ||
+      showHomePrayerCompose ||
+      showHomePrayerSharePrompt
+    ) {
+      return;
+    }
+
+    const today = getLocalDateString();
+    const hasPendingReflectionReward =
+      progressUpdateInFlightRef.current ||
+      pendingRootsManRef.current ||
+      !!pendingRewardMapNoticeRef.current ||
+      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
+      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
+
+    if (hasPendingReflectionReward) return;
+    if (storageGet(getHeartShopIntroSeenKey(profile.id))) return;
+
+    setShowHeartShopIntroAnnouncement(true);
+  }, [
+    loading,
+    profile?.id,
+    showLoveHeartIntroAnnouncement,
+    showHeartShopIntroAnnouncement,
+    showFirstLangPicker,
+    showOnboarding,
+    showWelcomeBack,
+    showLangPicker,
+    celebration.show,
+    badgePopup,
+    gardenPopup.show,
+    showRootsManPopup,
+    showRootsMan,
+    rewardMapNotice,
+    showNotificationSettingsModal,
+    chapterPopup.show,
+    showHomeQTChoice,
+    showHomeSundayQT,
+    showHomeQTPassageChoice,
+    showHomeQTPhotoPassageChoice,
+    showHomeQTGuide,
+    showHomePrayerCompose,
+    showHomePrayerSharePrompt,
+  ]);
+
+  useEffect(() => {
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement || showCompanionChallengeAnnouncement) return;
+    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
+    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
+    if (!storageGet(getHeartShopIntroSeenKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
@@ -821,6 +895,7 @@ export default function HomePage() {
     loading,
     profile?.id,
     showLoveHeartIntroAnnouncement,
+    showHeartShopIntroAnnouncement,
     showCompanionChallengeAnnouncement,
     showFirstLangPicker,
     showOnboarding,
@@ -844,10 +919,11 @@ export default function HomePage() {
   ]);
 
   useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showCompanionChallengeAnnouncement || showNotificationIntroAnnouncement) return;
+    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement || showCompanionChallengeAnnouncement || showNotificationIntroAnnouncement) return;
     if (!canShowNotificationIntroRuntime()) return;
     if (!storageGet(getOnboardingDoneKey(profile.id))) return;
     if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
+    if (!storageGet(getHeartShopIntroSeenKey(profile.id))) return;
     if (
       showFirstLangPicker ||
       showOnboarding ||
@@ -900,6 +976,7 @@ export default function HomePage() {
     loading,
     profile?.id,
     showLoveHeartIntroAnnouncement,
+    showHeartShopIntroAnnouncement,
     showCompanionChallengeAnnouncement,
     showNotificationIntroAnnouncement,
     showFirstLangPicker,
@@ -1084,6 +1161,16 @@ export default function HomePage() {
       storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
     }
     setShowLoveHeartIntroAnnouncement(false);
+  }
+
+  function closeHeartShopIntroAnnouncement(action: "openShop" | "close") {
+    if (profile?.id) {
+      storageSet(getHeartShopIntroSeenKey(profile.id), "true");
+    }
+    setShowHeartShopIntroAnnouncement(false);
+    if (action === "openShop") {
+      router.push("/profile?openHeartShop=1");
+    }
   }
 
   function closeCompanionChallengeAnnouncement(action: "confirm" | "dismissForever") {
@@ -1773,6 +1860,13 @@ export default function HomePage() {
         <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
       )}
 
+      {showHeartShopIntroAnnouncement && (
+        <HeartShopIntroPopup
+          onOpenShop={() => closeHeartShopIntroAnnouncement("openShop")}
+          onClose={() => closeHeartShopIntroAnnouncement("close")}
+        />
+      )}
+
       {showCompanionChallengeAnnouncement && (
         <CompanionChallengeAnnouncementPopup
           onConfirm={() => closeCompanionChallengeAnnouncement("confirm")}
@@ -1864,7 +1958,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showLoveHeartIntroAnnouncement && !showNotificationIntroAnnouncement}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showLoveHeartIntroAnnouncement && !showHeartShopIntroAnnouncement && !showNotificationIntroAnnouncement}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}

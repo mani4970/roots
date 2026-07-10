@@ -203,6 +203,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("openHeartShop") !== "1") return;
+
+    setShowHeartShop(true);
+    url.searchParams.delete("openHeartShop");
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const hash = window.location.hash;
     if (hash !== "#special-badges" && hash !== "#group-challenge-badges" && hash !== "#companion-challenge-badges") return;
     const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0;
