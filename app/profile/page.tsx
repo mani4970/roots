@@ -13,10 +13,12 @@ import { getCompanionChallengeDisplayTitle, getCompanionChallengeText } from "@/
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
+import HeartShopModal from "@/components/HeartShopModal";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { getLoveHeartBalance } from "@/lib/loveHearts";
 import { getRootsAvatarChoiceText, getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getHeartShopText } from "@/lib/heartShopText";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -168,6 +170,7 @@ export default function ProfilePage() {
   const [qtShareCount, setQtShareCount] = useState(0);
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
+  const [showHeartShop, setShowHeartShop] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -826,6 +829,7 @@ export default function ProfilePage() {
   const previewSpecialBadges = specialBadges.slice(0, 3);
   const shouldShowSpecialBadgeGalleryButton = specialBadges.length > 0;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
+  const heartShopText = getHeartShopText(lang);
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -875,6 +879,13 @@ export default function ProfilePage() {
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
         onClose={() => { if (!savingAvatarChoice) setShowAvatarChoiceModal(false); }}
+      />
+
+      <HeartShopModal
+        show={showHeartShop}
+        lang={lang}
+        heartBalance={loveHeartBalance}
+        onClose={() => setShowHeartShop(false)}
       />
 
       {showBadgeGallery && (
@@ -1211,8 +1222,8 @@ export default function ProfilePage() {
             <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {getRootsAvatarChoiceText("change", lang)}
             </button>
-            <button type="button" disabled style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 999, background: "var(--bg3)", color: "var(--text3)", padding: "10px 12px", fontSize: 12.5, fontWeight: 850, cursor: "not-allowed", opacity: 0.72, lineHeight: 1.25 }}>
-              {getRootsAvatarChoiceText("customizeSoon", lang)}
+            <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid rgba(232,197,71,0.38)", borderRadius: 999, background: "rgba(255,248,218,0.82)", color: "rgba(157,105,24,0.98)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+              {heartShopText.openButton}
             </button>
           </div>
         </div>
