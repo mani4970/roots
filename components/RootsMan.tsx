@@ -25,15 +25,21 @@ const WATER_BOTTOM_OFFSET: Record<RootsAvatarType, number> = {
   rootswoman: 19,
 };
 
-// The wider watering frame contains the stream on the left. These source-pixel
-// offsets keep the character's body/head anchored while only the watering pose changes.
-// Without these per-frame anchors, the body shifts left/right during watering and looks shaky.
-const WATER_FRAME_OFFSET_X: Record<RootsAvatarType, number[]> = {
-  rootsman: [0, -32, 17],
-  rootswoman: [0, 20, 61],
+// Final CSS-pixel anchors for the watering frames.
+//
+// The watering artwork is much wider than the walking artwork because the can and
+// stream extend to the left. Each frame also stores the character at a slightly
+// different source X position. Keeping final rendered anchors here avoids fractional
+// translate values that can make pixel art shimmer, and keeps the RootsWoman body
+// aligned with the neutral walking frame when watering begins and ends.
+const WATER_FRAME_RENDER_OFFSET_X: Record<RootsAvatarType, number[]> = {
+  // Preserve the already-stable RootsMan alignment.
+  rootsman: [0, -5.8, 3.1],
+  // Stable body anchor across frames 0/1/2, including the walk -> water transition.
+  rootswoman: [-23, -19, -12],
 };
 
-const WATER_FRAME_OFFSET_Y: Record<RootsAvatarType, number[]> = {
+const WATER_FRAME_RENDER_OFFSET_Y: Record<RootsAvatarType, number[]> = {
   rootsman: [0, 0, 0],
   rootswoman: [0, 0, 0],
 };
@@ -208,10 +214,12 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
   const scale = renderW / sourceFrameW;
   const renderH = Math.round(sourceFrameH * scale);
   const frameSrc = getFrameSrc(normalizedAvatarType, isWatering ? "water" : "walk", frame);
-  const rawFrameOffsetX = isWatering ? (WATER_FRAME_OFFSET_X[normalizedAvatarType][frame] ?? 0) * scale : 0;
-  const rawFrameOffsetY = isWatering ? (WATER_FRAME_OFFSET_Y[normalizedAvatarType][frame] ?? 0) * scale : 0;
-  const frameOffsetX = Math.round(rawFrameOffsetX * 10) / 10;
-  const frameOffsetY = Math.round(rawFrameOffsetY * 10) / 10;
+  const frameOffsetX = isWatering
+    ? (WATER_FRAME_RENDER_OFFSET_X[normalizedAvatarType][frame] ?? 0)
+    : 0;
+  const frameOffsetY = isWatering
+    ? (WATER_FRAME_RENDER_OFFSET_Y[normalizedAvatarType][frame] ?? 0)
+    : 0;
   const bottomOffset = isWatering ? WATER_BOTTOM_OFFSET[normalizedAvatarType] : 0;
 
   return (
