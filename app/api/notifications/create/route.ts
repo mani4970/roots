@@ -159,7 +159,7 @@ function deepLinkFor(type: NotificationEventType, scope: NotificationScope, targ
 }
 
 async function createServerSupabaseClient() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   return createServerClient(
     getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
     getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
