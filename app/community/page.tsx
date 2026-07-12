@@ -29,6 +29,7 @@ import {
 } from "@/lib/rewardBadges";
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { getLoveHeartToastText } from "@/lib/loveHeartText";
+import { triggerLoveHeartTapHapticBestEffort } from "@/lib/nativeHaptics";
 import {
   COMPANION_CHALLENGE_BADGE_FALLBACK,
   claimCompanionChallengeReward,
@@ -553,6 +554,7 @@ function CommunityPageContent() {
   } | null>(null);
   const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
   const loveHeartToastTimerRef = useRef<number | null>(null);
+  const loveHeartHapticPendingRef = useRef<Set<string>>(new Set());
   const [prayers, setPrayers] = useState<any[]>([]);
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
@@ -717,6 +719,22 @@ function CommunityPageContent() {
       setLoveHeartToast(null);
       loveHeartToastTimerRef.current = null;
     }, 2200);
+  }
+
+  function beginLoveHeartTapHaptic(
+    sourceType: LoveHeartSourceType,
+    sourceId: string,
+  ) {
+    const key = `${sourceType}:${sourceId}`;
+    if (loveHeartHapticPendingRef.current.has(key)) return null;
+    loveHeartHapticPendingRef.current.add(key);
+    void triggerLoveHeartTapHapticBestEffort();
+    return key;
+  }
+
+  function finishLoveHeartTapHaptic(key: string | null) {
+    if (!key) return;
+    loveHeartHapticPendingRef.current.delete(key);
   }
 
   async function awardCommunityLoveHeart(
@@ -2598,38 +2616,48 @@ function CommunityPageContent() {
   async function likeAnsweredPrayer(prayerId: string) {
     if (!userId || likedPrayerIds.includes(prayerId)) return;
 
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("prayer_likes")
-      .insert({ prayer_id: prayerId, user_id: userId });
-
-    if (error) {
-      if (error.code === "23505") {
-        setLikedPrayerIds((prev) =>
-          prev.includes(prayerId) ? prev : [...prev, prayerId],
-        );
-      }
-      return;
-    }
-
-    const bumpLikeCount = (items: any[]) =>
-      items.map((item: any) =>
-        item.id === prayerId
-          ? { ...item, like_count: (item.like_count ?? 0) + 1 }
-          : item,
-      );
-
-    setLikedPrayerIds((prev) =>
-      prev.includes(prayerId) ? prev : [...prev, prayerId],
-    );
-    setAnsweredPrayers((prev) => bumpLikeCount(prev));
-    setGroupPrayers((prev) => bumpLikeCount(prev));
-    setPartnerPrayers((prev) => bumpLikeCount(prev));
-    void awardCommunityLoveHeart(
-      supabase,
+    const hapticKey = beginLoveHeartTapHaptic(
       "answered_prayer_gratitude",
       prayerId,
     );
+    if (!hapticKey) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("prayer_likes")
+        .insert({ prayer_id: prayerId, user_id: userId });
+
+      if (error) {
+        if (error.code === "23505") {
+          setLikedPrayerIds((prev) =>
+            prev.includes(prayerId) ? prev : [...prev, prayerId],
+          );
+        }
+        return;
+      }
+
+      const bumpLikeCount = (items: any[]) =>
+        items.map((item: any) =>
+          item.id === prayerId
+            ? { ...item, like_count: (item.like_count ?? 0) + 1 }
+            : item,
+        );
+
+      setLikedPrayerIds((prev) =>
+        prev.includes(prayerId) ? prev : [...prev, prayerId],
+      );
+      setAnsweredPrayers((prev) => bumpLikeCount(prev));
+      setGroupPrayers((prev) => bumpLikeCount(prev));
+      setPartnerPrayers((prev) => bumpLikeCount(prev));
+      void awardCommunityLoveHeart(
+        supabase,
+        "answered_prayer_gratitude",
+        prayerId,
+      );
+    } finally {
+      finishLoveHeartTapHaptic(hapticKey);
+    }
   }
 
   function PrayerLikeButton({ prayer }: { prayer: any }) {
@@ -3982,173 +4010,189 @@ function CommunityPageContent() {
 
   // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
   async function reactToQT(qtId: string, reactionId: string) {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
     const myPrev = myQtReactions[qtId];
+    const hapticKey = !myPrev
+      ? beginLoveHeartTapHaptic("qt_reaction", qtId)
+      : null;
+    if (!myPrev && !hapticKey) return;
 
-    if (myPrev === reactionId) {
-      // 같은 반응 → 취소
-      const { error: delErr } = await supabase
-        .from("qt_reactions")
-        .delete()
-        .eq("qt_id", qtId)
-        .eq("user_id", user.id);
-      if (delErr) {
-        console.error("반응 취소 실패:", delErr);
-        return;
-      }
-      setMyQtReactions((prev) => {
-        const n = { ...prev };
-        delete n[qtId];
-        return n;
-      });
-      setQtReactionCounts((prev) => ({
-        ...prev,
-        [qtId]: {
-          ...prev[qtId],
-          [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1),
-        },
-      }));
-    } else {
-      // 새 반응 or 변경 — insert 먼저, 실패하면 update
-      const { error: upsertErr } = await supabase
-        .from("qt_reactions")
-        .upsert(
-          { qt_id: qtId, user_id: user.id, reaction: reactionId },
-          { onConflict: "qt_id,user_id" },
-        );
-      if (upsertErr) {
-        console.error("반응 저장 실패:", upsertErr);
-        // onConflict가 안 먹히는 경우 update 시도
-        const { error: updateErr } = await supabase
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (myPrev === reactionId) {
+        // 같은 반응 → 취소
+        const { error: delErr } = await supabase
           .from("qt_reactions")
-          .update({ reaction: reactionId })
+          .delete()
           .eq("qt_id", qtId)
           .eq("user_id", user.id);
-        if (updateErr) {
-          console.error("반응 update도 실패:", updateErr);
+        if (delErr) {
+          console.error("반응 취소 실패:", delErr);
           return;
         }
-      }
-      setMyQtReactions((prev) => ({ ...prev, [qtId]: reactionId }));
-      setQtReactionCounts((prev) => {
-        const cur = { ...prev[qtId] };
-        if (myPrev) cur[myPrev] = Math.max(0, (cur[myPrev] ?? 1) - 1);
-        cur[reactionId] = (cur[reactionId] ?? 0) + 1;
-        return { ...prev, [qtId]: cur };
-      });
-      void awardCommunityLoveHeart(supabase, "qt_reaction", qtId);
-
-      try {
-        const awarded = await checkAndAwardQtReactionBadge(supabase, user.id);
-        if (awarded) {
-          const popup = getRewardBadgePopup(awarded, lang);
-          setBadgePopup(popup);
+        setMyQtReactions((prev) => {
+          const n = { ...prev };
+          delete n[qtId];
+          return n;
+        });
+        setQtReactionCounts((prev) => ({
+          ...prev,
+          [qtId]: {
+            ...prev[qtId],
+            [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1),
+          },
+        }));
+      } else {
+        // 새 반응 or 변경 — insert 먼저, 실패하면 update
+        const { error: upsertErr } = await supabase
+          .from("qt_reactions")
+          .upsert(
+            { qt_id: qtId, user_id: user.id, reaction: reactionId },
+            { onConflict: "qt_id,user_id" },
+          );
+        if (upsertErr) {
+          console.error("반응 저장 실패:", upsertErr);
+          // onConflict가 안 먹히는 경우 update 시도
+          const { error: updateErr } = await supabase
+            .from("qt_reactions")
+            .update({ reaction: reactionId })
+            .eq("qt_id", qtId)
+            .eq("user_id", user.id);
+          if (updateErr) {
+            console.error("반응 update도 실패:", updateErr);
+            return;
+          }
         }
-      } catch (error) {
-        console.warn("묵상 리액션 보상 배지 확인 실패:", error);
+        setMyQtReactions((prev) => ({ ...prev, [qtId]: reactionId }));
+        setQtReactionCounts((prev) => {
+          const cur = { ...prev[qtId] };
+          if (myPrev) cur[myPrev] = Math.max(0, (cur[myPrev] ?? 1) - 1);
+          cur[reactionId] = (cur[reactionId] ?? 0) + 1;
+          return { ...prev, [qtId]: cur };
+        });
+        void awardCommunityLoveHeart(supabase, "qt_reaction", qtId);
+
+        try {
+          const awarded = await checkAndAwardQtReactionBadge(supabase, user.id);
+          if (awarded) {
+            const popup = getRewardBadgePopup(awarded, lang);
+            setBadgePopup(popup);
+          }
+        } catch (error) {
+          console.warn("묵상 리액션 보상 배지 확인 실패:", error);
+        }
       }
+    } finally {
+      finishLoveHeartTapHaptic(hapticKey);
     }
   }
 
   async function prayTogether(id: string) {
-    if (prayedIds.includes(id)) return;
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!userId || prayedIds.includes(id)) return;
 
-    // 중복 체크
-    const { data: existing } = await supabase
-      .from("user_prayer_logs")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("prayer_id", id)
-      .maybeSingle();
-    if (existing) {
-      setPrayedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-      return;
-    }
+    const hapticKey = beginLoveHeartTapHaptic("prayer_intercession", id);
+    if (!hapticKey) return;
 
-    // 로그 저장
-    const { error: logError } = await supabase
-      .from("user_prayer_logs")
-      .insert({ user_id: user.id, prayer_id: id });
-    if (logError) {
-      if (logError.code === "23505") setPrayedIds((prev) => [...prev, id]);
-      return;
-    }
-
-    // 카운트 증가: DB 함수가 실제 로그 개수 기준으로 prayer_count를 동기화합니다.
-    // RLS 보안을 위해 클라이언트에서 prayer_items.prayer_count를 직접 update하지 않습니다.
-    const { error: rpcError } = await supabase.rpc("increment_prayer_count", {
-      prayer_id: id,
-    });
-    if (rpcError) console.error("기도 카운트 동기화 실패:", rpcError);
-    const { data: cur } = await supabase
-      .from("prayer_items")
-      .select("prayer_count")
-      .eq("id", id)
-      .single();
-    const newCount = cur?.prayer_count ?? 1;
-
-    setPrayedIds((prev) => [...prev, id]);
-    storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
-    setPrayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-    );
-    setGroupPrayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-    );
-    setPartnerPrayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-    );
-    setAnsweredPrayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-    );
-    void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
-
-    // 바울 뱃지 체크 (함께 기도 30번)
-    let existingPrayerBadgeAwarded = false;
     try {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("badge_paul")
-        .eq("id", user.id)
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 중복 체크
+      const { data: existing } = await supabase
+        .from("user_prayer_logs")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("prayer_id", id)
+        .maybeSingle();
+      if (existing) {
+        setPrayedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+        return;
+      }
+
+      // 로그 저장
+      const { error: logError } = await supabase
+        .from("user_prayer_logs")
+        .insert({ user_id: user.id, prayer_id: id });
+      if (logError) {
+        if (logError.code === "23505") setPrayedIds((prev) => [...prev, id]);
+        return;
+      }
+
+      // 카운트 증가: DB 함수가 실제 로그 개수 기준으로 prayer_count를 동기화합니다.
+      // RLS 보안을 위해 클라이언트에서 prayer_items.prayer_count를 직접 update하지 않습니다.
+      const { error: rpcError } = await supabase.rpc("increment_prayer_count", {
+        prayer_id: id,
+      });
+      if (rpcError) console.error("기도 카운트 동기화 실패:", rpcError);
+      const { data: cur } = await supabase
+        .from("prayer_items")
+        .select("prayer_count")
+        .eq("id", id)
         .single();
-      if (!prof?.badge_paul) {
-        const { data: logs } = await supabase
-          .from("user_prayer_logs")
-          .select("id")
-          .eq("user_id", user.id);
-        if ((logs?.length ?? 0) >= 30) {
-          await supabase
-            .from("profiles")
-            .update({ badge_paul: true })
-            .eq("id", user.id);
-          existingPrayerBadgeAwarded = true;
-          setBadgePopup({
-            img: "/badge_paul.webp",
-            title: c("community_badge_paul_title"),
-            msg: t("badge_paul_msg", lang),
-          });
-        }
-      }
-    } catch (e) {}
+      const newCount = cur?.prayer_count ?? 1;
 
-    try {
-      const awarded = await checkAndAwardPrayTogetherBadge(supabase, user.id);
-      if (awarded && !existingPrayerBadgeAwarded) {
-        const popup = getRewardBadgePopup(awarded, lang);
-        setBadgePopup(popup);
+      setPrayedIds((prev) => [...prev, id]);
+      storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
+      setPrayers((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+      );
+      setGroupPrayers((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+      );
+      setPartnerPrayers((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+      );
+      setAnsweredPrayers((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
+      );
+      void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
+
+      // 바울 뱃지 체크 (함께 기도 30번)
+      let existingPrayerBadgeAwarded = false;
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("badge_paul")
+          .eq("id", user.id)
+          .single();
+        if (!prof?.badge_paul) {
+          const { data: logs } = await supabase
+            .from("user_prayer_logs")
+            .select("id")
+            .eq("user_id", user.id);
+          if ((logs?.length ?? 0) >= 30) {
+            await supabase
+              .from("profiles")
+              .update({ badge_paul: true })
+              .eq("id", user.id);
+            existingPrayerBadgeAwarded = true;
+            setBadgePopup({
+              img: "/badge_paul.webp",
+              title: c("community_badge_paul_title"),
+              msg: t("badge_paul_msg", lang),
+            });
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const awarded = await checkAndAwardPrayTogetherBadge(supabase, user.id);
+        if (awarded && !existingPrayerBadgeAwarded) {
+          const popup = getRewardBadgePopup(awarded, lang);
+          setBadgePopup(popup);
+        }
+      } catch (error) {
+        console.warn("함께 기도 보상 배지 확인 실패:", error);
       }
-    } catch (error) {
-      console.warn("함께 기도 보상 배지 확인 실패:", error);
+    } finally {
+      finishLoveHeartTapHaptic(hapticKey);
     }
   }
 
