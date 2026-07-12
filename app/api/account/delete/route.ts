@@ -53,7 +53,7 @@ function ownedStoragePath(path: string | null | undefined, userId: string) {
 }
 
 export async function POST() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
