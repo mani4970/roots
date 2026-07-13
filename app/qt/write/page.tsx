@@ -17,6 +17,8 @@ import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
+import CursorStableTextarea from "@/components/CursorStableTextarea";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -173,7 +175,6 @@ function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>
 }
 
 type QTWriteMode = "6step" | "sunday" | "free";
-type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
 type DraftSnapshot = {
   selectedDate: string;
   mode: QTWriteMode;
@@ -407,8 +408,13 @@ function QTWriteContent() {
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
   const [freeText, setFreeText] = useState("");
-  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
-  const [lastAutoSavedAt, setLastAutoSavedAt] = useState("");
+  // Auto-save feedback is isolated from the writer tree so visual status updates
+  // cannot re-render an active textarea during Korean IME composition.
+  const autoSaveStatusViewRef = useRef<QTAutoSaveStatusHandle | null>(null);
+  const autoSaveStatusStateRef = useRef<{ status: QTAutoSaveStatusValue; savedAt: string }>({
+    status: "idle",
+    savedAt: "",
+  });
   const [showCompleteSharePrompt, setShowCompleteSharePrompt] = useState(false);
   const [completeShareTargets, setCompleteShareTargets] = useState<string[]>([]);
   const [completeShareGroups, setCompleteShareGroups] = useState<ShareTargetGroup[]>([]);
@@ -1530,33 +1536,27 @@ function QTWriteContent() {
     };
   }
 
-  function autoSaveStatusText() {
-    if (autoSaveStatus === "saving") return trQT("자동 임시저장 중...", lang);
-    if (autoSaveStatus === "saved") {
-      return lastAutoSavedAt
-        ? trQTVars("자동 임시저장됨 · {time}", lang, { time: lastAutoSavedAt })
-        : trQT("자동 임시저장됨", lang);
-    }
-    if (autoSaveStatus === "error") return trQT("자동 임시저장 실패 · 수동 임시저장을 눌러주세요", lang);
-    return trQT("작성 내용은 자동으로 임시저장돼요", lang);
+  function updateAutoSaveStatus(status: QTAutoSaveStatusValue, savedAt?: string) {
+    const nextSavedAt = savedAt ?? autoSaveStatusStateRef.current.savedAt;
+    autoSaveStatusStateRef.current = { status, savedAt: nextSavedAt };
+    autoSaveStatusViewRef.current?.setStatus(status, nextSavedAt);
   }
 
   function renderAutoSaveStatus() {
-    if (isEditMode) {
-      return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: "var(--text3)", fontSize: 11 }}>
-          <Save size={12} />
-          <span>{trQT("수정 모드에서는 자동 임시저장이 꺼져 있어요", lang)}</span>
-        </div>
-      );
-    }
-    if (selectedDate !== todayStr) return null;
-
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: autoSaveStatus === "error" ? "var(--terra-dark)" : "var(--text3)", fontSize: 11 }}>
-        {autoSaveStatus === "saving" ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
-        <span>{autoSaveStatusText()}</span>
-      </div>
+      <QTAutoSaveStatus
+        ref={autoSaveStatusViewRef}
+        initialStatus={autoSaveStatusStateRef.current.status}
+        initialSavedAt={autoSaveStatusStateRef.current.savedAt}
+        isEditMode={isEditMode}
+        visible={isEditMode || selectedDate === todayStr}
+        idleText={trQT("작성 내용은 자동으로 임시저장돼요", lang)}
+        savingText={trQT("자동 임시저장 중...", lang)}
+        savedText={trQT("자동 임시저장됨", lang)}
+        savedWithTimeText={trQT("자동 임시저장됨 · {time}", lang)}
+        errorText={trQT("자동 임시저장 실패 · 수동 임시저장을 눌러주세요", lang)}
+        editModeText={trQT("수정 모드에서는 자동 임시저장이 꺼져 있어요", lang)}
+      />
     );
   }
 
@@ -1619,7 +1619,7 @@ function QTWriteContent() {
     if (markSaving) setSaving(true);
     else {
       autoSavingRef.current = true;
-      setAutoSaveStatus("saving");
+      updateAutoSaveStatus("saving");
     }
 
     // Supabase 호출이 매달리는 경우를 대비한 타임아웃 헬퍼.
@@ -1641,7 +1641,7 @@ function QTWriteContent() {
       const { data: { user } } = await withTimeout(supabase.auth.getUser(), 6000, "auth.getUser");
       if (!user) {
         if (!silent) router.push("/login");
-        else setAutoSaveStatus("error");
+        else updateAutoSaveStatus("error");
         return false;
       }
 
@@ -1683,18 +1683,16 @@ function QTWriteContent() {
 
       lastAutoSaveSignatureRef.current = signature;
       if (silent) {
-        setAutoSaveStatus("saved");
-        setLastAutoSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        updateAutoSaveStatus("saved", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       } else {
         showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
-        setAutoSaveStatus("saved");
-        setLastAutoSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        updateAutoSaveStatus("saved", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       }
       return true;
     } catch (e) {
       // 디버깅을 위한 상세 로그 — 사용자가 다음에 같은 문제 보고할 때 콘솔에서 즉시 추적 가능
       console.error("[saveDraft] failed:", e);
-      if (silent) setAutoSaveStatus("error");
+      if (silent) updateAutoSaveStatus("error");
       else showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
       return false;
     } finally {
@@ -1744,14 +1742,16 @@ function QTWriteContent() {
 
     const snapshot = getDraftSnapshot();
     if (!hasDraftContent(snapshot)) {
-      setAutoSaveStatus("idle");
+      updateAutoSaveStatus("idle");
       return;
     }
 
     const signature = getDraftSignature(snapshot);
     if (signature === lastAutoSaveSignatureRef.current) return;
 
-    setAutoSaveStatus(prev => prev === "error" ? "error" : "idle");
+    if (autoSaveStatusStateRef.current.status !== "error") {
+      updateAutoSaveStatus("idle");
+    }
 
     if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = window.setTimeout(() => {
@@ -2340,7 +2340,7 @@ function QTWriteContent() {
           )}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
-            <textarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onChange={e => updateFreeText(e.target.value)} />
+            <CursorStableTextarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
           </div>
 
           <div>
@@ -2549,7 +2549,7 @@ function QTWriteContent() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
                 <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
-                <textarea className="textarea-field" rows={4} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onChange={e => set("meditation", e.target.value)} />
+                <CursorStableTextarea className="textarea-field" rows={4} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
               </div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
@@ -2562,7 +2562,7 @@ function QTWriteContent() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-                  <textarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+                  <CursorStableTextarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
@@ -2589,7 +2589,7 @@ function QTWriteContent() {
           {!step.isSermonInfo && !step.isDecision && (
             <>
               <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
-              <textarea className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onChange={e => set(step.id, e.target.value)} />
+              <CursorStableTextarea className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
             </>
           )}
         </div>
@@ -2777,7 +2777,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               {trQT("2단계 · 본문 요약", lang)}
             </label>
-            <textarea className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onChange={e => set("summary", e.target.value)} />
+            <CursorStableTextarea className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
           </div>
 
           {/* 3단계: 붙잡은 말씀 */}
@@ -2785,7 +2785,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>
               {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
             </label>
-            <textarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onChange={e => updateKeyVerseText(e.target.value)} />
+            <CursorStableTextarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
           </div>
         </div>
       )}
@@ -2805,7 +2805,7 @@ function QTWriteContent() {
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-            <textarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onChange={e => set("application", e.target.value)} />
+            <CursorStableTextarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
@@ -2854,7 +2854,7 @@ function QTWriteContent() {
             </div>
           )}
 
-          <textarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onChange={e => set(step6.id, e.target.value)} />
+          <CursorStableTextarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onValueChange={value => set(step6.id, value)} />
         </div>
       )}
 
