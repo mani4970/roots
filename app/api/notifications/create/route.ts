@@ -9,6 +9,7 @@ import {
   NOTIFICATION_EVENT_TYPES,
   type NotificationEventType,
 } from "@/lib/notifications/templates";
+import { buildCommunityNotificationDeepLink } from "@/lib/notifications/communityDeepLinks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -139,23 +140,6 @@ function preferencesAllowNotification(row: NotificationPreferenceRow | null, typ
 
 function duplicateKey(recipientId: string, scopeTargetId: string) {
   return `${recipientId}:${scopeTargetId}`;
-}
-
-function sectionForEventType(type: NotificationEventType): "qt" | "praying" | "answered" {
-  if (type.endsWith("prayer_answered")) return "answered";
-  if (type.endsWith("prayer_shared")) return "praying";
-  return "qt";
-}
-
-function deepLinkFor(type: NotificationEventType, scope: NotificationScope, targetId: string) {
-  const section = sectionForEventType(type);
-  const params = new URLSearchParams({
-    tab: scope,
-    section,
-  });
-  if (scope === "group") params.set("groupId", targetId);
-  else params.set("partnerId", targetId);
-  return `/community?${params.toString()}`;
 }
 
 async function createServerSupabaseClient() {
@@ -392,7 +376,12 @@ export async function POST(request: NextRequest) {
               locale,
               title: template.title,
               body: template.body,
-              deep_link: deepLinkFor(eventType, "group", groupId),
+              deep_link: buildCommunityNotificationDeepLink({
+                type: eventType,
+                scope: "group",
+                scopeTargetId: groupId,
+                contentId,
+              }),
               push_status: "pending",
             });
           }
@@ -459,7 +448,12 @@ export async function POST(request: NextRequest) {
               locale,
               title: template.title,
               body: template.body,
-              deep_link: deepLinkFor(eventType, "partner", actorId),
+              deep_link: buildCommunityNotificationDeepLink({
+                type: eventType,
+                scope: "partner",
+                scopeTargetId: actorId,
+                contentId,
+              }),
               push_status: "pending",
             });
           }

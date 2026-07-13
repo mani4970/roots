@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
+import NotificationDirectOpenOverlay from "@/components/notifications/NotificationDirectOpenOverlay";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -30,6 +31,12 @@ import {
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { getLoveHeartToastText } from "@/lib/loveHeartText";
 import { triggerLoveHeartTapHapticBestEffort } from "@/lib/nativeHaptics";
+import {
+  communityNotificationTargetSignature,
+  parseCommunityNotificationDirectTarget,
+  type CommunityNotificationDirectTarget,
+} from "@/lib/notifications/communityDeepLinks";
+import { loadCommunityNotificationDirectContent } from "@/lib/notifications/communityDirectContent";
 import {
   COMPANION_CHALLENGE_BADGE_FALLBACK,
   claimCompanionChallengeReward,
@@ -707,6 +714,13 @@ function CommunityPageContent() {
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
   const handledNotificationRouteRef = useRef<string | null>(null);
+  const directPrayerFocusRef = useRef<string | null>(null);
+  const directPrayerHighlightTimerRef = useRef<number | null>(null);
+  const [notificationDirectOpenPending, setNotificationDirectOpenPending] =
+    useState(() => !!parseCommunityNotificationDirectTarget(searchParams));
+  const [directPrayerTargetId, setDirectPrayerTargetId] = useState<
+    string | null
+  >(null);
 
   const c = (key: TKey, vars?: Record<string, string | number>) =>
     t(key, lang, vars);
@@ -2997,17 +3011,104 @@ function CommunityPageContent() {
     );
   }
 
+  async function openDirectNotificationContent(
+    target: CommunityNotificationDirectTarget,
+  ): Promise<"qt" | "prayer" | null> {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const directContent = await loadCommunityNotificationDirectContent(
+      supabase,
+      user.id,
+      target,
+    );
+    if (!directContent) return null;
+
+    if (directContent.kind === "qt") {
+      const record = directContent.record;
+      if (filterHiddenItems("qt", [record]).length === 0) return null;
+
+      setQtReactionCounts((prev) => ({
+        ...prev,
+        ...directContent.reactionCounts,
+      }));
+      setMyQtReactions((prev) => ({
+        ...prev,
+        ...directContent.myReaction,
+      }));
+
+      if (target.scope === "group") {
+        setGroupQts((prev) =>
+          sortQtFeedRows(mergeRowsById([[record], prev])).slice(
+            0,
+            COMMUNITY_FEED_PREFETCH_LIMIT,
+          ),
+        );
+      } else {
+        setPartnerQts((prev) => mergeRowsById([[record], prev]));
+      }
+
+      if (record.photo_path) void loadQtPhotoUrls(supabase, [record]);
+      openQtDetail(record);
+      return "qt";
+    }
+
+    const record = directContent.record;
+    if (filterHiddenItems("prayer", [record]).length === 0) return null;
+
+    if (directContent.liked) {
+      setLikedPrayerIds((prev) =>
+        prev.includes(target.contentId)
+          ? prev
+          : [...prev, target.contentId],
+      );
+    }
+    if (directContent.prayed) {
+      setPrayedIds((prev) =>
+        prev.includes(target.contentId)
+          ? prev
+          : [...prev, target.contentId],
+      );
+    }
+
+    const resolvedPrayerSection: CommunitySectionKey = record.is_answered
+      ? "answered"
+      : "praying";
+
+    if (target.scope === "group") {
+      setGroupDetailTab(resolvedPrayerSection);
+      setGroupPrayers((prev) => mergeRowsById([[record], prev]));
+    } else {
+      setPartnerDetailTab(resolvedPrayerSection);
+      setPartnerPrayers((prev) => mergeRowsById([[record], prev]));
+    }
+
+    directPrayerFocusRef.current = null;
+    setDirectPrayerTargetId(target.contentId);
+    return "prayer";
+  }
+
   useEffect(() => {
     if (loading) return;
 
+    const directTarget = parseCommunityNotificationDirectTarget(searchParams);
     const targetTab = searchParams.get("tab");
     const section = normalizeCommunitySection(searchParams.get("section"));
 
     if (targetTab === "group") {
       const groupId = searchParams.get("groupId");
-      if (!groupId) return;
-      const signature = `group:${groupId}:${section}`;
+      if (!groupId) {
+        setNotificationDirectOpenPending(false);
+        return;
+      }
+      const signature = directTarget
+        ? communityNotificationTargetSignature(directTarget)
+        : `group:${groupId}:${section}`;
       if (handledNotificationRouteRef.current === signature) return;
+      if (directTarget) setNotificationDirectOpenPending(true);
 
       if (tab !== "group") setTab("group");
       if (selectedPartner) {
@@ -3018,15 +3119,32 @@ function CommunityPageContent() {
       const group = groups.find((item: any) => String(item.id) === groupId);
       if (!group) return;
       handledNotificationRouteRef.current = signature;
-      void loadGroupDetail(group, section);
+
+      void (async () => {
+        try {
+          await loadGroupDetail(group, section);
+          if (!directTarget) return;
+          const opened = await openDirectNotificationContent(directTarget);
+          if (opened !== "prayer") setNotificationDirectOpenPending(false);
+        } catch (error) {
+          console.warn("그룹 알림 직접 열기 실패:", error);
+          setNotificationDirectOpenPending(false);
+        }
+      })();
       return;
     }
 
     if (targetTab === "partner") {
       const partnerId = searchParams.get("partnerId");
-      if (!partnerId) return;
-      const signature = `partner:${partnerId}:${section}`;
+      if (!partnerId) {
+        setNotificationDirectOpenPending(false);
+        return;
+      }
+      const signature = directTarget
+        ? communityNotificationTargetSignature(directTarget)
+        : `partner:${partnerId}:${section}`;
       if (handledNotificationRouteRef.current === signature) return;
+      if (directTarget) setNotificationDirectOpenPending(true);
 
       if (tab !== "partner") setTab("partner");
       if (selectedGroup) {
@@ -3039,17 +3157,69 @@ function CommunityPageContent() {
       );
       if (!partner) return;
       handledNotificationRouteRef.current = signature;
-      void openPartnerDetail(partner, section);
+
+      void (async () => {
+        try {
+          await openPartnerDetail(partner, section);
+          if (!directTarget) return;
+          const opened = await openDirectNotificationContent(directTarget);
+          if (opened !== "prayer") setNotificationDirectOpenPending(false);
+        } catch (error) {
+          console.warn("동역자 알림 직접 열기 실패:", error);
+          setNotificationDirectOpenPending(false);
+        }
+      })();
+      return;
     }
+
+    setNotificationDirectOpenPending(false);
+  }, [loading, searchParams, groups, partners]);
+
+  useEffect(() => {
+    if (!notificationDirectOpenPending) return;
+    const timeoutId = window.setTimeout(() => {
+      setNotificationDirectOpenPending(false);
+    }, 8000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notificationDirectOpenPending]);
+
+  useEffect(() => {
+    if (!directPrayerTargetId) return;
+    if (directPrayerFocusRef.current === directPrayerTargetId) return;
+
+    const element = document.getElementById(
+      `community-prayer-${directPrayerTargetId}`,
+    );
+    if (!element) return;
+
+    directPrayerFocusRef.current = directPrayerTargetId;
+    element.scrollIntoView({ block: "center", behavior: "auto" });
+    setNotificationDirectOpenPending(false);
+
+    if (directPrayerHighlightTimerRef.current) {
+      window.clearTimeout(directPrayerHighlightTimerRef.current);
+    }
+    directPrayerHighlightTimerRef.current = window.setTimeout(() => {
+      setDirectPrayerTargetId(null);
+      directPrayerHighlightTimerRef.current = null;
+    }, 3600);
   }, [
-    loading,
-    searchParams,
-    groups,
-    partners,
-    tab,
-    selectedPartner,
-    selectedGroup,
+    directPrayerTargetId,
+    selectedGroup?.id,
+    selectedPartner?.partner_id,
+    groupDetailTab,
+    partnerDetailTab,
+    groupPrayers,
+    partnerPrayers,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (directPrayerHighlightTimerRef.current) {
+        window.clearTimeout(directPrayerHighlightTimerRef.current);
+      }
+    };
+  }, []);
 
   async function openPartnerDetail(
     partner: any,
@@ -5638,6 +5808,7 @@ function CommunityPageContent() {
     return (
       <div className="page">
         {renderLoveHeartToast()}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
           style={{
             background: "var(--bg)",
@@ -6085,7 +6256,23 @@ function CommunityPageContent() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {visiblePartnerPrayers.map((p) => (
-                <div key={p.id} className="card">
+                <div
+                  key={p.id}
+                  id={`community-prayer-${p.id}`}
+                  className="card"
+                  style={{
+                    scrollMarginTop: 96,
+                    transition: "box-shadow 180ms ease, outline-color 180ms ease",
+                    outline:
+                      directPrayerTargetId === String(p.id)
+                        ? "2px solid var(--sage)"
+                        : "2px solid transparent",
+                    boxShadow:
+                      directPrayerTargetId === String(p.id)
+                        ? "0 0 0 5px rgba(122,157,122,0.14)"
+                        : undefined,
+                  }}
+                >
                   <div
                     style={{
                       display: "flex",
@@ -6300,6 +6487,7 @@ function CommunityPageContent() {
     return (
       <div className="page">
         {renderLoveHeartToast()}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
           style={{
             background: "var(--bg)",
@@ -7184,7 +7372,23 @@ function CommunityPageContent() {
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 {visibleGroupPrayers.map((p) => (
-                  <div key={p.id} className="card">
+                  <div
+                    key={p.id}
+                    id={`community-prayer-${p.id}`}
+                    className="card"
+                    style={{
+                    scrollMarginTop: 96,
+                    transition: "box-shadow 180ms ease, outline-color 180ms ease",
+                    outline:
+                      directPrayerTargetId === String(p.id)
+                        ? "2px solid var(--sage)"
+                        : "2px solid transparent",
+                      boxShadow:
+                        directPrayerTargetId === String(p.id)
+                          ? "0 0 0 5px rgba(122,157,122,0.14)"
+                          : undefined,
+                    }}
+                  >
                     <div
                       style={{
                         display: "flex",
@@ -7805,6 +8009,7 @@ function CommunityPageContent() {
   return (
     <div className="page">
       {renderLoveHeartToast()}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
       {badgePopup && (
         <div
           onClick={() => setBadgePopup(null)}
