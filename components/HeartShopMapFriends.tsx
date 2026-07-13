@@ -12,7 +12,8 @@ type HeartShopMapFriendsProps = {
 };
 
 type FriendPlacement = {
-  left: string;
+  left?: string;
+  right?: string;
   bottom: string;
   renderWidth: number;
 };
@@ -20,32 +21,37 @@ type FriendPlacement = {
 type GroundFriendPlacements = Record<Exclude<HeartShopItemId, "jjaekjjaek">, FriendPlacement>;
 
 const GARDEN_GROUND_PLACEMENTS: GroundFriendPlacements = {
-  // Keep every ground friend on the actual lower ground band. The back-row
-  // friends use an 18% baseline for perspective, while the smaller foreground
-  // friends stay between 1% and 9%. This avoids the tree canopy/sky area and
-  // keeps the right-side watering path clear.
-  mongsili: { left: "1%", bottom: "18%", renderWidth: 46 },
-  bamtoli: { left: "18%", bottom: "18%", renderWidth: 44 },
+  // Keep the moving foreground friends in their already-verified left-side lanes.
   hindungi: { left: "4%", bottom: "1%", renderWidth: 54 },
   choko: { left: "28%", bottom: "8%", renderWidth: 58 },
-  // Restore Kkumdeuli's original garden placement near the foreground soil.
   kkumdeuli: { left: "37%", bottom: "9%", renderWidth: 40 },
+
+  // Bamtoli and Mongsili sit on the right, farther-back ground row. Rootsman/
+  // Rootswoman render above this layer and may pass in front without appearing
+  // to step on them. The pixel offsets compensate for transparent space below
+  // the actual feet in the source sprite sheets.
+  bamtoli: { right: "13%", bottom: "calc(23% - 21px)", renderWidth: 44 },
+  mongsili: { right: "2%", bottom: "calc(23% - 19px)", renderWidth: 46 },
 };
 
-const ARK_GROUND_PLACEMENTS: GroundFriendPlacements = {
-  // Ark carry/hammer/prayer actions use the lower-right half of the map. Keep
-  // the friends on the real ground plane inside the left foreground safety
-  // lane; the 18% row reads as the slightly farther-back ground, not the ark or
-  // tree canopy.
-  mongsili: { left: "1%", bottom: "18%", renderWidth: 44 },
-  bamtoli: { left: "18%", bottom: "18%", renderWidth: 42 },
-  hindungi: { left: "4%", bottom: "1%", renderWidth: 50 },
-  choko: { left: "28%", bottom: "8%", renderWidth: 54 },
-  kkumdeuli: { left: "40%", bottom: "5%", renderWidth: 34 },
-};
+function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
+  return {
+    // Move Hindungi farther onto the safe land in the final ark scene. Earlier
+    // construction stages keep the existing left foreground placement.
+    hindungi: { left: stageNumber === 10 ? "10%" : "4%", bottom: "1%", renderWidth: 50 },
+    choko: { left: "28%", bottom: "8%", renderWidth: 54 },
+    kkumdeuli: { left: "40%", bottom: "5%", renderWidth: 34 },
 
-function getGroundPlacements(mapKind: RewardMapKind) {
-  return mapKind === "peaceArk" ? ARK_GROUND_PLACEMENTS : GARDEN_GROUND_PLACEMENTS;
+    // The ark action character uses the lower-right foreground. These two
+    // friends stay on the higher rear ground line, so the character can pass
+    // in front of them without a foot/ground collision.
+    bamtoli: { right: "13%", bottom: "calc(20% - 20px)", renderWidth: 42 },
+    mongsili: { right: "2%", bottom: "calc(20% - 18px)", renderWidth: 44 },
+  };
+}
+
+function getGroundPlacements(mapKind: RewardMapKind, stageNumber: number) {
+  return mapKind === "peaceArk" ? getArkGroundPlacements(stageNumber) : GARDEN_GROUND_PLACEMENTS;
 }
 
 function getMotionClassName(itemId: HeartShopItemId) {
@@ -62,7 +68,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
   const visible = new Set(itemIds.filter(itemId => isHeartShopItemAvailableOnMap(itemId, mapKind)));
   if (visible.size === 0) return null;
 
-  const placements = getGroundPlacements(mapKind);
+  const placements = getGroundPlacements(mapKind, stageNumber);
   const birdRenderWidth = mapKind === "peaceArk" ? 54 : 58;
 
   return (
