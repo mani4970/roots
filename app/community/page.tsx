@@ -551,7 +551,11 @@ type CommunityModalHistoryKind = "qt-detail" | "photo-viewer";
 function CommunityPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<"partner" | "group" | "all">("partner");
+  const [tab, setTab] = useState<"partner" | "group" | "all">(() => {
+    const initialTab = searchParams.get("tab");
+    if (initialTab === "group" || initialTab === "all") return initialTab;
+    return "partner";
+  });
   const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{
@@ -3013,16 +3017,25 @@ function CommunityPageContent() {
 
   async function openDirectNotificationContent(
     target: CommunityNotificationDirectTarget,
+    context?: {
+      supabase?: ReturnType<typeof createClient>;
+      userId?: string;
+    },
   ): Promise<"qt" | "prayer" | null> {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const supabase = context?.supabase ?? createClient();
+    let directUserId = context?.userId ?? null;
+
+    if (!directUserId) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      directUserId = user?.id ?? null;
+    }
+    if (!directUserId) return null;
 
     const directContent = await loadCommunityNotificationDirectContent(
       supabase,
-      user.id,
+      directUserId,
       target,
     );
     if (!directContent) return null;
@@ -3122,10 +3135,7 @@ function CommunityPageContent() {
 
       void (async () => {
         try {
-          await loadGroupDetail(group, section);
-          if (!directTarget) return;
-          const opened = await openDirectNotificationContent(directTarget);
-          if (opened !== "prayer") setNotificationDirectOpenPending(false);
+          await loadGroupDetail(group, section, directTarget ?? undefined);
         } catch (error) {
           console.warn("그룹 알림 직접 열기 실패:", error);
           setNotificationDirectOpenPending(false);
@@ -3160,10 +3170,7 @@ function CommunityPageContent() {
 
       void (async () => {
         try {
-          await openPartnerDetail(partner, section);
-          if (!directTarget) return;
-          const opened = await openDirectNotificationContent(directTarget);
-          if (opened !== "prayer") setNotificationDirectOpenPending(false);
+          await openPartnerDetail(partner, section, directTarget ?? undefined);
         } catch (error) {
           console.warn("동역자 알림 직접 열기 실패:", error);
           setNotificationDirectOpenPending(false);
@@ -3224,6 +3231,7 @@ function CommunityPageContent() {
   async function openPartnerDetail(
     partner: any,
     preferredSection?: CommunitySectionKey,
+    directTarget?: CommunityNotificationDirectTarget,
   ) {
     pushCommunityDetailHistory("partner");
     const openedAt = new Date().toISOString();
@@ -3258,7 +3266,23 @@ function CommunityPageContent() {
     if (!user) {
       setLoadingPartnerQts(false);
       setLoadingPartnerPrayers(false);
+      setNotificationDirectOpenPending(false);
       return;
+    }
+
+    if (directTarget) {
+      const opened = await openDirectNotificationContent(directTarget, {
+        supabase,
+        userId: user.id,
+      });
+      if (opened === "qt") {
+        setLoadingPartnerQts(false);
+        setNotificationDirectOpenPending(false);
+      } else if (opened === "prayer") {
+        setLoadingPartnerPrayers(false);
+      } else {
+        setNotificationDirectOpenPending(false);
+      }
     }
 
     setPartners((prev) =>
@@ -3373,12 +3397,12 @@ function CommunityPageContent() {
         );
         setQtReactionCounts((prev) => ({ ...prev, ...counts }));
         setMyQtReactions((prev) => ({ ...prev, ...mine }));
-      } else {
+      } else if (directTarget?.contentKind !== "qt") {
         setPartnerQts([]);
       }
     } catch (error) {
       console.warn("동역자 묵상 나눔 조회 실패:", error);
-      setPartnerQts([]);
+      if (directTarget?.contentKind !== "qt") setPartnerQts([]);
     } finally {
       setLoadingPartnerQts(false);
     }
@@ -3465,12 +3489,12 @@ function CommunityPageContent() {
             currentHiddenUserIds,
           ),
         );
-      } else {
+      } else if (directTarget?.contentKind !== "prayer") {
         setPartnerPrayers([]);
       }
     } catch (error) {
       console.warn("동역자 기도 나눔 조회 실패:", error);
-      setPartnerPrayers([]);
+      if (directTarget?.contentKind !== "prayer") setPartnerPrayers([]);
     } finally {
       setLoadingPartnerPrayers(false);
     }
@@ -3954,6 +3978,7 @@ function CommunityPageContent() {
   async function loadGroupDetail(
     group: any,
     preferredSection?: CommunitySectionKey,
+    directTarget?: CommunityNotificationDirectTarget,
   ) {
     pushCommunityDetailHistory("group");
     setGroupDetailTab(
@@ -3981,6 +4006,29 @@ function CommunityPageContent() {
     } = await supabase.auth.getUser();
     const currentHiddenKeys = hiddenKeys;
     const currentHiddenUserIds = hiddenUserIds;
+
+    if (!user) {
+      setLoadingGroupChallenges(false);
+      setLoadingGroupQts(false);
+      setLoadingGroupPrayers(false);
+      setNotificationDirectOpenPending(false);
+      return;
+    }
+
+    if (directTarget) {
+      const opened = await openDirectNotificationContent(directTarget, {
+        supabase,
+        userId: user.id,
+      });
+      if (opened === "qt") {
+        setLoadingGroupQts(false);
+        setNotificationDirectOpenPending(false);
+      } else if (opened === "prayer") {
+        setLoadingGroupPrayers(false);
+      } else {
+        setNotificationDirectOpenPending(false);
+      }
+    }
 
     if (group.isMember) {
       if (user?.id) {
@@ -4168,10 +4216,10 @@ function CommunityPageContent() {
             currentHiddenUserIds,
           ),
         );
-      } else {
+      } else if (directTarget?.contentKind !== "prayer") {
         setGroupPrayers([]);
       }
-    } else {
+    } else if (directTarget?.contentKind !== "prayer") {
       setGroupPrayers([]);
     }
     setLoadingGroupPrayers(false);
