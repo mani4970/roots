@@ -103,8 +103,10 @@ export default function HeartShopMapFriends({ itemIds, mapKind }: HeartShopMapFr
           className="roots-heart-shop-cat-drift"
           style={{
             position: "absolute",
-            right: isArk ? "7%" : "8%",
-            bottom: isArk ? "7%" : "3%",
+            // Rootsman/Rootswoman enter from the right and stop around 62%, so keep
+            // Choko safely on the left side and slightly above the foot path.
+            left: isArk ? "24%" : "24%",
+            bottom: isArk ? "15%" : "14%",
           }}
         >
           <HeartShopFriendSprite itemId="choko" renderWidth={60} />

@@ -16,6 +16,7 @@ import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import LoveHeartIntroPopup from "@/components/LoveHeartIntroPopup";
 import HeartShopIntroPopup from "@/components/HeartShopIntroPopup";
+import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
@@ -35,6 +36,7 @@ import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/com
 import { getCompanionChallengeText } from "@/lib/companionChallengeText";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import type { HeartShopItemId } from "@/lib/heartShopText";
+import { detectOneTimeUpdatePopupPlatform, isOneTimeUpdatePreview, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -66,6 +68,7 @@ const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
 const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
 const HEART_SHOP_INTRO_SEEN_KEY_PREFIX = "heart_shop_intro_seen_2_0_";
+const REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX = "required_update_campaign_2_0_1_seen_";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "companion_challenge_1_announcement_";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE = "2026-07-31";
 const COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE = "2026-07-09";
@@ -96,6 +99,10 @@ function getLoveHeartsIntroSeenKey(userId: string) {
 
 function getHeartShopIntroSeenKey(userId: string) {
   return `${HEART_SHOP_INTRO_SEEN_KEY_PREFIX}${userId}`;
+}
+
+function getRequiredUpdateCampaignSeenKey(userId: string) {
+  return `${REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX}${userId}`;
 }
 
 function getCompanionChallengeAnnouncementBaseKey(userId: string) {
@@ -461,6 +468,7 @@ export default function HomePage() {
   const [showHeartShopIntroAnnouncement, setShowHeartShopIntroAnnouncement] = useState(false);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
+  const [requiredUpdatePlatform, setRequiredUpdatePlatform] = useState<RequiredUpdatePlatform | null>(null);
   const companionChallengeAnnouncementShownMarkerRef = useRef<string | null>(null);
   const notificationIntroShownMarkerRef = useRef<string | null>(null);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
@@ -505,6 +513,18 @@ export default function HomePage() {
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    const platform = detectOneTimeUpdatePopupPlatform();
+    if (!platform) return;
+
+    const preview = isOneTimeUpdatePreview();
+    if (!preview && storageGet(getRequiredUpdateCampaignSeenKey(profile.id))) return;
+
+    setRequiredUpdatePlatform(platform);
+  }, [profile?.id]);
 
   async function load() {
     if (typeof window !== "undefined") {
@@ -1161,6 +1181,14 @@ export default function HomePage() {
       storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
     }
     setShowLoveHeartIntroAnnouncement(false);
+  }
+
+  function openRequiredUpdate() {
+    if (!requiredUpdatePlatform) return;
+    if (profile?.id) {
+      storageSet(getRequiredUpdateCampaignSeenKey(profile.id), "true");
+    }
+    openRequiredUpdateStore(requiredUpdatePlatform);
   }
 
   function closeHeartShopIntroAnnouncement(action: "openShop" | "close") {
@@ -1855,6 +1883,12 @@ export default function HomePage() {
       )}
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
 
+      {requiredUpdatePlatform && (
+        <RequiredUpdatePopup
+          platform={requiredUpdatePlatform}
+          onUpdate={openRequiredUpdate}
+        />
+      )}
 
       {showLoveHeartIntroAnnouncement && (
         <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
