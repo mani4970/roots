@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Gift, Loader2, PackageOpen } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, PackageOpen } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
+import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { Lang } from "@/lib/i18n";
+import { getRootsAvatarLabel, type RootsAvatarType } from "@/lib/avatar";
 import { createClient } from "@/lib/supabase";
 import {
   loadOwnedHeartShopItems,
@@ -18,11 +20,16 @@ import {
   type HeartShopItemId,
   type HeartShopTab,
 } from "@/lib/heartShopText";
+import {
+  getProfileCharacterText,
+  type ProfileCharacterCategory,
+} from "@/lib/profileCharacterText";
 
 type HeartShopModalProps = {
   show: boolean;
   lang: Lang | string;
   heartBalance: number;
+  avatarType: RootsAvatarType;
   onHeartBalanceChange?: (balance: number) => void;
   onClose: () => void;
 };
@@ -46,12 +53,15 @@ export default function HeartShopModal({
   show,
   lang,
   heartBalance,
+  avatarType,
   onHeartBalanceChange,
   onClose,
 }: HeartShopModalProps) {
   const text = useMemo(() => getHeartShopText(lang), [lang]);
+  const profileCharacterText = useMemo(() => getProfileCharacterText(lang), [lang]);
   const [activeTab, setActiveTab] = useState<HeartShopTab>("map");
   const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>("garden");
+  const [activeCharacterCategory, setActiveCharacterCategory] = useState<ProfileCharacterCategory>("all");
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
@@ -211,6 +221,7 @@ export default function HeartShopModal({
     document.body.style.overflow = "hidden";
     setActiveTab("map");
     setActiveMapSection("garden");
+    setActiveCharacterCategory("all");
     setNotice("");
     setPreviewItemId(null);
     setSelectedItemId(null);
@@ -336,6 +347,14 @@ export default function HeartShopModal({
   const mapSections: { id: HeartShopMapSection; label: string }[] = [
     { id: "garden", label: text.gardenMapLabel },
     { id: "peaceArk", label: text.peaceArkMapLabel },
+  ];
+
+  const characterCategories: { id: ProfileCharacterCategory; label: string }[] = [
+    { id: "all", label: profileCharacterText.categories.all },
+    { id: "tops", label: profileCharacterText.categories.tops },
+    { id: "bottoms", label: profileCharacterText.categories.bottoms },
+    { id: "shoes", label: profileCharacterText.categories.shoes },
+    { id: "accessories", label: profileCharacterText.categories.accessories },
   ];
 
   return (
@@ -705,59 +724,120 @@ export default function HeartShopModal({
           )}
 
           {activeTab === "character" && (
-            <section
-              className="card"
-              style={{
-                minHeight: 420,
-                padding: "34px 22px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                border: "1px dashed rgba(122,157,122,0.35)",
-                background: "rgba(255,253,248,0.72)",
-              }}
-            >
+            <section>
               <div
+                className="card"
                 style={{
-                  width: 82,
-                  height: 82,
-                  borderRadius: 26,
-                  background: "rgba(232,197,71,0.13)",
+                  minHeight: 360,
+                  padding: "16px 16px 14px",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: 18,
+                  textAlign: "center",
+                  border: "1px solid rgba(122,157,122,0.22)",
+                  background: "linear-gradient(180deg, rgba(122,157,122,0.08), rgba(255,253,248,0.84))",
                 }}
               >
-                <Gift size={37} strokeWidth={1.6} style={{ color: "rgba(179,123,27,0.9)" }} />
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 999,
+                    padding: "5px 10px",
+                    marginBottom: 8,
+                    background: "rgba(122,157,122,0.12)",
+                    color: "var(--sage-dark)",
+                    fontSize: 10.5,
+                    fontWeight: 900,
+                  }}
+                >
+                  {profileCharacterText.previewLabel}
+                </div>
+                <ProfileCharacterPreview
+                  avatarType={avatarType}
+                  alt={getRootsAvatarLabel(avatarType, lang)}
+                  style={{ width: "min(100%, 205px)" }}
+                />
               </div>
-              <h3 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 20, fontWeight: 950 }}>
-                {text.characterComingSoonTitle}
-              </h3>
-              <p style={{ margin: 0, maxWidth: 310, color: "var(--text3)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>
-                {text.characterComingSoonBody}
-              </p>
-              <div style={{ display: "flex", gap: 12, marginTop: 25, opacity: 0.72 }}>
-                {["🎩", "🎀", "👕"].map(icon => (
-                  <div
-                    key={icon}
-                    style={{
-                      width: 58,
-                      height: 58,
-                      borderRadius: 18,
-                      background: "var(--bg3)",
-                      border: "1px solid var(--border)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 26,
-                    }}
-                  >
-                    {icon}
-                  </div>
-                ))}
+
+              <div
+                role="tablist"
+                aria-label={text.characterTab}
+                style={{
+                  display: "flex",
+                  gap: 7,
+                  overflowX: "auto",
+                  padding: "2px 1px 8px",
+                  marginTop: 13,
+                  scrollbarWidth: "none",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {characterCategories.map(category => {
+                  const active = activeCharacterCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveCharacterCategory(category.id)}
+                      style={{
+                        flex: "0 0 auto",
+                        minHeight: 36,
+                        padding: "7px 12px",
+                        borderRadius: 999,
+                        border: active ? "1px solid rgba(122,157,122,0.36)" : "1px solid var(--border)",
+                        background: active ? "rgba(122,157,122,0.14)" : "var(--bg2)",
+                        color: active ? "var(--sage-dark)" : "var(--text2)",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {category.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div
+                className="card"
+                style={{
+                  minHeight: 210,
+                  padding: "28px 22px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  border: "1px dashed rgba(122,157,122,0.32)",
+                  background: "rgba(255,253,248,0.74)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 68,
+                    height: 68,
+                    borderRadius: 22,
+                    background: "rgba(232,197,71,0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 15,
+                  }}
+                >
+                  <PackageOpen size={31} strokeWidth={1.55} style={{ color: "rgba(179,123,27,0.9)" }} />
+                </div>
+                <h3 style={{ margin: "0 0 8px", color: "var(--text)", fontSize: 17, lineHeight: 1.4, fontWeight: 950 }}>
+                  {profileCharacterText.emptyTitle}
+                </h3>
+                <p style={{ margin: 0, maxWidth: 300, color: "var(--text3)", fontSize: 12.5, lineHeight: 1.65, fontWeight: 650 }}>
+                  {profileCharacterText.emptyBody}
+                </p>
               </div>
             </section>
           )}

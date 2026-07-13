@@ -14,11 +14,14 @@ import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
 import HeartShopModal from "@/components/HeartShopModal";
+import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
+import ProfileCharacterViewer from "@/components/ProfileCharacterViewer";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { getLoveHeartBalance } from "@/lib/loveHearts";
-import { getRootsAvatarChoiceText, getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getRootsAvatarChoiceText, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { getHeartShopText } from "@/lib/heartShopText";
+import { getProfileCharacterText } from "@/lib/profileCharacterText";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -171,6 +174,7 @@ export default function ProfilePage() {
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [showHeartShop, setShowHeartShop] = useState(false);
+  const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -841,6 +845,7 @@ export default function ProfilePage() {
   const shouldShowSpecialBadgeGalleryButton = specialBadges.length > 0;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const heartShopText = getHeartShopText(lang);
+  const profileCharacterText = getProfileCharacterText(lang);
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -896,8 +901,18 @@ export default function ProfilePage() {
         show={showHeartShop}
         lang={lang}
         heartBalance={loveHeartBalance}
+        avatarType={currentAvatarType}
         onHeartBalanceChange={setLoveHeartBalance}
         onClose={() => setShowHeartShop(false)}
+      />
+
+      <ProfileCharacterViewer
+        show={showProfileCharacterViewer}
+        avatarType={currentAvatarType}
+        title={getRootsAvatarChoiceText("profileTitle", lang)}
+        alt={getRootsAvatarLabel(currentAvatarType, lang)}
+        closeLabel={profileCharacterText.closeFullViewLabel}
+        onClose={() => setShowProfileCharacterViewer(false)}
       />
 
       {showBadgeGallery && (
@@ -1228,7 +1243,27 @@ export default function ProfilePage() {
         <div className="sec-label">{getRootsAvatarChoiceText("profileTitle", lang)}</div>
         <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, alignItems: "center", padding: "16px 14px", minHeight: 150 }}>
           <div style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
-            <img src={getRootsAvatarImageSrc(currentAvatarType)} alt={getRootsAvatarLabel(currentAvatarType, lang)} style={{ width: "100%", maxWidth: 150, maxHeight: 152, objectFit: "contain", imageRendering: "pixelated" }} />
+            <button
+              type="button"
+              onClick={() => setShowProfileCharacterViewer(true)}
+              aria-label={profileCharacterText.openFullViewLabel}
+              style={{
+                width: "100%",
+                maxWidth: 118,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <ProfileCharacterPreview
+                avatarType={currentAvatarType}
+                alt={getRootsAvatarLabel(currentAvatarType, lang)}
+              />
+            </button>
           </div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
             <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>

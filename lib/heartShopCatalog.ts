@@ -13,7 +13,7 @@ export type HeartShopCatalogItem = {
   mapKinds: readonly RewardMapKind[];
 };
 
-const GARDEN_ONLY = ["garden"] as const satisfies readonly RewardMapKind[];
+const GARDEN_AND_ARK = ["garden", "peaceArk"] as const satisfies readonly RewardMapKind[];
 
 export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   {
@@ -25,7 +25,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 512,
     intervalMs: 170,
-    mapKinds: GARDEN_ONLY,
+    mapKinds: GARDEN_AND_ARK,
   },
   {
     id: "hindungi",
@@ -35,8 +35,8 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     frameCount: 4,
     sheetWidth: 2048,
     sheetHeight: 682,
-    intervalMs: 340,
-    mapKinds: GARDEN_ONLY,
+    intervalMs: 390,
+    mapKinds: GARDEN_AND_ARK,
   },
   {
     id: "choko",
@@ -46,8 +46,8 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     frameCount: 4,
     sheetWidth: 2048,
     sheetHeight: 512,
-    intervalMs: 330,
-    mapKinds: GARDEN_ONLY,
+    intervalMs: 380,
+    mapKinds: GARDEN_AND_ARK,
   },
   {
     id: "kkumdeuli",
@@ -58,7 +58,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 512,
     intervalMs: 360,
-    mapKinds: GARDEN_ONLY,
+    mapKinds: GARDEN_AND_ARK,
   },
   {
     id: "bamtoli",
@@ -69,7 +69,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 682,
     intervalMs: 520,
-    mapKinds: GARDEN_ONLY,
+    mapKinds: GARDEN_AND_ARK,
   },
   {
     id: "mongsili",
@@ -80,7 +80,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 682,
     intervalMs: 540,
-    mapKinds: GARDEN_ONLY,
+    mapKinds: GARDEN_AND_ARK,
   },
 ] as const;
 
