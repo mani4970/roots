@@ -1,19 +1,46 @@
 "use client";
 
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
+import { isHeartShopItemAvailableOnMap } from "@/lib/heartShopCatalog";
 import type { HeartShopItemId } from "@/lib/heartShopText";
 import type { RewardMapKind } from "@/lib/rewardMaps";
 
 type HeartShopMapFriendsProps = {
   itemIds: HeartShopItemId[];
   mapKind: RewardMapKind;
+  stageNumber: number;
 };
 
-export default function HeartShopMapFriends({ itemIds, mapKind }: HeartShopMapFriendsProps) {
-  if (itemIds.length === 0) return null;
+function getBamtoliPosition(stageNumber: number) {
+  if (stageNumber >= 7 && stageNumber <= 8) {
+    return { left: "51%", bottom: "19%" };
+  }
+  if (stageNumber >= 9) {
+    return { left: "50%", bottom: "18%" };
+  }
+  return { left: "50%", bottom: "18%" };
+}
 
-  const visible = new Set(itemIds);
-  const isArk = mapKind === "peaceArk";
+function getMongsiliPosition(stageNumber: number) {
+  if (stageNumber >= 7 && stageNumber <= 8) {
+    // tree8/tree9 add a seed/sprout around the right-center. Keep Mongsili
+    // farther right and slightly higher so the two visuals remain separate.
+    return { right: "2%", bottom: "20%" };
+  }
+  if (stageNumber >= 9) {
+    // The later garden stages add a second tree on the right. Keep Mongsili
+    // in the open grass below its outer canopy, above the watering foot path.
+    return { right: "1%", bottom: "19%" };
+  }
+  return { right: "4%", bottom: "18%" };
+}
+
+export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: HeartShopMapFriendsProps) {
+  const visible = new Set(itemIds.filter(itemId => isHeartShopItemAvailableOnMap(itemId, mapKind)));
+  if (visible.size === 0) return null;
+
+  const bamtoliPosition = getBamtoliPosition(stageNumber);
+  const mongsiliPosition = getMongsiliPosition(stageNumber);
 
   return (
     <div
@@ -88,11 +115,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind }: HeartShopMapFr
       {visible.has("hindungi") && (
         <div
           className="roots-heart-shop-dog-drift"
-          style={{
-            position: "absolute",
-            left: isArk ? "6%" : "7%",
-            bottom: isArk ? "5%" : "2%",
-          }}
+          style={{ position: "absolute", left: "7%", bottom: "2%" }}
         >
           <HeartShopFriendSprite itemId="hindungi" renderWidth={56} />
         </div>
@@ -103,10 +126,8 @@ export default function HeartShopMapFriends({ itemIds, mapKind }: HeartShopMapFr
           className="roots-heart-shop-cat-drift"
           style={{
             position: "absolute",
-            // Rootsman/Rootswoman enter from the right and stop around 62%, so keep
-            // Choko safely on the left side and slightly above the foot path.
-            left: isArk ? "24%" : "24%",
-            bottom: isArk ? "15%" : "14%",
+            left: "24%",
+            bottom: "14%",
           }}
         >
           <HeartShopFriendSprite itemId="choko" renderWidth={60} />
@@ -114,14 +135,20 @@ export default function HeartShopMapFriends({ itemIds, mapKind }: HeartShopMapFr
       )}
 
       {visible.has("kkumdeuli") && (
-        <div
-          style={{
-            position: "absolute",
-            left: isArk ? "39%" : "37%",
-            bottom: isArk ? "10%" : "9%",
-          }}
-        >
+        <div style={{ position: "absolute", left: "37%", bottom: "9%" }}>
           <HeartShopFriendSprite itemId="kkumdeuli" renderWidth={40} />
+        </div>
+      )}
+
+      {visible.has("bamtoli") && (
+        <div style={{ position: "absolute", ...bamtoliPosition }}>
+          <HeartShopFriendSprite itemId="bamtoli" renderWidth={52} />
+        </div>
+      )}
+
+      {visible.has("mongsili") && (
+        <div style={{ position: "absolute", ...mongsiliPosition }}>
+          <HeartShopFriendSprite itemId="mongsili" renderWidth={55} />
         </div>
       )}
     </div>

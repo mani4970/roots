@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Gift, Loader2, PackageOpen, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Gift, Loader2, PackageOpen } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import type { Lang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase";
@@ -28,6 +28,7 @@ type HeartShopModalProps = {
 };
 
 type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
+type HeartShopMapSection = "garden" | "peaceArk";
 
 function getCatalogItem(itemId: HeartShopItemId | null): HeartShopCatalogItem | null {
   if (!itemId) return null;
@@ -37,6 +38,7 @@ function getCatalogItem(itemId: HeartShopItemId | null): HeartShopCatalogItem | 
 function getLargeSpriteWidth(itemId: HeartShopItemId) {
   if (itemId === "hindungi") return 112;
   if (itemId === "kkumdeuli") return 150;
+  if (itemId === "bamtoli" || itemId === "mongsili") return 96;
   return 145;
 }
 
@@ -49,6 +51,7 @@ export default function HeartShopModal({
 }: HeartShopModalProps) {
   const text = useMemo(() => getHeartShopText(lang), [lang]);
   const [activeTab, setActiveTab] = useState<HeartShopTab>("map");
+  const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>("garden");
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
@@ -66,6 +69,11 @@ export default function HeartShopModal({
   const ownedById = useMemo(
     () => new Map(ownedItems.map(item => [item.itemId, item])),
     [ownedItems],
+  );
+
+  const visibleMapItems = useMemo(
+    () => HEART_SHOP_CATALOG.filter(item => item.mapKinds.includes(activeMapSection)),
+    [activeMapSection],
   );
 
   const previewItem = getCatalogItem(previewItemId);
@@ -202,6 +210,7 @@ export default function HeartShopModal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setActiveTab("map");
+    setActiveMapSection("garden");
     setNotice("");
     setPreviewItemId(null);
     setSelectedItemId(null);
@@ -322,6 +331,11 @@ export default function HeartShopModal({
     { id: "map", label: text.mapTab },
     { id: "character", label: text.characterTab },
     { id: "owned", label: text.ownedTab },
+  ];
+
+  const mapSections: { id: HeartShopMapSection; label: string }[] = [
+    { id: "garden", label: text.gardenMapLabel },
+    { id: "peaceArk", label: text.peaceArkMapLabel },
   ];
 
   return (
@@ -484,143 +498,209 @@ export default function HeartShopModal({
           {activeTab === "map" && (
             <section>
               <div
+                role="tablist"
+                aria-label={text.mapSelectorLabel}
                 style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 9,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 6,
+                  padding: 4,
                   marginBottom: 14,
-                  padding: "0 2px",
+                  borderRadius: 16,
+                  background: "rgba(122,157,122,0.07)",
+                  border: "1px solid rgba(122,157,122,0.2)",
                 }}
               >
-                <Sparkles size={17} style={{ color: "rgba(189,139,30,0.95)", marginTop: 1, flexShrink: 0 }} />
-                <p style={{ margin: 0, color: "var(--text2)", fontSize: 12, lineHeight: 1.55, fontWeight: 700 }}>
-                  {text.mapIntro}
-                </p>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 11 }}>
-                {HEART_SHOP_CATALOG.map(item => {
-                  const itemText = text.items[item.id];
-                  const owned = ownedById.has(item.id);
+                {mapSections.map(section => {
+                  const active = activeMapSection === section.id;
                   return (
-                    <article
-                      key={item.id}
-                      className="card"
+                    <button
+                      key={section.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveMapSection(section.id)}
                       style={{
-                        minWidth: 0,
-                        padding: "10px 10px 11px",
-                        display: "flex",
-                        flexDirection: "column",
-                        border: "1px solid rgba(122,157,122,0.2)",
-                        background: "rgba(255,253,248,0.88)",
-                        boxShadow: "0 8px 24px rgba(75,62,45,0.06)",
+                        minHeight: 42,
+                        padding: "8px 7px",
+                        borderRadius: 13,
+                        border: active ? "1px solid rgba(122,157,122,0.34)" : "1px solid transparent",
+                        background: active ? "rgba(122,157,122,0.14)" : "transparent",
+                        color: active ? "var(--sage-dark)" : "var(--text2)",
+                        fontSize: 11.5,
+                        fontWeight: 900,
+                        lineHeight: 1.25,
+                        cursor: "pointer",
                       }}
                     >
-                      <button
-                        type="button"
-                        onClick={() => openPreview(item.id)}
-                        aria-label={`${itemText.name} · ${text.previewBadge}`}
-                        style={{
-                          position: "relative",
-                          width: "100%",
-                          height: 112,
-                          padding: 0,
-                          borderRadius: 18,
-                          overflow: "hidden",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "#fff",
-                          border: "1px solid rgba(232,197,71,0.22)",
-                          marginBottom: 10,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <img
-                          src={item.previewPath}
-                          alt={itemText.name}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            imageRendering: "pixelated",
-                          }}
-                        />
-                        <span
-                          style={{
-                            position: "absolute",
-                            right: 7,
-                            bottom: 7,
-                            borderRadius: 999,
-                            padding: "4px 7px",
-                            background: "rgba(26,28,30,0.72)",
-                            color: "#fff",
-                            fontSize: 8.5,
-                            lineHeight: 1,
-                            fontWeight: 900,
-                            backdropFilter: "blur(4px)",
-                          }}
-                        >
-                          {text.previewBadge}
-                        </span>
-                      </button>
-                      <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>
-                        {itemText.name}
-                      </h3>
-                      <p
-                        style={{
-                          margin: 0,
-                          minHeight: 36,
-                          color: "var(--text3)",
-                          fontSize: 10.5,
-                          lineHeight: 1.45,
-                          fontWeight: 650,
-                        }}
-                      >
-                        {itemText.description}
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 5,
-                          color: "rgba(179,123,27,0.98)",
-                          fontSize: 13,
-                          fontWeight: 950,
-                          margin: "10px 0 9px",
-                        }}
-                      >
-                        <span aria-hidden="true">💛</span>
-                        <span>{item.price}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (owned) {
-                            setActiveTab("owned");
-                            return;
-                          }
-                          openPurchase(item.id);
-                        }}
-                        style={{
-                          width: "100%",
-                          minHeight: 38,
-                          border: owned ? "1px solid var(--border)" : "none",
-                          borderRadius: 13,
-                          background: owned ? "var(--bg3)" : "var(--sage)",
-                          color: owned ? "var(--sage-dark)" : "white",
-                          fontSize: 11.5,
-                          fontWeight: 950,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {owned ? text.ownedButton : text.purchaseButton}
-                      </button>
-                    </article>
+                      {section.label}
+                    </button>
                   );
                 })}
               </div>
+
+              {visibleMapItems.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 11 }}>
+                  {visibleMapItems.map(item => {
+                    const itemText = text.items[item.id];
+                    const owned = ownedById.has(item.id);
+                    return (
+                      <article
+                        key={item.id}
+                        className="card"
+                        style={{
+                          minWidth: 0,
+                          padding: "10px 10px 11px",
+                          display: "flex",
+                          flexDirection: "column",
+                          border: "1px solid rgba(122,157,122,0.2)",
+                          background: "rgba(255,253,248,0.88)",
+                          boxShadow: "0 8px 24px rgba(75,62,45,0.06)",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openPreview(item.id)}
+                          aria-label={`${itemText.name} · ${text.previewBadge}`}
+                          style={{
+                            position: "relative",
+                            width: "100%",
+                            height: 112,
+                            padding: 0,
+                            borderRadius: 18,
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "#fff",
+                            border: "1px solid rgba(232,197,71,0.22)",
+                            marginBottom: 10,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            src={item.previewPath}
+                            alt={itemText.name}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              imageRendering: "pixelated",
+                            }}
+                          />
+                          <span
+                            style={{
+                              position: "absolute",
+                              right: 7,
+                              bottom: 7,
+                              borderRadius: 999,
+                              padding: "4px 7px",
+                              background: "rgba(26,28,30,0.72)",
+                              color: "#fff",
+                              fontSize: 8.5,
+                              lineHeight: 1,
+                              fontWeight: 900,
+                              backdropFilter: "blur(4px)",
+                            }}
+                          >
+                            {text.previewBadge}
+                          </span>
+                        </button>
+                        <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>
+                          {itemText.name}
+                        </h3>
+                        <p
+                          style={{
+                            margin: 0,
+                            minHeight: 36,
+                            color: "var(--text3)",
+                            fontSize: 10.5,
+                            lineHeight: 1.45,
+                            fontWeight: 650,
+                          }}
+                        >
+                          {itemText.description}
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 5,
+                            color: "rgba(179,123,27,0.98)",
+                            fontSize: 13,
+                            fontWeight: 950,
+                            margin: "10px 0 9px",
+                          }}
+                        >
+                          <span aria-hidden="true">💛</span>
+                          <span>{item.price}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (owned) {
+                              setActiveTab("owned");
+                              return;
+                            }
+                            openPurchase(item.id);
+                          }}
+                          style={{
+                            width: "100%",
+                            minHeight: 38,
+                            border: owned ? "1px solid var(--border)" : "none",
+                            borderRadius: 13,
+                            background: owned ? "var(--bg3)" : "var(--sage)",
+                            color: owned ? "var(--sage-dark)" : "white",
+                            fontSize: 11.5,
+                            fontWeight: 950,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {owned ? text.ownedButton : text.purchaseButton}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div
+                  className="card"
+                  style={{
+                    minHeight: 330,
+                    padding: "32px 24px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    border: "1px dashed rgba(122,157,122,0.34)",
+                    background: "rgba(255,253,248,0.76)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 76,
+                      height: 76,
+                      borderRadius: 24,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 17,
+                      background: "rgba(122,157,122,0.11)",
+                      color: "var(--sage-dark)",
+                    }}
+                  >
+                    <PackageOpen size={35} strokeWidth={1.55} />
+                  </div>
+                  <h3 style={{ margin: "0 0 9px", color: "var(--text)", fontSize: 18, lineHeight: 1.4, fontWeight: 950 }}>
+                    {text.peaceArkComingSoonTitle}
+                  </h3>
+                  <p style={{ margin: 0, maxWidth: 290, color: "var(--text3)", fontSize: 12.5, lineHeight: 1.65, fontWeight: 650 }}>
+                    {text.peaceArkComingSoonBody}
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

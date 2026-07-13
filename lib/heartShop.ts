@@ -30,6 +30,8 @@ const ITEM_IDS = new Set<HeartShopItemId>([
   "hindungi",
   "choko",
   "kkumdeuli",
+  "bamtoli",
+  "mongsili",
 ]);
 
 function normalizeItemId(value: unknown): HeartShopItemId | "" {

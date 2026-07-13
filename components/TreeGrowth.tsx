@@ -116,7 +116,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
             owner={owner}
             showAction={showRootsMan && cycle.isCurrent}
             avatarType={normalizedAvatarType}
-            heartShopItemIds={cycle.isCurrent ? heartShopItemIds : []}
+            heartShopItemIds={heartShopItemIds}
           />
         ))}
       </div>
@@ -181,7 +181,7 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
         <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
 
-        <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} />
+        <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} stageNumber={stage.stageNumber} />
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
           <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
