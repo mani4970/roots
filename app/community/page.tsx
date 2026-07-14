@@ -4810,7 +4810,7 @@ function CommunityPageContent() {
     }
   }
 
-  function PhotoReflectionImage({
+  function renderPhotoReflectionImage({
     src,
     alt,
     style,
@@ -4849,9 +4849,10 @@ function CommunityPageContent() {
   }
 
   // 큐티 전체보기 모달
-  function QTDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
+  function renderQTDetailModal(r: any, onClose: () => void) {
     return (
       <div
+        key={r.id}
         style={{
           position: "fixed",
           top: 0,
@@ -4968,18 +4969,18 @@ function CommunityPageContent() {
             {r.photo_path && (
               <div style={{ marginBottom: 16 }}>
                 {qtPhotoUrls[r.id] ? (
-                  <PhotoReflectionImage
-                    src={qtPhotoUrls[r.id]}
-                    alt="photo reflection"
-                    style={{
+                  renderPhotoReflectionImage({
+                    src: qtPhotoUrls[r.id],
+                    alt: "photo reflection",
+                    style: {
                       width: "100%",
                       maxHeight: 520,
                       objectFit: "contain",
                       borderRadius: 18,
                       border: "1px solid var(--border)",
                       background: "var(--bg3)",
-                    }}
-                  />
+                    },
+                  })
                 ) : (
                   <div
                     style={{
@@ -6119,18 +6120,18 @@ function CommunityPageContent() {
                       </p>
                     )}
                     {r.photo_path && qtPhotoUrls[r.id] && (
-                      <PhotoReflectionImage
-                        src={qtPhotoUrls[r.id]}
-                        alt="photo reflection"
-                        style={{
+                      renderPhotoReflectionImage({
+                        src: qtPhotoUrls[r.id],
+                        alt: "photo reflection",
+                        style: {
                           width: "100%",
                           maxHeight: 220,
                           objectFit: "cover",
                           borderRadius: 14,
                           border: "1px solid var(--border)",
                           margin: "6px 0 10px",
-                        }}
-                      />
+                        },
+                      })
                     )}
                     {(r.photo_caption || (r.photo_path && r.meditation)) && (
                       <p
@@ -6447,7 +6448,7 @@ function CommunityPageContent() {
           )}
         </div>
 
-        {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
+        {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
         {renderSharedOverlayModals()}
         <BottomNav />
       </div>
@@ -7276,18 +7277,18 @@ function CommunityPageContent() {
                         </p>
                       )}
                       {r.photo_path && qtPhotoUrls[r.id] && (
-                        <PhotoReflectionImage
-                          src={qtPhotoUrls[r.id]}
-                          alt="photo reflection"
-                          style={{
+                        renderPhotoReflectionImage({
+                          src: qtPhotoUrls[r.id],
+                          alt: "photo reflection",
+                          style: {
                             width: "100%",
                             maxHeight: 220,
                             objectFit: "cover",
                             borderRadius: 14,
                             border: "1px solid var(--border)",
                             margin: "6px 0 10px",
-                          }}
-                        />
+                          },
+                        })
                       )}
                       {(r.photo_caption || (r.photo_path && r.meditation)) && (
                         <p
@@ -7984,7 +7985,7 @@ function CommunityPageContent() {
             </div>
           </div>
         )}
-        {detailQt && <QTDetailModal r={detailQt} onClose={closeQtDetail} />}
+        {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
         <BottomNav />
       </div>
     );
@@ -8584,18 +8585,18 @@ function CommunityPageContent() {
                           </p>
                         )}
                         {r.photo_path && qtPhotoUrls[r.id] && (
-                          <PhotoReflectionImage
-                            src={qtPhotoUrls[r.id]}
-                            alt="photo reflection"
-                            style={{
+                          renderPhotoReflectionImage({
+                            src: qtPhotoUrls[r.id],
+                            alt: "photo reflection",
+                            style: {
                               width: "100%",
                               maxHeight: 220,
                               objectFit: "cover",
                               borderRadius: 14,
                               border: "1px solid var(--border)",
                               margin: "6px 0 10px",
-                            }}
-                          />
+                            },
+                          })
                         )}
                         {(r.photo_caption ||
                           (r.photo_path && r.meditation)) && (
@@ -8626,9 +8627,7 @@ function CommunityPageContent() {
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
-                {detailQt && (
-                  <QTDetailModal r={detailQt} onClose={closeQtDetail} />
-                )}
+                {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
               </>
             ) : allTab === "praying" ? (
               prayers.length === 0 ? (

@@ -32,3 +32,14 @@ export function deriveChallengeRequestEndDate(
   if (!startDate || !Number.isFinite(duration) || duration < 1) return "";
   return addDaysToDateInput(startDate, duration - 1);
 }
+
+export function clampDateInputToRange(
+  value: string,
+  min?: string | null,
+  max?: string | null,
+) {
+  if (!value) return "";
+  if (min && value < min) return min;
+  if (max && value > max) return max;
+  return value;
+}

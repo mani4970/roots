@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, HandHeart, Sparkles } from "lucide-react";
+import { Heart, Sparkles } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import {
   COMMUNITY_REACTIONS,
@@ -25,12 +25,33 @@ function ReactionIcon({
 }) {
   const color = selected ? "var(--sage-dark)" : "currentColor";
   if (id === "cheer") {
-    return <CheckCircle2 size={14} strokeWidth={1.9} style={{ color }} />;
+    return (
+      <Heart
+        size={14}
+        strokeWidth={1.9}
+        fill={selected ? color : "none"}
+        style={{ color }}
+      />
+    );
   }
   if (id === "bless") {
     return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
   }
-  return <HandHeart size={14} strokeWidth={1.9} style={{ color }} />;
+  return (
+    <img
+      src="/icon-pray.webp"
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      style={{
+        width: 16,
+        height: 16,
+        objectFit: "contain",
+        flexShrink: 0,
+        opacity: selected ? 1 : 0.82,
+      }}
+    />
+  );
 }
 
 export default function CommunityReactionButtons({

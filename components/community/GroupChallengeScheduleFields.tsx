@@ -1,9 +1,9 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { getGroupChallengeRequestText } from "@/lib/groupChallengeRequestText";
+import { clampDateInputToRange } from "@/lib/groupChallengeRequestDates";
 
 type GroupChallengeScheduleFieldsProps = {
   lang: Lang;
@@ -44,57 +44,70 @@ function DateField({
     <div style={{ minWidth: 0 }}>
       <label
         style={{
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 800,
           color: "var(--text3)",
           display: "block",
-          marginBottom: 6,
+          marginBottom: 4,
         }}
       >
         {label}
       </label>
-      <div style={{ position: "relative", width: "100%" }}>
-        <input
-          type="date"
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: 40,
+          minWidth: 0,
+        }}
+      >
+        <div
           className="input-field"
-          value={value}
-          min={min}
-          max={max}
-          onChange={(event) => onChange(event.target.value)}
-          style={
-            {
-              width: "100%",
-              height: 46,
-              minWidth: 0,
-              padding: "0 12px",
-              boxSizing: "border-box",
-              fontSize: 15,
-              color: "transparent",
-              caretColor: "transparent",
-              WebkitTextFillColor: "transparent",
-            } as CSSProperties
-          }
-        />
-        <span
           aria-hidden="true"
           style={{
-            position: "absolute",
-            inset: 0,
-            height: 46,
+            width: "100%",
+            height: 40,
+            minWidth: 0,
+            padding: "0 6px",
+            boxSizing: "border-box",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0 10px",
-            pointerEvents: "none",
-            fontSize: 13,
+            fontSize: 12,
+            lineHeight: 1.2,
             color: value ? "var(--text)" : "var(--text3)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            letterSpacing: "-0.2px",
           }}
         >
           {formatDate(value, lang)}
-        </span>
+        </div>
+        <input
+          type="date"
+          value={value}
+          min={min}
+          max={max}
+          aria-label={label}
+          onChange={(event) =>
+            onChange(clampDateInputToRange(event.target.value, min, max))
+          }
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            width: "100%",
+            height: "100%",
+            minWidth: 0,
+            margin: 0,
+            padding: 0,
+            border: 0,
+            opacity: 0,
+            cursor: "pointer",
+            fontSize: 16,
+          }}
+        />
       </div>
     </div>
   );
@@ -132,7 +145,7 @@ export default function GroupChallengeScheduleFields({
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: 10,
+          gap: 8,
           width: "100%",
         }}
       >
