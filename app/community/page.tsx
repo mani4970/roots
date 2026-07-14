@@ -11,6 +11,8 @@ import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import NotificationDirectOpenOverlay from "@/components/notifications/NotificationDirectOpenOverlay";
+import CommunityReactionButtons from "@/components/community/CommunityReactionButtons";
+import GroupChallengeScheduleFields from "@/components/community/GroupChallengeScheduleFields";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -20,6 +22,18 @@ import {
   getGroupChallengeBadgeImageSrc,
 } from "@/lib/groupChallengeBadges";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
+import {
+  GROUP_CHALLENGE_REQUEST_DEFAULT_DURATION_DAYS,
+  GROUP_CHALLENGE_REQUEST_MAX_DURATION_DAYS,
+  GROUP_CHALLENGE_REQUEST_MIN_LEAD_DAYS,
+  addDaysToDateInput,
+  deriveChallengeRequestEndDate,
+  inclusiveDateRangeDays,
+} from "@/lib/groupChallengeRequestDates";
+import {
+  formatGroupChallengeRequestText,
+  getGroupChallengeRequestText,
+} from "@/lib/groupChallengeRequestText";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
@@ -60,7 +74,6 @@ import {
   Check,
   ChevronRight,
   ArrowLeft,
-  Sparkles,
   Heart,
   HandHeart,
   BookOpen,
@@ -78,21 +91,6 @@ import {
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
 
-const REACTIONS: { id: "bless" | "cheer" | "pray"; labelKey: TKey }[] = [
-  { id: "bless", labelKey: "community_reaction_bless" },
-  { id: "cheer", labelKey: "community_reaction_cheer" },
-  { id: "pray", labelKey: "community_reaction_pray" },
-];
-
-function ReactionIcon({ id, selected }: { id: string; selected: boolean }) {
-  const color = selected ? "var(--sage-dark)" : "currentColor";
-  if (id === "bless")
-    return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
-  if (id === "cheer")
-    return <Heart size={14} strokeWidth={1.9} style={{ color }} />;
-  return <HandHeart size={14} strokeWidth={1.9} style={{ color }} />;
-}
-
 type ShareScope = "all" | "group" | "partner";
 
 type GroupChallengeRequestSummary = {
@@ -100,6 +98,7 @@ type GroupChallengeRequestSummary = {
   status?: string | null;
   title?: string | null;
   requested_start_date?: string | null;
+  requested_end_date?: string | null;
   duration_days?: number | null;
   created_at?: string | null;
 };
@@ -588,11 +587,11 @@ function CommunityPageContent() {
   // 기도 응답 좋아요: user_id + prayer_id 기준으로 1회만 허용
   const [likedPrayerIds, setLikedPrayerIds] = useState<string[]>([]);
 
-  // 큐티 반응: { [qtId]: { bless: 3, cheer: 1, pray: 2 } }
+  // 묵상 반응 DB ID는 기존 데이터 호환을 위해 bless / cheer / pray를 유지합니다.
   const [qtReactionCounts, setQtReactionCounts] = useState<
     Record<string, Record<string, number>>
   >({});
-  // 내 반응: { [qtId]: "bless" | "cheer" | "pray" }
+  // 사용자에게는 아멘! / 축복해요! / 기도해요로 표시합니다.
   const [myQtReactions, setMyQtReactions] = useState<Record<string, string>>(
     {},
   );
@@ -610,7 +609,7 @@ function CommunityPageContent() {
     useState(false);
   const [challengeTitle, setChallengeTitle] = useState("");
   const [challengeStartDate, setChallengeStartDate] = useState("");
-  const [challengeDurationDays, setChallengeDurationDays] = useState("30");
+  const [challengeEndDate, setChallengeEndDate] = useState("");
   const [challengeDescription, setChallengeDescription] = useState("");
   const [challengeBadgeIdea, setChallengeBadgeIdea] = useState("");
   const [challengeContactEmail, setChallengeContactEmail] = useState("");
@@ -1006,21 +1005,6 @@ function CommunityPageContent() {
     });
   }
 
-  function formatChallengeRequestInputDate(value?: string | null) {
-    if (!value) return "";
-    return parseLocalDateString(value).toLocaleDateString(getDateLocale(lang), {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  function challengeRequestDateInputWidth() {
-    if (lang === "fr") return 142;
-    if (lang === "ko") return 150;
-    return 152;
-  }
-
   function challengeDateRange(challenge: any) {
     const start = formatChallengeDate(challenge?.start_date);
     const end = formatChallengeDate(challenge?.end_date);
@@ -1099,9 +1083,18 @@ function CommunityPageContent() {
 
   function challengeRequestScheduleText(request: GroupChallengeRequestSummary) {
     const start = formatChallengeDate(request.requested_start_date);
-    const days = Number(request.duration_days ?? 0);
-    if (start && Number.isFinite(days) && days > 0) {
-      return c("group_challenge_preparing_schedule", { start, days });
+    const endDate =
+      request.requested_end_date ||
+      deriveChallengeRequestEndDate(
+        request.requested_start_date,
+        request.duration_days,
+      );
+    const end = formatChallengeDate(endDate);
+    if (start && end) {
+      return formatGroupChallengeRequestText(
+        getGroupChallengeRequestText(lang).preparingSchedule,
+        { start, end },
+      );
     }
     if (start) return c("group_challenge_preparing_start", { start });
     return c("group_challenge_preparing_pending");
@@ -1361,7 +1354,7 @@ function CommunityPageContent() {
     setChallengeSuccess(false);
     setChallengeTitle("");
     setChallengeStartDate("");
-    setChallengeDurationDays("30");
+    setChallengeEndDate("");
     setChallengeDescription("");
     setChallengeBadgeIdea("");
     setChallengeExtraQuestions("");
@@ -1374,11 +1367,19 @@ function CommunityPageContent() {
       hasActiveGroupChallengeRequest(selectedGroup.id)
     )
       return;
+    const startDate = localDateInputValue(
+      GROUP_CHALLENGE_REQUEST_MIN_LEAD_DAYS,
+    );
     setChallengeError("");
     setChallengeSuccess(false);
     setChallengeTitle("");
-    setChallengeStartDate(localDateInputValue(1));
-    setChallengeDurationDays("30");
+    setChallengeStartDate(startDate);
+    setChallengeEndDate(
+      addDaysToDateInput(
+        startDate,
+        GROUP_CHALLENGE_REQUEST_DEFAULT_DURATION_DAYS - 1,
+      ),
+    );
     setChallengeDescription("");
     setChallengeBadgeIdea("");
     setChallengeExtraQuestions("");
@@ -1389,15 +1390,30 @@ function CommunityPageContent() {
     if (!selectedGroup?.id || !userId || challengeSaving) return;
     const title = challengeTitle.trim();
     const email = challengeContactEmail.trim();
-    const duration = Number(challengeDurationDays);
-    if (
-      !title ||
-      !challengeStartDate ||
-      !email ||
-      !Number.isFinite(duration) ||
-      duration < 1
-    ) {
-      setChallengeError(c("group_challenge_required_error"));
+    const requestText = getGroupChallengeRequestText(lang);
+    if (!title || !challengeStartDate || !challengeEndDate || !email) {
+      setChallengeError(requestText.requiredError);
+      return;
+    }
+
+    const minimumStartDate = localDateInputValue(
+      GROUP_CHALLENGE_REQUEST_MIN_LEAD_DAYS,
+    );
+    if (challengeStartDate < minimumStartDate) {
+      setChallengeError(requestText.startTooSoonError);
+      return;
+    }
+
+    const duration = inclusiveDateRangeDays(
+      challengeStartDate,
+      challengeEndDate,
+    );
+    if (duration < 1) {
+      setChallengeError(requestText.invalidDateRangeError);
+      return;
+    }
+    if (duration > GROUP_CHALLENGE_REQUEST_MAX_DURATION_DAYS) {
+      setChallengeError(requestText.maxDurationError);
       return;
     }
 
@@ -1425,6 +1441,7 @@ function CommunityPageContent() {
         status: "pending",
         title,
         requested_start_date: challengeStartDate,
+        requested_end_date: challengeEndDate,
         duration_days: duration,
         created_at: new Date().toISOString(),
       });
@@ -4081,6 +4098,12 @@ function CommunityPageContent() {
                 status: latestRequest.status,
                 title: latestRequest.title,
                 requested_start_date: latestRequest.requested_start_date,
+                requested_end_date:
+                  latestRequest.requested_end_date ||
+                  deriveChallengeRequestEndDate(
+                    latestRequest.requested_start_date,
+                    latestRequest.duration_days,
+                  ),
                 duration_days: latestRequest.duration_days,
                 created_at: latestRequest.created_at,
               }
@@ -4787,65 +4810,6 @@ function CommunityPageContent() {
     }
   }
 
-  // 반응 버튼 컴포넌트
-  function ReactionButtons({
-    qtId,
-    onReact,
-  }: {
-    qtId: string;
-    onReact: (qtId: string, rx: string) => void;
-  }) {
-    const counts = qtReactionCounts[qtId] ?? {};
-    const myRx = myQtReactions[qtId];
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    return (
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {REACTIONS.map((reaction) => {
-          const count = counts[reaction.id] ?? 0;
-          const isSelected = myRx === reaction.id;
-          return (
-            <button
-              key={reaction.id}
-              onClick={() => onReact(qtId, reaction.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "6px 11px",
-                borderRadius: 20,
-                border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`,
-                background: isSelected ? "var(--sage-light)" : "var(--bg3)",
-                cursor: "pointer",
-                fontSize: 12,
-                color: isSelected ? "var(--sage-dark)" : "var(--text3)",
-                fontWeight: isSelected ? 700 : 400,
-                transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
-                WebkitTapHighlightColor: "transparent",
-                touchAction: "manipulation",
-              }}
-            >
-              <ReactionIcon id={reaction.id} selected={isSelected} />
-              <span>{c(reaction.labelKey)}</span>
-              <span
-                aria-hidden={count <= 0}
-                style={{
-                  minWidth: 13,
-                  textAlign: "center",
-                  fontWeight: 700,
-                  color: isSelected ? "var(--sage-dark)" : "var(--text2)",
-                  marginLeft: 2,
-                  visibility: count > 0 ? "visible" : "hidden",
-                }}
-              >
-                {count > 0 ? count : 0}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
   function PhotoReflectionImage({
     src,
     alt,
@@ -5137,7 +5101,13 @@ function CommunityPageContent() {
               >
                 {c("community_react_to_qt")}
               </p>
-              <ReactionButtons qtId={r.id} onReact={reactToQT} />
+              <CommunityReactionButtons
+                qtId={r.id}
+                counts={qtReactionCounts[r.id] ?? {}}
+                selectedReaction={myQtReactions[r.id]}
+                lang={lang}
+                onReact={reactToQT}
+              />
             </div>
           </div>
         </div>
@@ -5321,103 +5291,47 @@ function CommunityPageContent() {
                   style={{ height: 46, padding: "0 14px", fontSize: 15 }}
                 />
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: 10,
+              <GroupChallengeScheduleFields
+                lang={lang}
+                startDate={challengeStartDate}
+                endDate={challengeEndDate}
+                minStartDate={localDateInputValue(
+                  GROUP_CHALLENGE_REQUEST_MIN_LEAD_DAYS,
+                )}
+                maxEndDate={
+                  challengeStartDate
+                    ? addDaysToDateInput(
+                        challengeStartDate,
+                        GROUP_CHALLENGE_REQUEST_MAX_DURATION_DAYS - 1,
+                      )
+                    : ""
+                }
+                startLabel={c("group_challenge_start_label")}
+                onStartDateChange={(nextStartDate) => {
+                  setChallengeStartDate(nextStartDate);
+                  if (!nextStartDate) {
+                    setChallengeEndDate("");
+                    return;
+                  }
+                  const maximumEndDate = addDaysToDateInput(
+                    nextStartDate,
+                    GROUP_CHALLENGE_REQUEST_MAX_DURATION_DAYS - 1,
+                  );
+                  if (
+                    !challengeEndDate ||
+                    challengeEndDate < nextStartDate ||
+                    challengeEndDate > maximumEndDate
+                  ) {
+                    setChallengeEndDate(
+                      addDaysToDateInput(
+                        nextStartDate,
+                        GROUP_CHALLENGE_REQUEST_DEFAULT_DURATION_DAYS - 1,
+                      ),
+                    );
+                  }
                 }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <label
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: "var(--text3)",
-                      display: "block",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {c("group_challenge_start_label")}
-                  </label>
-                  <div
-                    style={{
-                      position: "relative",
-                      width: challengeRequestDateInputWidth(),
-                      maxWidth: "100%",
-                    }}
-                  >
-                    <input
-                      type="date"
-                      className="input-field"
-                      value={challengeStartDate}
-                      onChange={(e) => setChallengeStartDate(e.target.value)}
-                      style={
-                        {
-                          width: "100%",
-                          height: 46,
-                          minWidth: 0,
-                          padding: "0 14px",
-                          boxSizing: "border-box",
-                          fontSize: 15,
-                          color: "transparent",
-                          caretColor: "transparent",
-                          WebkitTextFillColor: "transparent",
-                        } as CSSProperties
-                      }
-                    />
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        height: 46,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0 12px",
-                        pointerEvents: "none",
-                        fontSize: 15,
-                        color: "var(--text)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {formatChallengeRequestInputDate(challengeStartDate)}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <label
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: "var(--text3)",
-                      display: "block",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {c("group_challenge_duration_label")}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    inputMode="numeric"
-                    className="input-field"
-                    value={challengeDurationDays}
-                    onChange={(e) => setChallengeDurationDays(e.target.value)}
-                    style={{
-                      width: 86,
-                      height: 46,
-                      minWidth: 0,
-                      padding: "0 14px",
-                      textAlign: "center",
-                      fontSize: 15,
-                    }}
-                  />
-                </div>
-              </div>
+                onEndDateChange={setChallengeEndDate}
+              />
               <div>
                 <label
                   style={{
@@ -6233,7 +6147,13 @@ function CommunityPageContent() {
                       </p>
                     )}
                     <div onClick={(e) => e.stopPropagation()}>
-                      <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                      <CommunityReactionButtons
+                          qtId={r.id}
+                          counts={qtReactionCounts[r.id] ?? {}}
+                          selectedReaction={myQtReactions[r.id]}
+                          lang={lang}
+                          onReact={reactToQT}
+                        />
                     </div>
                   </div>
                 ))}
@@ -7384,7 +7304,13 @@ function CommunityPageContent() {
                         </p>
                       )}
                       <div onClick={(e) => e.stopPropagation()}>
-                        <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                        <CommunityReactionButtons
+                          qtId={r.id}
+                          counts={qtReactionCounts[r.id] ?? {}}
+                          selectedReaction={myQtReactions[r.id]}
+                          lang={lang}
+                          onReact={reactToQT}
+                        />
                       </div>
                     </div>
                   ))}
@@ -8687,7 +8613,13 @@ function CommunityPageContent() {
                           </p>
                         )}
                         <div onClick={(e) => e.stopPropagation()}>
-                          <ReactionButtons qtId={r.id} onReact={reactToQT} />
+                          <CommunityReactionButtons
+                          qtId={r.id}
+                          counts={qtReactionCounts[r.id] ?? {}}
+                          selectedReaction={myQtReactions[r.id]}
+                          lang={lang}
+                          onReact={reactToQT}
+                        />
                         </div>
                       </div>
                     ))}
