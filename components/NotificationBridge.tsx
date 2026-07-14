@@ -3,9 +3,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { useLang } from "@/lib/useLang";
-import { refreshNotificationSchedule, setupNotificationTapRouting, type NotificationTarget } from "@/lib/localNotifications";
+import {
+  setupNotificationTapRouting,
+  syncTodayBibleReflectionCompletionForNotifications,
+  type NotificationTarget,
+} from "@/lib/localNotifications";
 
 function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
@@ -39,7 +44,38 @@ export default function NotificationBridge() {
   const lang = useLang();
 
   useEffect(() => {
-    void refreshNotificationSchedule(lang);
+    let mounted = true;
+    let syncInFlight: Promise<void> | null = null;
+    let appStateListener: { remove: () => Promise<void> } | undefined;
+
+    const syncReminderState = () => {
+      if (!mounted || syncInFlight) return;
+      syncInFlight = syncTodayBibleReflectionCompletionForNotifications(lang)
+        .finally(() => {
+          syncInFlight = null;
+        });
+    };
+
+    syncReminderState();
+
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) syncReminderState();
+      }).then(handle => {
+        if (!mounted) {
+          void handle.remove();
+          return;
+        }
+        appStateListener = handle;
+      }).catch(error => {
+        console.warn("Roots app-state notification sync unavailable", error);
+      });
+    }
+
+    return () => {
+      mounted = false;
+      void appStateListener?.remove();
+    };
   }, [lang]);
 
   useEffect(() => {

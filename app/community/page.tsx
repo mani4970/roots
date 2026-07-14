@@ -2695,14 +2695,18 @@ function CommunityPageContent() {
           cursor: liked ? "default" : "pointer",
           padding: "4px 8px",
           borderRadius: 20,
+          WebkitTapHighlightColor: "transparent",
+          touchAction: "manipulation",
         }}
       >
         <span
           style={{
-            fontSize: 18,
+            width: 18,
+            height: 18,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
             color: liked ? "#E05050" : "var(--text3)",
-            transition: "transform 0.2s",
-            transform: liked ? "scale(1.1)" : "scale(1)",
           }}
         >
           <Heart
@@ -2711,17 +2715,19 @@ function CommunityPageContent() {
             fill={liked ? "#E05050" : "none"}
           />
         </span>
-        {(prayer.like_count ?? 0) > 0 && (
-          <span
-            style={{
-              fontSize: 12,
-              color: liked ? "#E05050" : "var(--text3)",
-              fontWeight: 700,
-            }}
-          >
-            {prayer.like_count}
-          </span>
-        )}
+        <span
+          aria-hidden={(prayer.like_count ?? 0) <= 0}
+          style={{
+            minWidth: 13,
+            textAlign: "center",
+            fontSize: 12,
+            color: liked ? "#E05050" : "var(--text3)",
+            fontWeight: 700,
+            visibility: (prayer.like_count ?? 0) > 0 ? "visible" : "hidden",
+          }}
+        >
+          {(prayer.like_count ?? 0) > 0 ? prayer.like_count : 0}
+        </span>
       </button>
     );
   }
@@ -4813,22 +4819,26 @@ function CommunityPageContent() {
                 fontSize: 12,
                 color: isSelected ? "var(--sage-dark)" : "var(--text3)",
                 fontWeight: isSelected ? 700 : 400,
-                transition: "all 0.15s",
+                transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
               }}
             >
               <ReactionIcon id={reaction.id} selected={isSelected} />
               <span>{c(reaction.labelKey)}</span>
-              {count > 0 && (
-                <span
-                  style={{
-                    fontWeight: 700,
-                    color: isSelected ? "var(--sage-dark)" : "var(--text2)",
-                    marginLeft: 2,
-                  }}
-                >
-                  {count}
-                </span>
-              )}
+              <span
+                aria-hidden={count <= 0}
+                style={{
+                  minWidth: 13,
+                  textAlign: "center",
+                  fontWeight: 700,
+                  color: isSelected ? "var(--sage-dark)" : "var(--text2)",
+                  marginLeft: 2,
+                  visibility: count > 0 ? "visible" : "hidden",
+                }}
+              >
+                {count > 0 ? count : 0}
+              </span>
             </button>
           );
         })}

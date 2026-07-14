@@ -4,6 +4,8 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import type { Lang } from "@/lib/i18n";
 import { storageGetJson, storageSet, storageSetJson } from "@/lib/clientStorage";
+import { createClient } from "@/lib/supabase";
+import { getLocalDateString } from "@/lib/date";
 
 export type NotificationTarget = "home" | "reflection" | "prayer";
 
@@ -179,16 +181,55 @@ function notificationText(lang: Lang) {
   return messages[lang] ?? messages.ko;
 }
 
+async function getPendingRootsNotificationIds() {
+  const pending = await LocalNotifications.getPending();
+  return pending.notifications
+    .filter(notification => notification.id >= NOTIFICATION_IDS.morningBase && notification.id < NOTIFICATION_IDS.eveningBase + 100)
+    .map(notification => ({ id: notification.id }));
+}
+
 async function cancelRootsNotifications() {
   if (!isNativeNotificationsAvailable()) return;
-  // Cancel the current 14-day schedules and a wider legacy id range.
-  // Older builds used a few repeating ids in the same range; clearing the full Roots
-  // notification band prevents old reminders from firing at unexpected times.
+
+  try {
+    const pendingRoots = await getPendingRootsNotificationIds();
+    if (pendingRoots.length > 0) {
+      await LocalNotifications.cancel({ notifications: pendingRoots });
+    }
+    return;
+  } catch (pendingError) {
+    console.warn("Roots pending notification lookup failed; using id-range fallback", pendingError);
+  }
+
+  // Fallback for older native builds or a temporary getPending failure.
   const notifications = Array.from({ length: 300 }, (_unused, index) => ({ id: NOTIFICATION_IDS.morningBase + index }));
   try {
     await LocalNotifications.cancel({ notifications });
-  } catch {
-    // Ignore cancellation failures; a fresh schedule will be attempted next.
+  } catch (cancelError) {
+    console.warn("Roots notification cancellation failed", cancelError);
+  }
+}
+
+async function cancelPendingEveningReflectionNotifications() {
+  if (!isNativeNotificationsAvailable()) return;
+
+  try {
+    const pending = await LocalNotifications.getPending();
+    const eveningNotifications = pending.notifications
+      .filter(notification => {
+        const kind = notification.extra?.kind;
+        return kind === "evening_reflection" || (
+          notification.id >= NOTIFICATION_IDS.eveningBase &&
+          notification.id < NOTIFICATION_IDS.eveningBase + 100
+        );
+      })
+      .map(notification => ({ id: notification.id }));
+
+    if (eveningNotifications.length > 0) {
+      await LocalNotifications.cancel({ notifications: eveningNotifications });
+    }
+  } catch (error) {
+    console.warn("Roots evening reminder cancellation failed", error);
   }
 }
 
@@ -339,6 +380,54 @@ export async function markBibleReflectionCompletedForNotifications(completedDate
   const dates = getCompletedReflectionDates();
   dates.add(completedDate);
   saveCompletedReflectionDates(dates);
+
+  // Cancel all pending evening reminders first. The fresh schedule below will
+  // recreate future dates while excluding the completed date.
+  await cancelPendingEveningReflectionNotifications();
+  await refreshNotificationSchedule(lang);
+}
+
+/**
+ * Reconciles today's local reminder state with the server source of truth.
+ * This covers app relaunch/resume and a reflection completed on another device.
+ * A local notification cannot know about another device until this device opens
+ * or resumes, so this sync runs whenever the native app becomes active.
+ */
+export async function syncTodayBibleReflectionCompletionForNotifications(lang: Lang) {
+  const settings = getNotificationSettings();
+  if (!settings.enabled || !isNativeNotificationsAvailable()) return;
+
+  const today = getLocalDateString();
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data, error } = await supabase
+        .from("qt_records")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .eq("is_draft", false)
+        .limit(1);
+
+      if (error) throw error;
+      if ((data ?? []).length > 0) {
+        const dates = getCompletedReflectionDates();
+        if (!dates.has(today)) {
+          dates.add(today);
+          saveCompletedReflectionDates(dates);
+        }
+        await cancelPendingEveningReflectionNotifications();
+      }
+    }
+  } catch (error) {
+    // Scheduling should remain available even if the reconciliation query fails.
+    console.warn("Roots reflection reminder reconciliation failed", error);
+  }
+
   await refreshNotificationSchedule(lang);
 }
 
