@@ -25,23 +25,13 @@ const WATER_BOTTOM_OFFSET: Record<RootsAvatarType, number> = {
   rootswoman: 19,
 };
 
-// Final CSS-pixel anchors for the watering frames.
-//
-// The watering artwork is much wider than the walking artwork because the can and
-// stream extend to the left. Each frame also stores the character at a slightly
-// different source X position. Keeping final rendered anchors here avoids fractional
-// translate values that can make pixel art shimmer, and keeps the RootsWoman body
-// aligned with the neutral walking frame when watering begins and ends.
-const WATER_FRAME_RENDER_OFFSET_X: Record<RootsAvatarType, number[]> = {
-  // Preserve the already-stable RootsMan alignment.
-  rootsman: [0, -5.8, 3.1],
-  // Stable body anchor across frames 0/1/2, including the walk -> water transition.
-  rootswoman: [-23, -19, -12],
-};
-
-const WATER_FRAME_RENDER_OFFSET_Y: Record<RootsAvatarType, number[]> = {
-  rootsman: [0, 0, 0],
-  rootswoman: [0, 0, 0],
+// The stable watering assets are normalized at source-pixel level so the character
+// body uses the exact same source coordinates in every frame. Keep only one whole-
+// animation anchor per avatar here; per-frame CSS translations (especially fractional
+// ones) can round differently across device pixel ratios and make pixel art wobble.
+const WATER_RENDER_OFFSET_X: Record<RootsAvatarType, number> = {
+  rootsman: 0,
+  rootswoman: -23,
 };
 
 const ENTER_START_X = 112;
@@ -67,7 +57,8 @@ interface RootsManProps {
 }
 
 function getFrameSrc(avatarType: RootsAvatarType, kind: "walk" | "water", frame: number) {
-  return `/images/reward-maps/garden/sprites/frames/${avatarType}/${kind}_${frame}.webp`;
+  const fileName = kind === "water" ? `water_stable_${frame}.webp` : `walk_${frame}.webp`;
+  return `/images/reward-maps/garden/sprites/frames/${avatarType}/${fileName}`;
 }
 
 function getAvatarFrameSources(avatarType: RootsAvatarType) {
@@ -214,12 +205,7 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
   const scale = renderW / sourceFrameW;
   const renderH = Math.round(sourceFrameH * scale);
   const frameSrc = getFrameSrc(normalizedAvatarType, isWatering ? "water" : "walk", frame);
-  const frameOffsetX = isWatering
-    ? (WATER_FRAME_RENDER_OFFSET_X[normalizedAvatarType][frame] ?? 0)
-    : 0;
-  const frameOffsetY = isWatering
-    ? (WATER_FRAME_RENDER_OFFSET_Y[normalizedAvatarType][frame] ?? 0)
-    : 0;
+  const frameOffsetX = isWatering ? WATER_RENDER_OFFSET_X[normalizedAvatarType] : 0;
   const bottomOffset = isWatering ? WATER_BOTTOM_OFFSET[normalizedAvatarType] : 0;
 
   return (
@@ -256,7 +242,7 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
             left: 0,
             width: renderW,
             height: renderH,
-            transform: `translate3d(${frameOffsetX}px, ${frameOffsetY}px, 0)`,
+            transform: `translate3d(${frameOffsetX}px, 0, 0)`,
             imageRendering: "pixelated",
             backfaceVisibility: "hidden",
             willChange: "transform",

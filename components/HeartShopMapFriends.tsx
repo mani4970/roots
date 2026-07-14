@@ -26,12 +26,11 @@ const GARDEN_GROUND_PLACEMENTS: GroundFriendPlacements = {
   choko: { left: "28%", bottom: "8%", renderWidth: 58 },
   kkumdeuli: { left: "37%", bottom: "9%", renderWidth: 40 },
 
-  // Bamtoli and Mongsili sit on the right, farther-back ground row. Rootsman/
-  // Rootswoman render above this layer and may pass in front without appearing
-  // to step on them. The pixel offsets compensate for transparent space below
-  // the actual feet in the source sprite sheets.
-  bamtoli: { right: "13%", bottom: "calc(23% - 21px)", renderWidth: 44 },
-  mongsili: { right: "2%", bottom: "calc(23% - 19px)", renderWidth: 46 },
+  // Bamtoli and Mongsili sit on the right, farther-back ground row. Their
+  // visible character heights are normalized to roughly Hindungi's size. The
+  // pixel offsets compensate for transparent space below their actual feet.
+  bamtoli: { right: "13%", bottom: "calc(23% - 14px)", renderWidth: 30 },
+  mongsili: { right: "2%", bottom: "calc(23% - 12px)", renderWidth: 28 },
 };
 
 function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
@@ -45,8 +44,8 @@ function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
     // The ark action character uses the lower-right foreground. These two
     // friends stay on the higher rear ground line, so the character can pass
     // in front of them without a foot/ground collision.
-    bamtoli: { right: "13%", bottom: "calc(20% - 20px)", renderWidth: 42 },
-    mongsili: { right: "2%", bottom: "calc(20% - 18px)", renderWidth: 44 },
+    bamtoli: { right: "13%", bottom: "calc(20% - 14px)", renderWidth: 30 },
+    mongsili: { right: "2%", bottom: "calc(20% - 12px)", renderWidth: 28 },
   };
 }
 
