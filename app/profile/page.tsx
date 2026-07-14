@@ -81,6 +81,8 @@ const FAITH_BADGES = [
   ...NEW_REWARD_BADGES,
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
+const LOCKED_FAITH_BADGE_IMG = "/images/group-challenges/mystery-badge.png";
+
 const SPIRIT_FRUIT_BADGES = [
   { key: "badge_love", name: "Love", descKey: "fruit_love", fruit: "🍎" },
   { key: "badge_peace", name: "Peace", descKey: "fruit_peace", fruit: "🍉" },
@@ -188,7 +190,7 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean }>(null);
+  const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean; mystery?: boolean }>(null);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
   const [showGroupChallengeBadgeGallery, setShowGroupChallengeBadgeGallery] = useState(false);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
@@ -849,7 +851,13 @@ export default function ProfilePage() {
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
-    setSelectedBadge({ img: b.img, title: t(b.titleKey, lang), desc: t(b.descKey, lang), earned });
+    setSelectedBadge({
+      img: earned ? b.img : LOCKED_FAITH_BADGE_IMG,
+      title: t(b.titleKey, lang),
+      desc: t(b.descKey, lang),
+      earned,
+      mystery: !earned,
+    });
   }
 
   function openSpiritFruitBadgeDetail(b: SpiritFruitBadge, index: number) {
@@ -949,8 +957,8 @@ export default function ProfilePage() {
                     onClick={() => openFaithBadgeDetail(b)}
                     style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                   >
-                    <div style={{ width: 72, height: 72, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                      <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
+                    <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
+                      <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
                     </div>
                     <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                     <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
@@ -1042,7 +1050,7 @@ export default function ProfilePage() {
               <img
                 src={selectedBadge.img}
                 alt={selectedBadge.title}
-                style={{ width: "168px", height: "168px", objectFit: "contain", opacity: selectedBadge.earned ? 1 : 0.42, filter: selectedBadge.earned ? "none" : "grayscale(0.2)" }}
+                style={{ width: "168px", height: "168px", objectFit: "contain", opacity: selectedBadge.earned || selectedBadge.mystery ? 1 : 0.42, filter: selectedBadge.earned || selectedBadge.mystery ? "none" : "grayscale(0.2)" }}
               />
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
@@ -1301,8 +1309,8 @@ export default function ProfilePage() {
                   onClick={() => openFaithBadgeDetail(b)}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
-                  <div style={{ width: 72, height: 72, marginBottom: 5, opacity: earned ? 1 : 0.32, filter: earned ? "none" : "grayscale(0.2)", transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={b.img} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
+                  <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
+                    <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
