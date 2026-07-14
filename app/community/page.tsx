@@ -35,6 +35,10 @@ import {
   getGroupChallengeRequestText,
 } from "@/lib/groupChallengeRequestText";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
+import {
+  loadCommunityViewerMeta,
+  loadPartnerSupplementalData,
+} from "@/lib/communityInitialLoad";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import {
@@ -151,22 +155,23 @@ async function fetchQtFeedRows(
   // 중요한 이유: 오래된 공유 기록은 shared_at이 null일 수 있습니다.
   // shared_at 기준 쿼리만 limit 하면 null shared_at 기록이 뒤로 밀려 그룹/전체 피드에서 사라져 보일 수 있으므로,
   // created_at 기준 쿼리도 함께 가져와 합친 뒤 클라이언트에서 shared_at ?? created_at 기준으로 정렬합니다.
-  const createdAtQuery = await supabase
-    .from("qt_records")
-    .select("*")
-    .ilike("visibility", visibilityPattern)
-    .order("created_at", { ascending: false })
-    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+  const [createdAtQuery, sharedAtQuery] = await Promise.all([
+    supabase
+      .from("qt_records")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+    supabase
+      .from("qt_records")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .order("shared_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+  ]);
 
   if (createdAtQuery.error) throw createdAtQuery.error;
-
-  const sharedAtQuery = await supabase
-    .from("qt_records")
-    .select("*")
-    .ilike("visibility", visibilityPattern)
-    .order("shared_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
 
   if (sharedAtQuery.error) {
     if (/shared_at/i.test(sharedAtQuery.error.message ?? "")) {
@@ -3607,30 +3612,14 @@ function CommunityPageContent() {
       ),
     );
 
-    const { data: hiddenRows } = await supabase
-      .from("hidden_community_items")
-      .select("content_type,content_id")
-      .eq("user_id", user.id);
-    const loadedHiddenKeys = (hiddenRows ?? []).map(
-      (row: any) => `${row.content_type}:${row.content_id}`,
-    );
+    const {
+      hiddenKeys: loadedHiddenKeys,
+      hiddenUserIds: loadedHiddenUserIds,
+      prayedIds: dbPrayed,
+    } = await loadCommunityViewerMeta(supabase, user.id);
+
     setHiddenKeys(loadedHiddenKeys);
-
-    const { data: hiddenUserRows } = await supabase
-      .from("hidden_community_users")
-      .select("hidden_user_id")
-      .eq("user_id", user.id);
-    const loadedHiddenUserIds = (hiddenUserRows ?? [])
-      .map((row: any) => row.hidden_user_id)
-      .filter(Boolean);
     setHiddenUserIds(loadedHiddenUserIds);
-
-    // prayedIds: DB에서 로드
-    const { data: prayLogs } = await supabase
-      .from("user_prayer_logs")
-      .select("prayer_id")
-      .eq("user_id", user.id);
-    const dbPrayed = (prayLogs ?? []).map((r: any) => r.prayer_id);
     setPrayedIds(dbPrayed);
     storageSetJson(`comm_prayed_${user.id}`, dbPrayed);
 
@@ -3660,98 +3649,17 @@ function CommunityPageContent() {
               .filter(Boolean),
           ),
         );
-        let profileMap: Record<string, any> = {};
-        if (partnerIds.length > 0) {
-          const { data: profileRows } = await supabase
-            .from("profiles")
-            .select("id,name,avatar_url,streak_days")
-            .in("id", partnerIds);
-          (profileRows ?? []).forEach((profile: any) => {
-            profileMap[profile.id] = profile;
-          });
-        }
-        let favoritePartnerIds = new Set<string>();
-        const partnerPreferenceMap: Record<string, any> = {};
-        if (partnerIds.length > 0) {
-          let preferenceRows: any[] | null = null;
-          const { data, error: preferenceError } = await supabase
-            .from("companion_preferences")
-            .select(
-              "companion_user_id,is_favorite,last_seen_shared_at,created_at",
-            )
-            .eq("user_id", user.id)
-            .in("companion_user_id", partnerIds);
-
-          if (preferenceError) {
-            console.warn(
-              "동역자 선호도/읽음 상태 조회 실패. 기존 컬럼으로 fallback:",
-              preferenceError.message,
-            );
-            const { data: fallbackRows, error: fallbackError } = await supabase
-              .from("companion_preferences")
-              .select("companion_user_id,is_favorite,created_at")
-              .eq("user_id", user.id)
-              .in("companion_user_id", partnerIds);
-            if (fallbackError) {
-              console.warn("동역자 즐겨찾기 조회 실패:", fallbackError.message);
-            } else {
-              preferenceRows = fallbackRows ?? [];
-            }
-          } else {
-            preferenceRows = data ?? [];
-          }
-
-          (preferenceRows ?? []).forEach((row: any) => {
-            partnerPreferenceMap[row.companion_user_id] = row;
-          });
-          favoritePartnerIds = new Set(
-            (preferenceRows ?? [])
-              .filter((row: any) => !!row.is_favorite)
-              .map((row: any) => row.companion_user_id)
-              .filter(Boolean),
-          );
-        }
-
-        const latestPartnerQtAt: Record<string, string | null> = {};
-        const latestPartnerPrayerAt: Record<string, string | null> = {};
-        if (partnerIds.length > 0) {
-          const { data: qtRecipientRows, error: qtRecipientError } =
-            await supabase
-              .from("qt_record_recipients")
-              .select("owner_id,recipient_id,created_at")
-              .eq("recipient_id", user.id)
-              .in("owner_id", partnerIds)
-              .order("created_at", { ascending: false })
-              .limit(200);
-          if (qtRecipientError) {
-            console.warn("동역자 새 묵상 조회 실패:", qtRecipientError.message);
-          } else {
-            (qtRecipientRows ?? []).forEach((row: any) => {
-              if (!latestPartnerQtAt[row.owner_id])
-                latestPartnerQtAt[row.owner_id] = row.created_at ?? null;
-            });
-          }
-
-          const { data: prayerRecipientRows, error: prayerRecipientError } =
-            await supabase
-              .from("prayer_item_recipients")
-              .select("owner_id,recipient_id,created_at")
-              .eq("recipient_id", user.id)
-              .in("owner_id", partnerIds)
-              .order("created_at", { ascending: false })
-              .limit(200);
-          if (prayerRecipientError) {
-            console.warn(
-              "동역자 새 기도 조회 실패:",
-              prayerRecipientError.message,
-            );
-          } else {
-            (prayerRecipientRows ?? []).forEach((row: any) => {
-              if (!latestPartnerPrayerAt[row.owner_id])
-                latestPartnerPrayerAt[row.owner_id] = row.created_at ?? null;
-            });
-          }
-        }
+        const {
+          profileMap,
+          partnerPreferenceMap,
+          favoritePartnerIds,
+          latestPartnerQtAt,
+          latestPartnerPrayerAt,
+        } = await loadPartnerSupplementalData(
+          supabase,
+          user.id,
+          partnerIds,
+        );
 
         setPartners(
           sortPartnersForDisplay(
@@ -3797,96 +3705,90 @@ function CommunityPageContent() {
         );
       }
     } else if (tab === "all") {
-      // 기도 중 (미응답)
-      const { data } = await supabase
-        .from("prayer_items")
-        .select("*")
-        .ilike("visibility", "%all%")
-        .eq("is_answered", false)
-        .order("created_at", { ascending: false })
-        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
-      if (data) {
-        const profMap = await fetchProfiles(supabase, data);
-        setPrayers(
-          filterHiddenItems(
-            "prayer",
-            data.map((r: any) => ({
-              ...r,
-              profiles: profMap[r.user_id] ?? null,
-            })),
-            loadedHiddenKeys,
-            loadedHiddenUserIds,
-          ),
-        );
-      }
-      // 응답됨 (간증 있는 것)
-      const { data: answered } = await supabase
-        .from("prayer_items")
-        .select("*")
-        .ilike("visibility", "%all%")
-        .eq("is_answered", true)
-        .order("answered_at", { ascending: false })
-        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
-      if (answered) {
-        const profMap2 = await fetchProfiles(supabase, answered);
-        const answeredIds = answered.map((r: any) => r.id);
-        let likeCounts: Record<string, number> = {};
-        let myLikedIds: string[] = [];
+      const [prayingResult, answeredResult, qtData] = await Promise.all([
+        supabase
+          .from("prayer_items")
+          .select("*")
+          .ilike("visibility", "%all%")
+          .eq("is_answered", false)
+          .order("created_at", { ascending: false })
+          .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+        supabase
+          .from("prayer_items")
+          .select("*")
+          .ilike("visibility", "%all%")
+          .eq("is_answered", true)
+          .order("answered_at", { ascending: false })
+          .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+        fetchQtFeedRows(supabase, "%all%"),
+      ]);
 
-        if (answeredIds.length > 0) {
-          const { data: likes } = await supabase
-            .from("prayer_likes")
-            .select("prayer_id,user_id")
-            .in("prayer_id", answeredIds);
+      const prayingRows = prayingResult.data ?? [];
+      const answeredRows = answeredResult.data ?? [];
+      const answeredIds = answeredRows.map((row: any) => row.id);
+      const qtIds = qtData.map((row: any) => row.id);
 
-          (likes ?? []).forEach((like: any) => {
-            likeCounts[like.prayer_id] = (likeCounts[like.prayer_id] ?? 0) + 1;
-            if (like.user_id === user.id) myLikedIds.push(like.prayer_id);
-          });
-        }
+      const [profileMap, likesResult, reactions] = await Promise.all([
+        fetchProfiles(supabase, [
+          ...prayingRows,
+          ...answeredRows,
+          ...qtData,
+        ]),
+        answeredIds.length > 0
+          ? supabase
+              .from("prayer_likes")
+              .select("prayer_id,user_id")
+              .in("prayer_id", answeredIds)
+          : Promise.resolve({ data: [], error: null }),
+        fetchQtReactions(supabase, qtIds, user.id),
+      ]);
 
-        setLikedPrayerIds(myLikedIds);
-        setAnsweredPrayers(
-          filterHiddenItems(
-            "prayer",
-            answered.map((r: any) => ({
-              ...r,
-              like_count: likeCounts[r.id] ?? 0,
-              profiles: profMap2[r.user_id] ?? null,
-            })),
-            loadedHiddenKeys,
-            loadedHiddenUserIds,
-          ),
-        );
-      } else {
-        setLikedPrayerIds([]);
-        setAnsweredPrayers([]);
-      }
+      const likeCounts: Record<string, number> = {};
+      const myLikedIds: string[] = [];
+      (likesResult.data ?? []).forEach((like: any) => {
+        likeCounts[like.prayer_id] = (likeCounts[like.prayer_id] ?? 0) + 1;
+        if (like.user_id === user.id) myLikedIds.push(like.prayer_id);
+      });
 
-      // 전체 공개 묵상 나눔
-      const qtData = await fetchQtFeedRows(supabase, "%all%");
-      if (qtData) {
-        const profMap = await fetchProfiles(supabase, qtData);
-        const withProfs = filterHiddenItems(
-          "qt",
-          qtData.map((r: any) => ({
-            ...r,
-            profiles: profMap[r.user_id] ?? null,
+      setPrayers(
+        filterHiddenItems(
+          "prayer",
+          prayingRows.map((row: any) => ({
+            ...row,
+            profiles: profileMap[row.user_id] ?? null,
           })),
           loadedHiddenKeys,
           loadedHiddenUserIds,
-        );
-        setQtShares(sortQtFeedRows(withProfs));
-        // 반응 카운트 로드
-        const qtIds = qtData.map((r: any) => r.id);
-        const { counts, mine } = await fetchQtReactions(
-          supabase,
-          qtIds,
-          user.id,
-        );
-        setQtReactionCounts(counts);
-        setMyQtReactions(mine);
-      }
+        ),
+      );
+      setLikedPrayerIds(myLikedIds);
+      setAnsweredPrayers(
+        filterHiddenItems(
+          "prayer",
+          answeredRows.map((row: any) => ({
+            ...row,
+            like_count: likeCounts[row.id] ?? 0,
+            profiles: profileMap[row.user_id] ?? null,
+          })),
+          loadedHiddenKeys,
+          loadedHiddenUserIds,
+        ),
+      );
+      setQtShares(
+        sortQtFeedRows(
+          filterHiddenItems(
+            "qt",
+            qtData.map((row: any) => ({
+              ...row,
+              profiles: profileMap[row.user_id] ?? null,
+            })),
+            loadedHiddenKeys,
+            loadedHiddenUserIds,
+          ),
+        ),
+      );
+      setQtReactionCounts(reactions.counts);
+      setMyQtReactions(reactions.mine);
     } else if (tab === "group") {
       let memberRows: any[] = [];
       const favoriteCache = readFavoriteCache(user.id);
@@ -3931,23 +3833,25 @@ function CommunityPageContent() {
       });
       const myGroupIds = memberRows.map((r: any) => r.group_id);
 
-      const { data: publicGroups } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false });
-
-      let myPrivateGroups: any[] = [];
-      if (myGroupIds.length > 0) {
-        const { data } = await supabase
+      const [publicGroupsResult, privateGroupsResult] = await Promise.all([
+        supabase
           .from("groups")
           .select("*")
-          .eq("is_public", false)
-          .in("id", myGroupIds);
-        myPrivateGroups = data ?? [];
-      }
+          .eq("is_public", true)
+          .order("created_at", { ascending: false }),
+        myGroupIds.length > 0
+          ? supabase
+              .from("groups")
+              .select("*")
+              .eq("is_public", false)
+              .in("id", myGroupIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-      const all = [...(publicGroups ?? []), ...myPrivateGroups];
+      const all = [
+        ...(publicGroupsResult.data ?? []),
+        ...(privateGroupsResult.data ?? []),
+      ];
       const unique = all.filter(
         (g, i, arr) => arr.findIndex((x) => x.id === g.id) === i,
       );
