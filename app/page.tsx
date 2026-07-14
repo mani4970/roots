@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState, useRef, type ReactNode } from "react";
-import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -14,8 +13,6 @@ import WelcomeBackPopup from "@/components/WelcomeBackPopup";
 import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
-import LoveHeartIntroPopup from "@/components/LoveHeartIntroPopup";
-import HeartShopIntroPopup from "@/components/HeartShopIntroPopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -29,11 +26,9 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
-import { getNotificationIntroPopupText } from "@/lib/notifications/introPopupText";
 import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
-import { getCompanionChallengeText } from "@/lib/companionChallengeText";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import type { HeartShopItemId } from "@/lib/heartShopText";
 import { detectOneTimeUpdatePopupPlatform, isOneTimeUpdatePreview, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
@@ -65,13 +60,7 @@ const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
-const NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX = "roots_announcement_1_6_notifications_update_week_20260629_";
-const LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX = "love_hearts_intro_seen_";
-const HEART_SHOP_INTRO_SEEN_KEY_PREFIX = "heart_shop_intro_seen_2_0_";
 const REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX = "required_update_campaign_2_0_1_seen_";
-const COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX = "companion_challenge_1_announcement_";
-const COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE = "2026-07-31";
-const COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE = "2026-07-09";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -89,88 +78,8 @@ function isRecentSignup(createdAt: string | null | undefined) {
   return Date.now() - createdAtMs < RECENT_SIGNUP_ONBOARDING_WINDOW_MS;
 }
 
-function getNotificationIntroCampaignBaseKey(userId: string) {
-  return `${NOTIFICATION_INTRO_CAMPAIGN_KEY_PREFIX}${userId}`;
-}
-
-function getLoveHeartsIntroSeenKey(userId: string) {
-  return `${LOVE_HEARTS_INTRO_SEEN_KEY_PREFIX}${userId}`;
-}
-
-function getHeartShopIntroSeenKey(userId: string) {
-  return `${HEART_SHOP_INTRO_SEEN_KEY_PREFIX}${userId}`;
-}
-
 function getRequiredUpdateCampaignSeenKey(userId: string) {
   return `${REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX}${userId}`;
-}
-
-function getCompanionChallengeAnnouncementBaseKey(userId: string) {
-  return `${COMPANION_CHALLENGE_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
-}
-
-function getCompanionChallengeAnnouncementKeys(userId: string) {
-  const base = getCompanionChallengeAnnouncementBaseKey(userId);
-  return {
-    dismissed: `${base}_dismissed`,
-    snoozedDate: `${base}_snoozed_date`,
-    sessionSeenDate: `${base}_session_seen_date`,
-  };
-}
-
-function isCompanionChallengeAnnouncementWindow(today: string) {
-  return (
-    today >= COMPANION_CHALLENGE_ANNOUNCEMENT_PREVIEW_START_DATE &&
-    today <= COMPANION_CHALLENGE_ANNOUNCEMENT_END_DATE
-  );
-}
-
-function getNotificationIntroCampaignKeys(userId: string) {
-  const base = getNotificationIntroCampaignBaseKey(userId);
-  return {
-    dismissed: `${base}_dismissed`,
-    snoozedDate: `${base}_snoozed_date`,
-    sessionSeenDate: `${base}_session_seen_date`,
-  };
-}
-
-function sessionStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function sessionStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(key, value);
-  } catch {
-    // Session storage can be unavailable in restricted webviews.
-  }
-}
-
-function isLocalPreviewRuntime() {
-  if (typeof window === "undefined") return false;
-  const hostname = window.location.hostname;
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "0.0.0.0" ||
-    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
-    hostname.endsWith(".local")
-  );
-}
-
-function canShowNotificationIntroRuntime() {
-  try {
-    if (Capacitor.isNativePlatform()) return true;
-  } catch {
-    // Fall through to local preview check.
-  }
-  return isLocalPreviewRuntime();
 }
 
 function getLegacyStorageKey(prefix: string, date: string) {
@@ -285,125 +194,6 @@ function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardM
   );
 }
 
-function NotificationIntroAnnouncementPopup({
-  onOpenSettings,
-  onLater,
-  onDismissForever,
-}: {
-  onOpenSettings: () => void;
-  onLater: () => void;
-  onDismissForever: () => void;
-}) {
-  const lang = useLang();
-  const copy = getNotificationIntroPopupText(lang);
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 209, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.82)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
-      <div style={{ width: "100%", maxWidth: 350, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "28px 22px 22px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.28)" }}>
-        <div style={{ width: 86, height: 86, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "visible" }}>
-          <img
-            src="/notification-bell-intro.png"
-            alt=""
-            aria-hidden="true"
-            style={{ width: 78, height: 78, objectFit: "contain" }}
-          />
-        </div>
-        <h2 style={{ fontSize: 21, fontWeight: 900, color: "var(--text)", lineHeight: 1.35, marginBottom: 14 }}>
-          {copy.title}
-        </h2>
-        <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.75, whiteSpace: "pre-line", marginBottom: 12 }}>
-          {copy.body}
-        </p>
-        <p style={{ fontSize: 12.5, color: "#D94A38", fontWeight: 800, lineHeight: 1.65, whiteSpace: "pre-line", marginBottom: 20 }}>
-          {copy.updateNotice}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onOpenSettings} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
-            {copy.openSettings}
-          </button>
-          <button
-            type="button"
-            onClick={onLater}
-            style={{ width: "100%", minHeight: 44, borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text2)", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
-          >
-            {copy.later}
-          </button>
-          <button
-            onClick={onDismissForever}
-            style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12.5, fontWeight: 750, padding: "4px 0", cursor: "pointer" }}
-          >
-            {copy.dismissForever}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function CompanionChallengeAnnouncementPopup({
-  onConfirm,
-  onDismissForever,
-}: {
-  onConfirm: () => void;
-  onDismissForever: () => void;
-}) {
-  const lang = useLang();
-  const copy = getCompanionChallengeText(lang).announcement;
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.84)", backdropFilter: "blur(8px)", padding: "calc(18px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom))" }}>
-      <div style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.34)", borderRadius: 30, padding: "26px 20px 20px", textAlign: "center", boxShadow: "0 18px 60px rgba(0,0,0,0.3)" }}>
-        <h2 style={{ fontSize: 23, fontWeight: 950, color: "var(--text)", lineHeight: 1.28, marginBottom: 16 }}>
-          {copy.title}
-        </h2>
-        <div style={{ borderRadius: 22, padding: "17px 14px 16px", background: "rgba(122,157,122,0.1)", border: "1px solid rgba(122,157,122,0.24)", marginBottom: 12 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            {copy.mainLines.map((line, index) => (
-              <p
-                key={`${line}_${index}`}
-                style={{ fontSize: index === 0 ? 17 : 15.5, color: "var(--text)", fontWeight: 950, lineHeight: 1.52, margin: 0 }}
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "2px auto 14px", color: "rgba(189,139,30,0.98)", fontSize: 18, fontWeight: 950 }}>
-          <img
-            src="/images/group-challenges/mystery-badge.png"
-            alt=""
-            aria-hidden="true"
-            style={{ width: 48, height: 48, objectFit: "contain" }}
-          />
-          <span aria-hidden="true">&</span>
-          <span>💛 +10</span>
-        </div>
-        <div style={{ borderRadius: 18, padding: "11px 12px", background: "rgba(217,74,56,0.07)", border: "1px solid rgba(217,74,56,0.18)", marginBottom: 18, textAlign: "left" }}>
-          {copy.hints.map((hint, index) => (
-            <p key={`${hint}_${index}`} style={{ fontSize: 11.5, color: "var(--terra-dark)", fontWeight: 850, lineHeight: 1.55, margin: index === 0 ? 0 : "5px 0 0" }}>
-              {hint}
-            </p>
-          ))}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onConfirm} className="btn-sage" style={{ width: "100%", minHeight: 48, justifyContent: "center" }}>
-            {copy.confirm}
-          </button>
-          <button
-            type="button"
-            onClick={onDismissForever}
-            style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12.5, fontWeight: 800, padding: "4px 0", cursor: "pointer" }}
-          >
-            {copy.dismissForever}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -464,13 +254,7 @@ export default function HomePage() {
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
-  const [showLoveHeartIntroAnnouncement, setShowLoveHeartIntroAnnouncement] = useState(false);
-  const [showHeartShopIntroAnnouncement, setShowHeartShopIntroAnnouncement] = useState(false);
-  const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
-  const [showNotificationIntroAnnouncement, setShowNotificationIntroAnnouncement] = useState(false);
   const [requiredUpdatePlatform, setRequiredUpdatePlatform] = useState<RequiredUpdatePlatform | null>(null);
-  const companionChallengeAnnouncementShownMarkerRef = useRef<string | null>(null);
-  const notificationIntroShownMarkerRef = useRef<string | null>(null);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
@@ -734,292 +518,6 @@ export default function HomePage() {
     });
   }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
 
-  useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement) return;
-    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (
-      showFirstLangPicker ||
-      showOnboarding ||
-      showWelcomeBack ||
-      celebration.show ||
-      !!badgePopup ||
-      gardenPopup.show ||
-      showRootsManPopup ||
-      !!rewardMapNotice ||
-      showNotificationSettingsModal ||
-      showHomeQTChoice ||
-      showHomeSundayQT ||
-      showHomeQTPassageChoice ||
-      showHomeQTPhotoPassageChoice ||
-      showHomePrayerCompose ||
-      showHomePrayerSharePrompt
-    ) {
-      return;
-    }
-
-    const today = getLocalDateString();
-    const hasPendingReflectionReward =
-      progressUpdateInFlightRef.current ||
-      pendingRootsManRef.current ||
-      !!pendingRewardMapNoticeRef.current ||
-      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
-      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
-
-    if (hasPendingReflectionReward) return;
-    if (storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
-
-    setShowLoveHeartIntroAnnouncement(true);
-  }, [
-    loading,
-    profile?.id,
-    showLoveHeartIntroAnnouncement,
-    showFirstLangPicker,
-    showOnboarding,
-    showWelcomeBack,
-    celebration.show,
-    badgePopup,
-    gardenPopup.show,
-    showRootsManPopup,
-    rewardMapNotice,
-    showNotificationSettingsModal,
-    showHomeQTChoice,
-    showHomeSundayQT,
-    showHomeQTPassageChoice,
-    showHomeQTPhotoPassageChoice,
-    showHomePrayerCompose,
-    showHomePrayerSharePrompt,
-  ]);
-
-  useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement) return;
-    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
-    if (
-      showFirstLangPicker ||
-      showOnboarding ||
-      showWelcomeBack ||
-      showLangPicker ||
-      celebration.show ||
-      !!badgePopup ||
-      gardenPopup.show ||
-      showRootsManPopup ||
-      showRootsMan ||
-      !!rewardMapNotice ||
-      showNotificationSettingsModal ||
-      chapterPopup.show ||
-      showHomeQTChoice ||
-      showHomeSundayQT ||
-      showHomeQTPassageChoice ||
-      showHomeQTPhotoPassageChoice ||
-      showHomeQTGuide ||
-      showHomePrayerCompose ||
-      showHomePrayerSharePrompt
-    ) {
-      return;
-    }
-
-    const today = getLocalDateString();
-    const hasPendingReflectionReward =
-      progressUpdateInFlightRef.current ||
-      pendingRootsManRef.current ||
-      !!pendingRewardMapNoticeRef.current ||
-      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
-      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
-
-    if (hasPendingReflectionReward) return;
-    if (storageGet(getHeartShopIntroSeenKey(profile.id))) return;
-
-    setShowHeartShopIntroAnnouncement(true);
-  }, [
-    loading,
-    profile?.id,
-    showLoveHeartIntroAnnouncement,
-    showHeartShopIntroAnnouncement,
-    showFirstLangPicker,
-    showOnboarding,
-    showWelcomeBack,
-    showLangPicker,
-    celebration.show,
-    badgePopup,
-    gardenPopup.show,
-    showRootsManPopup,
-    showRootsMan,
-    rewardMapNotice,
-    showNotificationSettingsModal,
-    chapterPopup.show,
-    showHomeQTChoice,
-    showHomeSundayQT,
-    showHomeQTPassageChoice,
-    showHomeQTPhotoPassageChoice,
-    showHomeQTGuide,
-    showHomePrayerCompose,
-    showHomePrayerSharePrompt,
-  ]);
-
-  useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement || showCompanionChallengeAnnouncement) return;
-    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
-    if (!storageGet(getHeartShopIntroSeenKey(profile.id))) return;
-    if (
-      showFirstLangPicker ||
-      showOnboarding ||
-      showWelcomeBack ||
-      showLangPicker ||
-      showCompanionChallengeAnnouncement ||
-      celebration.show ||
-      !!badgePopup ||
-      gardenPopup.show ||
-      showRootsManPopup ||
-      showRootsMan ||
-      !!rewardMapNotice ||
-      showNotificationSettingsModal ||
-      chapterPopup.show ||
-      showHomeQTChoice ||
-      showHomeSundayQT ||
-      showHomeQTPassageChoice ||
-      showHomeQTPhotoPassageChoice ||
-      showHomeQTGuide ||
-      showHomePrayerCompose ||
-      showHomePrayerSharePrompt
-    ) {
-      return;
-    }
-
-    const today = getLocalDateString();
-    if (!isCompanionChallengeAnnouncementWindow(today)) return;
-
-    const hasPendingReflectionReward =
-      progressUpdateInFlightRef.current ||
-      pendingRootsManRef.current ||
-      !!pendingRewardMapNoticeRef.current ||
-      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
-      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
-
-    if (hasPendingReflectionReward) return;
-
-    const keys = getCompanionChallengeAnnouncementKeys(profile.id);
-    if (storageGet(keys.dismissed)) return;
-
-    const snoozedDate = storageGet(keys.snoozedDate);
-    if (snoozedDate && snoozedDate >= today) return;
-
-    const sessionMarker = `${profile.id}_${today}`;
-    if (companionChallengeAnnouncementShownMarkerRef.current === sessionMarker) return;
-    if (sessionStorageGet(keys.sessionSeenDate) === today) return;
-
-    companionChallengeAnnouncementShownMarkerRef.current = sessionMarker;
-    sessionStorageSet(keys.sessionSeenDate, today);
-    setShowCompanionChallengeAnnouncement(true);
-  }, [
-    loading,
-    profile?.id,
-    showLoveHeartIntroAnnouncement,
-    showHeartShopIntroAnnouncement,
-    showCompanionChallengeAnnouncement,
-    showFirstLangPicker,
-    showOnboarding,
-    showWelcomeBack,
-    showLangPicker,
-    celebration.show,
-    badgePopup,
-    gardenPopup.show,
-    showRootsManPopup,
-    showRootsMan,
-    rewardMapNotice,
-    showNotificationSettingsModal,
-    chapterPopup.show,
-    showHomeQTChoice,
-    showHomeSundayQT,
-    showHomeQTPassageChoice,
-    showHomeQTPhotoPassageChoice,
-    showHomeQTGuide,
-    showHomePrayerCompose,
-    showHomePrayerSharePrompt,
-  ]);
-
-  useEffect(() => {
-    if (loading || !profile?.id || showLoveHeartIntroAnnouncement || showHeartShopIntroAnnouncement || showCompanionChallengeAnnouncement || showNotificationIntroAnnouncement) return;
-    if (!canShowNotificationIntroRuntime()) return;
-    if (!storageGet(getOnboardingDoneKey(profile.id))) return;
-    if (!storageGet(getLoveHeartsIntroSeenKey(profile.id))) return;
-    if (!storageGet(getHeartShopIntroSeenKey(profile.id))) return;
-    if (
-      showFirstLangPicker ||
-      showOnboarding ||
-      showWelcomeBack ||
-      showLangPicker ||
-      showCompanionChallengeAnnouncement ||
-      celebration.show ||
-      !!badgePopup ||
-      gardenPopup.show ||
-      showRootsManPopup ||
-      showRootsMan ||
-      !!rewardMapNotice ||
-      showNotificationSettingsModal ||
-      chapterPopup.show ||
-      showHomeQTChoice ||
-      showHomeSundayQT ||
-      showHomeQTPassageChoice ||
-      showHomeQTPhotoPassageChoice ||
-      showHomeQTGuide ||
-      showHomePrayerCompose ||
-      showHomePrayerSharePrompt
-    ) {
-      return;
-    }
-
-    const today = getLocalDateString();
-    const hasPendingReflectionReward =
-      progressUpdateInFlightRef.current ||
-      pendingRootsManRef.current ||
-      !!pendingRewardMapNoticeRef.current ||
-      !!storageGet(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, profile.id, today)) ||
-      !!storageGet(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today));
-
-    if (hasPendingReflectionReward) return;
-
-    const keys = getNotificationIntroCampaignKeys(profile.id);
-    if (storageGet(keys.dismissed)) return;
-
-    const snoozedDate = storageGet(keys.snoozedDate);
-    if (snoozedDate && snoozedDate >= today) return;
-
-    const sessionMarker = `${profile.id}_${today}`;
-    if (notificationIntroShownMarkerRef.current === sessionMarker) return;
-    if (sessionStorageGet(keys.sessionSeenDate) === today) return;
-
-    notificationIntroShownMarkerRef.current = sessionMarker;
-    sessionStorageSet(keys.sessionSeenDate, today);
-    setShowNotificationIntroAnnouncement(true);
-  }, [
-    loading,
-    profile?.id,
-    showLoveHeartIntroAnnouncement,
-    showHeartShopIntroAnnouncement,
-    showCompanionChallengeAnnouncement,
-    showNotificationIntroAnnouncement,
-    showFirstLangPicker,
-    showOnboarding,
-    showWelcomeBack,
-    showLangPicker,
-    celebration.show,
-    badgePopup,
-    gardenPopup.show,
-    showRootsManPopup,
-    showRootsMan,
-    rewardMapNotice,
-    showNotificationSettingsModal,
-    chapterPopup.show,
-    showHomeQTChoice,
-    showHomeSundayQT,
-    showHomeQTPassageChoice,
-    showHomeQTPhotoPassageChoice,
-    showHomeQTGuide,
-    showHomePrayerCompose,
-    showHomePrayerSharePrompt,
-  ]);
-
   async function updateStreak(today: string): Promise<number | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -1176,72 +674,12 @@ export default function HomePage() {
     });
   }
 
-  function closeLoveHeartIntroAnnouncement() {
-    if (profile?.id) {
-      storageSet(getLoveHeartsIntroSeenKey(profile.id), "true");
-    }
-    setShowLoveHeartIntroAnnouncement(false);
-  }
-
   function openRequiredUpdate() {
     if (!requiredUpdatePlatform) return;
     if (profile?.id) {
       storageSet(getRequiredUpdateCampaignSeenKey(profile.id), "true");
     }
     openRequiredUpdateStore(requiredUpdatePlatform);
-  }
-
-  function closeHeartShopIntroAnnouncement(action: "openShop" | "close") {
-    if (profile?.id) {
-      storageSet(getHeartShopIntroSeenKey(profile.id), "true");
-    }
-    setShowHeartShopIntroAnnouncement(false);
-    if (action === "openShop") {
-      router.push("/profile?openHeartShop=1");
-    }
-  }
-
-  function closeCompanionChallengeAnnouncement(action: "confirm" | "dismissForever") {
-    if (profile?.id) {
-      const today = getLocalDateString();
-      const keys = getCompanionChallengeAnnouncementKeys(profile.id);
-      companionChallengeAnnouncementShownMarkerRef.current = `${profile.id}_${today}`;
-      sessionStorageSet(keys.sessionSeenDate, today);
-
-      if (action === "confirm") {
-        storageSet(keys.snoozedDate, today);
-      }
-
-      if (action === "dismissForever") {
-        storageSet(keys.dismissed, "true");
-        storageRemove(keys.snoozedDate);
-      }
-    }
-
-    setShowCompanionChallengeAnnouncement(false);
-  }
-
-  function closeNotificationIntroAnnouncement(action: "openSettings" | "later" | "dismissForever") {
-    if (profile?.id) {
-      const today = getLocalDateString();
-      const keys = getNotificationIntroCampaignKeys(profile.id);
-      notificationIntroShownMarkerRef.current = `${profile.id}_${today}`;
-      sessionStorageSet(keys.sessionSeenDate, today);
-
-      if (action === "later") {
-        storageSet(keys.snoozedDate, today);
-      }
-
-      if (action === "dismissForever") {
-        storageSet(keys.dismissed, "true");
-        storageRemove(keys.snoozedDate);
-      }
-    }
-
-    setShowNotificationIntroAnnouncement(false);
-    if (action === "openSettings") {
-      setShowNotificationSettingsModal(true);
-    }
   }
 
   function closeOnboarding() {
@@ -1890,32 +1328,6 @@ export default function HomePage() {
         />
       )}
 
-      {showLoveHeartIntroAnnouncement && (
-        <LoveHeartIntroPopup onClose={closeLoveHeartIntroAnnouncement} />
-      )}
-
-      {showHeartShopIntroAnnouncement && (
-        <HeartShopIntroPopup
-          onOpenShop={() => closeHeartShopIntroAnnouncement("openShop")}
-          onClose={() => closeHeartShopIntroAnnouncement("close")}
-        />
-      )}
-
-      {showCompanionChallengeAnnouncement && (
-        <CompanionChallengeAnnouncementPopup
-          onConfirm={() => closeCompanionChallengeAnnouncement("confirm")}
-          onDismissForever={() => closeCompanionChallengeAnnouncement("dismissForever")}
-        />
-      )}
-
-      {showNotificationIntroAnnouncement && (
-        <NotificationIntroAnnouncementPopup
-          onOpenSettings={() => closeNotificationIntroAnnouncement("openSettings")}
-          onLater={() => closeNotificationIntroAnnouncement("later")}
-          onDismissForever={() => closeNotificationIntroAnnouncement("dismissForever")}
-        />
-      )}
-
       <WelcomeBackPopup
         show={showWelcomeBack}
         daysSince={welcomeBackDays}
@@ -1992,7 +1404,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal && !showLoveHeartIntroAnnouncement && !showHeartShopIntroAnnouncement && !showNotificationIntroAnnouncement}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}

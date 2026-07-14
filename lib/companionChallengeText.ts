@@ -3,15 +3,6 @@ import type { CompanionChallengeStatus } from "@/lib/companionChallenges";
 
 type CompanionChallengeLang = "ko" | "en" | "de" | "fr";
 
-type CompanionChallengeAnnouncementText = {
-  title: string;
-  mainLines: string[];
-  rewardLine: string;
-  hints: string[];
-  confirm: string;
-  dismissForever: string;
-};
-
 type CompanionChallengeText = {
   sectionTitle: string;
   loadingTitle: string;
@@ -36,7 +27,6 @@ type CompanionChallengeText = {
   popupBody: string;
   popupButton: string;
   heartsLabel: string;
-  announcement: CompanionChallengeAnnouncementText;
 };
 
 const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
@@ -64,21 +54,6 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     popupBody: "15일 동안 말씀 안에서 함께 걸어온 여러분의 발걸음을 축복해요.",
     popupButton: "배지 확인하기",
     heartsLabel: "사랑 하트",
-    announcement: {
-      title: "동역자 챌린지가 시작돼요!!",
-      mainLines: [
-        "7월 17일부터 7월 31일까지,",
-        "동역자와 함께 매일 말씀 묵상을 완료해보세요. 15일 동안 둘이 빠짐없이 함께 묵상하면 성공이에요.",
-      ],
-      rewardLine: "배지 & 💛 +10",
-      hints: [
-        "! 동역자가 여러 명이어도 한 명과만 성공하면 보상 지급",
-        "! 여러 명과 동시에 성공해도 보상은 1회만 지급",
-        "! 동역자가 없으면 7월 17일 전까지 추가 시 참여 가능",
-      ],
-      confirm: "확인",
-      dismissForever: "다시 보지 않기",
-    },
   },
   en: {
     sectionTitle: "Companion Word Walk Challenge",
@@ -104,21 +79,6 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     popupBody: "Blessings on the steps you walked together in the Word for 15 days.",
     popupButton: "View badge",
     heartsLabel: "Love Hearts",
-    announcement: {
-      title: "The Companion Challenge is starting!!",
-      mainLines: [
-        "From July 17 to July 31,",
-        "complete Bible Reflection every day with a companion. You succeed when both of you complete all 15 days without missing one.",
-      ],
-      rewardLine: "Badge & 💛 +10",
-      hints: [
-        "! If you have multiple companions, succeeding with one companion is enough",
-        "! Even if you succeed with multiple companions, the reward is given once",
-        "! If you do not have a companion yet, add one before July 17 to join",
-      ],
-      confirm: "OK",
-      dismissForever: "Don’t show again",
-    },
   },
   de: {
     sectionTitle: "Glaubenspartner-Wortweg-Challenge",
@@ -144,21 +104,6 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     popupBody: "Gesegnet seien eure Schritte, die ihr 15 Tage lang gemeinsam im Wort gegangen seid.",
     popupButton: "Abzeichen ansehen",
     heartsLabel: "Liebesherzen",
-    announcement: {
-      title: "Die Partner-Challenge beginnt!!",
-      mainLines: [
-        "Vom 17. bis 31. Juli:",
-        "Schließt täglich gemeinsam mit einem Glaubenspartner die Stille Zeit ab. Erfolgreich seid ihr, wenn ihr beide 15 Tage lang keinen Tag auslasst.",
-      ],
-      rewardLine: "Abzeichen & 💛 +10",
-      hints: [
-        "! Bei mehreren Partnern reicht der Erfolg mit einem Partner",
-        "! Auch bei Erfolg mit mehreren Partnern gibt es die Belohnung nur einmal",
-        "! Ohne Partner kannst du bis zum 17. Juli noch einen hinzufügen",
-      ],
-      confirm: "OK",
-      dismissForever: "Nicht mehr anzeigen",
-    },
   },
   fr: {
     sectionTitle: "Défi de marche biblique avec partenaire",
@@ -184,21 +129,6 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     popupBody: "Que les pas que vous avez faits ensemble dans la Parole pendant 15 jours soient bénis.",
     popupButton: "Voir le badge",
     heartsLabel: "Cœurs d’amour",
-    announcement: {
-      title: "Le défi avec partenaire commence !!",
-      mainLines: [
-        "Du 17 au 31 juillet,",
-        "terminez chaque jour la méditation biblique avec un partenaire. Vous réussissez si vous terminez tous les deux les 15 jours sans en manquer un.",
-      ],
-      rewardLine: "Badge & 💛 +10",
-      hints: [
-        "! Si vous avez plusieurs partenaires, réussir avec un seul suffit",
-        "! Même avec plusieurs réussites, la récompense n’est donnée qu’une fois",
-        "! Sans partenaire, ajoutez-en un avant le 17 juillet pour participer",
-      ],
-      confirm: "OK",
-      dismissForever: "Ne plus afficher",
-    },
   },
 };
 
