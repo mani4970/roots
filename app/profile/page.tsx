@@ -83,6 +83,8 @@ const FAITH_BADGES = [
 
 const LOCKED_FAITH_BADGE_IMG = "/images/group-challenges/mystery-badge.png";
 const LOCKED_SPIRIT_FRUIT_BADGE_IMG = "/images/badges/spirit-fruit-locked-question.png";
+const LOCKED_BADGE_IMAGE_OPACITY = 0.55;
+const LOCKED_SPIRIT_FRUIT_IMAGE_SCALE = 0.7;
 
 const SPIRIT_FRUIT_BADGES = [
   { key: "badge_love", name: "Love", descKey: "fruit_love", fruit: "🍎" },
@@ -960,7 +962,7 @@ export default function ProfilePage() {
                     style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                   >
                     <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
-                      <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
+                      <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                     </div>
                     <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                     <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
@@ -1052,7 +1054,7 @@ export default function ProfilePage() {
               <img
                 src={selectedBadge.img}
                 alt={selectedBadge.title}
-                style={{ width: "168px", height: "168px", objectFit: "contain", imageRendering: selectedBadge.lockedPlaceholder ? "pixelated" : "auto", opacity: selectedBadge.earned || selectedBadge.lockedPlaceholder ? 1 : 0.42, filter: selectedBadge.earned || selectedBadge.lockedPlaceholder ? "none" : "grayscale(0.2)" }}
+                style={{ width: "168px", height: "168px", objectFit: "contain", imageRendering: selectedBadge.lockedPlaceholder ? "pixelated" : "auto", opacity: selectedBadge.earned ? 1 : selectedBadge.lockedPlaceholder ? LOCKED_BADGE_IMAGE_OPACITY : 0.42, filter: selectedBadge.earned || selectedBadge.lockedPlaceholder ? "none" : "grayscale(0.2)", transform: selectedBadge.lockedPlaceholder && selectedBadge.img === LOCKED_SPIRIT_FRUIT_BADGE_IMG ? `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` : "none" }}
               />
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
@@ -1312,7 +1314,7 @@ export default function ProfilePage() {
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none" }} />
+                    <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
@@ -1406,7 +1408,7 @@ export default function ProfilePage() {
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 68, height: 68, marginBottom: 6, transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated" }} />
+                    <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY, transform: earned ? "none" : `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>

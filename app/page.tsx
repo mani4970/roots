@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, type ReactNode } from "react";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -31,7 +33,7 @@ import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import type { HeartShopItemId } from "@/lib/heartShopText";
-import { detectOneTimeUpdatePopupPlatform, isOneTimeUpdatePreview, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
+import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -60,7 +62,6 @@ const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
-const REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX = "required_update_campaign_2_0_1_seen_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -76,10 +77,6 @@ function isRecentSignup(createdAt: string | null | undefined) {
   const createdAtMs = Date.parse(createdAt);
   if (!Number.isFinite(createdAtMs)) return false;
   return Date.now() - createdAtMs < RECENT_SIGNUP_ONBOARDING_WINDOW_MS;
-}
-
-function getRequiredUpdateCampaignSeenKey(userId: string) {
-  return `${REQUIRED_UPDATE_CAMPAIGN_SEEN_KEY_PREFIX}${userId}`;
 }
 
 function getLegacyStorageKey(prefix: string, date: string) {
@@ -299,15 +296,39 @@ export default function HomePage() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      setRequiredUpdatePlatform(null);
+      return;
+    }
 
-    const platform = detectOneTimeUpdatePopupPlatform();
-    if (!platform) return;
+    let cancelled = false;
+    let appStateListener: { remove: () => Promise<void> } | null = null;
 
-    const preview = isOneTimeUpdatePreview();
-    if (!preview && storageGet(getRequiredUpdateCampaignSeenKey(profile.id))) return;
+    const refreshRequiredUpdate = async () => {
+      const platform = await detectOneTimeUpdatePopupPlatform();
+      if (!cancelled) setRequiredUpdatePlatform(platform);
+    };
 
-    setRequiredUpdatePlatform(platform);
+    void refreshRequiredUpdate();
+
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) void refreshRequiredUpdate();
+      }).then(handle => {
+        if (cancelled) {
+          void handle.remove();
+          return;
+        }
+        appStateListener = handle;
+      }).catch(error => {
+        console.warn("Roots required-update app-state check unavailable", error);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      if (appStateListener) void appStateListener.remove();
+    };
   }, [profile?.id]);
 
   async function load() {
@@ -676,9 +697,6 @@ export default function HomePage() {
 
   function openRequiredUpdate() {
     if (!requiredUpdatePlatform) return;
-    if (profile?.id) {
-      storageSet(getRequiredUpdateCampaignSeenKey(profile.id), "true");
-    }
     openRequiredUpdateStore(requiredUpdatePlatform);
   }
 
