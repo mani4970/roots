@@ -612,7 +612,7 @@ export const T = {
 
   // ── 가든 팝업 ──
   garden_check_btn: { ko: "정원 확인하러 가기 ",     de: "Garten ansehen ", en: "Check garden ", fr: "Voir le jardin " },
-  badge_check_btn: { ko: "배지 확인하기 🌟",          de: "Abzeichen ansehen 🌟", en: "View badge 🌟", fr: "Voir le badge 🌟" },
+  badge_check_btn: { ko: "할렐루야! 🙌",              de: "Halleluja! 🙌", en: "Hallelujah! 🙌", fr: "Alléluia ! 🙌" },
   spirit_fruit_title: { ko: "성령의 열매 획득!",      de: "Frucht des Geistes erhalten!", en: "Fruit of the Spirit received!", fr: "Fruit de l’Esprit reçu !" },
   spirit_fruit_sub: { ko: "100일 동안 말씀에 뿌리내린 당신에게\n하나님이 주시는 열매예요!", de: "100 Tage in Gottes Wort –\ndas ist Ihre Frucht von Gott!", en: "100 days in God's Word –\nthis is your fruit from God!", fr: "100 jours dans la Parole de Dieu —\nvoici le fruit que Dieu vous donne !" },
   spirit_fruit_profile: { ko: "프로필에서 확인할 수 있어요 ✨", de: "Im Profil ansehen ✨", en: "View in profile ✨", fr: "Visible dans le profil ✨" },
@@ -822,7 +822,7 @@ export const T = {
   reward_map_future_stage: { ko: "준비 중", de: "In Vorbereitung", en: "Coming soon", fr: "À venir" },
   reward_map_future_desc: { ko: "다음 말씀 여정을 준비하고 있어요", de: "Die nächste Wortreise wird vorbereitet", en: "The next Word journey is being prepared", fr: "Le prochain chemin avec la Parole se prépare" },
   reward_map_completion_title: { ko: "100일 동안 하나님과 동행한 당신을 축복합니다.", de: "Gesegnet seien Ihre 100 Tage mit Gott.", en: "Blessings on your 100 days walking with God.", fr: "Soyez béni(e) pour ces 100 jours avec Dieu." },
-  reward_map_completion_sub: { ko: "완성된 {map}을 보러 가세요!\n곧 새로운 맵이 시작됩니다!", de: "Vollendet: {map}.\nBald beginnt eine neue Karte!", en: "Go see your completed {map}!\nA new map will begin soon!", fr: "Carte terminée : {map}.\nUne nouvelle carte commencera bientôt !" },
+  reward_map_completion_sub: { ko: "완성된 {map}을 보러 가세요!\n내일부터 새로운 맵이 시작됩니다!", de: "Vollendet: {map}.\nAb morgen beginnt eine neue Karte!", en: "Go see your completed {map}!\nA new map will begin tomorrow!", fr: "Carte terminée : {map}.\nUne nouvelle carte commencera demain !" },
   reward_map_completion_btn: { ko: "완성된 {map} 보러 가기", de: "{map} ansehen", en: "View completed {map}", fr: "Voir {map}" },
   reward_map_start_title: { ko: "앞으로 100일간 새로운 맵이 진행됩니다.", de: "Für die nächsten 100 Tage beginnt eine neue Karte.", en: "A new map will unfold over the next 100 days.", fr: "Une nouvelle carte commence pour les 100 prochains jours." },
   reward_map_start_peace_ark_sub: { ko: "방주를 만들어가요.", de: "Bauen wir die Arche.", en: "Let’s build the ark.", fr: "Construisons l’arche." },
