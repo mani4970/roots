@@ -208,7 +208,6 @@ export default function HeartShopModal({
   const [purchasing, setPurchasing] = useState(false);
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
-  const shopScrollRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
 
@@ -298,9 +297,6 @@ export default function HeartShopModal({
       ...current,
       [item.slot]: item.id,
     }));
-    window.requestAnimationFrame(() => {
-      shopScrollRef.current?.scrollTo({ top: 76, behavior: "smooth" });
-    });
   }
 
   function openPurchase(itemId: HeartShopItemId) {
@@ -529,8 +525,8 @@ export default function HeartShopModal({
         </div>
       )}
 
-      <div ref={shopScrollRef} style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)", paddingBottom: "calc(28px + env(safe-area-inset-bottom))" }}>
-        <header style={{ position: "sticky", top: 0, zIndex: 10, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "rgba(248,246,240,.94)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
+      <div style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", overscrollBehavior: "contain", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)" }}>
+        <header style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "rgba(248,246,240,.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
           <button type="button" onClick={closeTopLayer} aria-label={text.closeLabel} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={19} />
           </button>
@@ -540,8 +536,8 @@ export default function HeartShopModal({
           </div>
         </header>
 
-        <main style={{ padding: "16px 16px 0" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 7, padding: 5, borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", marginBottom: 16 }}>
+        <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflowY: activeTab === "character" ? "hidden" : "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: activeTab === "character" ? "16px 16px 0" : "16px 16px calc(28px + env(safe-area-inset-bottom))" }}>
+          <div style={{ flexShrink: 0, display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 7, padding: 5, borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", marginBottom: 16 }}>
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
@@ -596,13 +592,13 @@ export default function HeartShopModal({
           )}
 
           {activeTab === "character" && (
-            <section>
-              <div className="card" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid rgba(122,157,122,.22)", background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,253,248,.84))" }}>
+            <section style={{ flex: 1, minHeight: 0, margin: "0 -16px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div className="card" style={{ flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid rgba(122,157,122,.22)", background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,253,248,.84))" }}>
                 <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: "min(100%,180px)" }} />
+                <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: "clamp(120px,20dvh,180px)" }} />
               </div>
 
-              <div role="tablist" aria-label={text.characterTab} style={{ display: "flex", gap: 7, overflowX: "auto", padding: "2px 1px 8px", marginTop: 13, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+              <div role="tablist" aria-label={text.characterTab} style={{ flexShrink: 0, display: "flex", gap: 7, overflowX: "auto", padding: "2px 16px 8px", marginTop: 10, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
                 {characterCategories.map(category => {
                   const active = activeCharacterCategory === category.id;
                   return (
@@ -613,28 +609,30 @@ export default function HeartShopModal({
                 })}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 11 }}>
-                {visibleCharacterItems.map(item => {
-                  const itemText = getProfileCharacterItemText(item.id, lang);
-                  const owned = ownedById.has(item.id);
-                  return (
-                    <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid rgba(122,157,122,.2)", background: "rgba(255,253,248,.88)" }}>
-                      <div style={{ width: "100%", height: 176, padding: 12, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg,rgba(122,157,122,.08),#fff)", border: "1px solid rgba(122,157,122,.17)", marginBottom: 9 }}>
-                        <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
-                      </div>
-                      <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
-                      <div style={{ color: "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>💛 {item.price}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                        <button type="button" onClick={() => applyCharacterOutfitPreview(item)} style={{ minHeight: 38, padding: "7px 4px", border: outfitPreviewItemIds[item.slot] === item.id ? "1px solid rgba(122,157,122,.45)" : "1px solid var(--border)", borderRadius: 13, background: outfitPreviewItemIds[item.slot] === item.id ? "rgba(122,157,122,.14)" : "var(--bg3)", color: "var(--sage-dark)", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
-                          {profileText.previewLabel}
-                        </button>
-                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("character"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ minHeight: 38, padding: "7px 4px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
-                          {owned ? text.ownedButton : text.purchaseButton}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "0 16px calc(28px + env(safe-area-inset-bottom))" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 11 }}>
+                  {visibleCharacterItems.map(item => {
+                    const itemText = getProfileCharacterItemText(item.id, lang);
+                    const owned = ownedById.has(item.id);
+                    return (
+                      <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid rgba(122,157,122,.2)", background: "rgba(255,253,248,.88)" }}>
+                        <div style={{ width: "100%", height: 176, padding: 12, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg,rgba(122,157,122,.08),#fff)", border: "1px solid rgba(122,157,122,.17)", marginBottom: 9 }}>
+                          <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
+                        </div>
+                        <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
+                        <div style={{ color: "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>💛 {item.price}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                          <button type="button" onClick={() => applyCharacterOutfitPreview(item)} style={{ minHeight: 38, padding: "7px 4px", border: outfitPreviewItemIds[item.slot] === item.id ? "1px solid rgba(122,157,122,.45)" : "1px solid var(--border)", borderRadius: 13, background: outfitPreviewItemIds[item.slot] === item.id ? "rgba(122,157,122,.14)" : "var(--bg3)", color: "var(--sage-dark)", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
+                            {profileText.previewLabel}
+                          </button>
+                          <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("character"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ minHeight: 38, padding: "7px 4px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
+                            {owned ? text.ownedButton : text.purchaseButton}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             </section>
           )}
