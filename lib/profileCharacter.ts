@@ -1,11 +1,12 @@
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import type { HeartShopCharacterSlot } from "@/lib/heartShopItems";
 
 export const PROFILE_CHARACTER_CANVAS = {
   width: 1086,
   height: 1448,
 } as const;
 
-export type ProfileCharacterSlot = "top" | "bottom" | "shoes" | "accessory";
+export type ProfileCharacterSlot = HeartShopCharacterSlot;
 
 export type ProfileCharacterLayer = {
   id: string;

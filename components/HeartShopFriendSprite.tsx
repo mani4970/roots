@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { HEART_SHOP_CATALOG } from "@/lib/heartShopCatalog";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import { HEART_SHOP_MAP_CATALOG } from "@/lib/heartShopCatalog";
+import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 
 type HeartShopFriendSpriteProps = {
-  itemId: HeartShopItemId;
+  itemId: HeartShopMapItemId;
   renderWidth: number;
   alt?: string;
   animate?: boolean;
@@ -20,7 +20,7 @@ export default function HeartShopFriendSprite({
   style,
 }: HeartShopFriendSpriteProps) {
   const item = useMemo(
-    () => HEART_SHOP_CATALOG.find(candidate => candidate.id === itemId) ?? HEART_SHOP_CATALOG[0],
+    () => HEART_SHOP_MAP_CATALOG.find(candidate => candidate.id === itemId) ?? HEART_SHOP_MAP_CATALOG[0],
     [itemId],
   );
   const [frame, setFrame] = useState(0);

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import RewardMapAction from "./RewardMapAction";
 import HeartShopMapFriends from "./HeartShopMapFriends";
@@ -7,7 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 import {
   getRewardMapBackground,
   getRewardMapFallbackTitleKey,
@@ -26,7 +26,7 @@ interface TreeGrowthProps {
   ownerName?: string;
   onActiveCycleChange?: (cycle: RewardMapCycle) => void;
   avatarType?: RootsAvatarType | null;
-  heartShopItemIds?: HeartShopItemId[];
+  heartShopItemIds?: HeartShopMapItemId[];
 }
 
 const NIGHT_START_HOUR = 19;
@@ -57,14 +57,12 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const isAway = daysSince >= 3;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const nextIndex = Math.max(cycles.length - 1, 0);
     setSelectedIndex(nextIndex);
     const node = scrollerRef.current;
     if (!node) return;
-    requestAnimationFrame(() => {
-      node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "auto" });
-    });
+    node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "instant" });
   }, [cycles.length, days]);
 
   function handleScroll() {
@@ -102,7 +100,6 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
           display: "flex",
           overflowX: "auto",
           scrollSnapType: "x mandatory",
-          scrollBehavior: "smooth",
           WebkitOverflowScrolling: "touch",
           borderRadius: 20,
         }}
@@ -162,7 +159,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   );
 }
 
-function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopItemId[] }) {
+function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopMapItemId[] }) {
   const lang = useLang();
   const stage = getRewardMapStage(cycle);
   const titleKey = getRewardMapTitleKey(cycle.kind);

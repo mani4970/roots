@@ -21,7 +21,15 @@ import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
 import { getLoveHeartBalance } from "@/lib/loveHearts";
 import { getRootsAvatarChoiceText, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { getHeartShopText } from "@/lib/heartShopText";
+import { loadOwnedHeartShopItems, type OwnedHeartShopItem } from "@/lib/heartShop";
+import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import { getProfileCharacterText } from "@/lib/profileCharacterText";
+import {
+  getProfileCharacterAvatarSignature,
+  saveProfileAvatarDisplay,
+  uploadProfileCharacterAvatar,
+} from "@/lib/profileAvatar";
+import { getProfileAvatarText } from "@/lib/profileAvatarText";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -168,6 +176,7 @@ export default function ProfilePage() {
   const [savingName, setSavingName] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [resettingPhoto, setResettingPhoto] = useState(false);
+  const [savingProfileAvatar, setSavingProfileAvatar] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
@@ -177,6 +186,7 @@ export default function ProfilePage() {
   const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
   const [qtShareCount, setQtShareCount] = useState(0);
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
+  const [ownedHeartShopItems, setOwnedHeartShopItems] = useState<OwnedHeartShopItem[]>([]);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [showHeartShop, setShowHeartShop] = useState(false);
   const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
@@ -202,13 +212,33 @@ export default function ProfilePage() {
   const [selectedCompanionChallengeBadge, setSelectedCompanionChallengeBadge] = useState<CompanionChallengeProfileBadge | null>(null);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
+  const profileRef = useRef<any>(null);
+  const profileAvatarQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
   }
 
+  function updateProfileState(patch: Record<string, unknown>) {
+    setProfile((current: any) => {
+      const next = { ...(current ?? {}), ...patch };
+      profileRef.current = next;
+      return next;
+    });
+  }
+
+  function enqueueProfileAvatarTask<T>(task: () => Promise<T>): Promise<T> {
+    const queued = profileAvatarQueueRef.current.catch(() => undefined).then(task);
+    profileAvatarQueueRef.current = queued.then(() => undefined, () => undefined);
+    return queued;
+  }
+
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -244,12 +274,34 @@ export default function ProfilePage() {
       console.warn("사랑 하트 조회 실패:", error);
       setLoveHeartBalance(0);
     }
+    try {
+      setOwnedHeartShopItems(await loadOwnedHeartShopItems(supabase));
+    } catch (error) {
+      console.warn("프로필 캐릭터 아이템 조회 실패:", error);
+      setOwnedHeartShopItems([]);
+    }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
+      const { data: avatarPreference, error: avatarPreferenceError } = await supabase
+        .from("profile_avatar_preferences")
+        .select("mode,photo_url,character_signature")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (avatarPreferenceError) {
+        console.warn("프로필 표시 설정 조회 실패:", avatarPreferenceError);
+      }
+
+      p.profile_avatar_mode = avatarPreference?.mode ?? "photo";
+      p.profile_photo_url = avatarPreference?.photo_url ?? (p.profile_avatar_mode === "photo" ? p.avatar_url : null);
+      p.profile_character_signature = avatarPreference?.character_signature ?? null;
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
       if (p.avatar_url && !p.avatar_url.includes("?t=")) {
         p.avatar_url = `${p.avatar_url}?t=${Date.now()}`;
       }
+      if (p.profile_photo_url && !p.profile_photo_url.includes("?t=")) {
+        p.profile_photo_url = `${p.profile_photo_url}?t=${Date.now()}`;
+      }
+      profileRef.current = p;
       setProfile(p);
       setNewName(p.name ?? "");
     }
@@ -542,15 +594,25 @@ export default function ProfilePage() {
     }
     const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
     const urlWithTs = `${publicUrl}?t=${Date.now()}`;
-    // DB 저장 - 에러 체크 포함
-    const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithTs }).eq("id", user.id);
-    if (dbError) {
+    try {
+      await enqueueProfileAvatarTask(() => saveProfileAvatarDisplay(supabase, {
+        mode: "photo",
+        effectiveAvatarUrl: urlWithTs,
+        photoUrl: urlWithTs,
+        characterSignature: null,
+      }));
+    } catch (dbError: any) {
       console.error("프로필 사진 DB 저장 실패:", dbError);
-      setPhotoError(`${t("profile_save_fail", lang)}: ${dbError.message}`);
+      setPhotoError(`${t("profile_save_fail", lang)}: ${dbError?.message ?? "unknown error"}`);
       setUploadingPhoto(false);
       return;
     }
-    setProfile((p: any) => ({ ...p, avatar_url: urlWithTs }));
+    updateProfileState({
+      avatar_url: urlWithTs,
+      profile_photo_url: urlWithTs,
+      profile_avatar_mode: "photo",
+      profile_character_signature: null,
+    });
     setUploadingPhoto(false);
   }
 
@@ -599,14 +661,25 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error: dbError } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
-      if (dbError) {
+      try {
+        await enqueueProfileAvatarTask(() => saveProfileAvatarDisplay(supabase, {
+          mode: "photo",
+          effectiveAvatarUrl: null,
+          photoUrl: null,
+          characterSignature: null,
+        }));
+      } catch (dbError: any) {
         console.error("프로필 사진 기본 이미지 복귀 실패:", dbError);
-        setPhotoError(`${t("profile_photo_reset_fail", lang)}: ${dbError.message}`);
+        setPhotoError(`${t("profile_photo_reset_fail", lang)}: ${dbError?.message ?? "unknown error"}`);
         return;
       }
 
-      setProfile((current: any) => ({ ...(current ?? {}), avatar_url: null }));
+      updateProfileState({
+        avatar_url: null,
+        profile_photo_url: null,
+        profile_avatar_mode: "photo",
+        profile_character_signature: null,
+      });
       showToast(t("profile_photo_reset_ok", lang));
 
       // 이전 프로필 사진은 사용자별 고정 경로에 저장됩니다. 삭제가 실패해도 화면 복귀는 유지합니다.
@@ -769,17 +842,113 @@ export default function ProfilePage() {
     }
   }
 
+  async function persistCharacterProfileAvatar(
+    avatarType: RootsAvatarType,
+    items: OwnedHeartShopItem[],
+    extraProfileUpdates: Record<string, unknown> = {},
+    force = false,
+  ) {
+    const currentProfile = profileRef.current;
+    if (!currentProfile?.id) return false;
+
+    const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
+    const signature = getProfileCharacterAvatarSignature(avatarType, enabledItemIds);
+    if (!force && currentProfile.profile_avatar_mode !== "character") return false;
+    if (!force && currentProfile.profile_character_signature === signature) return false;
+
+    const supabase = createClient();
+    const { avatarUrl } = await uploadProfileCharacterAvatar(
+      supabase,
+      currentProfile.id,
+      avatarType,
+      enabledItemIds,
+    );
+    const preservedPhotoUrl = currentProfile.profile_photo_url
+      ?? (currentProfile.profile_avatar_mode === "character" ? null : currentProfile.avatar_url ?? null);
+    const updates = {
+      ...extraProfileUpdates,
+      avatar_url: avatarUrl,
+      profile_photo_url: preservedPhotoUrl,
+      profile_avatar_mode: "character",
+      profile_character_signature: signature,
+    };
+    await saveProfileAvatarDisplay(supabase, {
+      mode: "character",
+      effectiveAvatarUrl: avatarUrl,
+      photoUrl: preservedPhotoUrl,
+      characterSignature: signature,
+      avatarType: extraProfileUpdates.avatar_type === "rootsman" || extraProfileUpdates.avatar_type === "rootswoman"
+        ? extraProfileUpdates.avatar_type
+        : null,
+    });
+    updateProfileState(updates);
+    return true;
+  }
+
+  async function toggleCharacterProfileAvatar() {
+    if (!profile?.id || savingProfileAvatar) return;
+    const text = getProfileAvatarText(lang);
+    setSavingProfileAvatar(true);
+    setPhotoError("");
+    try {
+      if (profile.profile_avatar_mode === "character") {
+        await enqueueProfileAvatarTask(async () => {
+          const currentProfile = profileRef.current;
+          const restoredUrl = currentProfile?.profile_photo_url ?? null;
+          const updates = {
+            avatar_url: restoredUrl,
+            profile_avatar_mode: "photo",
+            profile_character_signature: null,
+          };
+          const supabase = createClient();
+          await saveProfileAvatarDisplay(supabase, {
+            mode: "photo",
+            effectiveAvatarUrl: restoredUrl,
+            photoUrl: restoredUrl,
+            characterSignature: null,
+          });
+          updateProfileState(updates);
+        });
+        showToast(profile.profile_photo_url ? text.photoRestored : text.defaultRestored);
+      } else {
+        await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
+          normalizeRootsAvatarType(profile.avatar_type),
+          ownedHeartShopItems,
+          {},
+          true,
+        ));
+        showToast(text.characterSaved);
+      }
+    } catch (error) {
+      console.error("캐릭터 프로필 지정 실패:", error);
+      setPhotoError(text.saveFailed);
+      showToast(text.saveFailed);
+    } finally {
+      setSavingProfileAvatar(false);
+    }
+  }
+
   async function saveAvatarChoice(avatarType: RootsAvatarType) {
     if (!profile?.id || savingAvatarChoice) return;
     setSavingAvatarChoice(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("profiles")
-        .update({ avatar_type: avatarType, avatar_choice_seen: true })
-        .eq("id", profile.id);
-      if (error) throw error;
-      setProfile((prev: any) => prev ? { ...prev, avatar_type: avatarType, avatar_choice_seen: true } : prev);
+      if (profile.profile_avatar_mode === "character") {
+        await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
+          avatarType,
+          ownedHeartShopItems,
+          { avatar_type: avatarType, avatar_choice_seen: true },
+          true,
+        ));
+      } else {
+        const supabase = createClient();
+        const updates = { avatar_type: avatarType, avatar_choice_seen: true };
+        const { error } = await supabase
+          .from("profiles")
+          .update(updates)
+          .eq("id", profile.id);
+        if (error) throw error;
+        updateProfileState(updates);
+      }
       setShowAvatarChoiceModal(false);
       showToast(lang === "ko" ? "캐릭터가 변경되었어요." : lang === "de" ? "Der Charakter wurde geändert." : lang === "fr" ? "Le personnage a été modifié." : "Character updated.");
     } catch (error) {
@@ -851,6 +1020,43 @@ export default function ProfilePage() {
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const heartShopText = getHeartShopText(lang);
   const profileCharacterText = getProfileCharacterText(lang);
+  const profileAvatarText = getProfileAvatarText(lang);
+  const enabledProfileCharacterItemIds = ownedHeartShopItems
+    .filter(item => item.isEnabled)
+    .map(item => item.itemId);
+  const profileCharacterLayers = getProfileCharacterLayersForItemIds(
+    enabledProfileCharacterItemIds,
+    currentAvatarType,
+  );
+  const currentProfileCharacterSignature = getProfileCharacterAvatarSignature(
+    currentAvatarType,
+    enabledProfileCharacterItemIds,
+  );
+  const isCharacterProfileAvatar = profile?.profile_avatar_mode === "character";
+  const canResetProfilePhoto = isCharacterProfileAvatar || Boolean(profile?.profile_photo_url ?? profile?.avatar_url);
+
+  useEffect(() => {
+    if (!profile?.id || !isCharacterProfileAvatar) return;
+    if (profile.profile_character_signature === currentProfileCharacterSignature) return;
+
+    let cancelled = false;
+    void enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
+      currentAvatarType,
+      ownedHeartShopItems,
+    )).catch(error => {
+      if (cancelled) return;
+      console.warn("캐릭터 프로필 자동 갱신 실패:", error);
+      setPhotoError(profileAvatarText.autoUpdateFailed);
+    });
+    return () => { cancelled = true; };
+  }, [
+    profile?.id,
+    profile?.profile_avatar_mode,
+    profile?.profile_character_signature,
+    currentAvatarType,
+    currentProfileCharacterSignature,
+    profileAvatarText.autoUpdateFailed,
+  ]);
 
   function openFaithBadgeDetail(b: FaithBadge) {
     const earned = profile?.[b.key] ?? false;
@@ -915,6 +1121,7 @@ export default function ProfilePage() {
         heartBalance={loveHeartBalance}
         avatarType={currentAvatarType}
         onHeartBalanceChange={setLoveHeartBalance}
+        onOwnedItemsChange={setOwnedHeartShopItems}
         onClose={() => setShowHeartShop(false)}
       />
 
@@ -924,6 +1131,7 @@ export default function ProfilePage() {
         title={getRootsAvatarChoiceText("profileTitle", lang)}
         alt={getRootsAvatarLabel(currentAvatarType, lang)}
         closeLabel={profileCharacterText.closeFullViewLabel}
+        layers={profileCharacterLayers}
         onClose={() => setShowProfileCharacterViewer(false)}
       />
 
@@ -1181,11 +1389,11 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={() => setShowPhotoMenu(true)}
-              disabled={uploadingPhoto || resettingPhoto}
+              disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar}
               aria-label={t("profile_photo_menu_title", lang)}
               style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              {uploadingPhoto || resettingPhoto ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
+              {uploadingPhoto || resettingPhoto || savingProfileAvatar ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
             </button>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>
@@ -1274,15 +1482,51 @@ export default function ProfilePage() {
               <ProfileCharacterPreview
                 avatarType={currentAvatarType}
                 alt={getRootsAvatarLabel(currentAvatarType, lang)}
+                layers={profileCharacterLayers}
               />
             </button>
           </div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
+            {isCharacterProfileAvatar && (
+              <div role="status" style={{ textAlign: "center", color: "var(--sage-dark)", fontSize: 10, lineHeight: 1.25, fontWeight: 900 }}>
+                ✓ {profileAvatarText.characterActiveLabel}
+              </div>
+            )}
             <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {getRootsAvatarChoiceText("change", lang)}
             </button>
             <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid rgba(232,197,71,0.38)", borderRadius: 999, background: "rgba(255,248,218,0.82)", color: "rgba(157,105,24,0.98)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {heartShopText.openButton}
+            </button>
+            <button
+              type="button"
+              aria-pressed={isCharacterProfileAvatar}
+              onClick={() => void toggleCharacterProfileAvatar()}
+              disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto}
+              style={{
+                width: "100%",
+                border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid rgba(122,157,122,0.42)",
+                borderRadius: 999,
+                background: isCharacterProfileAvatar ? "var(--bg3)" : "rgba(122,157,122,0.12)",
+                color: "var(--sage-dark)",
+                padding: "10px 12px",
+                fontSize: 12,
+                fontWeight: 900,
+                cursor: savingProfileAvatar || uploadingPhoto || resettingPhoto ? "default" : "pointer",
+                lineHeight: 1.25,
+                opacity: savingProfileAvatar || uploadingPhoto || resettingPhoto ? 0.65 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              {savingProfileAvatar && <Loader2 size={12} className="spin" />}
+              {savingProfileAvatar
+                ? profileAvatarText.savingLabel
+                : isCharacterProfileAvatar
+                  ? (profile?.profile_photo_url ? profileAvatarText.usePhotoButton : profileAvatarText.useDefaultButton)
+                  : profileAvatarText.useCharacterButton}
             </button>
           </div>
         </div>
@@ -1540,7 +1784,7 @@ export default function ProfilePage() {
                 setShowPhotoMenu(false);
                 await chooseProfilePhoto();
               }}
-              disabled={uploadingPhoto || resettingPhoto}
+              disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar}
               style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               {uploadingPhoto ? <Loader2 size={14} className="spin" /> : <Camera size={15} />}
@@ -1548,8 +1792,8 @@ export default function ProfilePage() {
             </button>
             <button
               onClick={resetProfilePhoto}
-              disabled={uploadingPhoto || resettingPhoto || !profile?.avatar_url}
-              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: profile?.avatar_url ? "var(--text)" : "var(--text3)", fontSize: 14, fontWeight: 700, cursor: profile?.avatar_url ? "pointer" : "not-allowed", opacity: profile?.avatar_url ? 1 : 0.56, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar || !canResetProfilePhoto}
+              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: canResetProfilePhoto ? "var(--text)" : "var(--text3)", fontSize: 14, fontWeight: 700, cursor: canResetProfilePhoto ? "pointer" : "not-allowed", opacity: canResetProfilePhoto ? 1 : 0.56, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               {resettingPhoto ? <Loader2 size={14} className="spin" /> : null}
               {t("profile_photo_reset", lang)}

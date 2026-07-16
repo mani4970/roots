@@ -1,9 +1,22 @@
+import type { RootsAvatarType } from "@/lib/avatar";
+import type { ProfileCharacterLayer } from "@/lib/profileCharacter";
 import type { RewardMapKind } from "@/lib/rewardMaps";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import {
+  HEART_SHOP_CHARACTER_ITEM_IDS,
+  type HeartShopCharacterItemId,
+  type HeartShopCharacterSlot,
+  type HeartShopItemId,
+  type HeartShopMapItemId,
+} from "@/lib/heartShopItems";
 
-export type HeartShopCatalogItem = {
+type HeartShopCatalogBase = {
   id: HeartShopItemId;
   price: number;
+};
+
+export type HeartShopMapCatalogItem = HeartShopCatalogBase & {
+  id: HeartShopMapItemId;
+  category: "map";
   previewPath: string;
   sourceSpriteSheetPath: string;
   frameCount: number;
@@ -13,11 +26,24 @@ export type HeartShopCatalogItem = {
   mapKinds: readonly RewardMapKind[];
 };
 
+export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
+  id: HeartShopCharacterItemId;
+  category: "character";
+  avatarType: RootsAvatarType;
+  slot: HeartShopCharacterSlot;
+  layerPath: string;
+  zIndex: number;
+  sortOrder: number;
+};
+
+export type HeartShopCatalogItem = HeartShopMapCatalogItem | HeartShopCharacterCatalogItem;
+
 const GARDEN_AND_ARK = ["garden", "peaceArk"] as const satisfies readonly RewardMapKind[];
 
-export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
+export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
   {
     id: "jjaekjjaek",
+    category: "map",
     price: 40,
     previewPath: "/images/heart-shop/previews/jjaekjjaek.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/jjaekjjaek.png",
@@ -29,6 +55,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
   {
     id: "hindungi",
+    category: "map",
     price: 60,
     previewPath: "/images/heart-shop/previews/hindungi.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/hindungi.png",
@@ -40,6 +67,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
   {
     id: "choko",
+    category: "map",
     price: 60,
     previewPath: "/images/heart-shop/previews/choko.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/choko.png",
@@ -51,6 +79,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
   {
     id: "kkumdeuli",
+    category: "map",
     price: 25,
     previewPath: "/images/heart-shop/previews/kkumdeuli.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/kkumdeuli.png",
@@ -62,6 +91,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
   {
     id: "bamtoli",
+    category: "map",
     price: 60,
     previewPath: "/images/heart-shop/previews/bamtoli.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/bamtoli.png",
@@ -73,6 +103,7 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
   {
     id: "mongsili",
+    category: "map",
     price: 60,
     previewPath: "/images/heart-shop/previews/mongsili.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/mongsili.png",
@@ -84,7 +115,85 @@ export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
   },
 ] as const;
 
-export function isHeartShopItemAvailableOnMap(itemId: HeartShopItemId, mapKind: RewardMapKind) {
-  const item = HEART_SHOP_CATALOG.find(candidate => candidate.id === itemId);
+const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
+  price: number;
+  directory: string;
+  filePrefix: string;
+  zIndex: number;
+  sortOffset: number;
+}> = {
+  bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
+  shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 20, sortOffset: 100 },
+  top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
+  eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
+  headwear: { price: 10, directory: "headwear", filePrefix: "headwear", zIndex: 50, sortOffset: 400 },
+};
+
+function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
+  if (itemId.includes("_bottom_")) return "bottom";
+  if (itemId.includes("_shoes_")) return "shoes";
+  if (itemId.includes("_eyewear_")) return "eyewear";
+  if (itemId.includes("_headwear_")) return "headwear";
+  return "top";
+}
+
+function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShopCharacterCatalogItem {
+  const avatarType: RootsAvatarType = itemId.startsWith("rootswoman_") ? "rootswoman" : "rootsman";
+  const slot = getCharacterSlot(itemId);
+  const config = CHARACTER_SLOT_CONFIG[slot];
+  const itemNumber = Number(itemId.slice(-2));
+  const avatarSortOffset = avatarType === "rootswoman" ? 2000 : 1000;
+
+  return {
+    id: itemId,
+    category: "character",
+    avatarType,
+    slot,
+    price: config.price,
+    layerPath: `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`,
+    zIndex: config.zIndex,
+    sortOrder: avatarSortOffset + config.sortOffset + itemNumber,
+  };
+}
+
+export const HEART_SHOP_CHARACTER_CATALOG: readonly HeartShopCharacterCatalogItem[] =
+  HEART_SHOP_CHARACTER_ITEM_IDS.map(createCharacterCatalogItem);
+
+export const HEART_SHOP_CATALOG: readonly HeartShopCatalogItem[] = [
+  ...HEART_SHOP_MAP_CATALOG,
+  ...HEART_SHOP_CHARACTER_CATALOG,
+];
+
+export function getHeartShopCatalogItem(itemId: HeartShopItemId | null): HeartShopCatalogItem | null {
+  if (!itemId) return null;
+  return HEART_SHOP_CATALOG.find(item => item.id === itemId) ?? null;
+}
+
+export function isHeartShopMapCatalogItem(item: HeartShopCatalogItem): item is HeartShopMapCatalogItem {
+  return item.category === "map";
+}
+
+export function isHeartShopCharacterCatalogItem(item: HeartShopCatalogItem): item is HeartShopCharacterCatalogItem {
+  return item.category === "character";
+}
+
+export function isHeartShopItemAvailableOnMap(itemId: HeartShopMapItemId, mapKind: RewardMapKind) {
+  const item = HEART_SHOP_MAP_CATALOG.find(candidate => candidate.id === itemId);
   return !!item?.mapKinds.includes(mapKind);
+}
+
+export function getProfileCharacterLayersForItemIds(
+  itemIds: readonly HeartShopItemId[],
+  avatarType: RootsAvatarType,
+): ProfileCharacterLayer[] {
+  const enabledIds = new Set(itemIds);
+  return HEART_SHOP_CHARACTER_CATALOG
+    .filter(item => item.avatarType === avatarType && enabledIds.has(item.id))
+    .map(item => ({
+      id: item.id,
+      src: item.layerPath,
+      slot: item.slot,
+      zIndex: item.zIndex,
+      compatibleAvatarTypes: [item.avatarType],
+    }));
 }
