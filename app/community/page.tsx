@@ -465,6 +465,17 @@ function updateFavoriteCache(
   writeFavoriteCache(userId, next);
 }
 
+function isCharacterProfileAvatarUrl(url?: string | null) {
+  if (!url) return false;
+  try {
+    return decodeURIComponent(new URL(url, APP_URL).pathname).endsWith(
+      "/character-avatar.png",
+    );
+  } catch {
+    return url.split("?")[0].endsWith("/character-avatar.png");
+  }
+}
+
 function Avatar({
   url,
   name,
@@ -1618,6 +1629,8 @@ function CommunityPageContent() {
     if (!profileModal) return null;
     const name = profileModal.profile?.name || c("profile_default_name");
     const streakDays = profileModal.profile?.streak_days ?? 0;
+    const avatarUrl = profileModal.profile?.avatar_url as string | null | undefined;
+    const canExpandCharacterAvatar = isCharacterProfileAvatarUrl(avatarUrl);
     return (
       <div
         onClick={() => setProfileModal(null)}
@@ -1684,11 +1697,18 @@ function CommunityPageContent() {
               gap: 10,
             }}
           >
-            <Avatar
-              url={profileModal.profile?.avatar_url}
-              name={name}
-              size={76}
-            />
+            {canExpandCharacterAvatar ? (
+              <button
+                type="button"
+                onClick={() => openPhotoViewer(avatarUrl!, name)}
+                aria-label={c("community_profile_view")}
+                style={{ padding: 0, border: "none", borderRadius: "50%", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <Avatar url={avatarUrl ?? undefined} name={name} size={76} />
+              </button>
+            ) : (
+              <Avatar url={avatarUrl ?? undefined} name={name} size={76} />
+            )}
             <div>
               <p
                 style={{
