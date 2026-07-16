@@ -175,6 +175,9 @@ a { text-decoration: none; color: inherit; }
 
 @media (min-width: 768px) {
   html[data-native-platform="ios"][data-native-form-factor="tablet"]:has(.qt-write-responsive) body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
     background: var(--bg);
   }
 
@@ -216,6 +219,9 @@ a { text-decoration: none; color: inherit; }
 
 @media (min-width: 768px) {
   html[data-native-platform="ios"][data-native-form-factor="tablet"]:has(.qt-phase2-responsive) body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
     background: var(--bg);
   }
 
