@@ -437,7 +437,7 @@ function PhotoReflectionContent() {
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
 
   return (
-    <div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
       {notice && (
         <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
@@ -615,7 +615,7 @@ function PhotoReflectionContent() {
 
 export default function PhotoReflectionPage() {
   return (
-    <Suspense fallback={<div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <PhotoReflectionContent />
     </Suspense>
   );

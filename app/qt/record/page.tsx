@@ -372,8 +372,8 @@ function RecordContent() {
     return labels.length > 0 ? t("qt_record_shared_label", lang, { labels: labels.join(", ") }) : null;
   }
 
-  if (loading) return <div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>;
-  if (!record) return <div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p><BottomNav /></div>;
+  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p><BottomNav /></div>;
 
   const isShared = sharedTargets.length > 0;
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
@@ -388,7 +388,7 @@ function RecordContent() {
   ];
 
   return (
-    <div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
       {notice && (
         <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
@@ -524,7 +524,7 @@ function RecordContent() {
 
 export default function RecordPage() {
   return (
-    <Suspense fallback={<div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>}>
       <RecordContent />
     </Suspense>
   );

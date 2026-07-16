@@ -2116,7 +2116,7 @@ function QTWriteContent() {
 
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     return (
-      <div className="qt-write-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {toast && (
         <div
           role={toast.kind === "error" ? "alert" : "status"}
@@ -2275,7 +2275,7 @@ function QTWriteContent() {
     const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
-      <div className="qt-write-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2364,7 +2364,7 @@ function QTWriteContent() {
           </div>
         </div>
 
-        <div className="qt-write-footer" style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
           <button onClick={openCompleteSharePrompt} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
             {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
           </button>
@@ -2384,7 +2384,7 @@ function QTWriteContent() {
     const step = STEPS_SUNDAY[cur] as any;
 
     return (
-      <div className="qt-write-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2446,7 +2446,7 @@ function QTWriteContent() {
         )}
 
         {/* 단계 탭 - 자유 클릭 */}
-        <div className="qt-write-step-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           {STEPS_SUNDAY.map((s, i) => {
             const done = i < cur; const isCurr = i === cur;
             return (
@@ -2594,7 +2594,7 @@ function QTWriteContent() {
           )}
         </div>
 
-        <div className="qt-write-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+        <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", gap: 8 }}>
             {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
@@ -2635,7 +2635,7 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   return (
-    <div className="qt-write-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2708,7 +2708,7 @@ function QTWriteContent() {
       </div>
 
       {/* 단계 탭 */}
-      <div className="qt-write-step-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+      <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         {STEPS_6.map((s, i) => {
           const done = i < cur;
           const isCurr = i === cur;
@@ -2859,7 +2859,7 @@ function QTWriteContent() {
       )}
 
       {/* 하단 버튼 */}
-      <div className="qt-write-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+      <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 8 }}>
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
