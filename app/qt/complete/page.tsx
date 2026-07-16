@@ -14,9 +14,9 @@ export default function QTCompletePage() {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div className="qt-phase2-responsive" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <ConfettiBurst variant="absolute" zIndex={0} />
-      <div style={{ position: "relative", zIndex: 10, textAlign: "center", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "36px 28px", width: "100%", maxWidth: 340, opacity: showMsg ? 1 : 0, transform: showMsg ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease", boxShadow: "0 18px 54px rgba(0,0,0,0.18)" }}>
+      <div className="qt-complete-card" style={{ position: "relative", zIndex: 10, textAlign: "center", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "36px 28px", width: "100%", opacity: showMsg ? 1 : 0, transform: showMsg ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease", boxShadow: "0 18px 54px rgba(0,0,0,0.18)" }}>
         <div style={{ width: 88, height: 88, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <img src="/icon-qt.webp" alt="QT" width={76} height={76} style={{ objectFit: "contain" }} />
         </div>

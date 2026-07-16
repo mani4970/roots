@@ -182,3 +182,44 @@ a { text-decoration: none; color: inherit; }
     max-width: 760px;
   }
 }
+
+/* 말씀 묵상 보조 화면만 iPad/MacBook에서 단일 열로 확장한다. */
+.qt-complete-card { max-width: 340px; }
+
+@media (min-width: 768px) {
+  html:has(.qt-phase2-responsive) {
+    width: 100%;
+    max-width: none;
+  }
+
+  html:has(.qt-phase2-responsive) body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    background: var(--html-bg);
+  }
+
+  .qt-phase2-responsive {
+    width: calc(100% - 48px);
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .qt-phase2-responsive .bottom-nav { max-width: 620px; }
+
+  .qt-complete-card { max-width: 400px; }
+}
+
+@media (min-width: 1100px) {
+  .qt-phase2-responsive { max-width: 860px; }
+}
+
+@media (min-width: 768px) {
+  html[data-native-platform="ios"][data-native-form-factor="tablet"]:has(.qt-phase2-responsive) body {
+    background: var(--bg);
+  }
+
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-phase2-responsive {
+    max-width: 760px;
+  }
+}
