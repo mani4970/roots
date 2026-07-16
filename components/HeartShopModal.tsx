@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Loader2, PackageOpen } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, PackageOpen, RotateCcw } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { Lang } from "@/lib/i18n";
@@ -231,6 +231,7 @@ export default function HeartShopModal({
       ...previewLayers,
     ];
   }, [avatarType, currentLayers, outfitPreviewItemIds]);
+  const hasOutfitPreview = Object.keys(outfitPreviewItemIds).length > 0;
   const visibleMapItems = useMemo(
     () => HEART_SHOP_MAP_CATALOG.filter(item => item.mapKinds.includes(activeMapSection)),
     [activeMapSection],
@@ -293,10 +294,16 @@ export default function HeartShopModal({
   }
 
   function applyCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
-    setOutfitPreviewItemIds(current => ({
-      ...current,
-      [item.slot]: item.id,
-    }));
+    setOutfitPreviewItemIds(current => {
+      const next = { ...current };
+      const currentItemId = currentLayers.find(layer => layer.slot === item.slot)?.id;
+      if (currentItemId === item.id) {
+        delete next[item.slot];
+      } else {
+        next[item.slot] = item.id;
+      }
+      return next;
+    });
   }
 
   function openPurchase(itemId: HeartShopItemId) {
@@ -593,7 +600,34 @@ export default function HeartShopModal({
 
           {activeTab === "character" && (
             <section style={{ flex: 1, minHeight: 0, margin: "0 -16px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <div className="card" style={{ flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid rgba(122,157,122,.22)", background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,253,248,.84))" }}>
+              <div className="card" style={{ position: "relative", flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid rgba(122,157,122,.22)", background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,253,248,.84))" }}>
+                <button
+                  type="button"
+                  onClick={() => setOutfitPreviewItemIds({})}
+                  disabled={!hasOutfitPreview}
+                  aria-label={profileText.restoreOutfitLabel}
+                  title={profileText.restoreOutfitLabel}
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 12,
+                    zIndex: 1,
+                    width: 34,
+                    height: 34,
+                    padding: 0,
+                    borderRadius: 999,
+                    border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
+                    background: hasOutfitPreview ? "rgba(255,253,248,.94)" : "rgba(255,253,248,.58)",
+                    color: hasOutfitPreview ? "var(--sage-dark)" : "var(--text3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: hasOutfitPreview ? "pointer" : "default",
+                    opacity: hasOutfitPreview ? 1 : 0.45,
+                  }}
+                >
+                  <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />
+                </button>
                 <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
                 <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: "clamp(120px,20dvh,180px)" }} />
               </div>
@@ -614,21 +648,38 @@ export default function HeartShopModal({
                   {visibleCharacterItems.map(item => {
                     const itemText = getProfileCharacterItemText(item.id, lang);
                     const owned = ownedById.has(item.id);
+                    const previewing = outfitPreviewItemIds[item.slot] === item.id;
+                    const previewLabel = `${profileText.previewLabel}: ${itemText.name}`;
                     return (
                       <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid rgba(122,157,122,.2)", background: "rgba(255,253,248,.88)" }}>
-                        <div style={{ width: "100%", height: 176, padding: 12, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg,rgba(122,157,122,.08),#fff)", border: "1px solid rgba(122,157,122,.17)", marginBottom: 9 }}>
+                        <button
+                          type="button"
+                          onClick={() => applyCharacterOutfitPreview(item)}
+                          aria-label={previewLabel}
+                          title={previewLabel}
+                          aria-pressed={previewing}
+                          style={{
+                            width: "100%",
+                            height: 176,
+                            padding: 12,
+                            borderRadius: 18,
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: previewing ? "linear-gradient(180deg,rgba(122,157,122,.16),#fff)" : "linear-gradient(180deg,rgba(122,157,122,.08),#fff)",
+                            border: previewing ? "2px solid rgba(101,142,105,.62)" : "1px solid rgba(122,157,122,.17)",
+                            marginBottom: 9,
+                            cursor: "pointer",
+                          }}
+                        >
                           <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
-                        </div>
+                        </button>
                         <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <div style={{ color: "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>💛 {item.price}</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                          <button type="button" onClick={() => applyCharacterOutfitPreview(item)} style={{ minHeight: 38, padding: "7px 4px", border: outfitPreviewItemIds[item.slot] === item.id ? "1px solid rgba(122,157,122,.45)" : "1px solid var(--border)", borderRadius: 13, background: outfitPreviewItemIds[item.slot] === item.id ? "rgba(122,157,122,.14)" : "var(--bg3)", color: "var(--sage-dark)", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
-                            {profileText.previewLabel}
-                          </button>
-                          <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("character"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ minHeight: 38, padding: "7px 4px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
-                            {owned ? text.ownedButton : text.purchaseButton}
-                          </button>
-                        </div>
+                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("character"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, padding: "7px 8px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
+                          {owned ? text.ownedButton : text.purchaseButton}
+                        </button>
                       </article>
                     );
                   })}

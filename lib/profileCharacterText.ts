@@ -13,6 +13,7 @@ type ProfileCharacterLang = "ko" | "en" | "de" | "fr";
 
 export type ProfileCharacterText = {
   previewLabel: string;
+  restoreOutfitLabel: string;
   emptyTitle: string;
   emptyBody: string;
   openFullViewLabel: string;
@@ -25,6 +26,7 @@ type ItemNames = Record<RootsAvatarType, Record<HeartShopCharacterSlot, readonly
 const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   ko: {
     previewLabel: "미리보기",
+    restoreOutfitLabel: "현재 코디로 복원",
     emptyTitle: "이 카테고리에는 아이템이 없어요",
     emptyBody: "다른 카테고리를 선택해보세요.",
     openFullViewLabel: "내 캐릭터 전체 보기",
@@ -40,6 +42,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   },
   en: {
     previewLabel: "Preview",
+    restoreOutfitLabel: "Restore current outfit",
     emptyTitle: "No items in this category",
     emptyBody: "Try another category.",
     openFullViewLabel: "View my character",
@@ -55,6 +58,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   },
   de: {
     previewLabel: "Vorschau",
+    restoreOutfitLabel: "Aktuelles Outfit wiederherstellen",
     emptyTitle: "Keine Items in dieser Kategorie",
     emptyBody: "Wähle eine andere Kategorie.",
     openFullViewLabel: "Meinen Charakter ansehen",
@@ -70,6 +74,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   },
   fr: {
     previewLabel: "Aperçu",
+    restoreOutfitLabel: "Restaurer la tenue actuelle",
     emptyTitle: "Aucun objet dans cette catégorie",
     emptyBody: "Choisissez une autre catégorie.",
     openFullViewLabel: "Voir mon personnage",
