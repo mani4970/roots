@@ -1,4 +1,4 @@
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import { isHeartShopItemId, type HeartShopItemId } from "@/lib/heartShopItems";
 
 export type OwnedHeartShopItem = {
   itemId: HeartShopItemId;
@@ -25,18 +25,8 @@ export type HeartShopToggleResult = {
   isEnabled: boolean;
 };
 
-const ITEM_IDS = new Set<HeartShopItemId>([
-  "jjaekjjaek",
-  "hindungi",
-  "choko",
-  "kkumdeuli",
-  "bamtoli",
-  "mongsili",
-]);
-
 function normalizeItemId(value: unknown): HeartShopItemId | "" {
-  const next = String(value ?? "") as HeartShopItemId;
-  return ITEM_IDS.has(next) ? next : "";
+  return isHeartShopItemId(value) ? value : "";
 }
 
 function toBoolean(value: unknown) {

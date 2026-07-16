@@ -2,11 +2,11 @@
 
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import { isHeartShopItemAvailableOnMap } from "@/lib/heartShopCatalog";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 import type { RewardMapKind } from "@/lib/rewardMaps";
 
 type HeartShopMapFriendsProps = {
-  itemIds: HeartShopItemId[];
+  itemIds: HeartShopMapItemId[];
   mapKind: RewardMapKind;
   stageNumber: number;
 };
@@ -18,7 +18,7 @@ type FriendPlacement = {
   renderWidth: number;
 };
 
-type GroundFriendPlacements = Record<Exclude<HeartShopItemId, "jjaekjjaek">, FriendPlacement>;
+type GroundFriendPlacements = Record<Exclude<HeartShopMapItemId, "jjaekjjaek">, FriendPlacement>;
 
 const GARDEN_GROUND_PLACEMENTS: GroundFriendPlacements = {
   // Keep the moving foreground friends in their already-verified left-side lanes.
@@ -53,7 +53,7 @@ function getGroundPlacements(mapKind: RewardMapKind, stageNumber: number) {
   return mapKind === "peaceArk" ? getArkGroundPlacements(stageNumber) : GARDEN_GROUND_PLACEMENTS;
 }
 
-function getMotionClassName(itemId: HeartShopItemId) {
+function getMotionClassName(itemId: HeartShopMapItemId) {
   if (itemId === "hindungi") return "roots-heart-shop-dog-drift";
   if (itemId === "choko") return "roots-heart-shop-cat-drift";
   return undefined;
@@ -140,7 +140,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
         </div>
       )}
 
-      {(Object.keys(placements) as Array<Exclude<HeartShopItemId, "jjaekjjaek">>).map(itemId => {
+      {(Object.keys(placements) as Array<Exclude<HeartShopMapItemId, "jjaekjjaek">>).map(itemId => {
         if (!visible.has(itemId)) return null;
         const { renderWidth, ...position } = placements[itemId];
 

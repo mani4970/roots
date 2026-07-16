@@ -7,7 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 import {
   getRewardMapBackground,
   getRewardMapFallbackTitleKey,
@@ -26,7 +26,7 @@ interface TreeGrowthProps {
   ownerName?: string;
   onActiveCycleChange?: (cycle: RewardMapCycle) => void;
   avatarType?: RootsAvatarType | null;
-  heartShopItemIds?: HeartShopItemId[];
+  heartShopItemIds?: HeartShopMapItemId[];
 }
 
 const NIGHT_START_HOUR = 19;
@@ -159,7 +159,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   );
 }
 
-function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopItemId[] }) {
+function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopMapItemId[] }) {
   const lang = useLang();
   const stage = getRewardMapStage(cycle);
   const titleKey = getRewardMapTitleKey(cycle.kind);

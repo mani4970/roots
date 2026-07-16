@@ -1,7 +1,9 @@
 import type { Lang } from "@/lib/i18n";
+import type { HeartShopMapItemId } from "@/lib/heartShopItems";
+
+export type { HeartShopItemId } from "@/lib/heartShopItems";
 
 export type HeartShopTab = "map" | "character" | "owned";
-export type HeartShopItemId = "jjaekjjaek" | "hindungi" | "choko" | "kkumdeuli" | "bamtoli" | "mongsili";
 
 type ShopLang = "ko" | "en" | "de" | "fr";
 
@@ -40,6 +42,16 @@ export type HeartShopText = {
   toggleFailed: string;
   enabledLabel: string;
   disabledLabel: string;
+  currentLookTitle: string;
+  characterPreviewTitle: string;
+  characterPurchaseTitle: string;
+  characterPurchaseBody: string;
+  characterCompleteTitle: string;
+  characterCompleteBody: string;
+  characterOwnedTitle: string;
+  characterOwnedEmptyBody: string;
+  mapOwnedTitle: string;
+  sameSlotHint: string;
   characterComingSoonTitle: string;
   characterComingSoonBody: string;
   ownedEmptyTitle: string;
@@ -50,7 +62,7 @@ export type HeartShopText = {
   peaceArkMapLabel: string;
   peaceArkComingSoonTitle: string;
   peaceArkComingSoonBody: string;
-  items: Record<HeartShopItemId, HeartShopItemText>;
+  items: Record<HeartShopMapItemId, HeartShopItemText>;
 };
 
 const TEXT: Record<ShopLang, HeartShopText> = {
@@ -80,6 +92,16 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     toggleFailed: "아이템 표시 설정을 저장하지 못했어요.",
     enabledLabel: "ON",
     disabledLabel: "OFF",
+    currentLookTitle: "현재 코디",
+    characterPreviewTitle: "캐릭터 미리보기",
+    characterPurchaseTitle: "이 아이템을 구매할까요?",
+    characterPurchaseBody: "하트 {price}개가 사용되며 구매 즉시 캐릭터에 착용됩니다.",
+    characterCompleteTitle: "새 꾸미기 아이템을 받았어요!",
+    characterCompleteBody: "캐릭터에 바로 착용했어요. 내 아이템에서 언제든 켜고 끌 수 있어요.",
+    characterOwnedTitle: "캐릭터 아이템",
+    characterOwnedEmptyBody: "캐릭터 아이템을 구매하면 이곳에서 ON / OFF로 관리할 수 있어요.",
+    mapOwnedTitle: "맵 아이템",
+    sameSlotHint: "같은 종류의 아이템은 한 번에 하나만 착용할 수 있어요.",
     characterComingSoonTitle: "캐릭터 꾸미기 준비 중",
     characterComingSoonBody: "루츠맨과 루츠우먼을 위한 특별한 꾸미기 아이템이 곧 찾아올 거예요.",
     ownedEmptyTitle: "아직 구매한 아이템이 없어요",
@@ -167,6 +189,16 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     toggleFailed: "Could not save the item display setting.",
     enabledLabel: "ON",
     disabledLabel: "OFF",
+    currentLookTitle: "Current look",
+    characterPreviewTitle: "Character preview",
+    characterPurchaseTitle: "Buy this item?",
+    characterPurchaseBody: "This uses {price} Love Hearts and equips the item immediately.",
+    characterCompleteTitle: "You received a new character item!",
+    characterCompleteBody: "It is equipped now. You can turn it on or off anytime in My Items.",
+    characterOwnedTitle: "Character items",
+    characterOwnedEmptyBody: "After buying character items, you can turn them ON or OFF here.",
+    mapOwnedTitle: "Map items",
+    sameSlotHint: "Only one item of the same type can be equipped at a time.",
     characterComingSoonTitle: "Character decor is coming",
     characterComingSoonBody: "Special items for Rootsman and Rootswoman will arrive soon.",
     ownedEmptyTitle: "You have no items yet",
@@ -254,6 +286,16 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     toggleFailed: "Die Anzeige-Einstellung konnte nicht gespeichert werden.",
     enabledLabel: "AN",
     disabledLabel: "AUS",
+    currentLookTitle: "Aktuelles Outfit",
+    characterPreviewTitle: "Figurenvorschau",
+    characterPurchaseTitle: "Dieses Item kaufen?",
+    characterPurchaseBody: "Dafür werden {price} Liebesherzen verwendet und das Item wird sofort angelegt.",
+    characterCompleteTitle: "Du hast ein neues Styling-Item erhalten!",
+    characterCompleteBody: "Es ist jetzt angelegt. Unter Meine Items kannst du es jederzeit an- oder ausschalten.",
+    characterOwnedTitle: "Figuren-Items",
+    characterOwnedEmptyBody: "Gekaufte Figuren-Items kannst du hier AN- oder AUSschalten.",
+    mapOwnedTitle: "Karten-Items",
+    sameSlotHint: "Von derselben Art kann immer nur ein Item gleichzeitig getragen werden.",
     characterComingSoonTitle: "Figuren-Deko kommt bald",
     characterComingSoonBody: "Besondere Items für Rootsman und Rootswoman folgen bald.",
     ownedEmptyTitle: "Du hast noch keine Items",
@@ -341,6 +383,16 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     toggleFailed: "Impossible d’enregistrer le réglage d’affichage.",
     enabledLabel: "ON",
     disabledLabel: "OFF",
+    currentLookTitle: "Tenue actuelle",
+    characterPreviewTitle: "Aperçu du personnage",
+    characterPurchaseTitle: "Acheter cet objet ?",
+    characterPurchaseBody: "Cet achat utilise {price} cœurs d’amour et équipe immédiatement l’objet.",
+    characterCompleteTitle: "Vous avez reçu un nouvel objet !",
+    characterCompleteBody: "Il est maintenant équipé. Vous pouvez l’activer ou le désactiver dans Mes objets.",
+    characterOwnedTitle: "Objets du personnage",
+    characterOwnedEmptyBody: "Après l’achat, vous pouvez activer ou désactiver vos objets de personnage ici.",
+    mapOwnedTitle: "Objets de la carte",
+    sameSlotHint: "Un seul objet du même type peut être équipé à la fois.",
     characterComingSoonTitle: "La personnalisation arrive bientôt",
     characterComingSoonBody: "Des objets spéciaux pour Rootsman et Rootswoman arriveront bientôt.",
     ownedEmptyTitle: "Vous n’avez pas encore d’objet",

@@ -32,7 +32,7 @@ import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType 
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
-import type { HeartShopItemId } from "@/lib/heartShopText";
+import { isHeartShopMapItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
@@ -256,7 +256,7 @@ export default function HomePage() {
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
-  const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopItemId[]>([]);
+  const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopMapItemId[]>([]);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
 
@@ -354,7 +354,9 @@ export default function HomePage() {
 
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
-        setEnabledHeartShopItemIds(items.filter(item => item.isEnabled).map(item => item.itemId));
+        setEnabledHeartShopItemIds(
+          items.filter(item => item.isEnabled && isHeartShopMapItemId(item.itemId)).map(item => item.itemId as HeartShopMapItemId),
+        );
       })
       .catch(error => {
         // Heart Shop friends are a decoration layer only. A loading failure must never
