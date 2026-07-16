@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import RewardMapAction from "./RewardMapAction";
 import HeartShopMapFriends from "./HeartShopMapFriends";
@@ -57,14 +57,12 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const isAway = daysSince >= 3;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const nextIndex = Math.max(cycles.length - 1, 0);
     setSelectedIndex(nextIndex);
     const node = scrollerRef.current;
     if (!node) return;
-    requestAnimationFrame(() => {
-      node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "auto" });
-    });
+    node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "instant" });
   }, [cycles.length, days]);
 
   function handleScroll() {
@@ -102,7 +100,6 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
           display: "flex",
           overflowX: "auto",
           scrollSnapType: "x mandatory",
-          scrollBehavior: "smooth",
           WebkitOverflowScrolling: "touch",
           borderRadius: 20,
         }}
