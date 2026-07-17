@@ -8,10 +8,11 @@ import { useLang } from "@/lib/useLang";
 type OnboardingSlide = {
   title: string;
   desc: string;
-  imageSrc: string;
-  imageAlt: string;
+  imageSrc?: string;
+  imageAlt?: string;
   imageMaxHeight?: number;
   imagePadding?: number;
+  visual?: "image" | "ark-growth" | "heart";
 };
 
 export default function Onboarding({ onClose }: { onClose: () => void }) {
@@ -24,7 +25,8 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     const imageSources = [
       "/images/onboarding/jesus_rootsman_rootswoman.webp",
       "/icon-qt.webp",
-      "/tree1.webp",
+      "/images/reward-maps/peace-ark/backgrounds/ark_stage01_morning.webp",
+      "/images/reward-maps/peace-ark/backgrounds/ark_stage10_morning.webp",
       "/badge_rootswoman_fire.webp",
       "/rootsman_rock.png",
     ];
@@ -55,10 +57,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     {
       title: t("onboarding_title3", lang),
       desc: t("onboarding_desc3", lang),
-      imageSrc: "/tree1.webp",
-      imageAlt: "100 day Bible story map",
-      imageMaxHeight: 218,
-      imagePadding: 0,
+      visual: "ark-growth",
     },
     {
       title: t("onboarding_title4", lang),
@@ -71,6 +70,11 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     {
       title: t("onboarding_title5", lang),
       desc: t("onboarding_desc5", lang),
+      visual: "heart",
+    },
+    {
+      title: t("onboarding_title6", lang),
+      desc: t("onboarding_desc6", lang),
       imageSrc: "/rootsman_rock.png",
       imageAlt: "Encouraging Rootsman",
       imageMaxHeight: 250,
@@ -82,6 +86,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
   const isLast = page === SLIDES.length - 1;
   const canGoPrevious = page > 0;
   const canGoNext = page < SLIDES.length - 1;
+  const lowerTextBlock = page === 1 || page === 3 || page === 4;
 
   function completeOnboarding() {
     storageSet("onboarding_done", "true");
@@ -150,8 +155,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           maxHeight: "min(760px, calc(100dvh - 32px))",
           overflow: "hidden",
           position: "relative",
-          background:
-            "radial-gradient(circle at 50% 44%, rgba(255,232,176,0.28), rgba(255,250,240,0) 46%), var(--bg2)",
+          background: "var(--bg2)",
           borderRadius: 30,
           border: "1px solid rgba(222,214,201,0.95)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
@@ -164,6 +168,20 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           userSelect: "none",
         }}
       >
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 34,
+            height: 3,
+            borderRadius: 999,
+            background: "rgba(122,157,122,0.48)",
+          }}
+        />
+
         {canGoPrevious ? (
           <button
             type="button"
@@ -238,17 +256,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           </button>
         ) : null}
 
-        <div>
-          <div
-            style={{
-              width: 34,
-              height: 3,
-              borderRadius: 999,
-              background: "rgba(122,157,122,0.48)",
-              margin: "0 auto 18px",
-            }}
-          />
-
+        <div style={{ paddingTop: lowerTextBlock ? 80 : isLast ? 42 : 22 }}>
           {slide.title ? (
             <h2
               style={{
@@ -269,13 +277,13 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
           <p
             style={{
-              fontSize: page === 4 ? 17 : 14,
-              color: page === 4 ? "var(--text)" : "var(--text2)",
-              fontWeight: page === 4 ? 750 : 500,
-              lineHeight: page === 4 ? 1.72 : 1.78,
-              whiteSpace: "normal",
-              margin: "0 auto 22px",
-              maxWidth: page === 4 ? 320 : 330,
+              fontSize: isLast ? 18 : 14,
+              color: isLast ? "var(--text)" : "var(--text2)",
+              fontWeight: isLast ? 800 : 500,
+              lineHeight: isLast ? 1.65 : 1.78,
+              whiteSpace: slide.visual === "heart" ? "pre-line" : "normal",
+              margin: isLast ? "0 auto 8px" : "0 auto 22px",
+              maxWidth: isLast ? 340 : 330,
             }}
           >
             {slide.desc}
@@ -291,42 +299,53 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
             minHeight: 210,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 18px",
+            justifyContent: isLast ? "flex-start" : "center",
+            margin: isLast ? "0 auto 8px" : "0 auto 18px",
             overflow: "hidden",
             isolation: "isolate",
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              inset: "8% 6% 2%",
-              borderRadius: "999px",
-              background: "rgba(255,226,160,0.22)",
-              filter: "blur(0.2px)",
-            }}
-          />
-          <img
-            key={`${page}-${slide.imageSrc}`}
-            src={slide.imageSrc}
-            alt={slide.imageAlt}
-            draggable={false}
-            style={{
-              position: "relative",
-              zIndex: 1,
-              display: "block",
-              maxWidth: "100%",
-              width: page === 2 ? "100%" : "auto",
-              maxHeight: slide.imageMaxHeight ?? 220,
-              objectFit: "contain",
-              borderRadius: page === 2 ? 22 : 0,
-              padding: slide.imagePadding ?? 0,
-              background: page === 2 ? "rgba(255,255,255,0.44)" : "transparent",
-              boxShadow: page === 2 ? "0 14px 34px rgba(48,38,25,0.08)" : "none",
-              transform: "translateZ(0)",
-              backfaceVisibility: "hidden",
-            }}
-          />
+          {slide.visual === "ark-growth" ? (
+            <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <img
+                src="/images/reward-maps/peace-ark/backgrounds/ark_stage01_morning.webp"
+                alt=""
+                draggable={false}
+                style={{ display: "block", width: "100%", maxWidth: 245, height: "auto", objectFit: "contain" }}
+              />
+              <span style={{ color: "var(--sage-dark)", fontSize: 18, fontWeight: 800, lineHeight: 1 }} aria-hidden="true">↓</span>
+              <img
+                src="/images/reward-maps/peace-ark/backgrounds/ark_stage10_morning.webp"
+                alt=""
+                draggable={false}
+                style={{ display: "block", width: "100%", maxWidth: 245, height: "auto", objectFit: "contain" }}
+              />
+            </div>
+          ) : slide.visual === "heart" ? (
+            <span aria-hidden="true" style={{ display: "block", fontSize: 112, lineHeight: 1 }}>💛</span>
+          ) : slide.imageSrc ? (
+            <img
+              key={`${page}-${slide.imageSrc}`}
+              src={slide.imageSrc}
+              alt={slide.imageAlt ?? ""}
+              draggable={false}
+              style={{
+                position: "relative",
+                zIndex: 1,
+                display: "block",
+                maxWidth: "100%",
+                width: "auto",
+                maxHeight: slide.imageMaxHeight ?? 220,
+                objectFit: "contain",
+                padding: slide.imagePadding ?? 0,
+                background: "transparent",
+                boxShadow: "none",
+                margin: "0 auto",
+                transform: isLast ? "translateX(12px) translateZ(0)" : "translateZ(0)",
+                backfaceVisibility: "hidden",
+              }}
+            />
+          ) : null}
         </div>
 
         <div>

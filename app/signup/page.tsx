@@ -135,18 +135,6 @@ export default function SignupPage() {
         <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("signup_sub", lang)}</p>
       </div>
 
-      <div style={{ marginBottom: 18, padding: "11px 12px", border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", textAlign: "center" }}>
-        <p style={{ color: "var(--text3)", fontSize: 11.5, lineHeight: 1.55, marginBottom: 6 }}>{t("signup_legal_notice", lang)}</p>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/terms" style={{ color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 3 }}>
-            {t("profile_terms", lang)}
-          </Link>
-          <Link href="/privacy" style={{ color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 3 }}>
-            {t("profile_privacy", lang)}
-          </Link>
-        </div>
-      </div>
-
       <AuthOAuthButtons
         googleLabel={t("login_google_btn", lang)}
         appleLabel={t("login_apple_btn", lang)}
@@ -177,6 +165,15 @@ export default function SignupPage() {
         <button onClick={handleSignup} disabled={loading || !nickname || !email || !password} className="btn-primary" style={{ marginTop: 8 }}>
           {loading ? <><Loader2 size={18} className="spin" />{t("signup_loading", lang)}</> : t("signup_btn", lang)}
         </button>
+        <nav aria-label={t("profile_legal_links_aria", lang)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 2 }}>
+          <Link href="/terms" style={{ color: "var(--text3)", fontSize: 10.5, fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 2 }}>
+            {t("profile_terms", lang)}
+          </Link>
+          <span aria-hidden="true" style={{ color: "var(--border)", fontSize: 10 }}>·</span>
+          <Link href="/privacy" style={{ color: "var(--text3)", fontSize: 10.5, fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 2 }}>
+            {t("profile_privacy", lang)}
+          </Link>
+        </nav>
         <div style={{ marginTop: 14, textAlign: "center" }}>
           <p style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>{t("signup_login_prompt", lang)}</p>
           <button onClick={() => router.push(withRedirect("/login"))} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 700 }}>
