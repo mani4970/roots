@@ -434,11 +434,13 @@ export const T = {
   profile_prayer_count: { ko: "기도 제목",            de: "Gebete", en: "Prayers", fr: "Prières" },
   profile_prayer_answered_count: { ko: "기도 응답",   de: "Erhörte Gebete", en: "Answered Prayers", fr: "Prières exaucées" },
   profile_qt_share: { ko: "큐티 나눔",               de: "Geteilte QTs", en: "Shared QTs", fr: "QT partagés" },
-  profile_impressum: { ko: "Impressum",              de: "Impressum", en: "Impressum", fr: "Impressum" },
-  profile_privacy: { ko: "개인정보처리방침",          de: "Datenschutz", en: "Privacy policy", fr: "Politique de confidentialité" },
-  profile_terms: { ko: "이용약관", de: "Nutzungsbedingungen", en: "Terms", fr: "Conditions" },
-  profile_support: { ko: "지원", de: "Support", en: "Support", fr: "Assistance" },
-  profile_account_deletion: { ko: "계정 삭제 안내", de: "Konto löschen", en: "Account deletion", fr: "Suppression du compte" },
+  profile_legal_links_aria: { ko: "법적 고지 및 고객지원", de: "Rechtliche Hinweise und Support", en: "Legal information and support", fr: "Informations légales et assistance" },
+  profile_impressum: { ko: "법적 고지",              de: "Impressum", en: "Legal Notice", fr: "Mentions légales" },
+  profile_privacy: { ko: "개인정보처리방침",          de: "Datenschutz", en: "Privacy Policy", fr: "Confidentialité" },
+  profile_terms: { ko: "이용약관", de: "Nutzungsbedingungen", en: "Terms of Use", fr: "Conditions d’utilisation" },
+  profile_support: { ko: "고객지원", de: "Support", en: "Support", fr: "Assistance" },
+  profile_account_deletion: { ko: "계정 삭제", de: "Konto löschen", en: "Account Deletion", fr: "Suppression du compte" },
+  signup_legal_notice: { ko: "회원가입 전에 아래 내용을 확인해 주세요.", de: "Bitte lesen Sie vor der Registrierung die folgenden Informationen.", en: "Please review the following before creating an account.", fr: "Veuillez consulter les informations suivantes avant de créer un compte." },
 
   // 프로필 하드코딩 수정용
   profile_default_name: { ko: "성도",       de: "Nutzer", en: "User", fr: "Utilisateur" },

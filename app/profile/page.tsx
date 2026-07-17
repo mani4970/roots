@@ -30,6 +30,7 @@ import {
   uploadProfileCharacterAvatar,
 } from "@/lib/profileAvatar";
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
+import { storageClear } from "@/lib/clientStorage";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -833,6 +834,7 @@ export default function ProfilePage() {
 
       const supabase = createClient();
       await supabase.auth.signOut();
+      storageClear();
       router.push("/welcome");
     } catch (e) {
       console.error(e);

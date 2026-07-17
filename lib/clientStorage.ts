@@ -43,6 +43,14 @@ export function storageRemove(key: string): void {
   }
 }
 
+export function storageClear(): void {
+  try {
+    getLocalStorage()?.clear();
+  } catch {
+    // Account deletion remains successful even if browser storage is unavailable.
+  }
+}
+
 export function storageHas(key: string): boolean {
   return storageGet(key) !== null;
 }
