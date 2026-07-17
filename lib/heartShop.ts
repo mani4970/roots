@@ -25,6 +25,13 @@ export type HeartShopToggleResult = {
   isEnabled: boolean;
 };
 
+export type HeartShopFreeApplyResult = {
+  applied: boolean;
+  reason: string;
+  itemId: HeartShopItemId | "";
+  isEnabled: boolean;
+};
+
 function normalizeItemId(value: unknown): HeartShopItemId | "" {
   return isHeartShopItemId(value) ? value : "";
 }
@@ -113,6 +120,24 @@ export async function setHeartShopItemEnabled(
   const row = toObject(data);
   return {
     updated: toBoolean(row?.updated),
+    reason: String(row?.reason ?? ""),
+    itemId: normalizeItemId(row?.item_key),
+    isEnabled: toBoolean(row?.is_enabled),
+  };
+}
+
+export async function applyFreeHeartShopItem(
+  supabase: any,
+  itemId: HeartShopItemId,
+): Promise<HeartShopFreeApplyResult> {
+  const { data, error } = await supabase.rpc("apply_free_heart_shop_item", {
+    p_item_key: itemId,
+  });
+  if (error) throw error;
+
+  const row = toObject(data);
+  return {
+    applied: toBoolean(row?.applied),
     reason: String(row?.reason ?? ""),
     itemId: normalizeItemId(row?.item_key),
     isEnabled: toBoolean(row?.is_enabled),

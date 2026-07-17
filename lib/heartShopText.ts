@@ -26,6 +26,12 @@ export type HeartShopText = {
   ownedTab: string;
   purchaseButton: string;
   ownedButton: string;
+  freeLabel: string;
+  applyButton: string;
+  appliedButton: string;
+  applyingLabel: string;
+  applyFailed: string;
+  applySuccess: string;
   previewBadge: string;
   previewTitle: string;
   closePreviewButton: string;
@@ -76,6 +82,12 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "내 아이템",
     purchaseButton: "아이템 구매",
     ownedButton: "구매 완료",
+    freeLabel: "무료",
+    applyButton: "적용하기",
+    appliedButton: "적용됨",
+    applyingLabel: "적용 중...",
+    applyFailed: "배경을 적용하지 못했어요. 잠시 후 다시 시도해주세요.",
+    applySuccess: "배경을 적용했어요.",
     previewBadge: "움직임 보기",
     previewTitle: "움직이는 친구 미리보기",
     closePreviewButton: "닫기",
@@ -173,6 +185,12 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "My Items",
     purchaseButton: "Buy item",
     ownedButton: "Purchased",
+    freeLabel: "Free",
+    applyButton: "Apply",
+    appliedButton: "Applied",
+    applyingLabel: "Applying...",
+    applyFailed: "Could not apply the background. Please try again shortly.",
+    applySuccess: "Background applied.",
     previewBadge: "See movement",
     previewTitle: "Animated friend preview",
     closePreviewButton: "Close",
@@ -270,6 +288,12 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "Meine Items",
     purchaseButton: "Item kaufen",
     ownedButton: "Gekauft",
+    freeLabel: "Kostenlos",
+    applyButton: "Anwenden",
+    appliedButton: "Angewendet",
+    applyingLabel: "Wird angewendet...",
+    applyFailed: "Der Hintergrund konnte nicht angewendet werden. Bitte versuche es gleich noch einmal.",
+    applySuccess: "Hintergrund angewendet.",
     previewBadge: "Bewegung ansehen",
     previewTitle: "Animierte Vorschau",
     closePreviewButton: "Schließen",
@@ -367,6 +391,12 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     ownedTab: "Mes objets",
     purchaseButton: "Acheter l’objet",
     ownedButton: "Acheté",
+    freeLabel: "Gratuit",
+    applyButton: "Appliquer",
+    appliedButton: "Appliqué",
+    applyingLabel: "Application...",
+    applyFailed: "Impossible d’appliquer l’arrière-plan. Veuillez réessayer dans un instant.",
+    applySuccess: "Arrière-plan appliqué.",
     previewBadge: "Voir le mouvement",
     previewTitle: "Aperçu animé",
     closePreviewButton: "Fermer",

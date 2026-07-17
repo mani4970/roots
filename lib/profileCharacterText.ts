@@ -9,6 +9,7 @@ import type { RootsAvatarType } from "@/lib/avatar";
 
 export type ProfileCharacterCategory =
   | "all"
+  | "backgrounds"
   | "tops"
   | "bottoms"
   | "shoes"
@@ -29,7 +30,8 @@ export type ProfileCharacterText = {
   categories: Record<ProfileCharacterCategory, string>;
 };
 
-type ItemNames = Record<RootsAvatarType, Record<HeartShopCharacterSlot, readonly string[]>>;
+type WearableCharacterSlot = Exclude<HeartShopCharacterSlot, "background">;
+type ItemNames = Record<RootsAvatarType, Record<WearableCharacterSlot, readonly string[]>>;
 
 const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   ko: {
@@ -41,6 +43,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     closeFullViewLabel: "캐릭터 전체 보기 닫기",
     categories: {
       all: "전체",
+      backgrounds: "배경",
       tops: "상의",
       bottoms: "하의",
       shoes: "신발",
@@ -59,6 +62,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     closeFullViewLabel: "Close character view",
     categories: {
       all: "All",
+      backgrounds: "Backgrounds",
       tops: "Tops",
       bottoms: "Bottoms",
       shoes: "Shoes",
@@ -77,6 +81,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     closeFullViewLabel: "Charakteransicht schließen",
     categories: {
       all: "Alle",
+      backgrounds: "Hintergründe",
       tops: "Oberteile",
       bottoms: "Unterteile",
       shoes: "Schuhe",
@@ -95,6 +100,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     closeFullViewLabel: "Fermer la vue du personnage",
     categories: {
       all: "Tout",
+      backgrounds: "Arrière-plans",
       tops: "Hauts",
       bottoms: "Bas",
       shoes: "Chaussures",
@@ -104,6 +110,13 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       bags: "Sacs",
     },
   },
+};
+
+const BACKGROUND_NAMES: Record<ProfileCharacterLang, readonly string[]> = {
+  ko: ["햇살 정원", "여름 바다", "포근한 책방", "노을빛 도시 옥상", "라벤더 별빛 밤", "고요한 교회"],
+  en: ["Sunlit Garden", "Summer Beach", "Cozy Bookroom", "Sunset City Rooftop", "Lavender Starry Night", "Peaceful Church"],
+  de: ["Sonniger Garten", "Sommerstrand", "Gemütliches Bücherzimmer", "Dachterrasse bei Sonnenuntergang", "Lavendelfarbene Sternennacht", "Ruhiger Kirchenraum"],
+  fr: ["Jardin ensoleillé", "Plage d’été", "Bibliothèque chaleureuse", "Toit urbain au coucher du soleil", "Nuit étoilée lavande", "Église paisible"],
 };
 
 const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
@@ -202,7 +215,16 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
   const avatarType = getCharacterItemAvatarType(itemId);
   const slot = getCharacterItemSlot(itemId);
   const itemIndex = Math.max(0, Number(itemId.slice(-2)) - 1);
+
+  if (slot === "background") {
+    return {
+      name: BACKGROUND_NAMES[normalizedLang][itemIndex] || `${TEXT[normalizedLang].categories.backgrounds} ${itemIndex + 1}`,
+      description: TEXT[normalizedLang].categories.backgrounds,
+    };
+  }
+
   const categoryBySlot: Record<HeartShopCharacterSlot, ProfileCharacterCategory> = {
+    background: "backgrounds",
     bottom: "bottoms",
     shoes: "shoes",
     top: "tops",
@@ -212,8 +234,9 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
     headwear: "headwear",
   };
   const category = categoryBySlot[slot];
+  const wearableAvatarType: RootsAvatarType = avatarType === "rootswoman" ? "rootswoman" : "rootsman";
   return {
-    name: ITEM_NAMES[normalizedLang][avatarType][slot][itemIndex] || `${TEXT[normalizedLang].categories[category]} ${itemIndex + 1}`,
+    name: ITEM_NAMES[normalizedLang][wearableAvatarType][slot][itemIndex] || `${TEXT[normalizedLang].categories[category]} ${itemIndex + 1}`,
     description: TEXT[normalizedLang].categories[category],
   };
 }

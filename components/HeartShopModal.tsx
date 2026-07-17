@@ -8,6 +8,7 @@ import type { Lang } from "@/lib/i18n";
 import { getRootsAvatarLabel, type RootsAvatarType } from "@/lib/avatar";
 import { createClient } from "@/lib/supabase";
 import {
+  applyFreeHeartShopItem,
   loadOwnedHeartShopItems,
   purchaseHeartShopItem,
   setHeartShopItemEnabled,
@@ -56,6 +57,7 @@ type HeartShopMapSection = "garden" | "peaceArk";
 type HeartShopOwnedSection = "map" | "character";
 
 const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartShopCharacterSlot>> = {
+  backgrounds: "background",
   tops: "top",
   bottoms: "bottom",
   shoes: "shoes",
@@ -81,7 +83,7 @@ type CharacterItemPreviewCrop = {
 
 const CHARACTER_ITEM_PREVIEW_CROP: Record<
   RootsAvatarType,
-  Record<HeartShopCharacterSlot, CharacterItemPreviewCrop>
+  Record<Exclude<HeartShopCharacterSlot, "background">, CharacterItemPreviewCrop>
 > = {
   rootsman: {
     top: { x: 230, y: 590, width: 626, height: 405 },
@@ -112,6 +114,36 @@ function CharacterItemLayerPreview({
   alt: string;
   maxWidth?: number;
 }) {
+  if (item.slot === "background") {
+    return (
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth,
+          aspectRatio: "1086 / 1448",
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src={item.layerPath}
+          alt={alt}
+          draggable={false}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            imageRendering: "pixelated",
+            userSelect: "none",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (item.avatarType === "shared") return null;
   const crop = CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot];
   return (
     <div
@@ -212,6 +244,7 @@ export default function HeartShopModal({
   const [completedItemId, setCompletedItemId] = useState<HeartShopItemId | null>(null);
   const [purchaseError, setPurchaseError] = useState("");
   const [purchasing, setPurchasing] = useState(false);
+  const [applyingFreeItemId, setApplyingFreeItemId] = useState<HeartShopCharacterItemId | null>(null);
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
   const onCloseRef = useRef(onClose);
@@ -245,11 +278,11 @@ export default function HeartShopModal({
   const visibleCharacterItems = useMemo(() => {
     const slot = CHARACTER_CATEGORY_SLOT[activeCharacterCategory];
     return HEART_SHOP_CHARACTER_CATALOG
-      .filter(item => item.avatarType === avatarType && (!slot || item.slot === slot))
+      .filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && (!slot || item.slot === slot))
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [activeCharacterCategory, avatarType]);
   const ownedCharacterItems = useMemo(
-    () => HEART_SHOP_CHARACTER_CATALOG.filter(item => item.avatarType === avatarType && ownedById.has(item.id)),
+    () => HEART_SHOP_CHARACTER_CATALOG.filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && ownedById.has(item.id)),
     [avatarType, ownedById],
   );
   const ownedMapItems = useMemo(
@@ -398,6 +431,7 @@ export default function HeartShopModal({
     setSelectedItemId(null);
     setCompletedItemId(null);
     setPurchaseError("");
+    setApplyingFreeItemId(null);
     return () => { document.body.style.overflow = previousOverflow; };
   }, [show]);
 
@@ -467,6 +501,28 @@ export default function HeartShopModal({
     }
   }
 
+  async function applyFreeBackground(item: HeartShopCharacterCatalogItem) {
+    if (item.slot !== "background" || item.price !== 0 || applyingFreeItemId) return;
+    setApplyingFreeItemId(item.id);
+    try {
+      const supabase = createClient();
+      const result = await applyFreeHeartShopItem(supabase, item.id);
+      if (!result.applied) throw new Error(result.reason || "apply_failed");
+      await reloadOwnedItems(supabase);
+      setOutfitPreviewItemIds(current => {
+        const next = { ...current };
+        delete next.background;
+        return next;
+      });
+      setNotice(text.applySuccess);
+    } catch (error) {
+      console.warn("사랑 상점 무료 배경 적용 실패:", error);
+      setNotice(text.applyFailed);
+    } finally {
+      setApplyingFreeItemId(null);
+    }
+  }
+
   async function toggleOwnedItem(item: OwnedHeartShopItem) {
     if (togglingItemId) return;
     setTogglingItemId(item.itemId);
@@ -492,6 +548,7 @@ export default function HeartShopModal({
   ];
   const characterCategories: { id: ProfileCharacterCategory; label: string }[] = [
     { id: "all", label: profileText.categories.all },
+    { id: "backgrounds", label: profileText.categories.backgrounds },
     { id: "tops", label: profileText.categories.tops },
     { id: "bottoms", label: profileText.categories.bottoms },
     { id: "shoes", label: profileText.categories.shoes },
@@ -660,6 +717,10 @@ export default function HeartShopModal({
                   {visibleCharacterItems.map(item => {
                     const itemText = getProfileCharacterItemText(item.id, lang);
                     const owned = ownedById.has(item.id);
+                    const ownedItem = ownedById.get(item.id);
+                    const isFreeBackground = item.slot === "background" && item.price === 0;
+                    const isApplied = isFreeBackground && ownedItem?.isEnabled === true;
+                    const isApplying = applyingFreeItemId === item.id;
                     const previewing = outfitPreviewItemIds[item.slot] === item.id;
                     const previewLabel = `${profileText.previewLabel}: ${itemText.name}`;
                     return (
@@ -688,9 +749,46 @@ export default function HeartShopModal({
                           <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
                         </button>
                         <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
-                        <div style={{ color: "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>💛 {item.price}</div>
-                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("character"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, padding: "7px 8px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: "pointer" }}>
-                          {owned ? text.ownedButton : text.purchaseButton}
+                        <div style={{ color: isFreeBackground ? "var(--sage-dark)" : "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>
+                          {isFreeBackground ? text.freeLabel : `💛 ${item.price}`}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isApplying}
+                          onClick={() => {
+                            if (isFreeBackground) {
+                              void applyFreeBackground(item);
+                            } else if (owned) {
+                              setActiveOwnedSection("character");
+                              setActiveTab("owned");
+                            } else {
+                              openPurchase(item.id);
+                            }
+                          }}
+                          style={{
+                            width: "100%",
+                            minHeight: 38,
+                            padding: "7px 8px",
+                            border: owned || isApplied ? "1px solid var(--border)" : "none",
+                            borderRadius: 13,
+                            background: (owned && !isFreeBackground) || isApplied ? "var(--bg3)" : "var(--sage)",
+                            color: (owned && !isFreeBackground) || isApplied ? "var(--sage-dark)" : "white",
+                            fontSize: 10.5,
+                            lineHeight: 1.2,
+                            fontWeight: 950,
+                            cursor: isApplying ? "default" : "pointer",
+                            opacity: isApplying ? 0.7 : 1,
+                          }}
+                        >
+                          {isFreeBackground
+                            ? isApplying
+                              ? text.applyingLabel
+                              : isApplied
+                                ? text.appliedButton
+                                : text.applyButton
+                            : owned
+                              ? text.ownedButton
+                              : text.purchaseButton}
                         </button>
                       </article>
                     );

@@ -3,7 +3,9 @@ import type { ProfileCharacterLayer } from "@/lib/profileCharacter";
 import type { RewardMapKind } from "@/lib/rewardMaps";
 import {
   HEART_SHOP_CHARACTER_ITEM_IDS,
+  getCharacterItemAvatarType,
   type HeartShopCharacterItemId,
+  type HeartShopCharacterAvatarType,
   type HeartShopCharacterSlot,
   type HeartShopItemId,
   type HeartShopMapItemId,
@@ -29,7 +31,7 @@ export type HeartShopMapCatalogItem = HeartShopCatalogBase & {
 export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
   id: HeartShopCharacterItemId;
   category: "character";
-  avatarType: RootsAvatarType;
+  avatarType: HeartShopCharacterAvatarType;
   slot: HeartShopCharacterSlot;
   layerPath: string;
   zIndex: number;
@@ -122,6 +124,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   zIndex: number;
   sortOffset: number;
 }> = {
+  background: { price: 0, directory: "backgrounds", filePrefix: "background", zIndex: -10, sortOffset: 0 },
   bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
   shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 20, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
@@ -132,6 +135,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 };
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
+  if (itemId.includes("_background_")) return "background";
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";
@@ -142,12 +146,15 @@ function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterS
 }
 
 function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShopCharacterCatalogItem {
-  const avatarType: RootsAvatarType = itemId.startsWith("rootswoman_") ? "rootswoman" : "rootsman";
+  const avatarType = getCharacterItemAvatarType(itemId);
   const slot = getCharacterSlot(itemId);
   const config = CHARACTER_SLOT_CONFIG[slot];
   const itemNumber = Number(itemId.slice(-2));
-  const avatarSortOffset = avatarType === "rootswoman" ? 2000 : 1000;
+  const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
+  const layerPath = avatarType === "shared"
+    ? `/images/heart-shop/character/shared/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`
+    : `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
 
   return {
     id: itemId,
@@ -155,7 +162,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     avatarType,
     slot,
     price: config.price,
-    layerPath: `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`,
+    layerPath,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop
       ? avatarSortOffset + config.sortOffset - 10 + (itemNumber - 7)
@@ -195,12 +202,14 @@ export function getProfileCharacterLayersForItemIds(
 ): ProfileCharacterLayer[] {
   const enabledIds = new Set(itemIds);
   return HEART_SHOP_CHARACTER_CATALOG
-    .filter(item => item.avatarType === avatarType && enabledIds.has(item.id))
+    .filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && enabledIds.has(item.id))
     .map(item => ({
       id: item.id,
       src: item.layerPath,
       slot: item.slot,
       zIndex: item.zIndex,
-      compatibleAvatarTypes: [item.avatarType],
+      compatibleAvatarTypes: item.avatarType === "shared"
+        ? (["rootsman", "rootswoman"] as const)
+        : [item.avatarType],
     }));
 }

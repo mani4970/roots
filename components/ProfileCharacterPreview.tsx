@@ -30,10 +30,31 @@ export default function ProfileCharacterPreview({
         width: "100%",
         aspectRatio: `${PROFILE_CHARACTER_CANVAS.width} / ${PROFILE_CHARACTER_CANVAS.height}`,
         overflow: "hidden",
+        isolation: "isolate",
         flexShrink: 0,
         ...style,
       }}
     >
+      {visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0).map(layer => (
+        <img
+          key={layer.id}
+          src={layer.src}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: layer.zIndex ?? -10,
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            imageRendering: "pixelated",
+            userSelect: "none",
+            pointerEvents: "none",
+          }}
+        />
+      ))}
       <img
         src={getProfileCharacterBaseImageSrc(avatarType)}
         alt={alt}
@@ -41,6 +62,7 @@ export default function ProfileCharacterPreview({
         style={{
           position: "absolute",
           inset: 0,
+          zIndex: 0,
           width: "100%",
           height: "100%",
           objectFit: "contain",
@@ -49,7 +71,7 @@ export default function ProfileCharacterPreview({
           pointerEvents: "none",
         }}
       />
-      {visibleLayers.map(layer => (
+      {visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0).map(layer => (
         <img
           key={layer.id}
           src={layer.src}

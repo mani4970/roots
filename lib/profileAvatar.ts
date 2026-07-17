@@ -67,9 +67,12 @@ export async function createProfileCharacterAvatarBlob(
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const layers = getProfileCharacterLayersForItemIds(itemIds, normalizedAvatarType)
     .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10));
+  const backgroundLayers = layers.filter(layer => (layer.zIndex ?? 10) < 0);
+  const foregroundLayers = layers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const sources = [
+    ...backgroundLayers.map(layer => layer.src),
     getProfileCharacterBaseImageSrc(normalizedAvatarType),
-    ...layers.map(layer => layer.src),
+    ...foregroundLayers.map(layer => layer.src),
   ];
   const images = await Promise.all(sources.map(loadImage));
 

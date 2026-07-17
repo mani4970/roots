@@ -12,6 +12,7 @@ export const HEART_SHOP_MAP_ITEM_IDS = [
 export type HeartShopMapItemId = (typeof HEART_SHOP_MAP_ITEM_IDS)[number];
 
 export type HeartShopCharacterSlot =
+  | "background"
   | "bottom"
   | "shoes"
   | "top"
@@ -21,6 +22,12 @@ export type HeartShopCharacterSlot =
   | "headwear";
 
 export const HEART_SHOP_CHARACTER_ITEM_IDS = [
+  "shared_background_01",
+  "shared_background_02",
+  "shared_background_03",
+  "shared_background_04",
+  "shared_background_05",
+  "shared_background_06",
   "rootsman_bottom_01",
   "rootsman_bottom_02",
   "rootsman_bottom_03",
@@ -94,6 +101,7 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
 ] as const;
 
 export type HeartShopCharacterItemId = (typeof HEART_SHOP_CHARACTER_ITEM_IDS)[number];
+export type HeartShopCharacterAvatarType = RootsAvatarType | "shared";
 export type HeartShopItemId = HeartShopMapItemId | HeartShopCharacterItemId;
 
 export const HEART_SHOP_ITEM_IDS = [
@@ -117,11 +125,13 @@ export function isHeartShopCharacterItemId(value: unknown): value is HeartShopCh
   return CHARACTER_ITEM_ID_SET.has(String(value ?? ""));
 }
 
-export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): RootsAvatarType {
+export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): HeartShopCharacterAvatarType {
+  if (itemId.startsWith("shared_")) return "shared";
   return itemId.startsWith("rootswoman_") ? "rootswoman" : "rootsman";
 }
 
 export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
+  if (itemId.includes("_background_")) return "background";
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";
