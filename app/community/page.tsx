@@ -732,6 +732,7 @@ function CommunityPageContent() {
   }>(null);
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
+  const qtDetailScrollRef = useRef<HTMLDivElement | null>(null);
   const handledNotificationRouteRef = useRef<string | null>(null);
   const directPrayerFocusRef = useRef<string | null>(null);
   const directPrayerHighlightTimerRef = useRef<number | null>(null);
@@ -896,6 +897,13 @@ function CommunityPageContent() {
     setActionMenu(null);
     pushCommunityModalHistory("qt-detail");
     setDetailQt(record);
+  }
+
+  function scrollQtDetailToTop(qtId: string) {
+    if (detailQt?.id !== qtId) return;
+    window.requestAnimationFrame(() => {
+      qtDetailScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
 
   function resetQtDetailState() {
@@ -4217,6 +4225,7 @@ function CommunityPageContent() {
             [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1),
           },
         }));
+        scrollQtDetailToTop(qtId);
       } else {
         // 새 반응 or 변경 — insert 먼저, 실패하면 update
         const { error: upsertErr } = await supabase
@@ -4245,6 +4254,7 @@ function CommunityPageContent() {
           cur[reactionId] = (cur[reactionId] ?? 0) + 1;
           return { ...prev, [qtId]: cur };
         });
+        scrollQtDetailToTop(qtId);
         void awardCommunityLoveHeart(supabase, "qt_reaction", qtId);
 
         try {
@@ -4777,6 +4787,7 @@ function CommunityPageContent() {
     return (
       <div
         key={r.id}
+        ref={qtDetailScrollRef}
         style={{
           position: "fixed",
           top: 0,
