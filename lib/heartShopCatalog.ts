@@ -125,14 +125,18 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
   shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 20, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
+  bag: { price: 40, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
   eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
+  hair_accessory: { price: 5, directory: "hair-accessories", filePrefix: "hair-accessory", zIndex: 45, sortOffset: 600 },
   headwear: { price: 10, directory: "headwear", filePrefix: "headwear", zIndex: 50, sortOffset: 400 },
 };
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
+  if (itemId.includes("_bag_")) return "bag";
   if (itemId.includes("_eyewear_")) return "eyewear";
+  if (itemId.includes("_hair_accessory_")) return "hair_accessory";
   if (itemId.includes("_headwear_")) return "headwear";
   return "top";
 }

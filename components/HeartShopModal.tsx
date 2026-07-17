@@ -61,6 +61,8 @@ const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartSho
   shoes: "shoes",
   eyewear: "eyewear",
   headwear: "headwear",
+  accessories: "hair_accessory",
+  bags: "bag",
 };
 
 function getLargeSpriteWidth(itemId: HeartShopMapItemId) {
@@ -86,14 +88,18 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
     bottom: { x: 350, y: 920, width: 397, height: 360 },
     shoes: { x: 310, y: 1195, width: 480, height: 200 },
     eyewear: { x: 310, y: 400, width: 500, height: 190 },
+    hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
     headwear: { x: 70, y: 0, width: 970, height: 480 },
+    bag: { x: 250, y: 520, width: 650, height: 620 },
   },
   rootswoman: {
     top: { x: 230, y: 590, width: 626, height: 405 },
     bottom: { x: 350, y: 810, width: 397, height: 430 },
     shoes: { x: 310, y: 1140, width: 480, height: 220 },
     eyewear: { x: 310, y: 400, width: 500, height: 190 },
+    hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
     headwear: { x: 70, y: 0, width: 970, height: 480 },
+    bag: { x: 250, y: 520, width: 650, height: 620 },
   },
 };
 
@@ -492,6 +498,12 @@ export default function HeartShopModal({
     { id: "eyewear", label: profileText.categories.eyewear },
     { id: "headwear", label: profileText.categories.headwear },
   ];
+  if (avatarType === "rootswoman") {
+    characterCategories.push(
+      { id: "accessories", label: profileText.categories.accessories },
+      { id: "bags", label: profileText.categories.bags },
+    );
+  }
   function renderCharacterPreview(item: HeartShopCharacterCatalogItem, width: string | number) {
     return (
       <ProfileCharacterPreview

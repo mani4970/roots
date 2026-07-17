@@ -11,7 +11,14 @@ export const HEART_SHOP_MAP_ITEM_IDS = [
 
 export type HeartShopMapItemId = (typeof HEART_SHOP_MAP_ITEM_IDS)[number];
 
-export type HeartShopCharacterSlot = "bottom" | "shoes" | "top" | "eyewear" | "headwear";
+export type HeartShopCharacterSlot =
+  | "bottom"
+  | "shoes"
+  | "top"
+  | "bag"
+  | "eyewear"
+  | "hair_accessory"
+  | "headwear";
 
 export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootsman_bottom_01",
@@ -66,6 +73,15 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootswoman_headwear_02",
   "rootswoman_headwear_03",
   "rootswoman_headwear_04",
+  "rootswoman_hair_accessory_01",
+  "rootswoman_hair_accessory_02",
+  "rootswoman_hair_accessory_03",
+  "rootswoman_hair_accessory_04",
+  "rootswoman_hair_accessory_05",
+  "rootswoman_hair_accessory_06",
+  "rootswoman_bag_02",
+  "rootswoman_bag_03",
+  "rootswoman_bag_04",
 ] as const;
 
 export type HeartShopCharacterItemId = (typeof HEART_SHOP_CHARACTER_ITEM_IDS)[number];
@@ -99,7 +115,9 @@ export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): Ro
 export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
+  if (itemId.includes("_bag_")) return "bag";
   if (itemId.includes("_eyewear_")) return "eyewear";
+  if (itemId.includes("_hair_accessory_")) return "hair_accessory";
   if (itemId.includes("_headwear_")) return "headwear";
   return "top";
 }
