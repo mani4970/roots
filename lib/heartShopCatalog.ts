@@ -154,7 +154,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     category: "character",
     avatarType,
     slot,
-    price: isRootsmanSummerTop ? 20 : config.price,
+    price: config.price,
     layerPath: `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop

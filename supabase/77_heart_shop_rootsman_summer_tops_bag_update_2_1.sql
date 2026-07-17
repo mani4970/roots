@@ -25,10 +25,10 @@ insert into public.heart_shop_items (
   updated_at
 )
 values
-  ('rootsman_top_07', 'character', 20, '/images/heart-shop/character/rootsman/tops/top-07.png', null, 1, 'ground', 1190, true, 'rootsman', 'top', now()),
-  ('rootsman_top_08', 'character', 20, '/images/heart-shop/character/rootsman/tops/top-08.png', null, 1, 'ground', 1191, true, 'rootsman', 'top', now()),
-  ('rootsman_top_09', 'character', 20, '/images/heart-shop/character/rootsman/tops/top-09.png', null, 1, 'ground', 1192, true, 'rootsman', 'top', now()),
-  ('rootsman_top_10', 'character', 20, '/images/heart-shop/character/rootsman/tops/top-10.png', null, 1, 'ground', 1193, true, 'rootsman', 'top', now()),
+  ('rootsman_top_07', 'character', 30, '/images/heart-shop/character/rootsman/tops/top-07.png', null, 1, 'ground', 1190, true, 'rootsman', 'top', now()),
+  ('rootsman_top_08', 'character', 30, '/images/heart-shop/character/rootsman/tops/top-08.png', null, 1, 'ground', 1191, true, 'rootsman', 'top', now()),
+  ('rootsman_top_09', 'character', 30, '/images/heart-shop/character/rootsman/tops/top-09.png', null, 1, 'ground', 1192, true, 'rootsman', 'top', now()),
+  ('rootsman_top_10', 'character', 30, '/images/heart-shop/character/rootsman/tops/top-10.png', null, 1, 'ground', 1193, true, 'rootsman', 'top', now()),
   ('rootswoman_bag_01', 'character', 30, '/images/heart-shop/character/rootswoman/bags/bag-01.png', null, 1, 'ground', 2601, true, 'rootswoman', 'bag', now()),
   ('rootswoman_bag_02', 'character', 30, '/images/heart-shop/character/rootswoman/bags/bag-02.png', null, 1, 'ground', 2602, true, 'rootswoman', 'bag', now()),
   ('rootswoman_bag_03', 'character', 30, '/images/heart-shop/character/rootswoman/bags/bag-03.png', null, 1, 'ground', 2603, true, 'rootswoman', 'bag', now()),
@@ -49,7 +49,7 @@ set
 
 commit;
 
--- Postcheck: expected Rootsman top 4 at 20 hearts and Rootswoman bag 4 at 30 hearts.
+-- Postcheck: expected Rootsman top 4 and Rootswoman bag 4, all at 30 hearts.
 select
   avatar_type,
   character_slot,

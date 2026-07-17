@@ -120,7 +120,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
     rootswoman: {
       bottom: ["차콜 플리츠 미니스커트", "연청 테일러드 쇼츠", "아이보리 랩 미니스커트", "블랙 세미와이드 슬랙스", "다크 인디고 부츠컷 데님", "딥 네이비 맥시스커트"],
       shoes: ["아이보리 핑크 레트로 스니커즈", "블랙 더블 스트랩 메리제인", "실버 라일락 러너", "버건디 페니 로퍼"],
-      top: ["워시드 네이비 JESUS LOVES ME 티", "코랄 AMEN 카디건", "세이지 GOD IS GOOD 니트", "오트밀 하트 후디", "라벤더 JESUS 폴로", "차콜 GRACE 맨투맨"],
+      top: ["워시드 네이비 JESUS LOVES ME 티", "코랄 AMEN 카디건", "세이지 GOD IS GOOD 니트", "오트밀 하트 후디", "라벤더 JESUS 폴로", "차콜 GRACE 맨투맨", "아이보리 레이스 레이어드 블라우스", "버터 옐로 로맨틱 블라우스", "네이비 블록코어 풋볼 저지", "워시드 데님 크롭 베스트 레이어드"],
       bag: ["블랙 컴팩트 크레센트 크로스백", "버건디 미니 크로스백", "블랙 스트럭처드 핸드백", "아이보리 미니 보스턴백"],
       eyewear: ["로즈 캣아이 안경", "라벤더 라운드 안경", "골드 라운드 스퀘어 안경", "아이보리 캣아이 선글라스", "레드 하트 선글라스", "라일락 오버사이즈 선글라스"],
       hair_accessory: ["아이보리 리본 헤어핀", "진주 플라워 헤어핀", "블랙 벨벳 리본 헤어핀", "슬림 펄 헤어밴드", "블랙 패디드 헤어밴드", "더스티 핑크 트위스트 헤어밴드"],
@@ -140,7 +140,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
     rootswoman: {
       bottom: ["Charcoal Pleated Mini", "Light-Wash Tailored Shorts", "Ivory Wrap Mini", "Black Semi-Wide Slacks", "Dark Indigo Bootcut Denim", "Deep Navy Maxi Skirt"],
       shoes: ["Ivory Pink Retro Sneakers", "Black Double-Strap Mary Janes", "Silver Lilac Runners", "Burgundy Penny Loafers"],
-      top: ["Navy JESUS LOVES ME Tee", "Coral AMEN Cardigan", "Sage GOD IS GOOD Knit", "Oatmeal Heart Hoodie", "Lavender JESUS Polo", "Charcoal GRACE Sweatshirt"],
+      top: ["Navy JESUS LOVES ME Tee", "Coral AMEN Cardigan", "Sage GOD IS GOOD Knit", "Oatmeal Heart Hoodie", "Lavender JESUS Polo", "Charcoal GRACE Sweatshirt", "Ivory Lace Layered Blouse", "Butter Yellow Romantic Blouse", "Navy Blockcore Football Jersey", "Washed Denim Cropped Layered Vest"],
       bag: ["Black Compact Crescent Crossbody", "Burgundy Mini Crossbody", "Black Structured Handbag", "Ivory Mini Boston Bag"],
       eyewear: ["Rose Cat-Eye Glasses", "Lavender Round Glasses", "Gold Rounded-Square Glasses", "Ivory Cat-Eye Sunglasses", "Red Heart Sunglasses", "Lilac Oversized Sunglasses"],
       hair_accessory: ["Ivory Bow Hair Clip", "Pearl Flower Barrette", "Black Velvet Bow Hair Clip", "Slim Pearl Headband", "Black Padded Headband", "Dusty Pink Twist Headband"],
@@ -160,7 +160,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
     rootswoman: {
       bottom: ["Anthrazitfarbener Faltenrock", "Helle Tailored Shorts", "Elfenbeinfarbener Wickelrock", "Schwarze Semi-Wide-Hose", "Dunkle Bootcut-Jeans", "Marineblauer Maxirock"],
       shoes: ["Retro-Sneaker in Elfenbeinrosa", "Schwarze Mary Janes", "Silber-lilafarbene Laufschuhe", "Burgunderfarbene Pennyloafer"],
-      top: ["JESUS LOVES ME Shirt in Navy", "AMEN-Cardigan in Koralle", "GOD IS GOOD Strick in Salbei", "Oatmeal-Herz-Hoodie", "JESUS-Polo in Lavendel", "GRACE-Sweatshirt in Anthrazit"],
+      top: ["JESUS LOVES ME Shirt in Navy", "AMEN-Cardigan in Koralle", "GOD IS GOOD Strick in Salbei", "Oatmeal-Herz-Hoodie", "JESUS-Polo in Lavendel", "GRACE-Sweatshirt in Anthrazit", "Elfenbeinfarbene Spitzen-Layering-Bluse", "Buttergelbe romantische Bluse", "Marineblaues Blockcore-Footballtrikot", "Cropped Layering-Weste aus verwaschenem Denim"],
       bag: ["Kompakte schwarze Halbmond-Umhängetasche", "Burgunderrote Mini-Umhängetasche", "Schwarze strukturierte Handtasche", "Elfenbeinfarbene Mini-Boston-Tasche"],
       eyewear: ["Roséfarbene Cateye-Brille", "Runde Lavendel-Brille", "Goldene Rundquadrat-Brille", "Elfenbeinfarbene Cateye-Sonnenbrille", "Rote Herz-Sonnenbrille", "Große lilafarbene Sonnenbrille"],
       hair_accessory: ["Elfenbeinfarbene Schleifen-Haarspange", "Haarspange mit Perlenblume", "Schwarze Samt-Schleifen-Haarspange", "Schmaler Perlen-Haarreif", "Schwarzer gepolsterter Haarreif", "Altrosa Twist-Haarreif"],
@@ -180,7 +180,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
     rootswoman: {
       bottom: ["Minijupe plissée anthracite", "Short ajusté en denim clair", "Minijupe portefeuille ivoire", "Pantalon semi-large noir", "Jean bootcut indigo foncé", "Jupe longue bleu marine"],
       shoes: ["Baskets rétro ivoire et rose", "Mary Janes noires à double bride", "Baskets argent et lilas", "Mocassins bordeaux"],
-      top: ["T-shirt JESUS LOVES ME marine", "Cardigan AMEN corail", "Pull GOD IS GOOD sauge", "Sweat à capuche cœur avoine", "Polo JESUS lavande", "Sweat GRACE anthracite"],
+      top: ["T-shirt JESUS LOVES ME marine", "Cardigan AMEN corail", "Pull GOD IS GOOD sauge", "Sweat à capuche cœur avoine", "Polo JESUS lavande", "Sweat GRACE anthracite", "Blouse ivoire superposée en dentelle", "Blouse romantique jaune beurre", "Maillot de football blockcore marine", "Gilet court superposé en denim délavé"],
       bag: ["Petit sac bandoulière demi-lune noir", "Mini sac bandoulière bordeaux", "Sac à main structuré noir", "Mini sac Boston ivoire"],
       eyewear: ["Lunettes œil-de-chat roses", "Lunettes rondes lavande", "Lunettes carrées arrondies dorées", "Lunettes de soleil œil-de-chat ivoire", "Lunettes de soleil cœur rouges", "Lunettes de soleil lilas oversize"],
       hair_accessory: ["Barrette nœud ivoire", "Barrette fleur perlée", "Barrette nœud en velours noir", "Serre-tête fin perlé", "Serre-tête rembourré noir", "Serre-tête torsadé rose poudré"],
