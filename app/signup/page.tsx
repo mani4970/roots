@@ -135,6 +135,18 @@ export default function SignupPage() {
         <p style={{ color: "var(--text3)", fontSize: 13 }}>{t("signup_sub", lang)}</p>
       </div>
 
+      <div style={{ marginBottom: 18, padding: "11px 12px", border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", textAlign: "center" }}>
+        <p style={{ color: "var(--text3)", fontSize: 11.5, lineHeight: 1.55, marginBottom: 6 }}>{t("signup_legal_notice", lang)}</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/terms" style={{ color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            {t("profile_terms", lang)}
+          </Link>
+          <Link href="/privacy" style={{ color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 3 }}>
+            {t("profile_privacy", lang)}
+          </Link>
+        </div>
+      </div>
+
       <AuthOAuthButtons
         googleLabel={t("login_google_btn", lang)}
         appleLabel={t("login_apple_btn", lang)}
