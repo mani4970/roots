@@ -244,9 +244,9 @@ export default function HeartShopModal({
   );
   const visibleCharacterItems = useMemo(() => {
     const slot = CHARACTER_CATEGORY_SLOT[activeCharacterCategory];
-    return HEART_SHOP_CHARACTER_CATALOG.filter(item => (
-      item.avatarType === avatarType && (!slot || item.slot === slot)
-    ));
+    return HEART_SHOP_CHARACTER_CATALOG
+      .filter(item => item.avatarType === avatarType && (!slot || item.slot === slot))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [activeCharacterCategory, avatarType]);
   const ownedCharacterItems = useMemo(
     () => HEART_SHOP_CHARACTER_CATALOG.filter(item => item.avatarType === avatarType && ownedById.has(item.id)),

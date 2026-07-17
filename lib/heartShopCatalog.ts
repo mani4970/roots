@@ -125,7 +125,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
   shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 20, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
-  bag: { price: 40, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
+  bag: { price: 30, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
   eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
   hair_accessory: { price: 5, directory: "hair-accessories", filePrefix: "hair-accessory", zIndex: 45, sortOffset: 600 },
   headwear: { price: 10, directory: "headwear", filePrefix: "headwear", zIndex: 50, sortOffset: 400 },
@@ -147,16 +147,19 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const config = CHARACTER_SLOT_CONFIG[slot];
   const itemNumber = Number(itemId.slice(-2));
   const avatarSortOffset = avatarType === "rootswoman" ? 2000 : 1000;
+  const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
 
   return {
     id: itemId,
     category: "character",
     avatarType,
     slot,
-    price: config.price,
+    price: isRootsmanSummerTop ? 20 : config.price,
     layerPath: `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`,
     zIndex: config.zIndex,
-    sortOrder: avatarSortOffset + config.sortOffset + itemNumber,
+    sortOrder: isRootsmanSummerTop
+      ? avatarSortOffset + config.sortOffset - 10 + (itemNumber - 7)
+      : avatarSortOffset + config.sortOffset + itemNumber,
   };
 }
 
