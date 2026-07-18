@@ -1,5 +1,8 @@
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
-import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
+import {
+  HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION,
+  getProfileCharacterLayersForItemIds,
+} from "@/lib/heartShopCatalog";
 import type { HeartShopItemId } from "@/lib/heartShopItems";
 import {
   PROFILE_CHARACTER_CANVAS,
@@ -17,7 +20,8 @@ type SaveProfileAvatarDisplayOptions = {
 };
 
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260716_v1";
-const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION = "20260718_v1";
+const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION =
+  HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
   "/images/heart-shop/character/shared/profile-backgrounds";
@@ -44,7 +48,7 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 function getSquareProfileBackgroundSrc(layerId: string) {
   const match = /^shared_background_(\d{2})$/.exec(layerId);
   return match
-    ? `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.png`
+    ? `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.png?v=${PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION}`
     : null;
 }
 

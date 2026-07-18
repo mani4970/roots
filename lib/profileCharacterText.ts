@@ -113,10 +113,10 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
 };
 
 const BACKGROUND_NAMES: Record<ProfileCharacterLang, readonly string[]> = {
-  ko: ["햇살 정원", "여름 바다", "포근한 책방", "노을빛 도시 옥상", "라벤더 별빛 밤", "고요한 교회"],
-  en: ["Sunlit Garden", "Summer Beach", "Cozy Bookroom", "Sunset City Rooftop", "Lavender Starry Night", "Peaceful Church"],
-  de: ["Sonniger Garten", "Sommerstrand", "Gemütliches Bücherzimmer", "Dachterrasse bei Sonnenuntergang", "Lavendelfarbene Sternennacht", "Ruhiger Kirchenraum"],
-  fr: ["Jardin ensoleillé", "Plage d’été", "Bibliothèque chaleureuse", "Toit urbain au coucher du soleil", "Nuit étoilée lavande", "Église paisible"],
+  ko: ["햇살 정원", "여름 바다", "포근한 책방", "노을빛 도시 옥상", "라벤더 별빛 밤", "고요한 교회", "스위스 알프스", "파리 에펠탑", "뉴욕 항구", "서울 한강"],
+  en: ["Sunlit Garden", "Summer Beach", "Cozy Bookroom", "Sunset City Rooftop", "Lavender Starry Night", "Peaceful Church", "Swiss Alps", "Paris Eiffel Tower", "New York Harbor", "Seoul Han River"],
+  de: ["Sonniger Garten", "Sommerstrand", "Gemütliches Bücherzimmer", "Dachterrasse bei Sonnenuntergang", "Lavendelfarbene Sternennacht", "Ruhiger Kirchenraum", "Schweizer Alpen", "Pariser Eiffelturm", "New Yorker Hafen", "Han-Fluss in Seoul"],
+  fr: ["Jardin ensoleillé", "Plage d’été", "Bibliothèque chaleureuse", "Toit urbain au coucher du soleil", "Nuit étoilée lavande", "Église paisible", "Alpes suisses", "Tour Eiffel à Paris", "Port de New York", "Fleuve Han à Séoul"],
 };
 
 const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {

@@ -134,6 +134,8 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   headwear: { price: 10, directory: "headwear", filePrefix: "headwear", zIndex: 50, sortOffset: 400 },
 };
 
+export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
+
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
   if (itemId.includes("_bottom_")) return "bottom";
@@ -153,8 +155,11 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
+  const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
   const layerPath = avatarType === "shared"
-    ? `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`
+    ? slot === "background"
+      ? `${sharedLayerPath}?v=${HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
+      : sharedLayerPath
     : `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
 
   return {
