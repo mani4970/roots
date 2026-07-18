@@ -15,6 +15,15 @@ type ProfileCharacterPreviewProps = {
   style?: CSSProperties;
 };
 
+const SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT = 96.875;
+const SQUARE_CHARACTER_RENDER_WIDTH_PERCENT =
+  SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT
+  * (PROFILE_CHARACTER_CANVAS.width / PROFILE_CHARACTER_CANVAS.height);
+const SQUARE_CHARACTER_RENDER_TOP_PERCENT =
+  (100 - SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT) / 2;
+const SQUARE_CHARACTER_RENDER_LEFT_PERCENT =
+  (100 - SQUARE_CHARACTER_RENDER_WIDTH_PERCENT) / 2;
+
 export default function ProfileCharacterPreview({
   avatarType,
   alt,
@@ -22,20 +31,37 @@ export default function ProfileCharacterPreview({
   style,
 }: ProfileCharacterPreviewProps) {
   const visibleLayers = filterProfileCharacterLayers(layers, avatarType);
+  const backgroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0);
+  const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
+  const hasSquareBackground = backgroundLayers.some(layer => layer.slot === "background");
+  const characterLayerStyle: CSSProperties = hasSquareBackground
+    ? {
+      left: `${SQUARE_CHARACTER_RENDER_LEFT_PERCENT}%`,
+      top: `${SQUARE_CHARACTER_RENDER_TOP_PERCENT}%`,
+      width: `${SQUARE_CHARACTER_RENDER_WIDTH_PERCENT}%`,
+      height: `${SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT}%`,
+    }
+    : {
+      inset: 0,
+      width: "100%",
+      height: "100%",
+    };
 
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
-        aspectRatio: `${PROFILE_CHARACTER_CANVAS.width} / ${PROFILE_CHARACTER_CANVAS.height}`,
+        aspectRatio: hasSquareBackground
+          ? "1 / 1"
+          : `${PROFILE_CHARACTER_CANVAS.width} / ${PROFILE_CHARACTER_CANVAS.height}`,
         overflow: "hidden",
         isolation: "isolate",
         flexShrink: 0,
         ...style,
       }}
     >
-      {visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0).map(layer => (
+      {backgroundLayers.map(layer => (
         <img
           key={layer.id}
           src={layer.src}
@@ -48,7 +74,7 @@ export default function ProfileCharacterPreview({
             zIndex: layer.zIndex ?? -10,
             width: "100%",
             height: "100%",
-            objectFit: "contain",
+            objectFit: hasSquareBackground ? "cover" : "contain",
             imageRendering: "pixelated",
             userSelect: "none",
             pointerEvents: "none",
@@ -61,17 +87,15 @@ export default function ProfileCharacterPreview({
         draggable={false}
         style={{
           position: "absolute",
-          inset: 0,
+          ...characterLayerStyle,
           zIndex: 0,
-          width: "100%",
-          height: "100%",
           objectFit: "contain",
           imageRendering: "pixelated",
           userSelect: "none",
           pointerEvents: "none",
         }}
       />
-      {visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0).map(layer => (
+      {foregroundLayers.map(layer => (
         <img
           key={layer.id}
           src={layer.src}
@@ -80,10 +104,8 @@ export default function ProfileCharacterPreview({
           draggable={false}
           style={{
             position: "absolute",
-            inset: 0,
+            ...characterLayerStyle,
             zIndex: layer.zIndex ?? 10,
-            width: "100%",
-            height: "100%",
             objectFit: "contain",
             imageRendering: "pixelated",
             userSelect: "none",

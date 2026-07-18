@@ -152,8 +152,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const itemNumber = Number(itemId.slice(-2));
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
+  const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const layerPath = avatarType === "shared"
-    ? `/images/heart-shop/character/shared/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`
+    ? `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`
     : `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
 
   return {

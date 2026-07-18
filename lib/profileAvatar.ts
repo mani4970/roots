@@ -17,7 +17,10 @@ type SaveProfileAvatarDisplayOptions = {
 };
 
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260716_v1";
+const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION = "20260718_v1";
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
+const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
+  "/images/heart-shop/character/shared/profile-backgrounds";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -38,13 +41,11 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-function getCharacterLayerIds(
-  avatarType: RootsAvatarType,
-  itemIds: readonly HeartShopItemId[],
-) {
-  return getProfileCharacterLayersForItemIds(itemIds, avatarType)
-    .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10))
-    .map(layer => layer.id);
+function getSquareProfileBackgroundSrc(layerId: string) {
+  const match = /^shared_background_(\d{2})$/.exec(layerId);
+  return match
+    ? `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.png`
+    : null;
 }
 
 export function getProfileCharacterAvatarSignature(
@@ -52,8 +53,16 @@ export function getProfileCharacterAvatarSignature(
   itemIds: readonly HeartShopItemId[],
 ) {
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
-  const layerIds = getCharacterLayerIds(normalizedAvatarType, itemIds).sort();
-  return [PROFILE_CHARACTER_AVATAR_ASSET_VERSION, normalizedAvatarType, ...layerIds].join(":");
+  const layers = getProfileCharacterLayersForItemIds(itemIds, normalizedAvatarType)
+    .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10));
+  const layerIds = layers.map(layer => layer.id).sort();
+  const hasSquareProfileBackground = layers.some(
+    layer => (layer.zIndex ?? 10) < 0 && getSquareProfileBackgroundSrc(layer.id),
+  );
+  const assetVersion = hasSquareProfileBackground
+    ? `${PROFILE_CHARACTER_AVATAR_ASSET_VERSION}:${PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION}`
+    : PROFILE_CHARACTER_AVATAR_ASSET_VERSION;
+  return [assetVersion, normalizedAvatarType, ...layerIds].join(":");
 }
 
 export async function createProfileCharacterAvatarBlob(
@@ -69,12 +78,17 @@ export async function createProfileCharacterAvatarBlob(
     .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10));
   const backgroundLayers = layers.filter(layer => (layer.zIndex ?? 10) < 0);
   const foregroundLayers = layers.filter(layer => (layer.zIndex ?? 10) >= 0);
-  const sources = [
-    ...backgroundLayers.map(layer => layer.src),
-    getProfileCharacterBaseImageSrc(normalizedAvatarType),
-    ...foregroundLayers.map(layer => layer.src),
-  ];
-  const images = await Promise.all(sources.map(loadImage));
+  const selectedBackgroundLayer = backgroundLayers[backgroundLayers.length - 1] ?? null;
+  const squareBackgroundSrc = selectedBackgroundLayer
+    ? getSquareProfileBackgroundSrc(selectedBackgroundLayer.id)
+    : null;
+  const [squareBackgroundImage, characterImages] = await Promise.all([
+    squareBackgroundSrc ? loadImage(squareBackgroundSrc) : Promise.resolve(null),
+    Promise.all([
+      getProfileCharacterBaseImageSrc(normalizedAvatarType),
+      ...foregroundLayers.map(layer => layer.src),
+    ].map(loadImage)),
+  ]);
 
   const characterCanvas = document.createElement("canvas");
   characterCanvas.width = PROFILE_CHARACTER_CANVAS.width;
@@ -82,7 +96,7 @@ export async function createProfileCharacterAvatarBlob(
   const characterContext = characterCanvas.getContext("2d");
   if (!characterContext) throw new Error("Could not prepare the profile character canvas.");
   characterContext.imageSmoothingEnabled = false;
-  images.forEach(image => {
+  characterImages.forEach(image => {
     characterContext.drawImage(
       image,
       0,
@@ -98,16 +112,26 @@ export async function createProfileCharacterAvatarBlob(
   const outputContext = outputCanvas.getContext("2d");
   if (!outputContext) throw new Error("Could not prepare the profile avatar canvas.");
 
-  const background = outputContext.createRadialGradient(320, 235, 45, 320, 320, 450);
-  background.addColorStop(0, "#fffdf8");
-  background.addColorStop(0.72, "#f4f5ed");
-  background.addColorStop(1, "#e8efe3");
-  outputContext.fillStyle = background;
-  outputContext.fillRect(0, 0, PROFILE_AVATAR_OUTPUT_SIZE, PROFILE_AVATAR_OUTPUT_SIZE);
+  outputContext.imageSmoothingEnabled = false;
+  if (squareBackgroundImage) {
+    outputContext.drawImage(
+      squareBackgroundImage,
+      0,
+      0,
+      PROFILE_AVATAR_OUTPUT_SIZE,
+      PROFILE_AVATAR_OUTPUT_SIZE,
+    );
+  } else {
+    const background = outputContext.createRadialGradient(320, 235, 45, 320, 320, 450);
+    background.addColorStop(0, "#fffdf8");
+    background.addColorStop(0.72, "#f4f5ed");
+    background.addColorStop(1, "#e8efe3");
+    outputContext.fillStyle = background;
+    outputContext.fillRect(0, 0, PROFILE_AVATAR_OUTPUT_SIZE, PROFILE_AVATAR_OUTPUT_SIZE);
+  }
 
   const renderHeight = 620;
   const renderWidth = renderHeight * (PROFILE_CHARACTER_CANVAS.width / PROFILE_CHARACTER_CANVAS.height);
-  outputContext.imageSmoothingEnabled = false;
   outputContext.drawImage(
     characterCanvas,
     (PROFILE_AVATAR_OUTPUT_SIZE - renderWidth) / 2,

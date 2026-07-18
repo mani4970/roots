@@ -121,7 +121,7 @@ function CharacterItemLayerPreview({
           position: "relative",
           width: "100%",
           maxWidth,
-          aspectRatio: "1086 / 1448",
+          aspectRatio: "1 / 1",
           overflow: "hidden",
           flexShrink: 0,
         }}
