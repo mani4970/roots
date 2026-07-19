@@ -8,7 +8,6 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { Capacitor } from "@capacitor/core";
-import { copyText } from "@/lib/nativeShare";
 
 type CursorStableTextareaProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -19,73 +18,7 @@ type CursorStableTextareaProps = Omit<
 };
 
 const APPLE_EDITOR_STATE_SYNC_DELAY_MS = 120;
-const APPLE_CURSOR_DIAGNOSTIC_BUTTON_ID = "roots-apple-cursor-diagnostic";
-
-type CursorDiagnosticDetail = Record<
-  string,
-  string | number | boolean | null
->;
-
-type CursorDiagnosticEntry = {
-  atMs: number;
-  event: string;
-  mountId: number;
-  selectionStart: number | null;
-  selectionEnd: number | null;
-  valueLength: number;
-  active: boolean;
-  connected: boolean;
-  composing: boolean;
-  detail?: CursorDiagnosticDetail;
-};
-
-type CursorDiagnosticStore = {
-  sessionStartedAt: string;
-  runtime: CursorDiagnosticDetail;
-  nextMountId: number;
-  entries: CursorDiagnosticEntry[];
-};
-
-type CursorDiagnosticWindow = Window & {
-  __rootsAppleCursorDiagnostic?: CursorDiagnosticStore;
-};
-
-type CursorDiagnosticCapture = (
-  event: string,
-  detail?: CursorDiagnosticDetail,
-) => void;
-
-function getCapacitorRuntimeDetail(): CursorDiagnosticDetail {
-  try {
-    return {
-      capacitorNative: Capacitor.isNativePlatform(),
-      capacitorPlatform: Capacitor.getPlatform(),
-    };
-  } catch {
-    return {
-      capacitorNative: false,
-      capacitorPlatform: "unavailable",
-    };
-  }
-}
-
-function getAppleCursorRuntimeDetail(
-  protectedRuntime: boolean,
-): CursorDiagnosticDetail {
-  if (typeof window === "undefined") return {};
-
-  return {
-    protectedRuntime,
-    userAgent: window.navigator.userAgent || "",
-    platform: window.navigator.platform || "",
-    maxTouchPoints: window.navigator.maxTouchPoints || 0,
-    screenWidth: window.screen?.width || 0,
-    screenHeight: window.screen?.height || 0,
-    innerWidth: window.innerWidth,
-    innerHeight: window.innerHeight,
-    ...getCapacitorRuntimeDetail(),
-  };
-}
+const HANGUL_TEXT_PATTERN = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
 
 function isAppleDesktopOrTabletRuntime() {
   if (typeof window === "undefined") return false;
@@ -152,7 +85,6 @@ export default function CursorStableTextarea({
   const pendingAppleValueRef = useRef(value);
   const onValueChangeRef = useRef(onValueChange);
   const onInputRef = useRef(onInput);
-  const diagnosticCaptureRef = useRef<CursorDiagnosticCapture | null>(null);
   const [protectAppleDesktopOrTabletCaret, setProtectAppleDesktopOrTabletCaret] =
     useState(false);
 
@@ -182,245 +114,15 @@ export default function CursorStableTextarea({
     const isActive =
       typeof document !== "undefined" && document.activeElement === element;
 
-    diagnosticCaptureRef.current?.("react-value-effect", {
-      incomingValueLength: value.length,
-      domValueLength: element.value.length,
-      valuesMatch: element.value === value,
-      skippedBecauseActive: isActive,
-    });
-
     // While the user is editing, the native textarea is the only authority for
     // both its value and caret. In particular, never replay an older React value
     // or selection during WebKit/Korean IME composition or an autosave render.
     if (isActive) return;
 
-    if (element.value !== value) {
-      diagnosticCaptureRef.current?.("react-value-write", {
-        incomingValueLength: value.length,
-        domValueLength: element.value.length,
-      });
-      element.value = value;
-    }
+    if (element.value !== value) element.value = value;
     lastEmittedValueRef.current = value;
     pendingAppleValueRef.current = value;
   }, [value]);
-
-  // Temporary Apple-only telemetry for the cursor incident. It observes native
-  // events and DOM identity without writing the textarea value or selection.
-  // The copied report lets us distinguish a WebKit/IME selection change from a
-  // React value replay, focus loss, or textarea remount. iPhone/Android never
-  // enter this effect because the same runtime gate protects it.
-  useLayoutEffect(() => {
-    if (!protectAppleDesktopOrTabletCaret) return;
-
-    const element = textareaRef.current;
-    if (!element) return;
-
-    const diagnosticWindow = window as CursorDiagnosticWindow;
-    const store = diagnosticWindow.__rootsAppleCursorDiagnostic ?? {
-      sessionStartedAt: new Date().toISOString(),
-      runtime: getAppleCursorRuntimeDetail(true),
-      nextMountId: 0,
-      entries: [],
-    };
-    diagnosticWindow.__rootsAppleCursorDiagnostic = store;
-
-    const mountId = ++store.nextMountId;
-    let isComposing = false;
-    let lastObservedSelection = element.selectionStart;
-    let lastIntentionalSelectionAt = -Infinity;
-
-    const updateDiagnosticButton = (anomaly = false) => {
-      const button = document.getElementById(
-        APPLE_CURSOR_DIAGNOSTIC_BUTTON_ID,
-      ) as HTMLButtonElement | null;
-      if (!button) return;
-
-      button.textContent = anomaly
-        ? "커서 이동 감지 · 진단 복사"
-        : "커서 진단 복사 · ON";
-      button.style.background = anomaly ? "#9f3f37" : "#315f42";
-    };
-
-    const capture: CursorDiagnosticCapture = (event, detail) => {
-      const now = window.performance.now();
-      const selectionStart = element.selectionStart;
-      const selectionEnd = element.selectionEnd;
-      const active = document.activeElement === element;
-      const isCollapsed = selectionStart === selectionEnd;
-      const movedBackwardUnexpectedly =
-        active &&
-        !isComposing &&
-        isCollapsed &&
-        selectionStart !== null &&
-        lastObservedSelection !== null &&
-        lastObservedSelection - selectionStart >= 2 &&
-        now - lastIntentionalSelectionAt > 500;
-
-      store.entries.push({
-        atMs: Math.round(now * 10) / 10,
-        event,
-        mountId,
-        selectionStart,
-        selectionEnd,
-        valueLength: element.value.length,
-        active,
-        connected: element.isConnected,
-        composing: isComposing,
-        detail,
-      });
-      if (store.entries.length > 240) {
-        store.entries.splice(0, store.entries.length - 240);
-      }
-
-      if (selectionStart !== null) lastObservedSelection = selectionStart;
-      if (movedBackwardUnexpectedly) updateDiagnosticButton(true);
-    };
-    diagnosticCaptureRef.current = capture;
-
-    const ensureDiagnosticButton = () => {
-      let button = document.getElementById(
-        APPLE_CURSOR_DIAGNOSTIC_BUTTON_ID,
-      ) as HTMLButtonElement | null;
-
-      if (!button) {
-        button = document.createElement("button");
-        button.id = APPLE_CURSOR_DIAGNOSTIC_BUTTON_ID;
-        button.type = "button";
-        button.setAttribute("aria-label", "Apple 커서 진단 기록 복사");
-        Object.assign(button.style, {
-          position: "fixed",
-          top: "calc(env(safe-area-inset-top, 0px) + 70px)",
-          right: "10px",
-          zIndex: "2147483647",
-          border: "0",
-          borderRadius: "999px",
-          padding: "7px 10px",
-          background: "#315f42",
-          color: "#fff",
-          fontSize: "11px",
-          fontWeight: "700",
-          lineHeight: "1.2",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-          cursor: "pointer",
-        });
-        document.body.appendChild(button);
-      }
-
-      button.onclick = async () => {
-        capture("diagnostic-copy-click");
-        const report = JSON.stringify(
-          {
-            sessionStartedAt: store.sessionStartedAt,
-            copiedAt: new Date().toISOString(),
-            runtime: store.runtime,
-            entries: store.entries,
-          },
-          null,
-          2,
-        );
-
-        const copied = await copyText(report);
-        button!.textContent = copied
-          ? "진단 복사됨"
-          : "복사 실패 · 다시 눌러주세요";
-      };
-      updateDiagnosticButton(false);
-    };
-
-    const captureInputEvent = (event: Event) => {
-      const inputEvent = event as InputEvent;
-      capture(event.type, {
-        inputType: inputEvent.inputType || "",
-        eventIsComposing: Boolean(inputEvent.isComposing),
-        data: inputEvent.data ?? "",
-      });
-
-      window.requestAnimationFrame(() => {
-        capture(`${event.type}-animation-frame`);
-      });
-    };
-    const handleFocus = () => {
-      ensureDiagnosticButton();
-      capture("focus");
-    };
-    const handleBlur = () => capture("blur");
-    const handleCompositionStart = () => {
-      isComposing = true;
-      capture("compositionstart");
-    };
-    const handleCompositionUpdate = (event: CompositionEvent) => {
-      capture("compositionupdate", { data: event.data || "" });
-    };
-    const handleCompositionEnd = (event: CompositionEvent) => {
-      capture("compositionend", { data: event.data || "" });
-      isComposing = false;
-      window.requestAnimationFrame(() => capture("compositionend-animation-frame"));
-    };
-    const handlePointerDown = () => {
-      lastIntentionalSelectionAt = window.performance.now();
-      capture("pointerdown");
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key.startsWith("Arrow") ||
-        event.key === "Home" ||
-        event.key === "End" ||
-        event.key === "PageUp" ||
-        event.key === "PageDown"
-      ) {
-        lastIntentionalSelectionAt = window.performance.now();
-      }
-      capture("keydown", {
-        key: event.key,
-        metaKey: event.metaKey,
-        ctrlKey: event.ctrlKey,
-        altKey: event.altKey,
-        shiftKey: event.shiftKey,
-      });
-    };
-    const handleSelectionChange = () => {
-      if (document.activeElement === element) capture("selectionchange");
-    };
-    const handleVisibilityChange = () => {
-      capture("visibilitychange", { visibilityState: document.visibilityState });
-    };
-
-    element.addEventListener("beforeinput", captureInputEvent);
-    element.addEventListener("input", captureInputEvent);
-    element.addEventListener("focus", handleFocus);
-    element.addEventListener("blur", handleBlur);
-    element.addEventListener("compositionstart", handleCompositionStart);
-    element.addEventListener("compositionupdate", handleCompositionUpdate);
-    element.addEventListener("compositionend", handleCompositionEnd);
-    element.addEventListener("pointerdown", handlePointerDown);
-    element.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("selectionchange", handleSelectionChange);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    capture("diagnostic-mounted", {
-      initialValueMatchesProp: element.value === value,
-    });
-    if (document.activeElement === element) ensureDiagnosticButton();
-
-    return () => {
-      capture("diagnostic-unmounted");
-      if (diagnosticCaptureRef.current === capture) {
-        diagnosticCaptureRef.current = null;
-      }
-      element.removeEventListener("beforeinput", captureInputEvent);
-      element.removeEventListener("input", captureInputEvent);
-      element.removeEventListener("focus", handleFocus);
-      element.removeEventListener("blur", handleBlur);
-      element.removeEventListener("compositionstart", handleCompositionStart);
-      element.removeEventListener("compositionupdate", handleCompositionUpdate);
-      element.removeEventListener("compositionend", handleCompositionEnd);
-      element.removeEventListener("pointerdown", handlePointerDown);
-      element.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("selectionchange", handleSelectionChange);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [protectAppleDesktopOrTabletCaret]);
 
   useLayoutEffect(() => {
     if (!protectAppleDesktopOrTabletCaret) return;
@@ -441,14 +143,8 @@ export default function CursorStableTextarea({
       cancelScheduledSync();
 
       const nextValue = pendingAppleValueRef.current;
-      if (nextValue === lastEmittedValueRef.current) {
-        diagnosticCaptureRef.current?.("apple-flush-skipped-same-value");
-        return;
-      }
+      if (nextValue === lastEmittedValueRef.current) return;
 
-      diagnosticCaptureRef.current?.("apple-flush-parent-value", {
-        emittedValueLength: nextValue.length,
-      });
       lastEmittedValueRef.current = nextValue;
       onValueChangeRef.current(nextValue);
     };
@@ -461,6 +157,29 @@ export default function CursorStableTextarea({
       );
     };
 
+    const handleBeforeInput = (event: Event) => {
+      const inputEvent = event as InputEvent;
+      const replacementText = inputEvent.data ?? "";
+      const hasHangulContext =
+        HANGUL_TEXT_PATTERN.test(replacementText) ||
+        HANGUL_TEXT_PATTERN.test(element.value);
+
+      // The captured Mac/iPad incident contained no React value write, focus
+      // loss, or textarea remount. WebKit instead emitted cancelable
+      // insertReplacementText events for Korean writing suggestions and moved
+      // the caret to the end of the replacement range. Normal typing, IME
+      // composition, paste, deletion, line breaks, and English-only replacement
+      // suggestions remain unchanged.
+      if (
+        inputEvent.inputType === "insertReplacementText" &&
+        hasHangulContext &&
+        !inputEvent.isComposing &&
+        event.cancelable
+      ) {
+        event.preventDefault();
+      }
+    };
+
     const handleNativeInput = (event: Event) => {
       pendingAppleValueRef.current = element.value;
       onInputRef.current?.(
@@ -468,29 +187,22 @@ export default function CursorStableTextarea({
       );
 
       const inputEvent = event as InputEvent;
-      diagnosticCaptureRef.current?.("apple-native-input-handler", {
-        inputType: inputEvent.inputType || "",
-        eventIsComposing: Boolean(inputEvent.isComposing),
-      });
       if (!isComposing && !inputEvent.isComposing) scheduleValueSync();
     };
 
     const handleCompositionStart = () => {
       isComposing = true;
-      diagnosticCaptureRef.current?.("apple-native-composition-start");
       cancelScheduledSync();
     };
 
     const handleCompositionEnd = () => {
       isComposing = false;
       pendingAppleValueRef.current = element.value;
-      diagnosticCaptureRef.current?.("apple-native-composition-end");
       scheduleValueSync();
     };
 
     const handleBlur = () => {
       pendingAppleValueRef.current = element.value;
-      diagnosticCaptureRef.current?.("apple-native-blur-flush");
       flushPendingValue();
     };
 
@@ -500,6 +212,7 @@ export default function CursorStableTextarea({
       flushPendingValue();
     };
 
+    element.addEventListener("beforeinput", handleBeforeInput);
     element.addEventListener("input", handleNativeInput);
     element.addEventListener("compositionstart", handleCompositionStart);
     element.addEventListener("compositionend", handleCompositionEnd);
@@ -508,6 +221,7 @@ export default function CursorStableTextarea({
 
     return () => {
       cancelScheduledSync();
+      element.removeEventListener("beforeinput", handleBeforeInput);
       element.removeEventListener("input", handleNativeInput);
       element.removeEventListener("compositionstart", handleCompositionStart);
       element.removeEventListener("compositionend", handleCompositionEnd);
