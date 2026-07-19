@@ -305,9 +305,21 @@ function RecordContent() {
       let refsText = "";
       if (raw.startsWith("설교:")) {
         const body = raw.replace(/^설교:\s*/, "").trim();
-        const match = body.match(/^(.*?)(?:\s*\((.*)\))?$/);
-        title = (match?.[1] ?? "").trim();
-        refsText = (match?.[2] ?? "").trim();
+        const trailingParenthesisStart = body.lastIndexOf(" (");
+        const trailingParenthesisText =
+          trailingParenthesisStart >= 0 && body.endsWith(")")
+            ? body.slice(trailingParenthesisStart + 2, -1).trim()
+            : "";
+        const hasTrailingBibleRef = /\d+\s*:\s*\d+/.test(
+          trailingParenthesisText,
+        );
+
+        if (hasTrailingBibleRef) {
+          title = body.slice(0, trailingParenthesisStart).trim();
+          refsText = trailingParenthesisText;
+        } else {
+          title = body;
+        }
       } else {
         refsText = raw;
       }
