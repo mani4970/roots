@@ -8,6 +8,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { Capacitor } from "@capacitor/core";
+import { copyText } from "@/lib/nativeShare";
 
 type CursorStableTextareaProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -319,12 +320,10 @@ export default function CursorStableTextarea({
           2,
         );
 
-        try {
-          await window.navigator.clipboard.writeText(report);
-          button!.textContent = "진단 복사됨";
-        } catch {
-          button!.textContent = "복사 실패 · 다시 눌러주세요";
-        }
+        const copied = await copyText(report);
+        button!.textContent = copied
+          ? "진단 복사됨"
+          : "복사 실패 · 다시 눌러주세요";
       };
       updateDiagnosticButton(false);
     };
