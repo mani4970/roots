@@ -6,6 +6,7 @@ import {
   type FormEvent,
   type TextareaHTMLAttributes,
 } from "react";
+import { Capacitor } from "@capacitor/core";
 
 type CursorStableTextareaProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -14,6 +15,25 @@ type CursorStableTextareaProps = Omit<
   value: string;
   onValueChange: (value: string) => void;
 };
+
+function isNativeAppleTabletRuntime() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
+      return false;
+    }
+
+    const shortestScreenSide = Math.min(
+      window.screen?.width || window.innerWidth,
+      window.screen?.height || window.innerHeight,
+    );
+
+    return shortestScreenSide >= 768;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Textarea that keeps the active caret/selection stable across unrelated
@@ -32,6 +52,7 @@ export default function CursorStableTextarea({
 }: CursorStableTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastEmittedValueRef = useRef(value);
+  const protectNativeAppleTabletCaret = isNativeAppleTabletRuntime();
 
   const emitValue = (element: HTMLTextAreaElement) => {
     const nextValue = element.value;
@@ -62,11 +83,19 @@ export default function CursorStableTextarea({
     onInput?.(event);
   };
 
+  // React 18 writes a supplied textarea defaultValue back to the DOM during
+  // updates. Do not supply that prop in the native Apple tablet runtime: the
+  // layout effect above initializes/synchronizes the unfocused element, while
+  // the active WebKit editor remains completely untouched during typing.
+  const initialValueProps = protectNativeAppleTabletCaret
+    ? {}
+    : { defaultValue: value };
+
   return (
     <textarea
       {...props}
       ref={textareaRef}
-      defaultValue={value}
+      {...initialValueProps}
       onInput={handleInput}
     />
   );
