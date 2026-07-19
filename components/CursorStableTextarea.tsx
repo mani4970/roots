@@ -3,17 +3,9 @@
 import {
   useLayoutEffect,
   useRef,
-  type CompositionEvent,
   type FormEvent,
-  type SyntheticEvent,
   type TextareaHTMLAttributes,
 } from "react";
-
-type SelectionState = {
-  start: number;
-  end: number;
-  direction: "forward" | "backward" | "none";
-};
 
 type CursorStableTextareaProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -35,30 +27,11 @@ type CursorStableTextareaProps = Omit<
 export default function CursorStableTextarea({
   value,
   onValueChange,
-  onSelect,
   onInput,
-  onCompositionStart,
-  onCompositionEnd,
   ...props
 }: CursorStableTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const isComposingRef = useRef(false);
   const lastEmittedValueRef = useRef(value);
-  const selectionRef = useRef<SelectionState>({
-    start: value.length,
-    end: value.length,
-    direction: "none",
-  });
-
-  const rememberSelection = (element: HTMLTextAreaElement) => {
-    if (typeof document !== "undefined" && document.activeElement !== element) return;
-
-    selectionRef.current = {
-      start: element.selectionStart ?? 0,
-      end: element.selectionEnd ?? element.selectionStart ?? 0,
-      direction: element.selectionDirection ?? "none",
-    };
-  };
 
   const emitValue = (element: HTMLTextAreaElement) => {
     const nextValue = element.value;
@@ -70,68 +43,23 @@ export default function CursorStableTextarea({
 
   useLayoutEffect(() => {
     const element = textareaRef.current;
-    if (!element || isComposingRef.current) return;
-    if (value === lastEmittedValueRef.current) return;
+    if (!element) return;
 
     const isActive =
       typeof document !== "undefined" && document.activeElement === element;
-    const activeSelection = isActive
-      ? {
-          start: element.selectionStart ?? selectionRef.current.start,
-          end: element.selectionEnd ?? selectionRef.current.end,
-          direction: element.selectionDirection ?? selectionRef.current.direction,
-        }
-      : selectionRef.current;
 
-    element.value = value;
+    // While the user is editing, the native textarea is the only authority for
+    // both its value and caret. In particular, never replay an older React value
+    // or selection during WebKit/Korean IME composition or an autosave render.
+    if (isActive) return;
+
+    if (element.value !== value) element.value = value;
     lastEmittedValueRef.current = value;
-
-    if (!isActive) return;
-
-    const max = value.length;
-    const start = Math.min(activeSelection.start, max);
-    const end = Math.min(Math.max(activeSelection.end, start), max);
-    selectionRef.current = {
-      start,
-      end,
-      direction: activeSelection.direction,
-    };
-
-    if (
-      element.selectionStart !== start ||
-      element.selectionEnd !== end ||
-      element.selectionDirection !== activeSelection.direction
-    ) {
-      try {
-        element.setSelectionRange(start, end, activeSelection.direction);
-      } catch {
-        // Selection APIs can be unavailable while an IME/browser is finalizing input.
-      }
-    }
   }, [value]);
 
-  const handleSelect = (event: SyntheticEvent<HTMLTextAreaElement>) => {
-    rememberSelection(event.currentTarget);
-    onSelect?.(event);
-  };
-
   const handleInput = (event: FormEvent<HTMLTextAreaElement>) => {
-    rememberSelection(event.currentTarget);
     emitValue(event.currentTarget);
     onInput?.(event);
-  };
-
-  const handleCompositionStart = (event: CompositionEvent<HTMLTextAreaElement>) => {
-    isComposingRef.current = true;
-    rememberSelection(event.currentTarget);
-    onCompositionStart?.(event);
-  };
-
-  const handleCompositionEnd = (event: CompositionEvent<HTMLTextAreaElement>) => {
-    isComposingRef.current = false;
-    rememberSelection(event.currentTarget);
-    emitValue(event.currentTarget);
-    onCompositionEnd?.(event);
   };
 
   return (
@@ -139,10 +67,7 @@ export default function CursorStableTextarea({
       {...props}
       ref={textareaRef}
       defaultValue={value}
-      onSelect={handleSelect}
       onInput={handleInput}
-      onCompositionStart={handleCompositionStart}
-      onCompositionEnd={handleCompositionEnd}
     />
   );
 }
