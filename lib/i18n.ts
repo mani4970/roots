@@ -122,6 +122,7 @@ export const T = {
   community_member_unknown: { ko: "이름 없는 참여자", de: "Mitglied ohne Namen", en: "Unnamed member", fr: "Membre sans nom" },
   community_group_actions: { ko: "그룹 메뉴", de: "Gruppenmenü", en: "Group menu", fr: "Menu du groupe" },
   community_join: { ko: "참여하기", de: "Beitreten", en: "Join", fr: "Rejoindre" },
+  community_join_to_view_group_content: { ko: "그룹에 참여하면 묵상 나눔과 기도 소원, 기도 응답을 볼 수 있어요.", de: "Treten Sie der Gruppe bei, um geteilte Stille Zeiten, Gebetsanliegen und Gebetserhörungen zu sehen.", en: "Join the group to view shared Bible reflections, prayer requests, and answered prayers.", fr: "Rejoignez le groupe pour voir les méditations bibliques, les sujets de prière et les prières exaucées qui y sont partagés." },
   community_copied: { ko: "복사됨!", de: "Kopiert!", en: "Copied!", fr: "Copié !" },
   community_copy_link: { ko: "링크 복사", de: "Link kopieren", en: "Copy link", fr: "Copier le lien" },
   community_invite: { ko: "초대", de: "Einladen", en: "Invite", fr: "Inviter" },

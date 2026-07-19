@@ -3934,8 +3934,9 @@ function CommunityPageContent() {
     group: any,
     preferredSection?: CommunitySectionKey,
     directTarget?: CommunityNotificationDirectTarget,
+    options?: { skipHistory?: boolean },
   ) {
-    pushCommunityDetailHistory("group");
+    if (!options?.skipHistory) pushCommunityDetailHistory("group");
     setGroupDetailTab(
       preferredSection ??
         (group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt"),
@@ -3963,6 +3964,22 @@ function CommunityPageContent() {
     const currentHiddenUserIds = hiddenUserIds;
 
     if (!user) {
+      setLoadingGroupChallenges(false);
+      setLoadingGroupQts(false);
+      setLoadingGroupPrayers(false);
+      setNotificationDirectOpenPending(false);
+      return;
+    }
+
+    // 공개 그룹의 소개는 누구나 볼 수 있지만, 그룹 피드는 참여한 뒤에만 불러옵니다.
+    // 그룹 전용 기록은 기존 RLS에서도 그룹원만 조회할 수 있으며,
+    // 이 가드는 전체 커뮤니티에도 함께 공유된 기록이 비회원 그룹 화면에 노출되는 것을 막습니다.
+    if (!group.isMember) {
+      setGroupChallengeRequestStatus(group.id, null);
+      setGroupChallenges([]);
+      setGroupChallengeProgress({});
+      setGroupQts([]);
+      setGroupPrayers([]);
       setLoadingGroupChallenges(false);
       setLoadingGroupQts(false);
       setLoadingGroupPrayers(false);
@@ -4457,6 +4474,8 @@ function CommunityPageContent() {
 
   async function joinGroup(groupId: string) {
     if (!userId) return;
+    const selectedGroupAtJoin =
+      selectedGroup?.id === groupId ? selectedGroup : null;
     const supabase = createClient();
     const { error: joinError } = await supabase
       .from("group_members")
@@ -4470,6 +4489,18 @@ function CommunityPageContent() {
     }
     clearSharePromptOptionsCache();
     const joinedAt = new Date().toISOString();
+    const joinedSelectedGroup = selectedGroupAtJoin
+      ? {
+          ...selectedGroupAtJoin,
+          isMember: true,
+          member_count: (selectedGroupAtJoin.member_count ?? 0) + 1,
+          last_seen_qt_at: joinedAt,
+          hasNewQt: false,
+          hasNewQtShare: false,
+          hasNewPrayer: false,
+          hasNewContent: false,
+        }
+      : null;
     setGroups((prev) =>
       sortGroupsForDisplay(
         prev.map((g) =>
@@ -4488,17 +4519,20 @@ function CommunityPageContent() {
         ),
       ),
     );
-    if (selectedGroup?.id === groupId)
-      setSelectedGroup((g: any) => ({
-        ...g,
-        isMember: true,
-        member_count: (g.member_count ?? 0) + 1,
-        last_seen_qt_at: joinedAt,
-        hasNewQt: false,
-        hasNewQtShare: false,
-        hasNewPrayer: false,
-        hasNewContent: false,
-      }));
+    if (joinedSelectedGroup) setSelectedGroup(joinedSelectedGroup);
+
+    if (joinedSelectedGroup) {
+      try {
+        await loadGroupDetail(
+          joinedSelectedGroup,
+          groupDetailTab,
+          undefined,
+          { skipHistory: true },
+        );
+      } catch (error) {
+        console.warn("그룹 참여 후 콘텐츠 조회 실패:", error);
+      }
+    }
 
     try {
       const {
@@ -7073,7 +7107,32 @@ function CommunityPageContent() {
               })}
             </div>
 
-            {groupDetailTab === "qt" ? (
+            {!selectedGroup.isMember ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 18px",
+                  background: "var(--bg2)",
+                  borderRadius: 16,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <UserPlus
+                  size={24}
+                  style={{ color: "var(--sage-dark)", marginBottom: 8 }}
+                />
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text2)",
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
+                  {c("community_join_to_view_group_content")}
+                </p>
+              </div>
+            ) : groupDetailTab === "qt" ? (
               loadingGroupQts ? (
                 <div
                   style={{
