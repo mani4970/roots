@@ -335,20 +335,31 @@ export default function ProfilePage() {
     const qtShareCnt = qtShares?.length ?? 0;
     setQtShareCount(qtShareCnt);
 
-    const { data: groupMemberships } = await supabase.from("group_members")
-      .select("group_id")
-      .eq("user_id", user.id);
-    const groupParticipationCount = new Set((groupMemberships ?? []).map((row: any) => row.group_id).filter(Boolean)).size;
-
     // 기존 기록이 이미 조건을 채웠는데 배지 컬럼만 false인 경우를 보정합니다.
     if (p) {
-      const badgeUpdates: Record<string, boolean> = {};
-      if (!p.badge_roots_together && groupParticipationCount >= 5) badgeUpdates.badge_roots_together = true;
-      if (Object.keys(badgeUpdates).length > 0) {
-        const { error: badgeError } = await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
-        if (!badgeError) {
-          setProfile((current: any) => ({ ...(current ?? p), ...badgeUpdates }));
+      try {
+        const { data: groupBadgeAward, error: groupBadgeAwardError } = await supabase.rpc(
+          "award_own_group_activity_badges",
+          {
+            p_user_id: user.id,
+            p_created_group_id: null,
+          },
+        );
+        if (groupBadgeAwardError) throw groupBadgeAwardError;
+
+        const awardedBadges = new Set(
+          Array.isArray(groupBadgeAward?.awarded_badges)
+            ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
+            : [],
+        );
+        if (awardedBadges.has("badge_roots_together")) {
+          setProfile((current: any) => ({
+            ...(current ?? p),
+            badge_roots_together: true,
+          }));
         }
+      } catch (groupBadgeRepairError) {
+        console.warn("동역 배지 보정 실패:", groupBadgeRepairError);
       }
 
       try {
