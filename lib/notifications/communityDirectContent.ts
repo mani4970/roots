@@ -1,4 +1,5 @@
 import type { CommunityNotificationDirectTarget } from "@/lib/notifications/communityDeepLinks";
+import { loadProfileCard } from "@/lib/profileCards";
 
 type SupabaseClientLike = any;
 
@@ -31,12 +32,7 @@ function visibilityIncludesGroup(
 }
 
 async function loadProfile(supabase: SupabaseClientLike, userId: string) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("id,name,avatar_url,streak_days")
-    .eq("id", userId)
-    .maybeSingle();
-  return data ?? null;
+  return loadProfileCard(supabase, userId);
 }
 
 async function canOpenPartnerQt(

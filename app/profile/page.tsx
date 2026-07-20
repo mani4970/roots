@@ -31,6 +31,7 @@ import {
 } from "@/lib/profileAvatar";
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
 import { storageClear } from "@/lib/clientStorage";
+import { loadProfileCards } from "@/lib/profileCards";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -464,13 +465,10 @@ export default function ProfilePage() {
 
     let companionRows: any[] = [];
     if (companionUserIds.length > 0) {
-      const { data, error: companionError } = await supabase.from("profiles")
-        .select("id,name")
-        .in("id", companionUserIds);
-      if (companionError) {
+      try {
+        companionRows = await loadProfileCards(supabase, companionUserIds);
+      } catch (companionError) {
         console.warn("동역자 챌린지 동역자 이름 조회 실패:", companionError);
-      } else {
-        companionRows = data ?? [];
       }
     }
 

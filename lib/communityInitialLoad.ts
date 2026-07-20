@@ -1,3 +1,5 @@
+import { loadProfileCards } from "@/lib/profileCards";
+
 export type CommunityViewerMeta = {
   hiddenKeys: string[];
   hiddenUserIds: string[];
@@ -122,10 +124,9 @@ export async function loadPartnerSupplementalData(
 
   const [profileResult, preferenceRows, qtRecipientResult, prayerRecipientResult] =
     await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id,name,avatar_url,streak_days")
-        .in("id", partnerIds),
+      loadProfileCards(supabase, partnerIds)
+        .then((data) => ({ data, error: null }))
+        .catch((error: any) => ({ data: [], error })),
       loadPartnerPreferenceRows(supabase, userId, partnerIds),
       supabase
         .from("qt_record_recipients")

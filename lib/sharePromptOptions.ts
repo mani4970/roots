@@ -1,6 +1,7 @@
 "use client";
 
 import type { ShareTargetGroup, ShareTargetPartner } from "@/components/SharePromptModal";
+import { loadProfileCards } from "@/lib/profileCards";
 import { createClient } from "@/lib/supabase";
 
 type RawSharePartner = {
@@ -101,10 +102,9 @@ async function fetchSharePromptOptions(userId: string): Promise<CachedSharePromp
         .in("id", groupIds)
       : Promise.resolve({ data: [], error: null }),
     partnerIds.length > 0
-      ? supabase
-        .from("profiles")
-        .select("id, name, avatar_url")
-        .in("id", partnerIds)
+      ? loadProfileCards(supabase, partnerIds)
+        .then(data => ({ data, error: null }))
+        .catch((error: any) => ({ data: [], error }))
       : Promise.resolve({ data: [], error: null }),
     partnerIds.length > 0
       ? supabase

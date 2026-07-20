@@ -35,6 +35,7 @@ import {
   getGroupChallengeRequestText,
 } from "@/lib/groupChallengeRequestText";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
+import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 import {
   loadCommunityViewerMeta,
   loadPartnerSupplementalData,
@@ -2802,15 +2803,7 @@ function CommunityPageContent() {
   async function fetchProfiles(supabase: any, data: any[]) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
     if (uids.length === 0) return {};
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url, streak_days")
-      .in("id", uids);
-    const map: Record<string, any> = {};
-    (profs ?? []).forEach((p: any) => {
-      map[p.id] = p;
-    });
-    return map;
+    return mapProfileCards(await loadProfileCards(supabase, uids));
   }
 
   async function loadQtPhotoUrls(supabase: any, rows: any[]) {
@@ -3575,15 +3568,9 @@ function CommunityPageContent() {
         return;
       }
 
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, name, avatar_url")
-        .in("id", memberIds);
-
-      const profileMap: Record<string, any> = {};
-      (profs ?? []).forEach((profile: any) => {
-        profileMap[profile.id] = profile;
-      });
+      const profileMap = mapProfileCards(
+        await loadProfileCards(supabase, memberIds),
+      );
       setGroupMemberProfiles(
         memberIds.map(
           (id: string) =>

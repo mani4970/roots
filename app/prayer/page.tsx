@@ -12,6 +12,7 @@ import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Tra
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
 import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -187,14 +188,7 @@ function PrayerPageContent() {
     const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
     if (userIds.length === 0) return {};
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url")
-      .in("id", userIds);
-
-    const profileMap: Record<string, any> = {};
-    (data ?? []).forEach((profile: any) => { profileMap[profile.id] = profile; });
-    return profileMap;
+    return mapProfileCards(await loadProfileCards(supabase, userIds));
   }
 
   async function loadPrayers() {
@@ -230,12 +224,9 @@ function PrayerPageContent() {
         .filter(Boolean)
       ));
       if (partnerIds.length > 0) {
-        const { data: partnerProfiles } = await supabase
-          .from("profiles")
-          .select("id, name, avatar_url")
-          .in("id", partnerIds);
-        const profileMap: Record<string, any> = {};
-        (partnerProfiles ?? []).forEach((profile: any) => { profileMap[String(profile.id)] = profile; });
+        const profileMap = mapProfileCards(
+          await loadProfileCards(supabase, partnerIds),
+        );
         setMyPartners(partnerIds.map((partnerId: any) => ({
           id: String(partnerId),
           name: String(profileMap[partnerId]?.name ?? c("profile_default_name")),

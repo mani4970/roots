@@ -17,6 +17,7 @@ import {
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
+import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 import {
   checkAndAwardCompanionBadge,
   getRewardBadgePopup,
@@ -260,14 +261,9 @@ function CompanionsContent() {
     const uniqueIds = Array.from(new Set(ids));
 
     if (uniqueIds.length > 0) {
-      const { data: profileRows } = await supabase
-        .from("profiles")
-        .select("id,name,avatar_url,streak_days")
-        .in("id", uniqueIds);
-      const profileMap: Record<string, ProfileRow> = {};
-      (profileRows ?? []).forEach((profile: any) => {
-        profileMap[profile.id] = profile;
-      });
+      const profileMap = mapProfileCards(
+        await loadProfileCards(supabase, uniqueIds),
+      ) as Record<string, ProfileRow>;
       setProfiles(profileMap);
       setInviteProfile(
         inviteUserId && inviteUserId !== user.id
