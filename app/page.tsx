@@ -34,6 +34,7 @@ import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/com
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import { isHeartShopMapItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -270,11 +271,10 @@ export default function HomePage() {
     setSavingAvatarChoice(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from("profiles")
-        .update({ avatar_type: avatarType, avatar_choice_seen: markSeen })
-        .eq("id", profile.id);
-      if (error) throw error;
+      await saveProfilePreferences(supabase, {
+        avatarType,
+        avatarChoiceSeen: markSeen,
+      });
       setProfile((prev: any) => prev ? { ...prev, avatar_type: avatarType, avatar_choice_seen: markSeen } : prev);
       setShowAvatarChoiceModal(false);
     } catch (error) {

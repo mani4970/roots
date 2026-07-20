@@ -12,6 +12,7 @@ import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
@@ -88,11 +89,14 @@ export default function SignupPage() {
     if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
     if (data.user) {
       await setPreferredLang(lang);
-      // profiles 테이블에 직접 preferred_translation 저장
-      await supabase.from("profiles").update({
-        preferred_translation: defaultTr[lang] ?? 92,
-        preferred_language: lang,
-      }).eq("id", data.user.id);
+      try {
+        await saveProfilePreferences(supabase, {
+          preferredLanguage: lang,
+          preferredTranslation: defaultTr[lang] ?? 92,
+        });
+      } catch (error) {
+        console.error("signup language preference save failed", error);
+      }
     }
     router.push(getSafeRedirectFromLocation()); router.refresh();
   }

@@ -13,6 +13,7 @@ import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
@@ -62,7 +63,14 @@ export default function LoginPage() {
     storageSet("roots_default_translation", String(trId));
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("profiles").update({ preferred_translation: trId, preferred_language: lang }).eq("id", user.id);
+      try {
+        await saveProfilePreferences(supabase, {
+          preferredLanguage: lang,
+          preferredTranslation: trId,
+        });
+      } catch (error) {
+        console.error("login language preference save failed", error);
+      }
     }
     router.push(getSafeRedirectFromLocation()); router.refresh();
   }

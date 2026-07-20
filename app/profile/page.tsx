@@ -32,6 +32,7 @@ import {
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
 import { storageClear } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -556,13 +557,18 @@ export default function ProfilePage() {
   async function saveName() {
     if (!newName.trim()) return;
     setSavingName(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("profiles").update({ name: newName.trim() }).eq("id", user.id);
-    setProfile((p: any) => ({ ...p, name: newName.trim() }));
-    setEditingName(false);
-    setSavingName(false);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await saveProfilePreferences(supabase, { name: newName.trim() });
+      setProfile((p: any) => ({ ...p, name: newName.trim() }));
+      setEditingName(false);
+    } catch (error) {
+      console.error("profile name save failed", error);
+    } finally {
+      setSavingName(false);
+    }
   }
 
   async function uploadAvatarFile(file: File) {
@@ -942,11 +948,10 @@ export default function ProfilePage() {
       } else {
         const supabase = createClient();
         const updates = { avatar_type: avatarType, avatar_choice_seen: true };
-        const { error } = await supabase
-          .from("profiles")
-          .update(updates)
-          .eq("id", profile.id);
-        if (error) throw error;
+        await saveProfilePreferences(supabase, {
+          avatarType,
+          avatarChoiceSeen: true,
+        });
         updateProfileState(updates);
       }
       setShowAvatarChoiceModal(false);

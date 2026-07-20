@@ -10,6 +10,7 @@ import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -318,8 +319,9 @@ export default function QTPage() {
                         try {
                           const { data: { user } } = await supabase.auth.getUser();
                           if (user) {
-                            const { error } = await supabase.from("profiles").update({ preferred_translation: tr.id }).eq("id", user.id);
-                            if (error) throw error;
+                            await saveProfilePreferences(supabase, {
+                              preferredTranslation: tr.id,
+                            });
                           }
                         } catch (error) {
                           console.error("preferred translation save failed", error);

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { isLang, FALLBACK_LANG, type Lang } from "@/lib/i18n";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { storageGet, storageSet } from "@/lib/clientStorage";
+import { saveProfilePreferences } from "@/lib/profilePreferences";
 
 const STORAGE_KEY = "roots_lang";
 const SELECTED_FLAG = "roots_lang_selected";
@@ -68,10 +69,12 @@ export function useLang(): Lang {
         if (!storageGet(TRANSLATION_STORAGE_KEY)) {
           storageSet(TRANSLATION_STORAGE_KEY, String(translationId));
         }
-        supabase.from("profiles")
-          .update({ preferred_language: storedLang, preferred_translation: translationId })
-          .eq("id", user.id)
-          .then(() => {});
+        saveProfilePreferences(supabase, {
+          preferredLanguage: storedLang,
+          preferredTranslation: translationId,
+        }).catch(error => {
+          console.error("profile language preference sync failed", error);
+        });
         return;
       }
 
@@ -105,9 +108,14 @@ export async function setPreferredLang(lang: Lang): Promise<void> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    await supabase.from("profiles")
-      .update({ preferred_language: lang, preferred_translation: translationId })
-      .eq("id", user.id);
+    try {
+      await saveProfilePreferences(supabase, {
+        preferredLanguage: lang,
+        preferredTranslation: translationId,
+      });
+    } catch (error) {
+      console.error("profile language preference save failed", error);
+    }
   }
 }
 

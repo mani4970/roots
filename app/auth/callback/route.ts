@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getDefaultTranslationId } from '@/lib/translationDefaults'
+import { saveProfilePreferences } from '@/lib/profilePreferences'
 
 const SUPPORTED_LANGS = ["ko", "de", "en", "fr"] as const
 type Lang = typeof SUPPORTED_LANGS[number]
@@ -42,12 +43,14 @@ export async function GET(request: Request) {
     if (isLang(selectedLang)) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        await supabase.from("profiles")
-          .update({
-            preferred_language: selectedLang,
-            preferred_translation: getDefaultTranslationId(selectedLang),
+        try {
+          await saveProfilePreferences(supabase, {
+            preferredLanguage: selectedLang,
+            preferredTranslation: getDefaultTranslationId(selectedLang),
           })
-          .eq("id", user.id)
+        } catch (error) {
+          console.error("OAuth language preference save failed", error)
+        }
       }
     }
   }
