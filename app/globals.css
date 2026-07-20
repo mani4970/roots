@@ -56,7 +56,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -ap
 html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width: 100%; max-width: 430px; margin: 0 auto; background: var(--bg); }
 @media (min-width: 600px) {
   /* Match a small browser zoom across the complete native iPad/Mac app canvas. */
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] body { zoom: 1.1; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body { zoom: 1.15; }
 }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
