@@ -54,6 +54,10 @@ html[data-native-platform="android"] { --bottom-nav-safe-extra: max(0px, var(--s
 html[data-native-platform="ios"][data-native-form-factor="tablet"] { --roots-page-top-padding: 40px; max-width: none; width: 100%; background: var(--bg); }
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width: 100%; max-width: 430px; margin: 0 auto; background: var(--bg); }
+@media (min-width: 600px) {
+  /* Match a small browser zoom across the complete native iPad/Mac app canvas. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body { zoom: 1.1; }
+}
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 button { cursor: pointer; font-family: 'Pretendard', sans-serif; }
