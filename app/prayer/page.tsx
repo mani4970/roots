@@ -540,10 +540,13 @@ function PrayerPageContent() {
       // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
       let existingAnsweredBadgeAwarded = false;
       if (user) {
-        const { data: prof } = await supabase.from("profiles")
-          .select("badge_noah").eq("id", user.id).single();
-        if (!prof?.badge_noah) {
-          await supabase.from("profiles").update({ badge_noah: true }).eq("id", user.id);
+        const { data: noahAward, error: noahAwardError } = await supabase.rpc("award_own_noah_badge", {
+          p_user_id: user.id,
+          p_prayer_item_id: testimonyPrayerId,
+        });
+        if (noahAwardError) {
+          console.warn("노아 배지를 저장하지 못했어요:", noahAwardError.message);
+        } else if (noahAward?.awarded === true) {
           existingAnsweredBadgeAwarded = true;
           setBadgePopup({ img: "/badge_noah.webp", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
         }
