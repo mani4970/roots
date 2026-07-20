@@ -24,6 +24,13 @@ type CompletePhotoOptions = {
 
 const PHOTO_BUCKET = "qt-photos";
 const PHOTO_MAX_INPUT_SIZE = 15 * 1024 * 1024;
+const PHOTO_MAX_STORED_SIZE = 2 * 1024 * 1024;
+const PHOTO_COMPRESSION_ATTEMPTS = [
+  { maxSide: 1800, quality: 0.84 },
+  { maxSide: 1600, quality: 0.8 },
+  { maxSide: 1440, quality: 0.76 },
+  { maxSide: 1280, quality: 0.72 },
+] as const;
 const BOOKS = [...OT_BOOKS, ...NT_BOOKS];
 
 const PHOTO_COPY = {
@@ -52,6 +59,7 @@ const PHOTO_COPY = {
   needPhoto: { ko: "사진을 먼저 선택해주세요.", de: "Bitte wähle zuerst ein Foto aus.", en: "Please choose a photo first.", fr: "Veuillez d’abord choisir une photo." },
   unsupportedPhoto: { ko: "이미지 파일만 선택할 수 있어요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image." },
   photoTooLarge: { ko: "15MB 이하의 사진만 선택할 수 있어요.", de: "Bitte wähle ein Foto bis 15 MB aus.", en: "Please choose a photo up to 15 MB.", fr: "Veuillez choisir une photo de 15 Mo maximum." },
+  compressedPhotoTooLarge: { ko: "사진을 2MB 이하로 줄이지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht auf unter 2 MB verkleinert werden. Bitte wähle ein anderes Foto.", en: "The photo could not be reduced below 2 MB. Please choose another photo.", fr: "La photo n’a pas pu être réduite à moins de 2 Mo. Veuillez en choisir une autre." },
   alreadyDone: { ko: "해당 날짜의 말씀 묵상 기록이 이미 있어요.", de: "Für dieses Datum gibt es bereits eine Reflexion.", en: "You already have a Bible reflection for this date.", fr: "Vous avez déjà une méditation biblique pour cette date." },
   progressError: { ko: "말씀동행 반영에 실패했어요. 다시 완료해주세요.", de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
 } as const;
@@ -123,19 +131,29 @@ async function compressImage(file: File): Promise<Blob> {
       image.onerror = reject;
       image.src = imageUrl;
     });
-    const maxSide = 1800;
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const width = Math.max(1, Math.round(img.width * scale));
-    const height = Math.max(1, Math.round(img.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(img, 0, 0, width, height);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Image compression failed")), "image/jpeg", 0.84);
-    });
+    let lastBlob: Blob | null = null;
+    for (const attempt of PHOTO_COMPRESSION_ATTEMPTS) {
+      const scale = Math.min(1, attempt.maxSide / Math.max(img.width, img.height));
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Image compression failed");
+      ctx.drawImage(img, 0, 0, width, height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          result => result ? resolve(result) : reject(new Error("Image compression failed")),
+          "image/jpeg",
+          attempt.quality,
+        );
+      });
+      lastBlob = blob;
+      if (blob.size <= PHOTO_MAX_STORED_SIZE) return blob;
+    }
+    if (!lastBlob) throw new Error("Image compression failed");
+    return lastBlob;
   } finally {
     URL.revokeObjectURL(imageUrl);
   }
@@ -347,6 +365,10 @@ function PhotoReflectionContent() {
       }
 
       const compressed = await compressImage(file);
+      if (compressed.size > PHOTO_MAX_STORED_SIZE) {
+        showNotice(pc("compressedPhotoTooLarge", lang));
+        return;
+      }
       const random = Math.random().toString(36).slice(2, 10);
       uploadedPath = `${user.id}/${targetDate}/${Date.now()}-${random}.jpg`;
       const { error: uploadError } = await supabase.storage

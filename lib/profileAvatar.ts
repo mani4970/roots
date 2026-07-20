@@ -23,6 +23,7 @@ const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260716_v1";
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION =
   HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
+const PROFILE_CHARACTER_AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
   "/images/heart-shop/character/shared/profile-backgrounds";
 
@@ -144,7 +145,11 @@ export async function createProfileCharacterAvatarBlob(
     renderHeight,
   );
 
-  return canvasToPngBlob(outputCanvas);
+  const blob = await canvasToPngBlob(outputCanvas);
+  if (blob.size > PROFILE_CHARACTER_AVATAR_MAX_SIZE) {
+    throw new Error("Profile character image exceeds the 2 MB upload limit.");
+  }
+  return blob;
 }
 
 export async function uploadProfileCharacterAvatar(
