@@ -459,31 +459,30 @@ function PrayerPageContent() {
         });
       }
 
-      // 중보기도 요청 배지 체크
-      // 전체 공개와 그룹 공유 모두 중보기도 요청으로 인정합니다.
-      const { data: prof } = await supabase.from("profiles")
-        .select("badge_prayer_ember, badge_prayer_warrior").eq("id", user.id).single();
-      const { data: shared } = await supabase.from("prayer_items")
-        .select("id, visibility").eq("user_id", user.id);
-      const { data: partnerShared } = await supabase.from("prayer_item_recipients")
-        .select("prayer_item_id").eq("owner_id", user.id);
-      const sharedPrayerIds = new Set([
-        ...(shared ?? []).filter((row: any) => isSharedVisibility(row.visibility)).map((row: any) => String(row.id)),
-        ...(partnerShared ?? []).map((row: any) => String(row.prayer_item_id)),
-      ]);
-      const sharedCount = sharedPrayerIds.size;
-      const badgeUpdates: Record<string, boolean> = {};
-      if (!prof?.badge_prayer_ember && sharedCount >= 7) badgeUpdates.badge_prayer_ember = true;
-      if (!prof?.badge_prayer_warrior && sharedCount >= 15) badgeUpdates.badge_prayer_warrior = true;
-      if (Object.keys(badgeUpdates).length > 0) {
-        await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
-        if (badgeUpdates.badge_prayer_ember) {
+      // 중보기도 요청 배지는 서버가 실제 공개/그룹/동역자 공유 기록을
+      // 다시 확인한 뒤 현재 사용자에게만 원자적으로 지급합니다.
+      const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
+        "award_own_prayer_share_badges",
+        {
+          p_user_id: user.id,
+          p_include_partner_recipients: true,
+        },
+      );
+      if (prayerBadgeAwardError) {
+        console.warn("기도 공유 배지를 저장하지 못했어요:", prayerBadgeAwardError.message);
+      } else {
+        const awardedBadges = new Set(
+          Array.isArray(prayerBadgeAward?.awarded_badges)
+            ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
+            : [],
+        );
+        if (awardedBadges.has("badge_prayer_ember")) {
           setBadgePopup({
             img: "/badge_rootswoman_fire.webp",
             title: c("prayer_badge_ember_popup"),
             msg: t("badge_prayer_ember_msg", lang),
           });
-        } else if (badgeUpdates.badge_prayer_warrior) {
+        } else if (awardedBadges.has("badge_prayer_warrior")) {
           setBadgePopup({
             img: "/prayer_warrior.webp",
             title: c("prayer_badge_warrior_popup"),

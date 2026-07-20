@@ -346,14 +346,38 @@ export default function ProfilePage() {
       if (!p.badge_joseph && qtShareCnt >= 1) badgeUpdates.badge_joseph = true;
       if (!p.badge_qt_bird && qtShareCnt >= 30) badgeUpdates.badge_qt_bird = true;
       if (!p.badge_word_peace && qtShareCnt >= 50) badgeUpdates.badge_word_peace = true;
-      if (!p.badge_prayer_ember && prayerSharedCnt >= 7) badgeUpdates.badge_prayer_ember = true;
-      if (!p.badge_prayer_warrior && prayerSharedCnt >= 15) badgeUpdates.badge_prayer_warrior = true;
       if (!p.badge_roots_together && groupParticipationCount >= 5) badgeUpdates.badge_roots_together = true;
       if (Object.keys(badgeUpdates).length > 0) {
         const { error: badgeError } = await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
         if (!badgeError) {
           setProfile((current: any) => ({ ...(current ?? p), ...badgeUpdates }));
         }
+      }
+
+      try {
+        const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
+          "award_own_prayer_share_badges",
+          {
+            p_user_id: user.id,
+            // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
+            p_include_partner_recipients: false,
+          },
+        );
+        if (prayerBadgeAwardError) throw prayerBadgeAwardError;
+
+        const awardedBadges = new Set(
+          Array.isArray(prayerBadgeAward?.awarded_badges)
+            ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
+            : [],
+        );
+        const prayerBadgeUpdates: Record<string, boolean> = {};
+        if (awardedBadges.has("badge_prayer_ember")) prayerBadgeUpdates.badge_prayer_ember = true;
+        if (awardedBadges.has("badge_prayer_warrior")) prayerBadgeUpdates.badge_prayer_warrior = true;
+        if (Object.keys(prayerBadgeUpdates).length > 0) {
+          setProfile((current: any) => ({ ...(current ?? p), ...prayerBadgeUpdates }));
+        }
+      } catch (error) {
+        console.warn("기도 공유 배지 보정 실패:", error);
       }
 
       try {
