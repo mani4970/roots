@@ -238,31 +238,27 @@ function RecordContent() {
       // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.
       if (!privateOnly) {
         try {
-            const { data: prof } = await supabase.from("profiles")
-              .select("badge_qt_bird, badge_word_peace, badge_joseph").eq("id", user.id).single();
-            const { data: visibilityShares } = await supabase.from("qt_records")
-              .select("id").eq("user_id", user.id).eq("is_draft", false)
-              .not("visibility", "is", null).neq("visibility", "private").neq("visibility", "");
-            const { data: partnerShares } = await supabase.from("qt_record_recipients")
-              .select("qt_record_id").eq("owner_id", user.id);
-            const sharedIds = new Set([
-              ...((visibilityShares ?? []).map((row: any) => row.id)),
-              ...((partnerShares ?? []).map((row: any) => row.qt_record_id)),
-            ]);
-            const shareCount = sharedIds.size;
-            const updates: any = {};
-            if (!prof?.badge_joseph && shareCount >= 1) updates.badge_joseph = true;
-            if (!prof?.badge_qt_bird && shareCount >= 30) updates.badge_qt_bird = true;
-            if (!prof?.badge_word_peace && shareCount >= 50) updates.badge_word_peace = true;
-            if (Object.keys(updates).length > 0) {
-              await supabase.from("profiles").update(updates).eq("id", user.id);
-              if (updates.badge_word_peace) {
-                setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
-              } else if (updates.badge_qt_bird) {
-                setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
-              } else if (updates.badge_joseph) {
-                setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
-              }
+            const { data: qtShareBadgeAward, error: qtShareBadgeAwardError } = await supabase.rpc(
+              "award_own_qt_share_badges",
+              {
+                p_user_id: user.id,
+                p_include_partner_recipients: true,
+              },
+            );
+            if (qtShareBadgeAwardError) throw qtShareBadgeAwardError;
+
+            const awardedBadges = new Set(
+              Array.isArray(qtShareBadgeAward?.awarded_badges)
+                ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
+                : [],
+            );
+            // 기존 팝업 우선순위: 말씀의 평안 → 말씀 배달부 → 요셉
+            if (awardedBadges.has("badge_word_peace")) {
+              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
+            } else if (awardedBadges.has("badge_qt_bird")) {
+              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
+            } else if (awardedBadges.has("badge_joseph")) {
+              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
             }
           } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
       }

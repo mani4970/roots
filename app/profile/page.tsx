@@ -343,15 +343,39 @@ export default function ProfilePage() {
     // 기존 기록이 이미 조건을 채웠는데 배지 컬럼만 false인 경우를 보정합니다.
     if (p) {
       const badgeUpdates: Record<string, boolean> = {};
-      if (!p.badge_joseph && qtShareCnt >= 1) badgeUpdates.badge_joseph = true;
-      if (!p.badge_qt_bird && qtShareCnt >= 30) badgeUpdates.badge_qt_bird = true;
-      if (!p.badge_word_peace && qtShareCnt >= 50) badgeUpdates.badge_word_peace = true;
       if (!p.badge_roots_together && groupParticipationCount >= 5) badgeUpdates.badge_roots_together = true;
       if (Object.keys(badgeUpdates).length > 0) {
         const { error: badgeError } = await supabase.from("profiles").update(badgeUpdates).eq("id", user.id);
         if (!badgeError) {
           setProfile((current: any) => ({ ...(current ?? p), ...badgeUpdates }));
         }
+      }
+
+      try {
+        const { data: qtShareBadgeAward, error: qtShareBadgeAwardError } = await supabase.rpc(
+          "award_own_qt_share_badges",
+          {
+            p_user_id: user.id,
+            // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
+            p_include_partner_recipients: false,
+          },
+        );
+        if (qtShareBadgeAwardError) throw qtShareBadgeAwardError;
+
+        const awardedBadges = new Set(
+          Array.isArray(qtShareBadgeAward?.awarded_badges)
+            ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
+            : [],
+        );
+        const qtShareBadgeUpdates: Record<string, boolean> = {};
+        if (awardedBadges.has("badge_joseph")) qtShareBadgeUpdates.badge_joseph = true;
+        if (awardedBadges.has("badge_qt_bird")) qtShareBadgeUpdates.badge_qt_bird = true;
+        if (awardedBadges.has("badge_word_peace")) qtShareBadgeUpdates.badge_word_peace = true;
+        if (Object.keys(qtShareBadgeUpdates).length > 0) {
+          setProfile((current: any) => ({ ...(current ?? p), ...qtShareBadgeUpdates }));
+        }
+      } catch (error) {
+        console.warn("QT 나눔 배지 보정 실패:", error);
       }
 
       try {
