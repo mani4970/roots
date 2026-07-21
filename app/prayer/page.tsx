@@ -585,13 +585,13 @@ function PrayerPageContent() {
   const emptySub = tab === "mine" ? c("prayer_empty_mine_sub") : tab === "answered" ? c("prayer_empty_answered_sub") : c("prayer_empty_intercession_sub");
 
   function tabAccentColor(key: PrayerTab) {
-    if (key === "intercession") return "var(--terra-dark)";
-    return "var(--sage-dark)";
+    if (key === "intercession") return "var(--prayer-terra-text)";
+    return "var(--prayer-sage-text)";
   }
 
   function tabAccentBg(key: PrayerTab) {
-    if (key === "intercession") return "var(--terra-dark)";
-    return "var(--sage)";
+    if (key === "intercession") return "var(--prayer-tab-terra-fill)";
+    return "var(--prayer-tab-sage-fill)";
   }
 
   function profileName(prayer: any) {
@@ -600,26 +600,26 @@ function PrayerPageContent() {
   }
 
   return (
-    <div className="page">
+    <div className="page roots-prayer-phase2c">
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--prayer-modal-surface)", borderRadius: 28, border: "1px solid var(--prayer-gold-border)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
               <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
-            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--prayer-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "var(--prayer-gold-surface)", borderRadius: 14, border: "1px solid var(--prayer-gold-border)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "var(--prayer-gold-action)", color: "var(--prayer-on-gold-action)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("badge_thanks", lang)}
             </button>
           </div>
         </div>
       )}
       {notice && (
-        <div style={{ position: "fixed", top: 84, left: "50%", transform: "translateX(-50%)", zIndex: 210, background: "rgba(26,28,30,0.96)", color: "#fff", padding: "12px 16px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px rgba(0,0,0,0.22)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
+        <div style={{ position: "fixed", top: 84, left: "50%", transform: "translateX(-50%)", zIndex: 210, background: "var(--prayer-toast-surface)", color: "var(--prayer-toast-text)", padding: "12px 16px", borderRadius: 14, border: "1px solid var(--prayer-toast-border)", fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-toast)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
@@ -667,7 +667,7 @@ function PrayerPageContent() {
       {/* 헤더 */}
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 0", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("prayer_title", lang)}</h1>
-        <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.7, marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", lineHeight: 1.7, marginBottom: 16 }}>
           {c("prayer_sub_line1")}<br />
           {c("prayer_sub_line2")}<br />
           {c("prayer_sub_line3")}
@@ -693,11 +693,11 @@ function PrayerPageContent() {
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
                 }}
               >
-                <span style={{ fontSize: 12, fontWeight: active ? 700 : 400, color: active ? tabAccentColor(key) : "var(--text3)", whiteSpace: "nowrap", minWidth: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 400, color: active ? tabAccentColor(key) : "var(--prayer-muted-text)", whiteSpace: "nowrap", minWidth: 0 }}>
                   {label}
                 </span>
                 {count > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--bg)" : "var(--text3)", background: active ? tabAccentBg(key) : "var(--border)", borderRadius: 20, padding: "1px 6px", minWidth: 18, textAlign: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? "var(--prayer-on-tab-fill)" : "var(--prayer-muted-text)", background: active ? tabAccentBg(key) : "var(--prayer-tab-muted-surface)", borderRadius: 20, padding: "1px 6px", minWidth: 18, textAlign: "center", flexShrink: 0 }}>
                     {count}
                   </span>
                 )}
@@ -718,10 +718,10 @@ function PrayerPageContent() {
             <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
               <img src={emptyIconSrc} alt="" style={{ width: 54, height: 54, objectFit: "contain", opacity: 0.55 }} />
             </div>
-            <p style={{ color: "var(--text3)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+            <p style={{ color: "var(--prayer-muted-text)", fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
               {emptyTitle}
             </p>
-            <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.6 }}>
+            <p style={{ color: "var(--prayer-muted-text)", fontSize: 12, lineHeight: 1.6 }}>
               {emptySub}
             </p>
           </div>
@@ -738,18 +738,18 @@ function PrayerPageContent() {
                         event.stopPropagation();
                         setActionMenuPrayerId(actionMenuPrayerId === p.id ? null : p.id);
                       }}
-                      style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--text3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                      style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--prayer-muted-text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                     >
                       <MoreHorizontal size={16} />
                     </button>
                     {actionMenuPrayerId === p.id && (
-                      <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 34, right: 0, minWidth: 132, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "0 12px 30px rgba(0,0,0,0.16)", zIndex: 4 }}>
+                      <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 34, right: 0, minWidth: 132, background: "var(--prayer-popover-surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "var(--shadow-popover)", zIndex: 4 }}>
                         {!p.is_answered && (
                           <button onClick={() => startEditPrayer(p)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--text2)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
                             <Pencil size={13} /> {c("prayer_edit")}
                           </button>
                         )}
-                        <button onClick={() => openDeletePrayer(p.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--danger, #B35C4A)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
+                        <button onClick={() => openDeletePrayer(p.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--prayer-danger-text)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
                           <Trash2 size={13} /> {c("prayer_delete")}
                         </button>
                       </div>
@@ -777,13 +777,13 @@ function PrayerPageContent() {
                         }}
                       />
                     ) : (
-                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(196,149,106,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--prayer-terra-chip-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <img src="/icon-pray.webp" alt="" style={{ width: 17, height: 17, objectFit: "contain" }} />
                       </div>
                     )}
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text2)", lineHeight: 1.2 }}>{profileName(p)}</p>
-                      <p style={{ fontSize: 10, color: "var(--text3)", lineHeight: 1.2 }}>{c("prayer_intercession_card_sub")}</p>
+                      <p style={{ fontSize: 10, color: "var(--prayer-muted-text)", lineHeight: 1.2 }}>{c("prayer_intercession_card_sub")}</p>
                     </div>
                   </div>
                 )}
@@ -791,10 +791,10 @@ function PrayerPageContent() {
                 {/* 응답 배지 */}
                 {p.is_answered && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingRight: tab !== "intercession" ? 34 : 0 }}>
-                    <CheckCircle size={14} style={{ color: "var(--terra-dark)" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--terra-dark)" }}>{c("prayer_answered_badge")}</span>
+                    <CheckCircle size={14} style={{ color: "var(--prayer-terra-text)" }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--prayer-terra-text)" }}>{c("prayer_answered_badge")}</span>
                     {p.answered_at && (
-                      <span style={{ fontSize: 10, color: "var(--text3)", marginLeft: "auto" }}>
+                      <span style={{ fontSize: 10, color: "var(--prayer-muted-text)", marginLeft: "auto" }}>
                         {new Date(p.answered_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
                       </span>
                     )}
@@ -804,7 +804,7 @@ function PrayerPageContent() {
                 {/* 중보기도 요청 중 */}
                 {isSharedPrayer(p) && !p.is_answered && tab !== "intercession" && (
                   <div style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: "var(--sage-dark)", background: "var(--sage-light)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(122,157,122,0.3)" }}>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: "var(--prayer-sage-text)", background: "var(--prayer-sage-surface)", padding: "3px 10px", borderRadius: 20, border: "1px solid var(--prayer-sage-border)" }}>
                       {c("prayer_intercession_badge", { count: p.prayer_count ?? 0 })}
                     </span>
                   </div>
@@ -812,7 +812,7 @@ function PrayerPageContent() {
 
                 {tab === "intercession" && !p.is_answered && (
                   <div style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--terra-dark)", background: "rgba(196,149,106,0.12)", padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(196,149,106,0.28)" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--prayer-terra-text)", background: "var(--prayer-terra-chip-surface)", padding: "3px 10px", borderRadius: 20, border: "1px solid var(--prayer-terra-border)" }}>
                       {c("prayer_intercession_praying_badge", { count: p.prayer_count ?? 0 })}
                     </span>
                   </div>
@@ -824,10 +824,10 @@ function PrayerPageContent() {
                     <textarea className="textarea-field" rows={3} value={editText}
                       onChange={e => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={saveEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--sage)", color: "var(--bg)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                      <button onClick={saveEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--prayer-sage-action)", color: "var(--prayer-on-sage-action)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                         <Check size={13} /> {c("prayer_save")}
                       </button>
-                      <button onClick={() => setEditId(null)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--bg3)", color: "var(--text3)", border: "1px solid var(--border)", cursor: "pointer", fontSize: 12 }}>
+                      <button onClick={() => setEditId(null)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--bg3)", color: "var(--prayer-muted-text)", border: "1px solid var(--border)", cursor: "pointer", fontSize: 12 }}>
                         <X size={13} /> {c("prayer_cancel")}
                       </button>
                     </div>
@@ -835,13 +835,13 @@ function PrayerPageContent() {
                 ) : (
                   <>
                     <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10, color: "var(--text)", paddingRight: tab !== "intercession" ? 34 : 0, whiteSpace: "pre-line", overflowWrap: "anywhere" }}>
-                      {p.content} {p.is_answered && tab !== "intercession" && <span style={{ fontSize: 10, color: "var(--text3)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
+                      {p.content} {p.is_answered && tab !== "intercession" && <span style={{ fontSize: 10, color: "var(--prayer-muted-text)" }}>({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})</span>}
                     </p>
 
                     {/* 간증 */}
                     {p.testimony && (
-                      <div style={{ background: "rgba(196,149,106,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, border: "1px solid rgba(196,149,106,0.2)" }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--terra-dark)", marginBottom: 4 }}>{c("prayer_testimony")}</p>
+                      <div style={{ background: "var(--prayer-terra-surface)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, border: "1px solid var(--prayer-terra-border-soft)" }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--prayer-terra-text)", marginBottom: 4 }}>{c("prayer_testimony")}</p>
                         <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.6, fontStyle: "italic" }}>"{p.testimony}"</p>
                       </div>
                     )}
@@ -851,17 +851,17 @@ function PrayerPageContent() {
                         {!p.is_answered && tab !== "intercession" && (
                           <>
                             <button onClick={() => openAnsweredPrayer(p.id)}
-                              style={{ fontSize: 10, color: "var(--terra-dark)", border: "1px solid rgba(196,149,106,0.4)", padding: "5px 10px", borderRadius: 20, background: "rgba(196,149,106,0.08)", cursor: "pointer" }}>
+                              style={{ fontSize: 10, color: "var(--prayer-terra-text)", border: "1px solid var(--prayer-terra-border-strong)", padding: "5px 10px", borderRadius: 20, background: "var(--prayer-terra-surface)", cursor: "pointer" }}>
                               {c("prayer_answered_cta")}
                             </button>
                             <button onClick={() => openIntercessionShare(p)}
-                              style={{ fontSize: 10, color: "var(--sage-dark)", border: "1px solid rgba(122,157,122,0.3)", padding: "5px 10px", borderRadius: 20, background: "var(--sage-light)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                              style={{ fontSize: 10, color: "var(--prayer-sage-text)", border: "1px solid var(--prayer-sage-border)", padding: "5px 10px", borderRadius: 20, background: "var(--prayer-sage-surface)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                               <Send size={10} /> {c(isSharedPrayer(p) ? "prayer_edit_intercession_share" : "prayer_request_intercession")}
                             </button>
                           </>
                         )}
                       </div>
-                      {!p.is_answered && <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                      {!p.is_answered && <span style={{ fontSize: 10, color: "var(--prayer-muted-text)" }}>
                         {new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
                       </span>}
                     </div>
@@ -875,13 +875,13 @@ function PrayerPageContent() {
 
 
       {pendingDeletePrayerId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 255, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 370, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "0 18px 52px rgba(0,0,0,0.25)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 255, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 370, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{c("prayer_delete_title")}</h2>
-            <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.7, marginBottom: 18 }}>{c("prayer_delete_msg")}</p>
+            <p style={{ fontSize: 13, color: "var(--prayer-muted-text)", lineHeight: 1.7, marginBottom: 18 }}>{c("prayer_delete_msg")}</p>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn-outline" onClick={() => setPendingDeletePrayerId(null)} disabled={deletingPrayer} style={{ flex: 1 }}>{c("prayer_cancel")}</button>
-              <button onClick={deletePrayer} disabled={deletingPrayer} style={{ flex: 1, padding: "12px", borderRadius: 14, border: "none", background: "var(--danger, #B35C4A)", color: "white", fontSize: 13, fontWeight: 800, cursor: deletingPrayer ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={deletePrayer} disabled={deletingPrayer} style={{ flex: 1, padding: "12px", borderRadius: 14, border: "none", background: "var(--prayer-danger-action)", color: "var(--prayer-on-danger-action)", fontSize: 13, fontWeight: 800, cursor: deletingPrayer ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {deletingPrayer ? <Loader2 size={16} className="spin" /> : c("prayer_delete_confirm")}
               </button>
             </div>
@@ -922,12 +922,12 @@ function PrayerPageContent() {
       )}
 
       {testimonyPrayerId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 45, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 45, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
               {c("prayer_share_answered_title")}
             </h2>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>
               {c("prayer_share_answered_desc")}
             </p>
             <textarea
@@ -941,7 +941,7 @@ function PrayerPageContent() {
               <button className="btn-outline" onClick={() => { setTestimonyPrayerId(null); setTestimonyText(""); }} style={{ flex: 1 }}>
                 {c("prayer_cancel")}
               </button>
-              <button className="btn-sage" onClick={saveAnsweredPrayer} disabled={savingTestimony || !testimonyText.trim()} style={{ flex: 1 }}>
+              <button className="btn-sage roots-prayer-action" onClick={saveAnsweredPrayer} disabled={savingTestimony || !testimonyText.trim()} style={{ flex: 1 }}>
                 {savingTestimony ? <Loader2 size={16} className="spin" /> : c("prayer_save_action")}
               </button>
             </div>
@@ -951,16 +951,16 @@ function PrayerPageContent() {
 
       {/* 기도 작성 폼 */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{c("prayer_write_title")}</h2>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>
+            <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>
             <textarea className="textarea-field" rows={4}
               placeholder={c("prayer_write_placeholder")}
               value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn-outline" onClick={() => setShowForm(false)} style={{ flex: 1 }}>{c("prayer_cancel")}</button>
-              <button className="btn-sage" onClick={openCreateSharePrompt} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
+              <button className="btn-sage roots-prayer-action" onClick={openCreateSharePrompt} disabled={saving || !newPrayer.trim()} style={{ flex: 1 }}>
                 {saving ? <Loader2 size={16} className="spin" /> : c("prayer_save_action")}
               </button>
             </div>
@@ -972,9 +972,9 @@ function PrayerPageContent() {
       {tab === "mine" && (
         <button
           onClick={() => setShowForm(true)}
-          style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--sage)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "0 4px 14px rgba(122,157,122,0.4)" }}
+          style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--prayer-sage-action)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "var(--prayer-fab-shadow)" }}
         >
-          <Plus size={22} style={{ color: "var(--bg)" }} />
+          <Plus size={22} style={{ color: "var(--prayer-on-sage-action)" }} />
         </button>
       )}
 
