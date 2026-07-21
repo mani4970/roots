@@ -1144,16 +1144,16 @@ export default function HomePage() {
   );
 
   return (
-    <div className="page fade-in">
+    <div className="page fade-in roots-home-phase1">
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
         </div>
       )}
 
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
-          <div style={{ width: "100%", maxWidth: 420, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
+          <div className="roots-elevation-sheet" style={{ width: "100%", maxWidth: 420, background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, paddingRight: 42 }}>
               <div style={{ width: "100%", minWidth: 0 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", lineHeight: 1.35, marginBottom: 6, overflowWrap: "break-word" }}>
@@ -1506,12 +1506,12 @@ export default function HomePage() {
               <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
             )}
             {showLangPicker && (
-              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150, boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
+              <div className="roots-elevation-popover" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150 }}>
                 {getLanguageOptions().map(opt => (
                   <button key={opt.code} onClick={async () => {
                     setShowLangPicker(false);
                     await setPreferredLang(opt.code);
-                  }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
+                  }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--surface-sage-selected)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 22 }}>{opt.flag}</span>
                     <span>{opt.nativeName}</span>
                     {lang === opt.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
@@ -1541,12 +1541,13 @@ export default function HomePage() {
           <button
             type="button"
             onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
-            className={todayDone.qt ? "card-sage" : "card"}
+            className={todayDone.qt ? "card-sage roots-elevation-card-sage" : "card roots-elevation-card"}
             style={{
               minHeight: 68,
               borderRadius: 18,
               padding: "9px 10px",
-              border: todayDone.qt ? "1px solid rgba(122,157,122,0.22)" : "1px solid var(--border)",
+              border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
+              background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-card)",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
@@ -1557,7 +1558,7 @@ export default function HomePage() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: todayDone.qt ? "rgba(122,157,122,0.16)" : "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <img src="/icon-qt.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
             </div>
             <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
@@ -1575,12 +1576,13 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => router.push("/prayer")}
-            className="card"
+            className="card roots-elevation-card"
             style={{
               minHeight: 68,
               borderRadius: 18,
               padding: "9px 10px",
               border: "1px solid var(--border)",
+              background: "var(--surface-card)",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
@@ -1591,7 +1593,7 @@ export default function HomePage() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <img src="/icon-pray.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
             </div>
             <div style={{ minWidth: 0, flex: 1, fontSize: 14, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
@@ -1602,15 +1604,15 @@ export default function HomePage() {
 
         {pendingCompanionRequestCount > 0 && (
           <div
+            className="roots-elevation-card-gold"
             style={{
               position: "relative",
               borderRadius: 20,
               padding: "18px 18px",
               marginTop: 10,
               minHeight: 104,
-              border: "1px solid rgba(213,166,83,0.34)",
-              background: "#FFF7E8",
-              boxShadow: "0 10px 22px rgba(88, 64, 28, 0.06)",
+              border: "1px solid var(--border-gold-soft)",
+              background: "var(--surface-gold-subtle)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1655,7 +1657,7 @@ export default function HomePage() {
                 padding: 0,
                 border: 0,
                 background: "transparent",
-                color: "#111827",
+                color: "var(--text-gold-strong)",
                 fontSize: 11,
                 fontWeight: 800,
                 cursor: "pointer",
@@ -1670,7 +1672,7 @@ export default function HomePage() {
 
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_verse_section", lang)}</div>
-        <div className="card-sage" style={{ borderRadius: 22, padding: 18 }}>
+        <div className="card-sage roots-elevation-card-sage" style={{ borderRadius: 22, padding: 18, background: "var(--surface-sage-subtle)", border: "1px solid var(--border-sage-soft)" }}>
           {todayVerse?.verse ? (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
@@ -1678,7 +1680,7 @@ export default function HomePage() {
                 {todayVerse?.verse_book && todayVerse?.verse_start_chapter && (
                   <button
                     onClick={openChapterPopup}
-                    style={{ border: "1px solid rgba(122,157,122,0.18)", background: "rgba(255,255,255,0.32)", color: "var(--sage-dark)", borderRadius: 999, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
+                    style={{ border: "1px solid var(--border-sage-soft)", background: "var(--surface-card)", color: "var(--sage-dark)", borderRadius: 999, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
                   >
                     {homeChapterText("open", lang)}
                   </button>
@@ -1769,13 +1771,14 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setShowNotificationSettingsModal(true)}
+            className="roots-elevation-card-gold"
             style={{
               minHeight: 42,
               borderRadius: 14,
               padding: "9px 10px",
-              background: "#FFF7E8",
-              border: "1px solid rgba(213,166,83,0.34)",
-              color: "#6F4E24",
+              background: "var(--surface-gold-subtle)",
+              border: "1px solid var(--border-gold-soft)",
+              color: "var(--text-gold-strong)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1784,7 +1787,6 @@ export default function HomePage() {
               fontWeight: 850,
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
-              boxShadow: "0 8px 18px rgba(88, 64, 28, 0.04)",
             }}
           >
             <Bell size={14} strokeWidth={2.4} />
@@ -1793,13 +1795,14 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => router.push("/companions")}
+            className="roots-elevation-card-gold"
             style={{
               minHeight: 42,
               borderRadius: 14,
               padding: "9px 10px",
-              background: "#FFF7E8",
-              border: "1px solid rgba(213,166,83,0.34)",
-              color: "#6F4E24",
+              background: "var(--surface-gold-subtle)",
+              border: "1px solid var(--border-gold-soft)",
+              color: "var(--text-gold-strong)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1808,7 +1811,6 @@ export default function HomePage() {
               fontWeight: 850,
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
-              boxShadow: "0 8px 18px rgba(88, 64, 28, 0.04)",
             }}
           >
             <Users size={14} strokeWidth={2.4} />
