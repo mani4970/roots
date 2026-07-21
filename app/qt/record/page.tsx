@@ -381,7 +381,7 @@ function RecordContent() {
   }
 
   if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text3)" }}>{t("qt_record_not_found", lang)}</p><BottomNav /></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text-muted-readable)" }}>{t("qt_record_not_found", lang)}</p><BottomNav /></div>;
 
   const isShared = sharedTargets.length > 0;
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
@@ -396,24 +396,24 @@ function RecordContent() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
+    <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
       {notice && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
+        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+          <div onClick={e => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
               <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
-            <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-gold-strong)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "var(--surface-gold-subtle)", borderRadius: 14, border: "1px solid var(--border-gold-soft)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "var(--gold-200)", color: "var(--gold-900)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("badge_thanks", lang)}
             </button>
           </div>
@@ -423,7 +423,7 @@ function RecordContent() {
         <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
         </button>
-        <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>
+        <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginBottom: 4 }}>
           {parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
@@ -484,13 +484,13 @@ function RecordContent() {
 
       {isPhotoRecord && (
         <div style={{ padding: "16px 16px 0" }}>
-          <div className="card">
+          <div className="card roots-elevation-card">
             {photoUrl ? (
               <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
                 <img src={photoUrl} alt="photo reflection" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
               </button>
             ) : (
-              <div style={{ padding: 28, textAlign: "center", color: "var(--text3)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
+              <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
             )}
             {(record.photo_caption || record.meditation) && (
               <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{record.photo_caption || record.meditation}</p>
@@ -508,8 +508,8 @@ function RecordContent() {
           const value = record[key];
           if (!value) return null;
           return (
-            <div key={key} className="card">
-              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
+            <div key={key} className={key === "key_verse" ? "card-sage roots-elevation-card-sage" : "card roots-elevation-card"}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
               {isDecision ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
