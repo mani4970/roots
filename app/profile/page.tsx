@@ -295,7 +295,11 @@ export default function ProfilePage() {
       }
 
       p.profile_avatar_mode = avatarPreference?.mode ?? "photo";
-      p.profile_photo_url = avatarPreference?.photo_url ?? (p.profile_avatar_mode === "photo" ? p.avatar_url : null);
+      // 캐릭터 프로필 사용 중에는 이전 사진을 복원 대상으로 보관하지 않습니다.
+      // 다시 사진을 사용하려면 상단 카메라 버튼에서 새 사진을 선택합니다.
+      p.profile_photo_url = p.profile_avatar_mode === "photo"
+        ? (avatarPreference?.photo_url ?? p.avatar_url)
+        : null;
       p.profile_character_signature = avatarPreference?.character_signature ?? null;
       // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
       if (p.avatar_url && !p.avatar_url.includes("?t=")) {
@@ -928,19 +932,17 @@ export default function ProfilePage() {
       avatarType,
       enabledItemIds,
     );
-    const preservedPhotoUrl = currentProfile.profile_photo_url
-      ?? (currentProfile.profile_avatar_mode === "character" ? null : currentProfile.avatar_url ?? null);
     const updates = {
       ...extraProfileUpdates,
       avatar_url: avatarUrl,
-      profile_photo_url: preservedPhotoUrl,
+      profile_photo_url: null,
       profile_avatar_mode: "character",
       profile_character_signature: signature,
     };
     await saveProfileAvatarDisplay(supabase, {
       mode: "character",
       effectiveAvatarUrl: avatarUrl,
-      photoUrl: preservedPhotoUrl,
+      photoUrl: null,
       characterSignature: signature,
       avatarType: extraProfileUpdates.avatar_type === "rootsman" || extraProfileUpdates.avatar_type === "rootswoman"
         ? extraProfileUpdates.avatar_type
@@ -950,40 +952,19 @@ export default function ProfilePage() {
     return true;
   }
 
-  async function toggleCharacterProfileAvatar() {
-    if (!profile?.id || savingProfileAvatar) return;
+  async function activateCharacterProfileAvatar() {
+    if (!profile?.id || profile.profile_avatar_mode === "character" || savingProfileAvatar) return;
     const text = getProfileAvatarText(lang);
     setSavingProfileAvatar(true);
     setPhotoError("");
     try {
-      if (profile.profile_avatar_mode === "character") {
-        await enqueueProfileAvatarTask(async () => {
-          const currentProfile = profileRef.current;
-          const restoredUrl = currentProfile?.profile_photo_url ?? null;
-          const updates = {
-            avatar_url: restoredUrl,
-            profile_avatar_mode: "photo",
-            profile_character_signature: null,
-          };
-          const supabase = createClient();
-          await saveProfileAvatarDisplay(supabase, {
-            mode: "photo",
-            effectiveAvatarUrl: restoredUrl,
-            photoUrl: restoredUrl,
-            characterSignature: null,
-          });
-          updateProfileState(updates);
-        });
-        showToast(profile.profile_photo_url ? text.photoRestored : text.defaultRestored);
-      } else {
-        await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
-          normalizeRootsAvatarType(profile.avatar_type),
-          ownedHeartShopItems,
-          {},
-          true,
-        ));
-        showToast(text.characterSaved);
-      }
+      await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
+        normalizeRootsAvatarType(profile.avatar_type),
+        ownedHeartShopItems,
+        {},
+        true,
+      ));
+      showToast(text.characterSaved);
     } catch (error) {
       console.error("캐릭터 프로필 지정 실패:", error);
       setPhotoError(text.saveFailed);
@@ -1551,11 +1532,6 @@ export default function ProfilePage() {
             </button>
           </div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
-            {isCharacterProfileAvatar && (
-              <div role="status" style={{ textAlign: "center", color: "var(--sage-dark)", fontSize: 10, lineHeight: 1.25, fontWeight: 900 }}>
-                ✓ {profileAvatarText.characterActiveLabel}
-              </div>
-            )}
             <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {getRootsAvatarChoiceText("change", lang)}
             </button>
@@ -1565,8 +1541,8 @@ export default function ProfilePage() {
             <button
               type="button"
               aria-pressed={isCharacterProfileAvatar}
-              onClick={() => void toggleCharacterProfileAvatar()}
-              disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto}
+              onClick={() => void activateCharacterProfileAvatar()}
+              disabled={isCharacterProfileAvatar || savingProfileAvatar || uploadingPhoto || resettingPhoto}
               style={{
                 width: "100%",
                 border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid rgba(122,157,122,0.42)",
@@ -1576,7 +1552,7 @@ export default function ProfilePage() {
                 padding: "10px 12px",
                 fontSize: 12,
                 fontWeight: 900,
-                cursor: savingProfileAvatar || uploadingPhoto || resettingPhoto ? "default" : "pointer",
+                cursor: isCharacterProfileAvatar || savingProfileAvatar || uploadingPhoto || resettingPhoto ? "default" : "pointer",
                 lineHeight: 1.25,
                 opacity: savingProfileAvatar || uploadingPhoto || resettingPhoto ? 0.65 : 1,
                 display: "flex",
@@ -1589,7 +1565,7 @@ export default function ProfilePage() {
               {savingProfileAvatar
                 ? profileAvatarText.savingLabel
                 : isCharacterProfileAvatar
-                  ? (profile?.profile_photo_url ? profileAvatarText.usePhotoButton : profileAvatarText.useDefaultButton)
+                  ? profileAvatarText.characterActiveLabel
                   : profileAvatarText.useCharacterButton}
             </button>
           </div>
