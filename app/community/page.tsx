@@ -5395,9 +5395,8 @@ function CommunityPageContent() {
           className="card"
           style={{
             padding: "15px 15px",
-            border: "1px solid rgba(122,157,122,0.24)",
-            background:
-              "linear-gradient(135deg, rgba(122,157,122,0.09), rgba(246,241,232,0.68))",
+            border: "1px solid var(--challenge-border)",
+            background: "var(--challenge-loading-surface)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -5435,9 +5434,8 @@ function CommunityPageContent() {
         className="card"
         style={{
           padding: "15px 15px 14px",
-          border: "1px solid rgba(122,157,122,0.24)",
-          background:
-            "linear-gradient(135deg, rgba(122,157,122,0.1), rgba(246,241,232,0.74))",
+          border: "1px solid var(--challenge-border)",
+          background: "var(--challenge-companion-surface)",
         }}
       >
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -5446,8 +5444,8 @@ function CommunityPageContent() {
               width: 54,
               height: 54,
               borderRadius: 18,
-              background: "rgba(232,197,71,0.14)",
-              border: "1px solid rgba(232,197,71,0.28)",
+              background: "var(--challenge-companion-badge-surface)",
+              border: "1px solid var(--challenge-companion-badge-border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -5476,7 +5474,7 @@ function CommunityPageContent() {
                 <p style={{ fontSize: 14, fontWeight: 900, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.35 }}>
                   {displayTitle}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text3)", margin: 0, fontWeight: 750 }}>
+                <p style={{ fontSize: 11, color: "var(--challenge-muted-text)", margin: 0, fontWeight: 750 }}>
                   {formatChallengeDate(status.startDate)} – {formatChallengeDate(status.endDate)}
                 </p>
               </div>
@@ -5485,8 +5483,8 @@ function CommunityPageContent() {
                   flexShrink: 0,
                   borderRadius: 999,
                   padding: "4px 8px",
-                  background: status.status === "active" ? "var(--sage-light)" : "var(--bg3)",
-                  color: status.status === "active" ? "var(--sage-dark)" : "var(--text3)",
+                  background: status.status === "active" ? "var(--challenge-status-active-surface)" : "var(--challenge-status-neutral-surface)",
+                  color: status.status === "active" ? "var(--challenge-status-active-text)" : "var(--challenge-status-neutral-text)",
                   fontSize: 10,
                   fontWeight: 850,
                 }}
@@ -5494,7 +5492,7 @@ function CommunityPageContent() {
                 {statusLabel}
               </span>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.55, margin: "9px 0 0" }}>
+            <p style={{ fontSize: 12, color: "var(--challenge-secondary-text)", lineHeight: 1.55, margin: "9px 0 0" }}>
               {text.cardDescription}
             </p>
           </div>
@@ -5502,18 +5500,18 @@ function CommunityPageContent() {
 
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-            <span style={{ fontSize: 11, fontWeight: 850, color: "var(--sage-dark)" }}>
+            <span style={{ fontSize: 11, fontWeight: 850, color: "var(--challenge-sage-text)" }}>
               {text.progressLabel} {status.pairCompletedDays} / {status.requiredDays}
             </span>
           </div>
-          <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "rgba(122,157,122,0.16)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${progressPercent}%`, borderRadius: 999, background: "var(--sage)" }} />
+          <div aria-hidden="true" style={{ height: 8, borderRadius: 999, background: "var(--challenge-progress-track)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${progressPercent}%`, borderRadius: 999, background: "var(--challenge-progress-fill)" }} />
           </div>
         </div>
 
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-          <p style={{ flex: "1 1 auto", fontSize: 11, color: "var(--terra-dark)", fontWeight: 800, margin: 0, lineHeight: 1.45 }}>
+          <p style={{ flex: "1 1 auto", fontSize: 11, color: "var(--challenge-reward-text)", fontWeight: 800, margin: 0, lineHeight: 1.45 }}>
             {status.awarded ? text.awardedLabel : text.rewardTeaser}
           </p>
           {status.canClaim && selectedPartner?.partner_id && (
@@ -5533,8 +5531,8 @@ function CommunityPageContent() {
                 border: "none",
                 borderRadius: 14,
                 padding: "9px 12px",
-                background: "var(--sage)",
-                color: "white",
+                background: "var(--challenge-action)",
+                color: "var(--challenge-on-action)",
                 fontSize: 11,
                 fontWeight: 900,
                 cursor: claimingCompanionChallenge ? "default" : "pointer",
@@ -6667,8 +6665,8 @@ function CommunityPageContent() {
                 <div
                   style={{
                     borderRadius: 20,
-                    border: "1px solid rgba(122,157,122,0.24)",
-                    background: "var(--bg2)",
+                    border: "1px solid var(--challenge-border)",
+                    background: "var(--challenge-section-surface)",
                     padding: "15px 15px 14px",
                     display: "flex",
                     flexDirection: "column",
@@ -6704,7 +6702,7 @@ function CommunityPageContent() {
                           style={{
                             fontSize: 12,
                             fontWeight: 500,
-                            color: "var(--text3)",
+                            color: "var(--challenge-muted-text)",
                             lineHeight: 1.45,
                           }}
                         >
@@ -6726,8 +6724,8 @@ function CommunityPageContent() {
                         key={challenge.id}
                         style={{
                           borderRadius: 17,
-                          border: "1px solid var(--border)",
-                          background: "rgba(255,255,255,0.62)",
+                          border: "1px solid var(--challenge-item-border)",
+                          background: "var(--challenge-item-surface)",
                           padding: "12px 13px",
                         }}
                       >
@@ -6743,8 +6741,8 @@ function CommunityPageContent() {
                               width: 62,
                               height: 62,
                               borderRadius: 18,
-                              background: "rgba(232,197,71,0.12)",
-                              border: "1px solid rgba(232,197,71,0.24)",
+                              background: "var(--challenge-group-badge-surface)",
+                              border: "1px solid var(--challenge-group-badge-border)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -6786,7 +6784,7 @@ function CommunityPageContent() {
                                 <p
                                   style={{
                                     fontSize: 11,
-                                    color: "var(--text3)",
+                                    color: "var(--challenge-muted-text)",
                                     margin: 0,
                                     fontWeight: 700,
                                   }}
@@ -6802,13 +6800,13 @@ function CommunityPageContent() {
                                   background:
                                     challengeDisplayStatus(challenge) ===
                                     "active"
-                                      ? "var(--sage-light)"
-                                      : "var(--bg3)",
+                                      ? "var(--challenge-status-active-surface)"
+                                      : "var(--challenge-status-neutral-surface)",
                                   color:
                                     challengeDisplayStatus(challenge) ===
                                     "active"
-                                      ? "var(--sage-dark)"
-                                      : "var(--text3)",
+                                      ? "var(--challenge-status-active-text)"
+                                      : "var(--challenge-status-neutral-text)",
                                   fontSize: 10,
                                   fontWeight: 850,
                                 }}
@@ -6819,7 +6817,7 @@ function CommunityPageContent() {
                             <p
                               style={{
                                 fontSize: 11,
-                                color: "var(--terra-dark)",
+                                color: "var(--challenge-reward-text)",
                                 fontWeight: 800,
                                 margin: "8px 0 0",
                                 lineHeight: 1.45,
@@ -6844,7 +6842,7 @@ function CommunityPageContent() {
                                 style={{
                                   fontSize: 11,
                                   fontWeight: 850,
-                                  color: "var(--sage-dark)",
+                                  color: "var(--challenge-sage-text)",
                                 }}
                               >
                                 {c("group_challenge_progress_day", {
@@ -6858,7 +6856,7 @@ function CommunityPageContent() {
                               style={{
                                 height: 8,
                                 borderRadius: 999,
-                                background: "rgba(122,157,122,0.16)",
+                                background: "var(--challenge-progress-track)",
                                 overflow: "hidden",
                               }}
                             >
@@ -6867,7 +6865,7 @@ function CommunityPageContent() {
                                   height: "100%",
                                   width: `${challengeProgressPercent(groupChallengeProgress[challenge.id])}%`,
                                   borderRadius: 999,
-                                  background: "var(--sage)",
+                                  background: "var(--challenge-progress-fill)",
                                 }}
                               />
                             </div>
@@ -6884,9 +6882,8 @@ function CommunityPageContent() {
                   <div
                     style={{
                       borderRadius: 20,
-                      border: "1px solid rgba(122,157,122,0.24)",
-                      background:
-                        "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))",
+                      border: "1px solid var(--challenge-border)",
+                      background: "var(--challenge-invite-surface)",
                       padding: "16px 15px",
                       display: "flex",
                       flexDirection: "column",
@@ -6909,7 +6906,7 @@ function CommunityPageContent() {
                         style={{
                           fontSize: 13,
                           fontWeight: 800,
-                          color: "var(--sage-dark)",
+                          color: "var(--challenge-sage-text)",
                           margin: 0,
                           lineHeight: 1.35,
                         }}
@@ -6924,7 +6921,7 @@ function CommunityPageContent() {
                     <p
                       style={{
                         fontSize: 12,
-                        color: "var(--text2)",
+                        color: "var(--challenge-secondary-text)",
                         lineHeight: 1.55,
                         margin: 0,
                       }}
@@ -6944,9 +6941,8 @@ function CommunityPageContent() {
                   <div
                     style={{
                       borderRadius: 20,
-                      border: "1px solid rgba(122,157,122,0.24)",
-                      background:
-                        "linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72))",
+                      border: "1px solid var(--challenge-border)",
+                      background: "var(--challenge-invite-surface)",
                       padding: "16px 15px",
                       display: "flex",
                       alignItems: "center",
@@ -6969,7 +6965,7 @@ function CommunityPageContent() {
                       <p
                         style={{
                           fontSize: 12,
-                          color: "var(--text2)",
+                          color: "var(--challenge-secondary-text)",
                           lineHeight: 1.55,
                           whiteSpace: "pre-line",
                           margin: 0,
@@ -6990,11 +6986,11 @@ function CommunityPageContent() {
                         background: hasActiveGroupChallengeRequest(
                           selectedGroup.id,
                         )
-                          ? "var(--bg3)"
-                          : "var(--sage)",
+                          ? "var(--challenge-disabled-surface)"
+                          : "var(--challenge-action)",
                         color: hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? "var(--text3)"
-                          : "white",
+                          ? "var(--challenge-disabled-text)"
+                          : "var(--challenge-on-action)",
                         padding: "11px 16px",
                         minWidth: 82,
                         fontSize: 12,
