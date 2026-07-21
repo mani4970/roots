@@ -124,6 +124,36 @@
   --profile-on-danger-action: #FFFFFF;
   --profile-toggle-knob: #FFFFFF;
 
+  /* Phase 2B-3: Companion and group challenge card roles. */
+  --challenge-loading-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.09), rgba(246,241,232,0.68));
+  --challenge-companion-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.10), rgba(246,241,232,0.74));
+  --challenge-invite-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.11), rgba(246,241,232,0.72));
+  --challenge-section-surface: var(--bg2);
+  --challenge-item-surface: rgba(255,255,255,0.62);
+  --challenge-border: rgba(122,157,122,0.24);
+  --challenge-item-border: var(--border);
+  --challenge-companion-badge-surface: rgba(232,197,71,0.14);
+  --challenge-companion-badge-border: rgba(232,197,71,0.28);
+  --challenge-group-badge-surface: rgba(232,197,71,0.12);
+  --challenge-group-badge-border: rgba(232,197,71,0.24);
+  --challenge-muted-text: var(--text3);
+  --challenge-secondary-text: var(--text2);
+  --challenge-sage-text: var(--sage-dark);
+  --challenge-reward-text: var(--terra-dark);
+  --challenge-status-active-surface: var(--sage-light);
+  --challenge-status-active-text: var(--sage-dark);
+  --challenge-status-neutral-surface: var(--bg3);
+  --challenge-status-neutral-text: var(--text3);
+  --challenge-progress-track: rgba(122,157,122,0.16);
+  --challenge-progress-fill: var(--sage);
+  --challenge-action: var(--sage);
+  --challenge-on-action: #FFFFFF;
+  --challenge-disabled-surface: var(--bg3);
+  --challenge-disabled-text: var(--text3);
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -235,6 +265,36 @@
   --profile-danger-action: #A83F47;
   --profile-on-danger-action: #FFFFFF;
   --profile-toggle-knob: #FFFFFF;
+
+  /* Phase 2B-3 dark counterparts remove light-only challenge surfaces. */
+  --challenge-loading-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.10), #24282E);
+  --challenge-companion-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.15), #24282E);
+  --challenge-invite-surface:
+    linear-gradient(135deg, rgba(122,157,122,0.14), #24282E);
+  --challenge-section-surface: var(--surface-card);
+  --challenge-item-surface: var(--surface-card-muted);
+  --challenge-border: var(--border-sage-soft);
+  --challenge-item-border: #3C424B;
+  --challenge-companion-badge-surface: var(--surface-gold-subtle);
+  --challenge-companion-badge-border: var(--border-gold-soft);
+  --challenge-group-badge-surface: var(--surface-gold-subtle);
+  --challenge-group-badge-border: var(--border-gold-soft);
+  --challenge-muted-text: var(--text-muted-readable);
+  --challenge-secondary-text: var(--text2);
+  --challenge-sage-text: var(--sage-dark);
+  --challenge-reward-text: var(--terra-dark);
+  --challenge-status-active-surface: var(--surface-sage-selected);
+  --challenge-status-active-text: var(--sage-dark);
+  --challenge-status-neutral-surface: #30343A;
+  --challenge-status-neutral-text: var(--text-muted-readable);
+  --challenge-progress-track: #344537;
+  --challenge-progress-fill: var(--sage-action);
+  --challenge-action: var(--sage-action);
+  --challenge-on-action: var(--on-sage-action);
+  --challenge-disabled-surface: var(--surface-card-muted);
+  --challenge-disabled-text: var(--text-muted-readable);
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
