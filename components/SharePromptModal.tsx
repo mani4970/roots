@@ -90,7 +90,7 @@ export default function SharePromptModal({
         key={partner.id}
         onClick={() => onToggleTarget(target)}
         disabled={saving}
-        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
       >
         {partner.avatar_url ? (
           <img
@@ -99,10 +99,10 @@ export default function SharePromptModal({
             decoding="async"
             draggable={false}
             onContextMenu={(e) => e.preventDefault()}
-            style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, flexShrink: 0, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+            style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, flexShrink: 0, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
           />
         ) : (
-          <div style={{ width: 28, height: 28, borderRadius: "50%", background: selected ? "var(--sage-light)" : "var(--bg)", border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: selected ? "var(--surface-sage-subtle)" : "var(--bg)", border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <UserRound size={16} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)" }} />
           </div>
         )}
@@ -110,8 +110,8 @@ export default function SharePromptModal({
           <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partner.name}</p>
           <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{partnerSubLabel}</p>
         </div>
-        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {selected && <Check size={12} style={{ color: "white" }} />}
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {selected && <Check size={12} style={{ color: "var(--on-sage-action)" }} />}
         </div>
       </button>
     );
@@ -125,15 +125,15 @@ export default function SharePromptModal({
         key={group.id}
         onClick={() => onToggleTarget(target)}
         disabled={saving}
-        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
       >
         <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
           <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
         </div>
-        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage)" : "var(--border)"}`, background: selected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {selected && <Check size={12} style={{ color: "white" }} />}
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {selected && <Check size={12} style={{ color: "var(--on-sage-action)" }} />}
         </div>
       </button>
     );
@@ -174,15 +174,15 @@ export default function SharePromptModal({
       <button
         onClick={() => onToggleTarget("all")}
         disabled={saving}
-        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage-light)" : "var(--bg3)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${allSelected ? "var(--border-sage-strong)" : "var(--border)"}`, background: allSelected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
       >
         <Globe size={20} style={{ color: allSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: allSelected ? "var(--sage-dark)" : "var(--text)" }}>{allLabel}</p>
           <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2, lineHeight: 1.45 }}>{allSubLabel}</p>
         </div>
-        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${allSelected ? "var(--sage)" : "var(--border)"}`, background: allSelected ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {allSelected && <Check size={12} style={{ color: "white" }} />}
+        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${allSelected ? "var(--sage-action)" : "var(--border)"}`, background: allSelected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {allSelected && <Check size={12} style={{ color: "var(--on-sage-action)" }} />}
         </div>
       </button>
     );
@@ -190,10 +190,13 @@ export default function SharePromptModal({
 
   return (
     <div
+      className="share-prompt-modal"
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.75)",
+        background: "var(--overlay-modal)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
         zIndex: 280,
         display: "flex",
         alignItems: "center",
@@ -204,8 +207,9 @@ export default function SharePromptModal({
       }}
     >
       <div
+        className="roots-elevation-modal"
         style={{
-          background: "var(--bg2)",
+          background: "var(--surface-card)",
           width: "100%",
           maxWidth: 480,
           borderRadius: 26,
@@ -214,7 +218,6 @@ export default function SharePromptModal({
           maxHeight: "min(720px, calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 18px 52px rgba(0,0,0,0.28)",
           overflow: "hidden",
         }}
       >
@@ -247,7 +250,7 @@ export default function SharePromptModal({
                 <p style={sectionTitleStyle}>{partnersLabel}</p>
                 <div style={scrollAreaStyle}>
                   {partners.length > 0 ? partners.map(renderPartnerOption) : (
-                    <div style={{ border: "1px dashed var(--border)", background: "var(--bg3)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
+                    <div style={{ border: "1px dashed var(--border)", background: "var(--surface-card-muted)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
                       <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{noPartnersLabel}</p>
                       {onInvitePartners && invitePartnersLabel && (
                         <button
@@ -286,7 +289,7 @@ export default function SharePromptModal({
           )}
         </div>
 
-        <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--bg2)" }}>
+        <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--surface-card)" }}>
           {selectedTargets.length > 0 && (
             <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 700 }}>{selectedCountLabel}</p>
           )}

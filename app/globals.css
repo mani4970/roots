@@ -8,24 +8,91 @@
   --bottom-nav-safe-extra: max(0px, var(--safe-area-bottom));
   --bottom-nav-bottom-padding: max(8px, var(--bottom-nav-safe-extra));
   --roots-page-top-padding: 56px;
+
+  /* Roots color scale — fixed HEX values, no OKLCH/runtime color mixing. */
+  --warm-0: #FFFFFF;
+  --warm-50: #FAF6F0;
+  --warm-100: #F0EBE3;
+  --warm-200: #E0D8CC;
+  --warm-500: #8B7D6B;
+  --warm-700: #5A5A56;
+  --warm-900: #2C2C2A;
+  --sage-50: #F4F8F3;
+  --sage-100: #E8F0E8;
+  --sage-200: #D4E3D4;
+  --sage-500: #6B8F6B;
+  --sage-600: #5B7D5B;
+  --sage-700: #4A6F4A;
+  --sage-900: #2F4A32;
+  --terra-50: #FBF7F3;
+  --terra-100: #F5EDE4;
+  --terra-200: #E8D7C6;
+  --terra-500: #B07D4F;
+  --terra-700: #8B6340;
+  --terra-900: #5D422D;
+  --gold-50: #FFF7E8;
+  --gold-100: #FDEEC8;
+  --gold-200: #F4D991;
+  --gold-500: #D5A653;
+  --gold-700: #8F641F;
+  --gold-900: #5F4219;
+
   /* 라이트 모드 (기본) — 따뜻한 베이지 톤 */
-  --bg: #FAF6F0;
-  --bg2: #FFFFFF;
-  --bg3: #F0EBE3;
-  --sage: #6B8F6B;
-  --sage-light: #E8F0E8;
-  --sage-dark: #4A6F4A;
-  --terra: #B07D4F;
-  --terra-light: #F5EDE4;
-  --terra-dark: #8B6340;
-  --text: #2C2C2A;
-  --text2: #5A5A56;
+  --bg: var(--warm-50);
+  --bg2: var(--warm-0);
+  --bg3: var(--warm-100);
+  --sage: var(--sage-500);
+  --sage-light: var(--sage-100);
+  --sage-dark: var(--sage-700);
+  --terra: var(--terra-500);
+  --terra-light: var(--terra-100);
+  --terra-dark: var(--terra-700);
+  --text: var(--warm-900);
+  --text2: var(--warm-700);
   --text3: #9A9A94;
-  --white: #FFFFFF;
-  --border: #E0D8CC;
-  --beige: #8B7D6B;
-  --beige-light: #F5EDE4;
-  --html-bg: #F0EBE3;
+  --white: var(--warm-0);
+  --border: var(--warm-200);
+  --beige: var(--warm-500);
+  --beige-light: var(--terra-100);
+  --html-bg: var(--warm-100);
+
+  /* Phase 1 semantic surfaces and accessible actions. */
+  --surface-card: var(--warm-0);
+  --surface-card-muted: var(--warm-100);
+  --surface-sage-subtle: var(--sage-50);
+  --surface-sage-selected: var(--sage-100);
+  --surface-gold-subtle: var(--gold-50);
+  --border-sage-soft: var(--sage-200);
+  --border-sage-strong: var(--sage-500);
+  --border-gold-soft: var(--gold-200);
+  --text-gold-strong: var(--gold-700);
+  --sage-action: var(--sage-600);
+  --on-sage-action: var(--warm-0);
+  --overlay-sheet: rgba(37, 32, 27, 0.62);
+  --overlay-modal: rgba(37, 32, 27, 0.68);
+
+  /* Two-layer elevation: contact shadow + soft ambient shadow. */
+  --shadow-card:
+    0 1px 2px rgba(63, 54, 44, 0.06),
+    0 8px 24px rgba(63, 54, 44, 0.05);
+  --shadow-card-sage:
+    0 1px 2px rgba(63, 54, 44, 0.05),
+    0 10px 26px rgba(74, 111, 74, 0.10);
+  --shadow-card-gold:
+    0 1px 2px rgba(63, 54, 44, 0.05),
+    0 10px 26px rgba(143, 100, 31, 0.09);
+  --shadow-popover:
+    0 2px 6px rgba(63, 54, 44, 0.09),
+    0 14px 34px rgba(63, 54, 44, 0.13);
+  --shadow-toast:
+    0 1px 3px rgba(63, 54, 44, 0.08),
+    0 10px 28px rgba(63, 54, 44, 0.12);
+  --shadow-sheet:
+    0 2px 8px rgba(63, 54, 44, 0.08),
+    0 22px 56px rgba(63, 54, 44, 0.16);
+  --shadow-modal:
+    0 2px 8px rgba(63, 54, 44, 0.10),
+    0 26px 70px rgba(63, 54, 44, 0.18);
 }
 
 /* 다크 모드 */
@@ -47,6 +114,42 @@
   --beige: #D4C5A9;
   --beige-light: #2E2820;
   --html-bg: #111315;
+
+  /* Dark-mode counterparts preserve the same semantic roles. */
+  --surface-card: #22252A;
+  --surface-card-muted: #2A2E34;
+  --surface-sage-subtle: #232D25;
+  --surface-sage-selected: #2A3A2A;
+  --surface-gold-subtle: #332A1E;
+  --border-sage-soft: #3D5540;
+  --border-sage-strong: #7A9D7A;
+  --border-gold-soft: #5B4727;
+  --text-gold-strong: #F4D991;
+  --sage-action: #A8C8A8;
+  --on-sage-action: #1A1C1E;
+  --overlay-sheet: rgba(0, 0, 0, 0.72);
+  --overlay-modal: rgba(0, 0, 0, 0.78);
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 10px 26px rgba(0, 0, 0, 0.18);
+  --shadow-card-sage:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 10px 28px rgba(35, 70, 39, 0.28);
+  --shadow-card-gold:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 10px 28px rgba(93, 66, 25, 0.26);
+  --shadow-popover:
+    0 2px 6px rgba(0, 0, 0, 0.30),
+    0 16px 38px rgba(0, 0, 0, 0.34);
+  --shadow-toast:
+    0 1px 3px rgba(0, 0, 0, 0.30),
+    0 12px 30px rgba(0, 0, 0, 0.32);
+  --shadow-sheet:
+    0 2px 8px rgba(0, 0, 0, 0.30),
+    0 24px 60px rgba(0, 0, 0, 0.42);
+  --shadow-modal:
+    0 2px 8px rgba(0, 0, 0, 0.34),
+    0 28px 74px rgba(0, 0, 0, 0.48);
 }
 
 html { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--html-bg); }
@@ -81,6 +184,24 @@ a { text-decoration: none; color: inherit; }
 .card-sage { background: var(--sage-light); border: 1px solid rgba(122,157,122,0.3); border-radius: 18px; padding: 16px; }
 .card-terra { background: var(--terra-light); border: 1px solid rgba(196,149,106,0.3); border-radius: 18px; padding: 16px; }
 .card-beige { background: var(--beige-light); border: 1px solid rgba(212,197,169,0.2); border-radius: 18px; padding: 16px; }
+
+/* Phase 1 elevation utilities are opt-in so existing screens stay unchanged. */
+.roots-elevation-card { box-shadow: var(--shadow-card); }
+.roots-elevation-card-sage { box-shadow: var(--shadow-card-sage); }
+.roots-elevation-card-gold { box-shadow: var(--shadow-card-gold); }
+.roots-elevation-popover { box-shadow: var(--shadow-popover); }
+.roots-elevation-toast { box-shadow: var(--shadow-toast); }
+.roots-elevation-sheet { box-shadow: var(--shadow-sheet); }
+.roots-elevation-modal { box-shadow: var(--shadow-modal); }
+
+/* Accessible Sage actions are scoped to the two Phase 1 pilot surfaces. */
+.roots-home-phase1 .btn-primary,
+.roots-home-phase1 .btn-sage,
+.share-prompt-modal .btn-primary,
+.share-prompt-modal .btn-sage {
+  background: var(--sage-action);
+  color: var(--on-sage-action);
+}
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
 .page { min-height: 100vh; background: var(--bg); padding-bottom: calc(82px + var(--bottom-nav-bottom-padding)); }
