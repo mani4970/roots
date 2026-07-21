@@ -1144,9 +1144,9 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="page" style={{ paddingBottom: 80 }}>
+    <div className="page roots-profile-phase2b2" style={{ paddingBottom: 80 }}>
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--profile-modal-surface)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "var(--shadow-toast)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
         </div>
       )}
@@ -1183,11 +1183,11 @@ export default function ProfilePage() {
       {showBadgeGallery && (
         <div
           onClick={() => setShowBadgeGallery(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 250, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 250, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
               onClick={() => setShowBadgeGallery(false)}
@@ -1198,7 +1198,7 @@ export default function ProfilePage() {
             </button>
             <div style={{ paddingRight: 36, marginBottom: 16 }}>
               <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 6 }}>{t("profile_badge_gallery_title", lang)}</h3>
-              <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.55 }}>{t("profile_badge_gallery_sub", lang)}</p>
+              <p style={{ fontSize: 12, color: "var(--profile-muted-text)", lineHeight: 1.55 }}>{t("profile_badge_gallery_sub", lang)}</p>
             </div>
 
             <div className="sec-label" style={{ marginBottom: 10 }}>
@@ -1217,7 +1217,7 @@ export default function ProfilePage() {
                     <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
                       <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                     </div>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                     <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
                   </button>
                 );
@@ -1231,11 +1231,11 @@ export default function ProfilePage() {
       {showGroupChallengeBadgeGallery && (
         <div
           onClick={() => setShowGroupChallengeBadgeGallery(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 250, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 250, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
               onClick={() => setShowGroupChallengeBadgeGallery(false)}
@@ -1290,11 +1290,11 @@ export default function ProfilePage() {
       {selectedBadge && (
         <div
           onClick={() => setSelectedBadge(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 340, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
               onClick={() => setSelectedBadge(null)}
@@ -1312,7 +1312,7 @@ export default function ProfilePage() {
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
             <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 12 }}>{selectedBadge.desc}</p>
-            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, padding: "7px 12px", background: selectedBadge.earned ? "rgba(232,197,71,0.14)" : "var(--bg3)", border: selectedBadge.earned ? "1px solid rgba(232,197,71,0.32)" : "1px solid var(--border)", color: selectedBadge.earned ? "rgba(232,197,71,0.95)" : "var(--text3)", fontSize: 11, fontWeight: 800 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, padding: "7px 12px", background: selectedBadge.earned ? "var(--profile-gold-surface)" : "var(--profile-card-muted-surface)", border: selectedBadge.earned ? "1px solid var(--profile-gold-border)" : "1px solid var(--border)", color: selectedBadge.earned ? "var(--profile-gold-text)" : "var(--profile-muted-text)", fontSize: 11, fontWeight: 800 }}>
               {selectedBadge.earned ? t("profile_badge_earned", lang) : lang === "ko" ? "아직 미획득" : lang === "de" ? "Noch nicht erhalten" : lang === "fr" ? "Pas encore obtenu" : "Not earned yet"}
             </div>
           </div>
@@ -1322,11 +1322,11 @@ export default function ProfilePage() {
       {selectedGroupChallengeBadge && (
         <div
           onClick={() => setSelectedGroupChallengeBadge(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 340, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
               onClick={() => setSelectedGroupChallengeBadge(null)}
@@ -1351,12 +1351,12 @@ export default function ProfilePage() {
               {selectedGroupChallengeBadge.badgeName || t("profile_group_challenge_badge_detail_title", lang)}
             </h3>
             <div style={{ display: "grid", gap: 8, textAlign: "left", marginBottom: 16 }}>
-              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_challenge", lang)}</div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_challenge", lang)}</div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedGroupChallengeBadge.title}</div>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_group", lang)}</div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{t("profile_group_challenge_badge_detail_group", lang)}</div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedGroupChallengeBadge.groupName}</div>
               </div>
             </div>
@@ -1370,11 +1370,11 @@ export default function ProfilePage() {
       {selectedCompanionChallengeBadge && (
         <div
           onClick={() => setSelectedCompanionChallengeBadge(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 340, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", position: "relative" }}
+            style={{ width: "100%", maxWidth: 340, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
               onClick={() => setSelectedCompanionChallengeBadge(null)}
@@ -1394,17 +1394,17 @@ export default function ProfilePage() {
               {selectedCompanionChallengeBadge.badgeName || companionChallengeText.sectionTitle}
             </h3>
             <div style={{ display: "grid", gap: 8, textAlign: "left", marginBottom: 16 }}>
-              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.sectionTitle}</div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{companionChallengeText.sectionTitle}</div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.title}</div>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.partnerStatusLabel}</div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{companionChallengeText.partnerStatusLabel}</div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.companionName}</div>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: 14, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.22)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--text3)", marginBottom: 3 }}>{companionChallengeText.heartsLabel}</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "rgba(189,139,30,0.98)", lineHeight: 1.35 }}>💛 +{selectedCompanionChallengeBadge.heartsAwarded}</div>
+              <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)" }}>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{companionChallengeText.heartsLabel}</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "var(--profile-gold-text)", lineHeight: 1.35 }}>💛 +{selectedCompanionChallengeBadge.heartsAwarded}</div>
               </div>
             </div>
             <button onClick={() => setSelectedCompanionChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
@@ -1469,12 +1469,12 @@ export default function ProfilePage() {
               </h1>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
-              <span aria-label="Love Hearts" style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "rgba(232,197,71,0.12)", border: "1px solid rgba(232,197,71,0.26)", color: "rgba(232,197,71,0.98)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
+              <span style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
+              <span aria-label="Love Hearts" style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
                 💛 +{loveHeartBalance}
               </span>
             </div>
-            {photoError && <p style={{ fontSize: 11, color: "#E05050", marginTop: 4 }}>{photoError}</p>}
+            {photoError && <p style={{ fontSize: 11, color: "var(--profile-danger-text)", marginTop: 4 }}>{photoError}</p>}
           </div>
         </div>
       </div>
@@ -1497,7 +1497,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: "var(--text3)" }}>{s.label}</div>
+              <div style={{ fontSize: 10, color: "var(--profile-muted-text)" }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1532,10 +1532,10 @@ export default function ProfilePage() {
             </button>
           </div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
-            <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage)", color: "var(--bg)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+            <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage-action)", color: "var(--on-sage-action)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {getRootsAvatarChoiceText("change", lang)}
             </button>
-            <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid rgba(232,197,71,0.38)", borderRadius: 999, background: "rgba(255,248,218,0.82)", color: "rgba(157,105,24,0.98)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+            <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid var(--profile-gold-button-border)", borderRadius: 999, background: "var(--profile-gold-button-surface)", color: "var(--profile-gold-button-text)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {heartShopText.openButton}
             </button>
             <button
@@ -1545,10 +1545,10 @@ export default function ProfilePage() {
               disabled={isCharacterProfileAvatar || savingProfileAvatar || uploadingPhoto || resettingPhoto}
               style={{
                 width: "100%",
-                border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid rgba(122,157,122,0.42)",
+                border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid var(--profile-sage-notice-border)",
                 borderRadius: 999,
-                background: isCharacterProfileAvatar ? "var(--bg3)" : "rgba(122,157,122,0.12)",
-                color: "var(--sage-dark)",
+                background: isCharacterProfileAvatar ? "var(--profile-card-muted-surface)" : "var(--profile-sage-notice-surface)",
+                color: "var(--profile-sage-notice-text)",
                 padding: "10px 12px",
                 fontSize: 12,
                 fontWeight: 900,
@@ -1600,7 +1600,7 @@ export default function ProfilePage() {
                   <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
                     <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
                 </button>
               );
@@ -1694,15 +1694,15 @@ export default function ProfilePage() {
                   <div style={{ width: 68, height: 68, marginBottom: 6, transition: "transform 160ms ease, opacity 160ms ease" }}>
                     <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY, transform: earned ? "none" : `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "rgba(232,197,71,0.95)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>
-                  {earned && <div style={{ fontSize: 8, color: "rgba(232,197,71,0.7)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
+                  {earned && <div style={{ fontSize: 8, color: "var(--profile-gold-text)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                 </button>
               );
             })}
           </div>
           {earnedSpiritFruitCount === 0 && (
-            <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", marginTop: 14 }}>
+            <p style={{ fontSize: 12, color: "var(--profile-muted-text)", textAlign: "center", marginTop: 14 }}>
               {t("profile_spirit_fruit_first_hint", lang)}
             </p>
           )}
@@ -1811,8 +1811,8 @@ export default function ProfilePage() {
 
       {/* 프로필 사진 관리 메뉴 */}
       {showPhotoMenu && (
-        <div onClick={() => setShowPhotoMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 92px" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 390, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "18px 16px 14px", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+        <div onClick={() => setShowPhotoMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 92px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 390, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 24, padding: "18px 16px 14px", boxShadow: "var(--shadow-sheet)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{t("profile_photo_menu_title", lang)}</h3>
               <button onClick={() => setShowPhotoMenu(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
@@ -1825,7 +1825,7 @@ export default function ProfilePage() {
                 await chooseProfilePhoto();
               }}
               disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar}
-              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--profile-sage-notice-surface)", border: "1px solid var(--profile-sage-notice-border)", color: "var(--profile-sage-notice-text)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               {uploadingPhoto ? <Loader2 size={14} className="spin" /> : <Camera size={15} />}
               {t("profile_photo_select", lang)}
@@ -1850,12 +1850,12 @@ export default function ProfilePage() {
 
       {/* 계정 설정 모달 */}
       {showSettingsModal && (
-        <div onClick={() => setShowSettingsModal(false)} style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "22px 18px 18px", width: "100%", maxWidth: 390, boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+        <div onClick={() => setShowSettingsModal(false)} style={{ position: "fixed", inset: 0, zIndex: 110, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--profile-modal-surface)", borderRadius: 24, border: "1px solid var(--border)", padding: "22px 18px 18px", width: "100%", maxWidth: 390, boxShadow: "var(--shadow-modal)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{t("profile_account_settings", lang)}</h3>
-                <p style={{ fontSize: 11, color: "var(--text3)" }}>{userEmail}</p>
+                <p style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{userEmail}</p>
               </div>
               <button onClick={() => setShowSettingsModal(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)" }}>
                 <X size={15} />
@@ -1874,7 +1874,7 @@ export default function ProfilePage() {
               <button
                 onClick={async () => { await saveName(); setShowSettingsModal(false); }}
                 disabled={savingName || !newName.trim()}
-                style={{ padding: "11px 13px", background: "var(--sage)", border: "none", borderRadius: 12, color: "var(--bg)", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: !newName.trim() ? 0.55 : 1 }}
+                style={{ padding: "11px 13px", background: "var(--sage-action)", border: "none", borderRadius: 12, color: "var(--on-sage-action)", fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: !newName.trim() ? 0.55 : 1 }}
               >
                 {savingName ? <Loader2 size={13} className="spin" /> : t("profile_save", lang)}
               </button>
@@ -1882,7 +1882,7 @@ export default function ProfilePage() {
 
             <button
               onClick={() => setShowNotificationSettingsModal(true)}
-              style={{ width: "100%", padding: "13px 14px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
+              style={{ width: "100%", padding: "13px 14px", background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
             >
               <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
                 <span style={{ width: 30, height: 30, borderRadius: 12, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1890,7 +1890,7 @@ export default function ProfilePage() {
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("notifications_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45 }}>{t("notifications_settings_hint", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)", lineHeight: 1.45 }}>{t("notifications_settings_hint", lang)}</p>
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
@@ -1898,7 +1898,7 @@ export default function ProfilePage() {
 
             <button
               onClick={() => { setShowSettingsModal(false); router.push("/companions"); }}
-              style={{ width: "100%", padding: "13px 14px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
+              style={{ width: "100%", padding: "13px 14px", background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
             >
               <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
                 <span style={{ width: 30, height: 30, borderRadius: 12, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1906,7 +1906,7 @@ export default function ProfilePage() {
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("companions_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45 }}>{t("companions_profile_settings_hint", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)", lineHeight: 1.45 }}>{t("companions_profile_settings_hint", lang)}</p>
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
@@ -1915,11 +1915,11 @@ export default function ProfilePage() {
             <button
               onClick={sendPasswordResetEmail}
               disabled={sendingPasswordReset}
-              style={{ width: "100%", padding: "13px 14px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
+              style={{ width: "100%", padding: "13px 14px", background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", marginBottom: 10, textAlign: "left" }}
             >
               <div>
                 <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t("profile_change_password", lang)}</p>
-                <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_password_email_hint", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_password_email_hint", lang)}</p>
               </div>
               {sendingPasswordReset ? <Loader2 size={15} className="spin" style={{ color: "var(--sage)" }} /> : <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>}
             </button>
@@ -1927,24 +1927,24 @@ export default function ProfilePage() {
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                style={{ width: "100%", padding: "13px 14px", background: "transparent", border: "1px solid rgba(224,80,80,0.34)", borderRadius: 14, color: "#E05050", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
+                style={{ width: "100%", padding: "13px 14px", background: "transparent", border: "1px solid var(--profile-danger-border)", borderRadius: 14, color: "var(--profile-danger-text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
               >
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("profile_delete", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>{t("profile_delete_hint", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_delete_hint", lang)}</p>
                 </div>
-                <span style={{ fontSize: 18, color: "#E05050" }}>›</span>
+                <span style={{ fontSize: 18, color: "var(--profile-danger-text)" }}>›</span>
               </button>
             ) : (
-              <div style={{ padding: "13px 14px", background: "rgba(224,80,80,0.06)", border: "1px solid rgba(224,80,80,0.26)", borderRadius: 14 }}>
-                <p style={{ fontSize: 12, color: "#E05050", marginBottom: 10, lineHeight: 1.6 }}>
+              <div style={{ padding: "13px 14px", background: "var(--profile-danger-surface)", border: "1px solid var(--profile-danger-border)", borderRadius: 14 }}>
+                <p style={{ fontSize: 12, color: "var(--profile-danger-text)", marginBottom: 10, lineHeight: 1.6 }}>
                   {t("profile_delete_confirm", lang)}
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: "10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
                     {t("profile_delete_cancel", lang)}
                   </button>
-                  <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "#E05050", border: "none", borderRadius: 10, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  <button onClick={deleteAccount} disabled={deletingAccount} style={{ flex: 1, padding: "10px", background: "var(--profile-danger-action)", border: "none", borderRadius: 10, color: "var(--profile-on-danger-action)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                     {deletingAccount ? t("profile_deleting", lang) : t("profile_delete_confirm_btn", lang)}
                   </button>
                 </div>
@@ -1963,10 +1963,10 @@ export default function ProfilePage() {
 
       {/* 피드백 모달 */}
       {showFeedbackModal && (
-        <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400 }}>
+        <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--profile-modal-surface)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400, boxShadow: "var(--shadow-sheet)" }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("profile_feedback_title", lang)}</h3>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 14, lineHeight: 1.6 }}>{t("profile_feedback_sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--profile-muted-text)", marginBottom: 14, lineHeight: 1.6 }}>{t("profile_feedback_sub", lang)}</p>
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
@@ -1974,7 +1974,7 @@ export default function ProfilePage() {
               rows={4}
               style={{ width: "100%", padding: "12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 13, resize: "none", outline: "none", boxSizing: "border-box" }}
             />
-            <button onClick={sendFeedback} disabled={!feedbackText.trim() || sendingFeedback} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
+            <button onClick={sendFeedback} disabled={!feedbackText.trim() || sendingFeedback} style={{ width: "100%", padding: "12px", background: "var(--sage-action)", color: "var(--on-sage-action)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
               {sendingFeedback ? t("profile_feedback_sending", lang) : t("profile_feedback_send", lang)}
             </button>
 
