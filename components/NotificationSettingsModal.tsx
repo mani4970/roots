@@ -45,7 +45,7 @@ function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onC
         boxSizing: "border-box",
         borderRadius: 999,
         border: "none",
-        background: checked ? "var(--sage)" : "var(--bg3)",
+        background: checked ? "var(--sage-action)" : "var(--profile-card-muted-surface)",
         padding: 3,
         display: "flex",
         alignItems: "center",
@@ -55,7 +55,7 @@ function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onC
         transition: "all .18s ease",
       }}
     >
-      <span style={{ width: 22, height: 22, flex: "0 0 22px", borderRadius: "50%", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }} />
+      <span style={{ width: 22, height: 22, flex: "0 0 22px", borderRadius: "50%", background: "var(--profile-toggle-knob)", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }} />
     </button>
   );
 }
@@ -82,12 +82,12 @@ function TimeRow({
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{title}</p>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{description}</p>
+          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{description}</p>
         </div>
         <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} />
       </div>
-      <label style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 12, background: "var(--bg3)", border: "1px solid var(--border)", opacity: disabled || !enabled ? 0.6 : 1 }}>
-        <Clock size={14} style={{ color: "var(--sage)" }} />
+      <label style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 12, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", opacity: disabled || !enabled ? 0.6 : 1 }}>
+        <Clock size={14} style={{ color: "var(--profile-sage-notice-text)" }} />
         <input
           type="time"
           value={time}
@@ -118,7 +118,7 @@ function ToggleRow({
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{title}</p>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{description}</p>
+          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{description}</p>
         </div>
         <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} />
       </div>
@@ -217,16 +217,16 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   }
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 180, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-      <div onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 410, maxHeight: "calc(100vh - 72px)", overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 18px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 180, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
+      <div onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 410, maxHeight: "calc(100vh - 72px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 18px 18px", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 16 }}>
           <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 14, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 14, background: "var(--profile-selected-surface)", color: "var(--profile-sage-notice-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Bell size={18} />
             </div>
             <div style={{ minWidth: 0 }}>
               <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("notifications_title", lang)}</h3>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.modalDescription}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.modalDescription}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -234,21 +234,21 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
-        <div style={{ borderRadius: 16, background: "rgba(122,157,122,0.12)", border: "1px solid rgba(122,157,122,0.28)", color: "var(--sage-dark)", padding: "12px 13px", fontSize: 12, fontWeight: 750, lineHeight: 1.65, whiteSpace: "pre-line", marginBottom: 12 }}>
+        <div style={{ borderRadius: 16, background: "var(--profile-sage-notice-surface)", border: "1px solid var(--profile-sage-notice-border)", color: "var(--profile-sage-notice-text)", padding: "12px 13px", fontSize: 12, fontWeight: 750, lineHeight: 1.65, whiteSpace: "pre-line", marginBottom: 12 }}>
           {pushText.updateNotice}
         </div>
 
         {!notificationsAvailable && (
-          <div style={{ borderRadius: 16, background: "rgba(232,197,71,0.1)", border: "1px solid rgba(232,197,71,0.24)", color: "var(--text2)", padding: "11px 12px", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
+          <div style={{ borderRadius: 16, background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", padding: "11px 12px", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
             {t("notifications_native_only", lang)}
           </div>
         )}
 
-        <div style={{ borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
+        <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{t("notifications_master_toggle", lang)}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.devicePermissionDescription}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.devicePermissionDescription}</p>
             </div>
             <Toggle checked={settings.enabled} onChange={(value) => update({ enabled: value })} />
           </div>
@@ -282,11 +282,11 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           />
         </div>
 
-        <div style={{ borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
+        <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.pushTitle}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)" }}>{pushText.pushDescription}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.pushDescription}</p>
             </div>
             <Toggle checked={pushPreferences.pushEnabled} onChange={(value) => updatePush({ pushEnabled: value })} disabled={loadingPushPreferences} />
           </div>
@@ -308,12 +308,12 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           />
         </div>
 
-        {message && <p style={{ fontSize: 12, color: message === t("notifications_saved", lang) ? "var(--sage-dark)" : "#E05050", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
+        {message && <p style={{ fontSize: 12, color: message === t("notifications_saved", lang) ? "var(--profile-sage-notice-text)" : "var(--profile-danger-text)", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
 
         <button
           onClick={save}
           disabled={saving}
-          style={{ width: "100%", padding: "13px 14px", background: "var(--sage)", border: "none", borderRadius: 14, color: "var(--bg)", fontSize: 14, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", padding: "13px 14px", background: "var(--sage-action)", border: "none", borderRadius: 14, color: "var(--on-sage-action)", fontSize: 14, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           {saving ? <Loader2 size={15} className="spin" /> : null}
           {t("notifications_save", lang)}

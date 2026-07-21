@@ -48,11 +48,11 @@ export default function AvatarChoiceModal({
   return (
     <div
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 240, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.76)", backdropFilter: "blur(8px)", padding: "0 18px" }}
+      style={{ position: "fixed", inset: 0, zIndex: 240, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--overlay-modal)", backdropFilter: "blur(8px)", padding: "0 18px" }}
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        style={{ width: "100%", maxWidth: 390, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 28, padding: "24px 18px 18px", boxShadow: "0 18px 58px rgba(0,0,0,0.32)", position: "relative" }}
+        style={{ width: "100%", maxWidth: 390, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 28, padding: "24px 18px 18px", boxShadow: "var(--shadow-modal)", position: "relative" }}
       >
         {onClose && (
           <button
@@ -67,7 +67,7 @@ export default function AvatarChoiceModal({
 
         <div style={{ padding: onClose ? "0 32px" : "0 6px", textAlign: "center", marginBottom: 18 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 8, lineHeight: 1.35 }}>{title}</h2>
-          <p style={{ fontSize: 12.5, color: "var(--text2)", lineHeight: 1.65 }}>{body}</p>
+          <p style={{ fontSize: 12.5, color: "var(--profile-muted-text)", lineHeight: 1.65 }}>{body}</p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -79,7 +79,7 @@ export default function AvatarChoiceModal({
                 type="button"
                 disabled={saving}
                 onClick={() => setPendingAvatar(avatarType)}
-                style={{ border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`, background: isSelected ? "var(--sage-light)" : "var(--bg)", borderRadius: 20, padding: "14px 10px 12px", cursor: saving ? "wait" : "pointer", minWidth: 0, boxShadow: isSelected ? "0 8px 22px rgba(122,157,122,0.18)" : "none", WebkitTapHighlightColor: "transparent" }}
+                style={{ border: `1.5px solid ${isSelected ? "var(--profile-selected-border)" : "var(--border)"}`, background: isSelected ? "var(--profile-selected-surface)" : "var(--profile-card-surface)", borderRadius: 20, padding: "14px 10px 12px", cursor: saving ? "wait" : "pointer", minWidth: 0, boxShadow: isSelected ? "var(--shadow-card-sage)" : "var(--shadow-card)", WebkitTapHighlightColor: "transparent" }}
               >
                 <div style={{ height: 92, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
                   <img
@@ -89,7 +89,7 @@ export default function AvatarChoiceModal({
                   />
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 900, color: "var(--text)", marginBottom: 10 }}>{getRootsAvatarLabel(avatarType, lang)}</div>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 24, borderRadius: 999, padding: "5px 10px", fontSize: 10.5, fontWeight: 850, background: isSelected ? "var(--sage)" : "var(--bg3)", color: isSelected ? "var(--bg)" : "var(--text3)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 24, borderRadius: 999, padding: "5px 10px", fontSize: 10.5, fontWeight: 850, background: isSelected ? "var(--sage-action)" : "var(--profile-card-muted-surface)", color: isSelected ? "var(--on-sage-action)" : "var(--profile-muted-text)" }}>
                   {getRootsAvatarChoiceText(isSelected ? "selected" : "select", lang)}
                 </span>
               </button>
@@ -101,7 +101,7 @@ export default function AvatarChoiceModal({
           type="button"
           disabled={saving}
           onClick={() => onSelect(pendingAvatar)}
-          className="btn-sage"
+          className="btn-sage roots-profile-action"
           style={{ width: "100%", marginTop: 14, minHeight: 46, justifyContent: "center" }}
         >
           {saving ? <Loader2 size={14} className="spin" /> : getRootsAvatarChoiceText("confirm", lang)}
@@ -112,7 +112,7 @@ export default function AvatarChoiceModal({
             type="button"
             disabled={saving}
             onClick={onLater}
-            style={{ width: "100%", marginTop: 8, padding: "10px", background: "transparent", border: "none", color: "var(--text3)", fontSize: 12.5, fontWeight: 800, cursor: saving ? "wait" : "pointer" }}
+            style={{ width: "100%", marginTop: 8, padding: "10px", background: "transparent", border: "none", color: "var(--profile-muted-text)", fontSize: 12.5, fontWeight: 800, cursor: saving ? "wait" : "pointer" }}
           >
             {getRootsAvatarChoiceText("later", lang)}
           </button>

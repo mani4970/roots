@@ -82,7 +82,7 @@ export default function ProfileCharacterViewer({
         alignItems: "center",
         justifyContent: "center",
         padding: "max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom))",
-        background: "rgba(24,25,27,0.76)",
+        background: "var(--overlay-modal)",
         backdropFilter: "blur(8px)",
       }}
     >
@@ -97,9 +97,9 @@ export default function ProfileCharacterViewer({
           maxHeight: "calc(100dvh - 36px)",
           overflowY: "auto",
           borderRadius: 28,
-          border: "1px solid rgba(122,157,122,0.3)",
-          background: "var(--bg2)",
-          boxShadow: "0 24px 70px rgba(0,0,0,0.34)",
+          border: "1px solid var(--profile-sage-notice-border)",
+          background: "var(--profile-modal-surface)",
+          boxShadow: "var(--shadow-modal)",
           padding: "16px 16px 20px",
         }}
       >
@@ -133,8 +133,8 @@ export default function ProfileCharacterViewer({
           style={{
             minHeight: 430,
             borderRadius: 24,
-            border: "1px solid rgba(232,197,71,0.24)",
-            background: "radial-gradient(circle at 50% 28%, rgba(255,248,218,0.88), rgba(248,246,240,0.9) 62%, rgba(122,157,122,0.08))",
+            border: "1px solid var(--profile-character-preview-border)",
+            background: "var(--profile-character-preview)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

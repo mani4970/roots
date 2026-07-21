@@ -98,6 +98,32 @@
   --heart-shop-action: var(--sage);
   --heart-shop-on-action: #FFFFFF;
 
+  /* Phase 2B-2: Profile, character, badge, and settings roles. */
+  --profile-modal-surface: var(--surface-card);
+  --profile-card-surface: var(--surface-card);
+  --profile-card-muted-surface: var(--surface-card-muted);
+  --profile-muted-text: var(--text-muted-readable);
+  --profile-selected-surface: var(--surface-sage-selected);
+  --profile-selected-border: var(--border-sage-strong);
+  --profile-sage-notice-surface: var(--surface-sage-subtle);
+  --profile-sage-notice-border: var(--border-sage-soft);
+  --profile-sage-notice-text: var(--sage-dark);
+  --profile-gold-surface: var(--surface-gold-subtle);
+  --profile-gold-border: var(--border-gold-soft);
+  --profile-gold-text: var(--text-gold-strong);
+  --profile-gold-button-surface: rgba(255, 248, 218, 0.82);
+  --profile-gold-button-border: rgba(232, 197, 71, 0.38);
+  --profile-gold-button-text: var(--text-gold-strong);
+  --profile-character-preview:
+    radial-gradient(circle at 50% 28%, rgba(255, 248, 218, 0.88), rgba(248, 246, 240, 0.90) 62%, rgba(122, 157, 122, 0.08));
+  --profile-character-preview-border: rgba(232, 197, 71, 0.24);
+  --profile-danger-text: #A63232;
+  --profile-danger-surface: #FFF3F2;
+  --profile-danger-border: #D98B87;
+  --profile-danger-action: #A63232;
+  --profile-on-danger-action: #FFFFFF;
+  --profile-toggle-knob: #FFFFFF;
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -183,6 +209,32 @@
   --heart-shop-price-text: var(--text-gold-strong);
   --heart-shop-action: var(--sage-action);
   --heart-shop-on-action: var(--on-sage-action);
+
+  /* Phase 2B-2 dark counterparts keep profile surfaces readable. */
+  --profile-modal-surface: var(--surface-card);
+  --profile-card-surface: var(--surface-card);
+  --profile-card-muted-surface: var(--surface-card-muted);
+  --profile-muted-text: var(--text-muted-readable);
+  --profile-selected-surface: var(--surface-sage-selected);
+  --profile-selected-border: var(--border-sage-strong);
+  --profile-sage-notice-surface: var(--surface-sage-subtle);
+  --profile-sage-notice-border: var(--border-sage-soft);
+  --profile-sage-notice-text: var(--sage-dark);
+  --profile-gold-surface: var(--surface-gold-subtle);
+  --profile-gold-border: var(--border-gold-soft);
+  --profile-gold-text: var(--text-gold-strong);
+  --profile-gold-button-surface: var(--surface-gold-subtle);
+  --profile-gold-button-border: var(--border-gold-soft);
+  --profile-gold-button-text: var(--text-gold-strong);
+  --profile-character-preview:
+    radial-gradient(circle at 50% 28%, rgba(91, 71, 39, 0.46), #2A2E34 62%, rgba(122, 157, 122, 0.10));
+  --profile-character-preview-border: var(--border-gold-soft);
+  --profile-danger-text: #FF9B9B;
+  --profile-danger-surface: #382328;
+  --profile-danger-border: #754149;
+  --profile-danger-action: #A83F47;
+  --profile-on-danger-action: #FFFFFF;
+  --profile-toggle-knob: #FFFFFF;
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -257,6 +309,21 @@ a { text-decoration: none; color: inherit; }
 .roots-qt-phase2a .btn-sage {
   background: var(--sage-action);
   color: var(--on-sage-action);
+}
+
+.roots-profile-phase2b2 .btn-primary,
+.roots-profile-phase2b2 .btn-sage,
+.roots-profile-action {
+  background: var(--sage-action);
+  color: var(--on-sage-action);
+}
+
+.roots-profile-phase2b2 .card {
+  background: var(--profile-card-surface);
+}
+
+.roots-profile-phase2b2 .sec-label {
+  color: var(--profile-muted-text);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
