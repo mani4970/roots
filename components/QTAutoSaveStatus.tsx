@@ -76,7 +76,7 @@ const QTAutoSaveStatus = forwardRef<QTAutoSaveStatusHandle, QTAutoSaveStatusProp
 
     if (isEditMode) {
       return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: "var(--text3)", fontSize: 11 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: "var(--text-muted-readable)", fontSize: 11 }}>
           <Save size={12} />
           <span>{editModeText}</span>
         </div>
@@ -92,7 +92,7 @@ const QTAutoSaveStatus = forwardRef<QTAutoSaveStatusHandle, QTAutoSaveStatusProp
           : idleText;
 
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: state.status === "error" ? "var(--terra-dark)" : "var(--text3)", fontSize: 11 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: state.status === "error" ? "var(--terra-dark)" : "var(--text-muted-readable)", fontSize: 11 }}>
         {state.status === "saving" ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
         <span>{statusText}</span>
       </div>

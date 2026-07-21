@@ -272,22 +272,22 @@ export default function QTPage() {
   const isSundayToday = new Date().getDay() === 0;
 
   return (
-    <div className="page">
+    <div className="page roots-qt-phase2a">
       {toast && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>
           {toast}
         </div>
       )}
       {showDraftPopup && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,28,30,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
-          <div style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
             <BookOpen size={38} style={{ color: "var(--sage)", marginBottom: 12 }} />
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={() => { setShowDraftPopup(false); router.push("/qt/write?resume=true"); }} className="btn-primary">{t("qt_draft_continue", lang)}</button>
               <button onClick={deleteDraftAndStart} className="btn-outline">{t("qt_draft_new", lang)}</button>
-              <button onClick={() => setShowDraftPopup(false)} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
+              <button onClick={() => setShowDraftPopup(false)} style={{ background: "none", border: "none", color: "var(--text-muted-readable)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
             </div>
           </div>
         </div>
@@ -307,10 +307,10 @@ export default function QTPage() {
               <ChevronDown size={12} style={{ color: "var(--text3)" }} />
             </button>
             {showTranslationPicker && (
-              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "6px 0", zIndex: 100, minWidth: 170, boxShadow: "0 4px 20px rgba(0,0,0,0.2)", maxHeight: 300, overflowY: "auto" }}>
+              <div className="roots-elevation-popover" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "6px 0", zIndex: 100, minWidth: 170, maxHeight: 300, overflowY: "auto" }}>
                 {TRANSLATIONS_BY_GROUP.map(g => (
                   <div key={g.groupKey}>
-                    <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text3)", padding: "6px 12px 2px", letterSpacing: "0.5px" }}>{t(g.groupKey, lang)}</p>
+                    <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted-readable)", padding: "6px 12px 2px", letterSpacing: "0.5px" }}>{t(g.groupKey, lang)}</p>
                     {g.items.map(tr => (
                       <button key={tr.id} onClick={async () => {
                         setPreferredTranslation(tr.id);
@@ -327,7 +327,7 @@ export default function QTPage() {
                           console.error("preferred translation save failed", error);
                           showToast(t("qt_error_translation_save", lang));
                         }
-                      }} style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: preferredTranslation === tr.id ? "var(--sage-light)" : "none", border: "none", cursor: "pointer", fontSize: 12, color: preferredTranslation === tr.id ? "var(--sage-dark)" : "var(--text)", fontWeight: preferredTranslation === tr.id ? 700 : 400 }}>
+                      }} style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: preferredTranslation === tr.id ? "var(--surface-sage-selected)" : "none", border: "none", cursor: "pointer", fontSize: 12, color: preferredTranslation === tr.id ? "var(--sage-dark)" : "var(--text)", fontWeight: preferredTranslation === tr.id ? 700 : 400 }}>
                         {tr.name} {preferredTranslation === tr.id ? "✓" : ""}
                       </button>
                     ))}
@@ -337,7 +337,7 @@ export default function QTPage() {
             )}
           </div>
         </div>
-        <p style={{ color: "var(--text3)", fontSize: 12 }}>{t("qt_sub", lang)}</p>
+        <p style={{ color: "var(--text-muted-readable)", fontSize: 12 }}>{t("qt_sub", lang)}</p>
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
@@ -347,7 +347,7 @@ export default function QTPage() {
               <CheckCircle2 size={24} />
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
-                <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
+                <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
               </div>
             </div>
             <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -357,7 +357,7 @@ export default function QTPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {new Date().getDay() !== 0 && todaySchedule && (
-              <div style={{ background: "var(--sage-light)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(122,157,122,0.3)" }}>
+              <div style={{ background: "var(--surface-sage-subtle)", borderRadius: 14, padding: "12px 16px", border: "1px solid var(--border-sage-soft)" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>{t("qt_today_bible_ref", lang)}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
                   {translateBookName(todaySchedule.book, lang)} {todaySchedule.chapter}:{todaySchedule.start_verse}
@@ -367,7 +367,7 @@ export default function QTPage() {
                     ? `-${todaySchedule.end_verse}`
                     : ""}
                 </p>
-                {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text3)" }}>{todaySchedule.title}</p>}
+                {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text-muted-readable)" }}>{todaySchedule.title}</p>}
               </div>
             )}
             {new Date().getDay() === 0 && (
@@ -441,7 +441,7 @@ export default function QTPage() {
                               {monthGroup.records.map((r: QTRecord) => (
                                 <button key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
                                   <div style={{ flex: 1 }}>
-                                    <p style={{ fontSize: 10, color: "var(--text3)", marginBottom: 4 }}>
+                                    <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
                                       {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
                                     </p>
                                     <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
@@ -467,15 +467,15 @@ export default function QTPage() {
       </div>
 
       {showCatchUpModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
               <button onClick={() => setShowCatchUpModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
             {catchUpDateOptions.length > 0 ? (
               <select value={catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0]} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
                 {catchUpDateOptions.map(d => (
@@ -483,38 +483,38 @@ export default function QTPage() {
                 ))}
               </select>
             ) : (
-              <div style={{ padding: "14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
+              <div style={{ padding: "14px", borderRadius: 14, background: "var(--surface-card-muted)", border: "1px solid var(--border)", color: "var(--text-muted-readable)", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
                 {t("qt_catchup_no_dates", lang)}
               </div>
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border-sage-strong)", background: "var(--surface-sage-selected)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <BookOpen size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_6step_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{t("qt_catchup_6step_desc", lang)}</p>
                 </div>
               </button>
-              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("sunday")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <HandHeart size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_mode_sunday_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{t("qt_mode_sunday_desc", lang)}</p>
                 </div>
               </button>
-              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("photo")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("photo")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <ImagePlus size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_photo_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_mode_photo_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{t("qt_mode_photo_desc", lang)}</p>
                 </div>
               </button>
-              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
+              <button disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
                 <PenLine size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5 }}>{t("qt_catchup_free_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{t("qt_catchup_free_desc", lang)}</p>
                 </div>
               </button>
             </div>
@@ -523,26 +523,26 @@ export default function QTPage() {
       )}
 
       {showPhotoPassageChoiceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_mode_photo_title", lang)}</h2>
               <button onClick={() => setShowPhotoPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>{t("qt_photo_passage_choice_sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>{t("qt_photo_passage_choice_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
               <button
                 disabled={!todaySchedule}
                 onClick={() => startPhotoReflection("scheduled")}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: todaySchedule ? "1px solid var(--sage)" : "1px solid var(--border)", background: todaySchedule ? "var(--sage-light)" : "var(--bg3)", color: todaySchedule ? "var(--sage-dark)" : "var(--text3)", cursor: todaySchedule ? "pointer" : "not-allowed", textAlign: "center", fontSize: 14, fontWeight: 700, opacity: todaySchedule ? 1 : 0.65 }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: todaySchedule ? "1px solid var(--border-sage-strong)" : "1px solid var(--border)", background: todaySchedule ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", color: todaySchedule ? "var(--sage-dark)" : "var(--text3)", cursor: todaySchedule ? "pointer" : "not-allowed", textAlign: "center", fontSize: 14, fontWeight: 700, opacity: todaySchedule ? 1 : 0.65 }}
               >
                 {t("qt_passage_choice_today", lang)}
               </button>
-              <button onClick={() => startPhotoReflection("custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+              <button onClick={() => startPhotoReflection("custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
                 {t("qt_passage_choice_custom", lang)}
               </button>
             </div>
-            <button onClick={() => { setShowPhotoPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+            <button onClick={() => { setShowPhotoPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               {t("qt_passage_choice_back", lang)}
             </button>
           </div>
@@ -550,21 +550,21 @@ export default function QTPage() {
       )}
 
       {showPassageChoiceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
               <button onClick={() => setShowPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
-              <button onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--sage)", background: "var(--sage-light)", color: "var(--sage-dark)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+              <button onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border-sage-strong)", background: "var(--surface-sage-selected)", color: "var(--sage-dark)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
                 {t("qt_passage_choice_today", lang)}
               </button>
-              <button onClick={() => startQT("6step", "custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
+              <button onClick={() => startQT("6step", "custom")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", color: "var(--text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
                 {t("qt_passage_choice_custom", lang)}
               </button>
             </div>
-            <button onClick={() => { setShowPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+            <button onClick={() => { setShowPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               {t("qt_passage_choice_back", lang)}
             </button>
           </div>
@@ -572,13 +572,13 @@ export default function QTPage() {
       )}
 
       {showStartModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_how_title", lang)}</h2>
               <button onClick={() => setShowStartModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text3)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
                 disabled={isSundayToday}
@@ -590,12 +590,12 @@ export default function QTPage() {
                   setShowStartModal(false);
                   setShowPassageChoiceModal(true);
                 }}
-                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border)" : "1px solid var(--sage)", background: isSundayToday ? "var(--bg3)" : "var(--sage-light)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border)" : "1px solid var(--border-sage-strong)", background: isSundayToday ? "var(--surface-card-muted)" : "var(--surface-sage-selected)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
               >
                 <BookOpen size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--text3)" : "var(--sage-dark)", marginBottom: 3 }}>{t("qt_mode_6step_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_6step_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_6step_desc", lang)}</p>
                 </div>
               </button>
               <button
@@ -604,30 +604,30 @@ export default function QTPage() {
                   if (!isSundayToday) return;
                   startQT("sunday");
                 }}
-                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--sage)" : "1px solid var(--border)", background: isSundayToday ? "var(--sage-light)" : "var(--bg3)", cursor: isSundayToday ? "pointer" : "not-allowed", textAlign: "left", opacity: isSundayToday ? 1 : 0.6 }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--border-sage-strong)" : "1px solid var(--border)", background: isSundayToday ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: isSundayToday ? "pointer" : "not-allowed", textAlign: "left", opacity: isSundayToday ? 1 : 0.6 }}
               >
                 <HandHeart size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: isSundayToday ? "var(--sage-dark)" : "var(--text3)", marginBottom: 3 }}>{t("qt_mode_sunday_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_sunday_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_sunday_desc", lang)}</p>
                 </div>
               </button>
-              <button onClick={() => startQT("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => startQT("free")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", cursor: "pointer", textAlign: "left" }}>
                 <PenLine size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_free_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_free_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_free_desc", lang)}</p>
                 </div>
               </button>
-              <button onClick={() => { setShowStartModal(false); setShowPhotoPassageChoiceModal(true); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--bg3)", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => { setShowStartModal(false); setShowPhotoPassageChoiceModal(true); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--border)", background: "var(--surface-card-muted)", cursor: "pointer", textAlign: "left" }}>
                 <ImagePlus size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_photo_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_photo_desc", lang)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_photo_desc", lang)}</p>
                 </div>
               </button>
             </div>
-            <button onClick={() => { setShowStartModal(false); setGuidePage(0); setShowGuideModal(true); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text3)" }}>
+            <button onClick={() => { setShowStartModal(false); setGuidePage(0); setShowGuideModal(true); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               <HelpCircle size={14} /> {t("qt_guide_btn", lang)}
             </button>
           </div>
@@ -635,9 +635,9 @@ export default function QTPage() {
       )}
 
       {showGuideModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 390, borderRadius: 24, border: "1px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ background: "var(--sage-light)", padding: "18px 20px 14px", borderBottom: "1px solid rgba(122,157,122,0.2)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div className="roots-elevation-modal" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 390, borderRadius: 24, border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-sage-selected)", padding: "18px 20px 14px", borderBottom: "1px solid var(--border-sage-soft)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "1px" }}>{t("qt_guide_step_label", lang)} {guidePage + 1}/6</p>
                 <button onClick={() => setShowGuideModal(false)} style={{ background: "none", border: "none", color: "var(--sage-dark)", cursor: "pointer" }}><X size={18} /></button>

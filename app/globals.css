@@ -50,6 +50,7 @@
   --text: var(--warm-900);
   --text2: var(--warm-700);
   --text3: #9A9A94;
+  --text-muted-readable: #686862;
   --white: var(--warm-0);
   --border: var(--warm-200);
   --beige: var(--warm-500);
@@ -109,6 +110,7 @@
   --text: #EAEAEA;
   --text2: #B8B8B8;
   --text3: #808080;
+  --text-muted-readable: #A6ABB2;
   --white: #22252A;
   --border: #333840;
   --beige: #D4C5A9;
@@ -194,11 +196,13 @@ a { text-decoration: none; color: inherit; }
 .roots-elevation-sheet { box-shadow: var(--shadow-sheet); }
 .roots-elevation-modal { box-shadow: var(--shadow-modal); }
 
-/* Accessible Sage actions are scoped to the two Phase 1 pilot surfaces. */
+/* Accessible Sage actions are opt-in for the approved Phase 1 and QT Phase 2A surfaces. */
 .roots-home-phase1 .btn-primary,
 .roots-home-phase1 .btn-sage,
 .share-prompt-modal .btn-primary,
-.share-prompt-modal .btn-sage {
+.share-prompt-modal .btn-sage,
+.roots-qt-phase2a .btn-primary,
+.roots-qt-phase2a .btn-sage {
   background: var(--sage-action);
   color: var(--on-sage-action);
 }

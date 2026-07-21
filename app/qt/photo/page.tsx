@@ -459,9 +459,9 @@ function PhotoReflectionContent() {
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
+    <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
       {notice && (
-        <div style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--bg2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
+        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
@@ -476,7 +476,7 @@ function PhotoReflectionContent() {
           </div>
           <div>
             <h1 style={{ fontSize: 21, fontWeight: 850, color: "var(--text)", marginBottom: 3 }}>{pc("title", lang)}</h1>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.5 }}>{pc("sub", lang)}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{pc("sub", lang)}</p>
           </div>
         </div>
       </div>
@@ -488,7 +488,7 @@ function PhotoReflectionContent() {
           {isCatchup && (
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString()}</p>
           )}
-          <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
+          <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
         </div>
 
         {source === "custom" && (
@@ -496,7 +496,7 @@ function PhotoReflectionContent() {
             <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>{pc("customPassage", lang)}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("translation", lang)}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("translation", lang)}</span>
                 <select
                   className="input-field"
                   value={selectedTranslation}
@@ -517,37 +517,37 @@ function PhotoReflectionContent() {
               </label>
               {sundayContext && (
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("sermonTitle", lang)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("sermonTitle", lang)}</span>
                   <input className="input-field" value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} placeholder={pc("sermonTitlePlaceholder", lang)} />
                 </label>
               )}
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("book", lang)}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("book", lang)}</span>
                 <select className="input-field" value={book} onChange={e => setBook(e.target.value)}>
                   {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, bibleDisplayLang)}</option>)}
                 </select>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("chapter", lang)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("chapter", lang)}</span>
                   <select className="input-field" value={chapter} onChange={e => { const next = Number(e.target.value); setChapter(next); setEndChapter(prev => Math.max(prev, next)); }}>
                     {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("verse", lang)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
                   <select className="input-field" value={Math.min(startVerse, maxStartVerses)} onChange={e => { const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > endVerse) setEndVerse(next); }}>
                     {Array.from({ length: maxStartVerses }, (_, i) => i + 1).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("endChapter", lang)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
                   <select className="input-field" value={safeEndChapter} onChange={e => { const next = Number(e.target.value); setEndChapter(next); if (next === chapter && startVerse > endVerse) setEndVerse(startVerse); }}>
                     {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text3)" }}>{pc("endVerse", lang)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
                   <select className="input-field" value={safeEndChapter === chapter ? Math.max(endVerse, startVerse) : Math.min(endVerse, maxEndVerses)} onChange={e => setEndVerse(Number(e.target.value))}>
                     {Array.from({ length: maxEndVerses }, (_, i) => i + 1).filter(v => safeEndChapter !== chapter || v >= startVerse).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
@@ -556,13 +556,13 @@ function PhotoReflectionContent() {
               <button type="button" onClick={addCurrentPassage} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Plus size={15} /> {pc("addPassage", lang)}
               </button>
-              <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, marginTop: -4 }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.45, marginTop: -4 }}>
                 {pc("addPassageHelp", lang)}
               </p>
               {extraRefs.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {extraRefs.map(ref => (
-                    <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--sage-light)", borderRadius: 10, padding: "8px 10px", border: "1px solid rgba(122,157,122,0.24)" }}>
+                    <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-sage-selected)", borderRadius: 10, padding: "8px 10px", border: "1px solid var(--border-sage-soft)" }}>
                       <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>{translateBibleRef(ref, bibleDisplayLang)}</span>
                       <button type="button" onClick={() => removeExtraRef(ref)} style={{ border: "none", background: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14} /></button>
                     </div>
@@ -589,7 +589,7 @@ function PhotoReflectionContent() {
         </div>
 
         <label className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text3)" }}>{pc("memoLabel", lang)}</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted-readable)" }}>{pc("memoLabel", lang)}</span>
           <textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
         </label>
 
