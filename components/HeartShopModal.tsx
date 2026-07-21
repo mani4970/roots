@@ -202,8 +202,8 @@ function ToggleButton({
         padding: 3,
         borderRadius: 999,
         border: enabled ? "1px solid rgba(122,157,122,0.42)" : "1px solid var(--border)",
-        background: enabled ? "var(--sage)" : "var(--bg3)",
-        color: enabled ? "white" : "var(--text3)",
+        background: enabled ? "var(--heart-shop-action)" : "var(--bg3)",
+        color: enabled ? "var(--heart-shop-on-action)" : "var(--heart-shop-muted-text)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -602,12 +602,12 @@ export default function HeartShopModal({
       )}
 
       <div style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", overscrollBehavior: "contain", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)" }}>
-        <header style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "rgba(248,246,240,.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
+        <header style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "var(--heart-shop-header-surface)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
           <button type="button" onClick={closeTopLayer} aria-label={text.closeLabel} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={19} />
           </button>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 950, color: "var(--text)", textAlign: "center" }}>{text.title}</h2>
-          <div aria-label={`${text.balanceLabel} ${localBalance}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "rgba(255,248,218,.82)", color: "rgba(169,112,20,.98)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
+          <div aria-label={`${text.balanceLabel} ${localBalance}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "var(--heart-shop-balance-surface)", color: "var(--heart-shop-balance-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
             <span aria-hidden="true">💛</span><span>{localBalance}</span>
           </div>
         </header>
@@ -617,7 +617,7 @@ export default function HeartShopModal({
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
-                <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ minHeight: 40, padding: "8px 6px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,.38)" : "1px solid transparent", background: active ? "var(--sage)" : "transparent", color: active ? "white" : "var(--text2)", fontSize: 11.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+                <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ minHeight: 40, padding: "8px 6px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,.38)" : "1px solid transparent", background: active ? "var(--heart-shop-action)" : "transparent", color: active ? "var(--heart-shop-on-action)" : "var(--text2)", fontSize: 11.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
                   {tab.label}
                 </button>
               );
@@ -642,15 +642,15 @@ export default function HeartShopModal({
                     const itemText = text.items[item.id];
                     const owned = ownedById.has(item.id);
                     return (
-                      <article key={item.id} className="card" style={{ minWidth: 0, padding: "10px 10px 11px", display: "flex", flexDirection: "column", border: "1px solid rgba(122,157,122,.2)", background: "rgba(255,253,248,.88)", boxShadow: "0 8px 24px rgba(75,62,45,.06)" }}>
-                        <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${text.previewBadge}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid rgba(232,197,71,.22)", marginBottom: 10, cursor: "pointer" }}>
+                      <article key={item.id} className="card" style={{ minWidth: 0, padding: "10px 10px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)", boxShadow: "0 8px 24px rgba(75,62,45,.06)" }}>
+                        <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${text.previewBadge}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
                           <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
                           <span style={{ position: "absolute", right: 7, bottom: 7, borderRadius: 999, padding: "4px 7px", background: "rgba(26,28,30,.72)", color: "#fff", fontSize: 8.5, fontWeight: 900 }}>{text.previewBadge}</span>
                         </button>
                         <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
-                        <p style={{ margin: 0, minHeight: 36, color: "var(--text3)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
-                        <div style={{ color: "rgba(179,123,27,.98)", fontSize: 13, fontWeight: 950, margin: "10px 0 9px", textAlign: "center" }}>💛 {item.price}</div>
-                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--sage)", color: owned ? "var(--sage-dark)" : "white", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
+                        <p style={{ margin: 0, minHeight: 36, color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
+                        <div style={{ color: "var(--heart-shop-price-text)", fontSize: 13, fontWeight: 950, margin: "10px 0 9px", textAlign: "center" }}>💛 {item.price}</div>
+                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--heart-shop-action)", color: owned ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
                           {owned ? text.ownedButton : text.purchaseButton}
                         </button>
                       </article>
@@ -658,10 +658,10 @@ export default function HeartShopModal({
                   })}
                 </div>
               ) : (
-                <div className="card" style={{ minHeight: 330, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", border: "1px dashed rgba(122,157,122,.34)", background: "rgba(255,253,248,.76)" }}>
+                <div className="card" style={{ minHeight: 330, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", border: "1px dashed rgba(122,157,122,.34)", background: "var(--heart-shop-card-surface-quiet)" }}>
                   <PackageOpen size={35} style={{ marginBottom: 17, color: "var(--sage-dark)" }} />
                   <h3 style={{ margin: "0 0 9px", color: "var(--text)", fontSize: 18, fontWeight: 950 }}>{text.peaceArkComingSoonTitle}</h3>
-                  <p style={{ margin: 0, maxWidth: 290, color: "var(--text3)", fontSize: 12.5, lineHeight: 1.65, fontWeight: 650 }}>{text.peaceArkComingSoonBody}</p>
+                  <p style={{ margin: 0, maxWidth: 290, color: "var(--heart-shop-muted-text)", fontSize: 12.5, lineHeight: 1.65, fontWeight: 650 }}>{text.peaceArkComingSoonBody}</p>
                 </div>
               )}
             </section>
@@ -669,7 +669,7 @@ export default function HeartShopModal({
 
           {activeTab === "character" && (
             <section style={{ flex: 1, minHeight: 0, margin: "0 -16px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <div className="card" style={{ position: "relative", flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid rgba(122,157,122,.22)", background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,253,248,.84))" }}>
+              <div className="card" style={{ position: "relative", flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-look-preview)" }}>
                 <button
                   type="button"
                   onClick={() => setOutfitPreviewItemIds({})}
@@ -686,8 +686,8 @@ export default function HeartShopModal({
                     padding: 0,
                     borderRadius: 999,
                     border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
-                    background: hasOutfitPreview ? "rgba(255,253,248,.94)" : "rgba(255,253,248,.58)",
-                    color: hasOutfitPreview ? "var(--sage-dark)" : "var(--text3)",
+                    background: hasOutfitPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
+                    color: hasOutfitPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -724,7 +724,7 @@ export default function HeartShopModal({
                     const previewing = outfitPreviewItemIds[item.slot] === item.id;
                     const previewLabel = `${profileText.previewLabel}: ${itemText.name}`;
                     return (
-                      <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid rgba(122,157,122,.2)", background: "rgba(255,253,248,.88)" }}>
+                      <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)" }}>
                         <button
                           type="button"
                           onClick={() => applyCharacterOutfitPreview(item)}
@@ -740,7 +740,7 @@ export default function HeartShopModal({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            background: previewing ? "linear-gradient(180deg,rgba(122,157,122,.16),#fff)" : "linear-gradient(180deg,rgba(122,157,122,.08),#fff)",
+                            background: previewing ? "var(--heart-shop-item-preview-active)" : "var(--heart-shop-item-preview)",
                             border: previewing ? "2px solid rgba(101,142,105,.62)" : "1px solid rgba(122,157,122,.17)",
                             marginBottom: 9,
                             cursor: "pointer",
@@ -749,7 +749,7 @@ export default function HeartShopModal({
                           <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
                         </button>
                         <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
-                        <div style={{ color: isFreeBackground ? "var(--sage-dark)" : "rgba(179,123,27,.98)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>
+                        <div style={{ color: isFreeBackground ? "var(--sage-dark)" : "var(--heart-shop-price-text)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>
                           {isFreeBackground ? text.freeLabel : `💛 ${item.price}`}
                         </div>
                         <button
@@ -771,8 +771,8 @@ export default function HeartShopModal({
                             padding: "7px 8px",
                             border: owned || isApplied ? "1px solid var(--border)" : "none",
                             borderRadius: 13,
-                            background: (owned && !isFreeBackground) || isApplied ? "var(--bg3)" : "var(--sage)",
-                            color: (owned && !isFreeBackground) || isApplied ? "var(--sage-dark)" : "white",
+                            background: (owned && !isFreeBackground) || isApplied ? "var(--bg3)" : "var(--heart-shop-action)",
+                            color: (owned && !isFreeBackground) || isApplied ? "var(--sage-dark)" : "var(--heart-shop-on-action)",
                             fontSize: 10.5,
                             lineHeight: 1.2,
                             fontWeight: 950,
@@ -812,20 +812,20 @@ export default function HeartShopModal({
               </div>
 
               {loadingOwned ? (
-                <div className="card" style={{ minHeight: 280, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, color: "var(--text3)", fontSize: 13, fontWeight: 750 }}><Loader2 size={18} className="spin" />{text.loadingOwned}</div>
+                <div className="card" style={{ minHeight: 280, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, color: "var(--heart-shop-muted-text)", fontSize: 13, fontWeight: 750 }}><Loader2 size={18} className="spin" />{text.loadingOwned}</div>
               ) : activeOwnedSection === "character" && ownedCharacterItems.length === 0 ? (
-                <div className="card" style={{ minHeight: 360, padding: "34px 22px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", background: "rgba(255,253,248,.78)" }}>
+                <div className="card" style={{ minHeight: 360, padding: "34px 22px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", background: "var(--heart-shop-card-surface-empty)" }}>
                   <PackageOpen size={38} style={{ marginBottom: 18, color: "var(--sage-dark)" }} />
                   <h3 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 19, fontWeight: 950 }}>{text.ownedEmptyTitle}</h3>
-                  <p style={{ margin: 0, maxWidth: 310, color: "var(--text3)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{text.characterOwnedEmptyBody}</p>
+                  <p style={{ margin: 0, maxWidth: 310, color: "var(--heart-shop-muted-text)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{text.characterOwnedEmptyBody}</p>
                 </div>
               ) : activeOwnedSection === "character" ? (
-                <div className="card" style={{ padding: "12px 14px 6px", background: "rgba(255,253,248,.84)" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 250, borderRadius: 18, background: "linear-gradient(180deg,rgba(122,157,122,.08),rgba(255,255,255,.7))", marginBottom: 8 }}>
+                <div className="card" style={{ padding: "12px 14px 6px", background: "var(--heart-shop-card-surface-owned)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 250, borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
                     <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 3, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
                     <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={currentLayers} style={{ width: 165 }} />
                   </div>
-                  <p style={{ margin: "4px 2px 10px", color: "var(--text3)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
+                  <p style={{ margin: "4px 2px 10px", color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
                   {ownedCharacterItems.map((catalogItem, index) => {
                     const owned = ownedById.get(catalogItem.id)!;
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
@@ -841,15 +841,15 @@ export default function HeartShopModal({
                   })}
                 </div>
               ) : ownedMapItems.length === 0 ? (
-                <div className="card" style={{ minHeight: 360, padding: "34px 22px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", background: "rgba(255,253,248,.78)" }}>
+                <div className="card" style={{ minHeight: 360, padding: "34px 22px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", background: "var(--heart-shop-card-surface-empty)" }}>
                   <PackageOpen size={38} style={{ marginBottom: 18, color: "var(--sage-dark)" }} />
                   <h3 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 19, fontWeight: 950 }}>{text.ownedEmptyTitle}</h3>
-                  <p style={{ margin: 0, maxWidth: 310, color: "var(--text3)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{text.ownedEmptyBody}</p>
+                  <p style={{ margin: 0, maxWidth: 310, color: "var(--heart-shop-muted-text)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{text.ownedEmptyBody}</p>
                 </div>
               ) : (
                 <div>
                   <p style={{ margin: "0 2px 10px", color: "var(--text2)", fontSize: 11.5, lineHeight: 1.5, fontWeight: 700 }}>{text.ownedIntro}</p>
-                  <div className="card" style={{ padding: "6px 14px", background: "rgba(255,253,248,.84)" }}>
+                  <div className="card" style={{ padding: "6px 14px", background: "var(--heart-shop-card-surface-owned)" }}>
                     {ownedMapItems.map((catalogItem, index) => {
                       const owned = ownedById.get(catalogItem.id)!;
                       return (
@@ -874,10 +874,10 @@ export default function HeartShopModal({
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(previewItem) ? 248 : 180, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>{renderDialogVisual(previewItem)}</div>
             <h3 style={{ margin: "0 0 8px", color: "var(--text)", fontSize: 20, lineHeight: 1.35, fontWeight: 950 }}>{getItemName(previewItem)}</h3>
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{getItemDescription(previewItem)}</p>
-            <div style={{ marginTop: 12, color: "rgba(179,123,27,.98)", fontSize: 16, fontWeight: 950 }}>💛 {previewItem.price}</div>
+            <div style={{ marginTop: 12, color: "var(--heart-shop-price-text)", fontSize: 16, fontWeight: 950 }}>💛 {previewItem.price}</div>
             <div style={{ display: "grid", gridTemplateColumns: ".85fr 1.15fr", gap: 9, marginTop: 18 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: "pointer" }}>{text.closePreviewButton}</button>
-              <button type="button" onClick={() => { if (ownedById.has(previewItem.id)) { setActiveOwnedSection(isHeartShopCharacterCatalogItem(previewItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); } else { openPurchaseFromPreview(previewItem.id); } }} style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--sage)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "white", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}>
+              <button type="button" onClick={() => { if (ownedById.has(previewItem.id)) { setActiveOwnedSection(isHeartShopCharacterCatalogItem(previewItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); } else { openPurchaseFromPreview(previewItem.id); } }} style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--heart-shop-action)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}>
                 {ownedById.has(previewItem.id) ? text.ownedButton : text.purchaseButton}
               </button>
             </div>
@@ -894,7 +894,7 @@ export default function HeartShopModal({
             {purchaseError && <p style={{ margin: "13px 0 0", color: "#c85b55", fontSize: 12, lineHeight: 1.5, fontWeight: 850 }}>{purchaseError}</p>}
             <div style={{ display: "grid", gridTemplateColumns: ".85fr 1.15fr", gap: 9, marginTop: 20 }}>
               <button type="button" onClick={closeTopLayer} disabled={purchasing} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: purchasing ? "default" : "pointer" }}>{text.cancelButton}</button>
-              <button type="button" onClick={() => void confirmPurchase()} disabled={purchasing} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--sage)", color: "white", fontSize: 12.5, fontWeight: 950, cursor: purchasing ? "default" : "pointer", opacity: purchasing ? .7 : 1 }}>
+              <button type="button" onClick={() => void confirmPurchase()} disabled={purchasing} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: purchasing ? "default" : "pointer", opacity: purchasing ? .7 : 1 }}>
                 {purchasing ? text.purchasingLabel : formatHeartShopText(text.purchaseAction, { price: selectedItem.price })}
               </button>
             </div>
@@ -911,7 +911,7 @@ export default function HeartShopModal({
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{isHeartShopMapCatalogItem(completedItem) ? text.items[completedItem.id].completeBody : text.characterCompleteBody}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginTop: 20 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>{text.continueShoppingButton}</button>
-              <button type="button" onClick={() => { setActiveOwnedSection(isHeartShopCharacterCatalogItem(completedItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); }} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--sage)", color: "white", fontSize: 12, fontWeight: 950, cursor: "pointer" }}>{text.viewOwnedButton}</button>
+              <button type="button" onClick={() => { setActiveOwnedSection(isHeartShopCharacterCatalogItem(completedItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); }} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12, fontWeight: 950, cursor: "pointer" }}>{text.viewOwnedButton}</button>
             </div>
           </div>
         </div>
