@@ -59,7 +59,7 @@ export function hasMeaningfulQTDraftBackup(backup: QTDraftBackup | null) {
     backup.bibleRef.trim() ||
     backup.keyVerse.trim() ||
     backup.freeText.trim() ||
-    backup.sermonTitle.trim() ||
+    (backup.mode === "sunday" && backup.sermonTitle.trim()) ||
     backup.passageRefs.some(ref => ref.trim()) ||
     Object.values(backup.answers).some(value => value.trim()) ||
     backup.decisions.some(value => value.trim())
@@ -103,7 +103,7 @@ export function mergeQtDraftRowWithBackup<T extends Record<string, unknown>>(dra
   const backupDecision = backup.decisions.filter(item => item.trim()).join("\n");
   useLonger("decision", backupDecision);
 
-  if (backup.sermonTitle.trim()) {
+  if (backup.mode === "sunday" && backup.sermonTitle.trim()) {
     const currentRef = String(merged.bible_ref ?? "");
     if (!currentRef.trim() || currentRef.startsWith("설교:")) {
       const refs = Array.from(new Set([backup.bibleRef, ...backup.passageRefs].map(ref => ref.trim()).filter(Boolean)));

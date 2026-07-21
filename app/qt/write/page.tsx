@@ -318,7 +318,6 @@ function QTWriteContent() {
   const isEditMode = Boolean(editId);
   const isResume = params.get("resume") === "true";
   const isCatchUp = params.get("catchup") === "true";
-  const isSundayContextParam = params.get("sundayContext") === "true";
   // 오늘 스케줄 파라미터
   const schedBook = params.get("schedBook");
   const schedChapter = params.get("schedChapter");
@@ -329,7 +328,6 @@ function QTWriteContent() {
   const todayStr = getLocalDateString();
   const resumeDateParam = params.get("date");
   const initialDate = resumeDateParam || todayStr;
-  const initialSundayContext = isSundayContextParam || isSunday(initialDate);
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -430,7 +428,6 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
-  const [freeSundayContext, setFreeSundayContext] = useState(() => initMode === "free" && initialSundayContext);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,10 +530,9 @@ function QTWriteContent() {
     return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: false, verses: data.verses ?? [], ref: data.reference || ref };
   }
 
-  async function restoreSermonPassages(rawRef?: string | null, options: { markFreeSundayContext?: boolean } = {}) {
+  async function restoreSermonPassages(rawRef?: string | null, options: { restoreTitle?: boolean } = {}) {
     const parsed = parseSundayBibleRef(rawRef);
-    if (parsed.title) setSermonTitle(parsed.title);
-    if (options.markFreeSundayContext) setFreeSundayContext(true);
+    if (parsed.title && options.restoreTitle !== false) setSermonTitle(parsed.title);
     const refs = parsed.refs.filter(Boolean);
     if (refs.length === 0) return false;
 
@@ -682,8 +678,6 @@ function QTWriteContent() {
       else if (initMode === "sunday") setMode("sunday");
       else if (initMode === "6step") setMode("6step");
       else setMode(isSunday(selectedDate) ? "sunday" : "6step");
-      setFreeSundayContext(initMode === "free" && (isSundayContextParam || isSunday(selectedDate)));
-
       setBibleRef("");
       setKeyVerse("");
       setPassageVerses([]);
@@ -725,10 +719,11 @@ function QTWriteContent() {
         setCur(0);
 
         const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
-        const restoredSermonPassages = (record.qt_mode === "sunday" || (record.qt_mode === "free" && isSermonRef))
-          ? await restoreSermonPassages(record.bible_ref, { markFreeSundayContext: record.qt_mode === "free" })
+        const isLegacyFreeSermonRef = record.qt_mode === "free" && isSermonRef;
+        const restoredSermonPassages = (record.qt_mode === "sunday" || isLegacyFreeSermonRef)
+          ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday" })
           : false;
-        if (!restoredSermonPassages && record.bible_ref) {
+        if (!restoredSermonPassages && record.bible_ref && !isLegacyFreeSermonRef) {
           setBibleRef(record.bible_ref);
           setBibleStep("done");
         }
@@ -758,7 +753,7 @@ function QTWriteContent() {
           if (dList.length > 0) setDecisions(dList);
         }
 
-        const refForReload = restoredSermonPassages ? null : record.bible_ref;
+        const refForReload = restoredSermonPassages || isLegacyFreeSermonRef ? null : record.bible_ref;
         if (refForReload) {
           try {
             const SHORT_TO_FULL: Record<string, string> = {
@@ -872,10 +867,11 @@ function QTWriteContent() {
       // 기존 draft 데이터 복원
       if (draft.qt_mode) setMode(draft.qt_mode);
       const isDraftSermonRef = String(draft.bible_ref ?? "").trim().startsWith("설교:");
-      const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || (draft.qt_mode === "free" && isDraftSermonRef))
-        ? await restoreSermonPassages(draft.bible_ref, { markFreeSundayContext: draft.qt_mode === "free" })
+      const isLegacyFreeDraftSermonRef = draft.qt_mode === "free" && isDraftSermonRef;
+      const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || isLegacyFreeDraftSermonRef)
+        ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday" })
         : false;
-      if (!restoredDraftSermonPassages && draft.bible_ref) {
+      if (!restoredDraftSermonPassages && draft.bible_ref && !isLegacyFreeDraftSermonRef) {
         setBibleRef(draft.bible_ref);
       }
       if (draft.key_verse) {
@@ -907,7 +903,7 @@ function QTWriteContent() {
       }
 
       // 말씀 본문 재로드 (bible_ref가 있으면)
-      const refForReload = restoredDraftSermonPassages ? null : draft.bible_ref;
+      const refForReload = restoredDraftSermonPassages || isLegacyFreeDraftSermonRef ? null : draft.bible_ref;
       if (refForReload) {
         try {
           // 약어 → 전체 이름 역변환 맵
@@ -1253,8 +1249,7 @@ function QTWriteContent() {
     void loadPassage();
   }
 
-  function renderPassageSelectionCard(options: { includeSermonTitle?: boolean } = {}) {
-    const { includeSermonTitle = false } = options;
+  function renderPassageSelectionCard() {
     const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
     const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
     const koBookName = (() => {
@@ -1271,17 +1266,8 @@ function QTWriteContent() {
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div>
           <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{trQT("본문 말씀", lang)}</p>
-          <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>
-            {includeSermonTitle ? trQT("설교 제목과 본문 말씀을 적어요", lang) : trQT("큐티할 말씀을 먼저 선택해요", lang)}
-          </p>
+          <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>{trQT("큐티할 말씀을 먼저 선택해요", lang)}</p>
         </div>
-
-        {includeSermonTitle && (
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
-            <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => updateSermonTitleText(e.target.value)} />
-          </div>
-        )}
 
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
@@ -1320,7 +1306,7 @@ function QTWriteContent() {
         {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
 
         <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT(includeSermonTitle ? "여러 본문 추가" : "선택한 본문 추가", lang)}</>}
+          {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("선택한 본문 추가", lang)}</>}
         </button>
         <p style={{ fontSize: 11, color: "var(--text3)", lineHeight: 1.45, marginTop: -4 }}>
           {trQT("여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", lang)}
@@ -1471,7 +1457,7 @@ function QTWriteContent() {
       answers,
       decisions,
       freeText,
-      sermonTitle,
+      sermonTitle: mode === "sunday" ? sermonTitle : "",
       passageRefs: passages.map(p => p.ref).filter(Boolean),
     };
   }
@@ -1515,7 +1501,7 @@ function QTWriteContent() {
   function buildDraftData(userId: string, snapshot: DraftSnapshot) {
     const decisionText = snapshot.decisions.filter(d => d.trim()).join("\n");
     const sundayRefs = [snapshot.bibleRef, ...snapshot.passageRefs].filter(Boolean);
-    const draftBibleRef = snapshot.mode === "sunday" || (snapshot.mode === "free" && freeSundayContext)
+    const draftBibleRef = snapshot.mode === "sunday"
       ? buildSundayBibleRef(snapshot.sermonTitle, sundayRefs)
       : snapshot.bibleRef;
 
@@ -1884,10 +1870,9 @@ function QTWriteContent() {
     let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode };
 
     if (mode === "free") {
-      const allRefs = [bibleRef, ...passages.map(p => p.ref)].filter(Boolean);
       recordData = {
         ...recordData,
-        bible_ref: freeSundayContext ? buildSundayBibleRef(sermonTitle, allRefs) : bibleRef,
+        bible_ref: bibleRef,
         key_verse: keyVerse,
         meditation: freeText,
         decision: decisionText,
@@ -2180,7 +2165,7 @@ function QTWriteContent() {
             </button>
           </div>
 
-          {renderPassageSelectionCard({ includeSermonTitle: mode === "free" && freeSundayContext })}
+          {renderPassageSelectionCard()}
 
           {mode === "free" && (
             <button onClick={() => setBibleStep("done")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 12, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
@@ -2332,12 +2317,6 @@ function QTWriteContent() {
             </div>
           )}
 
-          {freeSundayContext && sermonTitle.trim() && (
-            <div className="card" style={{ padding: 12 }}>
-              <p style={{ fontSize: 10, fontWeight: 800, color: "var(--text3)", marginBottom: 4 }}>{trQT("설교 제목", lang)}</p>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{sermonTitle}</p>
-            </div>
-          )}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
             <CursorStableTextarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
