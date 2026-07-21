@@ -154,6 +154,43 @@
   --challenge-disabled-surface: var(--bg3);
   --challenge-disabled-text: var(--text3);
 
+  /* Phase 2C: Prayer cards, statuses, actions, and modal surfaces. */
+  --prayer-card-surface: var(--surface-card);
+  --prayer-card-border: var(--border);
+  --prayer-answered-card-surface: var(--terra-light);
+  --prayer-answered-card-border: rgba(196,149,106,0.30);
+  --prayer-modal-surface: var(--surface-card);
+  --prayer-popover-surface: var(--surface-card);
+  --prayer-muted-text: var(--text-muted-readable);
+  --prayer-sage-surface: var(--sage-light);
+  --prayer-sage-border: rgba(122,157,122,0.30);
+  --prayer-sage-text: var(--sage-dark);
+  --prayer-terra-surface: rgba(196,149,106,0.08);
+  --prayer-terra-chip-surface: rgba(196,149,106,0.12);
+  --prayer-terra-border-soft: rgba(196,149,106,0.20);
+  --prayer-terra-border: rgba(196,149,106,0.28);
+  --prayer-terra-border-strong: rgba(196,149,106,0.40);
+  --prayer-terra-text: var(--terra-dark);
+  --prayer-tab-sage-fill: var(--sage-action);
+  --prayer-tab-terra-fill: var(--terra-dark);
+  --prayer-on-tab-fill: var(--warm-0);
+  --prayer-tab-muted-surface: var(--warm-100);
+  --prayer-sage-action: var(--sage-action);
+  --prayer-on-sage-action: var(--on-sage-action);
+  --prayer-gold-surface: var(--surface-gold-subtle);
+  --prayer-gold-border: var(--border-gold-soft);
+  --prayer-gold-text: var(--text-gold-strong);
+  --prayer-gold-action: var(--gold-700);
+  --prayer-on-gold-action: var(--warm-0);
+  --prayer-danger-text: #A63232;
+  --prayer-danger-action: #A63232;
+  --prayer-on-danger-action: #FFFFFF;
+  --prayer-toast-surface: rgba(26,28,30,0.96);
+  --prayer-toast-text: #FFFFFF;
+  --prayer-toast-border: rgba(255,255,255,0.12);
+  --prayer-reward-overlay: rgba(26,28,30,0.92);
+  --prayer-fab-shadow: 0 4px 14px rgba(91,125,91,0.35);
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -295,6 +332,43 @@
   --challenge-on-action: var(--on-sage-action);
   --challenge-disabled-surface: var(--surface-card-muted);
   --challenge-disabled-text: var(--text-muted-readable);
+
+  /* Phase 2C dark counterparts keep prayer states distinct without light residue. */
+  --prayer-card-surface: #24282E;
+  --prayer-card-border: #3C424B;
+  --prayer-answered-card-surface: #342A22;
+  --prayer-answered-card-border: #684C36;
+  --prayer-modal-surface: var(--surface-card);
+  --prayer-popover-surface: var(--surface-card-muted);
+  --prayer-muted-text: var(--text-muted-readable);
+  --prayer-sage-surface: var(--surface-sage-selected);
+  --prayer-sage-border: var(--border-sage-soft);
+  --prayer-sage-text: var(--sage-dark);
+  --prayer-terra-surface: #302820;
+  --prayer-terra-chip-surface: #382B22;
+  --prayer-terra-border-soft: #5A4433;
+  --prayer-terra-border: #6B4E38;
+  --prayer-terra-border-strong: #8A6549;
+  --prayer-terra-text: var(--terra-dark);
+  --prayer-tab-sage-fill: var(--sage-action);
+  --prayer-tab-terra-fill: var(--terra-dark);
+  --prayer-on-tab-fill: #1A1C1E;
+  --prayer-tab-muted-surface: #30343A;
+  --prayer-sage-action: var(--sage-action);
+  --prayer-on-sage-action: var(--on-sage-action);
+  --prayer-gold-surface: var(--surface-gold-subtle);
+  --prayer-gold-border: var(--border-gold-soft);
+  --prayer-gold-text: var(--text-gold-strong);
+  --prayer-gold-action: var(--gold-200);
+  --prayer-on-gold-action: #1A1C1E;
+  --prayer-danger-text: #FF9B9B;
+  --prayer-danger-action: #A83F47;
+  --prayer-on-danger-action: #FFFFFF;
+  --prayer-toast-surface: #30343A;
+  --prayer-toast-text: var(--text);
+  --prayer-toast-border: #454B55;
+  --prayer-reward-overlay: rgba(0,0,0,0.82);
+  --prayer-fab-shadow: 0 4px 16px rgba(0,0,0,0.36);
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -384,6 +458,26 @@ a { text-decoration: none; color: inherit; }
 
 .roots-profile-phase2b2 .sec-label {
   color: var(--profile-muted-text);
+}
+
+.roots-prayer-phase2c .prayer-card {
+  background: var(--prayer-card-surface);
+  border-color: var(--prayer-card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.roots-prayer-phase2c .prayer-card.answered {
+  background: var(--prayer-answered-card-surface);
+  border-color: var(--prayer-answered-card-border);
+}
+
+.roots-prayer-action {
+  background: var(--prayer-sage-action);
+  color: var(--prayer-on-sage-action);
+}
+
+.roots-prayer-phase2c .textarea-field::placeholder {
+  color: var(--prayer-muted-text);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
