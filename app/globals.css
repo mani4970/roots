@@ -192,6 +192,53 @@
   --prayer-reward-overlay: rgba(26,28,30,0.92);
   --prayer-fab-shadow: 0 4px 14px rgba(91,125,91,0.35);
 
+  /* Phase 2D: Community feeds, reactions, notices, and overlay surfaces. */
+  --community-card-surface: var(--surface-card);
+  --community-card-border: var(--border);
+  --community-card-muted-surface: var(--surface-card-muted);
+  --community-modal-surface: var(--surface-card);
+  --community-popover-surface: var(--surface-card);
+  --community-field-surface: var(--warm-100);
+  --community-muted-text: #9A9A94;
+  --community-sage-surface: var(--surface-sage-selected);
+  --community-sage-subtle-surface: var(--surface-sage-subtle);
+  --community-sage-border: var(--border-sage-soft);
+  --community-sage-text: var(--sage-dark);
+  --community-action: var(--sage-action);
+  --community-on-action: var(--on-sage-action);
+  --community-gold-surface: var(--surface-gold-subtle);
+  --community-gold-border: var(--border-gold-soft);
+  --community-gold-text: var(--text-gold-strong);
+  --community-gold-action: var(--gold-700);
+  --community-on-gold-action: var(--warm-0);
+  --community-favorite-active: #FFD600;
+  --community-terra-border-soft: var(--terra-200);
+  --community-danger-surface: #FFF3F2;
+  --community-danger-border: #D98B87;
+  --community-danger-text: #A63232;
+  --community-danger-action: #A63232;
+  --community-on-danger-action: #FFFFFF;
+  --community-like-text: #C7434B;
+  --community-overlay-sheet: var(--overlay-sheet);
+  --community-overlay-modal: var(--overlay-modal);
+  --community-detail-overlay: rgba(20, 18, 16, 0.88);
+  --community-reward-overlay: rgba(26,28,30,0.86);
+  --community-toast-surface: var(--surface-card);
+  --community-toast-text: var(--text);
+  --community-toast-border: var(--border-gold-soft);
+  --community-unread-card-surface: var(--sage-50);
+  --community-unread-card-border: var(--sage-200);
+  --community-highlight-shadow: 0 0 0 5px rgba(91,125,91,0.16);
+  --community-unread-dot-ring: 0 0 0 2px rgba(91,125,91,0.14);
+  --community-intro-surface:
+    linear-gradient(135deg, var(--sage-50), var(--gold-50));
+  --community-reaction-surface: var(--warm-100);
+  --community-reaction-border: var(--warm-200);
+  --community-reaction-text: var(--warm-700);
+  --community-reaction-selected-surface: var(--sage-100);
+  --community-reaction-selected-border: var(--sage-500);
+  --community-reaction-selected-text: var(--sage-700);
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -370,6 +417,52 @@
   --prayer-toast-border: #454B55;
   --prayer-reward-overlay: rgba(0,0,0,0.82);
   --prayer-fab-shadow: 0 4px 16px rgba(0,0,0,0.36);
+
+  /* Phase 2D dark counterparts remove light-only Community colors. */
+  --community-card-surface: #24282E;
+  --community-card-border: #3C424B;
+  --community-card-muted-surface: var(--surface-card-muted);
+  --community-modal-surface: var(--surface-card);
+  --community-popover-surface: var(--surface-card-muted);
+  --community-field-surface: #30343A;
+  --community-muted-text: var(--text-muted-readable);
+  --community-sage-surface: var(--surface-sage-selected);
+  --community-sage-subtle-surface: var(--surface-sage-subtle);
+  --community-sage-border: var(--border-sage-soft);
+  --community-sage-text: var(--sage-dark);
+  --community-action: var(--sage-action);
+  --community-on-action: var(--on-sage-action);
+  --community-gold-surface: var(--surface-gold-subtle);
+  --community-gold-border: var(--border-gold-soft);
+  --community-gold-text: var(--text-gold-strong);
+  --community-gold-action: var(--gold-200);
+  --community-on-gold-action: #1A1C1E;
+  --community-terra-border-soft: #5A4433;
+  --community-danger-surface: #382328;
+  --community-danger-border: #754149;
+  --community-danger-text: #FF9B9B;
+  --community-danger-action: #A83F47;
+  --community-on-danger-action: #FFFFFF;
+  --community-like-text: #FF8A91;
+  --community-overlay-sheet: var(--overlay-sheet);
+  --community-overlay-modal: var(--overlay-modal);
+  --community-detail-overlay: rgba(0,0,0,0.88);
+  --community-reward-overlay: rgba(0,0,0,0.82);
+  --community-toast-surface: #30343A;
+  --community-toast-text: var(--text);
+  --community-toast-border: var(--border-gold-soft);
+  --community-unread-card-surface: var(--surface-sage-subtle);
+  --community-unread-card-border: var(--border-sage-soft);
+  --community-highlight-shadow: 0 0 0 5px rgba(122,157,122,0.22);
+  --community-unread-dot-ring: 0 0 0 2px rgba(122,157,122,0.24);
+  --community-intro-surface:
+    linear-gradient(135deg, var(--surface-sage-subtle), var(--surface-gold-subtle));
+  --community-reaction-surface: #30343A;
+  --community-reaction-border: #454B55;
+  --community-reaction-text: var(--text-muted-readable);
+  --community-reaction-selected-surface: var(--surface-sage-selected);
+  --community-reaction-selected-border: var(--border-sage-strong);
+  --community-reaction-selected-text: var(--sage-dark);
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -479,6 +572,39 @@ a { text-decoration: none; color: inherit; }
 
 .roots-prayer-phase2c .textarea-field::placeholder {
   color: var(--prayer-muted-text);
+}
+
+.roots-community-phase2d {
+  --text3: var(--community-muted-text);
+}
+
+.roots-community-phase2d .card {
+  background: var(--community-card-surface);
+  border-color: var(--community-card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.roots-community-phase2d .btn-primary,
+.roots-community-phase2d .btn-sage {
+  background: var(--community-action);
+  color: var(--community-on-action);
+}
+
+.roots-community-phase2d .btn-outline {
+  background: var(--community-card-muted-surface);
+  color: var(--text2);
+  border-color: var(--community-card-border);
+}
+
+.roots-community-phase2d .input-field,
+.roots-community-phase2d .textarea-field {
+  background: var(--community-field-surface);
+  border-color: var(--community-card-border);
+}
+
+.roots-community-phase2d .input-field::placeholder,
+.roots-community-phase2d .textarea-field::placeholder {
+  color: var(--community-muted-text);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }

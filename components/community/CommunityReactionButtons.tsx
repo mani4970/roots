@@ -23,7 +23,9 @@ function ReactionIcon({
   id: CommunityReactionId;
   selected: boolean;
 }) {
-  const color = selected ? "var(--sage-dark)" : "currentColor";
+  const color = selected
+    ? "var(--community-reaction-selected-text)"
+    : "currentColor";
   if (id === "cheer") {
     return (
       <Heart
@@ -79,11 +81,15 @@ export default function CommunityReactionButtons({
               gap: 4,
               padding: "6px 10px",
               borderRadius: 20,
-              border: `1.5px solid ${isSelected ? "var(--sage)" : "var(--border)"}`,
-              background: isSelected ? "var(--sage-light)" : "var(--bg3)",
+              border: `1.5px solid ${isSelected ? "var(--community-reaction-selected-border)" : "var(--community-reaction-border)"}`,
+              background: isSelected
+                ? "var(--community-reaction-selected-surface)"
+                : "var(--community-reaction-surface)",
               cursor: "pointer",
               fontSize: 12,
-              color: isSelected ? "var(--sage-dark)" : "var(--text3)",
+              color: isSelected
+                ? "var(--community-reaction-selected-text)"
+                : "var(--community-reaction-text)",
               fontWeight: isSelected ? 700 : 500,
               transition:
                 "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
@@ -100,7 +106,9 @@ export default function CommunityReactionButtons({
                 textAlign: "center",
                 fontWeight: 750,
                 fontVariantNumeric: "tabular-nums",
-                color: isSelected ? "var(--sage-dark)" : "var(--text2)",
+                color: isSelected
+                  ? "var(--community-reaction-selected-text)"
+                  : "var(--community-reaction-text)",
                 opacity: count > 0 ? 1 : 0.58,
                 marginLeft: 1,
               }}
