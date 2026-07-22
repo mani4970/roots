@@ -9,27 +9,27 @@ import { t, type TKey } from "@/lib/i18n";
 const EMOTION_GROUPS = [
   {
     catKey: "checkin_cat1" as TKey,
-    color: "rgba(232,197,71,0.15)", border: "rgba(232,197,71,0.3)", labelColor: "rgba(180,140,30,0.9)",
+    color: "var(--daily-word-gold-surface)", border: "var(--daily-word-gold-border)", labelColor: "var(--daily-word-gold-text)",
     items: ["grateful","joyful","peaceful","excited","full"],
   },
   {
     catKey: "checkin_cat2" as TKey,
-    color: "rgba(122,157,122,0.12)", border: "rgba(122,157,122,0.3)", labelColor: "var(--sage-dark)",
+    color: "var(--daily-word-sage-surface)", border: "var(--daily-word-sage-border)", labelColor: "var(--daily-word-sage-text)",
     items: ["grace","hungry","mission","repent","renew"],
   },
   {
     catKey: "checkin_cat3" as TKey,
-    color: "rgba(100,120,180,0.1)", border: "rgba(100,120,180,0.25)", labelColor: "rgba(80,100,160,0.9)",
+    color: "var(--daily-word-blue-surface)", border: "var(--daily-word-blue-border)", labelColor: "var(--daily-word-blue-text)",
     items: ["tired","exhausted","lonely","sad","anxious"],
   },
   {
     catKey: "checkin_cat4" as TKey,
-    color: "rgba(180,120,80,0.1)", border: "rgba(180,120,80,0.25)", labelColor: "rgba(150,90,50,0.9)",
+    color: "var(--daily-word-terra-surface)", border: "var(--daily-word-terra-border)", labelColor: "var(--daily-word-terra-text)",
     items: ["doubt","dry","angry","far"],
   },
   {
     catKey: "checkin_cat5" as TKey,
-    color: "rgba(122,157,122,0.08)", border: "rgba(122,157,122,0.2)", labelColor: "var(--sage-dark)",
+    color: "var(--daily-word-prayer-surface)", border: "var(--daily-word-prayer-border)", labelColor: "var(--daily-word-prayer-text)",
     items: ["family","work","relation","health","future"],
   },
 ];
@@ -52,7 +52,7 @@ export default function CheckinPage() {
   const selectedItem = EMOTIONS.flatMap(g => g.items).find(e => e.id === selected);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: selected ? "calc(210px + var(--bottom-nav-bottom-padding))" : "calc(104px + var(--bottom-nav-bottom-padding))", position: "relative" }}>
+    <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: selected ? "calc(210px + var(--bottom-nav-bottom-padding))" : "calc(104px + var(--bottom-nav-bottom-padding))", position: "relative" }}>
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13, color: "var(--text3)" }}>{t("back", lang)}</span>
@@ -79,8 +79,8 @@ export default function CheckinPage() {
                     key={item.id}
                     onClick={() => setSelected(item.id)}
                     style={{
-                      background: on ? group.color : "var(--bg2)",
-                      border: `1.5px solid ${on ? group.border : "var(--border)"}`,
+                      background: on ? group.color : "var(--daily-word-card-surface)",
+                      border: `1.5px solid ${on ? group.border : "var(--daily-word-card-border)"}`,
                       borderRadius: 16,
                       padding: "12px 6px 10px",
                       textAlign: "center",
@@ -104,8 +104,8 @@ export default function CheckinPage() {
       </div>
 
       {selected && selectedItem && (
-        <div style={{ position: "fixed", bottom: "calc(52px + var(--bottom-nav-bottom-padding))", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "var(--bg2)", borderTop: "1px solid var(--border)", padding: "12px 16px 12px", zIndex: 45, boxShadow: "0 -8px 24px rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 14px", background: "var(--bg3)", borderRadius: 12 }}>
+        <div style={{ position: "fixed", bottom: "calc(52px + var(--bottom-nav-bottom-padding))", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "var(--daily-word-sheet-surface)", borderTop: "1px solid var(--daily-word-card-border)", padding: "12px 16px 12px", zIndex: 45, boxShadow: "var(--daily-word-sheet-shadow)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 14px", background: "var(--daily-word-sheet-preview-surface)", borderRadius: 12 }}>
             <img src={selectedItem.img} alt={selectedItem.label} style={{ width: 32, height: 32, objectFit: "contain" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{selectedItem.label}</span>
           </div>

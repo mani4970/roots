@@ -151,15 +151,15 @@ function ResultContent() {
   }, [langReady, lang, selectedEmotion]);
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
-      <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
-      <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("result_loading", lang)}</p>
+    <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
+      <Loader2 size={32} style={{ color: "var(--daily-word-sage-text)" }} className="spin" />
+      <p style={{ color: "var(--daily-word-muted-text)", fontSize: 14 }}>{t("result_loading", lang)}</p>
       <BottomNav />
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(120px + var(--bottom-nav-bottom-padding))", position: "relative" }} className="fade-in">
+    <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(120px + var(--bottom-nav-bottom-padding))", position: "relative" }} className="fade-in roots-daily-word-phase2e">
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -170,16 +170,16 @@ function ResultContent() {
 
       <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* 축복 메시지 카드 */}
-        <div style={{ background: "rgba(122,157,122,0.12)", border: "1px solid rgba(122,157,122,0.25)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <Heart size={16} style={{ color: "var(--sage)", flexShrink: 0, marginTop: 2 }} fill="var(--sage)" />
-          <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.55, margin: 0, fontWeight: 500 }}>
+        <div style={{ background: "var(--daily-word-blessing-surface)", border: "1px solid var(--daily-word-blessing-border)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <Heart size={16} style={{ color: "var(--daily-word-sage-text)", flexShrink: 0, marginTop: 2 }} fill="var(--daily-word-sage-text)" />
+          <p style={{ fontSize: 13, color: "var(--daily-word-sage-text)", lineHeight: 1.55, margin: 0, fontWeight: 500 }}>
             {t('result_blessing', lang)}
           </p>
         </div>
 
         {/* 말씀 카드 */}
         <div className="card-sage">
-          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--daily-word-sage-text)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
             {result?.reference}
           </p>
           <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
@@ -197,15 +197,15 @@ function ResultContent() {
       </div>
 
       {badgePopup && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--daily-word-reward-overlay)", backdropFilter: "blur(4px)", padding: 20 }}>
           <ConfettiBurst />
-          <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, background: "var(--bg2)", border: "1px solid rgba(232,197,71,0.35)", padding: "26px 22px", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.28)" }}>
-            <div style={{ width: 118, height: 118, margin: "0 auto 16px", borderRadius: "50%", background: "linear-gradient(135deg, rgba(232,197,71,0.18), rgba(122,157,122,0.16))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, background: "var(--daily-word-modal-surface)", border: "1px solid var(--daily-word-gold-border)", padding: "26px 22px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
+            <div style={{ width: 118, height: 118, margin: "0 auto 16px", borderRadius: "50%", background: "var(--daily-word-reward-gradient)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 850, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 850, color: "var(--daily-word-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: 18 }}>{badgePopup.msg}</p>
-            <button onClick={() => setBadgePopup(null)} className="btn-sage" style={{ width: "100%" }}>{t("badge_thanks", lang)}</button>
+            <button onClick={() => setBadgePopup(null)} className="btn-sage" style={{ width: "100%", background: "var(--daily-word-gold-action)", color: "var(--daily-word-on-gold-action)" }}>{t("badge_thanks", lang)}</button>
           </div>
         </div>
       )}
@@ -220,8 +220,8 @@ function ResultContent() {
 export default function ResultPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
-        <Loader2 size={32} style={{ color: "var(--sage)" }} className="spin" />
+      <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
+        <Loader2 size={32} style={{ color: "var(--daily-word-sage-text)" }} className="spin" />
         <BottomNav />
       </div>
     }>

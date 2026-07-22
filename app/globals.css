@@ -239,6 +239,43 @@
   --community-reaction-selected-border: var(--sage-500);
   --community-reaction-selected-text: var(--sage-700);
 
+  /* Phase 2E: Today's Word choices, result cards, and reward surfaces. */
+  --daily-word-card-surface: var(--surface-card);
+  --daily-word-card-border: var(--border);
+  --daily-word-muted-text: var(--text-muted-readable);
+  --daily-word-gold-surface: var(--surface-gold-subtle);
+  --daily-word-gold-border: var(--border-gold-soft);
+  --daily-word-gold-text: var(--text-gold-strong);
+  --daily-word-sage-surface: var(--surface-sage-selected);
+  --daily-word-sage-border: var(--border-sage-strong);
+  --daily-word-sage-text: var(--sage-dark);
+  --daily-word-blue-surface: #F1F4FA;
+  --daily-word-blue-border: #B8C5E2;
+  --daily-word-blue-text: #4B5F92;
+  --daily-word-terra-surface: var(--terra-50);
+  --daily-word-terra-border: var(--terra-200);
+  --daily-word-terra-text: var(--terra-700);
+  --daily-word-prayer-surface: var(--sage-50);
+  --daily-word-prayer-border: var(--sage-200);
+  --daily-word-prayer-text: var(--sage-700);
+  --daily-word-sheet-surface: var(--surface-card);
+  --daily-word-sheet-preview-surface: var(--surface-card-muted);
+  --daily-word-sheet-shadow:
+    0 -1px 2px rgba(63, 54, 44, 0.06),
+    0 -10px 28px rgba(63, 54, 44, 0.08);
+  --daily-word-blessing-surface: var(--surface-sage-subtle);
+  --daily-word-blessing-border: var(--border-sage-soft);
+  --daily-word-result-surface: var(--surface-sage-selected);
+  --daily-word-result-border: var(--border-sage-soft);
+  --daily-word-action: var(--sage-action);
+  --daily-word-on-action: var(--on-sage-action);
+  --daily-word-modal-surface: var(--surface-card);
+  --daily-word-reward-overlay: var(--overlay-modal);
+  --daily-word-reward-gradient:
+    linear-gradient(135deg, var(--surface-gold-subtle), var(--surface-sage-selected));
+  --daily-word-gold-action: var(--gold-200);
+  --daily-word-on-gold-action: var(--gold-900);
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -463,6 +500,43 @@
   --community-reaction-selected-surface: var(--surface-sage-selected);
   --community-reaction-selected-border: var(--border-sage-strong);
   --community-reaction-selected-text: var(--sage-dark);
+
+  /* Phase 2E dark counterparts keep every emotion family distinct. */
+  --daily-word-card-surface: #24282E;
+  --daily-word-card-border: #3C424B;
+  --daily-word-muted-text: var(--text-muted-readable);
+  --daily-word-gold-surface: var(--surface-gold-subtle);
+  --daily-word-gold-border: var(--border-gold-soft);
+  --daily-word-gold-text: var(--text-gold-strong);
+  --daily-word-sage-surface: var(--surface-sage-selected);
+  --daily-word-sage-border: var(--border-sage-strong);
+  --daily-word-sage-text: var(--sage-dark);
+  --daily-word-blue-surface: #252D3E;
+  --daily-word-blue-border: #52658D;
+  --daily-word-blue-text: #C4D2F0;
+  --daily-word-terra-surface: #342A22;
+  --daily-word-terra-border: #684C36;
+  --daily-word-terra-text: var(--terra-dark);
+  --daily-word-prayer-surface: #243127;
+  --daily-word-prayer-border: var(--border-sage-soft);
+  --daily-word-prayer-text: var(--sage-dark);
+  --daily-word-sheet-surface: var(--surface-card);
+  --daily-word-sheet-preview-surface: var(--surface-card-muted);
+  --daily-word-sheet-shadow:
+    0 -1px 2px rgba(0, 0, 0, 0.28),
+    0 -12px 30px rgba(0, 0, 0, 0.34);
+  --daily-word-blessing-surface: var(--surface-sage-subtle);
+  --daily-word-blessing-border: var(--border-sage-soft);
+  --daily-word-result-surface: var(--surface-sage-selected);
+  --daily-word-result-border: var(--border-sage-soft);
+  --daily-word-action: var(--sage-action);
+  --daily-word-on-action: var(--on-sage-action);
+  --daily-word-modal-surface: var(--surface-card);
+  --daily-word-reward-overlay: var(--overlay-modal);
+  --daily-word-reward-gradient:
+    linear-gradient(135deg, var(--surface-gold-subtle), var(--surface-sage-selected));
+  --daily-word-gold-action: var(--gold-200);
+  --daily-word-on-gold-action: var(--gold-900);
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -605,6 +679,22 @@ a { text-decoration: none; color: inherit; }
 .roots-community-phase2d .input-field::placeholder,
 .roots-community-phase2d .textarea-field::placeholder {
   color: var(--community-muted-text);
+}
+
+.roots-daily-word-phase2e {
+  --text3: var(--daily-word-muted-text);
+}
+
+.roots-daily-word-phase2e .btn-primary,
+.roots-daily-word-phase2e .btn-sage {
+  background: var(--daily-word-action);
+  color: var(--daily-word-on-action);
+}
+
+.roots-daily-word-phase2e .card-sage {
+  background: var(--daily-word-result-surface);
+  border-color: var(--daily-word-result-border);
+  box-shadow: var(--shadow-card-sage);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
