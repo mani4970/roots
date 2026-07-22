@@ -276,6 +276,33 @@
   --daily-word-gold-action: var(--gold-200);
   --daily-word-on-gold-action: var(--gold-900);
 
+  /* Phase 2F: Companion invitations, requests, rewards, and modal surfaces. */
+  --companions-card-surface: var(--surface-card);
+  --companions-card-muted-surface: var(--surface-card-muted);
+  --companions-card-border: var(--border);
+  --companions-muted-text: var(--text-muted-readable);
+  --companions-sage-surface: var(--surface-sage-subtle);
+  --companions-sage-selected-surface: var(--surface-sage-selected);
+  --companions-sage-border: var(--border-sage-soft);
+  --companions-sage-text: var(--sage-dark);
+  --companions-action: var(--sage-action);
+  --companions-on-action: var(--on-sage-action);
+  --companions-invite-surface:
+    linear-gradient(180deg, var(--surface-card), var(--surface-sage-subtle));
+  --companions-invite-highlight: rgba(244,239,224,0.64);
+  --companions-toast-surface: rgba(37,44,38,0.96);
+  --companions-toast-text: #FFFFFF;
+  --companions-reward-surface: var(--surface-card);
+  --companions-reward-border: var(--border-gold-soft);
+  --companions-reward-text: var(--text-gold-strong);
+  --companions-reward-gradient:
+    linear-gradient(135deg, var(--surface-gold-subtle), var(--surface-sage-selected));
+  --companions-overlay: var(--overlay-modal);
+  --companions-danger-text: #A63232;
+  --companions-danger-border: #D98B87;
+  --companions-danger-action: #A63232;
+  --companions-on-danger-action: #FFFFFF;
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -537,6 +564,32 @@
     linear-gradient(135deg, var(--surface-gold-subtle), var(--surface-sage-selected));
   --daily-word-gold-action: var(--gold-200);
   --daily-word-on-gold-action: var(--gold-900);
+  /* Phase 2F dark counterparts remove light-only invitation surfaces. */
+  --companions-card-surface: #24282E;
+  --companions-card-muted-surface: var(--surface-card-muted);
+  --companions-card-border: #3C424B;
+  --companions-muted-text: var(--text-muted-readable);
+  --companions-sage-surface: var(--surface-sage-subtle);
+  --companions-sage-selected-surface: var(--surface-sage-selected);
+  --companions-sage-border: var(--border-sage-soft);
+  --companions-sage-text: var(--sage-dark);
+  --companions-action: var(--sage-action);
+  --companions-on-action: var(--on-sage-action);
+  --companions-invite-surface:
+    linear-gradient(180deg, #24282E, var(--surface-sage-subtle));
+  --companions-invite-highlight: #2A332B;
+  --companions-toast-surface: #30343A;
+  --companions-toast-text: var(--text);
+  --companions-reward-surface: var(--surface-card);
+  --companions-reward-border: var(--border-gold-soft);
+  --companions-reward-text: var(--text-gold-strong);
+  --companions-reward-gradient:
+    linear-gradient(135deg, var(--surface-gold-subtle), var(--surface-sage-selected));
+  --companions-overlay: var(--overlay-modal);
+  --companions-danger-text: #FF9B9B;
+  --companions-danger-border: #754149;
+  --companions-danger-action: #A83F47;
+  --companions-on-danger-action: #FFFFFF;
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -695,6 +748,22 @@ a { text-decoration: none; color: inherit; }
   background: var(--daily-word-result-surface);
   border-color: var(--daily-word-result-border);
   box-shadow: var(--shadow-card-sage);
+}
+
+.roots-companions-phase2f .card {
+  background: var(--companions-card-surface);
+  border-color: var(--companions-card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.roots-companions-phase2f .btn-primary,
+.roots-companions-phase2f .btn-sage {
+  background: var(--companions-action);
+  color: var(--companions-on-action);
+}
+
+.roots-companions-phase2f .sec-label {
+  color: var(--companions-muted-text);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }

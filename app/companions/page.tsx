@@ -88,13 +88,13 @@ function Avatar({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: "var(--sage-light)",
-        color: "var(--sage-dark)",
+        background: "var(--companions-sage-selected-surface)",
+        color: "var(--companions-sage-text)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         fontWeight: 900,
-        border: "1px solid rgba(122,157,122,0.28)",
+        border: "1px solid var(--companions-sage-border)",
         flexShrink: 0,
       }}
     >
@@ -441,7 +441,7 @@ function CompanionsContent() {
           >
             {name}
           </p>
-          <p style={{ fontSize: 11, color: "var(--text3)" }}>
+          <p style={{ fontSize: 11, color: "var(--companions-muted-text)" }}>
             {t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}
           </p>
         </div>
@@ -457,7 +457,7 @@ function CompanionsContent() {
           padding: "18px 14px",
           textAlign: "center",
           fontSize: 13,
-          color: "var(--text3)",
+          color: "var(--companions-muted-text)",
           lineHeight: 1.55,
         }}
       >
@@ -469,7 +469,7 @@ function CompanionsContent() {
   if (loading) {
     return (
       <main
-        className="page-wrap"
+        className="page-wrap roots-companions-phase2f"
         style={{
           minHeight: "100dvh",
           display: "flex",
@@ -477,7 +477,7 @@ function CompanionsContent() {
           justifyContent: "center",
         }}
       >
-        <Loader2 className="spin" size={22} style={{ color: "var(--sage)" }} />
+        <Loader2 className="spin" size={22} style={{ color: "var(--companions-sage-text)" }} />
       </main>
     );
   }
@@ -486,7 +486,7 @@ function CompanionsContent() {
     const redirectPath = currentCompanionsRedirectPath();
     return (
       <main
-        className="page-wrap"
+        className="page-wrap roots-companions-phase2f"
         style={{
           minHeight: "100dvh",
           padding: "56px 20px 36px",
@@ -514,7 +514,7 @@ function CompanionsContent() {
           >
             Roots
           </h1>
-          <p style={{ fontSize: 13, color: "var(--text3)", marginBottom: 18 }}>
+          <p style={{ fontSize: 13, color: "var(--companions-muted-text)", marginBottom: 18 }}>
             {inviteText.brandTagline}
           </p>
           <InviteLanguageSwitcher
@@ -527,10 +527,9 @@ function CompanionsContent() {
             style={{
               padding: "26px 22px",
               borderRadius: 24,
-              border: "1px solid rgba(122,157,122,0.26)",
-              background:
-                "linear-gradient(180deg, var(--bg2), var(--sage-light))",
-              boxShadow: "0 16px 38px rgba(50,45,38,0.08)",
+              border: "1px solid var(--companions-sage-border)",
+              background: "var(--companions-invite-surface)",
+              boxShadow: "var(--shadow-card-sage)",
             }}
           >
             <h1
@@ -557,11 +556,11 @@ function CompanionsContent() {
             {isInAppBrowser() && (
               <div
                 style={{
-                  background: "rgba(244,239,224,0.64)",
+                  background: "var(--companions-invite-highlight)",
                   borderRadius: 12,
                   padding: "10px 14px",
                   marginBottom: 14,
-                  border: "1px solid rgba(122,157,122,0.18)",
+                  border: "1px solid var(--companions-sage-border)",
                   textAlign: "left",
                 }}
               >
@@ -590,7 +589,7 @@ function CompanionsContent() {
             <p
               style={{
                 fontSize: 11,
-                color: "var(--text3)",
+                color: "var(--companions-muted-text)",
                 marginTop: 12,
                 lineHeight: 1.55,
               }}
@@ -600,7 +599,7 @@ function CompanionsContent() {
             <div
               style={{
                 height: 1,
-                background: "rgba(122,157,122,0.22)",
+                background: "var(--companions-sage-border)",
                 margin: "18px 0 14px",
               }}
             />
@@ -620,7 +619,7 @@ function CompanionsContent() {
                   padding: "10px 8px",
                   borderRadius: 13,
                   border: "1px solid var(--border)",
-                  background: "var(--bg3)",
+                  background: "var(--companions-card-muted-surface)",
                   color: "var(--text)",
                   fontSize: 12,
                   fontWeight: 850,
@@ -642,7 +641,7 @@ function CompanionsContent() {
                   padding: "10px 8px",
                   borderRadius: 13,
                   border: "1px solid var(--border)",
-                  background: "var(--bg3)",
+                  background: "var(--companions-card-muted-surface)",
                   color: "var(--text)",
                   fontSize: 12,
                   fontWeight: 850,
@@ -659,7 +658,7 @@ function CompanionsContent() {
             <p
               style={{
                 fontSize: 10.5,
-                color: "var(--text3)",
+                color: "var(--companions-muted-text)",
                 lineHeight: 1.55,
                 marginTop: 10,
               }}
@@ -674,7 +673,7 @@ function CompanionsContent() {
 
   return (
     <main
-      className="page-wrap"
+      className="page-wrap roots-companions-phase2f"
       style={{
         minHeight: "100dvh",
         padding: "var(--roots-page-top-padding) 16px 112px",
@@ -689,8 +688,8 @@ function CompanionsContent() {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 220,
-            background: "rgba(37,44,38,0.94)",
-            color: "white",
+            background: "var(--companions-toast-surface)",
+            color: "var(--companions-toast-text)",
             padding: "10px 14px",
             borderRadius: 999,
             fontSize: 12,
@@ -713,7 +712,7 @@ function CompanionsContent() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "rgba(0,0,0,0.45)",
+            background: "var(--companions-overlay)",
             backdropFilter: "blur(4px)",
             padding: 20,
           }}
@@ -724,8 +723,8 @@ function CompanionsContent() {
               width: "100%",
               maxWidth: 360,
               borderRadius: 24,
-              background: "var(--bg2)",
-              border: "1px solid rgba(232,197,71,0.35)",
+              background: "var(--companions-reward-surface)",
+              border: "1px solid var(--companions-reward-border)",
               padding: "26px 22px",
               textAlign: "center",
               boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
@@ -737,8 +736,7 @@ function CompanionsContent() {
                 height: 118,
                 margin: "0 auto 16px",
                 borderRadius: "50%",
-                background:
-                  "linear-gradient(135deg, rgba(232,197,71,0.18), rgba(122,157,122,0.16))",
+                background: "var(--companions-reward-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -754,7 +752,7 @@ function CompanionsContent() {
               style={{
                 fontSize: 20,
                 fontWeight: 850,
-                color: "rgba(232,197,71,0.95)",
+                color: "var(--companions-reward-text)",
                 marginBottom: 10,
                 lineHeight: 1.3,
               }}
@@ -798,7 +796,7 @@ function CompanionsContent() {
             height: 38,
             borderRadius: "50%",
             border: "1px solid var(--border)",
-            background: "var(--bg2)",
+            background: "var(--companions-card-surface)",
             color: "var(--text2)",
             display: "flex",
             alignItems: "center",
@@ -819,7 +817,7 @@ function CompanionsContent() {
           >
             {c("companions_title")}
           </h1>
-          <p style={{ fontSize: 12, color: "var(--text3)" }}>
+          <p style={{ fontSize: 12, color: "var(--companions-muted-text)" }}>
             {c("companions_subtitle")}
           </p>
         </div>
@@ -832,9 +830,8 @@ function CompanionsContent() {
           style={{
             padding: 16,
             marginBottom: 16,
-            border: "1px solid rgba(122,157,122,0.36)",
-            background:
-              "linear-gradient(180deg, var(--bg2), var(--sage-light))",
+            border: "1px solid var(--companions-sage-border)",
+            background: "var(--companions-invite-surface)",
           }}
         >
           <p
@@ -862,7 +859,7 @@ function CompanionsContent() {
           <p
             style={{
               fontSize: 13,
-              color: "var(--text3)",
+              color: "var(--companions-muted-text)",
               lineHeight: 1.6,
               marginBottom: 14,
             }}
@@ -888,8 +885,8 @@ function CompanionsContent() {
                 padding: "10px 12px",
                 borderRadius: 14,
                 border: "none",
-                background: "var(--sage)",
-                color: "var(--bg)",
+                background: "var(--companions-action)",
+                color: "var(--companions-on-action)",
                 fontSize: 12,
                 fontWeight: 850,
                 cursor: "pointer",
@@ -937,7 +934,7 @@ function CompanionsContent() {
             >
               {c("companions_invite_title")}
             </p>
-            <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: "var(--companions-muted-text)", lineHeight: 1.5 }}>
               {c("companions_invite_desc")}
             </p>
           </div>
@@ -949,8 +946,8 @@ function CompanionsContent() {
               flex: 1,
               padding: "12px 10px",
               borderRadius: 14,
-              background: "var(--sage)",
-              color: "var(--bg)",
+              background: "var(--companions-action)",
+              color: "var(--companions-on-action)",
               border: "none",
               fontSize: 13,
               fontWeight: 850,
@@ -969,7 +966,7 @@ function CompanionsContent() {
               width: 46,
               borderRadius: 14,
               border: "1px solid var(--border)",
-              background: "var(--bg3)",
+              background: "var(--companions-card-muted-surface)",
               color: "var(--text2)",
               display: "flex",
               alignItems: "center",
@@ -1009,8 +1006,8 @@ function CompanionsContent() {
                     height: 36,
                     borderRadius: 13,
                     border: "none",
-                    background: "var(--sage)",
-                    color: "var(--bg)",
+                    background: "var(--companions-action)",
+                    color: "var(--companions-on-action)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1031,8 +1028,8 @@ function CompanionsContent() {
                     height: 36,
                     borderRadius: 13,
                     border: "1px solid var(--border)",
-                    background: "var(--bg3)",
-                    color: "var(--text3)",
+                    background: "var(--companions-card-muted-surface)",
+                    color: "var(--companions-muted-text)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1071,9 +1068,9 @@ function CompanionsContent() {
                 style={{
                   padding: "9px 11px",
                   borderRadius: 13,
-                  border: "1px solid rgba(179,95,95,0.3)",
+                  border: "1px solid var(--companions-danger-border)",
                   background: "transparent",
-                  color: "#B35F5F",
+                  color: "var(--companions-danger-text)",
                   fontSize: 12,
                   fontWeight: 850,
                   display: "flex",
@@ -1120,8 +1117,8 @@ function CompanionsContent() {
                   padding: "9px 11px",
                   borderRadius: 13,
                   border: "1px solid var(--border)",
-                  background: "var(--bg3)",
-                  color: "var(--text3)",
+                  background: "var(--companions-card-muted-surface)",
+                  color: "var(--companions-muted-text)",
                   fontSize: 12,
                   fontWeight: 850,
                   cursor: "pointer",
@@ -1142,7 +1139,7 @@ function CompanionsContent() {
             position: "fixed",
             inset: 0,
             zIndex: 210,
-            background: "rgba(26,28,30,0.72)",
+            background: "var(--companions-overlay)",
             backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
@@ -1155,7 +1152,7 @@ function CompanionsContent() {
             style={{
               width: "100%",
               maxWidth: 360,
-              background: "var(--bg2)",
+              background: "var(--companions-card-surface)",
               border: "1px solid var(--border)",
               borderRadius: 22,
               padding: 18,
@@ -1175,7 +1172,7 @@ function CompanionsContent() {
             <p
               style={{
                 fontSize: 13,
-                color: "var(--text3)",
+                color: "var(--companions-muted-text)",
                 lineHeight: 1.6,
                 marginBottom: 14,
               }}
@@ -1190,8 +1187,8 @@ function CompanionsContent() {
                   padding: "10px 12px",
                   borderRadius: 12,
                   border: "1px solid var(--border)",
-                  background: "var(--bg3)",
-                  color: "var(--text3)",
+                  background: "var(--companions-card-muted-surface)",
+                  color: "var(--companions-muted-text)",
                   fontSize: 12,
                   fontWeight: 850,
                   cursor: "pointer",
@@ -1207,8 +1204,8 @@ function CompanionsContent() {
                   padding: "10px 12px",
                   borderRadius: 12,
                   border: "none",
-                  background: "#E05050",
-                  color: "white",
+                  background: "var(--companions-danger-action)",
+                  color: "var(--companions-on-danger-action)",
                   fontSize: 12,
                   fontWeight: 900,
                   cursor: "pointer",
@@ -1236,7 +1233,7 @@ export default function CompanionsPage() {
     <Suspense
       fallback={
         <main
-          className="page-wrap"
+          className="page-wrap roots-companions-phase2f"
           style={{
             minHeight: "100dvh",
             display: "flex",
@@ -1247,7 +1244,7 @@ export default function CompanionsPage() {
           <Loader2
             className="spin"
             size={22}
-            style={{ color: "var(--sage)" }}
+            style={{ color: "var(--companions-sage-text)" }}
           />
         </main>
       }
