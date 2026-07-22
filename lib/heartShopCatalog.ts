@@ -126,7 +126,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 }> = {
   background: { price: 0, directory: "backgrounds", filePrefix: "background", zIndex: -10, sortOffset: 0 },
   bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
-  shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 20, sortOffset: 100 },
+  shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 5, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
   bag: { price: 30, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
   eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
