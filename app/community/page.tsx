@@ -795,14 +795,14 @@ function CommunityPageContent() {
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 240,
-          background: "var(--bg2)",
-          color: "var(--text)",
-          border: "1px solid rgba(232,197,71,0.36)",
+          background: "var(--community-toast-surface)",
+          color: "var(--community-toast-text)",
+          border: "1px solid var(--community-toast-border)",
           borderRadius: 999,
           padding: "10px 16px",
           fontSize: 13,
           fontWeight: 800,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          boxShadow: "var(--shadow-toast)",
           whiteSpace: "nowrap",
           maxWidth: "calc(100vw - 32px)",
           overflow: "hidden",
@@ -1647,7 +1647,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 330,
-          background: "rgba(26,28,30,0.68)",
+          background: "var(--community-overlay-sheet)",
           backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "flex-end",
@@ -1660,11 +1660,11 @@ function CommunityPageContent() {
           style={{
             width: "100%",
             maxWidth: 420,
-            background: "var(--bg2)",
+            background: "var(--community-modal-surface)",
             borderRadius: 26,
             padding: 20,
-            border: "1px solid var(--border)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.24)",
+            border: "1px solid var(--community-card-border)",
+            boxShadow: "var(--shadow-sheet)",
           }}
         >
           <div
@@ -1786,8 +1786,8 @@ function CommunityPageContent() {
                 style={{
                   padding: "12px 14px",
                   borderRadius: 16,
-                  background: "rgba(232,197,71,0.12)",
-                  color: "var(--terra-dark)",
+                  background: "var(--community-gold-surface)",
+                  color: "var(--community-gold-text)",
                   fontSize: 13,
                   fontWeight: 800,
                   textAlign: "center",
@@ -2225,7 +2225,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 270,
-          background: "rgba(26,28,30,0.58)",
+          background: "var(--community-overlay-sheet)",
           backdropFilter: "blur(6px)",
           display: "flex",
           alignItems: "flex-end",
@@ -2238,11 +2238,11 @@ function CommunityPageContent() {
           style={{
             width: "100%",
             maxWidth: 420,
-            background: "var(--bg2)",
-            border: "1px solid var(--border)",
+            background: "var(--community-popover-surface)",
+            border: "1px solid var(--community-card-border)",
             borderRadius: 24,
             padding: "14px",
-            boxShadow: "0 18px 52px rgba(0,0,0,0.28)",
+            boxShadow: "var(--shadow-sheet)",
           }}
         >
           <p
@@ -2279,7 +2279,7 @@ function CommunityPageContent() {
                   borderRadius: 14,
                   border: "none",
                   background: "transparent",
-                  color: "#B35F5F",
+                  color: "var(--community-danger-text)",
                   fontSize: 14,
                   fontWeight: 800,
                   cursor: "pointer",
@@ -2337,7 +2337,7 @@ function CommunityPageContent() {
                   borderRadius: 14,
                   border: "none",
                   background: "transparent",
-                  color: "#B35F5F",
+                  color: "var(--community-danger-text)",
                   fontSize: 14,
                   fontWeight: 800,
                   cursor: "pointer",
@@ -2426,7 +2426,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 280,
-          background: "rgba(26,28,30,0.72)",
+          background: "var(--community-overlay-modal)",
           backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "center",
@@ -2439,11 +2439,11 @@ function CommunityPageContent() {
           style={{
             width: "100%",
             maxWidth: 380,
-            background: "var(--bg2)",
+            background: "var(--community-modal-surface)",
             borderRadius: 24,
             padding: 22,
-            border: "1px solid var(--border)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+            border: "1px solid var(--community-card-border)",
+            boxShadow: "var(--shadow-modal)",
           }}
         >
           <h2
@@ -2482,8 +2482,12 @@ function CommunityPageContent() {
                 flex: 1,
                 border: "none",
                 borderRadius: 14,
-                background: isReport ? "rgba(196,106,106,0.14)" : "var(--sage)",
-                color: isReport ? "#B35F5F" : "white",
+                background: isReport
+                  ? "var(--community-danger-action)"
+                  : "var(--community-action)",
+                color: isReport
+                  ? "var(--community-on-danger-action)"
+                  : "var(--community-on-action)",
                 fontSize: 14,
                 fontWeight: 800,
                 cursor: manageSaving ? "default" : "pointer",
@@ -2533,7 +2537,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 260,
-          background: "rgba(26,28,30,0.72)",
+          background: "var(--community-overlay-modal)",
           backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "center",
@@ -2546,11 +2550,11 @@ function CommunityPageContent() {
           style={{
             width: "100%",
             maxWidth: 380,
-            background: "var(--bg2)",
+            background: "var(--community-modal-surface)",
             borderRadius: 24,
             padding: 22,
-            border: "1px solid var(--border)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+            border: "1px solid var(--community-card-border)",
+            boxShadow: "var(--shadow-modal)",
           }}
         >
           <h2
@@ -2612,8 +2616,8 @@ function CommunityPageContent() {
                       flex: 1,
                       border: "none",
                       borderRadius: 14,
-                      background: "rgba(196,106,106,0.14)",
-                      color: "#B35F5F",
+                      background: "var(--community-danger-action)",
+                      color: "var(--community-on-danger-action)",
                       fontSize: 14,
                       fontWeight: 800,
                       cursor: manageSaving ? "default" : "pointer",
@@ -2757,13 +2761,13 @@ function CommunityPageContent() {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: liked ? "#E05050" : "var(--text3)",
+            color: liked ? "var(--community-like-text)" : "var(--text3)",
           }}
         >
           <Heart
             size={17}
             strokeWidth={1.9}
-            fill={liked ? "#E05050" : "none"}
+            fill={liked ? "var(--community-like-text)" : "none"}
           />
         </span>
         <span
@@ -2772,7 +2776,7 @@ function CommunityPageContent() {
             minWidth: 13,
             textAlign: "center",
             fontSize: 12,
-            color: liked ? "#E05050" : "var(--text3)",
+            color: liked ? "var(--community-like-text)" : "var(--text3)",
             fontWeight: 700,
             visibility: (prayer.like_count ?? 0) > 0 ? "visible" : "hidden",
           }}
@@ -3057,7 +3061,7 @@ function CommunityPageContent() {
           height: 7,
           borderRadius: 999,
           background: "var(--sage)",
-          boxShadow: "0 0 0 2px rgba(122,157,122,0.14)",
+          boxShadow: "var(--community-unread-dot-ring)",
           flexShrink: 0,
         }}
       />
@@ -4790,7 +4794,7 @@ function CommunityPageContent() {
           left: 0,
           right: 0,
           bottom: "calc(-1 * var(--native-bottom-system-bar))",
-          background: "rgba(0,0,0,0.88)",
+          background: "var(--community-detail-overlay)",
           zIndex: 100,
           overflowY: "auto",
           overscrollBehavior: "contain",
@@ -4810,12 +4814,13 @@ function CommunityPageContent() {
         >
           <div
             style={{
-              background: "var(--bg2)",
+              background: "var(--community-modal-surface)",
               borderRadius: 24,
-              border: "1px solid var(--border)",
+              border: "1px solid var(--community-card-border)",
               width: "100%",
               maxWidth: 480,
               padding: "24px 20px",
+              boxShadow: "var(--shadow-modal)",
             }}
           >
             <div
@@ -4869,7 +4874,7 @@ function CommunityPageContent() {
                   borderRadius: 14,
                   padding: "12px 14px",
                   marginBottom: 16,
-                  border: "1px solid rgba(196,149,106,0.2)",
+                  border: "1px solid var(--community-terra-border-soft)",
                 }}
               >
                 <p
@@ -5056,7 +5061,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 285,
-          background: "rgba(26,28,30,0.68)",
+          background: "var(--community-overlay-modal)",
           backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "center",
@@ -5071,11 +5076,11 @@ function CommunityPageContent() {
             maxWidth: 430,
             maxHeight: "86vh",
             overflowY: "auto",
-            background: "var(--bg2)",
+            background: "var(--community-modal-surface)",
             borderRadius: 26,
             padding: 22,
-            border: "1px solid var(--border)",
-            boxShadow: "0 22px 70px rgba(0,0,0,0.28)",
+            border: "1px solid var(--community-card-border)",
+            boxShadow: "var(--shadow-modal)",
           }}
         >
           <div
@@ -5152,8 +5157,8 @@ function CommunityPageContent() {
               <div
                 style={{
                   borderRadius: 20,
-                  border: "1px solid rgba(122,157,122,0.28)",
-                  background: "rgba(122,157,122,0.10)",
+                  border: "1px solid var(--community-sage-border)",
+                  background: "var(--community-sage-subtle-surface)",
                   padding: 18,
                   textAlign: "center",
                 }}
@@ -5355,7 +5360,13 @@ function CommunityPageContent() {
                 />
               </div>
               {challengeError && (
-                <p style={{ fontSize: 12, color: "#B35F5F", lineHeight: 1.5 }}>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--community-danger-text)",
+                    lineHeight: 1.5,
+                  }}
+                >
                   {challengeError}
                 </p>
               )}
@@ -5560,7 +5571,7 @@ function CommunityPageContent() {
           position: "fixed",
           inset: 0,
           zIndex: 245,
-          background: "rgba(26,28,30,0.86)",
+          background: "var(--community-reward-overlay)",
           backdropFilter: "blur(10px)",
           display: "flex",
           alignItems: "center",
@@ -5575,9 +5586,9 @@ function CommunityPageContent() {
             width: "100%",
             maxWidth: 340,
             borderRadius: 28,
-            background: "var(--bg2)",
-            border: "1px solid rgba(232,197,71,0.38)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+            background: "var(--community-modal-surface)",
+            border: "1px solid var(--community-gold-border)",
+            boxShadow: "var(--shadow-modal)",
             padding: "30px 23px 24px",
             textAlign: "center",
           }}
@@ -5594,7 +5605,7 @@ function CommunityPageContent() {
               style={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "rgba(189,139,30,0.98)", margin: "0 0 8px", lineHeight: 1.3 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--community-gold-text)", margin: "0 0 8px", lineHeight: 1.3 }}>
             {text.popupTitle}
           </h2>
           <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, margin: "0 0 4px" }}>
@@ -5603,7 +5614,7 @@ function CommunityPageContent() {
           <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 14px" }}>
             {companionChallengeAwardPopup.partnerName}
           </p>
-          <div style={{ padding: "14px 15px", borderRadius: 16, background: "rgba(232,197,71,0.08)", border: "1px solid rgba(232,197,71,0.25)", marginBottom: 18 }}>
+          <div style={{ padding: "14px 15px", borderRadius: 16, background: "var(--community-gold-surface)", border: "1px solid var(--community-gold-border)", marginBottom: 18 }}>
             <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.68, margin: 0, whiteSpace: "pre-line" }}>
               {text.popupBody}{"\n"}💛 +{companionChallengeAwardPopup.rewardHearts} {text.heartsLabel}
             </p>
@@ -5708,7 +5719,7 @@ function CommunityPageContent() {
             };
 
     return (
-      <div className="page">
+      <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
@@ -5770,12 +5781,12 @@ function CommunityPageContent() {
                 width: 32,
                 height: 32,
                 borderRadius: 999,
-                border: `1px solid ${selectedPartner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                border: `1px solid ${selectedPartner.isFavorite ? "var(--community-gold-border)" : "var(--community-card-border)"}`,
                 background: selectedPartner.isFavorite
-                  ? "rgba(232,197,71,0.12)"
-                  : "var(--bg2)",
+                  ? "var(--community-gold-surface)"
+                  : "var(--community-card-surface)",
                 color: selectedPartner.isFavorite
-                  ? "rgba(232,197,71,0.95)"
+                  ? "var(--community-favorite-active)"
                   : "var(--text3)",
                 display: "flex",
                 alignItems: "center",
@@ -5991,9 +6002,9 @@ function CommunityPageContent() {
                               fontWeight: 800,
                               padding: "2px 7px",
                               borderRadius: 10,
-                              background: "rgba(232,197,71,0.15)",
-                              color: "rgba(196,149,106,0.95)",
-                              border: "1px solid rgba(232,197,71,0.28)",
+                              background: "var(--community-gold-surface)",
+                              color: "var(--community-gold-text)",
+                              border: "1px solid var(--community-gold-border)",
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -6177,7 +6188,7 @@ function CommunityPageContent() {
                         : "2px solid transparent",
                     boxShadow:
                       directPrayerTargetId === String(p.id)
-                        ? "0 0 0 5px rgba(122,157,122,0.14)"
+                        ? "var(--community-highlight-shadow)"
                         : undefined,
                   }}
                 >
@@ -6205,9 +6216,9 @@ function CommunityPageContent() {
                             fontWeight: 800,
                             padding: "2px 7px",
                             borderRadius: 10,
-                            background: "rgba(232,197,71,0.15)",
-                            color: "rgba(196,149,106,0.95)",
-                            border: "1px solid rgba(232,197,71,0.28)",
+                            background: "var(--community-gold-surface)",
+                            color: "var(--community-gold-text)",
+                            border: "1px solid var(--community-gold-border)",
                             whiteSpace: "nowrap",
                           }}
                         >
@@ -6284,10 +6295,10 @@ function CommunityPageContent() {
                   {p.testimony && (
                     <div
                       style={{
-                        background: "rgba(232,197,71,0.08)",
+                        background: "var(--community-gold-surface)",
                         borderRadius: 12,
                         padding: "10px 14px",
-                        border: "1px solid rgba(232,197,71,0.25)",
+                        border: "1px solid var(--community-gold-border)",
                         marginBottom: 8,
                       }}
                     >
@@ -6295,7 +6306,7 @@ function CommunityPageContent() {
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: "rgba(232,197,71,0.9)",
+                          color: "var(--community-gold-text)",
                           marginBottom: 4,
                         }}
                       >
@@ -6393,7 +6404,7 @@ function CommunityPageContent() {
       groupPrayersForCurrentTab,
     );
     return (
-      <div className="page">
+      <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
@@ -6449,7 +6460,7 @@ function CommunityPageContent() {
                 color: selectedGroup.is_public
                   ? "var(--sage-dark)"
                   : "var(--text3)",
-                border: `1px solid ${selectedGroup.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}`,
+                border: `1px solid ${selectedGroup.is_public ? "var(--community-sage-border)" : "var(--community-card-border)"}`,
               }}
             >
               {selectedGroup.is_public
@@ -6465,12 +6476,12 @@ function CommunityPageContent() {
                   width: 30,
                   height: 30,
                   borderRadius: 999,
-                  border: `1px solid ${selectedGroup.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                  border: `1px solid ${selectedGroup.isFavorite ? "var(--community-gold-border)" : "var(--community-card-border)"}`,
                   background: selectedGroup.isFavorite
-                    ? "rgba(232,197,71,0.12)"
-                    : "var(--bg2)",
+                    ? "var(--community-gold-surface)"
+                    : "var(--community-card-surface)",
                   color: selectedGroup.isFavorite
-                    ? "rgba(232,197,71,0.95)"
+                    ? "var(--community-favorite-active)"
                     : "var(--text3)",
                   display: "flex",
                   alignItems: "center",
@@ -6522,9 +6533,9 @@ function CommunityPageContent() {
                   zIndex: 80,
                   minWidth: 180,
                   borderRadius: 18,
-                  border: "1px solid var(--border)",
-                  background: "var(--bg2)",
-                  boxShadow: "0 16px 45px rgba(0,0,0,0.16)",
+                  border: "1px solid var(--community-card-border)",
+                  background: "var(--community-popover-surface)",
+                  boxShadow: "var(--shadow-popover)",
                   padding: 8,
                 }}
               >
@@ -6595,7 +6606,7 @@ function CommunityPageContent() {
                       padding: "11px 10px",
                       border: "none",
                       background: "transparent",
-                      color: "#B35F5F",
+                      color: "var(--community-danger-text)",
                       fontSize: 13,
                       fontWeight: 800,
                       cursor: leavingGroup ? "default" : "pointer",
@@ -7177,9 +7188,9 @@ function CommunityPageContent() {
                                 fontWeight: 800,
                                 padding: "2px 7px",
                                 borderRadius: 10,
-                                background: "rgba(232,197,71,0.15)",
-                                color: "rgba(196,149,106,0.95)",
-                                border: "1px solid rgba(232,197,71,0.28)",
+                                background: "var(--community-gold-surface)",
+                                color: "var(--community-gold-text)",
+                                border: "1px solid var(--community-gold-border)",
                                 whiteSpace: "nowrap",
                               }}
                             >
@@ -7322,7 +7333,7 @@ function CommunityPageContent() {
                         : "2px solid transparent",
                       boxShadow:
                         directPrayerTargetId === String(p.id)
-                          ? "0 0 0 5px rgba(122,157,122,0.14)"
+                          ? "var(--community-highlight-shadow)"
                           : undefined,
                     }}
                   >
@@ -7352,9 +7363,9 @@ function CommunityPageContent() {
                               fontWeight: 800,
                               padding: "2px 7px",
                               borderRadius: 10,
-                              background: "rgba(232,197,71,0.15)",
-                              color: "rgba(196,149,106,0.95)",
-                              border: "1px solid rgba(232,197,71,0.28)",
+                              background: "var(--community-gold-surface)",
+                              color: "var(--community-gold-text)",
+                              border: "1px solid var(--community-gold-border)",
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -7433,10 +7444,10 @@ function CommunityPageContent() {
                     {p.testimony && (
                       <div
                         style={{
-                          background: "rgba(232,197,71,0.08)",
+                          background: "var(--community-gold-surface)",
                           borderRadius: 12,
                           padding: "10px 14px",
-                          border: "1px solid rgba(232,197,71,0.25)",
+                          border: "1px solid var(--community-gold-border)",
                           marginBottom: 8,
                         }}
                       >
@@ -7444,7 +7455,7 @@ function CommunityPageContent() {
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            color: "rgba(232,197,71,0.9)",
+                            color: "var(--community-gold-text)",
                             marginBottom: 4,
                           }}
                         >
@@ -7534,7 +7545,7 @@ function CommunityPageContent() {
               position: "fixed",
               inset: 0,
               zIndex: 215,
-              background: "rgba(26,28,30,0.62)",
+              background: "var(--community-overlay-sheet)",
               backdropFilter: "blur(8px)",
               display: "flex",
               alignItems: "flex-end",
@@ -7547,11 +7558,11 @@ function CommunityPageContent() {
               style={{
                 width: "100%",
                 maxWidth: 430,
-                background: "var(--bg2)",
+                background: "var(--community-modal-surface)",
                 borderRadius: 26,
                 padding: 20,
-                border: "1px solid var(--border)",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.24)",
+                border: "1px solid var(--community-card-border)",
+                boxShadow: "var(--shadow-sheet)",
               }}
             >
               <div
@@ -7697,7 +7708,7 @@ function CommunityPageContent() {
               position: "fixed",
               inset: 0,
               zIndex: 220,
-              background: "rgba(26,28,30,0.72)",
+              background: "var(--community-overlay-modal)",
               backdropFilter: "blur(8px)",
               display: "flex",
               alignItems: "center",
@@ -7710,11 +7721,11 @@ function CommunityPageContent() {
               style={{
                 width: "100%",
                 maxWidth: 360,
-                background: "var(--bg2)",
+                background: "var(--community-modal-surface)",
                 borderRadius: 24,
                 padding: 22,
-                border: "1px solid rgba(196,106,106,0.25)",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+                border: "1px solid var(--community-danger-border)",
+                boxShadow: "var(--shadow-modal)",
               }}
             >
               <div
@@ -7722,8 +7733,8 @@ function CommunityPageContent() {
                   width: 48,
                   height: 48,
                   borderRadius: 999,
-                  background: "rgba(196,106,106,0.10)",
-                  color: "#B35F5F",
+                  background: "var(--community-danger-surface)",
+                  color: "var(--community-danger-text)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -7768,8 +7779,8 @@ function CommunityPageContent() {
                     flex: 1,
                     border: "none",
                     borderRadius: 14,
-                    background: "rgba(196,106,106,0.14)",
-                    color: "#B35F5F",
+                    background: "var(--community-danger-action)",
+                    color: "var(--community-on-danger-action)",
                     fontSize: 14,
                     fontWeight: 800,
                     cursor: leavingGroup ? "default" : "pointer",
@@ -7797,7 +7808,7 @@ function CommunityPageContent() {
               position: "fixed",
               inset: 0,
               zIndex: 245,
-              background: "rgba(26,28,30,0.86)",
+              background: "var(--community-reward-overlay)",
               backdropFilter: "blur(10px)",
               display: "flex",
               alignItems: "center",
@@ -7812,9 +7823,9 @@ function CommunityPageContent() {
                 width: "100%",
                 maxWidth: 340,
                 borderRadius: 28,
-                background: "var(--bg2)",
-                border: "1px solid rgba(232,197,71,0.38)",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+                background: "var(--community-modal-surface)",
+                border: "1px solid var(--community-gold-border)",
+                boxShadow: "var(--shadow-modal)",
                 padding: "30px 23px 24px",
                 textAlign: "center",
               }}
@@ -7860,12 +7871,12 @@ function CommunityPageContent() {
                       width: 104,
                       height: 104,
                       borderRadius: 28,
-                      background: "rgba(232,197,71,0.16)",
-                      color: "rgba(189,139,30,0.95)",
+                      background: "var(--community-gold-surface)",
+                      color: "var(--community-gold-text)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      border: "1px solid rgba(232,197,71,0.34)",
+                      border: "1px solid var(--community-gold-border)",
                     }}
                   >
                     <Star size={48} strokeWidth={1.7} />
@@ -7876,7 +7887,7 @@ function CommunityPageContent() {
                 style={{
                   fontSize: 20,
                   fontWeight: 900,
-                  color: "rgba(189,139,30,0.98)",
+                  color: "var(--community-gold-text)",
                   margin: "0 0 8px",
                   lineHeight: 1.3,
                 }}
@@ -7908,8 +7919,8 @@ function CommunityPageContent() {
                 style={{
                   padding: "14px 15px",
                   borderRadius: 16,
-                  background: "rgba(232,197,71,0.08)",
-                  border: "1px solid rgba(232,197,71,0.25)",
+                  background: "var(--community-gold-surface)",
+                  border: "1px solid var(--community-gold-border)",
                   marginBottom: 18,
                 }}
               >
@@ -7944,7 +7955,7 @@ function CommunityPageContent() {
   }
 
   return (
-    <div className="page">
+    <div className="page roots-community-phase2d">
       {renderLoveHeartToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
       {badgePopup && (
@@ -7954,7 +7965,7 @@ function CommunityPageContent() {
             position: "fixed",
             inset: 0,
             zIndex: 200,
-            background: "rgba(26,28,30,0.92)",
+            background: "var(--community-reward-overlay)",
             backdropFilter: "blur(10px)",
             display: "flex",
             alignItems: "center",
@@ -7966,9 +7977,9 @@ function CommunityPageContent() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "var(--bg2)",
+              background: "var(--community-modal-surface)",
               borderRadius: 28,
-              border: "1px solid rgba(232,197,71,0.4)",
+              border: "1px solid var(--community-gold-border)",
               width: "100%",
               maxWidth: 340,
               padding: "32px 24px 28px",
@@ -7986,7 +7997,7 @@ function CommunityPageContent() {
               style={{
                 fontSize: 20,
                 fontWeight: 800,
-                color: "rgba(232,197,71,0.95)",
+                color: "var(--community-gold-text)",
                 marginBottom: 10,
                 lineHeight: 1.3,
               }}
@@ -7996,9 +8007,9 @@ function CommunityPageContent() {
             <div
               style={{
                 padding: "14px 16px",
-                background: "rgba(232,197,71,0.08)",
+                background: "var(--community-gold-surface)",
                 borderRadius: 14,
-                border: "1px solid rgba(232,197,71,0.25)",
+                border: "1px solid var(--community-gold-border)",
                 marginBottom: 20,
               }}
             >
@@ -8013,8 +8024,8 @@ function CommunityPageContent() {
               style={{
                 width: "100%",
                 padding: "13px",
-                background: "rgba(232,197,71,0.9)",
-                color: "#1a1c1e",
+                background: "var(--community-gold-action)",
+                color: "var(--community-on-gold-action)",
                 border: "none",
                 borderRadius: 14,
                 fontSize: 14,
@@ -8057,7 +8068,7 @@ function CommunityPageContent() {
               alignItems: "center",
               gap: 5,
               background: "var(--sage-light)",
-              border: "1px solid rgba(122,157,122,0.3)",
+              border: "1px solid var(--community-sage-border)",
               borderRadius: 20,
               padding: "7px 12px",
               cursor: "pointer",
@@ -8135,9 +8146,8 @@ function CommunityPageContent() {
                   className="card"
                   style={{
                     padding: 18,
-                    border: "1px solid rgba(122,157,122,0.22)",
-                    background:
-                      "linear-gradient(135deg, rgba(122,157,122,0.12), rgba(232,197,71,0.07))",
+                    border: "1px solid var(--community-sage-border)",
+                    background: "var(--community-intro-surface)",
                   }}
                 >
                   <div
@@ -8239,10 +8249,10 @@ function CommunityPageContent() {
                         width: "100%",
                         padding: 14,
                         borderRadius: 18,
-                        border: `1px solid ${partner.hasNewContent ? "rgba(122,157,122,0.35)" : "var(--border)"}`,
+                        border: `1px solid ${partner.hasNewContent ? "var(--community-unread-card-border)" : "var(--community-card-border)"}`,
                         background: partner.hasNewContent
-                          ? "rgba(122,157,122,0.08)"
-                          : "var(--bg2)",
+                          ? "var(--community-unread-card-surface)"
+                          : "var(--community-card-surface)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -8271,12 +8281,12 @@ function CommunityPageContent() {
                             width: 30,
                             height: 30,
                             borderRadius: 999,
-                            border: `1px solid ${partner.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                            border: `1px solid ${partner.isFavorite ? "var(--community-gold-border)" : "var(--community-card-border)"}`,
                             background: partner.isFavorite
-                              ? "rgba(232,197,71,0.12)"
-                              : "var(--bg3)",
+                              ? "var(--community-gold-surface)"
+                              : "var(--community-card-muted-surface)",
                             color: partner.isFavorite
-                              ? "rgba(232,197,71,0.95)"
+                              ? "var(--community-favorite-active)"
                               : "var(--text3)",
                             display: "flex",
                             alignItems: "center",
@@ -8340,9 +8350,9 @@ function CommunityPageContent() {
                                   fontWeight: 800,
                                   padding: "2px 7px",
                                   borderRadius: 10,
-                                  background: "rgba(232,197,71,0.15)",
-                                  color: "rgba(196,149,106,0.95)",
-                                  border: "1px solid rgba(232,197,71,0.28)",
+                                  background: "var(--community-gold-surface)",
+                                  color: "var(--community-gold-text)",
+                                  border: "1px solid var(--community-gold-border)",
                                   flexShrink: 0,
                                 }}
                               >
@@ -8746,10 +8756,10 @@ function CommunityPageContent() {
                     {p.testimony && (
                       <div
                         style={{
-                          background: "rgba(232,197,71,0.08)",
+                          background: "var(--community-gold-surface)",
                           borderRadius: 12,
                           padding: "10px 14px",
-                          border: "1px solid rgba(232,197,71,0.25)",
+                          border: "1px solid var(--community-gold-border)",
                           marginBottom: 8,
                         }}
                       >
@@ -8757,7 +8767,7 @@ function CommunityPageContent() {
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            color: "rgba(232,197,71,0.9)",
+                            color: "var(--community-gold-text)",
                             marginBottom: 4,
                           }}
                         >
@@ -8843,9 +8853,9 @@ function CommunityPageContent() {
                     textAlign: "left",
                     background:
                       (g.hasNewContent ?? g.hasNewQt)
-                        ? "rgba(122,157,122,0.08)"
-                        : "var(--bg2)",
-                    border: `1px solid ${(g.hasNewContent ?? g.hasNewQt) ? "rgba(122,157,122,0.35)" : "var(--border)"}`,
+                        ? "var(--community-unread-card-surface)"
+                        : "var(--community-card-surface)",
+                    border: `1px solid ${(g.hasNewContent ?? g.hasNewQt) ? "var(--community-unread-card-border)" : "var(--community-card-border)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
                     cursor: "pointer",
@@ -8863,12 +8873,12 @@ function CommunityPageContent() {
                         width: 30,
                         height: 30,
                         borderRadius: 999,
-                        border: `1px solid ${g.isFavorite ? "rgba(232,197,71,0.55)" : "var(--border)"}`,
+                        border: `1px solid ${g.isFavorite ? "var(--community-gold-border)" : "var(--community-card-border)"}`,
                         background: g.isFavorite
-                          ? "rgba(232,197,71,0.12)"
-                          : "var(--bg3)",
+                          ? "var(--community-gold-surface)"
+                          : "var(--community-card-muted-surface)",
                         color: g.isFavorite
-                          ? "rgba(232,197,71,0.95)"
+                          ? "var(--community-favorite-active)"
                           : "var(--text3)",
                         display: "flex",
                         alignItems: "center",
@@ -8918,7 +8928,7 @@ function CommunityPageContent() {
                           color: g.is_public
                             ? "var(--sage-dark)"
                             : "var(--text3)",
-                          border: `1px solid ${g.is_public ? "rgba(122,157,122,0.3)" : "var(--border)"}`,
+                          border: `1px solid ${g.is_public ? "var(--community-sage-border)" : "var(--community-card-border)"}`,
                         }}
                       >
                         {g.is_public
@@ -8932,9 +8942,9 @@ function CommunityPageContent() {
                             fontWeight: 800,
                             padding: "2px 7px",
                             borderRadius: 10,
-                            background: "rgba(232,197,71,0.15)",
-                            color: "rgba(196,149,106,0.95)",
-                            border: "1px solid rgba(232,197,71,0.28)",
+                            background: "var(--community-gold-surface)",
+                            color: "var(--community-gold-text)",
+                            border: "1px solid var(--community-gold-border)",
                           }}
                         >
                           {c("community_new")}
@@ -8980,7 +8990,7 @@ function CommunityPageContent() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.75)",
+            background: "var(--community-overlay-modal)",
             zIndex: 50,
             display: "flex",
             alignItems: "center",
@@ -8990,12 +9000,13 @@ function CommunityPageContent() {
         >
           <div
             style={{
-              background: "var(--bg2)",
+              background: "var(--community-modal-surface)",
               width: "100%",
               maxWidth: 390,
               borderRadius: 24,
               padding: 24,
-              border: "1px solid var(--border)",
+              border: "1px solid var(--community-card-border)",
+              boxShadow: "var(--shadow-modal)",
             }}
           >
             <div

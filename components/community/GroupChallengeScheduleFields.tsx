@@ -130,10 +130,10 @@ export default function GroupChallengeScheduleFields({
       <div
         style={{
           borderRadius: 14,
-          border: "1px solid rgba(189,139,30,0.22)",
-          background: "rgba(232,197,71,0.10)",
+          border: "1px solid var(--community-gold-border)",
+          background: "var(--community-gold-surface)",
           padding: "10px 12px",
-          color: "var(--terra-dark)",
+          color: "var(--community-gold-text)",
           fontSize: 11,
           fontWeight: 750,
           lineHeight: 1.5,
