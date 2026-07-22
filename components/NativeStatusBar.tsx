@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
+import {
+  Capacitor,
+  registerPlugin,
+  SystemBars,
+  SystemBarsStyle,
+  SystemBarType,
+} from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 
 const LIGHT_BG = "#F8F4EC";
 const DARK_BG = "#1A1C1E";
+
+interface RootsStatusBarPlugin {
+  setBackgroundColor(options: { color: string }): Promise<void>;
+}
+
+const RootsStatusBar = registerPlugin<RootsStatusBarPlugin>("RootsStatusBar");
 
 export default function NativeStatusBar() {
   useEffect(() => {
@@ -24,6 +36,43 @@ export default function NativeStatusBar() {
 
     function applyNativeStatusBar() {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+
+      if (Capacitor.getPlatform() === "android") {
+        const backgroundColor = isDark ? DARK_BG : LIGHT_BG;
+        document.documentElement.style.backgroundColor = backgroundColor;
+
+        const applyLegacyAndroidStatusBar = () => {
+          void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+          void StatusBar.setBackgroundColor({ color: backgroundColor }).catch(() => {});
+          void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
+        };
+
+        if (!Capacitor.isPluginAvailable("SystemBars")) {
+          applyLegacyAndroidStatusBar();
+          if (Capacitor.isPluginAvailable("RootsStatusBar")) {
+            void RootsStatusBar.setBackgroundColor({ color: backgroundColor }).catch(() => {});
+          }
+          return;
+        }
+
+        void SystemBars.setStyle({
+          style: isDark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
+          bar: SystemBarType.StatusBar,
+        })
+          .then(() => {
+            if (Capacitor.isPluginAvailable("RootsStatusBar")) {
+              return RootsStatusBar.setBackgroundColor({ color: backgroundColor });
+            }
+          })
+          .catch(() => {
+            applyLegacyAndroidStatusBar();
+            if (Capacitor.isPluginAvailable("RootsStatusBar")) {
+              void RootsStatusBar.setBackgroundColor({ color: backgroundColor }).catch(() => {});
+            }
+          });
+        return;
+      }
+
       void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
       void StatusBar.setBackgroundColor({ color: isDark ? DARK_BG : LIGHT_BG }).catch(() => {});
       void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});

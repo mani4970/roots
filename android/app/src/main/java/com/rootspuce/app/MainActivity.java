@@ -35,6 +35,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(RootsStatusBarPlugin.class);
         super.onCreate(savedInstanceState);
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         isConnected = hasInternetConnection();

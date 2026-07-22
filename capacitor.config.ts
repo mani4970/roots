@@ -30,6 +30,9 @@ const config: CapacitorConfig = {
     allowNavigation: getAllowedNavigationHosts(appUrl),
   },
   plugins: {
+    SystemBars: {
+      insetsHandling: "css",
+    },
     LocalNotifications: {
       smallIcon: "ic_stat_roots_notification",
       iconColor: "#6B8E5A",

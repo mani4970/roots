@@ -13,6 +13,7 @@ import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePro
 import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
+import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -140,6 +141,7 @@ function PrayerPageContent() {
       id: String(group.id),
       name: String(group.name ?? ""),
       is_public: !!group.is_public,
+      isFavorite: !!group.isFavorite,
     }));
   }
 
@@ -199,41 +201,17 @@ function PrayerPageContent() {
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
 
-      const { data: memberRows } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id);
-      const groupIds = (memberRows ?? []).map((row: any) => row.group_id).filter(Boolean);
-      if (groupIds.length > 0) {
-        const { data: groupData } = await supabase
-          .from("groups")
-          .select("id, name, is_public")
-          .in("id", groupIds);
-        setMyGroups(groupData ?? []);
-      } else {
-        setMyGroups([]);
-      }
-
-      const { data: companionRows } = await supabase
-        .from("companions")
-        .select("requester_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-      const partnerIds = Array.from(new Set((companionRows ?? [])
-        .map((row: any) => row.requester_id === user.id ? row.receiver_id : row.requester_id)
-        .filter(Boolean)
-      ));
-      if (partnerIds.length > 0) {
-        const profileMap = mapProfileCards(
-          await loadProfileCards(supabase, partnerIds),
+      try {
+        const shareOptions = await loadSharePromptOptions(
+          c("profile_default_name"),
+          { force: true },
         );
-        setMyPartners(partnerIds.map((partnerId: any) => ({
-          id: String(partnerId),
-          name: String(profileMap[partnerId]?.name ?? c("profile_default_name")),
-          avatar_url: profileMap[partnerId]?.avatar_url ?? null,
-        })));
-      } else {
+        setMyGroups(shareOptions.groups);
+        setMyPartners(shareOptions.partners);
+      } catch (shareOptionsError) {
+        console.error("prayer share options load failed", shareOptionsError);
         setMyPartners([]);
+        setMyGroups([]);
       }
 
       const { data: partnerRecipientRows } = await supabase
