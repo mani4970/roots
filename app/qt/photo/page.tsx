@@ -459,9 +459,9 @@ function PhotoReflectionContent() {
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
 
   return (
-    <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 40 }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
       {notice && (
-        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
+        <div className="roots-elevation-toast" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--qt-toast-surface)", color: "var(--text)", border: "1px solid var(--qt-toast-border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
@@ -471,7 +471,7 @@ function PhotoReflectionContent() {
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 16, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="roots-elevation-card-sage" style={{ width: 42, height: 42, borderRadius: 16, background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", border: "1px solid var(--qt-sage-border-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ImagePlus size={23} />
           </div>
           <div>
@@ -562,8 +562,8 @@ function PhotoReflectionContent() {
               {extraRefs.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {extraRefs.map(ref => (
-                    <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-sage-selected)", borderRadius: 10, padding: "8px 10px", border: "1px solid var(--border-sage-soft)" }}>
-                      <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}>{translateBibleRef(ref, bibleDisplayLang)}</span>
+                    <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--qt-sage-surface)", borderRadius: 10, padding: "8px 10px", border: "1px solid var(--qt-sage-border-soft)" }}>
+                      <span style={{ fontSize: 12, color: "var(--qt-sage-text)", fontWeight: 700 }}>{translateBibleRef(ref, bibleDisplayLang)}</span>
                       <button type="button" onClick={() => removeExtraRef(ref)} style={{ border: "none", background: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14} /></button>
                     </div>
                   ))}
@@ -577,11 +577,11 @@ function PhotoReflectionContent() {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
           {previewUrl ? (
             <div>
-              <img src={previewUrl} alt="preview" style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)", marginBottom: 12 }} />
+              <img src={previewUrl} alt="preview" style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", marginBottom: 12 }} />
               <button onClick={() => fileInputRef.current?.click()} className="btn-outline" style={{ width: "100%" }}>{pc("changePhoto", lang)}</button>
             </div>
           ) : (
-            <button onClick={() => fileInputRef.current?.click()} style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--sage)", background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}>
+            <button className="qt-photo-upload" onClick={() => fileInputRef.current?.click()} style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}>
               <UploadCloud size={34} />
               {pc("choosePhoto", lang)}
             </button>
