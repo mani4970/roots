@@ -226,9 +226,9 @@ function getWelcomeRedirect() {
 function IconLeaf() {
   return (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <path d="M16 28 Q14 20 16 12" stroke="#4A6F4A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M16 18 Q8 14 7 6 Q16 7 16 16" fill="#4A6F4A" opacity={0.7} />
-      <path d="M16 14 Q24 10 25 2 Q16 3 16 12" fill="#2C4A2C" opacity={0.6} />
+      <path d="M16 28 Q14 20 16 12" stroke="var(--auth-sage-text)" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 18 Q8 14 7 6 Q16 7 16 16" fill="var(--auth-sage-text)" opacity={0.7} />
+      <path d="M16 14 Q24 10 25 2 Q16 3 16 12" fill="var(--auth-sage-text)" opacity={0.6} />
     </svg>
   );
 }
@@ -292,7 +292,7 @@ export default function WelcomePage() {
 
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} roots-auth-phase2g`}>
       <div className={styles.phone}>
 
         {/* ── Lang bar ── */}
@@ -425,9 +425,9 @@ export default function WelcomePage() {
           {/* Big: Quiet Time */}
           <div className={styles.featBig}>
             <svg className={styles.featBigBg} width="120" height="120" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="55" fill="white" />
+              <circle cx="60" cy="60" r="55" fill="currentColor" />
             </svg>
-            <div className={styles.featIcon} style={{ color: "var(--cream)" }}>
+            <div className={styles.featIcon} style={{ color: "var(--auth-welcome-on-deep)" }}>
               <IconBook />
             </div>
             <div className={styles.featTitle}>{tx.f1t}</div>
@@ -444,7 +444,7 @@ export default function WelcomePage() {
               <div className={styles.featSmSub}>{tx.f2s}</div>
             </div>
             <div className={styles.featSm}>
-              <div className={styles.featIcon} style={{ color: "var(--green)" }}>
+              <div className={styles.featIcon} style={{ color: "var(--auth-sage-text)" }}>
                 <IconPeople />
               </div>
               <div className={styles.featSmTitle}>{tx.f3t}</div>

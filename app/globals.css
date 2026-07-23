@@ -303,6 +303,43 @@
   --companions-danger-action: #A63232;
   --companions-on-danger-action: #FFFFFF;
 
+  /* Phase 2G: Welcome and authentication surfaces, controls, and feedback. */
+  --auth-page-surface: var(--bg);
+  --auth-card-surface: var(--surface-card);
+  --auth-card-muted-surface: var(--surface-card-muted);
+  --auth-card-border: #9A8D7D;
+  --auth-field-surface: var(--warm-100);
+  --auth-field-border: var(--warm-500);
+  --auth-muted-text: var(--text-muted-readable);
+  --auth-action: var(--sage-action);
+  --auth-on-action: var(--on-sage-action);
+  --auth-sage-surface: var(--surface-sage-selected);
+  --auth-sage-border: var(--border-sage-strong);
+  --auth-sage-text: var(--sage-dark);
+  --auth-language-trigger-surface: rgba(255,255,255,0.72);
+  --auth-popover-surface: var(--surface-card);
+  --auth-oauth-surface: var(--surface-card);
+  --auth-oauth-border: var(--auth-card-border);
+  --auth-apple-surface: #111827;
+  --auth-apple-text: #FFFFFF;
+  --auth-apple-border: #111827;
+  --auth-modal-surface: var(--surface-card);
+  --auth-overlay: var(--overlay-modal);
+  --auth-danger-text: #A63232;
+  --auth-success-text: #3F7046;
+  --auth-welcome-deep-surface: #1D3A28;
+  --auth-welcome-on-deep: #F4EFE0;
+  --auth-welcome-on-deep-muted: #C8D9CC;
+  --auth-welcome-on-deep-soft: #ADC3B2;
+  --auth-welcome-deep-border: rgba(212,230,217,0.22);
+  --auth-welcome-sky-surface: #7BBFD4;
+  --auth-welcome-verse-surface: var(--terra-100);
+  --auth-welcome-verse-border: var(--terra-200);
+  --auth-welcome-verse-text: var(--terra-700);
+  --auth-welcome-quote-watermark: rgba(93,66,45,0.08);
+  --auth-store-surface: #111827;
+  --auth-store-text: #FFFFFF;
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -590,6 +627,44 @@
   --companions-danger-border: #754149;
   --companions-danger-action: #A83F47;
   --companions-on-danger-action: #FFFFFF;
+
+  /* Phase 2G dark counterparts keep authentication controls legible. */
+  --auth-page-surface: var(--bg);
+  --auth-card-surface: #24282E;
+  --auth-card-muted-surface: #30343A;
+  --auth-card-border: #687280;
+  --auth-field-surface: #30343A;
+  --auth-field-border: #74808F;
+  --auth-muted-text: var(--text-muted-readable);
+  --auth-action: var(--sage-action);
+  --auth-on-action: var(--on-sage-action);
+  --auth-sage-surface: var(--surface-sage-selected);
+  --auth-sage-border: var(--border-sage-strong);
+  --auth-sage-text: var(--sage-dark);
+  --auth-language-trigger-surface: #2A2E34;
+  --auth-popover-surface: #24282E;
+  --auth-oauth-surface: #2A2E34;
+  --auth-oauth-border: var(--auth-card-border);
+  --auth-apple-surface: #F2F2F2;
+  --auth-apple-text: #111315;
+  --auth-apple-border: #F2F2F2;
+  --auth-modal-surface: #24282E;
+  --auth-overlay: var(--overlay-modal);
+  --auth-danger-text: #FF9B9B;
+  --auth-success-text: #9FD3A4;
+  --auth-welcome-deep-surface: #1D3A28;
+  --auth-welcome-on-deep: #F4EFE0;
+  --auth-welcome-on-deep-muted: #C8D9CC;
+  --auth-welcome-on-deep-soft: #ADC3B2;
+  --auth-welcome-deep-border: rgba(212,230,217,0.22);
+  --auth-welcome-sky-surface: #7BBFD4;
+  --auth-welcome-verse-surface: #342A22;
+  --auth-welcome-verse-border: #684C36;
+  --auth-welcome-verse-text: var(--terra-dark);
+  --auth-welcome-quote-watermark: rgba(244,239,224,0.06);
+  --auth-store-surface: #F2F2F2;
+  --auth-store-text: #111315;
+
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -764,6 +839,30 @@ a { text-decoration: none; color: inherit; }
 
 .roots-companions-phase2f .sec-label {
   color: var(--companions-muted-text);
+}
+
+.roots-auth-phase2g {
+  --text3: var(--auth-muted-text);
+  color: var(--text);
+}
+
+.roots-auth-phase2g .btn-primary,
+.roots-auth-phase2g .btn-sage {
+  background: var(--auth-action);
+  color: var(--auth-on-action);
+}
+
+.roots-auth-phase2g .input-field {
+  background: var(--auth-field-surface);
+  border-color: var(--auth-field-border);
+}
+
+.roots-auth-phase2g .input-field::placeholder {
+  color: var(--auth-muted-text);
+}
+
+.roots-auth-phase2g .input-field:focus {
+  border-color: var(--auth-sage-border);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }

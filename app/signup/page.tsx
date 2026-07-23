@@ -102,11 +102,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "72px 24px 40px", position: "relative" }}>
+    <div className="roots-auth-phase2g" style={{ minHeight: "100vh", background: "var(--auth-page-surface)", padding: "72px 24px 40px", position: "relative" }}>
 
       {showBrowserGuide && (
-        <div onClick={() => setShowBrowserGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(26,28,30,0.66)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 24, padding: "22px 20px 18px", boxShadow: "0 18px 48px rgba(0,0,0,0.28)", textAlign: "center" }}>
+        <div onClick={() => setShowBrowserGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "var(--auth-overlay)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--auth-modal-surface)", border: "1px solid var(--auth-card-border)", borderRadius: 24, padding: "22px 20px 18px", boxShadow: "var(--shadow-modal)", textAlign: "center" }}>
             <div style={{ width: 46, height: 46, margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <img src="/roots-logo-transparent-96.png" alt="Roots" width={42} height={42} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
             </div>
@@ -114,7 +114,7 @@ export default function SignupPage() {
             <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text2)", marginBottom: 10 }}>{browserGuide.body}</p>
             <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text3)", marginBottom: 16 }}>{browserGuide.hint}</p>
             <button onClick={async () => { openCurrentPageInNewWindow(); await handleCopyLink(); }} className="btn-primary" style={{ marginBottom: 10 }}>{browserGuide.open}</button>
-            <button onClick={handleCopyLink} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text)", fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
+            <button onClick={handleCopyLink} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--auth-card-border)", background: "var(--auth-card-muted-surface)", color: "var(--text)", fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
               {linkCopied ? browserGuide.copied : browserGuide.copy}
             </button>
             <button onClick={() => setShowBrowserGuide(false)} style={{ border: "none", background: "transparent", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: 8 }}>
@@ -147,9 +147,9 @@ export default function SignupPage() {
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--auth-card-border)" }} />
         <span style={{ color: "var(--text3)", fontSize: 12 }}>{t("login_or_email", lang)}</span>
-        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--auth-card-border)" }} />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -165,7 +165,7 @@ export default function SignupPage() {
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("signup_password", lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" />
         </div>
-        {error && <p style={{ color: "#E05050", fontSize: 12 }}>{error}</p>}
+        {error && <p style={{ color: "var(--auth-danger-text)", fontSize: 12 }}>{error}</p>}
         <button onClick={handleSignup} disabled={loading || !nickname || !email || !password} className="btn-primary" style={{ marginTop: 8 }}>
           {loading ? <><Loader2 size={18} className="spin" />{t("signup_loading", lang)}</> : t("signup_btn", lang)}
         </button>
@@ -173,14 +173,14 @@ export default function SignupPage() {
           <Link href="/terms" style={{ color: "var(--text3)", fontSize: 10.5, fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 2 }}>
             {t("profile_terms", lang)}
           </Link>
-          <span aria-hidden="true" style={{ color: "var(--border)", fontSize: 10 }}>·</span>
+          <span aria-hidden="true" style={{ color: "var(--auth-card-border)", fontSize: 10 }}>·</span>
           <Link href="/privacy" style={{ color: "var(--text3)", fontSize: 10.5, fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 2 }}>
             {t("profile_privacy", lang)}
           </Link>
         </nav>
         <div style={{ marginTop: 14, textAlign: "center" }}>
           <p style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>{t("signup_login_prompt", lang)}</p>
-          <button onClick={() => router.push(withRedirect("/login"))} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 700 }}>
+          <button onClick={() => router.push(withRedirect("/login"))} style={{ width: "100%", padding: "12px", borderRadius: 14, border: "1px solid var(--auth-card-border)", background: "var(--auth-card-surface)", color: "var(--text)", fontSize: 14, fontWeight: 700 }}>
             {t("signup_login_btn", lang)}
           </button>
         </div>

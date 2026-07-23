@@ -45,12 +45,12 @@ export default function AuthLanguageSwitcher({ value, onChange, ariaLabel = "Cho
           height: 36,
           padding: "0 11px",
           borderRadius: 999,
-          border: "1px solid var(--border)",
-          background: "rgba(255,255,255,0.64)",
+          border: "1px solid var(--auth-card-border)",
+          background: "var(--auth-language-trigger-surface)",
           color: "var(--text)",
           fontSize: 13,
           fontWeight: 700,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+          boxShadow: "var(--shadow-card)",
           cursor: "pointer",
           backdropFilter: "blur(8px)",
         }}
@@ -66,11 +66,11 @@ export default function AuthLanguageSwitcher({ value, onChange, ariaLabel = "Cho
             right: 0,
             top: 44,
             width: 178,
-            background: "var(--bg2)",
-            border: "1px solid var(--border)",
+            background: "var(--auth-popover-surface)",
+            border: "1px solid var(--auth-card-border)",
             borderRadius: 18,
             padding: 6,
-            boxShadow: "0 14px 38px rgba(0,0,0,0.14)",
+            boxShadow: "var(--shadow-popover)",
           }}
         >
           {options.map(option => {
@@ -88,8 +88,8 @@ export default function AuthLanguageSwitcher({ value, onChange, ariaLabel = "Cho
                   border: "none",
                   borderRadius: 12,
                   padding: "10px 10px",
-                  background: active ? "var(--sage-light)" : "transparent",
-                  color: active ? "var(--sage-dark)" : "var(--text)",
+                  background: active ? "var(--auth-sage-surface)" : "transparent",
+                  color: active ? "var(--auth-sage-text)" : "var(--text)",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
