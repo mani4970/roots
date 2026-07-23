@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "72px 24px 40px", position: "relative" }}>
+    <div className="roots-auth-phase2g" style={{ minHeight: "100vh", background: "var(--auth-page-surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "72px 24px 40px", position: "relative" }}>
       <Link href="/login" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text3)", marginBottom: 24, position: "absolute", top: 22, left: 22 }}>
         <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("reset_password_back_login", lang)}</span>
       </Link>
@@ -139,8 +139,8 @@ export default function ResetPasswordPage() {
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} disabled={saving} onKeyDown={e => e.key === "Enter" && updatePassword()} />
             </div>
 
-            {error && <p style={{ color: "#E05050", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</p>}
-            {message && <p style={{ color: "var(--green)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
+            {error && <p style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</p>}
+            {message && <p style={{ color: "var(--auth-success-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
 
             <button onClick={updatePassword} disabled={saving || !password || !confirmPassword} className="btn-primary">
               {saving ? <><Loader2 size={18} className="spin" />{t("reset_password_btn", lang)}</> : t("reset_password_btn", lang)}

@@ -3,7 +3,7 @@
 
 /* ── LAYOUT ── */
 .page {
-  background: var(--bg);
+  background: var(--auth-page-surface);
   color: var(--text);
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
@@ -16,7 +16,7 @@
   width: 100%;
   max-width: 390px;
   min-height: 100vh;
-  background: var(--bg);
+  background: var(--auth-page-surface);
   overflow-x: hidden;
   position: relative;
 }
@@ -35,10 +35,10 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid var(--auth-card-border);
+  background: var(--auth-language-trigger-surface);
   backdrop-filter: blur(8px);
-  color: var(--sage-dark);
+  color: var(--auth-sage-text);
   font-family: 'Pretendard', sans-serif;
   font-size: 12px;
   cursor: pointer;
@@ -50,11 +50,11 @@
   right: 0;
   top: 42px;
   width: 160px;
-  background: var(--bg2);
-  border: 1.5px solid var(--border);
+  background: var(--auth-popover-surface);
+  border: 1.5px solid var(--auth-card-border);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-popover);
 }
 .langOpt {
   width: 100%;
@@ -71,11 +71,11 @@
   text-align: left;
   transition: background 0.15s;
 }
-.langOpt:hover { background: var(--sage-light); }
+.langOpt:hover { background: var(--auth-sage-surface); }
 .langOptActive {
-  color: var(--sage-dark);
+  color: var(--auth-sage-text);
   font-weight: 700;
-  background: var(--sage-light);
+  background: var(--auth-sage-surface);
 }
 
 /* ── HERO ── */
@@ -87,13 +87,13 @@
 .heroBg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--sage-light) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--auth-sage-surface) 0%, transparent 70%);
   pointer-events: none;
 }
 .ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--auth-card-border);
   pointer-events: none;
 }
 .heroTitle {
@@ -138,7 +138,7 @@
 .growthSection {
   margin: 28px 20px 0;
   border-radius: 22px;
-  background: #1D3A28;
+  background: var(--auth-welcome-deep-surface);
   overflow: hidden;
   position: relative;
 }
@@ -149,19 +149,19 @@
   font-size: 10px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: rgba(212, 230, 217, 0.6);
+  color: var(--auth-welcome-on-deep-soft);
   margin-bottom: 8px;
 }
 .growthTitle {
   font-size: 18px;
   font-weight: 700;
-  color: var(--bg);
+  color: var(--auth-welcome-on-deep);
   line-height: 1.45;
   margin-bottom: 4px;
 }
 .growthSub {
   font-size: 12px;
-  color: rgba(212, 230, 217, 0.65);
+  color: var(--auth-welcome-on-deep-muted);
   line-height: 1.7;
 }
 .treeFrameImg {
@@ -187,8 +187,8 @@
   aspect-ratio: 1.15 / 1;
   overflow: hidden;
   border-radius: 16px;
-  background: #7bbfd4;
-  border: 1px solid rgba(212, 230, 217, 0.22);
+  background: var(--auth-welcome-sky-surface);
+  border: 1px solid var(--auth-welcome-deep-border);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 .growthTreeLabel {
@@ -196,7 +196,7 @@
   text-align: center;
   font-size: 11px;
   font-weight: 800;
-  color: rgba(244, 239, 224, 0.86);
+  color: var(--auth-welcome-on-deep);
   letter-spacing: -0.2px;
 }
 .growthArrow {
@@ -205,7 +205,7 @@
   border-radius: 50%;
   background: rgba(244, 239, 224, 0.12);
   border: 1px solid rgba(244, 239, 224, 0.16);
-  color: rgba(244, 239, 224, 0.85);
+  color: var(--auth-welcome-on-deep);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,8 +282,8 @@
 .featBig {
   border-radius: 20px;
   padding: 22px 22px 18px;
-  background: #1D3A28;
-  color: var(--bg);
+  background: var(--auth-welcome-deep-surface);
+  color: var(--auth-welcome-on-deep);
   position: relative;
   overflow: hidden;
 }
@@ -313,10 +313,13 @@
 .featSm {
   border-radius: 20px;
   padding: 18px 16px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
+  background: var(--auth-card-muted-surface);
+  border: 1px solid var(--auth-card-border);
 }
-.featSmTerra { background: var(--terra-light); }
+.featSmTerra {
+  background: var(--auth-welcome-verse-surface);
+  border-color: var(--auth-welcome-verse-border);
+}
 .featSmTitle {
   font-size: 14px;
   font-weight: 700;
@@ -334,9 +337,9 @@
 .verseBlock {
   margin: 24px 20px 0;
   padding: 28px 24px;
-  background: var(--terra-light);
+  background: var(--auth-welcome-verse-surface);
   border-radius: 20px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--auth-welcome-verse-border);
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -344,7 +347,7 @@
 .verseQuote {
   position: absolute;
   font-size: 120px;
-  color: rgba(0, 0, 0, 0.05);
+  color: var(--auth-welcome-quote-watermark);
   line-height: 1;
   top: -10px;
   left: 10px;
@@ -353,7 +356,7 @@
 }
 .verseRef {
   font-size: 10px;
-  color: var(--terra);
+  color: var(--auth-welcome-verse-text);
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 12px;
@@ -377,8 +380,8 @@
   width: 100%;
   height: 54px;
   border-radius: 16px;
-  background: var(--sage);
-  color: var(--bg);
+  background: var(--auth-action);
+  color: var(--auth-on-action);
   border: none;
   font-family: 'Pretendard', sans-serif;
   font-size: 15px;
@@ -399,7 +402,7 @@
   border-radius: 16px;
   background: transparent;
   color: var(--text2);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--auth-card-border);
   font-family: 'Pretendard', sans-serif;
   font-size: 14px;
   font-weight: 500;
@@ -412,8 +415,8 @@
   margin-top: 10px;
   padding: 14px 14px 12px;
   border-radius: 18px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
+  background: var(--auth-card-surface);
+  border: 1px solid var(--auth-card-border);
 }
 .storePrompt {
   margin-bottom: 10px;
@@ -431,8 +434,8 @@
 .storeButton {
   height: 42px;
   border-radius: 14px;
-  background: #111827;
-  color: #fff;
+  background: var(--auth-store-surface);
+  color: var(--auth-store-text);
   text-decoration: none;
   display: flex;
   align-items: center;

@@ -45,7 +45,7 @@ export default function AuthOAuthButtons({
         type="button"
         onClick={() => { void onProviderClick("google"); }}
         disabled={disabled}
-        style={{ width: "100%", background: "var(--bg2)", color: "var(--text)", fontSize: 14, fontWeight: 500, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10, cursor: disabled ? "default" : "pointer", opacity: disabled && loadingProvider !== "google" ? 0.72 : 1 }}
+        style={{ width: "100%", background: "var(--auth-oauth-surface)", color: "var(--text)", fontSize: 14, fontWeight: 500, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--auth-oauth-border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10, cursor: disabled ? "default" : "pointer", opacity: disabled && loadingProvider !== "google" ? 0.72 : 1 }}
       >
         {loadingProvider === "google" ? <Loader2 size={18} className="spin" /> : <GoogleIcon />}
         {googleLabel}
@@ -54,7 +54,7 @@ export default function AuthOAuthButtons({
         type="button"
         onClick={() => { void onProviderClick("apple"); }}
         disabled={disabled}
-        style={{ width: "100%", background: "#111", color: "#fff", fontSize: 14, fontWeight: 600, padding: "14px 16px", borderRadius: 16, border: "1px solid #111", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, cursor: disabled ? "default" : "pointer", opacity: disabled && loadingProvider !== "apple" ? 0.72 : 1 }}
+        style={{ width: "100%", background: "var(--auth-apple-surface)", color: "var(--auth-apple-text)", fontSize: 14, fontWeight: 600, padding: "14px 16px", borderRadius: 16, border: "1px solid var(--auth-apple-border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, cursor: disabled ? "default" : "pointer", opacity: disabled && loadingProvider !== "apple" ? 0.72 : 1 }}
       >
         {loadingProvider === "apple" ? <Loader2 size={18} className="spin" /> : <AppleIcon />}
         {appleLabel}

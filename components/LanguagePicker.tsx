@@ -27,7 +27,7 @@ export default function LanguagePicker({ onSelect, initialLang = FALLBACK_LANG }
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflowY: "auto" }}>
+    <div className="roots-auth-phase2g" style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--auth-page-surface)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflowY: "auto" }}>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <img
           src="/roots-logo-transparent-160.png"
@@ -58,21 +58,21 @@ export default function LanguagePicker({ onSelect, initialLang = FALLBACK_LANG }
                 gap: 14,
                 padding: "14px 18px",
                 borderRadius: 14,
-                border: `2px solid ${selected === opt.code ? "var(--sage)" : "var(--border)"}`,
-                background: selected === opt.code ? "var(--sage-light)" : "var(--bg2)",
+                border: `2px solid ${selected === opt.code ? "var(--auth-sage-border)" : "var(--auth-card-border)"}`,
+                background: selected === opt.code ? "var(--auth-sage-surface)" : "var(--auth-card-surface)",
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
             >
               <span style={{ fontSize: 28 }}>{opt.flag}</span>
               <div style={{ flex: 1, textAlign: "left" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: selected === opt.code ? "var(--sage-dark)" : "var(--text)" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: selected === opt.code ? "var(--auth-sage-text)" : "var(--text)" }}>
                   {opt.nativeName}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{opt.englishName}</div>
               </div>
               {selected === opt.code && (
-                <span style={{ color: "var(--sage)", fontSize: 18, fontWeight: 700 }}>✓</span>
+                <span style={{ color: "var(--auth-sage-text)", fontSize: 18, fontWeight: 700 }}>✓</span>
               )}
             </button>
           ))}
@@ -83,8 +83,8 @@ export default function LanguagePicker({ onSelect, initialLang = FALLBACK_LANG }
           style={{
             width: "100%",
             padding: "14px",
-            background: "var(--sage)",
-            color: "var(--bg)",
+            background: "var(--auth-action)",
+            color: "var(--auth-on-action)",
             border: "none",
             borderRadius: 14,
             fontSize: 15,
