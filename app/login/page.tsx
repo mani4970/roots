@@ -15,6 +15,8 @@ import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 
+const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
+
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
   const redirect = new URLSearchParams(window.location.search).get("redirect");
@@ -37,8 +39,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<AuthOAuthProvider | null>(null);
   const [error, setError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showBrowserGuide, setShowBrowserGuide] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -52,7 +56,7 @@ export default function LoginPage() {
 
   async function handleLogin() {
     if (!email || !password) return;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setResetMessage("");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
@@ -83,6 +87,7 @@ export default function LoginPage() {
     }
     setOauthLoading(provider);
     setError("");
+    setResetMessage("");
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
@@ -94,6 +99,33 @@ export default function LoginPage() {
       console.error(`${provider} login failed`, error);
       setError(t("login_error", lang));
       setOauthLoading(null);
+    }
+  }
+
+  async function handlePasswordReset() {
+    const resetEmail = email.trim();
+    setError("");
+    setResetMessage("");
+
+    if (!resetEmail) {
+      setError(t("login_reset_email_required", lang));
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const supabase = createClient();
+      const redirectTo = isCapacitorApp()
+        ? `roots://auth/callback?next=/reset-password&lang=${encodeURIComponent(lang)}`
+        : `${ROOTS_WEB_ORIGIN}/reset-password?lang=${encodeURIComponent(lang)}`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, { redirectTo });
+      if (resetError) throw resetError;
+      setResetMessage(t("login_reset_sent", lang));
+    } catch (resetError) {
+      console.error("password reset request failed", resetError);
+      setError(t("login_reset_fail", lang));
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -168,11 +200,37 @@ export default function LoginPage() {
         <div style={{ marginBottom: 16 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_password_label", lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              disabled={resetLoading || loading || oauthLoading !== null}
+              style={{
+                minHeight: 32,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+                border: "none",
+                background: "transparent",
+                color: "var(--auth-sage-text)",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "5px 0",
+                cursor: resetLoading ? "wait" : "pointer",
+                opacity: resetLoading || loading || oauthLoading !== null ? 0.62 : 1,
+              }}
+            >
+              {resetLoading && <Loader2 size={13} className="spin" />}
+              {resetLoading ? t("login_reset_sending", lang) : t("login_forgot_password", lang)}
+            </button>
+          </div>
         </div>
 
-        {error && <p style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{error}</p>}
+        {error && <p role="alert" style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</p>}
+        {resetMessage && <p role="status" aria-live="polite" style={{ color: "var(--auth-success-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{resetMessage}</p>}
 
-        <button onClick={handleLogin} disabled={loading || !email || !password} className="btn-primary">
+        <button onClick={handleLogin} disabled={loading || resetLoading || !email || !password} className="btn-primary">
           {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}
         </button>
 
