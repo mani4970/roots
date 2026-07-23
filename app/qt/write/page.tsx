@@ -62,9 +62,9 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart.", fr: "Seigneur, je viens au culte aujourd’hui...\nOuvre mes yeux, mes oreilles et mon cœur." },
   "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with an open heart before worship.", fr: "Une prière pour ouvrir votre cœur devant Dieu avant le culte." },
   "말씀 요약": { de: "Zusammenfassung", en: "Summary", fr: "Résumé de la Parole" },
-  "설교 말씀을 내 말로 요약해요": { de: "Predigt in eigenen Worten zusammenfassen", en: "Summarize the sermon in your own words", fr: "Résumez le sermon avec vos propres mots" },
-  "오늘 설교 핵심 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie die Kernbotschaft der Predigt in eigenen Worten zusammen...", en: "Summarize the key message in your own words...", fr: "Résumez le message principal du sermon avec vos propres mots..." },
-  "목사님이 전한 핵심 메시지를 나의 말로 정리해요.": { de: "Die Kernbotschaft des Pastors in eigene Worte fassen.", en: "Put the pastor's core message in your own words.", fr: "Reformulez avec vos mots le message central transmis par le pasteur." },
+  "설교 말씀을 요약해요": { de: "Predigt zusammenfassen", en: "Summarize the sermon", fr: "Résumez la prédication" },
+  "오늘 설교 핵심 내용을 요약해보세요": { de: "Fassen Sie die Kernaussagen der heutigen Predigt zusammen.", en: "Summarize the key points of today's sermon.", fr: "Résumez les points essentiels de la prédication d’aujourd’hui." },
+  "목사님이 전한 핵심 메시지를 정리해요": { de: "Die Kernbotschaft des Pastors festhalten.", en: "Capture the key message shared by the pastor.", fr: "Relevez le message central transmis par le pasteur." },
   "깨달음과 결단": { de: "Erkenntnis & Entschluss", en: "Insight & Resolution", fr: "Compréhension et décision" },
   "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word", fr: "Ce que la Parole m’enseigne et ma décision" },
   "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out.", fr: "Écrivez ce que vous avez compris par la Parole et la décision que vous voulez vivre." },
@@ -231,7 +231,7 @@ function QTWriteContent() {
           onClick={() => changeBibleTextSize(-1)}
           disabled={bibleTextSizeIndex === 0}
           aria-label="Decrease Bible text size"
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
+          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === 0 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
         >
           A-
         </button>
@@ -240,7 +240,7 @@ function QTWriteContent() {
           onClick={() => changeBibleTextSize(1)}
           disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
           aria-label="Increase Bible text size"
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
+          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
         >
           A+
         </button>
@@ -257,7 +257,7 @@ function QTWriteContent() {
           disabled={bibleTextSizeIndex === 0}
           aria-label="Decrease Bible text size"
           title={trQT("본문 글씨", lang)}
-          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === 0 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 5px" }}
+          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === 0 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 5px" }}
         >
           A-
         </button>
@@ -267,7 +267,7 @@ function QTWriteContent() {
           disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
           aria-label="Increase Bible text size"
           title={trQT("본문 글씨", lang)}
-          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--bg3)" : "var(--bg2)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--sage-dark)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 5px" }}
+          style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 5px" }}
         >
           A+
         </button>
@@ -289,8 +289,8 @@ function QTWriteContent() {
         }}
         aria-label={trQT("번역본", lang)}
         style={compact
-          ? { maxWidth: 86, fontSize: 9, color: "var(--sage-dark)", background: "rgba(122,157,122,0.15)", border: "1px solid rgba(122,157,122,0.3)", borderRadius: 999, padding: "2px 4px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }
-          : { width: "100%", fontSize: 13, color: "var(--text)", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontWeight: 600, marginBottom: 8 }
+          ? { maxWidth: 86, fontSize: 9, color: "var(--qt-sage-text)", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", borderRadius: 999, padding: "2px 4px", cursor: "pointer", fontWeight: 700, flexShrink: 0 }
+          : { width: "100%", fontSize: 13, color: "var(--text)", background: "var(--qt-field-surface)", border: "1px solid var(--qt-field-border)", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontWeight: 600, marginBottom: 8 }
         }
       >
         {TRANSLATIONS.map(group => (
@@ -1300,7 +1300,7 @@ function QTWriteContent() {
 
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성경 책", lang)}</label>
-          <button onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
+          <button className="qt-field-trigger" onClick={() => setShowBookPicker(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "var(--qt-field-surface)", border: "1px solid var(--qt-field-border)", borderRadius: 14, cursor: "pointer", color: "var(--text)", fontSize: 14 }}>
             <span>{book}</span><ChevronDown size={16} style={{ color: "var(--text3)" }} />
           </button>
         </div>
@@ -1332,7 +1332,7 @@ function QTWriteContent() {
           </div>
         </div>
 
-        {bibleError && <p style={{ fontSize: 12, color: "#E05050" }}>{bibleError}</p>}
+        {bibleError && <p style={{ fontSize: 12, color: "var(--qt-danger-text)" }}>{bibleError}</p>}
 
         <button onClick={() => { void addPassage({ stayOnSelect: true }); }} disabled={loadingBible} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           {loadingBible ? <><Loader2 size={16} className="spin" />{trQT("불러오는 중...", lang)}</> : <><Plus size={16} /> {trQT("여러 본문 추가", lang)}</>}
@@ -1344,8 +1344,8 @@ function QTWriteContent() {
         {passages.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {passages.map((p, i) => (
-              <div key={`${p.ref}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-sage-selected)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--border-sage-soft)" }}>
-                <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 700 }}><BookOpen size={13} /> {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}</span>
+              <div key={`${p.ref}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--qt-sage-surface)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--qt-sage-border-soft)" }}>
+                <span style={{ fontSize: 12, color: "var(--qt-sage-text)", fontWeight: 700 }}><BookOpen size={13} /> {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}</span>
                 <button onClick={() => setPassages(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
               </div>
             ))}
@@ -1374,7 +1374,7 @@ function QTWriteContent() {
     const hasMultiplePassages = displayPassages.length > 1;
 
     return (
-      <div style={{ background: "var(--surface-sage-subtle)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border-sage-soft)" }}>
+      <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
@@ -1388,7 +1388,7 @@ function QTWriteContent() {
             {displayPassages.map((p, i) => {
               const selected = i === safeIndex;
               return (
-                <button key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border-sage-soft)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card)", color: selected ? "var(--sage-dark)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                <button className="qt-option-card" key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--qt-sage-border)" : "var(--qt-card-border)"}`, background: selected ? "var(--qt-sage-surface)" : "var(--qt-card-surface)", color: selected ? "var(--qt-sage-text)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
                   {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}
                 </button>
               );
@@ -2130,7 +2130,7 @@ function QTWriteContent() {
 
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     return (
-      <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {toast && (
         <div
           className="roots-elevation-toast"
@@ -2144,12 +2144,12 @@ function QTWriteContent() {
             zIndex: 300,
             background:
               toast.kind === "success"
-                ? "var(--sage-action)"
+                ? "var(--qt-action)"
                 : toast.kind === "error"
-                ? "#C44A4A"
-                : "var(--bg2)",
-            color: toast.kind === "success" ? "var(--on-sage-action)" : toast.kind === "info" ? "var(--text)" : "#fff",
-            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+                ? "var(--qt-danger-action)"
+                : "var(--qt-toast-surface)",
+            color: toast.kind === "success" ? "var(--qt-on-action)" : toast.kind === "info" ? "var(--text)" : "var(--qt-on-danger-action)",
+            border: toast.kind === "info" ? "1px solid var(--qt-toast-border)" : "none",
             borderRadius: 12,
             padding: "11px 16px",
             fontSize: 14,
@@ -2184,11 +2184,11 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
           {/* 날짜 + 번역본 */}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setShowDatePicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+            <button className="qt-field-trigger" onClick={() => setShowDatePicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--qt-card-surface)", border: "1px solid var(--qt-option-border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
               <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}><Calendar size={13} /> {selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
             </button>
-            <button onClick={() => setShowTranslationPicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+            <button className="qt-field-trigger" onClick={() => setShowTranslationPicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--qt-card-surface)", border: "1px solid var(--qt-option-border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
               <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {translationName}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
             </button>
@@ -2206,7 +2206,7 @@ function QTWriteContent() {
         {/* 책 선택 모달 */}
         {showBookPicker && (
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end" }}>
-            <div className="roots-elevation-sheet" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 0", maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
+            <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 0", maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "0 20px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("성경 책 선택", lang)}</h3>
                 <button onClick={() => setShowBookPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 20 }}>✕</button>
@@ -2217,7 +2217,7 @@ function QTWriteContent() {
                     <div style={{ padding: "10px 20px 4px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px" }}>{label}</p></div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "6px 16px" }}>
                       {books.map(b => (
-                        <button key={b} onClick={() => { setBook(b); setShowBookPicker(false); }} style={{ padding: "8px 4px", borderRadius: 10, border: `1px solid ${book === b ? "var(--border-sage-strong)" : "var(--border)"}`, background: book === b ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", color: book === b ? "var(--sage-dark)" : "var(--text2)", fontSize: 11, cursor: "pointer", fontWeight: book === b ? 600 : 400 }}>
+                        <button className="qt-option-card" key={b} onClick={() => { setBook(b); setShowBookPicker(false); }} style={{ padding: "8px 4px", borderRadius: 10, border: `1px solid ${book === b ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: book === b ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", color: book === b ? "var(--qt-sage-text)" : "var(--text2)", fontSize: 11, cursor: "pointer", fontWeight: book === b ? 600 : 400 }}>
                           {b}
                         </button>
                       ))}
@@ -2232,7 +2232,7 @@ function QTWriteContent() {
         {/* 번역본 선택 모달 */}
         {showTranslationPicker && (
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div className="roots-elevation-sheet" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", maxHeight: "70vh", overflowY: "auto" }}>
+            <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", maxHeight: "70vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>번역본 선택</h3>
                 <button onClick={() => setShowTranslationPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
@@ -2242,14 +2242,14 @@ function QTWriteContent() {
                   <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px", marginBottom: 8 }}>{group.group}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {group.items.map(t => (
-                      <button key={t.id} onClick={() => {
+                      <button className="qt-option-card" key={t.id} onClick={() => {
                 const newLang = TRANSLATION_LANG[t.id] ?? "KO";
                 const newBooks = BOOK_NAMES[newLang] ?? BOOK_NAMES["KO"];
                 setBook(newBooks[0]); // 첫 번째 책으로 리셋
                 setSelectedTranslation(t.id);
                 setShowTranslationPicker(false);
-              }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--border-sage-strong)" : "var(--border)"}`, background: selectedTranslation === t.id ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: "pointer" }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: selectedTranslation === t.id ? "var(--sage-dark)" : "var(--text)" }}>{t.name}</span>
+              }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: selectedTranslation === t.id ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", cursor: "pointer" }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: selectedTranslation === t.id ? "var(--qt-sage-text)" : "var(--text)" }}>{t.name}</span>
                         {selectedTranslation === t.id && <Check size={14} style={{ color: "var(--sage)" }} />}
                       </button>
                     ))}
@@ -2263,15 +2263,15 @@ function QTWriteContent() {
         {/* 날짜 선택 모달 */}
         {showDatePicker && (
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div className="roots-elevation-sheet" style={{ background: "var(--surface-card)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", maxHeight: "60vh", overflowY: "auto" }}>
+            <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", maxHeight: "60vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>날짜 선택</h3>
                 <button onClick={() => setShowDatePicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {dateOptions.map(d => (
-                  <button key={d} onClick={() => handleDateChange(d)} style={{ padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedDate === d ? "var(--border-sage-strong)" : "var(--border)"}`, background: selectedDate === d ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, color: selectedDate === d ? "var(--sage-dark)" : "var(--text)", fontWeight: selectedDate === d ? 700 : 400 }}>{dateLabel(d)}</span>
+                  <button className="qt-option-card" key={d} onClick={() => handleDateChange(d)} style={{ padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedDate === d ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: selectedDate === d ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: selectedDate === d ? "var(--qt-sage-text)" : "var(--text)", fontWeight: selectedDate === d ? 700 : 400 }}>{dateLabel(d)}</span>
                     {selectedDate === d && <Check size={14} style={{ color: "var(--sage)" }} />}
                   </button>
                 ))}
@@ -2289,7 +2289,7 @@ function QTWriteContent() {
     const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
-      <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2304,12 +2304,12 @@ function QTWriteContent() {
             zIndex: 300,
             background:
               toast.kind === "success"
-                ? "var(--sage-action)"
+                ? "var(--qt-action)"
                 : toast.kind === "error"
-                ? "#C44A4A"
-                : "var(--bg2)",
-            color: toast.kind === "success" ? "var(--on-sage-action)" : toast.kind === "info" ? "var(--text)" : "#fff",
-            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+                ? "var(--qt-danger-action)"
+                : "var(--qt-toast-surface)",
+            color: toast.kind === "success" ? "var(--qt-on-action)" : toast.kind === "info" ? "var(--text)" : "var(--qt-on-danger-action)",
+            border: toast.kind === "info" ? "1px solid var(--qt-toast-border)" : "none",
             borderRadius: 12,
             padding: "11px 16px",
             fontSize: 14,
@@ -2358,7 +2358,7 @@ function QTWriteContent() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
                   <input type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
@@ -2392,7 +2392,7 @@ function QTWriteContent() {
     const step = STEPS_SUNDAY[cur] as any;
 
     return (
-      <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2407,12 +2407,12 @@ function QTWriteContent() {
             zIndex: 300,
             background:
               toast.kind === "success"
-                ? "var(--sage-action)"
+                ? "var(--qt-action)"
                 : toast.kind === "error"
-                ? "#C44A4A"
-                : "var(--bg2)",
-            color: toast.kind === "success" ? "var(--on-sage-action)" : toast.kind === "info" ? "var(--text)" : "#fff",
-            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+                ? "var(--qt-danger-action)"
+                : "var(--qt-toast-surface)",
+            color: toast.kind === "success" ? "var(--qt-on-action)" : toast.kind === "info" ? "var(--text)" : "var(--qt-on-danger-action)",
+            border: toast.kind === "info" ? "1px solid var(--qt-toast-border)" : "none",
             borderRadius: 12,
             padding: "11px 16px",
             fontSize: 14,
@@ -2539,14 +2539,14 @@ function QTWriteContent() {
                   {passages.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
                       {passages.map((p, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-sage-selected)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--border-sage-soft)" }}>
-                          <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
+                        <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--qt-sage-surface)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--qt-sage-border-soft)" }}>
+                          <span style={{ fontSize: 12, color: "var(--qt-sage-text)", fontWeight: 600 }}><BookOpen size={13} /> {p.ref}</span>
                           <button onClick={() => setPassages(prev => prev.filter((_,j)=>j!==i))} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14}/></button>
                         </div>
                       ))}
                     </div>
                   )}
-                  {bibleError && <p style={{ color: "#e74c3c", fontSize: 12 }}>{bibleError}</p>}
+                  {bibleError && <p style={{ color: "var(--qt-danger-text)", fontSize: 12 }}>{bibleError}</p>}
                 </div>
             </div>
           )}
@@ -2557,27 +2557,27 @@ function QTWriteContent() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
                 <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
-                <CursorStableTextarea className="textarea-field" rows={4} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
+                <CursorStableTextarea className="textarea-field qt-sunday-insight-field" rows={8} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
               </div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--border)", marginBottom: 10 }}>
+                <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--qt-card-border)", marginBottom: 10 }}>
                   <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
                     <>
                       <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{trQT("성품", lang)}</span>{trQT("은 마음을 정하는 것,", lang)}{" "}
-                      <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>{trQT("행동", lang)}</span>{trQT("은 손과 발로 드러나는 것이에요.", lang)}
+                      <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{trQT("행동", lang)}</span>{trQT("은 손과 발로 드러나는 것이에요.", lang)}
                     </>
                   </p>
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-                  <CursorStableTextarea className="textarea-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
+                  <CursorStableTextarea className="textarea-field qt-sunday-decision-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {decisions.map((d, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                         </div>
                         <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
@@ -2643,7 +2643,7 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   return (
-    <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2658,12 +2658,12 @@ function QTWriteContent() {
             zIndex: 300,
             background:
               toast.kind === "success"
-                ? "var(--sage-action)"
+                ? "var(--qt-action)"
                 : toast.kind === "error"
-                ? "#C44A4A"
-                : "var(--bg2)",
-            color: toast.kind === "success" ? "var(--on-sage-action)" : toast.kind === "info" ? "var(--text)" : "#fff",
-            border: toast.kind === "info" ? "1px solid var(--border)" : "none",
+                ? "var(--qt-danger-action)"
+                : "var(--qt-toast-surface)",
+            color: toast.kind === "success" ? "var(--qt-on-action)" : toast.kind === "info" ? "var(--text)" : "var(--qt-on-danger-action)",
+            border: toast.kind === "info" ? "1px solid var(--qt-toast-border)" : "none",
             borderRadius: 12,
             padding: "11px 16px",
             fontSize: 14,
@@ -2703,7 +2703,7 @@ function QTWriteContent() {
             const state = getBarState(i);
             return (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <div style={{ width: "100%", height: 4, borderRadius: 2, background: state === "done" ? "var(--sage)" : state === "curr" ? "var(--sage)" : "var(--border)", opacity: state === "curr" ? 1 : state === "done" ? 0.8 : 0.4, transition: "all 0.3s" }} />
+                <div style={{ width: "100%", height: 4, borderRadius: 2, background: state === "done" ? "var(--sage)" : state === "curr" ? "var(--sage)" : "var(--qt-progress-track)", opacity: state === "curr" ? 1 : state === "done" ? 0.82 : 1, transition: "all 0.3s" }} />
               </div>
             );
           })}
@@ -2742,7 +2742,7 @@ function QTWriteContent() {
             const hasMultiplePassages = displayPassages.length > 1;
             return (
               <div>
-                <div style={{ background: "var(--surface-sage-subtle)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border-sage-soft)" }}>
+                <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}</p>
                     <BibleTranslationSelect compact />
@@ -2754,7 +2754,7 @@ function QTWriteContent() {
                       {displayPassages.map((p, i) => {
                         const selected = i === safeIndex;
                         return (
-                          <button key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border-sage-soft)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card)", color: selected ? "var(--sage-dark)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                          <button className="qt-option-card" key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--qt-sage-border)" : "var(--qt-card-border)"}`, background: selected ? "var(--qt-sage-surface)" : "var(--qt-card-surface)", color: selected ? "var(--qt-sage-text)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
                             {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}
                           </button>
                         );
@@ -2766,7 +2766,7 @@ function QTWriteContent() {
                       const verseId = normalizeVerseNum(v.num);
                       const isSelected = selectedVerseNums.includes(verseId);
                       return (
-                        <button key={`${activePassage.ref}-${verseId}`} onClick={() => selectVerse(String(v.text), v.num)} style={{ textAlign: "left", background: isSelected ? "var(--surface-sage-selected)" : "var(--surface-sage-subtle)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--border-sage-strong)" : "var(--border-sage-soft)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
+                        <button key={`${activePassage.ref}-${verseId}`} onClick={() => selectVerse(String(v.text), v.num)} style={{ textAlign: "left", background: isSelected ? "var(--qt-sage-surface)" : "var(--qt-sage-subtle-surface)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--qt-sage-border)" : "var(--qt-sage-border-soft)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: verseId.includes(":") ? 32 : 16 }}>{verseId}</span>
                           <span style={{ fontSize: bibleTextFontSize, color: isSelected ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: isSelected ? 600 : 400 }}>{v.text}</span>
                           {isSelected && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
@@ -2801,13 +2801,13 @@ function QTWriteContent() {
       {/* 결단 단계 */}
       {step6.isDecision && (
         <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ background: "var(--bg2)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--border)" }}>
+          <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--qt-card-border)" }}>
             <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
               {t("qtw_decision_hint_prefix", lang)}
               <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{t("qtw_decision_hint_character", lang)}</span>
               {t("qtw_decision_hint_middle", lang)}
               {t("qtw_decision_hint_action_article", lang)}
-              <span style={{ fontWeight: 700, color: "var(--terra-dark)" }}>{t("qtw_decision_hint_action", lang)}</span>
+              <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{t("qtw_decision_hint_action", lang)}</span>
               {t("qtw_decision_hint_suffix", lang)}
             </p>
           </div>
@@ -2820,7 +2820,7 @@ function QTWriteContent() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {decisions.map((d, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
                   <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
@@ -2842,7 +2842,7 @@ function QTWriteContent() {
           <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
 
           {step6.id === "meditation" && keyVerse.trim() && (
-            <div style={{ background: "var(--surface-sage-subtle)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--border-sage-soft)" }}>
+            <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
               <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 6 }}>
                 {trQT("붙잡은 말씀으로 묵상해요", lang)}
               </p>

@@ -340,6 +340,39 @@
   --auth-store-surface: #111827;
   --auth-store-text: #FFFFFF;
 
+  /* Phase 2H: Bible Reflection writing, selection, and feedback roles. */
+  --qt-page-surface: var(--warm-50);
+  --qt-card-surface: var(--warm-0);
+  --qt-card-muted-surface: var(--warm-100);
+  --qt-card-border: #C7BAAA;
+  --qt-option-surface: var(--warm-100);
+  --qt-option-border: var(--warm-500);
+  --qt-field-surface: var(--warm-100);
+  --qt-field-border: var(--warm-500);
+  --qt-field-focus-border: var(--sage-600);
+  --qt-field-focus-ring: rgba(91,125,91,0.20);
+  --qt-muted-text: var(--text-muted-readable);
+  --qt-sage-surface: var(--sage-100);
+  --qt-sage-subtle-surface: var(--sage-50);
+  --qt-sage-border: var(--sage-500);
+  --qt-sage-border-soft: var(--sage-200);
+  --qt-sage-text: var(--sage-700);
+  --qt-terra-text: var(--terra-700);
+  --qt-action: var(--sage-600);
+  --qt-on-action: var(--warm-0);
+  --qt-modal-surface: var(--warm-0);
+  --qt-popover-surface: var(--warm-0);
+  --qt-sheet-surface: var(--warm-0);
+  --qt-toast-surface: var(--warm-0);
+  --qt-toast-border: var(--warm-500);
+  --qt-danger-text: #A63232;
+  --qt-danger-action: #A63232;
+  --qt-on-danger-action: #FFFFFF;
+  --qt-progress-track: #9A8D7D;
+  --qt-control-shadow:
+    0 1px 2px rgba(63, 54, 44, 0.07),
+    0 5px 14px rgba(63, 54, 44, 0.06);
+
   /* Two-layer elevation: contact shadow + soft ambient shadow. */
   --shadow-card:
     0 1px 2px rgba(63, 54, 44, 0.06),
@@ -665,6 +698,39 @@
   --auth-store-surface: #F2F2F2;
   --auth-store-text: #111315;
 
+  /* Phase 2H dark counterparts keep reflection controls clearly separated. */
+  --qt-page-surface: #1A1C1E;
+  --qt-card-surface: #24282E;
+  --qt-card-muted-surface: #30343A;
+  --qt-card-border: #4A525D;
+  --qt-option-surface: #30343A;
+  --qt-option-border: #74808F;
+  --qt-field-surface: #30343A;
+  --qt-field-border: #74808F;
+  --qt-field-focus-border: #A8C8A8;
+  --qt-field-focus-ring: rgba(168,200,168,0.22);
+  --qt-muted-text: var(--text-muted-readable);
+  --qt-sage-surface: var(--surface-sage-selected);
+  --qt-sage-subtle-surface: var(--surface-sage-subtle);
+  --qt-sage-border: var(--border-sage-strong);
+  --qt-sage-border-soft: var(--border-sage-soft);
+  --qt-sage-text: var(--sage-dark);
+  --qt-terra-text: var(--terra-dark);
+  --qt-action: var(--sage-action);
+  --qt-on-action: var(--on-sage-action);
+  --qt-modal-surface: #24282E;
+  --qt-popover-surface: #24282E;
+  --qt-sheet-surface: #24282E;
+  --qt-toast-surface: #30343A;
+  --qt-toast-border: #74808F;
+  --qt-danger-text: #FF9B9B;
+  --qt-danger-action: #A83F47;
+  --qt-on-danger-action: #FFFFFF;
+  --qt-progress-track: #687280;
+  --qt-control-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 6px 16px rgba(0, 0, 0, 0.20);
+
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 10px 26px rgba(0, 0, 0, 0.18);
@@ -863,6 +929,98 @@ a { text-decoration: none; color: inherit; }
 
 .roots-auth-phase2g .input-field:focus {
   border-color: var(--auth-sage-border);
+}
+
+.roots-qt-phase2h {
+  --bg2: var(--qt-card-surface);
+  --bg3: var(--qt-field-surface);
+  --border: var(--qt-card-border);
+  --text3: var(--qt-muted-text);
+  background: var(--qt-page-surface);
+  color: var(--text);
+}
+
+.roots-qt-phase2h .card {
+  background: var(--qt-card-surface);
+  border-color: var(--qt-card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.roots-qt-phase2h .card-sage {
+  background: var(--qt-sage-surface);
+  border-color: var(--qt-sage-border-soft);
+  box-shadow: var(--shadow-card-sage);
+}
+
+.roots-qt-phase2h .btn-primary,
+.roots-qt-phase2h .btn-sage {
+  background: var(--qt-action);
+  color: var(--qt-on-action);
+  box-shadow: var(--shadow-card-sage);
+}
+
+.roots-qt-phase2h .btn-outline {
+  background: var(--qt-option-surface);
+  color: var(--text2);
+  border-color: var(--qt-option-border);
+  box-shadow: var(--qt-control-shadow);
+}
+
+.roots-qt-phase2h .input-field,
+.roots-qt-phase2h .textarea-field {
+  background: var(--qt-field-surface);
+  border-color: var(--qt-field-border);
+  color: var(--text);
+}
+
+.roots-qt-phase2h .input-field::placeholder,
+.roots-qt-phase2h .textarea-field::placeholder {
+  color: var(--qt-muted-text);
+}
+
+.roots-qt-phase2h .input-field:focus,
+.roots-qt-phase2h .textarea-field:focus {
+  border-color: var(--qt-field-focus-border);
+  box-shadow: 0 0 0 3px var(--qt-field-focus-ring);
+}
+
+.roots-qt-phase2h .qt-record-item {
+  background: var(--qt-card-surface);
+  border-color: var(--qt-card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.roots-qt-phase2h .step-bar-item {
+  background: var(--qt-progress-track);
+}
+
+.roots-qt-phase2h .step-jump {
+  background: var(--qt-option-surface);
+  border-color: var(--qt-option-border);
+  color: var(--qt-muted-text);
+  box-shadow: var(--qt-control-shadow);
+}
+
+.roots-qt-phase2h .step-jump.done {
+  background: var(--qt-sage-surface);
+  color: var(--qt-sage-text);
+  border-color: var(--qt-sage-border);
+}
+
+.roots-qt-phase2h .step-jump.curr {
+  background: var(--qt-action);
+  color: var(--qt-on-action);
+  border-color: var(--qt-action);
+}
+
+.roots-qt-phase2h .qt-option-card,
+.roots-qt-phase2h .qt-field-trigger,
+.roots-qt-phase2h .qt-photo-upload {
+  box-shadow: var(--qt-control-shadow);
+}
+
+.roots-qt-phase2h .qt-option-card {
+  color: var(--qt-sage-text);
 }
 
 .sec-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
