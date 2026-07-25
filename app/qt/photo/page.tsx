@@ -12,6 +12,8 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
+import CursorStableInput from "@/components/CursorStableInput";
+import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
@@ -518,7 +520,7 @@ function PhotoReflectionContent() {
               {sundayContext && (
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("sermonTitle", lang)}</span>
-                  <input className="input-field" value={sermonTitle} onChange={e => setSermonTitle(e.target.value)} placeholder={pc("sermonTitlePlaceholder", lang)} />
+                  <CursorStableInput className="input-field" value={sermonTitle} onValueChange={setSermonTitle} placeholder={pc("sermonTitlePlaceholder", lang)} />
                 </label>
               )}
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -590,7 +592,7 @@ function PhotoReflectionContent() {
 
         <label className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted-readable)" }}>{pc("memoLabel", lang)}</span>
-          <textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
+          <CursorStableTextarea value={caption} onValueChange={setCaption} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
         </label>
 
         <button onClick={openSharePrompt} disabled={saving} className="btn-primary" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>

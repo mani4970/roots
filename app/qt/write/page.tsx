@@ -18,6 +18,7 @@ import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
+import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 
 function isSunday(dateStr: string) {
@@ -2361,7 +2362,7 @@ function QTWriteContent() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <input type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                  <CursorStableInput type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
@@ -2478,7 +2479,7 @@ function QTWriteContent() {
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
-                <input type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onChange={e => updateSermonTitleText(e.target.value)} />
+                <CursorStableInput type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onValueChange={updateSermonTitleText} />
               </div>
               {/* 성경 본문 선택: 완료 후 다시 설교 정보 탭으로 돌아와도 항상 재선택할 수 있게 한다. */}
               <div>
@@ -2580,7 +2581,7 @@ function QTWriteContent() {
                         <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                         </div>
-                        <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                        <CursorStableInput type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                         {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                       </div>
                     ))}
@@ -2823,7 +2824,7 @@ function QTWriteContent() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <input type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onChange={e => updateDecision(i, e.target.value)} style={{ flex: 1 }} />
+                  <CursorStableInput type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
