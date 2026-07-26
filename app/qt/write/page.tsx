@@ -177,6 +177,7 @@ type QTWriteMode = "6step" | "sunday" | "free";
 type DraftSnapshot = {
   selectedDate: string;
   mode: QTWriteMode;
+  translationId: number;
   currentStep: number;
   bibleRef: string;
   keyVerse: string;
@@ -199,6 +200,19 @@ type CompleteSaveOptions = {
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
+const DEFAULT_BIBLE_TRANSLATION_ID = 92;
+const SUPPORTED_BIBLE_TRANSLATION_IDS = new Set(ALL_TRANSLATIONS.map(item => item.id));
+
+function getSupportedBibleTranslationId(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
+  return Number.isSafeInteger(parsed) && SUPPORTED_BIBLE_TRANSLATION_IDS.has(parsed) ? parsed : null;
+}
+
+function normalizeBibleTranslationId(value: unknown, fallback: unknown = DEFAULT_BIBLE_TRANSLATION_ID) {
+  return getSupportedBibleTranslationId(value)
+    ?? getSupportedBibleTranslationId(fallback)
+    ?? DEFAULT_BIBLE_TRANSLATION_ID;
+}
 
 function QTWriteContent() {
   const router = useRouter();
@@ -332,12 +346,12 @@ function QTWriteContent() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(() => {
-    if (translationParam) return parseInt(translationParam);
+    if (translationParam) return normalizeBibleTranslationId(translationParam);
     if (typeof window !== "undefined") {
       const saved = storageGet("roots_default_translation");
-      if (saved) return parseInt(saved);
+      if (saved) return normalizeBibleTranslationId(saved);
     }
-    return 92;
+    return DEFAULT_BIBLE_TRANSLATION_ID;
   });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
 
@@ -507,41 +521,51 @@ function QTWriteContent() {
     return { bookName, chap, sv, finalEndChapter, finalEndVerse, cross: finalEndChapter !== chap };
   }
 
-  async function loadPassageItemFromRef(ref: string): Promise<PassageItem | null> {
+  async function loadPassageItemFromRef(ref: string, translationId = selectedTranslation): Promise<PassageItem | null> {
     const parts = parseBibleRefParts(ref);
     if (!parts) return null;
     const { bookName, chap, sv, finalEndChapter, finalEndVerse, cross } = parts;
     if (cross) {
       const koBook = toKoreanBookName(bookName);
       const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap) - 1] ?? 176;
-      const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+      const r1 = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
       const d1 = await r1.json();
-      const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+      if (!r1.ok || d1.error) throw new Error(d1.error || "Could not restore the first passage chapter");
+      const r2 = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
       const d2 = await r2.json();
+      if (!r2.ok || d2.error) throw new Error(d2.error || "Could not restore the final passage chapter");
       const verses = [
         ...(d1.verses ?? []).map((v: any) => ({ ...v, num: `${chap}:${v.num}` })),
         ...(d2.verses ?? []).map((v: any) => ({ ...v, num: `${finalEndChapter}:${v.num}` })),
       ];
+      if (verses.length === 0) throw new Error("Restored passage was empty");
       return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: true, verses, ref };
     }
-    const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+    const res = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
     const data = await res.json();
+    if (!res.ok || data.error || !Array.isArray(data.verses) || data.verses.length === 0) {
+      throw new Error(data.error || "Restored passage was empty");
+    }
     return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: false, verses: data.verses ?? [], ref: data.reference || ref };
   }
 
-  async function restoreSermonPassages(rawRef?: string | null, options: { restoreTitle?: boolean } = {}) {
+  async function restoreSermonPassages(rawRef?: string | null, options: { restoreTitle?: boolean; translationId?: number } = {}) {
     const parsed = parseSundayBibleRef(rawRef);
     if (parsed.title && options.restoreTitle !== false) setSermonTitle(parsed.title);
     const refs = parsed.refs.filter(Boolean);
     if (refs.length === 0) return false;
+    const translationId = normalizeBibleTranslationId(options.translationId, selectedTranslation);
 
     const loaded = await Promise.all(refs.map(async ref => {
       try {
-        return await loadPassageItemFromRef(ref);
+        return await loadPassageItemFromRef(ref, translationId);
       } catch {
         return null;
       }
     }));
+    if (loaded.some(item => item == null)) {
+      setBibleError(trQT("본문을 불러오지 못했어요.", lang));
+    }
     const items = loaded.map((item, idx) => item ?? { book: "", chapter: "", startV: "", endV: "", endChapter: "", cross: refs[idx].includes("-") && refs[idx].includes(":"), verses: [], ref: refs[idx] });
     const first = items[0];
     if (first) {
@@ -716,11 +740,14 @@ function QTWriteContent() {
         setSelectedDate(record.date ?? todayStr);
         setMode(record.qt_mode ?? "6step");
         setCur(0);
+        const recordTranslationId = normalizeBibleTranslationId(record.bible_version, selectedTranslation);
+        setSelectedTranslation(recordTranslationId);
+        storageSet("roots_default_translation", String(recordTranslationId));
 
         const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
         const isLegacyFreeSermonRef = record.qt_mode === "free" && isSermonRef;
         const restoredSermonPassages = (record.qt_mode === "sunday" || isLegacyFreeSermonRef)
-          ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday" })
+          ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday", translationId: recordTranslationId })
           : false;
         if (!restoredSermonPassages && record.bible_ref && !isLegacyFreeSermonRef) {
           setBibleRef(record.bible_ref);
@@ -790,14 +817,14 @@ function QTWriteContent() {
                 const idx = allLocalBooks.indexOf(bookName);
                 const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
                 const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
-                const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+                const r1 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
                 const d1 = await r1.json();
-                const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+                const r2 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
                 const d2 = await r2.json();
                 const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
                 if (verses.length > 0) setPassageVerses(verses);
               } else {
-                const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+                const res = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
                 const data = await res.json();
                 if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
               }
@@ -860,6 +887,18 @@ function QTWriteContent() {
         return;
       }
       draft = mergeQtDraftRowWithBackup(draft, localBackup);
+      let restoreTranslationId = getSupportedBibleTranslationId(draft.bible_version);
+      if (!restoreTranslationId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("preferred_translation")
+          .eq("id", user.id)
+          .maybeSingle();
+        restoreTranslationId = getSupportedBibleTranslationId(profile?.preferred_translation);
+      }
+      restoreTranslationId = normalizeBibleTranslationId(restoreTranslationId, selectedTranslation);
+      setSelectedTranslation(restoreTranslationId);
+      storageSet("roots_default_translation", String(restoreTranslationId));
 
       resetDraftState();
 
@@ -868,7 +907,7 @@ function QTWriteContent() {
       const isDraftSermonRef = String(draft.bible_ref ?? "").trim().startsWith("설교:");
       const isLegacyFreeDraftSermonRef = draft.qt_mode === "free" && isDraftSermonRef;
       const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || isLegacyFreeDraftSermonRef)
-        ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday" })
+        ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday", translationId: restoreTranslationId })
         : false;
       if (!restoredDraftSermonPassages && draft.bible_ref && !isLegacyFreeDraftSermonRef) {
         setBibleRef(draft.bible_ref);
@@ -945,14 +984,14 @@ function QTWriteContent() {
               const idx = allLocalBooks.indexOf(bookName);
               const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
               const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
-              const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+              const r1 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
               const d1 = await r1.json();
-              const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+              const r2 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
               const d2 = await r2.json();
               const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
               if (verses.length > 0) setPassageVerses(verses);
             } else {
-              const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+              const res = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
               const data = await res.json();
               if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
             }
@@ -1481,6 +1520,7 @@ function QTWriteContent() {
     return {
       selectedDate,
       mode,
+      translationId: selectedTranslation,
       currentStep: cur,
       bibleRef,
       keyVerse,
@@ -1512,6 +1552,7 @@ function QTWriteContent() {
       userId: draftBackupUserId,
       date: snapshot.selectedDate,
       mode: snapshot.mode,
+      translationId: snapshot.translationId,
       currentStep: snapshot.currentStep,
       bibleRef: snapshot.bibleRef,
       keyVerse: snapshot.keyVerse,
@@ -1541,6 +1582,7 @@ function QTWriteContent() {
       qt_mode: snapshot.mode,
       is_draft: true,
       current_step: snapshot.currentStep,
+      bible_version: String(snapshot.translationId),
       bible_ref: draftBibleRef,
       key_verse: snapshot.keyVerse,
       opening_prayer: snapshot.mode === "free" ? "" : (snapshot.answers.opening_prayer ?? ""),
@@ -1731,7 +1773,7 @@ function QTWriteContent() {
     const snapshot = getDraftSnapshot();
     latestDraftSnapshotRef.current = snapshot;
     if (hasDraftContent(snapshot)) persistDraftBackup(snapshot);
-  }, [draftBackupUserId, isEditMode, pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [draftBackupUserId, isEditMode, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     if (isEditMode || !draftBackupUserId) return;
@@ -1751,7 +1793,7 @@ function QTWriteContent() {
       window.removeEventListener("pagehide", persistLatestBeforeLeave);
       window.removeEventListener("beforeunload", persistLatestBeforeLeave);
     };
-  }, [draftBackupUserId, isEditMode, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [draftBackupUserId, isEditMode, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     if (isEditMode || !pageReady || selectedDate !== todayStr) return;
@@ -1780,7 +1822,7 @@ function QTWriteContent() {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [isEditMode, pageReady, selectedDate, todayStr, mode, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [isEditMode, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     return () => {
@@ -1897,7 +1939,7 @@ function QTWriteContent() {
 
   function buildCompleteRecordData(userId: string, options: CompleteSaveOptions = {}) {
     const decisionText = decisions.filter(d => d.trim()).join("\n");
-    let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode };
+    let recordData: any = { user_id: userId, date: selectedDate, qt_mode: mode, bible_version: String(selectedTranslation) };
 
     if (mode === "free") {
       recordData = {

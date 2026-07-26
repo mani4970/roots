@@ -8,6 +8,7 @@ export type QTDraftBackup = {
   userId: string;
   date: string;
   mode: QTDraftBackupMode;
+  translationId: number | null;
   currentStep: number;
   bibleRef: string;
   keyVerse: string;
@@ -36,11 +37,16 @@ function normalizeBackup(value: unknown, userId: string, date: string): QTDraftB
   const answers = isStringRecord(raw.answers) ? raw.answers : {};
   const decisions = Array.isArray(raw.decisions) ? raw.decisions.filter((item): item is string => typeof item === "string") : [""];
   const passageRefs = Array.isArray(raw.passageRefs) ? raw.passageRefs.filter((item): item is string => typeof item === "string") : [];
+  const parsedTranslationId = Number(raw.translationId);
+  const translationId = Number.isSafeInteger(parsedTranslationId) && parsedTranslationId > 0
+    ? parsedTranslationId
+    : null;
 
   return {
     userId,
     date,
     mode,
+    translationId,
     currentStep: Number.isFinite(Number(raw.currentStep)) ? Number(raw.currentStep) : 0,
     bibleRef: typeof raw.bibleRef === "string" ? raw.bibleRef : "",
     keyVerse: typeof raw.keyVerse === "string" ? raw.keyVerse : "",
@@ -102,6 +108,9 @@ export function mergeQtDraftRowWithBackup<T extends Record<string, unknown>>(dra
 
   const backupDecision = backup.decisions.filter(item => item.trim()).join("\n");
   useLonger("decision", backupDecision);
+  if (backup.translationId && !merged.bible_version) {
+    merged.bible_version = String(backup.translationId);
+  }
 
   if (backup.mode === "sunday" && backup.sermonTitle.trim()) {
     const currentRef = String(merged.bible_ref ?? "");
