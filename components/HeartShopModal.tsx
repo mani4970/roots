@@ -71,6 +71,8 @@ function getLargeSpriteWidth(itemId: HeartShopMapItemId) {
   if (itemId === "hindungi") return 112;
   if (itemId === "kkumdeuli") return 150;
   if (itemId === "bamtoli" || itemId === "mongsili") return 96;
+  if (itemId === "nabi" || itemId === "kkangchongi") return 96;
+  if (itemId === "salgeumi") return 130;
   return 145;
 }
 
@@ -272,7 +274,12 @@ export default function HeartShopModal({
   }, [avatarType, currentLayers, outfitPreviewItemIds]);
   const hasOutfitPreview = Object.keys(outfitPreviewItemIds).length > 0;
   const visibleMapItems = useMemo(
-    () => HEART_SHOP_MAP_CATALOG.filter(item => item.mapKinds.includes(activeMapSection)),
+    () => HEART_SHOP_MAP_CATALOG
+      .filter(item => item.mapKinds.includes(activeMapSection))
+      .sort((a, b) => {
+        const badgeRank = (item: typeof a) => item.isBest ? 0 : item.isNew ? 1 : 2;
+        return badgeRank(a) - badgeRank(b) || a.sortOrder - b.sortOrder;
+      }),
     [activeMapSection],
   );
   const visibleCharacterItems = useMemo(() => {
@@ -644,6 +651,28 @@ export default function HeartShopModal({
                     return (
                       <article key={item.id} className="card" style={{ minWidth: 0, padding: "10px 10px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)", boxShadow: "0 8px 24px rgba(75,62,45,.06)" }}>
                         <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${text.previewBadge}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
+                          {(item.isBest || item.isNew) && (
+                            <span
+                              aria-label={item.isBest ? "Best" : "New"}
+                              style={{
+                                position: "absolute",
+                                top: 7,
+                                left: 7,
+                                zIndex: 2,
+                                borderRadius: 999,
+                                padding: "4px 8px",
+                                background: item.isBest ? "#d4a337" : "#e87568",
+                                color: "#fff",
+                                boxShadow: "0 2px 7px rgba(71,41,35,.24)",
+                                fontSize: 9,
+                                lineHeight: 1,
+                                fontWeight: 950,
+                                letterSpacing: ".2px",
+                              }}
+                            >
+                              {item.isBest ? "Best" : "New"}
+                            </span>
+                          )}
                           <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
                           <span style={{ position: "absolute", right: 7, bottom: 7, borderRadius: 999, padding: "4px 7px", background: "rgba(26,28,30,.72)", color: "#fff", fontSize: 8.5, fontWeight: 900 }}>{text.previewBadge}</span>
                         </button>

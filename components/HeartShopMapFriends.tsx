@@ -18,7 +18,9 @@ type FriendPlacement = {
   renderWidth: number;
 };
 
-type GroundFriendPlacements = Record<Exclude<HeartShopMapItemId, "jjaekjjaek">, FriendPlacement>;
+type MovingFriendId = "jjaekjjaek" | "nabi" | "kkangchongi" | "salgeumi";
+type FixedGroundFriendId = Exclude<HeartShopMapItemId, MovingFriendId>;
+type GroundFriendPlacements = Record<FixedGroundFriendId, FriendPlacement>;
 
 const GARDEN_GROUND_PLACEMENTS: GroundFriendPlacements = {
   // Keep the moving foreground friends in their already-verified left-side lanes.
@@ -68,7 +70,15 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
   if (visible.size === 0) return null;
 
   const placements = getGroundPlacements(mapKind, stageNumber);
-  const birdRenderWidth = mapKind === "peaceArk" ? 54 : 58;
+  const birdRenderWidth = mapKind === "peaceArk" ? 43 : 46;
+  const butterflyRenderWidth = mapKind === "peaceArk" ? 17 : 18;
+  const rabbitRenderWidth = mapKind === "peaceArk" ? 30 : 33;
+  const snailRenderWidth = mapKind === "peaceArk" ? 28 : 30;
+  // Hindungi's source sheet contains transparent space below its paws. These
+  // offsets put Kkangchongi's standing frames on the same visible ground line
+  // while keeping its existing right-side play area unchanged.
+  const rabbitBottom = mapKind === "peaceArk" ? "calc(1% + 17px)" : "calc(1% + 18px)";
+  const snailBottom = mapKind === "peaceArk" ? "1%" : "3%";
 
   return (
     <div
@@ -92,8 +102,52 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
           100% { left: -22%; top: 7%; transform: scaleX(1) rotate(-2deg); }
         }
         .roots-heart-shop-bird-travel {
-          animation: roots-heart-shop-bird-travel 18s linear infinite;
+          animation: roots-heart-shop-bird-travel 22s linear infinite;
           will-change: left, top, transform;
+        }
+
+        @keyframes roots-heart-shop-butterfly-travel {
+          0%   { left: -18%; top: 45%; transform: scaleX(1) rotate(-5deg); }
+          12%  { top: 36%; transform: scaleX(1) rotate(3deg); }
+          24%  { top: 44%; transform: scaleX(1) rotate(-3deg); }
+          36%  { top: 33%; transform: scaleX(1) rotate(4deg); }
+          47%  { left: 112%; top: 29%; transform: scaleX(1) rotate(0deg); }
+          50%  { left: 112%; top: 29%; transform: scaleX(-1) rotate(0deg); }
+          62%  { top: 39%; transform: scaleX(-1) rotate(3deg); }
+          74%  { top: 32%; transform: scaleX(-1) rotate(-3deg); }
+          86%  { top: 43%; transform: scaleX(-1) rotate(4deg); }
+          97%  { left: -18%; top: 45%; transform: scaleX(-1) rotate(0deg); }
+          100% { left: -18%; top: 45%; transform: scaleX(1) rotate(-5deg); }
+        }
+        .roots-heart-shop-butterfly-travel {
+          animation: roots-heart-shop-butterfly-travel 30s linear infinite;
+          will-change: left, top, transform;
+        }
+
+        @keyframes roots-heart-shop-rabbit-travel {
+          0%   { left: 60%; transform: scaleX(1); }
+          42%  { left: 80%; transform: scaleX(1); }
+          48%  { left: 80%; transform: scaleX(1); }
+          50%  { left: 80%; transform: scaleX(-1); }
+          92%  { left: 60%; transform: scaleX(-1); }
+          98%  { left: 60%; transform: scaleX(-1); }
+          100% { left: 60%; transform: scaleX(1); }
+        }
+        .roots-heart-shop-rabbit-travel {
+          animation: roots-heart-shop-rabbit-travel 16s linear infinite;
+          will-change: left, transform;
+        }
+
+        @keyframes roots-heart-shop-snail-travel {
+          0%   { left: -18%; transform: scaleX(1); }
+          47%  { left: 112%; transform: scaleX(1); }
+          50%  { left: 112%; transform: scaleX(-1); }
+          97%  { left: -18%; transform: scaleX(-1); }
+          100% { left: -18%; transform: scaleX(1); }
+        }
+        .roots-heart-shop-snail-travel {
+          animation: roots-heart-shop-snail-travel 68s linear infinite;
+          will-change: left, transform;
         }
 
         @keyframes roots-heart-shop-dog-drift {
@@ -123,6 +177,22 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
             top: 10% !important;
             transform: none !important;
           }
+          .roots-heart-shop-butterfly-travel {
+            animation: none;
+            left: 62% !important;
+            top: 38% !important;
+            transform: none !important;
+          }
+          .roots-heart-shop-rabbit-travel {
+            animation: none;
+            left: 68% !important;
+            transform: none !important;
+          }
+          .roots-heart-shop-snail-travel {
+            animation: none;
+            left: 45% !important;
+            transform: none !important;
+          }
           .roots-heart-shop-dog-drift,
           .roots-heart-shop-cat-drift {
             animation: none;
@@ -140,7 +210,34 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
         </div>
       )}
 
-      {(Object.keys(placements) as Array<Exclude<HeartShopMapItemId, "jjaekjjaek">>).map(itemId => {
+      {visible.has("nabi") && (
+        <div
+          className="roots-heart-shop-butterfly-travel"
+          style={{ position: "absolute", width: butterflyRenderWidth, height: butterflyRenderWidth }}
+        >
+          <HeartShopFriendSprite itemId="nabi" renderWidth={butterflyRenderWidth} />
+        </div>
+      )}
+
+      {visible.has("kkangchongi") && (
+        <div
+          className="roots-heart-shop-rabbit-travel"
+          style={{ position: "absolute", bottom: rabbitBottom }}
+        >
+          <HeartShopFriendSprite itemId="kkangchongi" renderWidth={rabbitRenderWidth} />
+        </div>
+      )}
+
+      {visible.has("salgeumi") && (
+        <div
+          className="roots-heart-shop-snail-travel"
+          style={{ position: "absolute", bottom: snailBottom }}
+        >
+          <HeartShopFriendSprite itemId="salgeumi" renderWidth={snailRenderWidth} />
+        </div>
+      )}
+
+      {(Object.keys(placements) as FixedGroundFriendId[]).map(itemId => {
         if (!visible.has(itemId)) return null;
         const { renderWidth, ...position } = placements[itemId];
 

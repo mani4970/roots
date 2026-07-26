@@ -7,6 +7,9 @@ export const HEART_SHOP_MAP_ITEM_IDS = [
   "kkumdeuli",
   "bamtoli",
   "mongsili",
+  "nabi",
+  "kkangchongi",
+  "salgeumi",
 ] as const;
 
 export type HeartShopMapItemId = (typeof HEART_SHOP_MAP_ITEM_IDS)[number];

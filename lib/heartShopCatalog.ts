@@ -15,6 +15,7 @@ type HeartShopCatalogBase = {
   id: HeartShopItemId;
   price: number;
   isNew?: boolean;
+  isBest?: boolean;
 };
 
 export type HeartShopMapCatalogItem = HeartShopCatalogBase & {
@@ -26,6 +27,7 @@ export type HeartShopMapCatalogItem = HeartShopCatalogBase & {
   sheetWidth: number;
   sheetHeight: number;
   intervalMs: number;
+  sortOrder: number;
   mapKinds: readonly RewardMapKind[];
 };
 
@@ -54,6 +56,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 512,
     intervalMs: 170,
+    sortOrder: 10,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -66,6 +69,8 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 682,
     intervalMs: 390,
+    sortOrder: 20,
+    isBest: true,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -78,6 +83,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 512,
     intervalMs: 380,
+    sortOrder: 30,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -90,6 +96,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 512,
     intervalMs: 360,
+    sortOrder: 40,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -102,6 +109,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 682,
     intervalMs: 520,
+    sortOrder: 50,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -114,6 +122,49 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetWidth: 2048,
     sheetHeight: 682,
     intervalMs: 540,
+    sortOrder: 60,
+    mapKinds: GARDEN_AND_ARK,
+  },
+  {
+    id: "nabi",
+    category: "map",
+    price: 40,
+    isNew: true,
+    previewPath: "/images/heart-shop/previews/nabi.webp",
+    sourceSpriteSheetPath: "/images/heart-shop/source-sprites/nabi.png",
+    frameCount: 6,
+    sheetWidth: 1536,
+    sheetHeight: 264,
+    intervalMs: 180,
+    sortOrder: 70,
+    mapKinds: GARDEN_AND_ARK,
+  },
+  {
+    id: "kkangchongi",
+    category: "map",
+    price: 60,
+    isNew: true,
+    previewPath: "/images/heart-shop/previews/kkangchongi.webp",
+    sourceSpriteSheetPath: "/images/heart-shop/source-sprites/kkangchongi.png",
+    frameCount: 8,
+    sheetWidth: 1664,
+    sheetHeight: 200,
+    intervalMs: 155,
+    sortOrder: 80,
+    mapKinds: GARDEN_AND_ARK,
+  },
+  {
+    id: "salgeumi",
+    category: "map",
+    price: 25,
+    isNew: true,
+    previewPath: "/images/heart-shop/previews/salgeumi.webp",
+    sourceSpriteSheetPath: "/images/heart-shop/source-sprites/salgeumi.png",
+    frameCount: 6,
+    sheetWidth: 1728,
+    sheetHeight: 160,
+    intervalMs: 620,
+    sortOrder: 90,
     mapKinds: GARDEN_AND_ARK,
   },
 ] as const;
