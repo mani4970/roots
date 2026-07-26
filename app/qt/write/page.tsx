@@ -11,12 +11,23 @@ import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
-import { ALL_TRANSLATIONS, BIBLE_CHAPTERS, BOOK_NAMES, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, TRANSLATIONS } from "@/lib/bibleData";
+import {
+  ALL_TRANSLATIONS,
+  BIBLE_CHAPTERS,
+  BOOK_NAMES,
+  getBibleChapterMaxVerse,
+  getBibleVerseNumbers,
+  NT_BOOKS,
+  OT_BOOKS,
+  TRANSLATION_LANG,
+  TRANSLATIONS,
+} from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import { getBibleCopyrightNotice } from "@/lib/bibleCopyright";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -399,7 +410,7 @@ function QTWriteContent() {
     const allLocalBooks = [...(BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"])];
     const idx = allLocalBooks.indexOf(book);
     const koBook = idx >= 0 ? allKoBooks[idx] : book;
-    const maxV = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(newChapter)-1] ?? 176;
+    const maxV = getBibleChapterMaxVerse(koBook, newChapter, selectedTranslation);
     if (parseInt(startV) > maxV) setStartV(String(maxV));
     if (parseInt(endV) > maxV) setEndV(String(maxV));
   }
@@ -527,7 +538,7 @@ function QTWriteContent() {
     const { bookName, chap, sv, finalEndChapter, finalEndVerse, cross } = parts;
     if (cross) {
       const koBook = toKoreanBookName(bookName);
-      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap) - 1] ?? 176;
+      const maxV1 = getBibleChapterMaxVerse(koBook, chap, translationId);
       const r1 = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
       const d1 = await r1.json();
       if (!r1.ok || d1.error) throw new Error(d1.error || "Could not restore the first passage chapter");
@@ -666,7 +677,7 @@ function QTWriteContent() {
           const allKo = [...OT_BOOKS, ...NT_BOOKS];
           const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
           const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
-          const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chap)-1]??176;
+          const maxV1 = getBibleChapterMaxVerse(koBook, chap, selectedTranslation);
           const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
           const d1 = await r1.json();
           const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
@@ -816,7 +827,7 @@ function QTWriteContent() {
                 const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
                 const idx = allLocalBooks.indexOf(bookName);
                 const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
-                const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
+                const maxV1 = getBibleChapterMaxVerse(koBook, chap, recordTranslationId);
                 const r1 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
                 const d1 = await r1.json();
                 const r2 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
@@ -983,7 +994,7 @@ function QTWriteContent() {
               const allLocalBooks = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
               const idx = allLocalBooks.indexOf(bookName);
               const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
-              const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chap)-1] ?? 176;
+              const maxV1 = getBibleChapterMaxVerse(koBook, chap, restoreTranslationId);
               const r1 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
               const d1 = await r1.json();
               const r2 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
@@ -1023,7 +1034,7 @@ function QTWriteContent() {
         const allKo = [...OT_BOOKS, ...NT_BOOKS];
         const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
         const koBook = (() => { const i=allLoc.indexOf(book); return i>=0?allKo[i]:book; })();
-        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
+        const maxV1 = getBibleChapterMaxVerse(koBook, chapter, newTranslationId);
         const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await r1.json();
         const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
@@ -1049,7 +1060,7 @@ function QTWriteContent() {
     })();
 
     if (item.cross && effectiveEndChapter !== item.chapter) {
-      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(item.chapter) - 1] ?? 176;
+      const maxV1 = getBibleChapterMaxVerse(koBook, item.chapter, newTranslationId);
       const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${maxV1}`);
       const d1 = await r1.json();
       const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${item.endV}`);
@@ -1114,7 +1125,7 @@ function QTWriteContent() {
       if (crossChapter && effectiveEndChapter !== chapter) {
         // 장 넘어가는 경우: 시작장 끝까지 + 끝장 처음부터
         const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
-        const maxV1 = (BIBLE_CHAPTERS[koBook]??[])[parseInt(chapter)-1]??176;
+        const maxV1 = getBibleChapterMaxVerse(koBook, chapter, selectedTranslation);
         const res1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
         const d1 = await res1.json();
         const res2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
@@ -1167,7 +1178,7 @@ function QTWriteContent() {
     let refStr = "";
 
     if (crossChapter && effectiveEndChapter !== chapter) {
-      const maxV1 = (BIBLE_CHAPTERS[koBook] ?? [])[parseInt(chapter, 10) - 1] ?? 176;
+      const maxV1 = getBibleChapterMaxVerse(koBook, chapter, selectedTranslation);
       const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
       const d1 = await r1.json();
       if (d1.error) throw new Error(d1.error);
@@ -1327,9 +1338,17 @@ function QTWriteContent() {
     })();
     const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
     const maxChapter = chaptersData.length || 150;
-    const maxStartV = chaptersData[parseInt(chapter) - 1] ?? 176;
     const effectiveEndChapter = endChapter || chapter;
-    const maxEndV = chaptersData[parseInt(effectiveEndChapter) - 1] ?? 176;
+    const startVerseNumbers = getBibleVerseNumbers(
+      koBookName,
+      chapter,
+      selectedTranslation,
+    );
+    const endVerseNumbers = getBibleVerseNumbers(
+      koBookName,
+      effectiveEndChapter,
+      selectedTranslation,
+    );
 
     return (
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1355,7 +1374,7 @@ function QTWriteContent() {
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
             <select value={startV} onChange={e => { setStartV(e.target.value); if (effectiveEndChapter === chapter && parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
-              {Array.from({ length: maxStartV }, (_, i) => String(i + 1)).map(v => <option key={v} value={v}>{v}</option>)}
+              {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div>
@@ -1367,7 +1386,7 @@ function QTWriteContent() {
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
             <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-              {Array.from({ length: maxEndV }, (_, i) => String(i + 1)).map(v => <option key={v} value={v}>{v}</option>)}
+              {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
         </div>
@@ -1412,6 +1431,7 @@ function QTWriteContent() {
     const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
     const verses = activePassage.verses ?? [];
     const hasMultiplePassages = displayPassages.length > 1;
+    const copyrightNotice = getBibleCopyrightNotice(selectedTranslation);
 
     return (
       <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
@@ -1446,6 +1466,11 @@ function QTWriteContent() {
           <button onClick={() => setPassageExpanded(p => !p)} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, background: "none", border: "none", color: "var(--sage-dark)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
           </button>
+        )}
+        {copyrightNotice && (
+          <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
+            {copyrightNotice}
+          </p>
         )}
       </div>
     );
@@ -2542,8 +2567,8 @@ function QTWriteContent() {
                     const koBookName = (() => { const i=allLocalBooks.indexOf(book); return i>=0?allKoBooks[i]:book; })();
                     const chaptersData = BIBLE_CHAPTERS[koBookName] ?? [];
                     const maxChapter = chaptersData.length || 150;
-                    const maxStartV = chaptersData[parseInt(chapter)-1] ?? 176;
-                    const maxEndV = chaptersData[parseInt(endChapter)-1] ?? 176;
+                    const startVerseNumbers = getBibleVerseNumbers(koBookName, chapter, selectedTranslation);
+                    const endVerseNumbers = getBibleVerseNumbers(koBookName, endChapter, selectedTranslation);
                     return (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                         <div>
@@ -2555,7 +2580,7 @@ function QTWriteContent() {
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("시작 절", lang)}</label>
                           <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
-                            {Array.from({ length: maxStartV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                            {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </div>
                         <div>
@@ -2567,7 +2592,7 @@ function QTWriteContent() {
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("끝 절", lang)}</label>
                           <select className="input-field" value={endV} onChange={e => setEndV(e.target.value)} style={{ padding: "12px 8px" }}>
-                            {Array.from({ length: maxEndV }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                            {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </div>
                       </div>
@@ -2783,6 +2808,7 @@ function QTWriteContent() {
             const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
             const verses = activePassage.verses ?? [];
             const hasMultiplePassages = displayPassages.length > 1;
+            const copyrightNotice = getBibleCopyrightNotice(selectedTranslation);
             return (
               <div>
                 <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
@@ -2817,6 +2843,11 @@ function QTWriteContent() {
                       );
                     })}
                   </div>
+                  {copyrightNotice && (
+                    <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
+                      {copyrightNotice}
+                    </p>
+                  )}
                   <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
                 </div>
               </div>

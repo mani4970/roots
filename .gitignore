@@ -8,6 +8,8 @@ out/
 
 # production/build artifacts
 *.tsbuildinfo
+/.cache/kbs-bible/
+/scripts/kbs-bible-data/
 
 # environment variables
 .env

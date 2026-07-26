@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 
 // 언어별 책 이름 → 번호 매핑
 const BOOK_MAP_KO: Record<string, number> = {
@@ -59,9 +63,12 @@ function getBookNum(book: string): number | null {
 }
 
 const API_BASE = "https://bible.asher.design/api/v1";
+const KBS_TRANSLATION_IDS = new Set([92, 84, 98]);
 const MAX_VERSE = 176;
 const MAX_VERSE_RANGE = 176;
 const FETCH_TIMEOUT_MS = 10_000;
+const BIBLE_CACHE_CONTROL = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800";
+let kbsBibleClient: SupabaseClient | null = null;
 
 function readServerEnv(name: string, fallback = "") {
   const value = process.env[name] ?? fallback;
@@ -83,6 +90,26 @@ function getBibleApiHeaders(): HeadersInit {
     "X-App-Name": readServerEnv("BIBLE_API_APP_NAME", "Roots Puce"),
     "X-App-Version": readServerEnv("BIBLE_API_APP_VERSION", "1.0.0"),
   };
+}
+
+function getKbsBibleClient() {
+  if (kbsBibleClient) return kbsBibleClient;
+
+  const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const secretKey = readServerEnv("SUPABASE_SECRET_KEY");
+
+  if (!url || !secretKey) {
+    throw new Error("Missing Supabase server configuration");
+  }
+
+  kbsBibleClient = createSupabaseClient(url, secretKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return kbsBibleClient;
 }
 
 type VerseApiItem = {
@@ -136,6 +163,44 @@ async function fetchWithTimeout(url: string) {
   }
 }
 
+async function fetchKbsPassage(params: {
+  translationId: number;
+  bookNum: number;
+  chapter: number;
+  startVerse: number;
+  endVerse: number;
+}) {
+  const { data, error } = await getKbsBibleClient()
+    .from("kbs_bible_verses")
+    .select("verse_start,verse_end,text")
+    .eq("translation_id", params.translationId)
+    .eq("book_number", params.bookNum)
+    .eq("chapter", params.chapter)
+    .lte("verse_start", params.endVerse)
+    .gte("verse_end", params.startVerse)
+    .order("verse_start", { ascending: true });
+
+  if (error) {
+    throw new Error(`KBS Bible query failed: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .map((row) => {
+      const verseStart = Number(row.verse_start);
+      const verseEnd = Number(row.verse_end);
+      return {
+        num: verseStart === verseEnd ? verseStart : `${verseStart}-${verseEnd}`,
+        text: String(row.text ?? "").trim(),
+        valid:
+          Number.isFinite(verseStart) &&
+          Number.isFinite(verseEnd) &&
+          verseEnd >= verseStart,
+      };
+    })
+    .filter((verse) => verse.valid && verse.text)
+    .map(({ num, text }) => ({ num, text }));
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const book = (searchParams.get("book") ?? "요한복음").trim();
@@ -158,26 +223,38 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
-    const res = await fetchWithTimeout(url);
+    let verses: { num: number | string; text: string }[];
 
-    if (!res.ok) {
-      console.error("Bible API request failed", { status: res.status });
-      return jsonError("본문을 불러올 수 없어요.", 502);
+    if (KBS_TRANSLATION_IDS.has(translationId)) {
+      verses = await fetchKbsPassage({
+        translationId,
+        bookNum,
+        chapter,
+        startVerse,
+        endVerse,
+      });
+    } else {
+      const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
+      const res = await fetchWithTimeout(url);
+
+      if (!res.ok) {
+        console.error("Bible API request failed", { status: res.status });
+        return jsonError("본문을 불러올 수 없어요.", 502);
+      }
+
+      const json = await res.json();
+
+      if (!json?.ok || !Array.isArray(json.data?.gospel)) {
+        return jsonError("본문을 불러올 수 없어요.", 404);
+      }
+
+      verses = json.data.gospel
+        .map((v: VerseApiItem) => ({
+          num: Number(v.verse),
+          text: String(v.text ?? "").trim(),
+        }))
+        .filter((v: { num: number; text: string }) => Number.isFinite(v.num) && v.text);
     }
-
-    const json = await res.json();
-
-    if (!json?.ok || !Array.isArray(json.data?.gospel)) {
-      return jsonError("본문을 불러올 수 없어요.", 404);
-    }
-
-    const verses = json.data.gospel
-      .map((v: VerseApiItem) => ({
-        num: Number(v.verse),
-        text: String(v.text ?? "").trim(),
-      }))
-      .filter((v: { num: number; text: string }) => Number.isFinite(v.num) && v.text);
 
     if (verses.length === 0) {
       return jsonError("본문을 불러올 수 없어요.", 404);
@@ -187,9 +264,12 @@ export async function GET(req: NextRequest) {
       ? `${book} ${chapter}:${startVerse}-${endVerse}`
       : `${book} ${chapter}:${startVerse}`;
 
-    const fullText = verses.map((v: { num: number; text: string }) => `${v.num} ${v.text}`).join("\n");
+    const fullText = verses.map((v) => `${v.num} ${v.text}`).join("\n");
 
-    return NextResponse.json({ text: fullText, verses, reference, version: String(translationId) });
+    return NextResponse.json(
+      { text: fullText, verses, reference, version: String(translationId) },
+      { headers: { "Cache-Control": BIBLE_CACHE_CONTROL } },
+    );
 
   } catch (e) {
     console.error("Bible API proxy error:", e);
