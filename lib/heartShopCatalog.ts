@@ -14,6 +14,7 @@ import {
 type HeartShopCatalogBase = {
   id: HeartShopItemId;
   price: number;
+  isNew?: boolean;
 };
 
 export type HeartShopMapCatalogItem = HeartShopCatalogBase & {
@@ -135,6 +136,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 };
 
 export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
+export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
@@ -154,11 +156,12 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const itemNumber = Number(itemId.slice(-2));
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
+  const isNewTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
   const layerPath = avatarType === "shared"
     ? slot === "background"
-      ? `${sharedLayerPath}?v=${HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
+      ? `${sharedLayerPath}?v=${isNewTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
       : sharedLayerPath
     : `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
 
@@ -168,6 +171,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     avatarType,
     slot,
     price: config.price,
+    isNew: isNewTravelBackground,
     layerPath,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop

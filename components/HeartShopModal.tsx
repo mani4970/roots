@@ -279,7 +279,7 @@ export default function HeartShopModal({
     const slot = CHARACTER_CATEGORY_SLOT[activeCharacterCategory];
     return HEART_SHOP_CHARACTER_CATALOG
       .filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && (!slot || item.slot === slot))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)) || a.sortOrder - b.sortOrder);
   }, [activeCharacterCategory, avatarType]);
   const ownedCharacterItems = useMemo(
     () => HEART_SHOP_CHARACTER_CATALOG.filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && ownedById.has(item.id)),
@@ -732,6 +732,7 @@ export default function HeartShopModal({
                           title={previewLabel}
                           aria-pressed={previewing}
                           style={{
+                            position: "relative",
                             width: "100%",
                             height: 176,
                             padding: 12,
@@ -746,6 +747,28 @@ export default function HeartShopModal({
                             cursor: "pointer",
                           }}
                         >
+                          {item.isNew && (
+                            <span
+                              aria-label="New"
+                              style={{
+                                position: "absolute",
+                                top: 7,
+                                left: 7,
+                                zIndex: 2,
+                                borderRadius: 999,
+                                padding: "4px 8px",
+                                background: "#e87568",
+                                color: "#fff",
+                                boxShadow: "0 2px 7px rgba(71,41,35,.24)",
+                                fontSize: 9,
+                                lineHeight: 1,
+                                fontWeight: 950,
+                                letterSpacing: ".2px",
+                              }}
+                            >
+                              New
+                            </span>
+                          )}
                           <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
                         </button>
                         <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
