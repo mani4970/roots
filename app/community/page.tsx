@@ -4809,7 +4809,8 @@ function CommunityPageContent() {
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "center",
-            padding: "20px 16px calc(40px + var(--native-bottom-system-bar))",
+            padding:
+              "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",
           }}
         >
           <div
