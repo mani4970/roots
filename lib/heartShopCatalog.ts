@@ -208,6 +208,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
   const isNewTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
+  const isNewShoes = slot === "shoes" && itemNumber >= 5 && itemNumber <= 8;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
   const layerPath = avatarType === "shared"
@@ -222,7 +223,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     avatarType,
     slot,
     price: config.price,
-    isNew: isNewTravelBackground,
+    isNew: isNewTravelBackground || isNewShoes,
     layerPath,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop
