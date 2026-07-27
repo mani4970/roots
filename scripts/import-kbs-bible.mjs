@@ -16,6 +16,11 @@ const EXPECTED_TRANSLATIONS = new Map([
   [98, "RNKSV"],
 ]);
 
+function readStringOption(name, fallback) {
+  const prefix = `--${name}=`;
+  return process.argv.find((value) => value.startsWith(prefix))?.slice(prefix.length) || fallback;
+}
+
 function getRequiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
@@ -143,21 +148,38 @@ async function main() {
     throw new Error("Add --confirm-import to import the validated corpus.");
   }
 
+  const requestedTranslationCode = readStringOption("translation", "").toUpperCase();
+  if (
+    requestedTranslationCode &&
+    !Array.from(EXPECTED_TRANSLATIONS.values()).includes(requestedTranslationCode)
+  ) {
+    throw new Error(`Unsupported --translation value: ${requestedTranslationCode}`);
+  }
+
   const manifest = JSON.parse(
     await readFile(join(DATA_DIR, "manifest.json"), "utf8"),
   );
-  if (manifest.total_chapters !== 3_567 || !Array.isArray(manifest.translations)) {
+  if (!Array.isArray(manifest.translations)) {
     throw new Error("Unexpected Korean Bible corpus manifest.");
   }
 
   const translations = manifest.translations;
-  if (translations.length !== EXPECTED_TRANSLATIONS.size) {
+  const expectedTranslationCount = requestedTranslationCode ? 1 : EXPECTED_TRANSLATIONS.size;
+  const expectedChapterCount = 1_189 * expectedTranslationCount;
+
+  if (
+    manifest.total_chapters !== expectedChapterCount ||
+    translations.length !== expectedTranslationCount
+  ) {
     throw new Error("Unexpected number of Korean Bible translations.");
   }
 
   for (const translation of translations) {
     if (EXPECTED_TRANSLATIONS.get(translation.id) !== translation.code) {
       throw new Error(`Unexpected translation in manifest: ${JSON.stringify(translation)}`);
+    }
+    if (requestedTranslationCode && translation.code !== requestedTranslationCode) {
+      throw new Error(`Unexpected translation selection: ${translation.code}`);
     }
   }
 

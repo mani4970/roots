@@ -7,6 +7,7 @@ export const TRANSLATIONS = [
     { id: 92, name: "개역개정" },
     { id: 84, name: "개역한글" },
     { id: 98, name: "새번역" },
+    { id: 88, name: "쉬운성경" },
     { id: 89, name: "우리말성경" },
   ]},
   { group: "English", items: [
@@ -32,7 +33,7 @@ export const ALL_TRANSLATIONS = TRANSLATIONS.flatMap(g => g.items);
 
 // 번역본 ID → 언어 코드
 export const TRANSLATION_LANG: Record<number, string> = {
-  92:"KO", 84:"KO", 98:"KO", 89:"KO",
+  92:"KO", 84:"KO", 98:"KO", 88:"KO", 89:"KO",
   80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
   29:"DE", 27:"DE", 97:"DE", 31:"DE",
   26:"FR", 24:"FR",

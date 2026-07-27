@@ -60,6 +60,14 @@ function readStringOption(name, fallback) {
 const concurrency = readIntegerOption("concurrency", 4);
 const outputDir = resolve(readStringOption("output", DEFAULT_OUTPUT_DIR));
 const cacheDir = resolve(readStringOption("cache", DEFAULT_CACHE_DIR));
+const requestedTranslationCode = readStringOption("translation", "").toUpperCase();
+const selectedTranslations = requestedTranslationCode
+  ? TRANSLATIONS.filter((translation) => translation.code === requestedTranslationCode)
+  : TRANSLATIONS;
+
+if (selectedTranslations.length === 0) {
+  throw new Error(`Unsupported --translation value: ${requestedTranslationCode}`);
+}
 
 function sleep(ms) {
   return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
@@ -124,8 +132,17 @@ function extractTransferState(html, sourceUrl) {
   }
 }
 
-function normalizeVerseText(parts) {
-  return parts.join("").replace(/\s+/g, " ").trim();
+function normalizeVerseText(parts, translationCode) {
+  const normalizedParts = parts
+    .map((part) => String(part).replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const separator = translationCode === "RNKSV" ? " " : "";
+
+  return normalizedParts
+    .join(separator)
+    .replace(/\s+([,.;:!?%)\]}”’])/g, "$1")
+    .replace(/([(\[“‘])\s+/g, "$1")
+    .trim();
 }
 
 function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
@@ -280,7 +297,7 @@ function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
       chapter: chapterNumber,
       verse_start: verseStart,
       verse_end: verseEnd,
-      text: normalizeVerseText(textParts),
+      text: normalizeVerseText(textParts, translation.code),
     }));
 
   if (verses.length !== declaredVerseCount) {
@@ -396,7 +413,7 @@ async function main() {
   await mkdir(outputDir, { recursive: true });
   await mkdir(cacheDir, { recursive: true });
 
-  const jobs = TRANSLATIONS.flatMap((translation) =>
+  const jobs = selectedTranslations.flatMap((translation) =>
     BOOKS.flatMap((book) =>
       Array.from({ length: book.chapters }, (_, index) => ({
         translation,
@@ -407,13 +424,13 @@ async function main() {
   );
 
   const chaptersByTranslation = new Map(
-    TRANSLATIONS.map((translation) => [translation.id, []]),
+    selectedTranslations.map((translation) => [translation.id, []]),
   );
   const copyrightsByTranslation = new Map(
-    TRANSLATIONS.map((translation) => [translation.id, new Set()]),
+    selectedTranslations.map((translation) => [translation.id, new Set()]),
   );
   const omissionsByTranslation = new Map(
-    TRANSLATIONS.map((translation) => [translation.id, []]),
+    selectedTranslations.map((translation) => [translation.id, []]),
   );
   let completed = 0;
 
@@ -454,7 +471,7 @@ async function main() {
     translations: [],
   };
 
-  for (const translation of TRANSLATIONS) {
+  for (const translation of selectedTranslations) {
     const chapters = chaptersByTranslation.get(translation.id);
     chapters.sort((left, right) =>
       left.book.number - right.book.number || left.chapter - right.chapter,
