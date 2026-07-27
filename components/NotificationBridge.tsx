@@ -52,30 +52,36 @@ export default function NotificationBridge() {
     let syncPending = false;
     let syncTimer: number | null = null;
 
-    const syncPushRegistration = () => {
+    const syncNotifications = () => {
       if (!active) return;
       if (syncInFlight) {
         syncPending = true;
         return;
       }
       syncInFlight = true;
-      void syncDefaultPushNotificationRegistration().finally(() => {
+      void (async () => {
+        // Local reminders request the shared system notification permission first.
+        // Push registration then reuses that result instead of racing a second prompt.
+        await syncTodayBibleReflectionCompletionForNotifications(lang);
+        if (!active) return;
+        await syncDefaultPushNotificationRegistration();
+      })().finally(() => {
         syncInFlight = false;
         if (syncPending) {
           syncPending = false;
-          syncPushRegistration();
+          syncNotifications();
         }
       });
     };
 
-    syncPushRegistration();
+    syncNotifications();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event !== "SIGNED_IN" || !session?.user || !active) return;
       if (syncTimer !== null) window.clearTimeout(syncTimer);
-      syncTimer = window.setTimeout(syncPushRegistration, 0);
+      syncTimer = window.setTimeout(syncNotifications, 0);
     });
 
     return () => {
@@ -83,7 +89,7 @@ export default function NotificationBridge() {
       if (syncTimer !== null) window.clearTimeout(syncTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     let mounted = true;
@@ -97,8 +103,6 @@ export default function NotificationBridge() {
           syncInFlight = null;
         });
     };
-
-    syncReminderState();
 
     if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
       CapacitorApp.addListener("appStateChange", ({ isActive }) => {

@@ -29,7 +29,9 @@ export type NotificationApplyResult = {
   permission: "granted" | "denied" | "prompt" | "unavailable";
 };
 
-const SETTINGS_KEY = "roots_local_notification_settings_v1";
+// v2 intentionally gives every existing installation the new default schedule
+// once. From that point on, the user's saved ON/OFF choices and times are kept.
+const SETTINGS_KEY = "roots_local_notification_settings_v2";
 const COMPLETED_DATES_KEY = "roots_local_notification_completed_reflections_v1";
 const NOTIFICATION_IDS = {
   morningBase: 11000,
@@ -42,13 +44,13 @@ const ROOTS_NOTIFICATION_SMALL_ICON = "ic_stat_roots_notification";
 const ROOTS_NOTIFICATION_ICON_COLOR = "#6B8E5A";
 
 export const DEFAULT_NOTIFICATION_SETTINGS: RootsNotificationSettings = {
-  enabled: false,
+  enabled: true,
   morningEnabled: true,
-  morningTime: { hour: 8, minute: 0 },
+  morningTime: { hour: 7, minute: 0 },
   eveningEnabled: true,
-  eveningTime: { hour: 20, minute: 30 },
+  eveningTime: { hour: 21, minute: 0 },
   prayerEnabled: true,
-  prayerTime: { hour: 21, minute: 30 },
+  prayerTime: { hour: 12, minute: 0 },
 };
 
 function isValidTime(value: unknown): value is NotificationTime {
@@ -259,6 +261,10 @@ async function ensureNotificationPermission(): Promise<NotificationApplyResult> 
   try {
     const current = await LocalNotifications.checkPermissions();
     if (current.display === "granted") return { ok: true, permission: "granted" };
+    if (current.display === "denied") return { ok: false, permission: "denied" };
+    if (current.display !== "prompt" && current.display !== "prompt-with-rationale") {
+      return { ok: false, permission: "unavailable" };
+    }
 
     const requested = await LocalNotifications.requestPermissions();
     if (requested.display === "granted") return { ok: true, permission: "granted" };
@@ -398,30 +404,42 @@ export async function syncTodayBibleReflectionCompletionForNotifications(lang: L
   if (!settings.enabled || !isNativeNotificationsAvailable()) return;
 
   const today = getLocalDateString();
+  const supabase = createClient();
+  let userId: string | null = null;
+
   try {
-    const supabase = createClient();
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (user) {
-      const { data, error } = await supabase
-        .from("qt_records")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .eq("is_draft", false)
-        .limit(1);
+    if (userError) throw userError;
+    userId = user?.id ?? null;
+  } catch (error) {
+    console.warn("Roots notification user lookup failed", error);
+    return;
+  }
 
-      if (error) throw error;
-      if ((data ?? []).length > 0) {
-        const dates = getCompletedReflectionDates();
-        if (!dates.has(today)) {
-          dates.add(today);
-          saveCompletedReflectionDates(dates);
-        }
-        await cancelPendingEveningReflectionNotifications();
+  // Do not request a system notification permission before sign-in.
+  if (!userId) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("qt_records")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .eq("is_draft", false)
+      .limit(1);
+
+    if (error) throw error;
+    if ((data ?? []).length > 0) {
+      const dates = getCompletedReflectionDates();
+      if (!dates.has(today)) {
+        dates.add(today);
+        saveCompletedReflectionDates(dates);
       }
+      await cancelPendingEveningReflectionNotifications();
     }
   } catch (error) {
     // Scheduling should remain available even if the reconciliation query fails.
