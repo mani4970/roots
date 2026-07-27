@@ -6,11 +6,13 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { useLang } from "@/lib/useLang";
+import { createClient } from "@/lib/supabase";
 import {
   setupNotificationTapRouting,
   syncTodayBibleReflectionCompletionForNotifications,
   type NotificationTarget,
 } from "@/lib/localNotifications";
+import { syncDefaultPushNotificationRegistration } from "@/lib/notifications/pushTokens";
 
 function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
@@ -42,6 +44,46 @@ function isNativePushAvailable() {
 export default function NotificationBridge() {
   const router = useRouter();
   const lang = useLang();
+
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    let syncInFlight = false;
+    let syncPending = false;
+    let syncTimer: number | null = null;
+
+    const syncPushRegistration = () => {
+      if (!active) return;
+      if (syncInFlight) {
+        syncPending = true;
+        return;
+      }
+      syncInFlight = true;
+      void syncDefaultPushNotificationRegistration().finally(() => {
+        syncInFlight = false;
+        if (syncPending) {
+          syncPending = false;
+          syncPushRegistration();
+        }
+      });
+    };
+
+    syncPushRegistration();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" || !session?.user || !active) return;
+      if (syncTimer !== null) window.clearTimeout(syncTimer);
+      syncTimer = window.setTimeout(syncPushRegistration, 0);
+    });
+
+    return () => {
+      active = false;
+      if (syncTimer !== null) window.clearTimeout(syncTimer);
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;

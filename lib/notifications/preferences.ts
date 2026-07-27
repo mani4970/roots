@@ -86,6 +86,46 @@ export async function loadPushNotificationPreferences(): Promise<RootsPushNotifi
   return rowToPreferences(data as NotificationPreferenceRow | null);
 }
 
+export async function ensureDefaultPushNotificationPreferences(): Promise<RootsPushNotificationPreferences | null> {
+  const supabase = createClient();
+  const { data: userResult, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  const userId = userResult.user?.id;
+  if (!userId) return null;
+
+  const { data: existing, error: selectError } = await supabase
+    .from("notification_preferences")
+    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (selectError) throw selectError;
+  if (existing) return rowToPreferences(existing as NotificationPreferenceRow);
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("notification_preferences")
+    .insert(preferencesToRow(userId, DEFAULT_PUSH_NOTIFICATION_PREFERENCES))
+    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+    .single();
+
+  if (!insertError) return rowToPreferences(inserted as NotificationPreferenceRow);
+
+  // Another app session may have created the row between the SELECT and INSERT.
+  // Reload it instead of overwriting a choice the user made in that session.
+  if (insertError.code === "23505") {
+    const { data: current, error: reloadError } = await supabase
+      .from("notification_preferences")
+      .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+      .eq("user_id", userId)
+      .single();
+
+    if (reloadError) throw reloadError;
+    return rowToPreferences(current as NotificationPreferenceRow);
+  }
+
+  throw insertError;
+}
+
 export async function savePushNotificationPreferences(preferences: RootsPushNotificationPreferences) {
   const supabase = createClient();
   const { data: userResult, error: userError } = await supabase.auth.getUser();

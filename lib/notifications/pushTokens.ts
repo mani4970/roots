@@ -2,11 +2,13 @@
 
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { PushNotifications, type PermissionStatus, type Token } from "@capacitor/push-notifications";
+import { ensureDefaultPushNotificationPreferences } from "@/lib/notifications/preferences";
 import { createClient } from "@/lib/supabase";
 
 export type RootsPushTokenRegistrationStatus =
   | "registered"
   | "unavailable"
+  | "disabled_by_user"
   | "permission_denied"
   | "registration_failed"
   | "missing_user";
@@ -73,6 +75,7 @@ async function getCurrentUserId() {
 async function ensurePushPermission(): Promise<PermissionStatus> {
   const current = await PushNotifications.checkPermissions();
   if (current.receive === "granted") return current;
+  if (current.receive !== "prompt") return current;
   return PushNotifications.requestPermissions();
 }
 
@@ -181,6 +184,22 @@ export async function registerCurrentDeviceForPushNotifications(): Promise<Roots
       status: "registration_failed",
       platform,
       tokenProvider: tokenProviderForPlatform(platform),
+      error: errorMessage(error),
+    };
+  }
+}
+
+export async function syncDefaultPushNotificationRegistration(): Promise<RootsPushTokenRegistrationResult> {
+  try {
+    const preferences = await ensureDefaultPushNotificationPreferences();
+    if (!preferences) return { ok: false, status: "missing_user" };
+    if (!preferences.pushEnabled) return { ok: false, status: "disabled_by_user" };
+    return registerCurrentDeviceForPushNotifications();
+  } catch (error) {
+    console.warn("Roots default push registration sync failed", error);
+    return {
+      ok: false,
+      status: "registration_failed",
       error: errorMessage(error),
     };
   }
