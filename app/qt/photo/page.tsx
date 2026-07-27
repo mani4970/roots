@@ -166,6 +166,7 @@ function PhotoReflectionContent() {
   const searchParams = useSearchParams();
   const lang = useLang();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const saveLockRef = useRef(false);
 
   const today = getLocalDateString();
   const requestedDate = searchParams.get("date") || today;
@@ -317,22 +318,26 @@ function PhotoReflectionContent() {
   }
 
   async function savePhotoReflection(options: CompletePhotoOptions = {}) {
-    if (!file || saving) {
-      if (!file) showNotice(pc("needPhoto", lang));
+    if (!file) {
+      showNotice(pc("needPhoto", lang));
       return;
     }
+    if (saveLockRef.current || saving) return;
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
+    saveLockRef.current = true;
     setSaving(true);
+    const supabase = createClient();
     let uploadedPath: string | null = null;
     let insertedRecordId: string | null = null;
+    let userId: string | null = null;
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      userId = user.id;
+
       const { data: existingRows, error: existingError } = await supabase
         .from("qt_records")
         .select("id")
@@ -441,19 +446,29 @@ function PhotoReflectionContent() {
       router.push(`/qt/record?id=${recordId}`);
     } catch (error) {
       console.error("photo reflection save failed", error);
-      if (insertedRecordId) {
+      if (insertedRecordId && userId) {
         const { error: rollbackError } = await supabase
           .from("qt_records")
           .delete()
           .eq("id", insertedRecordId)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
         if (rollbackError) console.warn("photo reflection record rollback failed", rollbackError);
       }
       if (uploadedPath) {
         await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]).catch(() => undefined);
       }
-      showNotice(pc("saveError", lang));
+      const errorCode = error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+      if (errorCode === "23505") {
+        setShowShareModal(false);
+        showNotice(pc("alreadyDone", lang));
+        router.push("/qt");
+      } else {
+        showNotice(pc("saveError", lang));
+      }
     } finally {
+      saveLockRef.current = false;
       setSaving(false);
     }
   }
