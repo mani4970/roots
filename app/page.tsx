@@ -16,6 +16,7 @@ import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
+import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
@@ -28,11 +29,12 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
-import { getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
-import { isHeartShopMapItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
+import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
+import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 
@@ -258,6 +260,7 @@ export default function HomePage() {
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopMapItemId[]>([]);
+  const [enabledProfileCharacterItemIds, setEnabledProfileCharacterItemIds] = useState<HeartShopCharacterItemId[]>([]);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
 
@@ -292,6 +295,10 @@ export default function HomePage() {
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
+  const homeProfileCharacterLayers = getProfileCharacterLayersForItemIds(
+    enabledProfileCharacterItemIds,
+    currentAvatarType,
+  ).filter(layer => layer.slot !== "background");
 
   useEffect(() => { load(); }, []);
 
@@ -354,15 +361,20 @@ export default function HomePage() {
 
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
+        const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
         setEnabledHeartShopItemIds(
-          items.filter(item => item.isEnabled && isHeartShopMapItemId(item.itemId)).map(item => item.itemId as HeartShopMapItemId),
+          enabledItemIds.filter(isHeartShopMapItemId),
+        );
+        setEnabledProfileCharacterItemIds(
+          enabledItemIds.filter(isHeartShopCharacterItemId),
         );
       })
       .catch(error => {
-        // Heart Shop friends are a decoration layer only. A loading failure must never
+        // Heart Shop friends and clothing are decoration layers only. A loading failure must never
         // block Home, Bible Reflection progress, rewards, or watering.
         console.warn("홈 사랑 상점 아이템 조회 실패:", error);
         setEnabledHeartShopItemIds([]);
+        setEnabledProfileCharacterItemIds([]);
       });
 
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -1536,70 +1548,153 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_routine_section", lang)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div
+          style={{
+            position: "relative",
+            margin: "0 8px 10px",
+            padding: "11px 16px",
+            borderRadius: "18px 18px 18px 8px",
+            border: "1px solid var(--border-sage-soft)",
+            background: "var(--surface-sage-subtle)",
+            color: "var(--text)",
+            fontSize: 14,
+            fontWeight: 850,
+            lineHeight: 1.35,
+            textAlign: "center",
+            wordBreak: "keep-all",
+          }}
+        >
+          {t("home_routine_prompt", lang)}
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: 40,
+              bottom: -7,
+              width: 13,
+              height: 13,
+              borderRight: "1px solid var(--border-sage-soft)",
+              borderBottom: "1px solid var(--border-sage-soft)",
+              background: "var(--surface-sage-subtle)",
+              transform: "rotate(45deg)",
+            }}
+          />
+        </div>
+
+        <div
+          className="card roots-elevation-card"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(82px, 0.8fr) minmax(0, 1.6fr)",
+            gap: 10,
+            alignItems: "center",
+            minHeight: 148,
+            padding: "11px 12px",
+            borderRadius: 22,
+            border: "1px solid var(--border)",
+            background: "var(--surface-card)",
+          }}
+        >
           <button
             type="button"
-            onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
-            className={todayDone.qt ? "card-sage roots-elevation-card-sage" : "card roots-elevation-card"}
+            onClick={() => router.push("/profile")}
+            aria-label={t("home_character_customize", lang)}
             style={{
-              minHeight: 68,
-              borderRadius: 18,
-              padding: "9px 10px",
-              border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
-              background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-card)",
+              minWidth: 0,
+              padding: 0,
+              border: "none",
+              background: "transparent",
               display: "flex",
-              flexDirection: "row",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "flex-start",
-              gap: 10,
+              justifyContent: "center",
               cursor: "pointer",
-              textAlign: "center",
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/icon-qt.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
-            </div>
-            <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-              <div style={{ fontSize: todayDone.qt ? 13 : 14, fontWeight: 900, color: "var(--text)", lineHeight: 1.18, wordBreak: "keep-all" }}>
-                {reflectionActionTitle}
-              </div>
-              {reflectionActionSub && (
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.15, wordBreak: "keep-all" }}>
-                  {reflectionActionSub}
-                </div>
-              )}
-            </div>
+            <ProfileCharacterPreview
+              avatarType={currentAvatarType}
+              alt={getRootsAvatarLabel(currentAvatarType, lang)}
+              layers={homeProfileCharacterLayers}
+              style={{ width: "clamp(72px, 20vw, 88px)" }}
+            />
+            <span
+              style={{
+                marginTop: 3,
+                color: "var(--text3)",
+                fontSize: 9.5,
+                fontWeight: 800,
+                lineHeight: 1.2,
+                textAlign: "center",
+                wordBreak: "keep-all",
+              }}
+            >
+              {t("home_character_customize", lang)} ›
+            </span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => router.push("/prayer")}
-            className="card roots-elevation-card"
-            style={{
-              minHeight: 68,
-              borderRadius: 18,
-              padding: "9px 10px",
-              border: "1px solid var(--border)",
-              background: "var(--surface-card)",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-start",
-              gap: 10,
-              cursor: "pointer",
-              textAlign: "center",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 14, background: "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/icon-pray.webp" alt="" width={32} height={32} style={{ objectFit: "contain" }} />
-            </div>
-            <div style={{ minWidth: 0, flex: 1, fontSize: 14, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
-              {t("home_action_prayer", lang)}
-            </div>
-          </button>
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+            <button
+              type="button"
+              onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
+              className={todayDone.qt ? "card-sage roots-elevation-card-sage" : "roots-elevation-card"}
+              style={{
+                width: "100%",
+                minHeight: 61,
+                borderRadius: 17,
+                padding: "8px 9px",
+                border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
+                background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--bg2)",
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                cursor: "pointer",
+                textAlign: "center",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 13, background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/icon-qt.webp" alt="" width={30} height={30} style={{ objectFit: "contain" }} />
+              </div>
+              <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+                <div style={{ fontSize: todayDone.qt ? 12.5 : 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.18, wordBreak: "keep-all" }}>
+                  {reflectionActionTitle}
+                </div>
+                {reflectionActionSub && (
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.15, wordBreak: "keep-all" }}>
+                    {reflectionActionSub}
+                  </div>
+                )}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/prayer")}
+              className="roots-elevation-card"
+              style={{
+                width: "100%",
+                minHeight: 61,
+                borderRadius: 17,
+                padding: "8px 9px",
+                border: "1px solid var(--border)",
+                background: "var(--bg2)",
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                cursor: "pointer",
+                textAlign: "center",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 13, background: "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/icon-pray.webp" alt="" width={30} height={30} style={{ objectFit: "contain" }} />
+              </div>
+              <div style={{ minWidth: 0, flex: 1, fontSize: 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
+                {t("home_action_prayer", lang)}
+              </div>
+            </button>
+          </div>
         </div>
 
         {pendingCompanionRequestCount > 0 && (

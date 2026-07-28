@@ -780,6 +780,8 @@ export const T = {
   home_prayer_quiet_celeb_sub: { ko: "구하고 찾는 자에게\n하나님이 반드시 응답하실거예요!", de: "Gott wird denen, die bitten und suchen, gewiss antworten!", en: "God will surely answer those who ask and seek!", fr: "Dieu répondra assurément à ceux qui demandent et cherchent!" },
   home_prayer_yes_btn: { ko: "기도 제목 적기",    de: "Gebetsanliegen aufschreiben", en: "Write prayer request", fr: "Écrire un sujet de prière" },
   home_routine_section: { ko: "오늘의 영적 루틴", de: "Heutige geistliche Routine", en: "Today’s spiritual routine", fr: "Routine spirituelle du jour" },
+  home_routine_prompt: { ko: "오늘의 영적 루틴, 이어가 볼까요?", de: "Machen wir mit der heutigen geistlichen Routine weiter?", en: "Shall we continue today’s spiritual routine?", fr: "On continue la routine spirituelle d’aujourd’hui ?" },
+  home_character_customize: { ko: "내 캐릭터 꾸미기", de: "Meinen Charakter gestalten", en: "Customize my character", fr: "Personnaliser mon personnage" },
   home_action_reflection_start: { ko: "오늘 묵상하기", de: "Heute Stille Zeit", en: "Reflect today", fr: "Méditer aujourd’hui" },
   home_action_reflection_done: { ko: "오늘 말씀 묵상 완료!", de: "Stille Zeit fertig!", en: "Reflection complete!", fr: "Méditation terminée !" },
   home_action_view_record: { ko: "묵상 보러 가기", de: "Ansehen", en: "View", fr: "Voir" },
