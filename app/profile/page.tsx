@@ -60,6 +60,13 @@ const PROFILE_MONTH_LOCALE = {
   fr: "fr-FR",
 } as const;
 
+const PROFILE_HEART_GUIDE_TEXT = {
+  ko: "다른 사람들의 묵상을 축복하고, 함께 기도하면 💛가 쌓여요.",
+  en: "Bless others’ reflections and pray together to collect 💛.",
+  de: "Segne die Stille Zeit anderer und bete mit ihnen, um 💛 zu sammeln.",
+  fr: "Bénis les méditations des autres et prie avec eux pour gagner des 💛.",
+} as const;
+
 type QtRecord = { date: string };
 
 function getMonthStart(date: Date) {
@@ -1506,7 +1513,10 @@ export default function ProfilePage() {
       {/* 내 캐릭터 */}
       <div style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">{getRootsAvatarChoiceText("profileTitle", lang)}</div>
-        <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, alignItems: "center", padding: "16px 14px", minHeight: 150 }}>
+        <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", columnGap: 12, rowGap: 9, alignItems: "center", padding: "13px 14px 16px", minHeight: 150 }}>
+          <p style={{ gridColumn: "1 / -1", margin: 0, color: "var(--profile-muted-text)", fontSize: 10.5, fontWeight: 650, lineHeight: 1.45, textAlign: "center" }}>
+            {PROFILE_HEART_GUIDE_TEXT[lang]}
+          </p>
           <div style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
             <button
               type="button"
