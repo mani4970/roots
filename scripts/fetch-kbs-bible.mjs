@@ -132,14 +132,34 @@ function extractTransferState(html, sourceUrl) {
   }
 }
 
-function normalizeVerseText(parts, translationCode) {
-  const normalizedParts = parts
-    .map((part) => String(part).replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-  const separator = translationCode === "RNKSV" ? " " : "";
+function normalizeVerseText(parts) {
+  let normalizedText = "";
+  let previousPart = null;
+  let pendingWhitespace = false;
 
-  return normalizedParts
-    .join(separator)
+  for (const part of parts) {
+    const rawText = String(part.text);
+    const normalizedPart = rawText.replace(/\s+/g, " ").trim();
+    if (!normalizedPart) {
+      pendingWhitespace ||= /\s/.test(rawText);
+      continue;
+    }
+
+    const needsSeparator =
+      previousPart !== null &&
+      (
+        pendingWhitespace ||
+        previousPart.blockIndex !== part.blockIndex ||
+        /\s$/.test(previousPart.text) ||
+        /^\s/.test(rawText)
+      );
+
+    normalizedText += `${needsSeparator ? " " : ""}${normalizedPart}`;
+    previousPart = part;
+    pendingWhitespace = false;
+  }
+
+  return normalizedText
     .replace(/\s+([,.;:!?%)\]}”’])/g, "$1")
     .replace(/([(\[“‘])\s+/g, "$1")
     .trim();
@@ -203,9 +223,9 @@ function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
     return numbers;
   }
 
-  function visit(value) {
+  function visit(value, blockIndex) {
     if (Array.isArray(value)) {
-      value.forEach(visit);
+      value.forEach((item) => visit(item, blockIndex));
       return;
     }
     if (!value || typeof value !== "object") return;
@@ -226,24 +246,26 @@ function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
         verseEnd,
         textParts: [],
       };
-      parts.textParts.push(text);
+      parts.textParts.push({ text, blockIndex });
       verseParts.set(verseKey, parts);
       return;
     }
 
-    Object.values(value).forEach(visit);
+    Object.values(value).forEach((item) => visit(item, blockIndex));
   }
 
-  visit(chapter.content);
+  chapter.content.forEach((block, blockIndex) => visit(block, blockIndex));
 
   // A small number of legacy chapters (currently KRV Psalm 92) expose the
   // verse number and its following text as sibling nodes instead of using
   // `verse-text` nodes. Preserve the displayed verse ranges in that shape too.
   if (verseParts.size === 0) {
-    function collectSiblingVerses(value) {
+    function collectSiblingVerses(value, blockIndex) {
       if (!Array.isArray(value)) {
         if (value && typeof value === "object") {
-          Object.values(value).forEach(collectSiblingVerses);
+          Object.values(value).forEach((item) =>
+            collectSiblingVerses(item, blockIndex),
+          );
         }
         return;
       }
@@ -270,15 +292,20 @@ function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
           item.type === "text" &&
           typeof item.content === "string"
         ) {
-          verseParts.get(activeVerseKey).textParts.push(item.content);
+          verseParts.get(activeVerseKey).textParts.push({
+            text: item.content,
+            blockIndex,
+          });
           continue;
         }
 
-        collectSiblingVerses(item);
+        collectSiblingVerses(item, blockIndex);
       }
     }
 
-    collectSiblingVerses(chapter.content);
+    chapter.content.forEach((block, blockIndex) =>
+      collectSiblingVerses(block, blockIndex),
+    );
   }
 
   const declaredVerseCount = Number(chapter.verseCount);
@@ -297,7 +324,7 @@ function parseChapter(html, translation, book, chapterNumber, sourceUrl) {
       chapter: chapterNumber,
       verse_start: verseStart,
       verse_end: verseEnd,
-      text: normalizeVerseText(textParts, translation.code),
+      text: normalizeVerseText(textParts),
     }));
 
   if (verses.length !== declaredVerseCount) {
