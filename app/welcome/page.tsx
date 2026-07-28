@@ -260,7 +260,7 @@ function BadgeImage({ src, label }: { src: string; label: string }) {
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>("ko");
+  const [lang, setLang] = useState<Lang>("en");
   const [showDropdown, setShowDropdown] = useState(false);
 
   const tx = TEXTS[lang];
