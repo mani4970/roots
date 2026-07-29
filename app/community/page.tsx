@@ -7360,9 +7360,6 @@ function CommunityPageContent() {
     const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
     const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
     const viewerIsGroupLeader = isGroupLeader(selectedGroup);
-    const leaderName =
-      selectedGroup.leaderProfile?.name ??
-      c("community_member_unknown");
     const leadershipTransferTarget = groupMemberProfiles.find(
       (member) => member.id === leadershipTransferTargetId,
     );
@@ -7702,22 +7699,6 @@ function CommunityPageContent() {
             <p style={{ fontSize: 13, color: "var(--text3)" }}>
               {selectedGroup.description}
             </p>
-          )}
-          {selectedGroup.created_by && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                marginTop: selectedGroup.description ? 7 : 3,
-                color: "var(--community-gold-text)",
-              }}
-            >
-              <Crown size={13} strokeWidth={2} />
-              <span style={{ fontSize: 11, fontWeight: 800 }}>
-                {groupLeaderText.groupLeaderWithName(leaderName)}
-              </span>
-            </div>
           )}
           <button
             onClick={() => openGroupMembers(selectedGroup)}
