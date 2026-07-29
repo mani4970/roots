@@ -24,10 +24,10 @@ export async function triggerLoveHeartTapHapticBestEffort() {
 }
 
 /**
- * Confirms that a reflection nudge was accepted by the server.
+ * Gives an immediate, subtle tap when a locally-valid reflection nudge starts.
  *
- * Unlike Love Heart taps, this runs only after the API has confirmed the
- * nudge, so a failed request never feels like a successful send.
+ * This is interaction feedback only; the success toast still waits for the
+ * API response. Haptic availability must never block the underlying request.
  */
 export async function triggerReflectionNudgeHapticBestEffort() {
   if (!Capacitor.isNativePlatform()) return;

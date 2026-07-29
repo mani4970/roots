@@ -973,6 +973,16 @@ function CommunityPageContent() {
       ...current,
       sendingKey,
     ]);
+    setReflectionNudgeWavingKey(sendingKey);
+    if (reflectionNudgeWaveTimerRef.current) {
+      window.clearTimeout(reflectionNudgeWaveTimerRef.current);
+    }
+    reflectionNudgeWaveTimerRef.current = window.setTimeout(() => {
+      setReflectionNudgeWavingKey(null);
+      reflectionNudgeWaveTimerRef.current = null;
+    }, 700);
+    void triggerReflectionNudgeHapticBestEffort();
+
     try {
       const response = await fetch("/api/reflection-nudges", {
         method: "POST",
@@ -1017,15 +1027,6 @@ function CommunityPageContent() {
         scope === "group" ? "groupSentIds" : "partnerSentIds",
         targetId,
       );
-      setReflectionNudgeWavingKey(sendingKey);
-      if (reflectionNudgeWaveTimerRef.current) {
-        window.clearTimeout(reflectionNudgeWaveTimerRef.current);
-      }
-      reflectionNudgeWaveTimerRef.current = window.setTimeout(() => {
-        setReflectionNudgeWavingKey(null);
-        reflectionNudgeWaveTimerRef.current = null;
-      }, 700);
-      void triggerReflectionNudgeHapticBestEffort();
       showReflectionNudgeToast(
         scope === "group"
           ? reflectionNudgeText.groupSuccess(displayName)
