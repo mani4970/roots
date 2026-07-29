@@ -22,3 +22,24 @@ export async function triggerLoveHeartTapHapticBestEffort() {
     console.warn("Love Heart haptic feedback unavailable:", error);
   }
 }
+
+/**
+ * Confirms that a reflection nudge was accepted by the server.
+ *
+ * Unlike Love Heart taps, this runs only after the API has confirmed the
+ * nudge, so a failed request never feels like a successful send.
+ */
+export async function triggerReflectionNudgeHapticBestEffort() {
+  if (!Capacitor.isNativePlatform()) return;
+
+  try {
+    if (Capacitor.getPlatform() === "android") {
+      await Haptics.vibrate({ duration: 10 });
+      return;
+    }
+
+    await Haptics.impact({ style: ImpactStyle.Light });
+  } catch (error) {
+    console.warn("Reflection nudge haptic feedback unavailable:", error);
+  }
+}

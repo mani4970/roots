@@ -21,7 +21,11 @@ import {
   GROUP_CHALLENGE_BADGE_FALLBACK,
   getGroupChallengeBadgeImageSrc,
 } from "@/lib/groupChallengeBadges";
-import { getDateLocale, parseLocalDateString } from "@/lib/date";
+import {
+  getDateLocale,
+  getLocalDateString,
+  parseLocalDateString,
+} from "@/lib/date";
 import {
   GROUP_CHALLENGE_REQUEST_DEFAULT_DURATION_DAYS,
   GROUP_CHALLENGE_REQUEST_MAX_DURATION_DAYS,
@@ -49,7 +53,11 @@ import {
 } from "@/lib/rewardBadges";
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { getLoveHeartToastText } from "@/lib/loveHeartText";
-import { triggerLoveHeartTapHapticBestEffort } from "@/lib/nativeHaptics";
+import {
+  triggerLoveHeartTapHapticBestEffort,
+  triggerReflectionNudgeHapticBestEffort,
+} from "@/lib/nativeHaptics";
+import { getReflectionNudgeText } from "@/lib/reflectionNudgeText";
 import {
   communityNotificationTargetSignature,
   parseCommunityNotificationDirectTarget,
@@ -112,6 +120,20 @@ const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
 type CommunitySectionKey = "qt" | "praying" | "answered";
+
+type ReflectionNudgeStatus = {
+  partnerCompletedIds: string[];
+  groupUnavailableIds: string[];
+  partnerSentIds: string[];
+  groupSentIds: string[];
+};
+
+const EMPTY_REFLECTION_NUDGE_STATUS: ReflectionNudgeStatus = {
+  partnerCompletedIds: [],
+  groupUnavailableIds: [],
+  partnerSentIds: [],
+  groupSentIds: [],
+};
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -582,6 +604,21 @@ function CommunityPageContent() {
   const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
   const loveHeartToastTimerRef = useRef<number | null>(null);
   const loveHeartHapticPendingRef = useRef<Set<string>>(new Set());
+  const [reflectionNudgeStatus, setReflectionNudgeStatus] =
+    useState<ReflectionNudgeStatus>(EMPTY_REFLECTION_NUDGE_STATUS);
+  const [reflectionNudgeStatusLoaded, setReflectionNudgeStatusLoaded] =
+    useState(false);
+  const [reflectionNudgeSendingKeys, setReflectionNudgeSendingKeys] = useState<
+    string[]
+  >([]);
+  const [reflectionNudgeWavingKey, setReflectionNudgeWavingKey] = useState<
+    string | null
+  >(null);
+  const [reflectionNudgeToast, setReflectionNudgeToast] = useState<
+    string | null
+  >(null);
+  const reflectionNudgeToastTimerRef = useRef<number | null>(null);
+  const reflectionNudgeWaveTimerRef = useRef<number | null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
@@ -751,6 +788,7 @@ function CommunityPageContent() {
 
   const c = (key: TKey, vars?: Record<string, string | number>) =>
     t(key, lang, vars);
+  const reflectionNudgeText = getReflectionNudgeText(lang);
 
   function showLoveHeartToast(sourceType: LoveHeartSourceType) {
     if (loveHeartToastTimerRef.current)
@@ -820,10 +858,281 @@ function CommunityPageContent() {
     );
   }
 
+  function showReflectionNudgeToast(message: string) {
+    if (reflectionNudgeToastTimerRef.current) {
+      window.clearTimeout(reflectionNudgeToastTimerRef.current);
+    }
+    setReflectionNudgeToast(message);
+    reflectionNudgeToastTimerRef.current = window.setTimeout(() => {
+      setReflectionNudgeToast(null);
+      reflectionNudgeToastTimerRef.current = null;
+    }, 2400);
+  }
+
+  function renderReflectionNudgeToast() {
+    if (!reflectionNudgeToast) return null;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "fixed",
+          top: 18,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 241,
+          background: "var(--community-toast-surface)",
+          color: "var(--community-toast-text)",
+          border: "1px solid var(--community-toast-border)",
+          borderRadius: 999,
+          padding: "10px 16px",
+          fontSize: 13,
+          fontWeight: 800,
+          boxShadow: "var(--shadow-toast)",
+          whiteSpace: "nowrap",
+          maxWidth: "calc(100vw - 32px)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {reflectionNudgeToast}
+      </div>
+    );
+  }
+
+  function normalizeStringArray(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    return Array.from(
+      new Set(
+        value.filter(
+          (item): item is string =>
+            typeof item === "string" && item.length > 0,
+        ),
+      ),
+    );
+  }
+
+  async function loadReflectionNudgeStatus() {
+    setReflectionNudgeStatusLoaded(false);
+    try {
+      const params = new URLSearchParams({
+        localDate: getLocalDateString(),
+      });
+      const response = await fetch(`/api/reflection-nudges?${params}`, {
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.error || "Reflection nudge status failed");
+      }
+      setReflectionNudgeStatus({
+        partnerCompletedIds: normalizeStringArray(
+          result?.partnerCompletedIds,
+        ),
+        groupUnavailableIds: normalizeStringArray(
+          result?.groupUnavailableIds,
+        ),
+        partnerSentIds: normalizeStringArray(result?.partnerSentIds),
+        groupSentIds: normalizeStringArray(result?.groupSentIds),
+      });
+      setReflectionNudgeStatusLoaded(true);
+    } catch (error) {
+      console.warn("묵상 넛지 상태 조회 실패:", error);
+      setReflectionNudgeStatus(EMPTY_REFLECTION_NUDGE_STATUS);
+    }
+  }
+
+  function addReflectionNudgeStatusId(
+    key: keyof ReflectionNudgeStatus,
+    id: string,
+  ) {
+    setReflectionNudgeStatus((current) => ({
+      ...current,
+      [key]: Array.from(new Set([...current[key], id])),
+    }));
+  }
+
+  async function sendReflectionNudge(
+    scope: "group" | "partner",
+    targetId: string,
+    displayName: string,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    const sendingKey = `${scope}:${targetId}`;
+    if (
+      !reflectionNudgeStatusLoaded ||
+      reflectionNudgeSendingKeys.includes(sendingKey)
+    ) {
+      return;
+    }
+
+    setReflectionNudgeSendingKeys((current) => [
+      ...current,
+      sendingKey,
+    ]);
+    try {
+      const response = await fetch("/api/reflection-nudges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scope,
+          targetId,
+          localDate: getLocalDateString(),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (result?.code === "already_sent") {
+          addReflectionNudgeStatusId(
+            scope === "group" ? "groupSentIds" : "partnerSentIds",
+            targetId,
+          );
+          showReflectionNudgeToast(
+            reflectionNudgeText.alreadySentNotice,
+          );
+          return;
+        }
+        if (result?.code === "completed" && scope === "partner") {
+          addReflectionNudgeStatusId("partnerCompletedIds", targetId);
+          showReflectionNudgeToast(
+            reflectionNudgeText.completedNotice,
+          );
+          return;
+        }
+        if (result?.code === "all_completed" && scope === "group") {
+          addReflectionNudgeStatusId("groupUnavailableIds", targetId);
+          showReflectionNudgeToast(
+            reflectionNudgeText.groupCompletedNotice,
+          );
+          return;
+        }
+        throw new Error(result?.error || "Reflection nudge failed");
+      }
+
+      addReflectionNudgeStatusId(
+        scope === "group" ? "groupSentIds" : "partnerSentIds",
+        targetId,
+      );
+      setReflectionNudgeWavingKey(sendingKey);
+      if (reflectionNudgeWaveTimerRef.current) {
+        window.clearTimeout(reflectionNudgeWaveTimerRef.current);
+      }
+      reflectionNudgeWaveTimerRef.current = window.setTimeout(() => {
+        setReflectionNudgeWavingKey(null);
+        reflectionNudgeWaveTimerRef.current = null;
+      }, 700);
+      void triggerReflectionNudgeHapticBestEffort();
+      showReflectionNudgeToast(
+        scope === "group"
+          ? reflectionNudgeText.groupSuccess(displayName)
+          : reflectionNudgeText.partnerSuccess(displayName),
+      );
+    } catch (error) {
+      console.warn("묵상 넛지 발송 실패:", error);
+      showReflectionNudgeToast(reflectionNudgeText.failed);
+    } finally {
+      setReflectionNudgeSendingKeys((current) =>
+        current.filter((key) => key !== sendingKey),
+      );
+    }
+  }
+
+  function renderReflectionNudgeButton(
+    scope: "group" | "partner",
+    targetId: string,
+    displayName: string,
+  ) {
+    const sendingKey = `${scope}:${targetId}`;
+    const sending = reflectionNudgeSendingKeys.includes(sendingKey);
+    const sent =
+      scope === "group"
+        ? reflectionNudgeStatus.groupSentIds.includes(targetId)
+        : reflectionNudgeStatus.partnerSentIds.includes(targetId);
+    const completed =
+      scope === "group"
+        ? reflectionNudgeStatus.groupUnavailableIds.includes(targetId)
+        : reflectionNudgeStatus.partnerCompletedIds.includes(targetId);
+    const disabled =
+      !reflectionNudgeStatusLoaded || sending || sent || completed;
+    const waving = reflectionNudgeWavingKey === sendingKey;
+
+    let label =
+      scope === "group"
+        ? reflectionNudgeText.sendGroup(displayName)
+        : reflectionNudgeText.sendPartner(displayName);
+    if (!reflectionNudgeStatusLoaded) {
+      label = reflectionNudgeText.loading;
+    } else if (sending) {
+      label = reflectionNudgeText.sending;
+    } else if (sent) {
+      label = reflectionNudgeText.alreadySent;
+    } else if (completed) {
+      label =
+        scope === "group"
+          ? reflectionNudgeText.groupCompleted(displayName)
+          : reflectionNudgeText.partnerCompleted(displayName);
+    }
+
+    return (
+      <button
+        data-reflection-nudge-button="true"
+        type="button"
+        disabled={disabled}
+        onClick={(event) =>
+          sendReflectionNudge(scope, targetId, displayName, event)
+        }
+        aria-label={label}
+        title={label}
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 999,
+          border: `1px solid ${
+            disabled && !waving
+              ? "var(--community-card-border)"
+              : "var(--community-gold-border)"
+          }`,
+          background: disabled && !waving
+            ? "var(--community-card-muted-surface)"
+            : "var(--community-gold-surface)",
+          color: disabled && !waving
+            ? "var(--text3)"
+            : "var(--community-gold-text)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: disabled ? "default" : "pointer",
+          opacity: disabled && !waving ? 0.42 : 1,
+          flexShrink: 0,
+          padding: 0,
+          WebkitTapHighlightColor: "transparent",
+          touchAction: "manipulation",
+        }}
+      >
+        <span
+          aria-hidden="true"
+          className={waving ? "reflection-nudge-wave" : undefined}
+          style={{ fontSize: 19, lineHeight: 1 }}
+        >
+          👋
+        </span>
+      </button>
+    );
+  }
+
   useEffect(() => {
     return () => {
       if (loveHeartToastTimerRef.current)
         window.clearTimeout(loveHeartToastTimerRef.current);
+      if (reflectionNudgeToastTimerRef.current) {
+        window.clearTimeout(reflectionNudgeToastTimerRef.current);
+      }
+      if (reflectionNudgeWaveTimerRef.current) {
+        window.clearTimeout(reflectionNudgeWaveTimerRef.current);
+      }
     };
   }, []);
 
@@ -3629,6 +3938,9 @@ function CommunityPageContent() {
       return;
     }
     setUserId(user.id);
+    if (tab === "partner" || tab === "group") {
+      void loadReflectionNudgeStatus();
+    }
     setChallengeContactEmail((prev) => prev || user.email || "");
     setAllSectionSeenAt(
       storageGetJson<Record<CommunitySectionKey, string | null>>(
@@ -5795,6 +6107,7 @@ function CommunityPageContent() {
     return (
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
+        {renderReflectionNudgeToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
           style={{
@@ -6480,6 +6793,7 @@ function CommunityPageContent() {
     return (
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
+        {renderReflectionNudgeToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
         <div
           style={{
@@ -8031,6 +8345,7 @@ function CommunityPageContent() {
   return (
     <div className="page roots-community-phase2d">
       {renderLoveHeartToast()}
+      {renderReflectionNudgeToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
       {badgePopup && (
         <div
@@ -8313,10 +8628,20 @@ function CommunityPageContent() {
                   return (
                     <div
                       key={partner.id}
-                      onClick={() => openPartnerDetail(partner)}
+                      onClick={(event) => {
+                        if (
+                          (event.target as HTMLElement).closest(
+                            "[data-reflection-nudge-button]",
+                          )
+                        ) {
+                          return;
+                        }
+                        openPartnerDetail(partner);
+                      }}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
                         if (event.key === "Enter") openPartnerDetail(partner);
                       }}
                       style={{
@@ -8341,6 +8666,7 @@ function CommunityPageContent() {
                           alignItems: "center",
                           gap: 10,
                           minWidth: 0,
+                          flex: 1,
                         }}
                       >
                         <button
@@ -8441,10 +8767,24 @@ function CommunityPageContent() {
                           </p>
                         </div>
                       </div>
-                      <ChevronRight
-                        size={18}
-                        style={{ color: "var(--text3)", flexShrink: 0 }}
-                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {renderReflectionNudgeButton(
+                          "partner",
+                          partner.partner_id,
+                          partnerName,
+                        )}
+                        <ChevronRight
+                          size={18}
+                          style={{ color: "var(--text3)", flexShrink: 0 }}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -8916,7 +9256,16 @@ function CommunityPageContent() {
               groups.map((g) => (
                 <div
                   key={g.id}
-                  onClick={() => loadGroupDetail(g)}
+                  onClick={(event) => {
+                    if (
+                      (event.target as HTMLElement).closest(
+                        "[data-reflection-nudge-button]",
+                      )
+                    ) {
+                      return;
+                    }
+                    loadGroupDetail(g);
+                  }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -9047,6 +9396,12 @@ function CommunityPageContent() {
                       )}
                     </div>
                   </div>
+                  {g.isMember &&
+                    renderReflectionNudgeButton(
+                      "group",
+                      g.id,
+                      String(g.name ?? c("community_unknown")),
+                    )}
                   {g.is_public && !g.isMember && (
                     <button
                       onClick={(e) => openPublicGroupHideConfirm(g, e)}
