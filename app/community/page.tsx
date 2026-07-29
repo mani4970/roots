@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
@@ -1095,9 +1096,7 @@ function CommunityPageContent() {
               ? "var(--community-card-border)"
               : "var(--community-gold-border)"
           }`,
-          background: disabled && !waving
-            ? "var(--community-card-muted-surface)"
-            : "var(--community-gold-surface)",
+          background: "transparent",
           color: disabled && !waving
             ? "var(--text3)"
             : "var(--community-gold-text)",
@@ -1115,9 +1114,22 @@ function CommunityPageContent() {
         <span
           aria-hidden="true"
           className={waving ? "reflection-nudge-wave" : undefined}
-          style={{ fontSize: 19, lineHeight: 1 }}
+          style={{
+            width: 24,
+            height: 24,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            lineHeight: 1,
+          }}
         >
-          👋
+          <Image
+            src="/images/community/reflection-nudge-wave-hand.png"
+            alt=""
+            width={24}
+            height={24}
+            draggable={false}
+          />
         </span>
       </button>
     );
