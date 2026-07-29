@@ -621,6 +621,12 @@ function CommunityPageContent() {
   const [groupDesc, setGroupDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
+  const [publicGroupHideConfirm, setPublicGroupHideConfirm] =
+    useState<any | null>(null);
+  const [hidingPublicGroup, setHidingPublicGroup] = useState(false);
+  const [publicGroupHideError, setPublicGroupHideError] = useState<
+    string | null
+  >(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showChallengeRequestForm, setShowChallengeRequestForm] =
     useState(false);
@@ -3871,9 +3877,18 @@ function CommunityPageContent() {
         ...(publicGroupsResult.data ?? []),
         ...(privateGroupsResult.data ?? []),
       ];
-      const unique = all.filter(
-        (g, i, arr) => arr.findIndex((x) => x.id === g.id) === i,
+      const hiddenPublicGroupIds = new Set(
+        loadedHiddenKeys
+          .filter((key) => key.startsWith("group:"))
+          .map((key) => key.slice("group:".length)),
       );
+      const unique = all
+        .filter((g, i, arr) => arr.findIndex((x) => x.id === g.id) === i)
+        .filter(
+          (g) =>
+            !!memberMap[g.id] ||
+            !hiddenPublicGroupIds.has(String(g.id ?? "")),
+        );
       const uniqueGroupIds = uniqueStrings(
         unique.map((g: any) => String(g.id ?? "")),
       );
@@ -4445,6 +4460,55 @@ function CommunityPageContent() {
     loadData();
   }
 
+  function openPublicGroupHideConfirm(group: any, event?: any) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (!group?.id || !group.is_public || group.isMember) return;
+    setPublicGroupHideError(null);
+    setPublicGroupHideConfirm(group);
+  }
+
+  function closePublicGroupHideConfirm() {
+    if (hidingPublicGroup) return;
+    setPublicGroupHideError(null);
+    setPublicGroupHideConfirm(null);
+  }
+
+  async function confirmHidePublicGroup() {
+    if (
+      !userId ||
+      !publicGroupHideConfirm?.id ||
+      publicGroupHideConfirm.isMember ||
+      hidingPublicGroup
+    ) {
+      return;
+    }
+
+    const groupId = String(publicGroupHideConfirm.id);
+    setHidingPublicGroup(true);
+    setPublicGroupHideError(null);
+    const supabase = createClient();
+    const { error } = await supabase.from("hidden_community_items").upsert(
+      {
+        user_id: userId,
+        content_type: "group",
+        content_id: groupId,
+      },
+      { onConflict: "user_id,content_type,content_id" },
+    );
+
+    if (error) {
+      console.warn("공개 그룹 숨기기 실패:", error.message);
+      setPublicGroupHideError(c("community_hide_public_group_error"));
+      setHidingPublicGroup(false);
+      return;
+    }
+
+    setGroups((prev) => prev.filter((group) => group.id !== groupId));
+    setPublicGroupHideConfirm(null);
+    setHidingPublicGroup(false);
+  }
+
   async function joinGroup(groupId: string) {
     if (!userId) return;
     const selectedGroupAtJoin =
@@ -4459,6 +4523,15 @@ function CommunityPageContent() {
     if (joinError) {
       console.warn("그룹 참여 실패:", joinError.message);
       return;
+    }
+    const { error: unhideError } = await supabase
+      .from("hidden_community_items")
+      .delete()
+      .eq("user_id", userId)
+      .eq("content_type", "group")
+      .eq("content_id", groupId);
+    if (unhideError) {
+      console.warn("그룹 참여 후 숨김 해제 실패:", unhideError.message);
     }
     clearSharePromptOptionsCache();
     const joinedAt = new Date().toISOString();
@@ -8847,6 +8920,7 @@ function CommunityPageContent() {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
                     if (e.key === "Enter") loadGroupDetail(g);
                   }}
                   style={{
@@ -8973,6 +9047,29 @@ function CommunityPageContent() {
                       )}
                     </div>
                   </div>
+                  {g.is_public && !g.isMember && (
+                    <button
+                      onClick={(e) => openPublicGroupHideConfirm(g, e)}
+                      aria-label={c("community_hide_public_group")}
+                      title={c("community_hide_public_group")}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 999,
+                        border: "1px solid var(--community-card-border)",
+                        background: "var(--community-card-muted-surface)",
+                        color: "var(--text3)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        padding: 0,
+                      }}
+                    >
+                      <EyeOff size={15} strokeWidth={1.9} />
+                    </button>
+                  )}
                   <ChevronRight
                     size={16}
                     style={{ color: "var(--text3)", flexShrink: 0 }}
@@ -8985,6 +9082,118 @@ function CommunityPageContent() {
       </div>
 
       {renderSharedOverlayModals()}
+
+      {publicGroupHideConfirm && (
+        <div
+          onClick={closePublicGroupHideConfirm}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 220,
+            background: "var(--community-overlay-modal)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 22px",
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="public-group-hide-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              background: "var(--community-modal-surface)",
+              borderRadius: 24,
+              padding: 22,
+              border: "1px solid var(--community-card-border)",
+              boxShadow: "var(--shadow-modal)",
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 999,
+                background: "var(--community-card-muted-surface)",
+                color: "var(--text3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <EyeOff size={23} strokeWidth={1.9} />
+            </div>
+            <h2
+              id="public-group-hide-title"
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                color: "var(--text)",
+                marginBottom: 8,
+              }}
+            >
+              {c("community_hide_public_group_title")}
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text2)",
+                lineHeight: 1.65,
+                marginBottom: publicGroupHideError ? 10 : 18,
+              }}
+            >
+              {c("community_hide_public_group_msg", {
+                name: publicGroupHideConfirm.name,
+              })}
+            </p>
+            {publicGroupHideError && (
+              <p
+                role="alert"
+                style={{
+                  fontSize: 12,
+                  color: "var(--community-danger-text)",
+                  lineHeight: 1.5,
+                  marginBottom: 14,
+                }}
+              >
+                {publicGroupHideError}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={closePublicGroupHideConfirm}
+                disabled={hidingPublicGroup}
+                className="btn-outline"
+                style={{ flex: 1 }}
+              >
+                {c("community_cancel")}
+              </button>
+              <button
+                onClick={confirmHidePublicGroup}
+                disabled={hidingPublicGroup}
+                className="btn-sage"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {hidingPublicGroup && (
+                  <Loader2 size={15} className="spin" />
+                )}
+                {c("community_hide_confirm_action")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showGroupForm && (
         <div

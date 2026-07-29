@@ -195,6 +195,18 @@ function JoinContent() {
           .insert({ group_id: groupId, user_id: user.id });
         if (error) throw error;
       }
+      const { error: unhideError } = await supabase
+        .from("hidden_community_items")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("content_type", "group")
+        .eq("content_id", groupId);
+      if (unhideError) {
+        console.warn(
+          "group invite joined but hidden state could not be cleared:",
+          unhideError.message,
+        );
+      }
       setJoined(true);
       setTimeout(() => router.push("/community"), 2000);
     } catch (error) {
