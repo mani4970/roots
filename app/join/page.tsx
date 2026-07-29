@@ -11,6 +11,7 @@ import {
   resolveInviteLandingLang,
   type InviteLandingLang,
 } from "@/lib/inviteLandingText";
+import { getGroupLeaderText } from "@/lib/groupLeaderText";
 import { Loader2 } from "lucide-react";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
 
@@ -33,6 +34,7 @@ function JoinContent() {
   const langParam = params.get("lang");
   const [inviteLang, setInviteLang] = useState<InviteLandingLang>(savedLang);
   const inviteText = getInviteLandingText(inviteLang);
+  const groupLeaderText = getGroupLeaderText(inviteLang);
   const [memberCount, setMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -41,6 +43,7 @@ function JoinContent() {
   const [groupDesc, setGroupDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [rejoinBlocked, setRejoinBlocked] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -83,6 +86,26 @@ function JoinContent() {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
       setIsLoggedIn(!!currentUser);
+      setRejoinBlocked(false);
+
+      if (currentUser) {
+        const { data: blockRow, error: blockError } = await supabase
+          .from("group_member_blocks")
+          .select("group_id")
+          .eq("group_id", groupId)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (!blockError && blockRow) setRejoinBlocked(true);
+        if (
+          blockError &&
+          !/group_member_blocks|does not exist|schema cache/i.test(
+            blockError.message ?? "",
+          )
+        ) {
+          console.warn("group rejoin block lookup failed:", blockError.message);
+        }
+      }
 
       const loadWithExistingPolicies = async () => {
         // 공개 그룹이면 로그인 없이 조회 가능
@@ -181,6 +204,17 @@ function JoinContent() {
         router.push(
           `/login?redirect=${encodeURIComponent(currentJoinRedirectPath())}`,
         );
+        return;
+      }
+      const { data: blockRow, error: blockError } = await supabase
+        .from("group_member_blocks")
+        .select("group_id")
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!blockError && blockRow) {
+        setRejoinBlocked(true);
+        setErrorMessage(groupLeaderText.rejoinBlocked);
         return;
       }
       const { data: existing } = await supabase
@@ -398,11 +432,35 @@ function JoinContent() {
                 </p>
               </div>
             )}
+            {rejoinBlocked && (
+              <div
+                style={{
+                  background: "var(--terra-light)",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  marginBottom: 12,
+                  border: "1px solid rgba(196,149,106,0.22)",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11.5,
+                    color: "var(--terra-dark)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {groupLeaderText.rejoinBlocked}
+                </p>
+              </div>
+            )}
             <button
               className="btn-sage"
               onClick={join}
-              disabled={joining}
-              style={{ width: "100%" }}
+              disabled={joining || rejoinBlocked}
+              style={{
+                width: "100%",
+                opacity: rejoinBlocked ? 0.55 : 1,
+              }}
             >
               {joining ? (
                 <Loader2 size={16} className="spin" />
@@ -412,16 +470,18 @@ function JoinContent() {
                 inviteText.groupJoinAuthButton
               )}
             </button>
-            <p
-              style={{
-                fontSize: 11,
-                color: "var(--text3)",
-                marginTop: 12,
-                lineHeight: 1.55,
-              }}
-            >
-              {inviteText.groupAfterAuthHint}
-            </p>
+            {!rejoinBlocked && (
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--text3)",
+                  marginTop: 12,
+                  lineHeight: 1.55,
+                }}
+              >
+                {inviteText.groupAfterAuthHint}
+              </p>
+            )}
             <div
               style={{
                 height: 1,
