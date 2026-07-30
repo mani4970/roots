@@ -14,6 +14,7 @@ import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
 import HeartShopModal from "@/components/HeartShopModal";
+import FeedbackSuccessPopup from "@/components/FeedbackSuccessPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import ProfileCharacterViewer from "@/components/ProfileCharacterViewer";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
@@ -208,6 +209,7 @@ export default function ProfilePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showFeedbackSuccessPopup, setShowFeedbackSuccessPopup] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -878,7 +880,7 @@ export default function ProfilePage() {
 
       setFeedbackText("");
       setShowFeedbackModal(false);
-      showToast(t("profile_feedback_ok", lang));
+      setShowFeedbackSuccessPopup(true);
     } catch (e) {
       console.error("feedback submission failed", e);
       showToast(t("profile_feedback_fail", lang));
@@ -2010,6 +2012,11 @@ export default function ProfilePage() {
           onSaved={(message) => showToast(message)}
         />
       )}
+
+      <FeedbackSuccessPopup
+        show={showFeedbackSuccessPopup}
+        onClose={() => setShowFeedbackSuccessPopup(false)}
+      />
 
       {/* 피드백 모달 */}
       {showFeedbackModal && (
