@@ -145,7 +145,8 @@ type GroupLeaderAction =
   | "update_group"
   | "remove_member"
   | "transfer_leadership"
-  | "delete_group";
+  | "delete_group"
+  | "request_challenge";
 
 const EMPTY_REFLECTION_NUDGE_STATUS: ReflectionNudgeStatus = {
   partnerCompletedIds: [],
@@ -913,6 +914,7 @@ function CommunityPageContent() {
     t(key, lang, vars);
   const reflectionNudgeText = getReflectionNudgeText(lang);
   const groupLeaderText = getGroupLeaderText(lang);
+  const groupChallengeRequestText = getGroupChallengeRequestText(lang);
 
   function showLoveHeartToast(sourceType: LoveHeartSourceType) {
     if (loveHeartToastTimerRef.current)
@@ -1840,6 +1842,7 @@ function CommunityPageContent() {
     if (
       !selectedGroup?.id ||
       !selectedGroup.isMember ||
+      !isGroupLeader(selectedGroup) ||
       hasActiveGroupChallengeRequest(selectedGroup.id)
     )
       return;
@@ -1863,10 +1866,16 @@ function CommunityPageContent() {
   }
 
   async function submitChallengeRequest() {
-    if (!selectedGroup?.id || !userId || challengeSaving) return;
+    if (
+      !selectedGroup?.id ||
+      !userId ||
+      !isGroupLeader(selectedGroup) ||
+      challengeSaving
+    )
+      return;
     const title = challengeTitle.trim();
     const email = challengeContactEmail.trim();
-    const requestText = getGroupChallengeRequestText(lang);
+    const requestText = groupChallengeRequestText;
     if (!title || !challengeStartDate || !challengeEndDate || !email) {
       setChallengeError(requestText.requiredError);
       return;
@@ -1895,36 +1904,43 @@ function CommunityPageContent() {
 
     setChallengeSaving(true);
     setChallengeError("");
-    const supabase = createClient();
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("not authenticated");
-      const { error } = await supabase.from("group_challenge_requests").insert({
-        group_id: selectedGroup.id,
-        requester_id: user.id,
-        requester_email: email,
+      const result = await requestGroupLeaderAction("request_challenge", {
+        groupId: selectedGroup.id,
+        requesterEmail: email,
         title,
-        requested_start_date: challengeStartDate,
-        duration_days: duration,
-        description: challengeDescription.trim() || null,
-        badge_idea: challengeBadgeIdea.trim() || null,
-        extra_questions: challengeExtraQuestions.trim() || null,
+        requestedStartDate: challengeStartDate,
+        durationDays: duration,
+        description: challengeDescription.trim(),
+        badgeIdea: challengeBadgeIdea.trim(),
+        extraQuestions: challengeExtraQuestions.trim(),
       });
-      if (error) throw error;
       setGroupChallengeRequest(selectedGroup.id, {
+        id: result.requestId,
         status: "pending",
         title,
         requested_start_date: challengeStartDate,
         requested_end_date: challengeEndDate,
         duration_days: duration,
-        created_at: new Date().toISOString(),
+        created_at: result.createdAt ?? new Date().toISOString(),
       });
       setChallengeSuccess(true);
     } catch (error) {
       console.error("group challenge request failed", error);
-      setChallengeError(c("group_challenge_save_error"));
+      if (
+        error instanceof Error &&
+        error.message === "request_already_active"
+      ) {
+        setChallengeError(requestText.activeRequestError);
+      } else if (
+        error instanceof Error &&
+        (error.message === "not_group_leader" ||
+          error.message === "challenge_request_not_allowed")
+      ) {
+        setChallengeError(requestText.leaderOnlyNotice);
+      } else {
+        setChallengeError(c("group_challenge_save_error"));
+      }
     } finally {
       setChallengeSaving(false);
     }
@@ -5895,7 +5911,12 @@ function CommunityPageContent() {
   }
 
   function renderChallengeRequestModal() {
-    if (!showChallengeRequestForm || !selectedGroup) return null;
+    if (
+      !showChallengeRequestForm ||
+      !selectedGroup ||
+      !isGroupLeader(selectedGroup)
+    )
+      return null;
     return (
       <div
         onClick={() => !challengeSaving && setShowChallengeRequestForm(false)}
@@ -7916,43 +7937,66 @@ function CommunityPageContent() {
                       >
                         {c("group_challenge_card_body")}
                       </p>
+                      {!viewerIsGroupLeader &&
+                        !hasActiveGroupChallengeRequest(selectedGroup.id) && (
+                          <p
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: "var(--challenge-sage-text)",
+                              lineHeight: 1.45,
+                              margin: "9px 0 0",
+                            }}
+                          >
+                            <Crown size={13} aria-hidden="true" />
+                            {groupChallengeRequestText.leaderOnlyNotice}
+                          </p>
+                        )}
                     </div>
-                    <button
-                      onClick={openChallengeRequestForm}
-                      disabled={hasActiveGroupChallengeRequest(
-                        selectedGroup.id,
-                      )}
-                      style={{
-                        flex: "0 0 auto",
-                        border: "none",
-                        borderRadius: 16,
-                        background: hasActiveGroupChallengeRequest(
+                    {(viewerIsGroupLeader ||
+                      hasActiveGroupChallengeRequest(selectedGroup.id)) && (
+                      <button
+                        onClick={openChallengeRequestForm}
+                        disabled={hasActiveGroupChallengeRequest(
                           selectedGroup.id,
-                        )
-                          ? "var(--challenge-disabled-surface)"
-                          : "var(--challenge-action)",
-                        color: hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? "var(--challenge-disabled-text)"
-                          : "var(--challenge-on-action)",
-                        padding: "11px 16px",
-                        minWidth: 82,
-                        fontSize: 12,
-                        fontWeight: 850,
-                        cursor: hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? "default"
-                          : "pointer",
-                        whiteSpace: "nowrap",
-                        opacity: hasActiveGroupChallengeRequest(
-                          selectedGroup.id,
-                        )
-                          ? 0.92
-                          : 1,
-                      }}
-                    >
-                      {hasActiveGroupChallengeRequest(selectedGroup.id)
-                        ? c("group_challenge_requested_btn")
-                        : c("group_challenge_apply_btn")}
-                    </button>
+                        )}
+                        style={{
+                          flex: "0 0 auto",
+                          border: "none",
+                          borderRadius: 16,
+                          background: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? "var(--challenge-disabled-surface)"
+                            : "var(--challenge-action)",
+                          color: hasActiveGroupChallengeRequest(selectedGroup.id)
+                            ? "var(--challenge-disabled-text)"
+                            : "var(--challenge-on-action)",
+                          padding: "11px 16px",
+                          minWidth: 82,
+                          fontSize: 12,
+                          fontWeight: 850,
+                          cursor: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? "default"
+                            : "pointer",
+                          whiteSpace: "nowrap",
+                          opacity: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? 0.92
+                            : 1,
+                        }}
+                      >
+                        {hasActiveGroupChallengeRequest(selectedGroup.id)
+                          ? c("group_challenge_requested_btn")
+                          : c("group_challenge_apply_btn")}
+                      </button>
+                    )}
                   </div>
                 )}
             </>

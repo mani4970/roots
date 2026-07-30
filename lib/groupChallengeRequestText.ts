@@ -3,6 +3,8 @@ import type { Lang } from "@/lib/i18n";
 type GroupChallengeRequestText = {
   leadTimeNotice: string;
   endDateLabel: string;
+  leaderOnlyNotice: string;
+  activeRequestError: string;
   requiredError: string;
   startTooSoonError: string;
   invalidDateRangeError: string;
@@ -14,6 +16,8 @@ const TEXT: Record<Lang, GroupChallengeRequestText> = {
   ko: {
     leadTimeNotice: "챌린지는 시작일 기준 최소 15일 전에 신청해주세요.",
     endDateLabel: "희망 종료일",
+    leaderOnlyNotice: "그룹 챌린지는 그룹장이 신청할 수 있어요.",
+    activeRequestError: "이미 신청 중인 그룹 챌린지가 있어요.",
     requiredError: "챌린지 이름, 시작일, 종료일, 이메일을 확인해주세요.",
     startTooSoonError: "희망 시작일은 신청일로부터 15일 이후로 선택해주세요.",
     invalidDateRangeError: "종료일은 시작일과 같거나 이후여야 해요.",
@@ -23,6 +27,8 @@ const TEXT: Record<Lang, GroupChallengeRequestText> = {
   en: {
     leadTimeNotice: "Please submit the request at least 15 days before the challenge starts.",
     endDateLabel: "Preferred end date",
+    leaderOnlyNotice: "Only the group leader can request a group challenge.",
+    activeRequestError: "This group already has a challenge request in progress.",
     requiredError: "Please check the challenge name, start date, end date, and email.",
     startTooSoonError: "The preferred start date must be at least 15 days from today.",
     invalidDateRangeError: "The end date must be the same as or later than the start date.",
@@ -32,6 +38,8 @@ const TEXT: Record<Lang, GroupChallengeRequestText> = {
   de: {
     leadTimeNotice: "Bitte reiche den Antrag mindestens 15 Tage vor dem geplanten Start ein.",
     endDateLabel: "Gewünschtes Enddatum",
+    leaderOnlyNotice: "Nur die Gruppenleitung kann eine Gruppen-Challenge beantragen.",
+    activeRequestError: "Für diese Gruppe läuft bereits ein Challenge-Antrag.",
     requiredError: "Bitte prüfe Name, Startdatum, Enddatum und E-Mail.",
     startTooSoonError: "Der gewünschte Start muss mindestens 15 Tage ab heute liegen.",
     invalidDateRangeError: "Das Enddatum muss am oder nach dem Startdatum liegen.",
@@ -41,6 +49,8 @@ const TEXT: Record<Lang, GroupChallengeRequestText> = {
   fr: {
     leadTimeNotice: "Merci d’envoyer la demande au moins 15 jours avant le début du défi.",
     endDateLabel: "Date de fin souhaitée",
+    leaderOnlyNotice: "Seul le responsable du groupe peut demander un défi de groupe.",
+    activeRequestError: "Une demande de défi est déjà en cours pour ce groupe.",
     requiredError: "Veuillez vérifier le nom, la date de début, la date de fin et l’e-mail.",
     startTooSoonError: "La date de début souhaitée doit être au moins 15 jours après aujourd’hui.",
     invalidDateRangeError: "La date de fin doit être égale ou postérieure à la date de début.",
