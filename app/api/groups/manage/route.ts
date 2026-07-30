@@ -9,7 +9,6 @@ export const runtime = "nodejs";
 type GroupManagementAction =
   | "update_group"
   | "remove_member"
-  | "allow_rejoin"
   | "transfer_leadership"
   | "delete_group";
 
@@ -27,7 +26,6 @@ const UUID_PATTERN =
 const VALID_ACTIONS = new Set<GroupManagementAction>([
   "update_group",
   "remove_member",
-  "allow_rejoin",
   "transfer_leadership",
   "delete_group",
 ]);
@@ -185,9 +183,7 @@ export async function POST(request: NextRequest) {
     const rpcName =
       action === "remove_member"
         ? "remove_group_member_as_leader"
-        : action === "allow_rejoin"
-          ? "allow_group_rejoin_as_leader"
-          : "transfer_group_leadership_as_leader";
+        : "transfer_group_leadership_as_leader";
 
     const { data, error } = await admin.rpc(rpcName, {
       p_group_id: groupId,

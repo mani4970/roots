@@ -109,7 +109,6 @@ import {
   UserPlus,
   Crown,
   UserMinus,
-  UserCheck,
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
@@ -140,13 +139,11 @@ type ReflectionNudgeStatus = {
 
 type GroupMemberProfile = ProfileCard & {
   isLeader: boolean;
-  removedAt?: string | null;
 };
 
 type GroupLeaderAction =
   | "update_group"
   | "remove_member"
-  | "allow_rejoin"
   | "transfer_leadership"
   | "delete_group";
 
@@ -845,15 +842,6 @@ function CommunityPageContent() {
   const [memberRemovalError, setMemberRemovalError] = useState<string | null>(
     null,
   );
-  const [showRemovedMembers, setShowRemovedMembers] = useState(false);
-  const [removedMemberProfiles, setRemovedMemberProfiles] = useState<
-    GroupMemberProfile[]
-  >([]);
-  const [loadingRemovedMembers, setLoadingRemovedMembers] = useState(false);
-  const [removedMembersError, setRemovedMembersError] = useState<string | null>(
-    null,
-  );
-  const [allowingRejoinIds, setAllowingRejoinIds] = useState<string[]>([]);
   const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
@@ -2307,9 +2295,6 @@ function CommunityPageContent() {
     setLeadershipTransferError(null);
     setMemberRemovalTarget(null);
     setMemberRemovalError(null);
-    setShowRemovedMembers(false);
-    setRemovedMemberProfiles([]);
-    setRemovedMembersError(null);
     setShowDeleteGroupConfirm(false);
     setDeleteGroupError(null);
     resetChallengeRequestForm();
@@ -4360,29 +4345,6 @@ function CommunityPageContent() {
         };
       });
       const myGroupIds = memberRows.map((r: any) => r.group_id);
-      const blockedGroupIds = new Set<string>();
-      const { data: blockedRows, error: blockedRowsError } = await supabase
-        .from("group_member_blocks")
-        .select("group_id")
-        .eq("user_id", user.id);
-
-      if (blockedRowsError) {
-        if (
-          !/group_member_blocks|does not exist|schema cache/i.test(
-            blockedRowsError.message ?? "",
-          )
-        ) {
-          console.warn(
-            "내보낸 그룹 재가입 차단 조회 실패:",
-            blockedRowsError.message,
-          );
-        }
-      } else {
-        (blockedRows ?? []).forEach((row: any) => {
-          const blockedGroupId = String(row.group_id ?? "");
-          if (blockedGroupId) blockedGroupIds.add(blockedGroupId);
-        });
-      }
 
       const [publicGroupsResult, privateGroupsResult] = await Promise.all([
         supabase
@@ -4414,11 +4376,6 @@ function CommunityPageContent() {
           (g) =>
             !!memberMap[g.id] ||
             !hiddenPublicGroupIds.has(String(g.id ?? "")),
-        )
-        .filter(
-          (g) =>
-            !!memberMap[g.id] ||
-            !blockedGroupIds.has(String(g.id ?? "")),
         );
       const uniqueGroupIds = uniqueStrings(
         unique.map((g: any) => String(g.id ?? "")),
@@ -5489,81 +5446,6 @@ function CommunityPageContent() {
       setMemberRemovalError(groupLeaderText.removeError);
     } finally {
       setRemovingGroupMember(false);
-    }
-  }
-
-  async function openRemovedMembersModal() {
-    if (!selectedGroup?.id || !isGroupLeader(selectedGroup)) return;
-    setShowGroupActionMenu(false);
-    setShowRemovedMembers(true);
-    setLoadingRemovedMembers(true);
-    setRemovedMembersError(null);
-    const supabase = createClient();
-
-    try {
-      const { data: rows, error } = await supabase
-        .from("group_member_blocks")
-        .select("user_id,removed_at")
-        .eq("group_id", selectedGroup.id)
-        .order("removed_at", { ascending: false });
-      if (error) throw error;
-
-      const profileMap = mapProfileCards(
-        await loadProfileCards(
-          supabase,
-          (rows ?? []).map((row: any) => row.user_id),
-        ),
-      );
-      setRemovedMemberProfiles(
-        (rows ?? []).map((row: any): GroupMemberProfile => {
-          const profile = profileMap[row.user_id] ?? {
-            id: row.user_id,
-            name: c("community_member_unknown"),
-            avatar_url: null,
-            streak_days: null,
-          };
-          return {
-            ...profile,
-            isLeader: false,
-            removedAt: row.removed_at ?? null,
-          };
-        }),
-      );
-    } catch (error) {
-      console.warn("내보낸 그룹원 조회 실패:", error);
-      setRemovedMemberProfiles([]);
-      setRemovedMembersError(groupLeaderText.removedMembersError);
-    } finally {
-      setLoadingRemovedMembers(false);
-    }
-  }
-
-  async function allowGroupRejoin(member: GroupMemberProfile) {
-    if (
-      !selectedGroup?.id ||
-      !isGroupLeader(selectedGroup) ||
-      allowingRejoinIds.includes(member.id)
-    ) {
-      return;
-    }
-
-    setAllowingRejoinIds((current) => [...current, member.id]);
-    setRemovedMembersError(null);
-    try {
-      await requestGroupLeaderAction("allow_rejoin", {
-        groupId: selectedGroup.id,
-        targetUserId: member.id,
-      });
-      setRemovedMemberProfiles((current) =>
-        current.filter((item) => item.id !== member.id),
-      );
-    } catch (error) {
-      console.warn("그룹 재가입 허용 실패:", error);
-      setRemovedMembersError(groupLeaderText.allowRejoinError);
-    } finally {
-      setAllowingRejoinIds((current) =>
-        current.filter((id) => id !== member.id),
-      );
     }
   }
 
@@ -7620,26 +7502,6 @@ function CommunityPageContent() {
                       {groupLeaderText.transferLeadership}
                     </button>
                     <button
-                      onClick={openRemovedMembersModal}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 9,
-                        padding: "11px 10px",
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text2)",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <UserCheck size={15} />
-                      {groupLeaderText.removedMembers}
-                    </button>
-                    <button
                       onClick={openDeleteGroupConfirm}
                       style={{
                         width: "100%",
@@ -8741,21 +8603,17 @@ function CommunityPageContent() {
                         </span>
                         {member.isLeader && (
                           <span
+                            role="img"
+                            aria-label={groupLeaderText.groupLeader}
+                            title={groupLeaderText.groupLeader}
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: 3,
-                              borderRadius: 999,
-                              padding: "3px 7px",
-                              background: "var(--community-gold-surface)",
                               color: "var(--community-gold-text)",
-                              border: "1px solid var(--community-gold-border)",
-                              fontSize: 9,
-                              fontWeight: 900,
+                              flexShrink: 0,
                             }}
                           >
-                            <Crown size={10} />
-                            {groupLeaderText.groupLeader}
+                            <Crown size={13} strokeWidth={2.2} />
                           </span>
                         )}
                       </div>
@@ -9478,157 +9336,6 @@ function CommunityPageContent() {
                 {groupLeaderText.removeMember}
               </button>
             </div>
-          </GroupManagementModal>
-        )}
-        {showRemovedMembers && viewerIsGroupLeader && (
-          <GroupManagementModal
-            sheet
-            zIndex={227}
-            onClose={() => {
-              setShowRemovedMembers(false);
-              setRemovedMembersError(null);
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                marginBottom: 15,
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 18,
-                  fontWeight: 850,
-                  color: "var(--text)",
-                }}
-              >
-                {groupLeaderText.removedMembers}
-              </h2>
-              <button
-                onClick={() => setShowRemovedMembers(false)}
-                aria-label="Close"
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  border: "1px solid var(--border)",
-                  background: "var(--bg)",
-                  color: "var(--text3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={17} />
-              </button>
-            </div>
-            {loadingRemovedMembers ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "24px 0",
-                  color: "var(--text3)",
-                  fontSize: 12,
-                }}
-              >
-                <Loader2 size={15} className="spin" />
-                {groupLeaderText.removedMembersLoading}
-              </div>
-            ) : removedMemberProfiles.length > 0 ? (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  maxHeight: "52vh",
-                  overflowY: "auto",
-                }}
-              >
-                {removedMemberProfiles.map((member) => {
-                  const allowing = allowingRejoinIds.includes(member.id);
-                  return (
-                    <div
-                      key={member.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "9px 0",
-                      }}
-                    >
-                      <Avatar
-                        url={member.avatar_url ?? undefined}
-                        name={member.name ?? undefined}
-                        size={38}
-                      />
-                      <span
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          fontSize: 13.5,
-                          fontWeight: 750,
-                          color: "var(--text)",
-                        }}
-                      >
-                        {member.name || c("community_member_unknown")}
-                      </span>
-                      <button
-                        onClick={() => allowGroupRejoin(member)}
-                        disabled={allowing}
-                        style={{
-                          border: "1px solid var(--community-sage-border)",
-                          borderRadius: 10,
-                          background: "var(--sage-light)",
-                          color: "var(--sage-dark)",
-                          padding: "7px 9px",
-                          fontSize: 10,
-                          fontWeight: 850,
-                          cursor: allowing ? "default" : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          opacity: allowing ? 0.65 : 1,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {allowing && <Loader2 size={11} className="spin" />}
-                        {groupLeaderText.allowRejoin}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p
-                style={{
-                  padding: "18px 2px",
-                  fontSize: 12.5,
-                  color: "var(--text3)",
-                }}
-              >
-                {groupLeaderText.removedMembersEmpty}
-              </p>
-            )}
-            {removedMembersError && (
-              <p
-                style={{
-                  marginTop: 10,
-                  fontSize: 12,
-                  color: "var(--community-danger-text)",
-                  lineHeight: 1.55,
-                }}
-              >
-                {removedMembersError}
-              </p>
-            )}
           </GroupManagementModal>
         )}
         {showDeleteGroupConfirm && viewerIsGroupLeader && (
