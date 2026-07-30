@@ -121,8 +121,8 @@ type SpiritFruitBadge = (typeof SPIRIT_FRUIT_BADGES)[number];
 
 type GroupChallengeProfileBadge = {
   id: string;
-  challengeId: string;
-  groupId: string;
+  challengeId: string | null;
+  groupId: string | null;
   title: string;
   groupName: string;
   badgeName: string;
@@ -441,10 +441,30 @@ export default function ProfilePage() {
 
   async function loadGroupChallengeBadgesForProfile(userId: string) {
     const supabase = createClient();
-    const { data: awards, error } = await supabase.from("group_challenge_awards")
-      .select("id, challenge_id, group_id, badge_name, badge_description, badge_image_path, awarded_at")
+    const primaryResult = await supabase.from("group_challenge_awards")
+      .select("id, challenge_id, group_id, badge_name, badge_description, badge_image_path, challenge_title, group_name, awarded_at")
       .eq("user_id", userId)
       .order("awarded_at", { ascending: false });
+    let awards: any[] | null = primaryResult.data;
+    let error = primaryResult.error;
+
+    if (
+      error &&
+      /challenge_title|group_name|schema cache|does not exist/i.test(
+        error.message ?? "",
+      )
+    ) {
+      const fallback = await supabase.from("group_challenge_awards")
+        .select("id, challenge_id, group_id, badge_name, badge_description, badge_image_path, awarded_at")
+        .eq("user_id", userId)
+        .order("awarded_at", { ascending: false });
+      awards = (fallback.data ?? []).map((row: any) => ({
+        ...row,
+        challenge_title: null,
+        group_name: null,
+      }));
+      error = fallback.error;
+    }
 
     if (error) {
       console.warn("그룹 챌린지 배지 조회 실패:", error);
@@ -490,10 +510,10 @@ export default function ProfilePage() {
 
     setGroupChallengeBadges(awardRows.map(row => ({
       id: row.id,
-      challengeId: row.challenge_id,
-      groupId: row.group_id,
-      title: challengeTitleMap.get(row.challenge_id) || row.badge_name || t("group_challenge_card_title", lang),
-      groupName: groupNameMap.get(row.group_id) || t("community_unknown", lang),
+      challengeId: row.challenge_id ?? null,
+      groupId: row.group_id ?? null,
+      title: row.challenge_title || challengeTitleMap.get(row.challenge_id) || row.badge_name || t("group_challenge_card_title", lang),
+      groupName: row.group_name || groupNameMap.get(row.group_id) || t("community_unknown", lang),
       badgeName: row.badge_name || "",
       badgeImagePath: row.badge_image_path ?? null,
       awardedAt: row.awarded_at,

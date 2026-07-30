@@ -25,6 +25,15 @@ function formatDate(value: string, lang: Lang) {
   });
 }
 
+function showNativeDatePicker(input: HTMLInputElement) {
+  if (typeof input.showPicker !== "function") return;
+  try {
+    input.showPicker();
+  } catch {
+    // Browsers that already opened their native picker keep the default click.
+  }
+}
+
 function DateField({
   label,
   value,
@@ -90,6 +99,7 @@ function DateField({
           min={min}
           max={max}
           aria-label={label}
+          onClick={(event) => showNativeDatePicker(event.currentTarget)}
           onChange={(event) =>
             onChange(clampDateInputToRange(event.target.value, min, max))
           }

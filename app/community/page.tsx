@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -39,8 +40,13 @@ import {
   formatGroupChallengeRequestText,
   getGroupChallengeRequestText,
 } from "@/lib/groupChallengeRequestText";
+import { getGroupLeaderText } from "@/lib/groupLeaderText";
 import { storageGetJson, storageSetJson } from "@/lib/clientStorage";
-import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
+import {
+  loadProfileCards,
+  mapProfileCards,
+  type ProfileCard,
+} from "@/lib/profileCards";
 import {
   loadCommunityViewerMeta,
   loadPartnerSupplementalData,
@@ -101,6 +107,8 @@ import {
   Flag,
   EyeOff,
   UserPlus,
+  Crown,
+  UserMinus,
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
@@ -129,12 +137,40 @@ type ReflectionNudgeStatus = {
   groupSentIds: string[];
 };
 
+type GroupMemberProfile = ProfileCard & {
+  isLeader: boolean;
+};
+
+type GroupLeaderAction =
+  | "update_group"
+  | "remove_member"
+  | "transfer_leadership"
+  | "delete_group"
+  | "request_challenge";
+
 const EMPTY_REFLECTION_NUDGE_STATUS: ReflectionNudgeStatus = {
   partnerCompletedIds: [],
   groupUnavailableIds: [],
   partnerSentIds: [],
   groupSentIds: [],
 };
+
+async function requestGroupLeaderAction(
+  action: GroupLeaderAction,
+  payload: Record<string, unknown>,
+) {
+  const response = await fetch("/api/groups/manage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...payload }),
+  });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error ?? "group_action_failed");
+  }
+  return result;
+}
 
 function isLaterThan(left?: string | null, right?: string | null) {
   if (!left) return false;
@@ -557,6 +593,65 @@ function Avatar({
   );
 }
 
+function GroupManagementModal({
+  children,
+  onClose,
+  busy = false,
+  danger = false,
+  sheet = false,
+  zIndex = 225,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  busy?: boolean;
+  danger?: boolean;
+  sheet?: boolean;
+  zIndex?: number;
+}) {
+  return (
+    <div
+      role="presentation"
+      onClick={() => !busy && onClose()}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex,
+        background: sheet
+          ? "var(--community-overlay-sheet)"
+          : "var(--community-overlay-modal)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: sheet ? "flex-end" : "center",
+        justifyContent: "center",
+        padding: sheet ? "0 14px 18px" : "0 22px",
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: sheet ? 430 : 370,
+          maxHeight: sheet ? "82vh" : "88vh",
+          overflowY: "auto",
+          background: "var(--community-modal-surface)",
+          borderRadius: 24,
+          padding: 22,
+          border: `1px solid ${
+            danger
+              ? "var(--community-danger-border)"
+              : "var(--community-card-border)"
+          }`,
+          boxShadow: sheet ? "var(--shadow-sheet)" : "var(--shadow-modal)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const SECTIONS: {
   key: string;
   labelKey: TKey;
@@ -721,8 +816,36 @@ function CommunityPageContent() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showGroupActionMenu, setShowGroupActionMenu] = useState(false);
   const [showGroupMembers, setShowGroupMembers] = useState(false);
-  const [groupMemberProfiles, setGroupMemberProfiles] = useState<any[]>([]);
+  const [groupMemberProfiles, setGroupMemberProfiles] = useState<
+    GroupMemberProfile[]
+  >([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
+  const [showGroupEdit, setShowGroupEdit] = useState(false);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupDesc, setEditGroupDesc] = useState("");
+  const [editGroupIsPublic, setEditGroupIsPublic] = useState(true);
+  const [savingGroupEdit, setSavingGroupEdit] = useState(false);
+  const [groupEditError, setGroupEditError] = useState<string | null>(null);
+  const [showLeadershipTransfer, setShowLeadershipTransfer] = useState(false);
+  const [leadershipTransferStep, setLeadershipTransferStep] = useState<
+    "select" | "confirm"
+  >("select");
+  const [leadershipTransferTargetId, setLeadershipTransferTargetId] = useState<
+    string | null
+  >(null);
+  const [transferringLeadership, setTransferringLeadership] = useState(false);
+  const [leadershipTransferError, setLeadershipTransferError] = useState<
+    string | null
+  >(null);
+  const [memberRemovalTarget, setMemberRemovalTarget] =
+    useState<GroupMemberProfile | null>(null);
+  const [removingGroupMember, setRemovingGroupMember] = useState(false);
+  const [memberRemovalError, setMemberRemovalError] = useState<string | null>(
+    null,
+  );
+  const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
+  const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
   const [favoriteSavingIds, setFavoriteSavingIds] = useState<string[]>([]);
   const [partnerFavoriteSavingIds, setPartnerFavoriteSavingIds] = useState<
     string[]
@@ -790,6 +913,8 @@ function CommunityPageContent() {
   const c = (key: TKey, vars?: Record<string, string | number>) =>
     t(key, lang, vars);
   const reflectionNudgeText = getReflectionNudgeText(lang);
+  const groupLeaderText = getGroupLeaderText(lang);
+  const groupChallengeRequestText = getGroupChallengeRequestText(lang);
 
   function showLoveHeartToast(sourceType: LoveHeartSourceType) {
     if (loveHeartToastTimerRef.current)
@@ -1717,6 +1842,7 @@ function CommunityPageContent() {
     if (
       !selectedGroup?.id ||
       !selectedGroup.isMember ||
+      !isGroupLeader(selectedGroup) ||
       hasActiveGroupChallengeRequest(selectedGroup.id)
     )
       return;
@@ -1740,10 +1866,16 @@ function CommunityPageContent() {
   }
 
   async function submitChallengeRequest() {
-    if (!selectedGroup?.id || !userId || challengeSaving) return;
+    if (
+      !selectedGroup?.id ||
+      !userId ||
+      !isGroupLeader(selectedGroup) ||
+      challengeSaving
+    )
+      return;
     const title = challengeTitle.trim();
     const email = challengeContactEmail.trim();
-    const requestText = getGroupChallengeRequestText(lang);
+    const requestText = groupChallengeRequestText;
     if (!title || !challengeStartDate || !challengeEndDate || !email) {
       setChallengeError(requestText.requiredError);
       return;
@@ -1772,36 +1904,43 @@ function CommunityPageContent() {
 
     setChallengeSaving(true);
     setChallengeError("");
-    const supabase = createClient();
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("not authenticated");
-      const { error } = await supabase.from("group_challenge_requests").insert({
-        group_id: selectedGroup.id,
-        requester_id: user.id,
-        requester_email: email,
+      const result = await requestGroupLeaderAction("request_challenge", {
+        groupId: selectedGroup.id,
+        requesterEmail: email,
         title,
-        requested_start_date: challengeStartDate,
-        duration_days: duration,
-        description: challengeDescription.trim() || null,
-        badge_idea: challengeBadgeIdea.trim() || null,
-        extra_questions: challengeExtraQuestions.trim() || null,
+        requestedStartDate: challengeStartDate,
+        durationDays: duration,
+        description: challengeDescription.trim(),
+        badgeIdea: challengeBadgeIdea.trim(),
+        extraQuestions: challengeExtraQuestions.trim(),
       });
-      if (error) throw error;
       setGroupChallengeRequest(selectedGroup.id, {
+        id: result.requestId,
         status: "pending",
         title,
         requested_start_date: challengeStartDate,
         requested_end_date: challengeEndDate,
         duration_days: duration,
-        created_at: new Date().toISOString(),
+        created_at: result.createdAt ?? new Date().toISOString(),
       });
       setChallengeSuccess(true);
     } catch (error) {
       console.error("group challenge request failed", error);
-      setChallengeError(c("group_challenge_save_error"));
+      if (
+        error instanceof Error &&
+        error.message === "request_already_active"
+      ) {
+        setChallengeError(requestText.activeRequestError);
+      } else if (
+        error instanceof Error &&
+        (error.message === "not_group_leader" ||
+          error.message === "challenge_request_not_allowed")
+      ) {
+        setChallengeError(requestText.leaderOnlyNotice);
+      } else {
+        setChallengeError(c("group_challenge_save_error"));
+      }
     } finally {
       setChallengeSaving(false);
     }
@@ -2164,6 +2303,16 @@ function CommunityPageContent() {
     setShowGroupActionMenu(false);
     setShowGroupMembers(false);
     setGroupMemberProfiles([]);
+    setShowGroupEdit(false);
+    setGroupEditError(null);
+    setShowLeadershipTransfer(false);
+    setLeadershipTransferStep("select");
+    setLeadershipTransferTargetId(null);
+    setLeadershipTransferError(null);
+    setMemberRemovalTarget(null);
+    setMemberRemovalError(null);
+    setShowDeleteGroupConfirm(false);
+    setDeleteGroupError(null);
     resetChallengeRequestForm();
     closeManageModal();
     setSelectedGroup(null);
@@ -3881,8 +4030,7 @@ function CommunityPageContent() {
     }
   }
 
-  async function openGroupMembers(group: any) {
-    setShowGroupMembers(true);
+  async function loadGroupMemberProfiles(group: any) {
     setLoadingGroupMembers(true);
     const supabase = createClient();
     try {
@@ -3897,28 +4045,59 @@ function CommunityPageContent() {
       );
       if (memberIds.length === 0) {
         setGroupMemberProfiles([]);
-        return;
+        return [] as GroupMemberProfile[];
       }
 
       const profileMap = mapProfileCards(
         await loadProfileCards(supabase, memberIds),
       );
-      setGroupMemberProfiles(
-        memberIds.map(
-          (id: string) =>
-            profileMap[id] ?? {
+      const profiles = memberIds
+        .map((id: string): GroupMemberProfile => {
+          const profile = profileMap[id] ?? {
               id,
               name: c("community_member_unknown"),
               avatar_url: null,
-            },
+              streak_days: null,
+            };
+          return {
+            ...profile,
+            isLeader: id === group.created_by,
+          };
+        })
+        .sort((left, right) => {
+          if (left.isLeader !== right.isLeader) return left.isLeader ? -1 : 1;
+          return String(left.name ?? "").localeCompare(
+            String(right.name ?? ""),
+            getDateLocale(lang),
+          );
+        });
+
+      setGroupMemberProfiles(profiles);
+      setSelectedGroup((current: any) =>
+        current?.id === group.id
+          ? { ...current, member_count: profiles.length }
+          : current,
+      );
+      setGroups((current) =>
+        current.map((item) =>
+          item.id === group.id
+            ? { ...item, member_count: profiles.length }
+            : item,
         ),
       );
+      return profiles;
     } catch (error) {
       console.warn("그룹 참여자 조회 실패:", error);
       setGroupMemberProfiles([]);
+      return [] as GroupMemberProfile[];
     } finally {
       setLoadingGroupMembers(false);
     }
+  }
+
+  async function openGroupMembers(group: any) {
+    setShowGroupMembers(true);
+    await loadGroupMemberProfiles(group);
   }
 
   // qt_reactions 로드 헬퍼 - qtIds 목록의 반응 카운트 + 내 반응 가져오기
@@ -4222,13 +4401,26 @@ function CommunityPageContent() {
           .filter((g: any) => !!memberMap[g.id])
           .map((g: any) => String(g.id ?? "")),
       );
+      const leaderIds = uniqueStrings(
+        unique.map((g: any) => String(g.created_by ?? "")),
+      );
 
-      const [memberCounts, latestQtByGroup, latestPrayerByGroup] =
+      const [
+        memberCounts,
+        latestQtByGroup,
+        latestPrayerByGroup,
+        leaderProfiles,
+      ] =
         await Promise.all([
           fetchGroupMemberCounts(supabase, uniqueGroupIds),
           fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
           fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
+          loadProfileCards(supabase, leaderIds).catch((error) => {
+            console.warn("그룹장 프로필 조회 실패:", error);
+            return [];
+          }),
         ]);
+      const leaderProfileMap = mapProfileCards(leaderProfiles);
 
       const withMeta = unique.map((g) => {
         const memberMeta = memberMap[g.id];
@@ -4244,6 +4436,7 @@ function CommunityPageContent() {
 
         return {
           ...g,
+          leaderProfile: leaderProfileMap[g.created_by] ?? null,
           member_count: memberCounts[g.id] ?? 0,
           isMember,
           isFavorite: !!memberMeta?.is_favorite,
@@ -4300,6 +4493,21 @@ function CommunityPageContent() {
       setLoadingGroupPrayers(false);
       setNotificationDirectOpenPending(false);
       return;
+    }
+
+    if (group.created_by && !group.leaderProfile) {
+      void loadProfileCards(supabase, [group.created_by])
+        .then(([leaderProfile]) => {
+          if (!leaderProfile) return;
+          setSelectedGroup((current: any) =>
+            current?.id === group.id
+              ? { ...current, leaderProfile }
+              : current,
+          );
+        })
+        .catch((error) =>
+          console.warn("그룹장 프로필 조회 실패:", error),
+        );
     }
 
     // 공개 그룹의 소개는 누구나 볼 수 있지만, 그룹 피드는 참여한 뒤에만 불러옵니다.
@@ -5050,8 +5258,259 @@ function CommunityPageContent() {
     );
   }
 
+  function isGroupLeader(group: any = selectedGroup) {
+    return !!userId && !!group?.created_by && group.created_by === userId;
+  }
+
+  function openGroupEditModal() {
+    if (!selectedGroup || !isGroupLeader(selectedGroup)) return;
+    setGroupEditError(null);
+    setEditGroupName(selectedGroup.name ?? "");
+    setEditGroupDesc(selectedGroup.description ?? "");
+    setEditGroupIsPublic(!!selectedGroup.is_public);
+    setShowGroupActionMenu(false);
+    setShowGroupEdit(true);
+  }
+
+  async function saveGroupEdits() {
+    if (
+      !selectedGroup?.id ||
+      !isGroupLeader(selectedGroup) ||
+      savingGroupEdit
+    ) {
+      return;
+    }
+
+    const name = editGroupName.trim();
+    const description = editGroupDesc.trim();
+    if (!name || name.length > 80 || description.length > 500) {
+      setGroupEditError(groupLeaderText.editGroupError);
+      return;
+    }
+
+    setSavingGroupEdit(true);
+    setGroupEditError(null);
+    try {
+      const result = await requestGroupLeaderAction("update_group", {
+        groupId: selectedGroup.id,
+        name,
+        description,
+        isPublic: editGroupIsPublic,
+      });
+      const updatedGroup = result.group ?? {
+        name,
+        description: description || null,
+        is_public: editGroupIsPublic,
+      };
+
+      setSelectedGroup((current: any) =>
+        current?.id === selectedGroup.id
+          ? { ...current, ...updatedGroup }
+          : current,
+      );
+      setGroups((current) =>
+        current.map((group) =>
+          group.id === selectedGroup.id
+            ? { ...group, ...updatedGroup }
+            : group,
+        ),
+      );
+      clearSharePromptOptionsCache();
+      setShowGroupEdit(false);
+    } catch (error) {
+      console.warn("그룹 정보 수정 실패:", error);
+      setGroupEditError(groupLeaderText.editGroupError);
+    } finally {
+      setSavingGroupEdit(false);
+    }
+  }
+
+  async function openLeadershipTransferModal() {
+    if (!selectedGroup || !isGroupLeader(selectedGroup)) return;
+    setShowGroupActionMenu(false);
+    setLeadershipTransferStep("select");
+    setLeadershipTransferTargetId(null);
+    setLeadershipTransferError(null);
+    setShowLeadershipTransfer(true);
+    await loadGroupMemberProfiles(selectedGroup);
+  }
+
+  async function confirmLeadershipTransfer() {
+    if (
+      !selectedGroup?.id ||
+      !leadershipTransferTargetId ||
+      !isGroupLeader(selectedGroup) ||
+      transferringLeadership
+    ) {
+      return;
+    }
+
+    const target = groupMemberProfiles.find(
+      (member) => member.id === leadershipTransferTargetId,
+    );
+    if (!target || target.isLeader) {
+      setLeadershipTransferError(groupLeaderText.transferError);
+      return;
+    }
+
+    setTransferringLeadership(true);
+    setLeadershipTransferError(null);
+    try {
+      await requestGroupLeaderAction("transfer_leadership", {
+        groupId: selectedGroup.id,
+        targetUserId: target.id,
+      });
+
+      const leaderProfile: ProfileCard = {
+        id: target.id,
+        name: target.name,
+        avatar_url: target.avatar_url,
+        streak_days: target.streak_days,
+      };
+      setSelectedGroup((current: any) =>
+        current?.id === selectedGroup.id
+          ? {
+              ...current,
+              created_by: target.id,
+              leaderProfile,
+            }
+          : current,
+      );
+      setGroups((current) =>
+        current.map((group) =>
+          group.id === selectedGroup.id
+            ? {
+                ...group,
+                created_by: target.id,
+                leaderProfile,
+              }
+            : group,
+        ),
+      );
+      setGroupMemberProfiles((current) =>
+        current.map((member) => ({
+          ...member,
+          isLeader: member.id === target.id,
+        })),
+      );
+      setShowLeadershipTransfer(false);
+      setLeadershipTransferStep("select");
+      setLeadershipTransferTargetId(null);
+    } catch (error) {
+      console.warn("그룹장 권한 이전 실패:", error);
+      setLeadershipTransferError(groupLeaderText.transferError);
+    } finally {
+      setTransferringLeadership(false);
+    }
+  }
+
+  function openMemberRemovalConfirm(member: GroupMemberProfile) {
+    if (
+      !selectedGroup ||
+      !isGroupLeader(selectedGroup) ||
+      member.isLeader
+    ) {
+      return;
+    }
+    setMemberRemovalError(null);
+    setMemberRemovalTarget(member);
+  }
+
+  async function removeGroupMember() {
+    if (
+      !selectedGroup?.id ||
+      !memberRemovalTarget ||
+      memberRemovalTarget.isLeader ||
+      !isGroupLeader(selectedGroup) ||
+      removingGroupMember
+    ) {
+      return;
+    }
+
+    setRemovingGroupMember(true);
+    setMemberRemovalError(null);
+    try {
+      await requestGroupLeaderAction("remove_member", {
+        groupId: selectedGroup.id,
+        targetUserId: memberRemovalTarget.id,
+      });
+
+      setGroupMemberProfiles((current) =>
+        current.filter((member) => member.id !== memberRemovalTarget.id),
+      );
+      setSelectedGroup((current: any) =>
+        current?.id === selectedGroup.id
+          ? {
+              ...current,
+              member_count: Math.max(0, (current.member_count ?? 1) - 1),
+            }
+          : current,
+      );
+      setGroups((current) =>
+        current.map((group) =>
+          group.id === selectedGroup.id
+            ? {
+                ...group,
+                member_count: Math.max(0, (group.member_count ?? 1) - 1),
+              }
+            : group,
+        ),
+      );
+      setMemberRemovalTarget(null);
+    } catch (error) {
+      console.warn("그룹원 내보내기 실패:", error);
+      setMemberRemovalError(groupLeaderText.removeError);
+    } finally {
+      setRemovingGroupMember(false);
+    }
+  }
+
+  function openDeleteGroupConfirm() {
+    if (!selectedGroup || !isGroupLeader(selectedGroup)) return;
+    setShowGroupActionMenu(false);
+    setDeleteGroupError(null);
+    setShowDeleteGroupConfirm(true);
+  }
+
+  async function deleteSelectedGroup() {
+    if (
+      !selectedGroup?.id ||
+      !userId ||
+      !isGroupLeader(selectedGroup) ||
+      deletingGroup
+    ) {
+      return;
+    }
+
+    const groupId = selectedGroup.id;
+    setDeletingGroup(true);
+    setDeleteGroupError(null);
+    try {
+      await requestGroupLeaderAction("delete_group", { groupId });
+      clearSharePromptOptionsCache();
+      updateFavoriteCache(userId, groupId, false);
+      clearCommunityDetailHistory("group");
+      setGroups((current) =>
+        current.filter((group) => group.id !== groupId),
+      );
+      setDeletingGroup(false);
+      resetGroupDetailState();
+    } catch (error) {
+      console.warn("그룹 삭제 실패:", error);
+      setDeleteGroupError(groupLeaderText.deleteGroupError);
+      setDeletingGroup(false);
+    }
+  }
+
   async function leaveSelectedGroup() {
-    if (!selectedGroup?.id || !userId || leavingGroup) return;
+    if (
+      !selectedGroup?.id ||
+      !userId ||
+      isGroupLeader(selectedGroup) ||
+      leavingGroup
+    ) {
+      return;
+    }
     setLeavingGroup(true);
     const supabase = createClient();
     const { error } = await supabase.rpc("leave_group", {
@@ -5452,7 +5911,12 @@ function CommunityPageContent() {
   }
 
   function renderChallengeRequestModal() {
-    if (!showChallengeRequestForm || !selectedGroup) return null;
+    if (
+      !showChallengeRequestForm ||
+      !selectedGroup ||
+      !isGroupLeader(selectedGroup)
+    )
+      return null;
     return (
       <div
         onClick={() => !challengeSaving && setShowChallengeRequestForm(false)}
@@ -6798,6 +7262,13 @@ function CommunityPageContent() {
   if (selectedGroup) {
     const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
     const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
+    const viewerIsGroupLeader = isGroupLeader(selectedGroup);
+    const leadershipTransferTarget = groupMemberProfiles.find(
+      (member) => member.id === leadershipTransferTargetId,
+    );
+    const leadershipTransferCandidates = groupMemberProfiles.filter(
+      (member) => !member.isLeader,
+    );
     const visibleGroupQts = visibleFeedItems(groupQtFeedKey, groupQts);
     const visibleGroupPrayers = visibleFeedItems(
       groupPrayerFeedKey,
@@ -6932,7 +7403,7 @@ function CommunityPageContent() {
                   right: 0,
                   top: 38,
                   zIndex: 80,
-                  minWidth: 180,
+                  minWidth: viewerIsGroupLeader ? 250 : 180,
                   borderRadius: 18,
                   border: "1px solid var(--community-card-border)",
                   background: "var(--community-popover-surface)",
@@ -6992,7 +7463,88 @@ function CommunityPageContent() {
                     ? c("community_copied")
                     : c("community_copy_link")}
                 </button>
-                {selectedGroup.isMember && (
+                {viewerIsGroupLeader && (
+                  <>
+                    <div
+                      style={{
+                        height: 1,
+                        background: "var(--community-card-border)",
+                        margin: "4px 6px",
+                      }}
+                    />
+                    <p
+                      style={{
+                        padding: "6px 10px 3px",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        color: "var(--text3)",
+                      }}
+                    >
+                      {groupLeaderText.groupManagement}
+                    </p>
+                    <button
+                      onClick={openGroupEditModal}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "11px 10px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text2)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Edit3 size={15} />
+                      {groupLeaderText.editGroup}
+                    </button>
+                    <button
+                      onClick={openLeadershipTransferModal}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "11px 10px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text2)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Crown size={15} />
+                      {groupLeaderText.transferLeadership}
+                    </button>
+                    <button
+                      onClick={openDeleteGroupConfirm}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "11px 10px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--community-danger-text)",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Trash2 size={15} />
+                      {groupLeaderText.deleteGroup}
+                    </button>
+                  </>
+                )}
+                {selectedGroup.isMember && !viewerIsGroupLeader && (
                   <button
                     onClick={() => {
                       setShowGroupActionMenu(false);
@@ -7385,43 +7937,66 @@ function CommunityPageContent() {
                       >
                         {c("group_challenge_card_body")}
                       </p>
+                      {!viewerIsGroupLeader &&
+                        !hasActiveGroupChallengeRequest(selectedGroup.id) && (
+                          <p
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: "var(--challenge-sage-text)",
+                              lineHeight: 1.45,
+                              margin: "9px 0 0",
+                            }}
+                          >
+                            <Crown size={13} aria-hidden="true" />
+                            {groupChallengeRequestText.leaderOnlyNotice}
+                          </p>
+                        )}
                     </div>
-                    <button
-                      onClick={openChallengeRequestForm}
-                      disabled={hasActiveGroupChallengeRequest(
-                        selectedGroup.id,
-                      )}
-                      style={{
-                        flex: "0 0 auto",
-                        border: "none",
-                        borderRadius: 16,
-                        background: hasActiveGroupChallengeRequest(
+                    {(viewerIsGroupLeader ||
+                      hasActiveGroupChallengeRequest(selectedGroup.id)) && (
+                      <button
+                        onClick={openChallengeRequestForm}
+                        disabled={hasActiveGroupChallengeRequest(
                           selectedGroup.id,
-                        )
-                          ? "var(--challenge-disabled-surface)"
-                          : "var(--challenge-action)",
-                        color: hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? "var(--challenge-disabled-text)"
-                          : "var(--challenge-on-action)",
-                        padding: "11px 16px",
-                        minWidth: 82,
-                        fontSize: 12,
-                        fontWeight: 850,
-                        cursor: hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? "default"
-                          : "pointer",
-                        whiteSpace: "nowrap",
-                        opacity: hasActiveGroupChallengeRequest(
-                          selectedGroup.id,
-                        )
-                          ? 0.92
-                          : 1,
-                      }}
-                    >
-                      {hasActiveGroupChallengeRequest(selectedGroup.id)
-                        ? c("group_challenge_requested_btn")
-                        : c("group_challenge_apply_btn")}
-                    </button>
+                        )}
+                        style={{
+                          flex: "0 0 auto",
+                          border: "none",
+                          borderRadius: 16,
+                          background: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? "var(--challenge-disabled-surface)"
+                            : "var(--challenge-action)",
+                          color: hasActiveGroupChallengeRequest(selectedGroup.id)
+                            ? "var(--challenge-disabled-text)"
+                            : "var(--challenge-on-action)",
+                          padding: "11px 16px",
+                          minWidth: 82,
+                          fontSize: 12,
+                          fontWeight: 850,
+                          cursor: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? "default"
+                            : "pointer",
+                          whiteSpace: "nowrap",
+                          opacity: hasActiveGroupChallengeRequest(
+                            selectedGroup.id,
+                          )
+                            ? 0.92
+                            : 1,
+                        }}
+                      >
+                        {hasActiveGroupChallengeRequest(selectedGroup.id)
+                          ? c("group_challenge_requested_btn")
+                          : c("group_challenge_apply_btn")}
+                      </button>
+                    )}
                   </div>
                 )}
             </>
@@ -8036,7 +8611,7 @@ function CommunityPageContent() {
                     {c("community_members_loading")}
                   </div>
                 ) : groupMemberProfiles.length > 0 ? (
-                  groupMemberProfiles.map((member: any) => (
+                  groupMemberProfiles.map((member) => (
                     <div
                       key={member.id}
                       style={{
@@ -8046,45 +8621,64 @@ function CommunityPageContent() {
                         padding: "9px 0",
                       }}
                     >
-                      {member.avatar_url ? (
-                        <img
-                          src={member.avatar_url}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 999,
-                            objectFit: "cover",
-                            border: "1px solid var(--border)",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: 38,
-                            height: 38,
-                            borderRadius: 999,
-                            background: "var(--sage-light)",
-                            color: "var(--sage-dark)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Users size={17} />
-                        </div>
-                      )}
-                      <span
+                      <Avatar
+                        url={member.avatar_url ?? undefined}
+                        name={member.name ?? undefined}
+                        size={38}
+                      />
+                      <div
                         style={{
-                          fontSize: 14,
-                          color: "var(--text)",
-                          fontWeight: 700,
+                          minWidth: 0,
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          flexWrap: "wrap",
                         }}
                       >
-                        {member.name || c("community_member_unknown")}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            color: "var(--text)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {member.name || c("community_member_unknown")}
+                        </span>
+                        {member.isLeader && (
+                          <span
+                            role="img"
+                            aria-label={groupLeaderText.groupLeader}
+                            title={groupLeaderText.groupLeader}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              color: "var(--community-gold-text)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Crown size={13} strokeWidth={2.2} />
+                          </span>
+                        )}
+                      </div>
+                      {viewerIsGroupLeader && !member.isLeader && (
+                        <button
+                          onClick={() => openMemberRemovalConfirm(member)}
+                          style={{
+                            border: "1px solid var(--community-danger-border)",
+                            borderRadius: 10,
+                            background: "var(--community-danger-surface)",
+                            color: "var(--community-danger-text)",
+                            padding: "7px 9px",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {groupLeaderText.removeMember}
+                        </button>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -8201,6 +8795,681 @@ function CommunityPageContent() {
               </div>
             </div>
           </div>
+        )}
+        {showGroupEdit && viewerIsGroupLeader && (
+          <GroupManagementModal
+            busy={savingGroupEdit}
+            onClose={() => {
+              setShowGroupEdit(false);
+              setGroupEditError(null);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 850,
+                  color: "var(--text)",
+                }}
+              >
+                {groupLeaderText.editGroupTitle}
+              </h2>
+              <button
+                onClick={() => setShowGroupEdit(false)}
+                disabled={savingGroupEdit}
+                aria-label="Close"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--text3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: savingGroupEdit ? "default" : "pointer",
+                }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text3)",
+                  }}
+                >
+                  {c("community_group_name_label")}
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  maxLength={80}
+                  value={editGroupName}
+                  onChange={(event) => setEditGroupName(event.target.value)}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text3)",
+                  }}
+                >
+                  {c("community_group_desc_label")}
+                </label>
+                <textarea
+                  className="textarea-field"
+                  rows={3}
+                  maxLength={500}
+                  value={editGroupDesc}
+                  onChange={(event) => setEditGroupDesc(event.target.value)}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 8,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text3)",
+                  }}
+                >
+                  {c("community_visibility")}
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[
+                    {
+                      value: true,
+                      label: c("community_public"),
+                      sub: c("community_public_sub"),
+                    },
+                    {
+                      value: false,
+                      label: c("community_private"),
+                      sub: c("community_private_sub"),
+                    },
+                  ].map((option) => (
+                    <button
+                      key={String(option.value)}
+                      onClick={() => setEditGroupIsPublic(option.value)}
+                      style={{
+                        flex: 1,
+                        padding: "10px 8px",
+                        borderRadius: 12,
+                        border: `1px solid ${
+                          editGroupIsPublic === option.value
+                            ? "var(--sage)"
+                            : "var(--border)"
+                        }`,
+                        background:
+                          editGroupIsPublic === option.value
+                            ? "var(--sage-light)"
+                            : "var(--bg3)",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {option.label}
+                      </span>
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: 3,
+                          fontSize: 9.5,
+                          color: "var(--text3)",
+                        }}
+                      >
+                        {option.sub}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {groupEditError && (
+                <p
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 1.55,
+                    color: "var(--community-danger-text)",
+                  }}
+                >
+                  {groupEditError}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+                <button
+                  className="btn-outline"
+                  onClick={() => setShowGroupEdit(false)}
+                  disabled={savingGroupEdit}
+                  style={{ flex: 1 }}
+                >
+                  {c("community_cancel")}
+                </button>
+                <button
+                  className="btn-sage"
+                  onClick={saveGroupEdits}
+                  disabled={savingGroupEdit || !editGroupName.trim()}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  {savingGroupEdit && <Loader2 size={15} className="spin" />}
+                  {c("save")}
+                </button>
+              </div>
+            </div>
+          </GroupManagementModal>
+        )}
+        {showLeadershipTransfer && viewerIsGroupLeader && (
+          <GroupManagementModal
+            busy={transferringLeadership}
+            sheet
+            zIndex={226}
+            onClose={() => {
+              setShowLeadershipTransfer(false);
+              setLeadershipTransferStep("select");
+              setLeadershipTransferTargetId(null);
+              setLeadershipTransferError(null);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 15,
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 850,
+                    color: "var(--text)",
+                    marginBottom: 3,
+                  }}
+                >
+                  {leadershipTransferStep === "confirm"
+                    ? groupLeaderText.transferConfirmTitle
+                    : groupLeaderText.transferLeadership}
+                </h2>
+                {leadershipTransferStep === "select" && (
+                  <p
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--text3)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {groupLeaderText.transferSelectMessage}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowLeadershipTransfer(false)}
+                disabled={transferringLeadership}
+                aria-label="Close"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--text3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: transferringLeadership ? "default" : "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            {leadershipTransferStep === "select" ? (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    maxHeight: "48vh",
+                    overflowY: "auto",
+                  }}
+                >
+                  {loadingGroupMembers ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "24px 0",
+                        color: "var(--text3)",
+                        fontSize: 12,
+                      }}
+                    >
+                      <Loader2 size={15} className="spin" />
+                      {c("community_members_loading")}
+                    </div>
+                  ) : leadershipTransferCandidates.length === 0 ? (
+                    <p
+                      style={{
+                        padding: "18px 4px",
+                        color: "var(--text3)",
+                        fontSize: 12.5,
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      {groupLeaderText.transferEmpty}
+                    </p>
+                  ) : (
+                    leadershipTransferCandidates.map((member) => {
+                      const selected =
+                        leadershipTransferTargetId === member.id;
+                      return (
+                        <button
+                          key={member.id}
+                          onClick={() => {
+                            setLeadershipTransferTargetId(member.id);
+                            setLeadershipTransferError(null);
+                          }}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            border: `1px solid ${
+                              selected
+                                ? "var(--sage)"
+                                : "var(--community-card-border)"
+                            }`,
+                            borderRadius: 14,
+                            background: selected
+                              ? "var(--sage-light)"
+                              : "var(--community-card-surface)",
+                            padding: "10px 11px",
+                            color: "var(--text)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <Avatar
+                            url={member.avatar_url ?? undefined}
+                            name={member.name ?? undefined}
+                            size={38}
+                          />
+                          <span
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              fontSize: 13.5,
+                              fontWeight: 750,
+                            }}
+                          >
+                            {member.name || c("community_member_unknown")}
+                          </span>
+                          <span
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: 999,
+                              border: `1px solid ${
+                                selected
+                                  ? "var(--sage)"
+                                  : "var(--border)"
+                              }`,
+                              background: selected
+                                ? "var(--sage)"
+                                : "transparent",
+                              color: "white",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {selected && <Check size={12} />}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {leadershipTransferError && (
+                  <p
+                    style={{
+                      marginTop: 10,
+                      fontSize: 12,
+                      color: "var(--community-danger-text)",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {leadershipTransferError}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <button
+                    className="btn-outline"
+                    onClick={() => setShowLeadershipTransfer(false)}
+                    style={{ flex: 1 }}
+                  >
+                    {c("community_cancel")}
+                  </button>
+                  <button
+                    className="btn-sage"
+                    onClick={() => setLeadershipTransferStep("confirm")}
+                    disabled={!leadershipTransferTargetId}
+                    style={{ flex: 1 }}
+                  >
+                    {groupLeaderText.transferNext}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 999,
+                    background: "var(--community-gold-surface)",
+                    color: "var(--community-gold-text)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 14,
+                  }}
+                >
+                  <Crown size={25} />
+                </div>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 750,
+                    color: "var(--text)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {groupLeaderText.transferConfirmMessage(
+                    leadershipTransferTarget?.name ??
+                      c("community_member_unknown"),
+                  )}
+                </p>
+                <p
+                  style={{
+                    marginTop: 8,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "var(--community-gold-surface)",
+                    color: "var(--community-gold-text)",
+                    fontSize: 11.5,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {groupLeaderText.transferWarning}
+                </p>
+                {leadershipTransferError && (
+                  <p
+                    style={{
+                      marginTop: 10,
+                      fontSize: 12,
+                      color: "var(--community-danger-text)",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {leadershipTransferError}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 17 }}>
+                  <button
+                    className="btn-outline"
+                    onClick={() => {
+                      setLeadershipTransferStep("select");
+                      setLeadershipTransferError(null);
+                    }}
+                    disabled={transferringLeadership}
+                    style={{ flex: 1 }}
+                  >
+                    {t("back", lang)}
+                  </button>
+                  <button
+                    className="btn-sage"
+                    onClick={confirmLeadershipTransfer}
+                    disabled={
+                      transferringLeadership || !leadershipTransferTarget
+                    }
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {transferringLeadership && (
+                      <Loader2 size={15} className="spin" />
+                    )}
+                    {groupLeaderText.transferAction}
+                  </button>
+                </div>
+              </>
+            )}
+          </GroupManagementModal>
+        )}
+        {memberRemovalTarget && viewerIsGroupLeader && (
+          <GroupManagementModal
+            danger
+            busy={removingGroupMember}
+            zIndex={230}
+            onClose={() => {
+              setMemberRemovalTarget(null);
+              setMemberRemovalError(null);
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 999,
+                background: "var(--community-danger-surface)",
+                color: "var(--community-danger-text)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <UserMinus size={23} />
+            </div>
+            <h2
+              style={{
+                fontSize: 18,
+                fontWeight: 850,
+                color: "var(--text)",
+                marginBottom: 8,
+              }}
+            >
+              {groupLeaderText.removeConfirmTitle}
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text2)",
+                lineHeight: 1.65,
+              }}
+            >
+              {groupLeaderText.removeConfirmMessage(
+                memberRemovalTarget.name ?? c("community_member_unknown"),
+              )}
+            </p>
+            {memberRemovalError && (
+              <p
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: "var(--community-danger-text)",
+                  lineHeight: 1.55,
+                }}
+              >
+                {memberRemovalError}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <button
+                className="btn-outline"
+                onClick={() => setMemberRemovalTarget(null)}
+                disabled={removingGroupMember}
+                style={{ flex: 1 }}
+              >
+                {c("community_cancel")}
+              </button>
+              <button
+                onClick={removeGroupMember}
+                disabled={removingGroupMember}
+                style={{
+                  flex: 1,
+                  border: "none",
+                  borderRadius: 14,
+                  background: "var(--community-danger-action)",
+                  color: "var(--community-on-danger-action)",
+                  fontSize: 13,
+                  fontWeight: 850,
+                  cursor: removingGroupMember ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {removingGroupMember && (
+                  <Loader2 size={15} className="spin" />
+                )}
+                {groupLeaderText.removeMember}
+              </button>
+            </div>
+          </GroupManagementModal>
+        )}
+        {showDeleteGroupConfirm && viewerIsGroupLeader && (
+          <GroupManagementModal
+            danger
+            busy={deletingGroup}
+            zIndex={231}
+            onClose={() => {
+              setShowDeleteGroupConfirm(false);
+              setDeleteGroupError(null);
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 999,
+                background: "var(--community-danger-surface)",
+                color: "var(--community-danger-text)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <Trash2 size={23} />
+            </div>
+            <h2
+              style={{
+                fontSize: 18,
+                fontWeight: 850,
+                color: "var(--text)",
+                marginBottom: 8,
+              }}
+            >
+              {groupLeaderText.deleteGroupTitle}
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text2)",
+                lineHeight: 1.65,
+              }}
+            >
+              {groupLeaderText.deleteGroupMessage(selectedGroup.name)}
+            </p>
+            {deleteGroupError && (
+              <p
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: "var(--community-danger-text)",
+                  lineHeight: 1.55,
+                }}
+              >
+                {deleteGroupError}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <button
+                className="btn-outline"
+                onClick={() => setShowDeleteGroupConfirm(false)}
+                disabled={deletingGroup}
+                style={{ flex: 1 }}
+              >
+                {c("community_cancel")}
+              </button>
+              <button
+                onClick={deleteSelectedGroup}
+                disabled={deletingGroup}
+                style={{
+                  flex: 1,
+                  border: "none",
+                  borderRadius: 14,
+                  background: "var(--community-danger-action)",
+                  color: "var(--community-on-danger-action)",
+                  fontSize: 13,
+                  fontWeight: 850,
+                  cursor: deletingGroup ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {deletingGroup && <Loader2 size={15} className="spin" />}
+                {groupLeaderText.deleteGroupAction}
+              </button>
+            </div>
+          </GroupManagementModal>
         )}
         {groupChallengeAwardPopup && (
           <div
