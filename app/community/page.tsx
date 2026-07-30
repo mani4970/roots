@@ -872,6 +872,9 @@ function CommunityPageContent() {
     kind: "qt" | "prayer";
     item: any;
   }>(null);
+  const [safetyActionError, setSafetyActionError] = useState<string | null>(
+    null,
+  );
   const [hiddenKeys, setHiddenKeys] = useState<string[]>([]);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
   const [visibleFeedCounts, setVisibleFeedCounts] = useState<
@@ -2607,34 +2610,59 @@ function CommunityPageContent() {
     kind: "qt" | "prayer",
     item: any,
     shouldReport = false,
-  ) {
-    if (!userId) return;
+  ): Promise<boolean> {
+    if (!userId) {
+      setSafetyActionError(c("community_safety_action_error"));
+      return false;
+    }
     setManageSaving(true);
     const supabase = createClient();
     try {
       if (shouldReport) {
-        await supabase.from("content_reports").insert({
-          reporter_id: userId,
-          content_type: kind,
-          content_id: item.id,
-          reported_user_id: item.user_id ?? null,
-          reason: "inappropriate",
-        });
+        const { data: existingReport, error: reportLookupError } = await supabase
+          .from("content_reports")
+          .select("id")
+          .eq("reporter_id", userId)
+          .eq("content_type", kind)
+          .eq("content_id", item.id)
+          .limit(1)
+          .maybeSingle();
+        if (reportLookupError) throw reportLookupError;
+
+        if (!existingReport) {
+          const { error: reportError } = await supabase
+            .from("content_reports")
+            .insert({
+              reporter_id: userId,
+              content_type: kind,
+              content_id: item.id,
+              reported_user_id: item.user_id ?? null,
+              reason: "inappropriate",
+            });
+          if (reportError) throw reportError;
+        }
       }
-      await supabase.from("hidden_community_items").upsert(
-        {
-          user_id: userId,
-          content_type: kind,
-          content_id: item.id,
-        },
-        { onConflict: "user_id,content_type,content_id" },
-      );
+      const { error: hideError } = await supabase
+        .from("hidden_community_items")
+        .upsert(
+          {
+            user_id: userId,
+            content_type: kind,
+            content_id: item.id,
+          },
+          { onConflict: "user_id,content_type,content_id" },
+        );
+      if (hideError) throw hideError;
+
       const key = contentKey(kind, item.id);
       setHiddenKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
       removeSharedItem(kind, item.id);
       setActionMenu(null);
+      return true;
     } catch (error) {
       console.error("community report/hide failed", error);
+      setSafetyActionError(c("community_safety_action_error"));
+      return false;
     } finally {
       setManageSaving(false);
     }
@@ -2646,46 +2674,60 @@ function CommunityPageContent() {
     item: any,
   ) {
     setActionMenu(null);
+    setSafetyActionError(null);
     setSafetyConfirm({ action, kind, item });
   }
 
   function closeSafetyConfirm() {
     if (manageSaving) return;
+    setSafetyActionError(null);
     setSafetyConfirm(null);
   }
 
   async function confirmSafetyAction() {
     if (!safetyConfirm || manageSaving) return;
     const { action, kind, item } = safetyConfirm;
+    setSafetyActionError(null);
+    let succeeded = false;
     if (action === "report") {
-      await hideItem(kind, item, true);
+      succeeded = await hideItem(kind, item, true);
     } else if (action === "hide-item") {
-      await hideItem(kind, item, false);
+      succeeded = await hideItem(kind, item, false);
     } else {
-      await hideAuthor(item);
+      succeeded = await hideAuthor(item);
     }
-    setSafetyConfirm(null);
+    if (succeeded) setSafetyConfirm(null);
   }
 
-  async function hideAuthor(item: any) {
-    if (!userId || !item?.user_id || item.user_id === userId) return;
+  async function hideAuthor(item: any): Promise<boolean> {
+    if (!userId || !item?.user_id || item.user_id === userId) {
+      setSafetyActionError(c("community_safety_action_error"));
+      return false;
+    }
     setManageSaving(true);
     const supabase = createClient();
     try {
-      await supabase.from("hidden_community_users").upsert(
-        {
-          user_id: userId,
-          hidden_user_id: item.user_id,
-        },
-        { onConflict: "user_id,hidden_user_id" },
-      );
+      const { error: hideError } = await supabase
+        .from("hidden_community_users")
+        .upsert(
+          {
+            user_id: userId,
+            hidden_user_id: item.user_id,
+          },
+          { onConflict: "user_id,hidden_user_id" },
+        );
+      if (hideError) throw hideError;
+
       setHiddenUserIds((prev) =>
         prev.includes(item.user_id) ? prev : [...prev, item.user_id],
       );
       removeSharedAuthor(item.user_id);
       setActionMenu(null);
+      return true;
     } catch (error) {
       console.error("community user hide failed", error);
+      setSafetyActionError(c("community_safety_action_error"));
+      return false;
     } finally {
       setManageSaving(false);
     }
@@ -2943,6 +2985,19 @@ function CommunityPageContent() {
           >
             {msg}
           </p>
+          {safetyActionError && (
+            <p
+              role="alert"
+              style={{
+                fontSize: 12,
+                color: "var(--community-danger-action)",
+                lineHeight: 1.55,
+                marginBottom: 12,
+              }}
+            >
+              {safetyActionError}
+            </p>
+          )}
           <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={closeSafetyConfirm}

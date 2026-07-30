@@ -213,6 +213,7 @@ export const T = {
   community_hide_user_confirm_title: { ko: "이 사용자의 글을 숨길까요?", de: "Beiträge dieser Person ausblenden?", en: "Hide posts from this user?", fr: "Masquer les publications de cette personne ?" },
   community_hide_user_confirm_msg: { ko: "숨기면 내 화면에서 이 사용자의 글이 보이지 않아요.", de: "Wenn Sie sie ausblenden, sehen Sie Beiträge dieser Person nicht mehr.", en: "If you hide them, posts from this user will no longer appear for you.", fr: "Si vous les masquez, les publications de cette personne ne s’afficheront plus pour vous." },
   community_hide_confirm_action: { ko: "숨기기", de: "Ausblenden", en: "Hide", fr: "Masquer" },
+  community_safety_action_error: { ko: "요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.", de: "Die Anfrage konnte nicht verarbeitet werden. Bitte versuchen Sie es später erneut.", en: "We couldn't process the request. Please try again shortly.", fr: "Impossible de traiter la demande. Veuillez réessayer dans un instant." },
   community_free_meditation: { ko: "자유 묵상", de: "Freie Meditation", en: "Free Meditation", fr: "Méditation libre" },
   community_tap_details: { ko: "탭하여 전체 보기 →", de: "Antippen für Details →", en: "Tap for details →", fr: "Appuyez pour voir les détails →" },
   community_react_to_qt: { ko: "이 말씀 묵상에 반응해주세요", de: "Reagieren Sie auf diese Stille Zeit", en: "React to this Quiet Time", fr: "Réagissez à ce QT" },

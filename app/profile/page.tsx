@@ -864,18 +864,27 @@ export default function ProfilePage() {
     setSendingFeedback(true);
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("feedback").insert({
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      const { error: feedbackError } = await supabase.from("feedback").insert({
         user_id: user?.id ?? null,
         content: feedbackText.trim(),
       });
+      if (feedbackError) throw feedbackError;
+
       setFeedbackText("");
       setShowFeedbackModal(false);
       showToast(t("profile_feedback_ok", lang));
     } catch (e) {
+      console.error("feedback submission failed", e);
       showToast(t("profile_feedback_fail", lang));
+    } finally {
+      setSendingFeedback(false);
     }
-    setSendingFeedback(false);
   }
 
   async function sendPasswordResetEmail() {
@@ -886,7 +895,12 @@ export default function ProfilePage() {
     setSendingPasswordReset(true);
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
       const providers = new Set(
         [
           ...((user?.app_metadata?.providers as string[] | undefined) ?? []),
@@ -898,7 +912,6 @@ export default function ProfilePage() {
       const hasOnlyExternalIdentity = providers.size > 0 && !hasEmailPasswordIdentity;
       if (hasOnlyExternalIdentity) {
         showToast(t("profile_password_google_account", lang));
-        setSendingPasswordReset(false);
         return;
       }
 
@@ -906,12 +919,19 @@ export default function ProfilePage() {
         ? `roots://auth/callback?next=/reset-password&lang=${encodeURIComponent(lang)}`
         : `${ROOTS_WEB_ORIGIN}/reset-password?lang=${encodeURIComponent(lang)}`;
 
-      await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo });
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        userEmail,
+        { redirectTo },
+      );
+      if (resetError) throw resetError;
+
       showToast(t("profile_password_reset_sent", lang));
     } catch (e) {
+      console.error("profile password reset request failed", e);
       showToast(t("profile_password_reset_fail", lang));
+    } finally {
+      setSendingPasswordReset(false);
     }
-    setSendingPasswordReset(false);
   }
 
   async function deleteAccount() {
