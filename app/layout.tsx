@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 import NativeStatusBar from "@/components/NativeStatusBar";
@@ -88,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CapacitorAuthBridge />
         <NotificationBridge />
         {children}
+        <Analytics />
       </body>
     </html>
   );
