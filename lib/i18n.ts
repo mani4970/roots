@@ -142,7 +142,7 @@ export const T = {
   community_no_group_prayers: { ko: "아직 이 그룹에 나눈 기도 제목이 없어요", de: "Noch keine geteilten Gebetsanliegen in dieser Gruppe", en: "No shared prayer requests in this group yet", fr: "Aucun sujet de prière partagé dans ce groupe pour l’instant" },
   community_no_group_answered_prayers: { ko: "아직 이 그룹에 나눈 기도 응답이 없어요", de: "Noch keine geteilten erhörten Gebete in dieser Gruppe", en: "No shared answered prayers in this group yet", fr: "Aucune prière exaucée partagée dans ce groupe pour l’instant" },
   group_challenge_card_title: { ko: "그룹 챌린지", de: "Gruppen-Challenge", en: "Group challenge", fr: "Défi de groupe" },
-  group_challenge_card_body: { ko: "그룹원들과 묵상 챌린지를 해보세요.\n완주한 그룹원에게 특별 배지가 주어집니다.", de: "Startet gemeinsam eine Challenge.\nWer abschließt, erhält ein Abzeichen.", en: "Try a group challenge together.\nFinish it to receive a badge.", fr: "Lancez un défi ensemble.\nTerminez-le pour obtenir un badge." },
+  group_challenge_card_body: { ko: "그룹원들과 묵상 챌린지를 해보세요.", de: "Startet gemeinsam eine Challenge.", en: "Try a group challenge together.", fr: "Lancez un défi ensemble." },
   group_challenge_apply_btn: { ko: "신청하기", de: "Beantragen", en: "Request", fr: "Demander" },
   group_challenge_requested_btn: { ko: "신청완료", de: "Beantragt", en: "Requested", fr: "Demandé" },
   group_challenge_preparing_title: { ko: "챌린지가 준비 중이에요", de: "Die Challenge wird vorbereitet", en: "The challenge is being prepared", fr: "Le défi est en préparation" },
