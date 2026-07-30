@@ -17,6 +17,7 @@ import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
+import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
@@ -24,7 +25,7 @@ import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
-import { ChevronRight, Check, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
+import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
@@ -932,10 +933,10 @@ export default function HomePage() {
   }
 
   async function toggleMyDecision(i: number) {
-    if (myDecisions[i].done) return;
+    if (!myDecisions[i]) return;
     const today = getLocalDateString();
     const previous = myDecisions;
-    const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: true } : d);
+    const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
     const decisionsDone = JSON.stringify(updated.map(d => d.done));
     setMyDecisions(updated);
 
@@ -1809,14 +1810,14 @@ export default function HomePage() {
                   </div>
                 </div>
                 {myDecisions.map((d, i) => (
-                <button key={i} onClick={() => toggleMyDecision(i)} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: i === myDecisions.length - 1 ? "0" : "0 0 10px", width: "100%" }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${d.done ? "var(--sage)" : "var(--border)"}`, background: d.done ? "var(--sage)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-                    {d.done && <Check size={13} style={{ color: "var(--bg)" }} />}
-                  </div>
-                  <span style={{ fontSize: 14, color: d.done ? "var(--text3)" : "var(--text)", lineHeight: 1.65, textDecoration: d.done ? "line-through" : "none" }}>
-                    {i + 1}. {d.text}
-                  </span>
-                </button>
+                  <HomeDecisionItem
+                    key={i}
+                    done={d.done}
+                    index={i}
+                    isLast={i === myDecisions.length - 1}
+                    text={d.text}
+                    onToggle={() => void toggleMyDecision(i)}
+                  />
                 ))}
               </>
             ) : (
