@@ -16,6 +16,7 @@ import LanguagePicker from "@/components/LanguagePicker";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
+import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -38,6 +39,7 @@ import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
+import { claimPendingChallengeRewards, type ChallengeReward } from "@/lib/challengeRewards";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -264,10 +266,36 @@ export default function HomePage() {
   const [enabledProfileCharacterItemIds, setEnabledProfileCharacterItemIds] = useState<HeartShopCharacterItemId[]>([]);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
+  const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
+  const challengeRewardCheckStartedRef = useRef(false);
 
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
+  }
+
+  async function checkPendingChallengeRewards(
+    supabase: ReturnType<typeof createClient>,
+    today: string,
+  ) {
+    if (challengeRewardCheckStartedRef.current) return;
+    challengeRewardCheckStartedRef.current = true;
+
+    try {
+      const rewards = await claimPendingChallengeRewards(supabase, today);
+      if (rewards.length === 0) return;
+      setChallengeRewardQueue((current) => {
+        const existingAwardIds = new Set(current.map((reward) => reward.awardId));
+        return [
+          ...current,
+          ...rewards.filter((reward) => !existingAwardIds.has(reward.awardId)),
+        ];
+      });
+    } catch (error) {
+      // Challenge rewards are independent from Home and the core Bible Reflection flow.
+      // A temporary reward check failure must never block Home, progress, or watering.
+      console.warn("챌린지 미지급 보상 확인 실패:", error);
+    }
   }
 
   async function saveAvatarChoice(avatarType: RootsAvatarType, markSeen = true) {
@@ -405,6 +433,7 @@ export default function HomePage() {
     }
 
     const today = getLocalDateString();
+    void checkPendingChallengeRewards(supabase, today);
     const pendingAwardedBadges = consumePendingAwardedBadges(user.id, today);
     pendingAwardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
 
@@ -1134,6 +1163,30 @@ export default function HomePage() {
   const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
+  const challengeRewardPopupBlocked =
+    loading ||
+    showFirstLangPicker ||
+    showOnboarding ||
+    !!requiredUpdatePlatform ||
+    showWelcomeBack ||
+    !!badgePopup ||
+    celebration.show ||
+    gardenPopup.show ||
+    !!rewardMapNotice ||
+    showRootsManPopup ||
+    showAvatarChoiceModal ||
+    showLangPicker ||
+    showHomeQTChoice ||
+    showHomeQTPassageChoice ||
+    showHomeQTPhotoPassageChoice ||
+    showHomeSundayQT ||
+    showNotificationSettingsModal ||
+    showHomePrayerCompose ||
+    showHomePrayerSharePrompt ||
+    chapterPopup.show;
+  const visibleChallengeReward = challengeRewardPopupBlocked
+    ? null
+    : challengeRewardQueue[0] ?? null;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -1360,6 +1413,16 @@ export default function HomePage() {
           onUpdate={openRequiredUpdate}
         />
       )}
+
+      <ChallengeRewardPopup
+        reward={visibleChallengeReward}
+        onDismiss={() => setChallengeRewardQueue((current) => current.slice(1))}
+        onConfirm={() => {
+          const hasAnotherReward = challengeRewardQueue.length > 1;
+          setChallengeRewardQueue((current) => current.slice(1));
+          if (!hasAnotherReward) router.push("/profile#special-badges");
+        }}
+      />
 
       <WelcomeBackPopup
         show={showWelcomeBack}

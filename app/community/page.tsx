@@ -20,10 +20,6 @@ import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type TKey } from "@/lib/i18n";
 import {
-  GROUP_CHALLENGE_BADGE_FALLBACK,
-  getGroupChallengeBadgeImageSrc,
-} from "@/lib/groupChallengeBadges";
-import {
   getDateLocale,
   getLocalDateString,
   parseLocalDateString,
@@ -73,7 +69,6 @@ import {
 import { loadCommunityNotificationDirectContent } from "@/lib/notifications/communityDirectContent";
 import {
   COMPANION_CHALLENGE_BADGE_FALLBACK,
-  claimCompanionChallengeReward,
   companionChallengeProgressPercent,
   getCompanionChallengeBadgeImageSrc,
   loadCompanionChallengeStatus,
@@ -780,30 +775,11 @@ function CommunityPageContent() {
   const [myGroupChallengeRequests, setMyGroupChallengeRequests] = useState<
     Record<string, GroupChallengeRequestSummary>
   >({});
-  const [groupChallengeAwardPopup, setGroupChallengeAwardPopup] =
-    useState<null | {
-      challengeTitle: string;
-      groupName: string;
-      badgeName: string;
-      badgeImagePath?: string | null;
-    }>(null);
-  const claimedGroupChallengeAwardIdsRef = useRef<Set<string>>(new Set());
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
   const [companionChallengeStatus, setCompanionChallengeStatus] =
     useState<CompanionChallengeStatus | null>(null);
   const [loadingCompanionChallenge, setLoadingCompanionChallenge] =
     useState(false);
-  const [claimingCompanionChallenge, setClaimingCompanionChallenge] =
-    useState(false);
-  const [companionChallengeAwardPopup, setCompanionChallengeAwardPopup] =
-    useState<null | {
-      challengeTitle: string;
-      partnerName: string;
-      badgeName: string;
-      badgeImagePath?: string | null;
-      rewardHearts: number;
-    }>(null);
-  const claimedCompanionChallengeAwardIdsRef = useRef<Set<string>>(new Set());
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [groupQts, setGroupQts] = useState<any[]>([]);
   const [groupPrayers, setGroupPrayers] = useState<any[]>([]);
@@ -1581,19 +1557,8 @@ function CommunityPageContent() {
     return c("group_challenge_preparing_pending");
   }
 
-  function isRecentCompletedGroupChallenge(challenge: any) {
-    if (challengeDisplayStatus(challenge) !== "completed") return false;
-    const today = dateToUtcDay(localDateInputValue(0));
-    const end = dateToUtcDay(challenge?.end_date);
-    if (today === null || end === null) return true;
-    return today <= end + 2 * 86400000;
-  }
-
   function shouldShowGroupChallengeCard(challenge: any) {
-    return (
-      challengeDisplayStatus(challenge) !== "completed" ||
-      isRecentCompletedGroupChallenge(challenge)
-    );
+    return challengeDisplayStatus(challenge) !== "completed";
   }
 
   function visibleGroupChallengeCards() {
@@ -1629,62 +1594,6 @@ function CommunityPageContent() {
     status?: string | null,
   ) {
     setGroupChallengeRequest(groupId, status ? { status } : null);
-  }
-
-  function groupChallengeBadgeImageSrc(path?: string | null) {
-    return getGroupChallengeBadgeImageSrc(path, { fallback: null });
-  }
-
-  function isChallengeCompleteForUser(progress?: {
-    doneDays: number;
-    totalDays: number;
-  }) {
-    return !!progress?.totalDays && progress.doneDays >= progress.totalDays;
-  }
-
-  async function claimCompletedGroupChallengeAwards(
-    supabase: ReturnType<typeof createClient>,
-    challenges: any[],
-    progressByChallenge: Record<
-      string,
-      { doneDays: number; totalDays: number }
-    >,
-    groupName: string,
-  ) {
-    for (const challenge of challenges) {
-      const challengeId = String(challenge?.id ?? "");
-      if (
-        !challengeId ||
-        claimedGroupChallengeAwardIdsRef.current.has(challengeId)
-      )
-        continue;
-      if (challengeDisplayStatus(challenge) !== "completed") continue;
-      if (!isChallengeCompleteForUser(progressByChallenge[challengeId]))
-        continue;
-
-      claimedGroupChallengeAwardIdsRef.current.add(challengeId);
-      const { data, error } = await supabase.rpc(
-        "claim_group_challenge_award",
-        { p_challenge_id: challengeId },
-      );
-      if (error) {
-        console.warn("그룹 챌린지 배지 지급 확인 실패:", error.message);
-        continue;
-      }
-
-      const result = (data ?? {}) as any;
-      if (!result?.awarded || result?.already_awarded) continue;
-
-      setGroupChallengeAwardPopup({
-        challengeTitle: result.challenge_title ?? challenge.title ?? "",
-        groupName: result.group_name ?? groupName ?? "",
-        badgeName:
-          result.badge_name ?? challenge.badge_name ?? challenge.title ?? "",
-        badgeImagePath:
-          result.badge_image_path ?? challenge.badge_image_path ?? null,
-      });
-      break;
-    }
   }
 
   async function fetchGroupChallengeProgress(
@@ -1746,58 +1655,9 @@ function CommunityPageContent() {
     return getCompanionChallengeBadgeImageSrc(path);
   }
 
-  async function claimCompletedCompanionChallengeAward(
-    supabase: ReturnType<typeof createClient>,
-    status: CompanionChallengeStatus,
-    partnerId: string,
-    partnerName: string,
-  ) {
-    if (!status.canClaim || claimingCompanionChallenge) return;
-    if (claimedCompanionChallengeAwardIdsRef.current.has(status.challengeId))
-      return;
-
-    claimedCompanionChallengeAwardIdsRef.current.add(status.challengeId);
-    setClaimingCompanionChallenge(true);
-    try {
-      const result = await claimCompanionChallengeReward(
-        supabase,
-        status.challengeId,
-        partnerId,
-      );
-      if (result?.awarded && !result.alreadyAwarded) {
-        const displayTitle = getCompanionChallengeDisplayTitle(
-          {
-            challengeId: status.challengeId,
-            title: result.challengeTitle || status.title,
-            badgeName: result.badgeName || status.badgeName,
-          },
-          lang,
-        );
-        setCompanionChallengeAwardPopup({
-          challengeTitle: displayTitle,
-          partnerName,
-          badgeName: displayTitle,
-          badgeImagePath: result.badgeImagePath ?? status.badgeImagePath ?? null,
-          rewardHearts: result.rewardHearts || status.rewardHearts || 0,
-        });
-      }
-      setCompanionChallengeStatus((current) =>
-        current?.challengeId === status.challengeId
-          ? { ...current, awarded: true, canClaim: false }
-          : current,
-      );
-    } catch (error) {
-      claimedCompanionChallengeAwardIdsRef.current.delete(status.challengeId);
-      console.warn("동역자 챌린지 보상 지급 실패:", error);
-    } finally {
-      setClaimingCompanionChallenge(false);
-    }
-  }
-
   async function loadCompanionChallengeForPartner(
     supabase: ReturnType<typeof createClient>,
     partnerId: string,
-    partnerName: string,
   ) {
     if (!partnerId) return;
     setLoadingCompanionChallenge(true);
@@ -1809,16 +1669,9 @@ function CommunityPageContent() {
         partnerId,
         today,
       );
-      setCompanionChallengeStatus(status);
-
-      if (status?.canClaim) {
-        await claimCompletedCompanionChallengeAward(
-          supabase,
-          status,
-          partnerId,
-          partnerName,
-        );
-      }
+      setCompanionChallengeStatus(
+        status?.endDate && today > status.endDate ? null : status,
+      );
     } catch (error) {
       // The community tab should remain usable if production deploy happens before
       // the companion challenge SQL is applied, or when no active challenge exists.
@@ -2349,7 +2202,6 @@ function CommunityPageContent() {
     setPartnerPrayers([]);
     setCompanionChallengeStatus(null);
     setLoadingCompanionChallenge(false);
-    setClaimingCompanionChallenge(false);
     resetQtDetailState();
   }
 
@@ -3908,7 +3760,6 @@ function CommunityPageContent() {
     void loadCompanionChallengeForPartner(
       supabase,
       partnerId,
-      partner?.profile?.name || c("profile_default_name"),
     );
 
     const currentHiddenKeys = hiddenKeys;
@@ -4679,12 +4530,6 @@ function CommunityPageContent() {
             user.id,
           );
           setGroupChallengeProgress(progress);
-          await claimCompletedGroupChallengeAwards(
-            supabase,
-            nextChallenges,
-            progress,
-            group.name ?? "",
-          );
         } else {
           setGroupChallengeProgress({});
         }
@@ -6315,7 +6160,7 @@ function CommunityPageContent() {
     );
   }
 
-  function renderCompanionChallengeCard(partnerName: string) {
+  function renderCompanionChallengeCard() {
     const text = getCompanionChallengeText(lang);
 
     if (loadingCompanionChallenge && !companionChallengeStatus) {
@@ -6439,115 +6284,9 @@ function CommunityPageContent() {
         </div>
 
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12 }}>
-          <p style={{ flex: "1 1 auto", fontSize: 11, color: "var(--challenge-reward-text)", fontWeight: 800, margin: 0, lineHeight: 1.45 }}>
-            {status.awarded ? text.awardedLabel : text.rewardTeaser}
-          </p>
-          {status.canClaim && selectedPartner?.partner_id && (
-            <button
-              type="button"
-              onClick={() => {
-                const supabase = createClient();
-                void claimCompletedCompanionChallengeAward(
-                  supabase,
-                  status,
-                  selectedPartner.partner_id,
-                  partnerName,
-                );
-              }}
-              disabled={claimingCompanionChallenge}
-              style={{
-                border: "none",
-                borderRadius: 14,
-                padding: "9px 12px",
-                background: "var(--challenge-action)",
-                color: "var(--challenge-on-action)",
-                fontSize: 11,
-                fontWeight: 900,
-                cursor: claimingCompanionChallenge ? "default" : "pointer",
-                opacity: claimingCompanionChallenge ? 0.7 : 1,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {claimingCompanionChallenge ? <Loader2 size={13} className="spin" /> : text.claimButton}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderCompanionChallengeAwardPopup() {
-    if (!companionChallengeAwardPopup) return null;
-    const text = getCompanionChallengeText(lang);
-    const badgeSrc = companionChallengeBadgeImageSrc(companionChallengeAwardPopup.badgeImagePath);
-
-    return (
-      <div
-        onClick={() => setCompanionChallengeAwardPopup(null)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 245,
-          background: "var(--community-reward-overlay)",
-          backdropFilter: "blur(10px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 24px",
-        }}
-      >
-        <ConfettiBurst variant="fixed" zIndex={246} />
-        <div
-          onClick={(event) => event.stopPropagation()}
-          style={{
-            width: "100%",
-            maxWidth: 340,
-            borderRadius: 28,
-            background: "var(--community-modal-surface)",
-            border: "1px solid var(--community-gold-border)",
-            boxShadow: "var(--shadow-modal)",
-            padding: "30px 23px 24px",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ width: 116, height: 116, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img
-              src={badgeSrc}
-              alt={companionChallengeAwardPopup.badgeName}
-              onError={(event) => {
-                if (event.currentTarget.src.endsWith(COMPANION_CHALLENGE_BADGE_FALLBACK))
-                  return;
-                event.currentTarget.src = COMPANION_CHALLENGE_BADGE_FALLBACK;
-              }}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          </div>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--community-gold-text)", margin: "0 0 8px", lineHeight: 1.3 }}>
-            {text.popupTitle}
-          </h2>
-          <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", lineHeight: 1.45, margin: "0 0 4px" }}>
-            {companionChallengeAwardPopup.challengeTitle}
-          </p>
-          <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.45, margin: "0 0 14px" }}>
-            {companionChallengeAwardPopup.partnerName}
-          </p>
-          <div style={{ padding: "14px 15px", borderRadius: 16, background: "var(--community-gold-surface)", border: "1px solid var(--community-gold-border)", marginBottom: 18 }}>
-            <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.68, margin: 0, whiteSpace: "pre-line" }}>
-              {text.popupBody}{"\n"}💛 +{companionChallengeAwardPopup.rewardHearts} {text.heartsLabel}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setCompanionChallengeAwardPopup(null);
-              router.push("/profile#special-badges");
-            }}
-            className="btn-sage"
-            style={{ width: "100%" }}
-          >
-            {text.popupButton}
-          </button>
-        </div>
+        <p style={{ fontSize: 11, color: "var(--challenge-reward-text)", fontWeight: 800, margin: "12px 0 0", lineHeight: 1.45 }}>
+          {status.awarded ? text.awardedLabel : text.rewardTeaser}
+        </p>
       </div>
     );
   }
@@ -6567,7 +6306,6 @@ function CommunityPageContent() {
         {renderSafetyConfirmModal()}
         {renderManageModal()}
         {renderChallengeRequestModal()}
-        {renderCompanionChallengeAwardPopup()}
       </>
     );
   }
@@ -6791,7 +6529,7 @@ function CommunityPageContent() {
             })}
           </div>
 
-          {renderCompanionChallengeCard(partnerName)}
+          {renderCompanionChallengeCard()}
 
           {partnerDetailTab === "qt" ? (
             loadingPartnerQts ? (
@@ -9525,153 +9263,6 @@ function CommunityPageContent() {
               </button>
             </div>
           </GroupManagementModal>
-        )}
-        {groupChallengeAwardPopup && (
-          <div
-            onClick={() => setGroupChallengeAwardPopup(null)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 245,
-              background: "var(--community-reward-overlay)",
-              backdropFilter: "blur(10px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 24px",
-            }}
-          >
-            <ConfettiBurst variant="fixed" zIndex={246} />
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                maxWidth: 340,
-                borderRadius: 28,
-                background: "var(--community-modal-surface)",
-                border: "1px solid var(--community-gold-border)",
-                boxShadow: "var(--shadow-modal)",
-                padding: "30px 23px 24px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 116,
-                  height: 116,
-                  margin: "0 auto 16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {groupChallengeBadgeImageSrc(
-                  groupChallengeAwardPopup.badgeImagePath,
-                ) ? (
-                  <img
-                    src={
-                      groupChallengeBadgeImageSrc(
-                        groupChallengeAwardPopup.badgeImagePath,
-                      ) ?? undefined
-                    }
-                    alt={groupChallengeAwardPopup.badgeName}
-                    onError={(event) => {
-                      if (
-                        event.currentTarget.src.endsWith(
-                          GROUP_CHALLENGE_BADGE_FALLBACK,
-                        )
-                      )
-                        return;
-                      event.currentTarget.src = GROUP_CHALLENGE_BADGE_FALLBACK;
-                    }}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 104,
-                      height: 104,
-                      borderRadius: 28,
-                      background: "var(--community-gold-surface)",
-                      color: "var(--community-gold-text)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "1px solid var(--community-gold-border)",
-                    }}
-                  >
-                    <Star size={48} strokeWidth={1.7} />
-                  </div>
-                )}
-              </div>
-              <h2
-                style={{
-                  fontSize: 20,
-                  fontWeight: 900,
-                  color: "var(--community-gold-text)",
-                  margin: "0 0 8px",
-                  lineHeight: 1.3,
-                }}
-              >
-                {c("group_challenge_award_popup_title")}
-              </h2>
-              <p
-                style={{
-                  fontSize: 14,
-                  fontWeight: 850,
-                  color: "var(--text)",
-                  lineHeight: 1.45,
-                  margin: "0 0 4px",
-                }}
-              >
-                {groupChallengeAwardPopup.challengeTitle}
-              </p>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: "var(--text3)",
-                  lineHeight: 1.45,
-                  margin: "0 0 14px",
-                }}
-              >
-                {groupChallengeAwardPopup.groupName}
-              </p>
-              <div
-                style={{
-                  padding: "14px 15px",
-                  borderRadius: 16,
-                  background: "var(--community-gold-surface)",
-                  border: "1px solid var(--community-gold-border)",
-                  marginBottom: 18,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 14,
-                    color: "var(--text)",
-                    lineHeight: 1.68,
-                    margin: 0,
-                  }}
-                >
-                  {c("group_challenge_award_popup_body")}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setGroupChallengeAwardPopup(null);
-                  router.push("/profile#special-badges");
-                }}
-                className="btn-sage"
-                style={{ width: "100%" }}
-              >
-                {c("group_challenge_award_popup_btn")}
-              </button>
-            </div>
-          </div>
         )}
         {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
         <BottomNav />
