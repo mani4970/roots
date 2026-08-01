@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
@@ -448,6 +448,7 @@ function QTWriteContent() {
   const lastAutoSaveSignatureRef = useRef("");
   const [draftBackupUserId, setDraftBackupUserId] = useState("");
   const latestDraftSnapshotRef = useRef<DraftSnapshot | null>(null);
+  const lastLocalBackupSignatureRef = useRef("");
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
@@ -1541,6 +1542,21 @@ function QTWriteContent() {
     persistDraftBackup({ ...getDraftSnapshot(), sermonTitle: val });
   }
 
+  function handleWriterPointerDownCapture(event: ReactPointerEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest("button")) return;
+
+    const activeElement = document.activeElement;
+    const isAppleIsolatedEditor =
+      (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) &&
+      activeElement.dataset.cursorStability === "apple-isolated";
+
+    // WebKit can keep a textarea focused when a button is tapped. Blur first
+    // so the editor commits its IME text and delayed value before the button
+    // changes steps, saves a draft, or completes the reflection.
+    if (isAppleIsolatedEditor) activeElement.blur();
+  }
+
   function getDraftSnapshot(): DraftSnapshot {
     return {
       selectedDate,
@@ -1573,6 +1589,9 @@ function QTWriteContent() {
     latestDraftSnapshotRef.current = snapshot;
     if (!draftBackupUserId || snapshot.selectedDate !== todayStr || isEditMode || !hasDraftContent(snapshot)) return;
 
+    const signature = getDraftSignature(snapshot);
+    if (signature === lastLocalBackupSignatureRef.current) return;
+
     saveQTDraftBackup({
       userId: draftBackupUserId,
       date: snapshot.selectedDate,
@@ -1588,6 +1607,7 @@ function QTWriteContent() {
       passageRefs: snapshot.passageRefs,
       updatedAt: new Date().toISOString(),
     });
+    lastLocalBackupSignatureRef.current = signature;
   }
 
   function getDraftSignature(snapshot: DraftSnapshot) {
@@ -2357,7 +2377,7 @@ function QTWriteContent() {
     const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2416,7 +2436,7 @@ function QTWriteContent() {
 
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
-            <CursorStableTextarea className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
+            <CursorStableTextarea key="free-reflection" className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
           </div>
 
           <div>
@@ -2429,7 +2449,7 @@ function QTWriteContent() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <CursorStableInput type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                  <CursorStableInput key={`free-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
@@ -2460,7 +2480,7 @@ function QTWriteContent() {
     const step = STEPS_SUNDAY[cur] as any;
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2546,7 +2566,7 @@ function QTWriteContent() {
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("설교 제목", lang)}</label>
-                <CursorStableInput type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onValueChange={updateSermonTitleText} />
+                <CursorStableInput key="sunday-sermon-title" type="text" className="input-field" placeholder={trQT("예: 두려워하지 말라", lang)} value={sermonTitle} onValueChange={updateSermonTitleText} />
               </div>
               {/* 성경 본문 선택: 완료 후 다시 설교 정보 탭으로 돌아와도 항상 재선택할 수 있게 한다. */}
               <div>
@@ -2625,7 +2645,7 @@ function QTWriteContent() {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
                 <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
-                <CursorStableTextarea className="textarea-field qt-sunday-insight-field" rows={8} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
+                <CursorStableTextarea key="sunday-meditation" className="textarea-field qt-sunday-insight-field" rows={8} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
               </div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--qt-card-border)", marginBottom: 10 }}>
@@ -2638,7 +2658,7 @@ function QTWriteContent() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-                  <CursorStableTextarea className="textarea-field qt-sunday-decision-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
+                  <CursorStableTextarea key="sunday-application" className="textarea-field qt-sunday-decision-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
@@ -2648,7 +2668,7 @@ function QTWriteContent() {
                         <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                         </div>
-                        <CursorStableInput type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                        <CursorStableInput key={`sunday-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                         {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                       </div>
                     ))}
@@ -2665,7 +2685,7 @@ function QTWriteContent() {
           {!step.isSermonInfo && !step.isDecision && (
             <>
               <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
-              <CursorStableTextarea className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
+              <CursorStableTextarea key={`sunday-${step.id}`} className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
             </>
           )}
         </div>
@@ -2711,7 +2731,7 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   return (
-    <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2859,7 +2879,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
               {trQT("2단계 · 본문 요약", lang)}
             </label>
-            <CursorStableTextarea className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
+            <CursorStableTextarea key="six-step-summary" className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
           </div>
 
           {/* 3단계: 붙잡은 말씀 */}
@@ -2867,7 +2887,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
               {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
             </label>
-            <CursorStableTextarea className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
+            <CursorStableTextarea key="six-step-key-verse" className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
           </div>
         </div>
       )}
@@ -2887,7 +2907,7 @@ function QTWriteContent() {
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-            <CursorStableTextarea className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
+            <CursorStableTextarea key="six-step-application" className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
@@ -2897,7 +2917,7 @@ function QTWriteContent() {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                   </div>
-                  <CursorStableInput type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                  <CursorStableInput key={`six-step-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
                   {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                 </div>
               ))}
@@ -2936,7 +2956,7 @@ function QTWriteContent() {
             </div>
           )}
 
-          <CursorStableTextarea className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onValueChange={value => set(step6.id, value)} />
+          <CursorStableTextarea key={`six-step-${step6.id}`} className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onValueChange={value => set(step6.id, value)} />
         </div>
       )}
 

@@ -18,7 +18,11 @@ type CursorStableInputProps = Omit<
 };
 
 const APPLE_EDITOR_STATE_SYNC_DELAY_MS = 120;
-const HANGUL_TEXT_PATTERN = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+
+type PendingAppleValue = {
+  value: string;
+  onValueChange: (value: string) => void;
+};
 
 function isAppleDesktopOrTabletRuntime() {
   if (typeof window === "undefined") return false;
@@ -81,7 +85,7 @@ export default function CursorStableInput({
 }: CursorStableInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const lastEmittedValueRef = useRef(value);
-  const pendingAppleValueRef = useRef(value);
+  const pendingAppleValueRef = useRef<PendingAppleValue | null>(null);
   const onValueChangeRef = useRef(onValueChange);
   const onInputRef = useRef(onInput);
   const [protectAppleDesktopOrTabletCaret, setProtectAppleDesktopOrTabletCaret] =
@@ -119,7 +123,7 @@ export default function CursorStableInput({
 
     if (element.value !== value) element.value = value;
     lastEmittedValueRef.current = value;
-    pendingAppleValueRef.current = value;
+    pendingAppleValueRef.current = null;
   }, [value]);
 
   useLayoutEffect(() => {
@@ -140,11 +144,24 @@ export default function CursorStableInput({
     const flushPendingValue = () => {
       cancelScheduledSync();
 
-      const nextValue = pendingAppleValueRef.current;
-      if (nextValue === lastEmittedValueRef.current) return;
+      const pendingValue = pendingAppleValueRef.current;
+      pendingAppleValueRef.current = null;
+      if (!pendingValue || pendingValue.value === lastEmittedValueRef.current) {
+        return;
+      }
 
-      lastEmittedValueRef.current = nextValue;
-      onValueChangeRef.current(nextValue);
+      lastEmittedValueRef.current = pendingValue.value;
+      pendingValue.onValueChange(pendingValue.value);
+    };
+
+    const rememberPendingValue = () => {
+      // Keep the handler that belonged to this exact edit. The same DOM
+      // position can render another reflection field after a step change, and
+      // a delayed value must never be delivered to that newer field.
+      pendingAppleValueRef.current = {
+        value: element.value,
+        onValueChange: onValueChangeRef.current,
+      };
     };
 
     const scheduleValueSync = () => {
@@ -155,25 +172,8 @@ export default function CursorStableInput({
       );
     };
 
-    const handleBeforeInput = (event: Event) => {
-      const inputEvent = event as InputEvent;
-      const replacementText = inputEvent.data ?? "";
-      const hasHangulContext =
-        HANGUL_TEXT_PATTERN.test(replacementText) ||
-        HANGUL_TEXT_PATTERN.test(element.value);
-
-      if (
-        inputEvent.inputType === "insertReplacementText" &&
-        hasHangulContext &&
-        !inputEvent.isComposing &&
-        event.cancelable
-      ) {
-        event.preventDefault();
-      }
-    };
-
     const handleNativeInput = (event: Event) => {
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       onInputRef.current?.(
         event as unknown as FormEvent<HTMLInputElement>,
       );
@@ -189,22 +189,21 @@ export default function CursorStableInput({
 
     const handleCompositionEnd = () => {
       isComposing = false;
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       scheduleValueSync();
     };
 
     const handleBlur = () => {
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       flushPendingValue();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "hidden") return;
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       flushPendingValue();
     };
 
-    element.addEventListener("beforeinput", handleBeforeInput);
     element.addEventListener("input", handleNativeInput);
     element.addEventListener("compositionstart", handleCompositionStart);
     element.addEventListener("compositionend", handleCompositionEnd);
@@ -213,7 +212,6 @@ export default function CursorStableInput({
 
     return () => {
       cancelScheduledSync();
-      element.removeEventListener("beforeinput", handleBeforeInput);
       element.removeEventListener("input", handleNativeInput);
       element.removeEventListener("compositionstart", handleCompositionStart);
       element.removeEventListener("compositionend", handleCompositionEnd);
@@ -228,7 +226,7 @@ export default function CursorStableInput({
   };
 
   const editorProps = protectAppleDesktopOrTabletCaret
-    ? {}
+    ? { autoCorrect: "off", spellCheck: false }
     : { defaultValue: value, onInput: handleInput };
 
   return (

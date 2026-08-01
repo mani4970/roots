@@ -18,7 +18,11 @@ type CursorStableTextareaProps = Omit<
 };
 
 const APPLE_EDITOR_STATE_SYNC_DELAY_MS = 120;
-const HANGUL_TEXT_PATTERN = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+
+type PendingAppleValue = {
+  value: string;
+  onValueChange: (value: string) => void;
+};
 
 function isAppleDesktopOrTabletRuntime() {
   if (typeof window === "undefined") return false;
@@ -82,7 +86,7 @@ export default function CursorStableTextarea({
 }: CursorStableTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastEmittedValueRef = useRef(value);
-  const pendingAppleValueRef = useRef(value);
+  const pendingAppleValueRef = useRef<PendingAppleValue | null>(null);
   const onValueChangeRef = useRef(onValueChange);
   const onInputRef = useRef(onInput);
   const [protectAppleDesktopOrTabletCaret, setProtectAppleDesktopOrTabletCaret] =
@@ -121,7 +125,7 @@ export default function CursorStableTextarea({
 
     if (element.value !== value) element.value = value;
     lastEmittedValueRef.current = value;
-    pendingAppleValueRef.current = value;
+    pendingAppleValueRef.current = null;
   }, [value]);
 
   useLayoutEffect(() => {
@@ -142,11 +146,24 @@ export default function CursorStableTextarea({
     const flushPendingValue = () => {
       cancelScheduledSync();
 
-      const nextValue = pendingAppleValueRef.current;
-      if (nextValue === lastEmittedValueRef.current) return;
+      const pendingValue = pendingAppleValueRef.current;
+      pendingAppleValueRef.current = null;
+      if (!pendingValue || pendingValue.value === lastEmittedValueRef.current) {
+        return;
+      }
 
-      lastEmittedValueRef.current = nextValue;
-      onValueChangeRef.current(nextValue);
+      lastEmittedValueRef.current = pendingValue.value;
+      pendingValue.onValueChange(pendingValue.value);
+    };
+
+    const rememberPendingValue = () => {
+      // Capture the handler that owned this exact edit. A later render can put
+      // another reflection field in the same DOM position, but the delayed
+      // value must still be committed only to its original field.
+      pendingAppleValueRef.current = {
+        value: element.value,
+        onValueChange: onValueChangeRef.current,
+      };
     };
 
     const scheduleValueSync = () => {
@@ -157,31 +174,8 @@ export default function CursorStableTextarea({
       );
     };
 
-    const handleBeforeInput = (event: Event) => {
-      const inputEvent = event as InputEvent;
-      const replacementText = inputEvent.data ?? "";
-      const hasHangulContext =
-        HANGUL_TEXT_PATTERN.test(replacementText) ||
-        HANGUL_TEXT_PATTERN.test(element.value);
-
-      // The captured Mac/iPad incident contained no React value write, focus
-      // loss, or textarea remount. WebKit instead emitted cancelable
-      // insertReplacementText events for Korean writing suggestions and moved
-      // the caret to the end of the replacement range. Normal typing, IME
-      // composition, paste, deletion, line breaks, and English-only replacement
-      // suggestions remain unchanged.
-      if (
-        inputEvent.inputType === "insertReplacementText" &&
-        hasHangulContext &&
-        !inputEvent.isComposing &&
-        event.cancelable
-      ) {
-        event.preventDefault();
-      }
-    };
-
     const handleNativeInput = (event: Event) => {
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       onInputRef.current?.(
         event as unknown as FormEvent<HTMLTextAreaElement>,
       );
@@ -197,22 +191,21 @@ export default function CursorStableTextarea({
 
     const handleCompositionEnd = () => {
       isComposing = false;
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       scheduleValueSync();
     };
 
     const handleBlur = () => {
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       flushPendingValue();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "hidden") return;
-      pendingAppleValueRef.current = element.value;
+      rememberPendingValue();
       flushPendingValue();
     };
 
-    element.addEventListener("beforeinput", handleBeforeInput);
     element.addEventListener("input", handleNativeInput);
     element.addEventListener("compositionstart", handleCompositionStart);
     element.addEventListener("compositionend", handleCompositionEnd);
@@ -221,7 +214,6 @@ export default function CursorStableTextarea({
 
     return () => {
       cancelScheduledSync();
-      element.removeEventListener("beforeinput", handleBeforeInput);
       element.removeEventListener("input", handleNativeInput);
       element.removeEventListener("compositionstart", handleCompositionStart);
       element.removeEventListener("compositionend", handleCompositionEnd);
@@ -239,7 +231,7 @@ export default function CursorStableTextarea({
   // updates. Mac/iPad therefore receive neither a React value prop nor a React
   // input handler while editing. Mobile retains the exact existing props.
   const editorProps = protectAppleDesktopOrTabletCaret
-    ? {}
+    ? { autoCorrect: "off", spellCheck: false }
     : { defaultValue: value, onInput: handleInput };
 
   return (
