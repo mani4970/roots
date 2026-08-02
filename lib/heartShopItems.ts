@@ -16,6 +16,7 @@ export type HeartShopMapItemId = (typeof HEART_SHOP_MAP_ITEM_IDS)[number];
 
 export type HeartShopCharacterSlot =
   | "background"
+  | "pet"
   | "bottom"
   | "shoes"
   | "top"
@@ -39,6 +40,10 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "shared_background_12",
   "shared_background_13",
   "shared_background_14",
+  "shared_pet_01",
+  "shared_pet_02",
+  "shared_pet_03",
+  "shared_pet_04",
   "rootsman_bottom_01",
   "rootsman_bottom_02",
   "rootsman_bottom_03",
@@ -163,6 +168,7 @@ export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): He
 
 export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
+  if (itemId.includes("_pet_")) return "pet";
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";

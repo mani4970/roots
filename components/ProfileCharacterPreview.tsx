@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import {
   PROFILE_CHARACTER_CANVAS,
   filterProfileCharacterLayers,
@@ -24,12 +25,53 @@ const SQUARE_CHARACTER_RENDER_TOP_PERCENT =
 const SQUARE_CHARACTER_RENDER_LEFT_PERCENT =
   (100 - SQUARE_CHARACTER_RENDER_WIDTH_PERCENT) / 2;
 
+const PET_LAYER_SCALE = 1.2;
+const PET_LAYER_SHIFT_X = 65;
+const PET_LAYER_ORIGIN = { x: 700, y: 1268 } as const;
+const BASE_CHARACTER_GROUND_Y: Record<RootsAvatarType, number> = {
+  rootsman: 1329,
+  rootswoman: 1260,
+};
+const ROOTSMAN_SHOES_GROUND_Y = 1361;
+const ROOTSWOMAN_SHOES_GROUND_Y: Readonly<Record<string, number>> = {
+  rootswoman_shoes_01: 1333,
+  rootswoman_shoes_02: 1303,
+  rootswoman_shoes_03: 1333,
+  rootswoman_shoes_04: 1333,
+  rootswoman_shoes_05: 1333,
+  rootswoman_shoes_06: 1303,
+  rootswoman_shoes_07: 1331,
+  rootswoman_shoes_08: 1322,
+};
+
+function getCharacterGroundY(
+  avatarType: RootsAvatarType,
+  layers: readonly ProfileCharacterLayer[],
+) {
+  const shoesLayer = layers.find(layer => layer.slot === "shoes");
+  if (!shoesLayer) return BASE_CHARACTER_GROUND_Y[avatarType];
+  if (avatarType === "rootsman") return ROOTSMAN_SHOES_GROUND_Y;
+  return ROOTSWOMAN_SHOES_GROUND_Y[shoesLayer.id] ?? 1333;
+}
+
+function getPetLayerStyle(
+  avatarType: RootsAvatarType,
+  layers: readonly ProfileCharacterLayer[],
+): CSSProperties {
+  const groundShiftY = getCharacterGroundY(avatarType, layers) - PET_LAYER_ORIGIN.y;
+  return {
+    transformOrigin: `${(PET_LAYER_ORIGIN.x / PROFILE_CHARACTER_CANVAS.width) * 100}% ${(PET_LAYER_ORIGIN.y / PROFILE_CHARACTER_CANVAS.height) * 100}%`,
+    transform: `translate(${(PET_LAYER_SHIFT_X / PROFILE_CHARACTER_CANVAS.width) * 100}%, ${(groundShiftY / PROFILE_CHARACTER_CANVAS.height) * 100}%) scale(${PET_LAYER_SCALE})`,
+  };
+}
+
 export default function ProfileCharacterPreview({
   avatarType,
   alt,
   layers = [],
   style,
 }: ProfileCharacterPreviewProps) {
+  const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const visibleLayers = filterProfileCharacterLayers(layers, avatarType);
   const backgroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0);
   const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
@@ -105,6 +147,9 @@ export default function ProfileCharacterPreview({
           style={{
             position: "absolute",
             ...characterLayerStyle,
+            ...(layer.slot === "pet"
+              ? getPetLayerStyle(normalizedAvatarType, foregroundLayers)
+              : {}),
             zIndex: layer.zIndex ?? 10,
             objectFit: "contain",
             imageRendering: "pixelated",

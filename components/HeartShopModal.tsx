@@ -58,6 +58,7 @@ type HeartShopOwnedSection = "map" | "character";
 
 const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartShopCharacterSlot>> = {
   backgrounds: "background",
+  pets: "pet",
   tops: "top",
   bottoms: "bottom",
   shoes: "shoes",
@@ -88,6 +89,7 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
   Record<Exclude<HeartShopCharacterSlot, "background">, CharacterItemPreviewCrop>
 > = {
   rootsman: {
+    pet: { x: 665, y: 940, width: 345, height: 345 },
     top: { x: 230, y: 590, width: 626, height: 405 },
     bottom: { x: 350, y: 920, width: 397, height: 360 },
     shoes: { x: 310, y: 1195, width: 480, height: 200 },
@@ -97,6 +99,7 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
     bag: { x: 250, y: 520, width: 650, height: 620 },
   },
   rootswoman: {
+    pet: { x: 665, y: 940, width: 345, height: 345 },
     top: { x: 230, y: 590, width: 626, height: 405 },
     bottom: { x: 350, y: 810, width: 397, height: 430 },
     shoes: { x: 310, y: 1140, width: 480, height: 220 },
@@ -145,8 +148,9 @@ function CharacterItemLayerPreview({
     );
   }
 
-  if (item.avatarType === "shared") return null;
-  const crop = CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot];
+  const crop = item.avatarType === "shared"
+    ? CHARACTER_ITEM_PREVIEW_CROP.rootsman[item.slot]
+    : CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot];
   return (
     <div
       style={{
@@ -556,6 +560,7 @@ export default function HeartShopModal({
   const characterCategories: { id: ProfileCharacterCategory; label: string }[] = [
     { id: "all", label: profileText.categories.all },
     { id: "backgrounds", label: profileText.categories.backgrounds },
+    { id: "pets", label: profileText.categories.pets },
     { id: "tops", label: profileText.categories.tops },
     { id: "bottoms", label: profileText.categories.bottoms },
     { id: "shoes", label: profileText.categories.shoes },

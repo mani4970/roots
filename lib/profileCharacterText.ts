@@ -10,6 +10,7 @@ import type { RootsAvatarType } from "@/lib/avatar";
 export type ProfileCharacterCategory =
   | "all"
   | "backgrounds"
+  | "pets"
   | "tops"
   | "bottoms"
   | "shoes"
@@ -44,6 +45,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     categories: {
       all: "전체",
       backgrounds: "배경",
+      pets: "반려동물",
       tops: "상의",
       bottoms: "하의",
       shoes: "신발",
@@ -63,6 +65,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     categories: {
       all: "All",
       backgrounds: "Backgrounds",
+      pets: "Pets",
       tops: "Tops",
       bottoms: "Bottoms",
       shoes: "Shoes",
@@ -82,6 +85,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     categories: {
       all: "Alle",
       backgrounds: "Hintergründe",
+      pets: "Haustiere",
       tops: "Oberteile",
       bottoms: "Unterteile",
       shoes: "Schuhe",
@@ -101,6 +105,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
     categories: {
       all: "Tout",
       backgrounds: "Arrière-plans",
+      pets: "Animaux",
       tops: "Hauts",
       bottoms: "Bas",
       shoes: "Chaussures",
@@ -122,6 +127,7 @@ const BACKGROUND_NAMES: Record<ProfileCharacterLang, readonly string[]> = {
 const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
   ko: {
     rootsman: {
+      pet: ["슈나우저", "비숑 프리제", "러시안 블루", "페르시안 고양이"],
       bottom: ["차콜 원턱 버뮤다", "연청 데님 버뮤다", "올리브 카고 쇼츠", "블랙 와이드 슬랙스", "에크루 스트레이트 치노", "인디고 와이드 데님", "라이트 워시 와이드 데님", "차콜 핀스트라이프 버뮤다", "워시드 블랙 와이드 데님", "올리브 와이드 카고 팬츠"],
       shoes: ["레트로 스니커즈", "실버 그레이 러너", "블랙 청키 로퍼", "새싹 하트 샌드 클로그", "브라운 보트 슈즈", "다크 브라운 페니 로퍼", "블랙 피셔맨 샌들", "세이지 레트로 러너"],
       top: ["오트밀 GRACE 맨투맨", "파우더 GOD IS GOOD 니트", "차콜 AMEN 후디", "세이지 JESUS IS LOVE 티", "네이비 십자가 폴로", "아이보리 캠프 셔츠", "오트밀 오픈 린넨 셔츠", "스카이 캠프 칼라 셔츠", "세이지 니트 오픈 폴로", "워시드 차콜 JESUS 티"],
@@ -131,6 +137,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       headwear: ["라피아 네이비 버킷햇", "워시드 차콜 볼캡", "오트밀 뉴스보이캡", "딥 포레스트 비니"],
     },
     rootswoman: {
+      pet: ["슈나우저", "비숑 프리제", "러시안 블루", "페르시안 고양이"],
       bottom: ["차콜 플리츠 미니스커트", "연청 테일러드 쇼츠", "아이보리 랩 미니스커트", "블랙 세미와이드 슬랙스", "다크 인디고 부츠컷 데님", "딥 네이비 맥시스커트", "크림 플리츠 와이드 팬츠", "블랙 슬림 카프리 팬츠", "스카이 돌핀 쇼츠", "아이보리 레이스 맥시스커트"],
       shoes: ["아이보리 핑크 레트로 스니커즈", "블랙 더블 스트랩 메리제인", "실버 라일락 러너", "버건디 페니 로퍼", "스카이 블루 레트로 스니커즈", "아이보리 메쉬 메리제인", "브라운 피셔맨 샌들", "버터 옐로 티스트랩 메리제인"],
       top: ["워시드 네이비 JESUS LOVES ME 티", "코랄 AMEN 카디건", "세이지 GOD IS GOOD 니트", "오트밀 하트 후디", "라벤더 JESUS 폴로", "차콜 GRACE 맨투맨", "아이보리 레이스 레이어드 블라우스", "버터 옐로 로맨틱 블라우스", "네이비 블록코어 풋볼 저지", "워시드 데님 크롭 베스트 레이어드", "스카이 블루 벨티드 셔츠 원피스", "네이비 피터팬 칼라 원피스", "스카이 블루 랩 리본 블라우스", "코랄 플라워 페플럼 블라우스"],
@@ -142,6 +149,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
   },
   en: {
     rootsman: {
+      pet: ["Schnauzer", "Bichon Frise", "Russian Blue", "Persian Cat"],
       bottom: ["Charcoal Bermuda Shorts", "Light-Wash Denim Bermudas", "Olive Cargo Shorts", "Black Wide Slacks", "Ecru Straight Chinos", "Indigo Wide Denim", "Light-Wash Wide Denim", "Charcoal Pinstripe Bermudas", "Washed Black Wide Denim", "Olive Wide Cargo Pants"],
       shoes: ["Retro Sneakers", "Silver Gray Runners", "Black Chunky Loafers", "Sprout Heart Sand Clogs", "Brown Boat Shoes", "Dark Brown Penny Loafers", "Black Fisherman Sandals", "Sage Retro Runners"],
       top: ["Oatmeal GRACE Sweatshirt", "Powder GOD IS GOOD Knit", "Charcoal AMEN Hoodie", "Sage JESUS IS LOVE Tee", "Navy Cross Polo", "Ivory Camp Shirt", "Oatmeal Open Linen Shirt", "Sky Camp-Collar Shirt", "Sage Knit Open Polo", "Washed Charcoal JESUS Tee"],
@@ -151,6 +159,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       headwear: ["Raffia Navy Bucket Hat", "Washed Charcoal Cap", "Oatmeal Newsboy Cap", "Deep Forest Beanie"],
     },
     rootswoman: {
+      pet: ["Schnauzer", "Bichon Frise", "Russian Blue", "Persian Cat"],
       bottom: ["Charcoal Pleated Mini", "Light-Wash Tailored Shorts", "Ivory Wrap Mini", "Black Semi-Wide Slacks", "Dark Indigo Bootcut Denim", "Deep Navy Maxi Skirt", "Cream Pleated Wide Pants", "Black Slim Capri Pants", "Sky Blue Dolphin Shorts", "Ivory Lace Maxi Skirt"],
       shoes: ["Ivory Pink Retro Sneakers", "Black Double-Strap Mary Janes", "Silver Lilac Runners", "Burgundy Penny Loafers", "Sky Blue Retro Sneakers", "Ivory Mesh Mary Janes", "Brown Fisherman Sandals", "Butter Yellow T-Strap Mary Janes"],
       top: ["Navy JESUS LOVES ME Tee", "Coral AMEN Cardigan", "Sage GOD IS GOOD Knit", "Oatmeal Heart Hoodie", "Lavender JESUS Polo", "Charcoal GRACE Sweatshirt", "Ivory Lace Layered Blouse", "Butter Yellow Romantic Blouse", "Navy Blockcore Football Jersey", "Washed Denim Cropped Layered Vest", "Sky Blue Belted Shirt Dress", "Navy Peter Pan Collar Dress", "Sky Blue Wrap-Tie Blouse", "Coral Floral Peplum Blouse"],
@@ -162,6 +171,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
   },
   de: {
     rootsman: {
+      pet: ["Schnauzer", "Bichon Frisé", "Russisch Blau", "Perserkatze"],
       bottom: ["Anthrazit-Bermudas", "Helle Denim-Bermudas", "Olivgrüne Cargo-Shorts", "Schwarze weite Hose", "Ecru-Chinos", "Weite Indigo-Jeans", "Helle Wide-Leg-Jeans", "Anthrazitfarbene Nadelstreifen-Bermudas", "Verwaschene schwarze Wide-Leg-Jeans", "Olivgrüne weite Cargohose"],
       shoes: ["Retro-Sneaker", "Silbergraue Laufschuhe", "Schwarze Chunky-Loafer", "Sand-Clogs mit Herz", "Braune Bootsschuhe", "Dunkelbraune Pennyloafer", "Schwarze Fisherman-Sandalen", "Retro-Sneaker in Salbei"],
       top: ["GRACE-Sweatshirt in Oatmeal", "GOD IS GOOD Strickpullover", "AMEN-Hoodie in Anthrazit", "JESUS IS LOVE Shirt in Salbei", "Marineblaues Kreuz-Polo", "Elfenbeinfarbenes Camp-Shirt", "Offenes Leinenhemd in Oatmeal", "Himmelblaues Camp-Kragen-Hemd", "Offenes Strickpolo in Salbei", "Verwaschenes JESUS-Shirt in Anthrazit"],
@@ -171,6 +181,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       headwear: ["Raffia-Bucket-Hat", "Anthrazitfarbene Kappe", "Oatmeal-Schiebermütze", "Waldgrüne Beanie"],
     },
     rootswoman: {
+      pet: ["Schnauzer", "Bichon Frisé", "Russisch Blau", "Perserkatze"],
       bottom: ["Anthrazitfarbener Faltenrock", "Helle Tailored Shorts", "Elfenbeinfarbener Wickelrock", "Schwarze Semi-Wide-Hose", "Dunkle Bootcut-Jeans", "Marineblauer Maxirock", "Cremefarbene weite Faltenhose", "Schwarze schmale Caprihose", "Himmelblaue Dolphin-Shorts", "Elfenbeinfarbener Spitzen-Maxirock"],
       shoes: ["Retro-Sneaker in Elfenbeinrosa", "Schwarze Mary Janes", "Silber-lilafarbene Laufschuhe", "Burgunderfarbene Pennyloafer", "Himmelblaue Retro-Sneaker", "Elfenbeinfarbene Mesh-Mary-Janes", "Braune Fisherman-Sandalen", "Buttergelbe Mary Janes mit T-Riemen"],
       top: ["JESUS LOVES ME Shirt in Navy", "AMEN-Cardigan in Koralle", "GOD IS GOOD Strick in Salbei", "Oatmeal-Herz-Hoodie", "JESUS-Polo in Lavendel", "GRACE-Sweatshirt in Anthrazit", "Elfenbeinfarbene Spitzen-Layering-Bluse", "Buttergelbe romantische Bluse", "Marineblaues Blockcore-Footballtrikot", "Cropped Layering-Weste aus verwaschenem Denim", "Himmelblaues Hemdblusenkleid mit Gürtel", "Marineblaues Kleid mit Bubikragen", "Himmelblaue Wickelbluse mit Bindeband", "Korallfarbene Blumen-Peplumbluse"],
@@ -182,6 +193,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
   },
   fr: {
     rootsman: {
+      pet: ["Schnauzer", "Bichon frisé", "Bleu russe", "Chat persan"],
       bottom: ["Bermuda anthracite", "Bermuda en denim clair", "Short cargo olive", "Pantalon large noir", "Chino droit écru", "Jean large indigo", "Jean large bleu clair délavé", "Bermuda anthracite à fines rayures", "Jean large noir délavé", "Pantalon cargo large olive"],
       shoes: ["Baskets rétro", "Baskets argent et gris", "Mocassins noirs épais", "Sabots sable cœur et pousse", "Chaussures bateau marron", "Mocassins penny brun foncé", "Sandales pêcheur noires", "Baskets rétro sauge"],
       top: ["Sweat GRACE avoine", "Pull GOD IS GOOD poudré", "Sweat à capuche AMEN anthracite", "T-shirt JESUS IS LOVE sauge", "Polo croix marine", "Chemise camp ivoire", "Chemise ouverte en lin avoine", "Chemise col cubain bleu ciel", "Polo ouvert en maille sauge", "T-shirt JESUS anthracite délavé"],
@@ -191,6 +203,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       headwear: ["Bob raphia marine", "Casquette anthracite délavée", "Casquette gavroche avoine", "Bonnet vert forêt"],
     },
     rootswoman: {
+      pet: ["Schnauzer", "Bichon frisé", "Bleu russe", "Chat persan"],
       bottom: ["Minijupe plissée anthracite", "Short ajusté en denim clair", "Minijupe portefeuille ivoire", "Pantalon semi-large noir", "Jean bootcut indigo foncé", "Jupe longue bleu marine", "Pantalon large plissé crème", "Pantacourt slim noir", "Short dolphin bleu ciel", "Jupe longue ivoire en dentelle"],
       shoes: ["Baskets rétro ivoire et rose", "Mary Janes noires à double bride", "Baskets argent et lilas", "Mocassins bordeaux", "Baskets rétro bleu ciel", "Mary Janes ivoire en résille", "Sandales pêcheur brunes", "Mary Janes jaune beurre à bride en T"],
       top: ["T-shirt JESUS LOVES ME marine", "Cardigan AMEN corail", "Pull GOD IS GOOD sauge", "Sweat à capuche cœur avoine", "Polo JESUS lavande", "Sweat GRACE anthracite", "Blouse ivoire superposée en dentelle", "Blouse romantique jaune beurre", "Maillot de football blockcore marine", "Gilet court superposé en denim délavé", "Robe chemise bleu ciel ceinturée", "Robe marine à col Claudine", "Blouse portefeuille bleu ciel à nouer", "Blouse péplum corail à fleurs"],
@@ -225,6 +238,7 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
 
   const categoryBySlot: Record<HeartShopCharacterSlot, ProfileCharacterCategory> = {
     background: "backgrounds",
+    pet: "pets",
     bottom: "bottoms",
     shoes: "shoes",
     top: "tops",

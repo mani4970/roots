@@ -177,6 +177,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   sortOffset: number;
 }> = {
   background: { price: 0, directory: "backgrounds", filePrefix: "background", zIndex: -10, sortOffset: 0 },
+  pet: { price: 150, directory: "pets", filePrefix: "pet", zIndex: 25, sortOffset: 800 },
   bottom: { price: 30, directory: "bottoms", filePrefix: "bottom", zIndex: 10, sortOffset: 0 },
   shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 5, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
@@ -191,6 +192,7 @@ export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
+  if (itemId.includes("_pet_")) return "pet";
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";
@@ -211,6 +213,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isRootsWomanDress = isNewRootsWomanTop && itemNumber <= 12;
   const isNewTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isNewShoes = slot === "shoes" && itemNumber >= 5 && itemNumber <= 8;
+  const isNewPet = slot === "pet";
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
   const layerPath = avatarType === "shared"
@@ -225,7 +228,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     avatarType,
     slot,
     price: isRootsWomanDress ? 50 : config.price,
-    isNew: isNewTravelBackground || isNewShoes || isNewRootsWomanTop,
+    isNew: isNewTravelBackground || isNewShoes || isNewRootsWomanTop || isNewPet,
     layerPath,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop
