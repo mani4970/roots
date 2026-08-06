@@ -2,6 +2,7 @@ const KBS_COPYRIGHT_BY_TRANSLATION_ID: Readonly<Record<number, string>> = {
   92: "성경전서 개역개정판 © 대한성서공회 1998.",
   84: "성경전서 개역한글판 © 대한성서공회 1961.",
   98: "성경전서 새번역 © 대한성서공회 2001.",
+  89: "우리말성경 5판 © 두란노서원.",
 };
 
 export function getBibleCopyrightNotice(translationId: number) {

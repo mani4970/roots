@@ -1,0 +1,1241 @@
+{
+  "generated_at": "2026-08-03T08:14:15.607Z",
+  "source": "Duranno Woorimal Bible fifth-edition licensed text files",
+  "translation": {
+    "id": 89,
+    "code": "WKB",
+    "name": "우리말성경",
+    "books": 66,
+    "chapters": 1189,
+    "rows": 31102,
+    "file": "WKB.jsonl.gz",
+    "bytes": 1646015,
+    "sha256": "a7a17ac3fa7da825c04394c6feafe6eaf13c183fa89694890360b150b520c1d0",
+    "content_sha256": "70e08567c4b8023515dea1c1c0d4fcaaf5bd77e3e4c05ed79764be5f9d214756",
+    "prefix_rows": 14900,
+    "prefix_content_sha256": "95090eaf9faf6f622f39ed1c44df9fdff32fd1539fa80732f0ee684feef755b5"
+  },
+  "parser_audit": {
+    "repaired_marker_count": 29,
+    "ignored_heading_line_count": 2343,
+    "books": [
+      {
+        "book_number": 1,
+        "book_code": "GEN",
+        "book_name": "창세기",
+        "source_book_name": "창세기",
+        "chapters": 50,
+        "rows": 1533,
+        "repaired_markers": [
+          {
+            "line": 1366,
+            "chapter": 43,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 73
+      },
+      {
+        "book_number": 2,
+        "book_code": "EXO",
+        "book_name": "출애굽기",
+        "source_book_name": "출이집트기",
+        "chapters": 40,
+        "rows": 1213,
+        "repaired_markers": [],
+        "ignored_lines": 89
+      },
+      {
+        "book_number": 3,
+        "book_code": "LEV",
+        "book_name": "레위기",
+        "source_book_name": "레위기",
+        "chapters": 27,
+        "rows": 859,
+        "repaired_markers": [],
+        "ignored_lines": 45
+      },
+      {
+        "book_number": 4,
+        "book_code": "NUM",
+        "book_name": "민수기",
+        "source_book_name": "민수기",
+        "chapters": 36,
+        "rows": 1288,
+        "repaired_markers": [
+          {
+            "line": 200,
+            "chapter": 5,
+            "verse": "2"
+          },
+          {
+            "line": 234,
+            "chapter": 6,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 72
+      },
+      {
+        "book_number": 5,
+        "book_code": "DEU",
+        "book_name": "신명기",
+        "source_book_name": "신명기",
+        "chapters": 34,
+        "rows": 959,
+        "repaired_markers": [
+          {
+            "line": 324,
+            "chapter": 10,
+            "verse": "7"
+          }
+        ],
+        "ignored_lines": 68
+      },
+      {
+        "book_number": 6,
+        "book_code": "JOS",
+        "book_name": "여호수아",
+        "source_book_name": "여호수아",
+        "chapters": 24,
+        "rows": 658,
+        "repaired_markers": [
+          {
+            "line": 82,
+            "chapter": 4,
+            "verse": "18"
+          }
+        ],
+        "ignored_lines": 35
+      },
+      {
+        "book_number": 7,
+        "book_code": "JDG",
+        "book_name": "사사기",
+        "source_book_name": "사사기",
+        "chapters": 21,
+        "rows": 618,
+        "repaired_markers": [
+          {
+            "line": 202,
+            "chapter": 7,
+            "verse": "4"
+          }
+        ],
+        "ignored_lines": 29
+      },
+      {
+        "book_number": 8,
+        "book_code": "RUT",
+        "book_name": "룻기",
+        "source_book_name": "룻기",
+        "chapters": 4,
+        "rows": 85,
+        "repaired_markers": [],
+        "ignored_lines": 7
+      },
+      {
+        "book_number": 9,
+        "book_code": "1SA",
+        "book_name": "사무엘상",
+        "source_book_name": "사무엘상",
+        "chapters": 31,
+        "rows": 810,
+        "repaired_markers": [],
+        "ignored_lines": 44
+      },
+      {
+        "book_number": 10,
+        "book_code": "2SA",
+        "book_name": "사무엘하",
+        "source_book_name": "사무엘하",
+        "chapters": 24,
+        "rows": 695,
+        "repaired_markers": [],
+        "ignored_lines": 41
+      },
+      {
+        "book_number": 11,
+        "book_code": "1KI",
+        "book_name": "열왕기상",
+        "source_book_name": "열왕기상",
+        "chapters": 22,
+        "rows": 816,
+        "repaired_markers": [],
+        "ignored_lines": 53
+      },
+      {
+        "book_number": 12,
+        "book_code": "2KI",
+        "book_name": "열왕기하",
+        "source_book_name": "열왕기하",
+        "chapters": 25,
+        "rows": 719,
+        "repaired_markers": [],
+        "ignored_lines": 59
+      },
+      {
+        "book_number": 13,
+        "book_code": "1CH",
+        "book_name": "역대상",
+        "source_book_name": "역대상",
+        "chapters": 29,
+        "rows": 942,
+        "repaired_markers": [
+          {
+            "line": 7,
+            "chapter": 1,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 78
+      },
+      {
+        "book_number": 14,
+        "book_code": "2CH",
+        "book_name": "역대하",
+        "source_book_name": "역대하",
+        "chapters": 36,
+        "rows": 822,
+        "repaired_markers": [],
+        "ignored_lines": 54
+      },
+      {
+        "book_number": 15,
+        "book_code": "EZR",
+        "book_name": "에스라",
+        "source_book_name": "에스라",
+        "chapters": 10,
+        "rows": 280,
+        "repaired_markers": [],
+        "ignored_lines": 17
+      },
+      {
+        "book_number": 16,
+        "book_code": "NEH",
+        "book_name": "느헤미야",
+        "source_book_name": "느헤미야",
+        "chapters": 13,
+        "rows": 406,
+        "repaired_markers": [],
+        "ignored_lines": 16
+      },
+      {
+        "book_number": 17,
+        "book_code": "EST",
+        "book_name": "에스더",
+        "source_book_name": "에스더",
+        "chapters": 10,
+        "rows": 167,
+        "repaired_markers": [],
+        "ignored_lines": 13
+      },
+      {
+        "book_number": 18,
+        "book_code": "JOB",
+        "book_name": "욥기",
+        "source_book_name": "욥기",
+        "chapters": 42,
+        "rows": 1070,
+        "repaired_markers": [
+          {
+            "line": 116,
+            "chapter": 6,
+            "verse": "2"
+          },
+          {
+            "line": 191,
+            "chapter": 9,
+            "verse": "2"
+          },
+          {
+            "line": 270,
+            "chapter": 12,
+            "verse": "2"
+          },
+          {
+            "line": 382,
+            "chapter": 16,
+            "verse": "2"
+          },
+          {
+            "line": 443,
+            "chapter": 19,
+            "verse": "2"
+          },
+          {
+            "line": 569,
+            "chapter": 23,
+            "verse": "2"
+          },
+          {
+            "line": 619,
+            "chapter": 26,
+            "verse": "2"
+          },
+          {
+            "line": 876,
+            "chapter": 35,
+            "verse": "2"
+          },
+          {
+            "line": 892,
+            "chapter": 36,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 25
+      },
+      {
+        "book_number": 19,
+        "book_code": "PSA",
+        "book_name": "시편",
+        "source_book_name": "시편",
+        "chapters": 150,
+        "rows": 2461,
+        "repaired_markers": [
+          {
+            "line": 1474,
+            "chapter": 87,
+            "verse": "2"
+          },
+          {
+            "line": 1691,
+            "chapter": 100,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 168
+      },
+      {
+        "book_number": 20,
+        "book_code": "PRO",
+        "book_name": "잠언",
+        "source_book_name": "잠언",
+        "chapters": 31,
+        "rows": 914,
+        "repaired_markers": [
+          {
+            "line": 808,
+            "chapter": 26,
+            "verse": "18-19"
+          }
+        ],
+        "ignored_lines": 50
+      },
+      {
+        "book_number": 21,
+        "book_code": "ECC",
+        "book_name": "전도서",
+        "source_book_name": "전도서",
+        "chapters": 12,
+        "rows": 222,
+        "repaired_markers": [],
+        "ignored_lines": 17
+      },
+      {
+        "book_number": 22,
+        "book_code": "SNG",
+        "book_name": "아가",
+        "source_book_name": "아가서",
+        "chapters": 8,
+        "rows": 118,
+        "repaired_markers": [],
+        "ignored_lines": 35
+      },
+      {
+        "book_number": 23,
+        "book_code": "ISA",
+        "book_name": "이사야",
+        "source_book_name": "이사야",
+        "chapters": 66,
+        "rows": 1292,
+        "repaired_markers": [
+          {
+            "line": 143,
+            "chapter": 7,
+            "verse": "4"
+          }
+        ],
+        "ignored_lines": 86
+      },
+      {
+        "book_number": 24,
+        "book_code": "JER",
+        "book_name": "예레미야",
+        "source_book_name": "예레미야",
+        "chapters": 52,
+        "rows": 1364,
+        "repaired_markers": [
+          {
+            "line": 25,
+            "chapter": 2,
+            "verse": "2"
+          },
+          {
+            "line": 616,
+            "chapter": 24,
+            "verse": "5"
+          },
+          {
+            "line": 932,
+            "chapter": 35,
+            "verse": "9"
+          }
+        ],
+        "ignored_lines": 65
+      },
+      {
+        "book_number": 25,
+        "book_code": "LAM",
+        "book_name": "예레미야애가",
+        "source_book_name": "예레미야애가",
+        "chapters": 5,
+        "rows": 154,
+        "repaired_markers": [],
+        "ignored_lines": 0
+      },
+      {
+        "book_number": 26,
+        "book_code": "EZK",
+        "book_name": "에스겔",
+        "source_book_name": "에스겔",
+        "chapters": 48,
+        "rows": 1273,
+        "repaired_markers": [],
+        "ignored_lines": 73
+      },
+      {
+        "book_number": 27,
+        "book_code": "DAN",
+        "book_name": "다니엘",
+        "source_book_name": "다니엘",
+        "chapters": 12,
+        "rows": 357,
+        "repaired_markers": [],
+        "ignored_lines": 19
+      },
+      {
+        "book_number": 28,
+        "book_code": "HOS",
+        "book_name": "호세아",
+        "source_book_name": "호세아",
+        "chapters": 14,
+        "rows": 197,
+        "repaired_markers": [],
+        "ignored_lines": 12
+      },
+      {
+        "book_number": 29,
+        "book_code": "JOL",
+        "book_name": "요엘",
+        "source_book_name": "요엘",
+        "chapters": 3,
+        "rows": 73,
+        "repaired_markers": [],
+        "ignored_lines": 8
+      },
+      {
+        "book_number": 30,
+        "book_code": "AMO",
+        "book_name": "아모스",
+        "source_book_name": "아모스",
+        "chapters": 9,
+        "rows": 146,
+        "repaired_markers": [],
+        "ignored_lines": 13
+      },
+      {
+        "book_number": 31,
+        "book_code": "OBA",
+        "book_name": "오바댜",
+        "source_book_name": "오바댜",
+        "chapters": 1,
+        "rows": 21,
+        "repaired_markers": [],
+        "ignored_lines": 1
+      },
+      {
+        "book_number": 32,
+        "book_code": "JON",
+        "book_name": "요나",
+        "source_book_name": "요나",
+        "chapters": 4,
+        "rows": 48,
+        "repaired_markers": [],
+        "ignored_lines": 4
+      },
+      {
+        "book_number": 33,
+        "book_code": "MIC",
+        "book_name": "미가",
+        "source_book_name": "미가",
+        "chapters": 7,
+        "rows": 105,
+        "repaired_markers": [],
+        "ignored_lines": 14
+      },
+      {
+        "book_number": 34,
+        "book_code": "NAM",
+        "book_name": "나훔",
+        "source_book_name": "나훔",
+        "chapters": 3,
+        "rows": 47,
+        "repaired_markers": [],
+        "ignored_lines": 3
+      },
+      {
+        "book_number": 35,
+        "book_code": "HAB",
+        "book_name": "하박국",
+        "source_book_name": "하박국",
+        "chapters": 3,
+        "rows": 56,
+        "repaired_markers": [
+          {
+            "line": 5,
+            "chapter": 1,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 5
+      },
+      {
+        "book_number": 36,
+        "book_code": "ZEP",
+        "book_name": "스바냐",
+        "source_book_name": "스바냐",
+        "chapters": 3,
+        "rows": 53,
+        "repaired_markers": [],
+        "ignored_lines": 10
+      },
+      {
+        "book_number": 37,
+        "book_code": "HAG",
+        "book_name": "학개",
+        "source_book_name": "학개",
+        "chapters": 2,
+        "rows": 38,
+        "repaired_markers": [],
+        "ignored_lines": 4
+      },
+      {
+        "book_number": 38,
+        "book_code": "ZEC",
+        "book_name": "스가랴",
+        "source_book_name": "스가랴",
+        "chapters": 14,
+        "rows": 211,
+        "repaired_markers": [],
+        "ignored_lines": 22
+      },
+      {
+        "book_number": 39,
+        "book_code": "MAL",
+        "book_name": "말라기",
+        "source_book_name": "말라기",
+        "chapters": 4,
+        "rows": 55,
+        "repaired_markers": [],
+        "ignored_lines": 9
+      },
+      {
+        "book_number": 40,
+        "book_code": "MAT",
+        "book_name": "마태복음",
+        "source_book_name": "마태복음",
+        "chapters": 28,
+        "rows": 1071,
+        "repaired_markers": [
+          {
+            "line": 347,
+            "chapter": 10,
+            "verse": "2"
+          },
+          {
+            "line": 348,
+            "chapter": 10,
+            "verse": "3"
+          },
+          {
+            "line": 349,
+            "chapter": 10,
+            "verse": "4"
+          },
+          {
+            "line": 350,
+            "chapter": 10,
+            "verse": "5"
+          }
+        ],
+        "ignored_lines": 176
+      },
+      {
+        "book_number": 41,
+        "book_code": "MRK",
+        "book_name": "마가복음",
+        "source_book_name": "마가복음",
+        "chapters": 16,
+        "rows": 678,
+        "repaired_markers": [],
+        "ignored_lines": 127
+      },
+      {
+        "book_number": 42,
+        "book_code": "LUK",
+        "book_name": "누가복음",
+        "source_book_name": "누가복음",
+        "chapters": 24,
+        "rows": 1151,
+        "repaired_markers": [],
+        "ignored_lines": 161
+      },
+      {
+        "book_number": 43,
+        "book_code": "JHN",
+        "book_name": "요한복음",
+        "source_book_name": "요한복음",
+        "chapters": 21,
+        "rows": 879,
+        "repaired_markers": [
+          {
+            "line": 370,
+            "chapter": 8,
+            "verse": "2"
+          }
+        ],
+        "ignored_lines": 89
+      },
+      {
+        "book_number": 44,
+        "book_code": "ACT",
+        "book_name": "사도행전",
+        "source_book_name": "사도행전",
+        "chapters": 28,
+        "rows": 1007,
+        "repaired_markers": [],
+        "ignored_lines": 72
+      },
+      {
+        "book_number": 45,
+        "book_code": "ROM",
+        "book_name": "로마서",
+        "source_book_name": "로마서",
+        "chapters": 16,
+        "rows": 433,
+        "repaired_markers": [],
+        "ignored_lines": 37
+      },
+      {
+        "book_number": 46,
+        "book_code": "1CO",
+        "book_name": "고린도전서",
+        "source_book_name": "고린도전서",
+        "chapters": 16,
+        "rows": 437,
+        "repaired_markers": [],
+        "ignored_lines": 35
+      },
+      {
+        "book_number": 47,
+        "book_code": "2CO",
+        "book_name": "고린도후서",
+        "source_book_name": "고린도후서",
+        "chapters": 13,
+        "rows": 256,
+        "repaired_markers": [],
+        "ignored_lines": 21
+      },
+      {
+        "book_number": 48,
+        "book_code": "GAL",
+        "book_name": "갈라디아서",
+        "source_book_name": "갈라디아서",
+        "chapters": 6,
+        "rows": 149,
+        "repaired_markers": [],
+        "ignored_lines": 13
+      },
+      {
+        "book_number": 49,
+        "book_code": "EPH",
+        "book_name": "에베소서",
+        "source_book_name": "에베소서",
+        "chapters": 6,
+        "rows": 155,
+        "repaired_markers": [],
+        "ignored_lines": 12
+      },
+      {
+        "book_number": 50,
+        "book_code": "PHP",
+        "book_name": "빌립보서",
+        "source_book_name": "빌립보서",
+        "chapters": 4,
+        "rows": 104,
+        "repaired_markers": [],
+        "ignored_lines": 12
+      },
+      {
+        "book_number": 51,
+        "book_code": "COL",
+        "book_name": "골로새서",
+        "source_book_name": "골로새서",
+        "chapters": 4,
+        "rows": 95,
+        "repaired_markers": [],
+        "ignored_lines": 9
+      },
+      {
+        "book_number": 52,
+        "book_code": "1TH",
+        "book_name": "데살로니가전서",
+        "source_book_name": "데살로니가전서",
+        "chapters": 5,
+        "rows": 89,
+        "repaired_markers": [],
+        "ignored_lines": 8
+      },
+      {
+        "book_number": 53,
+        "book_code": "2TH",
+        "book_name": "데살로니가후서",
+        "source_book_name": "데살로니가후서",
+        "chapters": 3,
+        "rows": 47,
+        "repaired_markers": [],
+        "ignored_lines": 6
+      },
+      {
+        "book_number": 54,
+        "book_code": "1TI",
+        "book_name": "디모데전서",
+        "source_book_name": "디모데전서",
+        "chapters": 6,
+        "rows": 113,
+        "repaired_markers": [],
+        "ignored_lines": 9
+      },
+      {
+        "book_number": 55,
+        "book_code": "2TI",
+        "book_name": "디모데후서",
+        "source_book_name": "디모데후서",
+        "chapters": 4,
+        "rows": 83,
+        "repaired_markers": [],
+        "ignored_lines": 8
+      },
+      {
+        "book_number": 56,
+        "book_code": "TIT",
+        "book_name": "디도서",
+        "source_book_name": "디도서",
+        "chapters": 3,
+        "rows": 46,
+        "repaired_markers": [],
+        "ignored_lines": 5
+      },
+      {
+        "book_number": 57,
+        "book_code": "PHM",
+        "book_name": "빌레몬서",
+        "source_book_name": "빌레몬서",
+        "chapters": 1,
+        "rows": 25,
+        "repaired_markers": [],
+        "ignored_lines": 2
+      },
+      {
+        "book_number": 58,
+        "book_code": "HEB",
+        "book_name": "히브리서",
+        "source_book_name": "히브리서",
+        "chapters": 13,
+        "rows": 303,
+        "repaired_markers": [],
+        "ignored_lines": 23
+      },
+      {
+        "book_number": 59,
+        "book_code": "JAS",
+        "book_name": "야고보서",
+        "source_book_name": "야고보서",
+        "chapters": 5,
+        "rows": 108,
+        "repaired_markers": [],
+        "ignored_lines": 11
+      },
+      {
+        "book_number": 60,
+        "book_code": "1PE",
+        "book_name": "베드로전서",
+        "source_book_name": "베드로전서",
+        "chapters": 5,
+        "rows": 105,
+        "repaired_markers": [],
+        "ignored_lines": 9
+      },
+      {
+        "book_number": 61,
+        "book_code": "2PE",
+        "book_name": "베드로후서",
+        "source_book_name": "베드로후서",
+        "chapters": 3,
+        "rows": 61,
+        "repaired_markers": [],
+        "ignored_lines": 4
+      },
+      {
+        "book_number": 62,
+        "book_code": "1JN",
+        "book_name": "요한일서",
+        "source_book_name": "요한일서",
+        "chapters": 5,
+        "rows": 105,
+        "repaired_markers": [],
+        "ignored_lines": 12
+      },
+      {
+        "book_number": 63,
+        "book_code": "2JN",
+        "book_name": "요한이서",
+        "source_book_name": "요한이서",
+        "chapters": 1,
+        "rows": 13,
+        "repaired_markers": [],
+        "ignored_lines": 0
+      },
+      {
+        "book_number": 64,
+        "book_code": "3JN",
+        "book_name": "요한삼서",
+        "source_book_name": "요한삼서",
+        "chapters": 1,
+        "rows": 15,
+        "repaired_markers": [],
+        "ignored_lines": 0
+      },
+      {
+        "book_number": 65,
+        "book_code": "JUD",
+        "book_name": "유다서",
+        "source_book_name": "유다서",
+        "chapters": 1,
+        "rows": 25,
+        "repaired_markers": [],
+        "ignored_lines": 3
+      },
+      {
+        "book_number": 66,
+        "book_code": "REV",
+        "book_name": "요한계시록",
+        "source_book_name": "요한계시록",
+        "chapters": 22,
+        "rows": 404,
+        "repaired_markers": [],
+        "ignored_lines": 43
+      }
+    ]
+  },
+  "source_files": [
+    {
+      "book_number": 1,
+      "file": "우리말5판_OT01창세기.txt",
+      "bytes": 184149,
+      "sha256": "87e52f1e9fddf485faee3fe6ac117ed75c26b9c83bb6e3415fafa6903b6b69ec"
+    },
+    {
+      "book_number": 2,
+      "file": "우리말5판_OT02출이집트기.txt",
+      "bytes": 143447,
+      "sha256": "ab9cac0d18ddfe5d5e66755c0e70624c8ed7eaaccc4e32b53fe420219e1f0be7"
+    },
+    {
+      "book_number": 3,
+      "file": "우리말5판_OT03레위기.txt",
+      "bytes": 103462,
+      "sha256": "189b94622186958c14f22ef21dac9cd1506b9305bf08d3767d67f489928bc52c"
+    },
+    {
+      "book_number": 4,
+      "file": "우리말5판_OT04민수기.txt",
+      "bytes": 142830,
+      "sha256": "3c5c10a1ef17de9ec0bb33f89ce5429879b7aa19dd0f217fec3f22481fb8ba66"
+    },
+    {
+      "book_number": 5,
+      "file": "우리말5판_OT05신명기.txt",
+      "bytes": 125034,
+      "sha256": "151f36b06956ae8340f6cee05d45dd0434018815b2409214177a1335d16784b9"
+    },
+    {
+      "book_number": 6,
+      "file": "우리말5판_OT06여호수아.txt",
+      "bytes": 82271,
+      "sha256": "bbe24015ce1d91779baaf5abbae4b7e6b6609459e8b22e92028d1988d9e8a042"
+    },
+    {
+      "book_number": 7,
+      "file": "우리말5판_OT07사사기.txt",
+      "bytes": 91609,
+      "sha256": "e913822ec3f5d008a9f71031eb883ce92daeab67d69d68badeef9736f3899acb"
+    },
+    {
+      "book_number": 8,
+      "file": "우리말5판_OT08룻기.txt",
+      "bytes": 12497,
+      "sha256": "a5541f265930fe8bbe41d8b5f218dbd36ddd0207aef5908db02c167c780ef65e"
+    },
+    {
+      "book_number": 9,
+      "file": "우리말5판_OT09사무엘상.txt",
+      "bytes": 118411,
+      "sha256": "9b1b8cf825602df620da542a283de5da70974d71e3374003af25c8890729330e"
+    },
+    {
+      "book_number": 10,
+      "file": "우리말5판_OT10사무엘하.txt",
+      "bytes": 97365,
+      "sha256": "d374d3736754f2044287fee872b889ec3efd7d026b8ef97ea32d7e24b74513ad"
+    },
+    {
+      "book_number": 11,
+      "file": "우리말5판_OT11열왕기상.txt",
+      "bytes": 111525,
+      "sha256": "df5b0c3dd087ee235df2809638ca56cd804a13904877a59a15784d1eed65d193"
+    },
+    {
+      "book_number": 12,
+      "file": "우리말5판_OT12열왕기하.txt",
+      "bytes": 108783,
+      "sha256": "a80ac2674e6ddcce4315e4d7c98f4c29c0cc67b9a42344c6d19e292418c29085"
+    },
+    {
+      "book_number": 13,
+      "file": "우리말5판_OT13역대상.txt",
+      "bytes": 98178,
+      "sha256": "ac54630afa9072ffec2b9448172d1c858c09ac8e426d0ee5dc8d05a1c34bc561"
+    },
+    {
+      "book_number": 14,
+      "file": "우리말5판_OT14역대하.txt",
+      "bytes": 116920,
+      "sha256": "5457d097dd9f7197a939fb7bd028f8f87e28a748e768d0d25046965c6acf25a4"
+    },
+    {
+      "book_number": 15,
+      "file": "우리말5판_OT15에스라.txt",
+      "bytes": 32578,
+      "sha256": "9a3d0210e1001c7f0e1ed6c5fe6bb3aa6b6fcc2881a456558652e08290df6d81"
+    },
+    {
+      "book_number": 16,
+      "file": "우리말5판_OT16느헤미야.txt",
+      "bytes": 48210,
+      "sha256": "3441f5685f96d5f17a5cc7c2d662f05157efed0fe2a644a15813ff87101f537a"
+    },
+    {
+      "book_number": 17,
+      "file": "우리말5판_OT17에스더.txt",
+      "bytes": 25091,
+      "sha256": "84b63bdc24aff14c8704e0f6400d3302882dcce0c1b8dd425f0fff68ab8aac6c"
+    },
+    {
+      "book_number": 18,
+      "file": "우리말5판_OT18욥기.txt",
+      "bytes": 90153,
+      "sha256": "7f85958859a6b0191b6b2a27c3ee778a4f6a2d24e57c7ce1e73cf09026dacdfe"
+    },
+    {
+      "book_number": 19,
+      "file": "우리말5판_OT19시편.txt",
+      "bytes": 222770,
+      "sha256": "b88de88a6b939bc4c8bf2c0a415e0abf680dcece1ae844c3bcb29cc6f9a68e55"
+    },
+    {
+      "book_number": 20,
+      "file": "우리말5판_OT20잠언.txt",
+      "bytes": 73705,
+      "sha256": "0f732bf2e99845b1275b3310e447833265964c9923d88abf6b534d5e46e05b0b"
+    },
+    {
+      "book_number": 21,
+      "file": "우리말5판_OT21전도서.txt",
+      "bytes": 25831,
+      "sha256": "3bf74bb1fb35ba63cb7232730286fb88748cb8da5c648133730166edb5aec8f0"
+    },
+    {
+      "book_number": 22,
+      "file": "우리말5판_OT22아가서.txt",
+      "bytes": 13788,
+      "sha256": "3357380b8d02218f03b37cde607bd51de2236538bc335944831f5e19c1f00ab1"
+    },
+    {
+      "book_number": 23,
+      "file": "우리말5판_OT23이사야.txt",
+      "bytes": 178412,
+      "sha256": "e3a45353150608686e1d39fb12028d0371d5666a1e32e662f0b697ccb6673e25"
+    },
+    {
+      "book_number": 24,
+      "file": "우리말5판_OT24예레미야.txt",
+      "bytes": 197436,
+      "sha256": "cc1cc349e1710148db3bf06c07937875a9dcc20383e355b3e19d94c5cfd99750"
+    },
+    {
+      "book_number": 25,
+      "file": "우리말5판_OT25예레미야애가.txt",
+      "bytes": 16592,
+      "sha256": "e90f465ba871fbc9b28b10947f1a3615b283dbbea7c0e4111ae3d29dde0d62a3"
+    },
+    {
+      "book_number": 26,
+      "file": "우리말5판_OT26에스겔.txt",
+      "bytes": 175411,
+      "sha256": "8cce66d050f0882486ec63c0a921434528d65cc831bae2184cac86a2ed7833cf"
+    },
+    {
+      "book_number": 27,
+      "file": "우리말5판_OT27다니엘.txt",
+      "bytes": 53613,
+      "sha256": "b57dcd179368301aba7bcf5170debe3cf77a9b86c2fa8708bd2c414253cb3ea7"
+    },
+    {
+      "book_number": 28,
+      "file": "우리말5판_OT28호세아.txt",
+      "bytes": 26423,
+      "sha256": "9f7c71da78851afa5872c540dedbe5e4444437aeea9baf26f0b57a7a8a07de17"
+    },
+    {
+      "book_number": 29,
+      "file": "우리말5판_OT29요엘.txt",
+      "bytes": 9498,
+      "sha256": "0e8b41dffc823790d55fe586fb8294fd9048ec4de8002a25cfb4318c5cc7a6d0"
+    },
+    {
+      "book_number": 30,
+      "file": "우리말5판_OT30아모스.txt",
+      "bytes": 20834,
+      "sha256": "3e55728cd178df411e09b9f6396cd5623b5147ee390a12ec3aa9b36afd1e68c6"
+    },
+    {
+      "book_number": 31,
+      "file": "우리말5판_OT31오바댜.txt",
+      "bytes": 3104,
+      "sha256": "81ba12c7d2d549510d1aeff8c7e4cb52ae819232af7210c1d5006489b5304473"
+    },
+    {
+      "book_number": 32,
+      "file": "우리말5판_OT32요나.txt",
+      "bytes": 6351,
+      "sha256": "403ccf3cb4aae53ed8370313de5fd40e9117a1d539c39d1d1f07f649003bfdf6"
+    },
+    {
+      "book_number": 33,
+      "file": "우리말5판_OT33미가.txt",
+      "bytes": 14631,
+      "sha256": "d2b0ab9f9c55fc4ec0cc66fffb8675947c5175676cebcf450a1d15f99fd7cfd1"
+    },
+    {
+      "book_number": 34,
+      "file": "우리말5판_OT34나훔.txt",
+      "bytes": 6265,
+      "sha256": "cec1d82abee2c7420e2c508ae3341636bd0c7767a03864bf21fcf338cfbf059b"
+    },
+    {
+      "book_number": 35,
+      "file": "우리말5판_OT35하박국.txt",
+      "bytes": 7307,
+      "sha256": "276f135f5bdc3a68e454c06c5b75e22232d45a62bf31fc6e00faf62ad5a674d1"
+    },
+    {
+      "book_number": 36,
+      "file": "우리말5판_OT36스바냐.txt",
+      "bytes": 7922,
+      "sha256": "43ee7ac719281341711d0d34ddb72bef6317a03cb3b83d4b4d2ff47c99861f34"
+    },
+    {
+      "book_number": 37,
+      "file": "우리말5판_OT37학개.txt",
+      "bytes": 5199,
+      "sha256": "b9700af31dee65411bec97b15808a9352aa7a2284e5222b6776c4a2c74ad8217"
+    },
+    {
+      "book_number": 38,
+      "file": "우리말5판_OT38스가랴.txt",
+      "bytes": 29507,
+      "sha256": "a44fc693830ed97387d6d325d7bdca5ebbbba6770d14a587129416ef74aadbdc"
+    },
+    {
+      "book_number": 39,
+      "file": "우리말5판_OT39말라기.txt",
+      "bytes": 9461,
+      "sha256": "410b99e6399c7c12b8c434aa7d8daac903e282b73282876220dfcfcf322dc5a5"
+    },
+    {
+      "book_number": 40,
+      "file": "우리말5판_NT01마태복음.txt",
+      "bytes": 121844,
+      "sha256": "fe258b4fbe9a959cad2c560a22dd102de02430a3533dd09b4a44e6491d4d4d38"
+    },
+    {
+      "book_number": 41,
+      "file": "우리말5판_NT02마가복음.txt",
+      "bytes": 80596,
+      "sha256": "c36bc5c34eea86a30c708223890db6936d9519e78264cefd8b490f3f5a716b23"
+    },
+    {
+      "book_number": 42,
+      "file": "우리말5판_NT03누가복음.txt",
+      "bytes": 132928,
+      "sha256": "dd2e960842560d18e740ae2eb2ea68d85ea62b83a7b3f82c93df26b740339783"
+    },
+    {
+      "book_number": 43,
+      "file": "우리말5판_NT04요한복음.txt",
+      "bytes": 106283,
+      "sha256": "ceaca9b2b3b54b6a47545c5beee4e7b64f184d681ae670d4370409e8b7e11b0b"
+    },
+    {
+      "book_number": 44,
+      "file": "우리말5판_NT05사도행전.txt",
+      "bytes": 125318,
+      "sha256": "093eb8552a3d2500e1bb20abb7bc8287744e86f2d9c18ee5f6baa280c903551c"
+    },
+    {
+      "book_number": 45,
+      "file": "우리말5판_NT06로마서.txt",
+      "bytes": 51567,
+      "sha256": "763a62fc271ce177da43f18b26394145a9d7fdc41a736be79859eed3bcac45d8"
+    },
+    {
+      "book_number": 46,
+      "file": "우리말5판_NT07고린도전서.txt",
+      "bytes": 52118,
+      "sha256": "44ccf852acdf556e8785c1fe4389b4fb56ae2d26c765acf7890921bae9b434e4"
+    },
+    {
+      "book_number": 47,
+      "file": "우리말5판_NT08고린도후서.txt",
+      "bytes": 34027,
+      "sha256": "5e3b77369a96431d71119156d9930aa92ed14a3ebc6912f6d83d72502832c0dd"
+    },
+    {
+      "book_number": 48,
+      "file": "우리말5판_NT09갈라디아서.txt",
+      "bytes": 17551,
+      "sha256": "7a29bf233bd6d903c06f29a17fbf4029a9b0f63e6a06fb17e7d19f3590e83996"
+    },
+    {
+      "book_number": 49,
+      "file": "우리말5판_NT10에베소서.txt",
+      "bytes": 16230,
+      "sha256": "02486f9a43e27e749add10eaed4009b1055360aa51e051ad91e049eea7380d56"
+    },
+    {
+      "book_number": 50,
+      "file": "우리말5판_NT11빌립보서.txt",
+      "bytes": 11902,
+      "sha256": "9d1530529549edc093cc2909f3193d8651eaaf9090604f7341fb2208b3fcbc51"
+    },
+    {
+      "book_number": 51,
+      "file": "우리말5판_NT12골로새서.txt",
+      "bytes": 11367,
+      "sha256": "7b29f3705084bf111e40975594ce796d1b342c9eb1eeb0c6387e89baebde7788"
+    },
+    {
+      "book_number": 52,
+      "file": "우리말5판_NT13데살로니가전서.txt",
+      "bytes": 10536,
+      "sha256": "51669c8296668a016f536354f6591740f938f84f64138a9d28fbc7c51e0af4c9"
+    },
+    {
+      "book_number": 53,
+      "file": "우리말5판_NT14데살로니가후서.txt",
+      "bytes": 5722,
+      "sha256": "111c192fed2a168a81acd567e3da87408718f19c5d5cc0432924f05d2220b3c3"
+    },
+    {
+      "book_number": 54,
+      "file": "우리말5판_NT15디모데전서.txt",
+      "bytes": 12580,
+      "sha256": "2194c8ef5f40df7e9800156563ff6df228d4b985edada7286a5468223ce6c6f6"
+    },
+    {
+      "book_number": 55,
+      "file": "우리말5판_NT16디모데후서.txt",
+      "bytes": 8930,
+      "sha256": "8e7a3126c31d723c29872086944e7bf5abd204ca75b581a6077282dd1c3f1b41"
+    },
+    {
+      "book_number": 56,
+      "file": "우리말5판_NT17디도서.txt",
+      "bytes": 5552,
+      "sha256": "1f1809fceb5fa126ef4d435307f988166c2f9ecbcb01772580d7c7ad1773657a"
+    },
+    {
+      "book_number": 57,
+      "file": "우리말5판_NT18빌레몬서.txt",
+      "bytes": 2543,
+      "sha256": "09181e508230f05b8b8b166efdb607ead933f1988dd0b44d5fed67d6ecacbcc2"
+    },
+    {
+      "book_number": 58,
+      "file": "우리말5판_NT19히브리서.txt",
+      "bytes": 36728,
+      "sha256": "e307b815c95bf4729178f5e3748397cb82fc57df46ef865f4037df0ef38497a0"
+    },
+    {
+      "book_number": 59,
+      "file": "우리말5판_NT20야고보서.txt",
+      "bytes": 11743,
+      "sha256": "d7e045f8de096fb39f93a74733fb85fc4419711978e6a35fa14cd14cf99f855f"
+    },
+    {
+      "book_number": 60,
+      "file": "우리말5판_NT21베드로전서.txt",
+      "bytes": 13308,
+      "sha256": "bded5b0f81edf63a87e45a94a6b48cfaea520ed9a05b9dd9efb1671ed245d50d"
+    },
+    {
+      "book_number": 61,
+      "file": "우리말5판_NT22베드로후서.txt",
+      "bytes": 7919,
+      "sha256": "0828f46d1da1d4d9afeb27bf9f1c8f6639a03d9b0068b8d880ddd660541c6e89"
+    },
+    {
+      "book_number": 62,
+      "file": "우리말5판_NT23요한일서.txt",
+      "bytes": 14522,
+      "sha256": "00642b8b04c6e6c24b5b94e0cb8864dc6f005ad7f3cd0753dcf0caac21dd3ba6"
+    },
+    {
+      "book_number": 63,
+      "file": "우리말5판_NT24요한이서.txt",
+      "bytes": 1617,
+      "sha256": "b7409d8b80062e765044a7551e272af1405d4b8905ecba83356b01b9709940f6"
+    },
+    {
+      "book_number": 64,
+      "file": "우리말5판_NT25요한삼서.txt",
+      "bytes": 1780,
+      "sha256": "62b3eed107604d2535a1d6b18b8a216b1aeb15d63c71674598aefec44fd56515"
+    },
+    {
+      "book_number": 65,
+      "file": "우리말5판_NT26유다서.txt",
+      "bytes": 3462,
+      "sha256": "3f64194933d0c1a880e7640b17e564043a35a1f869384ca6d4c5c9bf35be6d7f"
+    },
+    {
+      "book_number": 66,
+      "file": "우리말5판_NT27요한계시록.txt",
+      "bytes": 54927,
+      "sha256": "77632cef999e1ea4f764326ff07f1e6248c4efb6568c0a0e7c0e4b4ac6a0f4bd"
+    }
+  ]
+}

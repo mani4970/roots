@@ -63,12 +63,18 @@ function getBookNum(book: string): number | null {
 }
 
 const API_BASE = "https://bible.asher.design/api/v1";
-const KBS_TRANSLATION_IDS = new Set([92, 84, 98]);
+type LicensedBibleTable = "kbs_bible_verses" | "duranno_bible_verses";
+const LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID = new Map<number, LicensedBibleTable>([
+  [92, "kbs_bible_verses"],
+  [84, "kbs_bible_verses"],
+  [98, "kbs_bible_verses"],
+  [89, "duranno_bible_verses"],
+]);
 const MAX_VERSE = 176;
 const MAX_VERSE_RANGE = 176;
 const FETCH_TIMEOUT_MS = 10_000;
 const BIBLE_CACHE_CONTROL = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800";
-let kbsBibleClient: SupabaseClient | null = null;
+let licensedBibleClient: SupabaseClient | null = null;
 
 function readServerEnv(name: string, fallback = "") {
   const value = process.env[name] ?? fallback;
@@ -92,8 +98,8 @@ function getBibleApiHeaders(): HeadersInit {
   };
 }
 
-function getKbsBibleClient() {
-  if (kbsBibleClient) return kbsBibleClient;
+function getLicensedBibleClient() {
+  if (licensedBibleClient) return licensedBibleClient;
 
   const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
   const secretKey = readServerEnv("SUPABASE_SECRET_KEY");
@@ -102,14 +108,14 @@ function getKbsBibleClient() {
     throw new Error("Missing Supabase server configuration");
   }
 
-  kbsBibleClient = createSupabaseClient(url, secretKey, {
+  licensedBibleClient = createSupabaseClient(url, secretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
 
-  return kbsBibleClient;
+  return licensedBibleClient;
 }
 
 type VerseApiItem = {
@@ -163,15 +169,15 @@ async function fetchWithTimeout(url: string) {
   }
 }
 
-async function fetchKbsPassage(params: {
+async function fetchLicensedPassage(params: {
   translationId: number;
   bookNum: number;
   chapter: number;
   startVerse: number;
   endVerse: number;
-}) {
-  const { data, error } = await getKbsBibleClient()
-    .from("kbs_bible_verses")
+}, table: LicensedBibleTable) {
+  const { data, error } = await getLicensedBibleClient()
+    .from(table)
     .select("verse_start,verse_end,text")
     .eq("translation_id", params.translationId)
     .eq("book_number", params.bookNum)
@@ -181,7 +187,7 @@ async function fetchKbsPassage(params: {
     .order("verse_start", { ascending: true });
 
   if (error) {
-    throw new Error(`KBS Bible query failed: ${error.message}`);
+    throw new Error(`Licensed Bible query failed: ${error.message}`);
   }
 
   return (data ?? [])
@@ -224,15 +230,16 @@ export async function GET(req: NextRequest) {
 
   try {
     let verses: { num: number | string; text: string }[];
+    const licensedBibleTable = LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID.get(translationId);
 
-    if (KBS_TRANSLATION_IDS.has(translationId)) {
-      verses = await fetchKbsPassage({
+    if (licensedBibleTable) {
+      verses = await fetchLicensedPassage({
         translationId,
         bookNum,
         chapter,
         startVerse,
         endVerse,
-      });
+      }, licensedBibleTable);
     } else {
       const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
       const res = await fetchWithTimeout(url);
