@@ -10,7 +10,6 @@ import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -30,22 +29,6 @@ function QTGuideIcon({ icon, size = 20 }: { icon: typeof QT_GUIDE_KEYS[number]["
   if (icon === "leaf") return <Leaf size={size} strokeWidth={1.9} />;
   return <CheckCircle2 size={size} strokeWidth={1.9} />;
 }
-
-const TRANSLATIONS_BY_GROUP: { groupKey: TKey; items: { id: number; name: string }[] }[] = [
-  { groupKey: "qt_translation_ko", items: [
-    {id:92,name:"개역개정"},{id:84,name:"개역한글"},{id:98,name:"새번역"},{id:88,name:"쉬운성경"},{id:89,name:"우리말성경"},
-  ]},
-  { groupKey: "qt_translation_en", items: [
-    {id:80,name:"NIV"},{id:100,name:"ESV"},{id:62,name:"NASB 1995"},{id:82,name:"NLT"},{id:95,name:"The Message"},
-  ]},
-  { groupKey: "qt_translation_de", items: [
-    {id:29,name:"Lutherbibel 1912"},{id:27,name:"Elberfelder 1871"},{id:97,name:"Hoffnung für Alle"},{id:31,name:"Schlachter"},
-  ]},
-  { groupKey: "qt_translation_fr", items: [
-    {id:26,name:"Louis Segond 1910"},{id:24,name:"Jérusalem"},
-  ]},
-];
-const ALL_TRANSLATIONS = TRANSLATIONS_BY_GROUP.flatMap(g => g.items);
 
 type QTRecord = {
   id: string;
@@ -113,7 +96,6 @@ export default function QTPage() {
     }
     return 92;
   });
-  const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(message: string) {
@@ -293,49 +275,8 @@ export default function QTPage() {
       )}
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <div style={{ marginBottom: 4 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{t("qt_title", lang)}</h1>
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowTranslationPicker(p => !p)}
-              className="qt-field-trigger"
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer" }}
-            >
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text2)" }}>
-                {ALL_TRANSLATIONS.find(tr => tr.id === preferredTranslation)?.name ?? "개역개정"}
-              </span>
-              <ChevronDown size={12} style={{ color: "var(--text3)" }} />
-            </button>
-            {showTranslationPicker && (
-              <div className="roots-elevation-popover" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--qt-popover-surface)", border: "1px solid var(--qt-card-border)", borderRadius: 12, padding: "6px 0", zIndex: 100, minWidth: 170, maxHeight: 300, overflowY: "auto" }}>
-                {TRANSLATIONS_BY_GROUP.map(g => (
-                  <div key={g.groupKey}>
-                    <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted-readable)", padding: "6px 12px 2px", letterSpacing: "0.5px" }}>{t(g.groupKey, lang)}</p>
-                    {g.items.map(tr => (
-                      <button key={tr.id} onClick={async () => {
-                        setPreferredTranslation(tr.id);
-                        setShowTranslationPicker(false);
-                        const supabase = createClient();
-                        try {
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (user) {
-                            await saveProfilePreferences(supabase, {
-                              preferredTranslation: tr.id,
-                            });
-                          }
-                        } catch (error) {
-                          console.error("preferred translation save failed", error);
-                          showToast(t("qt_error_translation_save", lang));
-                        }
-                      }} style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: preferredTranslation === tr.id ? "var(--qt-sage-surface)" : "none", border: "none", cursor: "pointer", fontSize: 12, color: preferredTranslation === tr.id ? "var(--qt-sage-text)" : "var(--text)", fontWeight: preferredTranslation === tr.id ? 700 : 400 }}>
-                        {tr.name} {preferredTranslation === tr.id ? "✓" : ""}
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
         <p style={{ color: "var(--text-muted-readable)", fontSize: 12 }}>{t("qt_sub", lang)}</p>
       </div>
