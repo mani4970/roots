@@ -21,6 +21,18 @@ export type SharePromptOptions = {
   partners: ShareTargetPartner[];
 };
 
+const SHARE_PROMPT_BULK_SELECTION_LABELS = {
+  ko: { selectAll: "전체 선택", deselectAll: "전체 선택 해제" },
+  de: { selectAll: "Alle auswählen", deselectAll: "Auswahl aufheben" },
+  en: { selectAll: "Select all", deselectAll: "Clear selection" },
+  fr: { selectAll: "Tout sélectionner", deselectAll: "Tout désélectionner" },
+} as const;
+
+export function getSharePromptBulkSelectionLabels(lang: string) {
+  return SHARE_PROMPT_BULK_SELECTION_LABELS[lang as keyof typeof SHARE_PROMPT_BULK_SELECTION_LABELS]
+    ?? SHARE_PROMPT_BULK_SELECTION_LABELS.ko;
+}
+
 const SHARE_PROMPT_OPTIONS_CACHE_MS = 45 * 1000;
 
 let cachedSharePromptOptions: { userId: string; fetchedAt: number; data: CachedSharePromptOptions } | null = null;

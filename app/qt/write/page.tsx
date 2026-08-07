@@ -24,7 +24,7 @@ import {
 } from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
-import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { getBibleCopyrightNotice } from "@/lib/bibleCopyright";
@@ -1946,6 +1946,7 @@ function QTWriteContent() {
 
   function renderCompleteSharePrompt() {
     if (!showCompleteSharePrompt || isEditMode) return null;
+    const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
 
     return (
       <SharePromptModal
@@ -1964,6 +1965,8 @@ function QTWriteContent() {
         privateGroupLabel={t("qt_record_private_group", lang)}
         noGroupsLabel={t("qt_record_no_groups", lang)}
         selectedCountLabel={t("qt_record_selected_count", lang, { count: completeShareTargets.length })}
+        selectAllLabel={bulkSelectionLabels.selectAll}
+        deselectAllLabel={bulkSelectionLabels.deselectAll}
         loadingLabel={t("loading", lang)}
         shareActionLabel={t("qt_complete_share_action", lang)}
         privateActionLabel={t("share_prompt_private_action", lang)}
@@ -1975,6 +1978,7 @@ function QTWriteContent() {
         loadingGroups={loadingCompleteShareOptions}
         loadingPartners={loadingCompleteShareOptions}
         onToggleTarget={toggleCompleteShareTarget}
+        onChangeTargets={setCompleteShareTargets}
         onClose={closeCompleteSharePrompt}
         onPrivate={() => { void save({ visibility: "private", partnerRecipientIds: [] }); }}
         onShare={() => { if (completeShareTargets.length > 0) void save(splitShareTargets(completeShareTargets)); }}

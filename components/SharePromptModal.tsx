@@ -31,6 +31,8 @@ type SharePromptModalProps = {
   privateGroupLabel: string;
   noGroupsLabel: string;
   selectedCountLabel: string;
+  selectAllLabel?: string;
+  deselectAllLabel?: string;
   loadingLabel: string;
   shareActionLabel: string;
   privateActionLabel: string;
@@ -43,6 +45,7 @@ type SharePromptModalProps = {
   loadingPartners?: boolean;
   onInvitePartners?: () => void;
   onToggleTarget: (target: string) => void;
+  onChangeTargets?: (targets: string[]) => void;
   onShare: () => void;
   onPrivate: () => void;
   onClose: () => void;
@@ -63,6 +66,8 @@ export default function SharePromptModal({
   privateGroupLabel,
   noGroupsLabel,
   selectedCountLabel,
+  selectAllLabel,
+  deselectAllLabel,
   loadingLabel,
   shareActionLabel,
   privateActionLabel,
@@ -75,11 +80,32 @@ export default function SharePromptModal({
   loadingPartners = false,
   onInvitePartners,
   onToggleTarget,
+  onChangeTargets,
   onShare,
   onPrivate,
   onClose,
 }: SharePromptModalProps) {
   const allSelected = selectedTargets.includes("all");
+  const directTargets = [
+    ...partners.map(partner => `partner_${partner.id}`),
+    ...groups.map(group => `group_${group.id}`),
+  ];
+  const allDirectTargetsSelected = directTargets.length > 0
+    && directTargets.every(target => selectedTargets.includes(target));
+  const canChangeAllDirectTargets = !!onChangeTargets
+    && !!selectAllLabel
+    && !!deselectAllLabel
+    && directTargets.length > 0;
+
+  function toggleAllDirectTargets() {
+    if (!onChangeTargets || directTargets.length === 0) return;
+
+    const directTargetSet = new Set(directTargets);
+    const nextTargets = allDirectTargetsSelected
+      ? selectedTargets.filter(target => !directTargetSet.has(target))
+      : Array.from(new Set([...selectedTargets, ...directTargets]));
+    onChangeTargets(nextTargets);
+  }
 
 
   function renderPartnerOption(partner: ShareTargetPartner) {
@@ -246,6 +272,22 @@ export default function SharePromptModal({
             </p>
           ) : (
             <>
+              {canChangeAllDirectTargets && (
+                <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={toggleAllDirectTargets}
+                    disabled={saving}
+                    aria-pressed={allDirectTargetsSelected}
+                    className="btn-outline"
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, width: "auto", padding: "7px 10px", borderRadius: 10, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", opacity: saving ? 0.55 : 1 }}
+                  >
+                    <Check size={13} />
+                    {allDirectTargetsSelected ? deselectAllLabel : selectAllLabel}
+                  </button>
+                </div>
+              )}
+
               <section style={sectionStyle}>
                 <p style={sectionTitleStyle}>{partnersLabel}</p>
                 <div style={scrollAreaStyle}>

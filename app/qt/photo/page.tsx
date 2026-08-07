@@ -15,7 +15,7 @@ import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } fr
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
-import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 
@@ -165,6 +165,7 @@ function PhotoReflectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = useLang();
+  const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const saveLockRef = useRef(false);
 
@@ -632,6 +633,8 @@ function PhotoReflectionContent() {
           privateGroupLabel={t("qt_record_private_group", lang)}
           noGroupsLabel={t("qt_record_no_groups", lang)}
           selectedCountLabel={t("qt_record_selected_count", lang, { count: shareTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
           loadingLabel={t("loading", lang)}
           shareActionLabel={t("qt_complete_share_action", lang)}
           privateActionLabel={t("share_prompt_private_action", lang)}
@@ -643,6 +646,7 @@ function PhotoReflectionContent() {
           loadingGroups={loadingShareOptions}
           loadingPartners={loadingShareOptions}
           onToggleTarget={toggleTarget}
+          onChangeTargets={setShareTargets}
           onClose={() => !saving && setShowShareModal(false)}
           onPrivate={() => { void savePhotoReflection({ visibility: "private", partnerRecipientIds: [] }); }}
           onShare={() => { void savePhotoReflection(splitShareTargets(shareTargets)); }}
