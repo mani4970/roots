@@ -27,7 +27,7 @@ import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
-import { getBibleCopyrightNotice } from "@/lib/bibleCopyright";
+import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -1432,7 +1432,7 @@ function QTWriteContent() {
     const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
     const verses = activePassage.verses ?? [];
     const hasMultiplePassages = displayPassages.length > 1;
-    const copyrightNotice = getBibleCopyrightNotice(selectedTranslation);
+    const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
 
     return (
       <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
@@ -1468,9 +1468,22 @@ function QTWriteContent() {
             {passageExpanded ? <><ChevronUp size={14} />{trQT("접기", lang)}</> : <><ChevronDown size={14} />{trQT("더보기", lang)}</>}
           </button>
         )}
-        {copyrightNotice && (
+        {copyrightInfo && (
           <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
-            {copyrightNotice}
+            {copyrightInfo.notice}
+            {copyrightInfo.url && (
+              <>
+                {" "}
+                <a
+                  href={copyrightInfo.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                >
+                  {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                </a>
+              </>
+            )}
           </p>
         )}
       </div>
@@ -2832,7 +2845,7 @@ function QTWriteContent() {
             const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
             const verses = activePassage.verses ?? [];
             const hasMultiplePassages = displayPassages.length > 1;
-            const copyrightNotice = getBibleCopyrightNotice(selectedTranslation);
+            const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
             return (
               <div>
                 <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
@@ -2867,9 +2880,22 @@ function QTWriteContent() {
                       );
                     })}
                   </div>
-                  {copyrightNotice && (
+                  {copyrightInfo && (
                     <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
-                      {copyrightNotice}
+                      {copyrightInfo.notice}
+                      {copyrightInfo.url && (
+                        <>
+                          {" "}
+                          <a
+                            href={copyrightInfo.url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                          >
+                            {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                          </a>
+                        </>
+                      )}
                     </p>
                   )}
                   <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>

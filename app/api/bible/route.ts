@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  buildYouVersionPassageId,
+  getYouVersionBibleSource,
+  parseYouVersionHtmlVerses,
+  ROOTS_END_OF_CHAPTER_SENTINEL,
+  youVersionHtmlToPlainText,
+  type BibleVerse,
+  type YouVersionBibleSource,
+} from "@/lib/youVersionBible";
+import {
   createClient as createSupabaseClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
@@ -63,6 +72,7 @@ function getBookNum(book: string): number | null {
 }
 
 const API_BASE = "https://bible.asher.design/api/v1";
+const YOUVERSION_API_BASE = "https://api.youversion.com/v1";
 type LicensedBibleTable = "kbs_bible_verses" | "duranno_bible_verses";
 const LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID = new Map<number, LicensedBibleTable>([
   [92, "kbs_bible_verses"],
@@ -70,10 +80,11 @@ const LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID = new Map<number, LicensedBibleTabl
   [98, "kbs_bible_verses"],
   [89, "duranno_bible_verses"],
 ]);
-const MAX_VERSE = 176;
+const MAX_VERSE = ROOTS_END_OF_CHAPTER_SENTINEL;
 const MAX_VERSE_RANGE = 176;
 const FETCH_TIMEOUT_MS = 10_000;
 const BIBLE_CACHE_CONTROL = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800";
+const YOUVERSION_RESPONSE_CACHE_CONTROL = "private, max-age=300, must-revalidate";
 let licensedBibleClient: SupabaseClient | null = null;
 
 function readServerEnv(name: string, fallback = "") {
@@ -169,6 +180,74 @@ async function fetchWithTimeout(url: string) {
   }
 }
 
+function getYouVersionApiHeaders(): HeadersInit {
+  const appKey = readServerEnv("YVP_APP_KEY") || readServerEnv("YOUVERSION_APP_KEY");
+
+  if (!appKey) {
+    throw new Error("Missing YVP_APP_KEY");
+  }
+
+  return {
+    Accept: "application/json",
+    "X-YVP-App-Key": appKey,
+  };
+}
+
+async function fetchYouVersionWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      headers: getYouVersionApiHeaders(),
+      next: { revalidate: 86400 },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchYouVersionPassage(params: {
+  bookNum: number;
+  chapter: number;
+  startVerse: number;
+  endVerse: number;
+}, source: YouVersionBibleSource): Promise<BibleVerse[]> {
+  const passageId = buildYouVersionPassageId(params);
+  const url = new URL(
+    `bibles/${source.youVersionBibleId}/passages/${encodeURIComponent(passageId)}`,
+    `${YOUVERSION_API_BASE}/`,
+  );
+  url.searchParams.set("format", "html");
+  url.searchParams.set("include_headings", "false");
+  url.searchParams.set("include_notes", "false");
+
+  const response = await fetchYouVersionWithTimeout(url.toString());
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`YouVersion passage request failed (${response.status}): ${body.slice(0, 240)}`);
+  }
+
+  const payload = await response.json() as { content?: unknown };
+  const content = typeof payload.content === "string" ? payload.content : "";
+  if (!content) throw new Error("YouVersion passage response was empty");
+
+  const verses = parseYouVersionHtmlVerses(content, params.startVerse, params.endVerse);
+  if (verses.length > 0) return verses;
+
+  // Defensive fallback for an unexpected upstream markup change. It preserves
+  // the passage instead of silently switching the licensed translation back to
+  // the legacy provider.
+  const plainText = youVersionHtmlToPlainText(content);
+  if (!plainText) throw new Error("YouVersion passage could not be parsed");
+
+  return [{
+    num: params.endVerse > params.startVerse ? `${params.startVerse}-${params.endVerse}` : params.startVerse,
+    text: plainText,
+  }];
+}
+
 async function fetchLicensedPassage(params: {
   translationId: number;
   bookNum: number;
@@ -229,8 +308,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let verses: { num: number | string; text: string }[];
+    let verses: BibleVerse[];
     const licensedBibleTable = LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID.get(translationId);
+    const youVersionSource = getYouVersionBibleSource(translationId);
 
     if (licensedBibleTable) {
       verses = await fetchLicensedPassage({
@@ -240,6 +320,13 @@ export async function GET(req: NextRequest) {
         startVerse,
         endVerse,
       }, licensedBibleTable);
+    } else if (youVersionSource) {
+      verses = await fetchYouVersionPassage({
+        bookNum,
+        chapter,
+        startVerse,
+        endVerse,
+      }, youVersionSource);
     } else {
       const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
       const res = await fetchWithTimeout(url);
@@ -274,8 +361,24 @@ export async function GET(req: NextRequest) {
     const fullText = verses.map((v) => `${v.num} ${v.text}`).join("\n");
 
     return NextResponse.json(
-      { text: fullText, verses, reference, version: String(translationId) },
-      { headers: { "Cache-Control": BIBLE_CACHE_CONTROL } },
+      {
+        text: fullText,
+        verses,
+        reference,
+        version: String(translationId),
+        source: youVersionSource ? "youversion" : licensedBibleTable ? "licensed-database" : "legacy-bible-api",
+        providerVersion: youVersionSource ? String(youVersionSource.youVersionBibleId) : String(translationId),
+        versionName: youVersionSource?.displayName ?? null,
+        copyright: youVersionSource?.copyrightNotice ?? null,
+        attributionUrl: youVersionSource?.attributionUrl ?? null,
+      },
+      {
+        headers: {
+          "Cache-Control": youVersionSource
+            ? YOUVERSION_RESPONSE_CACHE_CONTROL
+            : BIBLE_CACHE_CONTROL,
+        },
+      },
     );
 
   } catch (e) {

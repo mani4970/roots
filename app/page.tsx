@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
+import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -127,6 +128,7 @@ type RewardMapNoticeState = {
 type ChapterPopupState = {
   show: boolean;
   loading: boolean;
+  translationId: number | null;
   reference: string;
   text: string;
   error: string;
@@ -210,6 +212,7 @@ export default function HomePage() {
   const [chapterPopup, setChapterPopup] = useState<ChapterPopupState>({
     show: false,
     loading: false,
+    translationId: null,
     reference: "",
     text: "",
     error: "",
@@ -1029,7 +1032,7 @@ export default function HomePage() {
     if (!book || !Number.isFinite(chapter) || chapter <= 0) return;
 
     const reference = formatChapterReference(book, chapter, lang);
-    setChapterPopup(current => ({ ...current, show: true, loading: true, reference, text: "", error: "" }));
+    setChapterPopup(current => ({ ...current, show: true, loading: true, translationId, reference, text: "", error: "" }));
 
     try {
       const params = new URLSearchParams({
@@ -1044,10 +1047,10 @@ export default function HomePage() {
       const data = await res.json();
       const text = String(data.text ?? "").trim();
       if (!text) throw new Error("Empty chapter text");
-      setChapterPopup({ show: true, loading: false, reference, text, error: "" });
+      setChapterPopup({ show: true, loading: false, translationId, reference, text, error: "" });
     } catch (error) {
       console.error(error);
-      setChapterPopup({ show: true, loading: false, reference, text: "", error: homeChapterText("error", lang) });
+      setChapterPopup({ show: true, loading: false, translationId, reference, text: "", error: homeChapterText("error", lang) });
     }
   }
 
@@ -1392,7 +1395,7 @@ export default function HomePage() {
       )}
       {chapterPopup.show && (
         <div
-          onClick={() => setChapterPopup({ show: false, loading: false, reference: "", text: "", error: "" })}
+          onClick={() => setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" })}
           style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))" }}
         >
           <div
@@ -1404,7 +1407,7 @@ export default function HomePage() {
                 <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)", margin: 0 }}>{chapterPopup.reference}</h2>
               </div>
               <button
-                onClick={() => setChapterPopup({ show: false, loading: false, reference: "", text: "", error: "" })}
+                onClick={() => setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" })}
                 aria-label={homeChapterText("close", lang)}
                 style={{ border: "none", background: "none", color: "var(--text3)", fontSize: 24, lineHeight: 1, cursor: "pointer", padding: 2 }}
               >
@@ -1417,9 +1420,33 @@ export default function HomePage() {
               ) : chapterPopup.error ? (
                 <p style={{ fontSize: 14, color: "var(--terra-dark)", lineHeight: 1.7 }}>{chapterPopup.error}</p>
               ) : (
-                <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.9, whiteSpace: "pre-line" }}>
-                  {chapterPopup.text}
-                </div>
+                <>
+                  <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.9, whiteSpace: "pre-line" }}>
+                    {chapterPopup.text}
+                  </div>
+                  {chapterPopup.translationId != null && (() => {
+                    const copyrightInfo = getBibleCopyrightInfo(chapterPopup.translationId);
+                    if (!copyrightInfo) return null;
+                    return (
+                      <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 12 }}>
+                        {copyrightInfo.notice}
+                        {copyrightInfo.url && (
+                          <>
+                            {" "}
+                            <a
+                              href={copyrightInfo.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                            >
+                              {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                            </a>
+                          </>
+                        )}
+                      </p>
+                    );
+                  })()}
+                </>
               )}
             </div>
           </div>
@@ -1879,6 +1906,28 @@ export default function HomePage() {
                 )}
               </div>
               <p className="verse-text">"{todayVerse.verse}"</p>
+              {todayVerse?.verse_translation_id != null && (() => {
+                const copyrightInfo = getBibleCopyrightInfo(Number(todayVerse.verse_translation_id));
+                if (!copyrightInfo) return null;
+                return (
+                  <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 10 }}>
+                    {copyrightInfo.notice}
+                    {copyrightInfo.url && (
+                      <>
+                        {" "}
+                        <a
+                          href={copyrightInfo.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                        >
+                          {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                );
+              })()}
             </>
           ) : (
             <>

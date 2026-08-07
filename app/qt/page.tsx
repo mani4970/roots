@@ -36,13 +36,13 @@ const TRANSLATIONS_BY_GROUP: { groupKey: TKey; items: { id: number; name: string
     {id:92,name:"개역개정"},{id:84,name:"개역한글"},{id:98,name:"새번역"},{id:88,name:"쉬운성경"},{id:89,name:"우리말성경"},
   ]},
   { groupKey: "qt_translation_en", items: [
-    {id:80,name:"NIV"},{id:100,name:"ESV"},{id:62,name:"NASB"},{id:82,name:"NLT"},{id:95,name:"The Message"},
+    {id:80,name:"NIV"},{id:100,name:"ESV"},{id:62,name:"NASB 1995"},{id:82,name:"NLT"},{id:95,name:"The Message"},
   ]},
   { groupKey: "qt_translation_de", items: [
-    {id:29,name:"Luther"},{id:27,name:"Elberfelder"},{id:97,name:"Hoffnung für Alle"},{id:31,name:"Schlachter"},
+    {id:29,name:"Lutherbibel 1912"},{id:27,name:"Elberfelder 1871"},{id:97,name:"Hoffnung für Alle"},{id:31,name:"Schlachter"},
   ]},
   { groupKey: "qt_translation_fr", items: [
-    {id:26,name:"Louis Segond"},{id:24,name:"Jérusalem"},
+    {id:26,name:"Louis Segond 1910"},{id:24,name:"Jérusalem"},
   ]},
 ];
 const ALL_TRANSLATIONS = TRANSLATIONS_BY_GROUP.flatMap(g => g.items);

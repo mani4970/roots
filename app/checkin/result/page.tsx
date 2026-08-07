@@ -7,6 +7,7 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
+import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { storageGet } from "@/lib/clientStorage";
 import HeartBurst from "@/components/HeartBurst";
 import BottomNav from "@/components/BottomNav";
@@ -185,6 +186,31 @@ function ResultContent() {
           <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
             "{result?.verse}"
           </p>
+          {(() => {
+            const rawTranslationId = result?.translation_id ?? result?.verse_translation_id;
+            const copyrightInfo = rawTranslationId != null
+              ? getBibleCopyrightInfo(Number(rawTranslationId))
+              : null;
+            if (!copyrightInfo) return null;
+            return (
+              <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 10 }}>
+                {copyrightInfo.notice}
+                {copyrightInfo.url && (
+                  <>
+                    {" "}
+                    <a
+                      href={copyrightInfo.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                    >
+                      {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                    </a>
+                  </>
+                )}
+              </p>
+            );
+          })()}
         </div>
 
         {/* 홈으로만 */}

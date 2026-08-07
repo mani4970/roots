@@ -13,18 +13,18 @@ export const TRANSLATIONS = [
   { group: "English", items: [
     { id: 80, name: "NIV" },
     { id: 100, name: "ESV" },
-    { id: 62, name: "NASB" },
+    { id: 62, name: "NASB 1995" },
     { id: 82, name: "NLT" },
     { id: 95, name: "The Message" },
   ]},
   { group: "Deutsch", items: [
-    { id: 29, name: "Luther" },
-    { id: 27, name: "Elberfelder" },
+    { id: 29, name: "Lutherbibel 1912" },
+    { id: 27, name: "Elberfelder 1871" },
     { id: 97, name: "Hoffnung für Alle" },
     { id: 31, name: "Schlachter" },
   ]},
   { group: "Français", items: [
-    { id: 26, name: "Louis Segond" },
+    { id: 26, name: "Louis Segond 1910" },
     { id: 24, name: "Jérusalem" },
   ]},
 ];
