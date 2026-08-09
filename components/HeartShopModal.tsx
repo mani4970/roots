@@ -290,7 +290,11 @@ export default function HeartShopModal({
     const slot = CHARACTER_CATEGORY_SLOT[activeCharacterCategory];
     return HEART_SHOP_CHARACTER_CATALOG
       .filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && (!slot || item.slot === slot))
-      .sort((a, b) => Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)) || a.sortOrder - b.sortOrder);
+      .sort((a, b) =>
+        Number(Boolean(b.isNew)) - Number(Boolean(a.isNew))
+        || (b.newPriority ?? 0) - (a.newPriority ?? 0)
+        || a.sortOrder - b.sortOrder,
+      );
   }, [activeCharacterCategory, avatarType]);
   const ownedCharacterItems = useMemo(
     () => HEART_SHOP_CHARACTER_CATALOG.filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && ownedById.has(item.id)),

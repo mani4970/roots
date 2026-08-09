@@ -15,6 +15,7 @@ type HeartShopCatalogBase = {
   id: HeartShopItemId;
   price: number;
   isNew?: boolean;
+  newPriority?: number;
   isBest?: boolean;
 };
 
@@ -189,6 +190,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 
 export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
 export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
+export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260809_v3";
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
@@ -209,18 +211,41 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const itemNumber = Number(itemId.slice(-2));
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
-  const isNewRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 11 && itemNumber <= 14;
-  const isRootsWomanDress = isNewRootsWomanTop && itemNumber <= 12;
+  const isNewRootsmanClothing = avatarType === "rootsman"
+    && (slot === "top" || slot === "bottom")
+    && itemNumber >= 11
+    && itemNumber <= 14;
+  const isExistingNewRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 11 && itemNumber <= 14;
+  const isLatestRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 15 && itemNumber <= 18;
+  const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
+  const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
   const isNewTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isNewShoes = slot === "shoes" && itemNumber >= 5 && itemNumber <= 8;
   const isNewPet = slot === "pet";
+  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom;
+  const newPriority = isLatestRootsWomanBottom
+    ? 600
+    : isLatestRootsWomanTop || isNewRootsmanClothing
+      ? 500
+      : isExistingNewRootsWomanTop
+        ? 400
+        : isNewPet
+          ? 300
+          : isNewShoes
+            ? 200
+            : isNewTravelBackground
+              ? 100
+              : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
+  const characterLayerPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
   const layerPath = avatarType === "shared"
     ? slot === "background"
       ? `${sharedLayerPath}?v=${isNewTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
       : sharedLayerPath
-    : `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
+    : isLatestClothingAsset
+      ? `${characterLayerPath}?v=${HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION}`
+      : characterLayerPath;
 
   return {
     id: itemId,
@@ -228,7 +253,8 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     avatarType,
     slot,
     price: isRootsWomanDress ? 50 : config.price,
-    isNew: isNewTravelBackground || isNewShoes || isNewRootsWomanTop || isNewPet,
+    isNew: isNewTravelBackground || isNewShoes || isNewRootsmanClothing || isExistingNewRootsWomanTop || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewPet,
+    newPriority,
     layerPath,
     zIndex: config.zIndex,
     sortOrder: isRootsmanSummerTop
