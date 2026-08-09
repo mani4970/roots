@@ -7,6 +7,7 @@ import type { HeartShopItemId } from "@/lib/heartShopItems";
 import {
   PROFILE_CHARACTER_CANVAS,
   getProfileCharacterBaseImageSrc,
+  type ProfileCharacterLayer,
 } from "@/lib/profileCharacter";
 
 export type ProfileAvatarMode = "photo" | "character";
@@ -20,12 +21,69 @@ type SaveProfileAvatarDisplayOptions = {
 };
 
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260722_v1";
+const PROFILE_CHARACTER_PET_LAYOUT_VERSION = "20260808_v1";
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION =
   HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
 const PROFILE_CHARACTER_AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
   "/images/heart-shop/character/shared/profile-backgrounds";
+
+// Keep these values aligned with ProfileCharacterPreview so the saved square
+// avatar matches the live character preview exactly.
+const PET_LAYER_SCALE = 1.2;
+const PET_LAYER_SHIFT_X = 65;
+const PET_LAYER_ORIGIN = { x: 700, y: 1268 } as const;
+const BASE_CHARACTER_GROUND_Y: Record<RootsAvatarType, number> = {
+  rootsman: 1329,
+  rootswoman: 1260,
+};
+const ROOTSMAN_SHOES_GROUND_Y = 1361;
+const ROOTSWOMAN_SHOES_GROUND_Y: Readonly<Record<string, number>> = {
+  rootswoman_shoes_01: 1333,
+  rootswoman_shoes_02: 1303,
+  rootswoman_shoes_03: 1333,
+  rootswoman_shoes_04: 1333,
+  rootswoman_shoes_05: 1333,
+  rootswoman_shoes_06: 1303,
+  rootswoman_shoes_07: 1331,
+  rootswoman_shoes_08: 1322,
+};
+
+function getCharacterGroundY(
+  avatarType: RootsAvatarType,
+  layers: readonly ProfileCharacterLayer[],
+) {
+  const shoesLayer = layers.find(layer => layer.slot === "shoes");
+  if (!shoesLayer) return BASE_CHARACTER_GROUND_Y[avatarType];
+  if (avatarType === "rootsman") return ROOTSMAN_SHOES_GROUND_Y;
+  return ROOTSWOMAN_SHOES_GROUND_Y[shoesLayer.id] ?? 1333;
+}
+
+function drawCharacterLayer(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  layer: ProfileCharacterLayer,
+  avatarType: RootsAvatarType,
+  layers: readonly ProfileCharacterLayer[],
+) {
+  context.save();
+  if (layer.slot === "pet") {
+    const groundShiftY = getCharacterGroundY(avatarType, layers) - PET_LAYER_ORIGIN.y;
+    context.translate(PET_LAYER_SHIFT_X, groundShiftY);
+    context.translate(PET_LAYER_ORIGIN.x, PET_LAYER_ORIGIN.y);
+    context.scale(PET_LAYER_SCALE, PET_LAYER_SCALE);
+    context.translate(-PET_LAYER_ORIGIN.x, -PET_LAYER_ORIGIN.y);
+  }
+  context.drawImage(
+    image,
+    0,
+    0,
+    PROFILE_CHARACTER_CANVAS.width,
+    PROFILE_CHARACTER_CANVAS.height,
+  );
+  context.restore();
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -64,9 +122,12 @@ export function getProfileCharacterAvatarSignature(
   const hasSquareProfileBackground = layers.some(
     layer => (layer.zIndex ?? 10) < 0 && getSquareProfileBackgroundSrc(layer.id),
   );
-  const assetVersion = hasSquareProfileBackground
-    ? `${PROFILE_CHARACTER_AVATAR_ASSET_VERSION}:${PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION}`
-    : PROFILE_CHARACTER_AVATAR_ASSET_VERSION;
+  const hasPetLayer = layers.some(layer => layer.slot === "pet");
+  const assetVersion = [
+    PROFILE_CHARACTER_AVATAR_ASSET_VERSION,
+    ...(hasSquareProfileBackground ? [PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION] : []),
+    ...(hasPetLayer ? [PROFILE_CHARACTER_PET_LAYOUT_VERSION] : []),
+  ].join(":");
   return [assetVersion, normalizedAvatarType, ...layerIds].join(":");
 }
 
@@ -101,13 +162,23 @@ export async function createProfileCharacterAvatarBlob(
   const characterContext = characterCanvas.getContext("2d");
   if (!characterContext) throw new Error("Could not prepare the profile character canvas.");
   characterContext.imageSmoothingEnabled = false;
-  characterImages.forEach(image => {
-    characterContext.drawImage(
+  const [baseCharacterImage, ...foregroundImages] = characterImages;
+  characterContext.drawImage(
+    baseCharacterImage,
+    0,
+    0,
+    PROFILE_CHARACTER_CANVAS.width,
+    PROFILE_CHARACTER_CANVAS.height,
+  );
+  foregroundLayers.forEach((layer, index) => {
+    const image = foregroundImages[index];
+    if (!image) return;
+    drawCharacterLayer(
+      characterContext,
       image,
-      0,
-      0,
-      PROFILE_CHARACTER_CANVAS.width,
-      PROFILE_CHARACTER_CANVAS.height,
+      layer,
+      normalizedAvatarType,
+      foregroundLayers,
     );
   });
 
