@@ -1,6 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ImagePlus, Loader2, X, Check, UploadCloud, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase";
@@ -18,21 +20,23 @@ import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import { prepareQTPhoto, QTPhotoPreparationError, type PreparedQTPhoto } from "@/lib/qtPhotoProcessing";
 
 type CompletePhotoOptions = {
   visibility?: string;
   partnerRecipientIds?: string[];
 };
 
+type PhotoSaveStage =
+  | "auth"
+  | "duplicate-check"
+  | "upload"
+  | "record"
+  | "recipients"
+  | "progress"
+  | "notifications";
+
 const PHOTO_BUCKET = "qt-photos";
-const PHOTO_MAX_INPUT_SIZE = 15 * 1024 * 1024;
-const PHOTO_MAX_STORED_SIZE = 2 * 1024 * 1024;
-const PHOTO_COMPRESSION_ATTEMPTS = [
-  { maxSide: 1800, quality: 0.84 },
-  { maxSide: 1600, quality: 0.8 },
-  { maxSide: 1440, quality: 0.76 },
-  { maxSide: 1280, quality: 0.72 },
-] as const;
 const BOOKS = [...OT_BOOKS, ...NT_BOOKS];
 
 const PHOTO_COPY = {
@@ -58,8 +62,16 @@ const PHOTO_COPY = {
   addPassage: { ko: "선택한 본문 추가", de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné" },
   addPassageHelp: { ko: "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
   saveError: { ko: "사진 묵상 저장에 실패했어요. 다시 시도해주세요.", de: "Die Foto-Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "Could not save the photo reflection. Please try again.", fr: "Impossible d’enregistrer la méditation photo. Veuillez réessayer." },
+  preparingPhoto: { ko: "저장할 사진을 안전하게 준비하고 있어요…", de: "Das Foto wird sicher vorbereitet…", en: "Preparing the photo safely…", fr: "Préparation sécurisée de la photo…" },
+  photoReadError: { ko: "이 사진 형식을 읽지 못했어요. 다른 사진이나 원본 사진의 스크린샷을 선택해주세요.", de: "Dieses Fotoformat konnte nicht gelesen werden. Bitte wähle ein anderes Foto oder einen Screenshot des Originals.", en: "This photo format could not be read. Choose another photo or a screenshot of the original.", fr: "Ce format de photo n’a pas pu être lu. Choisissez une autre photo ou une capture d’écran de l’original." },
+  photoBlankOrBlack: { ko: "사진 변환 결과가 비어 있거나 검게 나와 저장하지 않았어요. 원본 사진의 스크린샷을 선택해주세요.", de: "Das umgewandelte Foto war leer oder schwarz und wurde nicht gespeichert. Bitte wähle einen Screenshot des Originals.", en: "The converted photo was blank or black, so it was not saved. Choose a screenshot of the original.", fr: "La photo convertie était vide ou noire et n’a pas été enregistrée. Choisissez une capture d’écran de l’original." },
+  photoProcessError: { ko: "사진을 저장용으로 변환하지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht für die Speicherung verarbeitet werden. Bitte wähle ein anderes Foto.", en: "The photo could not be prepared for saving. Choose another photo.", fr: "La photo n’a pas pu être préparée pour l’enregistrement. Choisissez-en une autre." },
+  uploadError: { ko: "사진 업로드에 실패했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Das Hochladen des Fotos ist fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut.", en: "The photo upload failed. Check your internet connection and try again.", fr: "Le téléversement de la photo a échoué. Vérifiez votre connexion Internet et réessayez." },
+  recordError: { ko: "사진은 준비됐지만 묵상 기록 저장에 실패했어요. 다시 시도해주세요.", de: "Das Foto ist vorbereitet, aber die Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "The photo was prepared, but the reflection record could not be saved. Please try again.", fr: "La photo a été préparée, mais la méditation n’a pas pu être enregistrée. Veuillez réessayer." },
+  savedShareWarning: { ko: "사진 묵상은 저장됐지만 일부 나눔 설정을 반영하지 못했어요.", de: "Die Foto-Reflexion wurde gespeichert, aber einige Freigabeeinstellungen konnten nicht übernommen werden.", en: "The photo reflection was saved, but some sharing settings could not be applied.", fr: "La méditation photo a été enregistrée, mais certains réglages de partage n’ont pas pu être appliqués." },
+  savedFollowupWarning: { ko: "사진 묵상은 안전하게 저장됐어요. 완료 상태를 다시 확인해주세요.", de: "Die Foto-Reflexion wurde sicher gespeichert. Bitte prüfe den Abschlussstatus erneut.", en: "The photo reflection was safely saved. Please check the completion status again.", fr: "La méditation photo a été enregistrée en toute sécurité. Vérifiez à nouveau son état de finalisation." },
   needPhoto: { ko: "사진을 먼저 선택해주세요.", de: "Bitte wähle zuerst ein Foto aus.", en: "Please choose a photo first.", fr: "Veuillez d’abord choisir une photo." },
-  unsupportedPhoto: { ko: "이미지 파일만 선택할 수 있어요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image." },
+  unsupportedPhoto: { ko: "지원되는 이미지 파일을 선택해주세요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image." },
   photoTooLarge: { ko: "15MB 이하의 사진만 선택할 수 있어요.", de: "Bitte wähle ein Foto bis 15 MB aus.", en: "Please choose a photo up to 15 MB.", fr: "Veuillez choisir une photo de 15 Mo maximum." },
   compressedPhotoTooLarge: { ko: "사진을 2MB 이하로 줄이지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht auf unter 2 MB verkleinert werden. Bitte wähle ein anderes Foto.", en: "The photo could not be reduced below 2 MB. Please choose another photo.", fr: "La photo n’a pas pu être réduite à moins de 2 Mo. Veuillez en choisir une autre." },
   alreadyDone: { ko: "해당 날짜의 말씀 묵상 기록이 이미 있어요.", de: "Für dieses Datum gibt es bereits eine Reflexion.", en: "You already have a Bible reflection for this date.", fr: "Vous avez déjà une méditation biblique pour cette date." },
@@ -124,41 +136,59 @@ async function replaceQtRecordRecipients(supabase: ReturnType<typeof createClien
   if (insertError) throw insertError;
 }
 
-async function compressImage(file: File): Promise<Blob> {
-  const imageUrl = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = imageUrl;
-    });
-    let lastBlob: Blob | null = null;
-    for (const attempt of PHOTO_COMPRESSION_ATTEMPTS) {
-      const scale = Math.min(1, attempt.maxSide / Math.max(img.width, img.height));
-      const width = Math.max(1, Math.round(img.width * scale));
-      const height = Math.max(1, Math.round(img.height * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Image compression failed");
-      ctx.drawImage(img, 0, 0, width, height);
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          result => result ? resolve(result) : reject(new Error("Image compression failed")),
-          "image/jpeg",
-          attempt.quality,
-        );
-      });
-      lastBlob = blob;
-      if (blob.size <= PHOTO_MAX_STORED_SIZE) return blob;
-    }
-    if (!lastBlob) throw new Error("Image compression failed");
-    return lastBlob;
-  } finally {
-    URL.revokeObjectURL(imageUrl);
+function isPhotoPickerCancellation(error: unknown) {
+  const value = error && typeof error === "object" ? error as { code?: unknown; message?: unknown } : {};
+  const code = String(value.code ?? "").toLowerCase();
+  const message = String(value.message ?? error ?? "").toLowerCase();
+  return code.includes("cancel") || message.includes("cancelled") || message.includes("canceled") || message.includes("user cancelled");
+}
+
+function getNativePhotoMimeType(format: string | undefined) {
+  const normalized = String(format ?? "jpeg").toLowerCase();
+  if (normalized === "png") return "image/png";
+  if (normalized === "webp") return "image/webp";
+  return "image/jpeg";
+}
+
+function base64ToPhotoFile(base64: string, mimeType: string) {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
   }
+  const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+  return new File([bytes], `qt-photo.${extension}`, { type: mimeType, lastModified: Date.now() });
+}
+
+function getErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return "";
+  if ("code" in error) return String((error as { code?: unknown }).code ?? "");
+  if ("statusCode" in error) return String((error as { statusCode?: unknown }).statusCode ?? "");
+  return "";
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message.slice(0, 280);
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message ?? "").slice(0, 280);
+  }
+  return String(error ?? "").slice(0, 280);
+}
+
+function getPhotoPreparationNotice(error: unknown, lang: string) {
+  if (!(error instanceof QTPhotoPreparationError)) return pc("photoProcessError", lang);
+  if (error.code === "unsupported") return pc("unsupportedPhoto", lang);
+  if (error.code === "input_too_large") return pc("photoTooLarge", lang);
+  if (error.code === "decode_failed" || error.code === "invalid_dimensions") return pc("photoReadError", lang);
+  if (error.code === "blank_or_black") return pc("photoBlankOrBlack", lang);
+  if (error.code === "stored_too_large") return pc("compressedPhotoTooLarge", lang);
+  return pc("photoProcessError", lang);
+}
+
+function getPhotoSaveNotice(stage: PhotoSaveStage, lang: string) {
+  if (stage === "upload") return pc("uploadError", lang);
+  if (stage === "record") return pc("recordError", lang);
+  return pc("saveError", lang);
 }
 
 function PhotoReflectionContent() {
@@ -194,8 +224,9 @@ function PhotoReflectionContent() {
   });
   const [sermonTitle, setSermonTitle] = useState("");
   const [extraRefs, setExtraRefs] = useState<string[]>([]);
-  const [file, setFile] = useState<File | null>(null);
+  const [preparedPhoto, setPreparedPhoto] = useState<PreparedQTPhoto | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [caption, setCaption] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -253,20 +284,75 @@ function PhotoReflectionContent() {
     };
   }, [previewUrl]);
 
+  async function prepareSelectedPhoto(selected: File, source: "native" | "web") {
+    setPreparingPhoto(true);
+    try {
+      const prepared = await prepareQTPhoto(selected);
+      setPreparedPhoto(prepared);
+      setPreviewUrl(URL.createObjectURL(prepared.blob));
+    } catch (error) {
+      console.error("photo reflection selection preparation failed", {
+        source,
+        targetDate,
+        isCatchup,
+        fileType: selected.type || null,
+        fileSize: selected.size,
+        code: getErrorCode(error),
+        message: getErrorMessage(error),
+        error,
+      });
+      showNotice(getPhotoPreparationNotice(error, lang));
+    } finally {
+      setPreparingPhoto(false);
+    }
+  }
+
+  async function choosePhoto() {
+    if (preparingPhoto || saving) return;
+
+    if (Capacitor.isNativePlatform()) {
+      setPreparingPhoto(true);
+      try {
+        // Normalize device-specific HEIC/HDR/color-space photos in the native
+        // photo library before the bytes enter the WebView.
+        const photo = await NativeCamera.getPhoto({
+          source: CameraSource.Photos,
+          resultType: CameraResultType.Base64,
+          quality: 90,
+          width: 1800,
+          height: 1800,
+          correctOrientation: true,
+          allowEditing: false,
+        });
+        if (!photo.base64String) throw new QTPhotoPreparationError("decode_failed");
+        const selected = base64ToPhotoFile(photo.base64String, getNativePhotoMimeType(photo.format));
+        const prepared = await prepareQTPhoto(selected);
+        setPreparedPhoto(prepared);
+        setPreviewUrl(URL.createObjectURL(prepared.blob));
+      } catch (error) {
+        if (isPhotoPickerCancellation(error)) return;
+        console.error("photo reflection native picker failed", {
+          targetDate,
+          isCatchup,
+          code: getErrorCode(error),
+          message: getErrorMessage(error),
+          error,
+        });
+        showNotice(getPhotoPreparationNotice(error, lang));
+      } finally {
+        setPreparingPhoto(false);
+      }
+      return;
+    }
+
+    fileInputRef.current?.click();
+  }
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     event.currentTarget.value = "";
     if (!selected) return;
-    if (!selected.type.startsWith("image/")) {
-      showNotice(pc("unsupportedPhoto", lang));
-      return;
-    }
-    if (selected.size > PHOTO_MAX_INPUT_SIZE) {
-      showNotice(pc("photoTooLarge", lang));
-      return;
-    }
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
+    void prepareSelectedPhoto(selected, "web");
   }
 
   async function loadShareOptions() {
@@ -293,7 +379,11 @@ function PhotoReflectionContent() {
   }
 
   function openSharePrompt() {
-    if (!file) {
+    if (preparingPhoto) {
+      showNotice(pc("preparingPhoto", lang));
+      return;
+    }
+    if (!preparedPhoto) {
       showNotice(pc("needPhoto", lang));
       return;
     }
@@ -319,26 +409,31 @@ function PhotoReflectionContent() {
   }
 
   async function savePhotoReflection(options: CompletePhotoOptions = {}) {
-    if (!file) {
+    if (preparingPhoto) {
+      showNotice(pc("preparingPhoto", lang));
+      return;
+    }
+    if (!preparedPhoto) {
       showNotice(pc("needPhoto", lang));
       return;
     }
     if (saveLockRef.current || saving) return;
 
+    const photoToSave = preparedPhoto;
     saveLockRef.current = true;
     setSaving(true);
     const supabase = createClient();
+    let stage: PhotoSaveStage = "auth";
     let uploadedPath: string | null = null;
     let insertedRecordId: string | null = null;
-    let userId: string | null = null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
         return;
       }
-      userId = user.id;
 
+      stage = "duplicate-check";
       const { data: existingRows, error: existingError } = await supabase
         .from("qt_records")
         .select("id")
@@ -372,19 +467,22 @@ function PhotoReflectionContent() {
         return;
       }
 
-      const compressed = await compressImage(file);
-      if (compressed.size > PHOTO_MAX_STORED_SIZE) {
-        showNotice(pc("compressedPhotoTooLarge", lang));
-        return;
-      }
       const random = Math.random().toString(36).slice(2, 10);
-      uploadedPath = `${user.id}/${targetDate}/${Date.now()}-${random}.jpg`;
+      uploadedPath = `${user.id}/${targetDate}/${Date.now()}-${random}.${photoToSave.extension}`;
+
+      stage = "upload";
       const { error: uploadError } = await supabase.storage
         .from(PHOTO_BUCKET)
-        .upload(uploadedPath, compressed, { contentType: "image/jpeg", upsert: false });
+        .upload(uploadedPath, photoToSave.blob, {
+          contentType: photoToSave.contentType,
+          cacheControl: "3600",
+          upsert: false,
+        });
       if (uploadError) throw uploadError;
 
-      const visibility = options.visibility ?? "private";
+      // Create the durable record privately first. A later group/partner metadata
+      // error must never erase an uploaded reflection.
+      stage = "record";
       const { data: insertedRecord, error: insertError } = await supabase
         .from("qt_records")
         .insert({
@@ -396,26 +494,72 @@ function PhotoReflectionContent() {
           meditation: caption.trim(),
           photo_caption: caption.trim(),
           photo_path: uploadedPath,
-          visibility,
+          visibility: "private",
           is_draft: false,
         })
-        .select("id")
+        .select("id,photo_path,date")
         .single();
       if (insertError) throw insertError;
 
       const recordId = insertedRecord?.id;
-      if (!recordId) throw new Error("Photo record id missing");
+      if (!recordId || insertedRecord.photo_path !== uploadedPath || insertedRecord.date !== targetDate) {
+        throw new Error("Photo reflection verification failed");
+      }
       insertedRecordId = String(recordId);
 
-      if (Array.isArray(options.partnerRecipientIds)) {
-        await replaceQtRecordRecipients(supabase, recordId, user.id, options.partnerRecipientIds);
+      const requestedVisibility = options.visibility ?? "private";
+      const requestedPartnerRecipientIds = Array.isArray(options.partnerRecipientIds)
+        ? options.partnerRecipientIds
+        : [];
+      let effectiveVisibility = requestedVisibility;
+      let effectivePartnerRecipientIds = requestedPartnerRecipientIds;
+      let sharingFailed = false;
+
+      stage = "recipients";
+      try {
+        if (requestedPartnerRecipientIds.length > 0) {
+          await replaceQtRecordRecipients(supabase, recordId, user.id, requestedPartnerRecipientIds);
+        }
+        if (requestedVisibility !== "private") {
+          const { error: visibilityError } = await supabase
+            .from("qt_records")
+            .update({ visibility: requestedVisibility })
+            .eq("id", recordId)
+            .eq("user_id", user.id);
+          if (visibilityError) throw visibilityError;
+        }
+      } catch (sharingError) {
+        sharingFailed = true;
+        effectiveVisibility = "private";
+        effectivePartnerRecipientIds = [];
+        console.warn("photo reflection sharing save failed; record kept private", {
+          targetDate,
+          isCatchup,
+          code: getErrorCode(sharingError),
+          message: getErrorMessage(sharingError),
+        });
+
+        const { error: recipientCleanupError } = await supabase
+          .from("qt_record_recipients")
+          .delete()
+          .eq("qt_record_id", recordId)
+          .eq("owner_id", user.id);
+        if (recipientCleanupError) console.warn("photo reflection recipient cleanup failed", recipientCleanupError);
+
+        const { error: privateFallbackError } = await supabase
+          .from("qt_records")
+          .update({ visibility: "private" })
+          .eq("id", recordId)
+          .eq("user_id", user.id);
+        if (privateFallbackError) console.warn("photo reflection private fallback failed", privateFallbackError);
       }
 
       if (targetDate === today) {
+        stage = "progress";
         try {
           await recordTodayPhotoProgress(supabase, user.id);
         } catch (progressError) {
-          console.warn("photo reflection progress failed", progressError);
+          console.warn("photo reflection progress failed; record preserved", progressError);
           showNotice(pc("progressError", lang));
           return;
         }
@@ -426,47 +570,83 @@ function PhotoReflectionContent() {
           console.warn("photo reflection notification completion update failed", notificationError);
         }
 
-        await createBibleReflectionShareNotificationsBestEffort({
-          qtRecordId: insertedRecordId,
-          visibility,
-          partnerRecipientIds: options.partnerRecipientIds,
-        });
+        stage = "notifications";
+        try {
+          await createBibleReflectionShareNotificationsBestEffort({
+            qtRecordId: recordId,
+            visibility: effectiveVisibility,
+            partnerRecipientIds: effectivePartnerRecipientIds,
+          });
+        } catch (notificationError) {
+          console.warn("photo reflection share notification creation failed", notificationError);
+        }
 
         setShowShareModal(false);
-        router.push("/qt/complete");
+        if (sharingFailed) {
+          showNotice(pc("savedShareWarning", lang));
+          window.setTimeout(() => router.push("/qt/complete"), 1400);
+        } else {
+          router.push("/qt/complete");
+        }
         return;
       }
 
-      await createBibleReflectionShareNotificationsBestEffort({
-        qtRecordId: insertedRecordId,
-        visibility,
-        partnerRecipientIds: options.partnerRecipientIds,
-      });
+      stage = "notifications";
+      try {
+        await createBibleReflectionShareNotificationsBestEffort({
+          qtRecordId: recordId,
+          visibility: effectiveVisibility,
+          partnerRecipientIds: effectivePartnerRecipientIds,
+        });
+      } catch (notificationError) {
+        console.warn("past photo reflection share notification creation failed", notificationError);
+      }
 
       setShowShareModal(false);
-      router.push(`/qt/record?id=${recordId}`);
+      if (sharingFailed) {
+        showNotice(pc("savedShareWarning", lang));
+        window.setTimeout(() => router.push(`/qt/record?id=${recordId}`), 1400);
+      } else {
+        router.push(`/qt/record?id=${recordId}`);
+      }
     } catch (error) {
-      console.error("photo reflection save failed", error);
-      if (insertedRecordId && userId) {
-        const { error: rollbackError } = await supabase
-          .from("qt_records")
-          .delete()
-          .eq("id", insertedRecordId)
-          .eq("user_id", userId);
-        if (rollbackError) console.warn("photo reflection record rollback failed", rollbackError);
+      console.error("photo reflection save failed", {
+        stage,
+        targetDate,
+        isCatchup,
+        preparedPhoto: {
+          contentType: photoToSave.contentType,
+          size: photoToSave.blob.size,
+          width: photoToSave.width,
+          height: photoToSave.height,
+          originalSize: photoToSave.originalSize,
+          wasTransformed: photoToSave.wasTransformed,
+        },
+        code: getErrorCode(error),
+        message: getErrorMessage(error),
+        error,
+      });
+
+      // Remove only an unreferenced upload. Once the core row exists, later
+      // optional sharing/progress/notification failures must not delete it.
+      if (!insertedRecordId && uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]);
+        if (cleanupError) console.warn("photo reflection upload cleanup failed", cleanupError);
       }
-      if (uploadedPath) {
-        await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]).catch(() => undefined);
-      }
-      const errorCode = error && typeof error === "object" && "code" in error
-        ? String((error as { code?: unknown }).code ?? "")
-        : "";
+
+      const errorCode = getErrorCode(error);
       if (errorCode === "23505") {
         setShowShareModal(false);
         showNotice(pc("alreadyDone", lang));
         router.push("/qt");
+      } else if (insertedRecordId) {
+        setShowShareModal(false);
+        showNotice(pc("savedFollowupWarning", lang));
+        window.setTimeout(() => {
+          router.push(targetDate === today ? "/qt/complete" : `/qt/record?id=${insertedRecordId}`);
+        }, 1400);
       } else {
-        showNotice(pc("saveError", lang));
+        showNotice(getPhotoSaveNotice(stage, lang));
       }
     } finally {
       saveLockRef.current = false;
@@ -592,14 +772,25 @@ function PhotoReflectionContent() {
         )}
 
         <div className="card" style={{ textAlign: "center" }}>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
-          {previewUrl ? (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+          {preparingPhoto ? (
+            <div style={{ minHeight: 170, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--qt-sage-text)" }}>
+              <Loader2 size={30} className="spin" />
+              <span style={{ fontSize: 13, fontWeight: 800 }}>{pc("preparingPhoto", lang)}</span>
+            </div>
+          ) : previewUrl ? (
             <div>
               <img src={previewUrl} alt="preview" style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", marginBottom: 12 }} />
-              <button onClick={() => fileInputRef.current?.click()} className="btn-outline" style={{ width: "100%" }}>{pc("changePhoto", lang)}</button>
+              <button type="button" onClick={() => void choosePhoto()} disabled={saving} className="btn-outline" style={{ width: "100%" }}>{pc("changePhoto", lang)}</button>
             </div>
           ) : (
-            <button className="qt-photo-upload" onClick={() => fileInputRef.current?.click()} style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}>
+            <button type="button" className="qt-photo-upload" onClick={() => void choosePhoto()} disabled={saving} style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}>
               <UploadCloud size={34} />
               {pc("choosePhoto", lang)}
             </button>
@@ -611,7 +802,7 @@ function PhotoReflectionContent() {
           <CursorStableTextarea value={caption} onValueChange={setCaption} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
         </label>
 
-        <button onClick={openSharePrompt} disabled={saving} className="btn-primary" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button type="button" onClick={openSharePrompt} disabled={saving || preparingPhoto || !preparedPhoto} className="btn-primary" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {pc("shareAndSave", lang)}
         </button>
       </div>
