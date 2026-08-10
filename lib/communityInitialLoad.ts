@@ -1,4 +1,24 @@
+import { getPrayerShareActivityTime } from "@/lib/communityContentOrder";
 import { loadProfileCards } from "@/lib/profileCards";
+
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function addLatestTime(
+  target: Record<string, string | null>,
+  key: string,
+  value: string | null,
+) {
+  if (!value) return;
+  const current = target[key];
+  if (!current || Date.parse(value) > Date.parse(current)) target[key] = value;
+}
 
 export type CommunityViewerMeta = {
   hiddenKeys: string[];
@@ -104,8 +124,9 @@ async function loadPartnerPreferenceRows(
 
 /**
  * Loads all independent metadata needed by the companion list concurrently.
- * The returned shape is intentionally identical to the maps previously built
- * inside app/community/page.tsx, so the UI and sorting rules remain unchanged.
+ * The returned shape matches the maps consumed by app/community/page.tsx.
+ * Prayer activity additionally includes answered_at so a newly completed
+ * testimony is not hidden behind the original prayer-request date.
  */
 export async function loadPartnerSupplementalData(
   supabase: any,
@@ -137,11 +158,11 @@ export async function loadPartnerSupplementalData(
         .limit(200),
       supabase
         .from("prayer_item_recipients")
-        .select("owner_id,recipient_id,created_at")
+        .select("prayer_item_id,owner_id,recipient_id,created_at")
         .eq("recipient_id", userId)
         .in("owner_id", partnerIds)
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(500),
     ]);
 
   if (profileResult.error) {
@@ -176,16 +197,52 @@ export async function loadPartnerSupplementalData(
 
   const latestPartnerQtAt: Record<string, string | null> = {};
   (qtRecipientResult.data ?? []).forEach((row: any) => {
-    if (!latestPartnerQtAt[row.owner_id]) {
-      latestPartnerQtAt[row.owner_id] = row.created_at ?? null;
-    }
+    addLatestTime(latestPartnerQtAt, row.owner_id, row.created_at ?? null);
   });
 
+  const prayerRecipientRows = prayerRecipientResult.data ?? [];
+  const prayerItemIds = Array.from(
+    new Set(
+      prayerRecipientRows
+        .map((row: any) => String(row.prayer_item_id ?? ""))
+        .filter(Boolean),
+    ),
+  );
+  const prayerItemMap: Record<string, any> = {};
+
+  if (prayerItemIds.length > 0) {
+    const prayerItemResults = await Promise.all(
+      chunkArray(prayerItemIds, 100).map((ids) =>
+        supabase
+          .from("prayer_items")
+          .select("id,is_answered,answered_at,created_at")
+          .in("id", ids),
+      ),
+    );
+
+    prayerItemResults.forEach((result) => {
+      if (result.error) {
+        console.warn(
+          "동역자 기도 응답 완료 시각 조회 실패:",
+          result.error.message,
+        );
+        return;
+      }
+      (result.data ?? []).forEach((row: any) => {
+        prayerItemMap[row.id] = row;
+      });
+    });
+  }
+
   const latestPartnerPrayerAt: Record<string, string | null> = {};
-  (prayerRecipientResult.data ?? []).forEach((row: any) => {
-    if (!latestPartnerPrayerAt[row.owner_id]) {
-      latestPartnerPrayerAt[row.owner_id] = row.created_at ?? null;
-    }
+  prayerRecipientRows.forEach((recipient: any) => {
+    const prayer = prayerItemMap[recipient.prayer_item_id] ?? null;
+    const activityAt = getPrayerShareActivityTime({
+      ...prayer,
+      shared_at: recipient.created_at,
+      created_at: prayer?.created_at ?? recipient.created_at,
+    });
+    addLatestTime(latestPartnerPrayerAt, recipient.owner_id, activityAt);
   });
 
   return {

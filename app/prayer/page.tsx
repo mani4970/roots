@@ -14,6 +14,10 @@ import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rew
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import {
+  sortAnsweredPrayerRows,
+  sortPrayerRequestRows,
+} from "@/lib/communityContentOrder";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -555,9 +559,24 @@ function PrayerPageContent() {
     setTestimonyText("");
   }
 
-  const myPrayingList = prayers.filter(p => !p.is_answered);
-  const answeredList = prayers.filter(p => p.is_answered);
-  const currentList = tab === "mine" ? myPrayingList : tab === "answered" ? answeredList : intercessionPrayers;
+  const myPrayingList = sortPrayerRequestRows(
+    prayers.filter((prayer) => !prayer.is_answered),
+  );
+  const answeredList = sortAnsweredPrayerRows(
+    prayers.filter((prayer) => prayer.is_answered),
+  );
+  const intercessionPrayingList = sortPrayerRequestRows(
+    intercessionPrayers.filter((prayer) => !prayer.is_answered),
+  );
+  const intercessionAnsweredList = sortAnsweredPrayerRows(
+    intercessionPrayers.filter((prayer) => prayer.is_answered),
+  );
+  const currentList =
+    tab === "mine"
+      ? myPrayingList
+      : tab === "answered"
+        ? answeredList
+        : [...intercessionPrayingList, ...intercessionAnsweredList];
   const emptyIconSrc = tab === "mine" ? "/icon-prayer-request.webp" : tab === "answered" ? "/icon-prayer-answered.webp" : "/icon-pray.webp";
   const emptyTitle = tab === "mine" ? c("prayer_empty_mine_title") : tab === "answered" ? c("prayer_empty_answered_title") : c("prayer_empty_intercession_title");
   const emptySub = tab === "mine" ? c("prayer_empty_mine_sub") : tab === "answered" ? c("prayer_empty_answered_sub") : c("prayer_empty_intercession_sub");

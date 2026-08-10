@@ -47,6 +47,15 @@ import {
   loadCommunityViewerMeta,
   loadPartnerSupplementalData,
 } from "@/lib/communityInitialLoad";
+import {
+  getAnsweredPrayerTime,
+  getPrayerShareActivityTime,
+  getQtShareActivityTime,
+  sortAnsweredPrayerRows,
+  sortCommunityPrayerRows,
+  sortPrayerRequestRows,
+  sortQtRowsByCompletion,
+} from "@/lib/communityContentOrder";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import {
@@ -123,6 +132,7 @@ type GroupChallengeRequestSummary = {
 const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
+const COMMUNITY_PARTNER_HISTORY_LIMIT = 500;
 type CommunitySectionKey = "qt" | "praying" | "answered";
 
 type ReflectionNudgeStatus = {
@@ -177,16 +187,20 @@ function sharedContentTime(row: any): string | null {
   return row?.shared_at ?? row?.created_at ?? null;
 }
 
-function qtFeedTime(row: any): string | null {
-  return row?.shared_at ?? row?.created_at ?? null;
+function qtUnreadActivityTime(row: any): string | null {
+  return getQtShareActivityTime(row);
+}
+
+function prayerUnreadActivityTime(row: any): string | null {
+  return getPrayerShareActivityTime(row);
 }
 
 function sortQtFeedRows<T extends Record<string, any>>(rows: T[]): T[] {
-  return [...rows].sort(
-    (a, b) =>
-      new Date(qtFeedTime(b) ?? 0).getTime() -
-      new Date(qtFeedTime(a) ?? 0).getTime(),
-  );
+  return sortQtRowsByCompletion(rows);
+}
+
+function sortPrayerFeedRows<T extends Record<string, any>>(rows: T[]): T[] {
+  return sortCommunityPrayerRows(rows);
 }
 
 function mergeRowsById<T extends Record<string, any>>(
@@ -207,20 +221,30 @@ async function fetchQtFeedRows(
   supabase: ReturnType<typeof createClient>,
   visibilityPattern: string,
 ) {
-  // 중요한 이유: 오래된 공유 기록은 shared_at이 null일 수 있습니다.
-  // shared_at 기준 쿼리만 limit 하면 null shared_at 기록이 뒤로 밀려 그룹/전체 피드에서 사라져 보일 수 있으므로,
-  // created_at 기준 쿼리도 함께 가져와 합친 뒤 클라이언트에서 shared_at ?? created_at 기준으로 정렬합니다.
-  const [createdAtQuery, sharedAtQuery] = await Promise.all([
+  // Feed order is the first final-completion time, not the time a draft row was
+  // created or the time sharing was edited later. Keep a created_at query as a
+  // compatibility fallback until migration 125 is present everywhere.
+  const [createdAtQuery, completedAtQuery, sharedAtQuery] = await Promise.all([
     supabase
       .from("qt_records")
       .select("*")
       .ilike("visibility", visibilityPattern)
+      .eq("is_draft", false)
       .order("created_at", { ascending: false })
       .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
     supabase
       .from("qt_records")
       .select("*")
       .ilike("visibility", visibilityPattern)
+      .eq("is_draft", false)
+      .order("completed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+    supabase
+      .from("qt_records")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .eq("is_draft", false)
       .order("shared_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
@@ -228,26 +252,83 @@ async function fetchQtFeedRows(
 
   if (createdAtQuery.error) throw createdAtQuery.error;
 
-  if (sharedAtQuery.error) {
-    if (/shared_at/i.test(sharedAtQuery.error.message ?? "")) {
+  if (completedAtQuery.error) {
+    if (/completed_at/i.test(completedAtQuery.error.message ?? "")) {
       console.warn(
-        "qt_records.shared_at column is not available yet. Falling back to created_at ordering:",
-        sharedAtQuery.error.message,
+        "qt_records.completed_at column is not available yet. Falling back to legacy completion ordering:",
+        completedAtQuery.error.message,
       );
     } else {
       console.warn(
-        "qt_records shared_at ordering failed. Falling back to created_at ordering:",
-        sharedAtQuery.error.message,
+        "qt_records completed_at ordering failed. Falling back to legacy completion ordering:",
+        completedAtQuery.error.message,
       );
     }
+  }
+
+  if (sharedAtQuery.error) {
+    console.warn(
+      "qt_records shared_at coverage query failed:",
+      sharedAtQuery.error.message,
+    );
   }
 
   return sortQtFeedRows(
     mergeRowsById([
       createdAtQuery.data ?? [],
+      completedAtQuery.error ? [] : (completedAtQuery.data ?? []),
       sharedAtQuery.error ? [] : (sharedAtQuery.data ?? []),
     ]),
-  ).slice(0, COMMUNITY_FEED_PREFETCH_LIMIT);
+  );
+}
+
+async function fetchPrayerFeedRows(
+  supabase: ReturnType<typeof createClient>,
+  visibilityPattern: string,
+) {
+  // An answered prayer is a newly completed testimony at answered_at. Fetch it
+  // independently so an old prayer request answered today cannot be excluded by
+  // a created_at limit. Active requests retain their existing share/create order.
+  const [createdAtQuery, sharedAtQuery, answeredAtQuery] = await Promise.all([
+    supabase
+      .from("prayer_items")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+    supabase
+      .from("prayer_items")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .eq("is_answered", false)
+      .order("shared_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+    supabase
+      .from("prayer_items")
+      .select("*")
+      .ilike("visibility", visibilityPattern)
+      .eq("is_answered", true)
+      .order("answered_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+  ]);
+
+  if (createdAtQuery.error) throw createdAtQuery.error;
+  if (sharedAtQuery.error) {
+    console.warn("기도 요청 공유 시각 정렬 조회 실패:", sharedAtQuery.error.message);
+  }
+  if (answeredAtQuery.error) {
+    console.warn("기도 응답 완료 시각 정렬 조회 실패:", answeredAtQuery.error.message);
+  }
+
+  return sortPrayerFeedRows(
+    mergeRowsById([
+      createdAtQuery.data ?? [],
+      sharedAtQuery.error ? [] : (sharedAtQuery.data ?? []),
+      answeredAtQuery.error ? [] : (answeredAtQuery.data ?? []),
+    ]),
+  );
 }
 
 function latestSharedContentTime(rows?: any[] | null): string | null {
@@ -277,6 +358,23 @@ function chunkArray<T>(items: T[], size: number) {
   for (let i = 0; i < items.length; i += size)
     chunks.push(items.slice(i, i + size));
   return chunks;
+}
+
+async function fetchContentRowsByIds(
+  supabase: ReturnType<typeof createClient>,
+  table: "qt_records" | "prayer_items",
+  ids: string[],
+) {
+  const rows: any[] = [];
+  for (const chunk of chunkArray(ids, 100)) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .in("id", chunk);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+  }
+  return rows;
 }
 
 function groupIdsFromVisibility(
@@ -402,7 +500,7 @@ async function fetchLatestQtTimesByGroup(
     }
 
     mergeRowsById([createdAtRows, sharedAtRows]).forEach((row: any) => {
-      const time = qtFeedTime(row);
+      const time = qtUnreadActivityTime(row);
       groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach(
         (groupId) => addLatestTime(latestByGroup, groupId, time),
       );
@@ -425,21 +523,58 @@ async function fetchLatestPrayerTimesByGroup(
       .map((groupId) => `visibility.ilike.%group_${groupId}%`)
       .join(",");
     const limit = Math.min(1000, Math.max(200, chunk.length * 25));
-    const { data, error } = await supabase
-      .from("prayer_items")
-      .select("visibility,created_at,shared_at,answered_at,is_answered")
-      .or(visibilityFilter)
-      .order("shared_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const [createdAtResult, sharedAtResult, answeredAtResult] =
+      await Promise.all([
+        supabase
+          .from("prayer_items")
+          .select("id,visibility,created_at,shared_at,answered_at,is_answered")
+          .or(visibilityFilter)
+          .order("created_at", { ascending: false })
+          .limit(limit),
+        supabase
+          .from("prayer_items")
+          .select("id,visibility,created_at,shared_at,answered_at,is_answered")
+          .or(visibilityFilter)
+          .eq("is_answered", false)
+          .order("shared_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(limit),
+        supabase
+          .from("prayer_items")
+          .select("id,visibility,created_at,shared_at,answered_at,is_answered")
+          .or(visibilityFilter)
+          .eq("is_answered", true)
+          .order("answered_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(limit),
+      ]);
 
-    if (error) {
-      console.warn("그룹 최신 기도 일괄 조회 실패:", error.message);
+    if (createdAtResult.error) {
+      console.warn(
+        "그룹 최신 기도 created_at 조회 실패:",
+        createdAtResult.error.message,
+      );
       continue;
     }
+    if (sharedAtResult.error) {
+      console.warn(
+        "그룹 최신 기도 shared_at 조회 실패:",
+        sharedAtResult.error.message,
+      );
+    }
+    if (answeredAtResult.error) {
+      console.warn(
+        "그룹 최신 기도 answered_at 조회 실패:",
+        answeredAtResult.error.message,
+      );
+    }
 
-    (data ?? []).forEach((row: any) => {
-      const time = sharedContentTime(row);
+    mergeRowsById([
+      createdAtResult.data ?? [],
+      sharedAtResult.error ? [] : (sharedAtResult.data ?? []),
+      answeredAtResult.error ? [] : (answeredAtResult.data ?? []),
+    ]).forEach((row: any) => {
+      const time = prayerUnreadActivityTime(row);
       groupIdsFromVisibility(row.visibility, allowedGroupIds).forEach(
         (groupId) => addLatestTime(latestByGroup, groupId, time),
       );
@@ -3050,24 +3185,27 @@ function CommunityPageContent() {
     if (prayerIds.length === 0)
       return { counts: {} as Record<string, number>, mine: [] as string[] };
 
-    const { data: likes, error } = await supabase
-      .from("prayer_likes")
-      .select("prayer_id,user_id")
-      .in("prayer_id", prayerIds);
-
-    if (error) {
-      console.warn("기도 응답 좋아요 조회 실패:", error.message);
-      return { counts: {} as Record<string, number>, mine: [] as string[] };
-    }
-
     const counts: Record<string, number> = {};
     const mine: string[] = [];
-    (likes ?? []).forEach((like: any) => {
-      counts[like.prayer_id] = (counts[like.prayer_id] ?? 0) + 1;
-      if (like.user_id === uid) mine.push(like.prayer_id);
-    });
 
-    return { counts, mine };
+    for (const ids of chunkArray(prayerIds, 100)) {
+      const { data: likes, error } = await supabase
+        .from("prayer_likes")
+        .select("prayer_id,user_id")
+        .in("prayer_id", ids);
+
+      if (error) {
+        console.warn("기도 응답 좋아요 조회 실패:", error.message);
+        continue;
+      }
+
+      (likes ?? []).forEach((like: any) => {
+        counts[like.prayer_id] = (counts[like.prayer_id] ?? 0) + 1;
+        if (like.user_id === uid) mine.push(like.prayer_id);
+      });
+    }
+
+    return { counts, mine: Array.from(new Set(mine)) };
   }
 
   async function likeAnsweredPrayer(prayerId: string) {
@@ -3341,10 +3479,9 @@ function CommunityPageContent() {
     if (!rows || rows.length === 0) return null;
     const times = rows
       .map((row: any) => {
-        if (field === "answered")
-          return row.answered_at ?? row.created_at ?? null;
-        if (field === "prayer") return sharedContentTime(row);
-        return row.created_at ?? null;
+        if (field === "answered") return getAnsweredPrayerTime(row);
+        if (field === "prayer") return prayerUnreadActivityTime(row);
+        return qtUnreadActivityTime(row);
       })
       .filter(
         (value): value is string =>
@@ -3492,13 +3629,12 @@ function CommunityPageContent() {
 
       if (target.scope === "group") {
         setGroupQts((prev) =>
-          sortQtFeedRows(mergeRowsById([[record], prev])).slice(
-            0,
-            COMMUNITY_FEED_PREFETCH_LIMIT,
-          ),
+          sortQtFeedRows(mergeRowsById([[record], prev])),
         );
       } else {
-        setPartnerQts((prev) => mergeRowsById([[record], prev]));
+        setPartnerQts((prev) =>
+          sortQtFeedRows(mergeRowsById([[record], prev])),
+        );
       }
 
       if (record.photo_path) void loadQtPhotoUrls(supabase, [record]);
@@ -3530,10 +3666,14 @@ function CommunityPageContent() {
 
     if (target.scope === "group") {
       setGroupDetailTab(resolvedPrayerSection);
-      setGroupPrayers((prev) => mergeRowsById([[record], prev]));
+      setGroupPrayers((prev) =>
+        sortPrayerFeedRows(mergeRowsById([[record], prev])),
+      );
     } else {
       setPartnerDetailTab(resolvedPrayerSection);
-      setPartnerPrayers((prev) => mergeRowsById([[record], prev]));
+      setPartnerPrayers((prev) =>
+        sortPrayerFeedRows(mergeRowsById([[record], prev])),
+      );
     }
 
     directPrayerFocusRef.current = null;
@@ -3773,7 +3913,7 @@ function CommunityPageContent() {
           `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
         )
         .order("created_at", { ascending: false })
-        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+        .limit(COMMUNITY_PARTNER_HISTORY_LIMIT);
 
       if (qtRecipientError) throw qtRecipientError;
       const qtIds = Array.from(
@@ -3790,16 +3930,14 @@ function CommunityPageContent() {
           recipientMap[row.qt_record_id] = row;
         });
 
-        const { data: qtRows, error: qtError } = await supabase
-          .from("qt_records")
-          .select("*")
-          .in("id", qtIds)
-          .order("created_at", { ascending: false });
-
-        if (qtError) throw qtError;
-        const profMap = await fetchProfiles(supabase, qtRows ?? []);
-        const rowsWithProfiles = (qtRows ?? [])
-          .map((row: any) => {
+        const qtRows = await fetchContentRowsByIds(
+          supabase,
+          "qt_records",
+          qtIds,
+        );
+        const profMap = await fetchProfiles(supabase, qtRows);
+        const rowsWithProfiles = sortQtFeedRows(
+          qtRows.map((row: any) => {
             const recipient = recipientMap[row.id] ?? null;
             const partnerSharedAt = recipient?.created_at ?? row.created_at;
             return {
@@ -3811,12 +3949,8 @@ function CommunityPageContent() {
                 recipient?.recipient_id === user.id &&
                 isLaterThan(partnerSharedAt, previousSeenAt),
             };
-          })
-          .sort(
-            (a: any, b: any) =>
-              new Date(b.partnerSharedAt ?? b.created_at ?? 0).getTime() -
-              new Date(a.partnerSharedAt ?? a.created_at ?? 0).getTime(),
-          );
+          }),
+        );
 
         const visibleRows = filterHiddenItems(
           "qt",
@@ -3852,7 +3986,7 @@ function CommunityPageContent() {
             `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
           )
           .order("created_at", { ascending: false })
-          .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
+          .limit(COMMUNITY_PARTNER_HISTORY_LIMIT);
 
       if (prayerRecipientError) throw prayerRecipientError;
       const prayerIds = Array.from(
@@ -3869,16 +4003,13 @@ function CommunityPageContent() {
           recipientMap[row.prayer_item_id] = row;
         });
 
-        const { data: prayerRows, error: prayerError } = await supabase
-          .from("prayer_items")
-          .select("*")
-          .in("id", prayerIds)
-          .order("is_answered", { ascending: true })
-          .order("created_at", { ascending: false });
-
-        if (prayerError) throw prayerError;
-        const profMap = await fetchProfiles(supabase, prayerRows ?? []);
-        const answeredIds = (prayerRows ?? [])
+        const prayerRows = await fetchContentRowsByIds(
+          supabase,
+          "prayer_items",
+          prayerIds,
+        );
+        const profMap = await fetchProfiles(supabase, prayerRows);
+        const answeredIds = prayerRows
           .filter((row: any) => !!row.is_answered)
           .map((row: any) => row.id);
         const { counts: likeCounts, mine: myLikedIds } =
@@ -3888,34 +4019,26 @@ function CommunityPageContent() {
             Array.from(new Set([...prev, ...myLikedIds])),
           );
         }
-        const rowsWithProfiles = (prayerRows ?? [])
-          .map((row: any) => {
+        const rowsWithProfiles = sortPrayerFeedRows(
+          prayerRows.map((row: any) => {
             const recipient = recipientMap[row.id] ?? null;
             const partnerSharedAt = recipient?.created_at ?? row.created_at;
+            const partnerActivityAt = row.is_answered
+              ? getAnsweredPrayerTime(row) ?? partnerSharedAt
+              : partnerSharedAt;
             return {
               ...row,
               like_count: likeCounts[row.id] ?? row.like_count ?? 0,
               profiles: profMap[row.user_id] ?? null,
               partnerSharedAt,
+              partnerActivityAt,
               isUnreadInPartner:
                 recipient?.owner_id === partnerId &&
                 recipient?.recipient_id === user.id &&
-                isLaterThan(partnerSharedAt, previousSeenAt),
+                isLaterThan(partnerActivityAt, previousSeenAt),
             };
-          })
-          .sort(
-            (a: any, b: any) =>
-              new Date(
-                (b.is_answered ? b.answered_at : b.partnerSharedAt) ??
-                  b.created_at ??
-                  0,
-              ).getTime() -
-              new Date(
-                (a.is_answered ? a.answered_at : a.partnerSharedAt) ??
-                  a.created_at ??
-                  0,
-              ).getTime(),
-          );
+          }),
+        );
 
         setPartnerPrayers(
           filterHiddenItems(
@@ -4009,19 +4132,29 @@ function CommunityPageContent() {
   // qt_reactions 로드 헬퍼 - qtIds 목록의 반응 카운트 + 내 반응 가져오기
   async function fetchQtReactions(supabase: any, qtIds: string[], uid: string) {
     if (qtIds.length === 0) return { counts: {}, mine: {} };
-    const { data: rxData } = await supabase
-      .from("qt_reactions")
-      .select("qt_id, reaction, user_id")
-      .in("qt_id", qtIds);
 
     const counts: Record<string, Record<string, number>> = {};
     const mine: Record<string, string> = {};
 
-    (rxData ?? []).forEach((r: any) => {
-      if (!counts[r.qt_id]) counts[r.qt_id] = {};
-      counts[r.qt_id][r.reaction] = (counts[r.qt_id][r.reaction] ?? 0) + 1;
-      if (r.user_id === uid) mine[r.qt_id] = r.reaction;
-    });
+    for (const ids of chunkArray(qtIds, 100)) {
+      const { data: rxData, error } = await supabase
+        .from("qt_reactions")
+        .select("qt_id, reaction, user_id")
+        .in("qt_id", ids);
+
+      if (error) {
+        console.warn("묵상 반응 조회 실패:", error.message);
+        continue;
+      }
+
+      (rxData ?? []).forEach((r: any) => {
+        if (!counts[r.qt_id]) counts[r.qt_id] = {};
+        counts[r.qt_id][r.reaction] =
+          (counts[r.qt_id][r.reaction] ?? 0) + 1;
+        if (r.user_id === uid) mine[r.qt_id] = r.reaction;
+      });
+    }
+
     return { counts, mine };
   }
 
@@ -4186,27 +4319,31 @@ function CommunityPageContent() {
       });
 
       setPrayers(
-        filterHiddenItems(
-          "prayer",
-          prayingRows.map((row: any) => ({
-            ...row,
-            profiles: profileMap[row.user_id] ?? null,
-          })),
-          loadedHiddenKeys,
-          loadedHiddenUserIds,
+        sortPrayerRequestRows(
+          filterHiddenItems(
+            "prayer",
+            prayingRows.map((row: any) => ({
+              ...row,
+              profiles: profileMap[row.user_id] ?? null,
+            })),
+            loadedHiddenKeys,
+            loadedHiddenUserIds,
+          ),
         ),
       );
       setLikedPrayerIds(myLikedIds);
       setAnsweredPrayers(
-        filterHiddenItems(
-          "prayer",
-          answeredRows.map((row: any) => ({
-            ...row,
-            like_count: likeCounts[row.id] ?? 0,
-            profiles: profileMap[row.user_id] ?? null,
-          })),
-          loadedHiddenKeys,
-          loadedHiddenUserIds,
+        sortAnsweredPrayerRows(
+          filterHiddenItems(
+            "prayer",
+            answeredRows.map((row: any) => ({
+              ...row,
+              like_count: likeCounts[row.id] ?? 0,
+              profiles: profileMap[row.user_id] ?? null,
+            })),
+            loadedHiddenKeys,
+            loadedHiddenUserIds,
+          ),
         ),
       );
       setQtShares(
@@ -4549,7 +4686,10 @@ function CommunityPageContent() {
         data.map((r: any) => ({
           ...r,
           profiles: profMap[r.user_id] ?? null,
-          isUnreadInGroup: isLaterThan(qtFeedTime(r), previousSeenAt),
+          isUnreadInGroup: isLaterThan(
+            qtUnreadActivityTime(r),
+            previousSeenAt,
+          ),
         })),
         currentHiddenKeys,
         currentHiddenUserIds,
@@ -4598,14 +4738,11 @@ function CommunityPageContent() {
     }
 
     if (user) {
-      const { data: prayerRows } = await supabase
-        .from("prayer_items")
-        .select("*")
-        .ilike("visibility", `%group_${group.id}%`)
-        .order("is_answered", { ascending: true })
-        .order("created_at", { ascending: false })
-        .limit(COMMUNITY_FEED_PREFETCH_LIMIT);
-      if (prayerRows) {
+      try {
+        const prayerRows = await fetchPrayerFeedRows(
+          supabase,
+          `%group_${group.id}%`,
+        );
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
         const answeredIds = prayerRows
           .filter((row: any) => !!row.is_answered)
@@ -4618,23 +4755,26 @@ function CommunityPageContent() {
           );
         }
         setGroupPrayers(
-          filterHiddenItems(
-            "prayer",
-            prayerRows.map((row: any) => ({
-              ...row,
-              like_count: likeCounts[row.id] ?? row.like_count ?? 0,
-              profiles: prayerProfMap[row.user_id] ?? null,
-              isUnreadInGroup: isLaterThan(
-                sharedContentTime(row),
-                previousSeenAt,
-              ),
-            })),
-            currentHiddenKeys,
-            currentHiddenUserIds,
+          sortPrayerFeedRows(
+            filterHiddenItems(
+              "prayer",
+              prayerRows.map((row: any) => ({
+                ...row,
+                like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+                profiles: prayerProfMap[row.user_id] ?? null,
+                isUnreadInGroup: isLaterThan(
+                  prayerUnreadActivityTime(row),
+                  previousSeenAt,
+                ),
+              })),
+              currentHiddenKeys,
+              currentHiddenUserIds,
+            ),
           ),
         );
-      } else if (directTarget?.contentKind !== "prayer") {
-        setGroupPrayers([]);
+      } catch (prayerError) {
+        console.warn("그룹 기도 조회 실패:", prayerError);
+        if (directTarget?.contentKind !== "prayer") setGroupPrayers([]);
       }
     } else if (directTarget?.contentKind !== "prayer") {
       setGroupPrayers([]);
