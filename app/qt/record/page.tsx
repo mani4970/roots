@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, type MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
@@ -81,6 +81,7 @@ function RecordContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!notice) return;
@@ -106,6 +107,7 @@ function RecordContent() {
       const supabase = createClient();
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUserId(user?.id ?? null);
         const { data } = await supabase.from("qt_records").select("*").eq("id", id).single();
         let visibilityTargets: string[] = [];
         if (data) {
@@ -360,7 +362,8 @@ function RecordContent() {
 
   function goEdit() {
     if (!record?.id) return;
-    router.push(`/qt/write?editId=${record.id}`);
+    const isPhoto = record.reflection_type === "photo" || record.qt_mode === "photo" || !!record.photo_path;
+    router.push(isPhoto ? `/qt/photo?editId=${record.id}` : `/qt/write?editId=${record.id}`);
   }
 
   function getShareLabel() {
@@ -385,6 +388,7 @@ function RecordContent() {
 
   const isShared = sharedTargets.length > 0;
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
+  const canEdit = Boolean(currentUserId && record?.user_id === currentUserId);
   const SECTIONS = [
     { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
     { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
@@ -405,7 +409,7 @@ function RecordContent() {
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
-          <div onClick={e => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
+          <div onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
               <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
@@ -433,14 +437,14 @@ function RecordContent() {
       </div>
 
       {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: isPhotoRecord ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: canEdit ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 8 }}>
         <button onClick={copyAll} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: copied ? "1px solid var(--sage)" : "1px solid var(--border)", background: copied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
           <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
         </button>
         <button onClick={openShareModal} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: isShared ? "1px solid var(--sage)" : "1px solid var(--border)", background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
           {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
         </button>
-        {!isPhotoRecord && (
+        {canEdit && (
           <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
             <Edit3 size={14} /> {trR("큐티 수정", lang)}
           </button>

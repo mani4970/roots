@@ -1,6 +1,7 @@
 export const QT_PHOTO_MAX_INPUT_SIZE = 15 * 1024 * 1024;
 export const QT_PHOTO_MAX_STORED_SIZE = 2 * 1024 * 1024;
 
+const PHOTO_DECODE_TIMEOUT_MS = 15_000;
 const PHOTO_COMPRESSION_ATTEMPTS = [
   { maxSide: 1800, quality: 0.84 },
   { maxSide: 1600, quality: 0.8 },
@@ -41,6 +42,16 @@ export type PreparedQTPhoto = {
   height: number;
   originalSize: number;
   wasTransformed: boolean;
+  /** Detected MIME type of the source bytes (kept for diagnostics). */
+  sourceMimeType: string;
+  /** Backward-compatible alias used by older call sites. */
+  detectedSourceType: string;
+};
+
+export type QTPhotoVerificationResult = {
+  width: number;
+  height: number;
+  size: number;
 };
 
 type DecodedPhoto = {
@@ -57,10 +68,27 @@ type PhotoPixelStats = {
   brightRatio: number;
 };
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs = PHOTO_DECODE_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new QTPhotoPreparationError("decode_failed")), timeoutMs);
+    promise.then(
+      value => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      error => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
 function normalizeMimeType(value: string | null | undefined, fileName = "") {
-  const raw = String(value ?? "").trim().toLowerCase();
+  const raw = String(value ?? "").trim().toLowerCase().split(";", 1)[0];
   if (raw === "image/jpg" || raw === "image/pjpeg") return "image/jpeg";
-  if (raw) return raw;
+  if (raw === "image/x-png") return "image/png";
+  if (raw.startsWith("image/")) return raw;
 
   const lowerName = fileName.toLowerCase();
   if (/\.(jpe?g|jfif)$/.test(lowerName)) return "image/jpeg";
@@ -69,6 +97,61 @@ function normalizeMimeType(value: string | null | undefined, fileName = "") {
   if (/\.hei[cf]$/.test(lowerName)) return "image/heic";
   if (/\.avif$/.test(lowerName)) return "image/avif";
   return "";
+}
+
+function ascii(bytes: Uint8Array, start: number, end: number) {
+  let value = "";
+  for (let index = start; index < end && index < bytes.length; index += 1) {
+    value += String.fromCharCode(bytes[index]);
+  }
+  return value;
+}
+
+async function sniffMimeType(blob: Blob): Promise<string> {
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await blob.slice(0, 64).arrayBuffer());
+  } catch {
+    return "";
+  }
+
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 12) === "WEBP") {
+    return "image/webp";
+  }
+
+  if (bytes.length >= 16 && ascii(bytes, 4, 8) === "ftyp") {
+    const brands = new Set<string>();
+    for (let index = 8; index + 4 <= bytes.length; index += 4) {
+      brands.add(ascii(bytes, index, index + 4).toLowerCase());
+    }
+    if (brands.has("avif") || brands.has("avis")) return "image/avif";
+    const heifBrands = ["heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1"];
+    if (heifBrands.some(brand => brands.has(brand))) return "image/heic";
+  }
+
+  return "";
+}
+
+export async function detectQTPhotoMimeType(file: Blob, fileName = "") {
+  const sniffed = await sniffMimeType(file);
+  if (sniffed) return sniffed;
+  return normalizeMimeType(file.type, fileName);
 }
 
 function getExtension(contentType: string): PreparedQTPhoto["extension"] {
@@ -81,11 +164,11 @@ async function decodeWithImageBitmap(blob: Blob): Promise<DecodedPhoto | null> {
   if (typeof createImageBitmap !== "function") return null;
 
   try {
-    const bitmap = await createImageBitmap(blob, {
+    const bitmap = await withTimeout(createImageBitmap(blob, {
       imageOrientation: "from-image",
       premultiplyAlpha: "default",
       colorSpaceConversion: "default",
-    });
+    }));
     const width = bitmap.width;
     const height = bitmap.height;
     if (width <= 0 || height <= 0) {
@@ -99,7 +182,7 @@ async function decodeWithImageBitmap(blob: Blob): Promise<DecodedPhoto | null> {
       cleanup: () => bitmap.close(),
     };
   } catch (error) {
-    if (error instanceof QTPhotoPreparationError) throw error;
+    if (error instanceof QTPhotoPreparationError && error.code === "invalid_dimensions") throw error;
     return null;
   }
 }
@@ -111,7 +194,7 @@ async function decodeWithImageElement(blob: Blob): Promise<DecodedPhoto> {
     image.decoding = "async";
     image.src = objectUrl;
 
-    await new Promise<void>((resolve, reject) => {
+    await withTimeout(new Promise<void>((resolve, reject) => {
       if (image.complete) {
         if (image.naturalWidth > 0 && image.naturalHeight > 0) resolve();
         else reject(new QTPhotoPreparationError("decode_failed"));
@@ -119,7 +202,7 @@ async function decodeWithImageElement(blob: Blob): Promise<DecodedPhoto> {
       }
       image.onload = () => resolve();
       image.onerror = () => reject(new QTPhotoPreparationError("decode_failed"));
-    });
+    }));
 
     const width = image.naturalWidth || image.width;
     const height = image.naturalHeight || image.height;
@@ -219,15 +302,27 @@ function assertPhotoIsNotBlankOrBlack(stats: PhotoPixelStats) {
   }
 }
 
-async function validatePhotoBlob(blob: Blob) {
+async function inspectPhotoBlob(blob: Blob, checkPixels: boolean): Promise<QTPhotoVerificationResult> {
   const decoded = await decodePhoto(blob);
   try {
-    const stats = readPixelStats(decoded);
-    assertPhotoIsNotBlankOrBlack(stats);
-    return { width: decoded.width, height: decoded.height };
+    if (checkPixels) {
+      const stats = readPixelStats(decoded);
+      assertPhotoIsNotBlankOrBlack(stats);
+    }
+    return { width: decoded.width, height: decoded.height, size: blob.size };
   } finally {
     decoded.cleanup();
   }
+}
+
+export async function verifyQTPhotoBlob(
+  blob: Blob,
+  options: { checkPixels?: boolean; maxSize?: number } = {},
+): Promise<QTPhotoVerificationResult> {
+  if (blob.size <= 0) throw new QTPhotoPreparationError("decode_failed");
+  const maxSize = options.maxSize ?? QT_PHOTO_MAX_STORED_SIZE;
+  if (blob.size > maxSize) throw new QTPhotoPreparationError("stored_too_large");
+  return inspectPhotoBlob(blob, options.checkPixels === true);
 }
 
 async function canvasToJpeg(canvas: HTMLCanvasElement, quality: number) {
@@ -244,8 +339,6 @@ async function compressPhoto(blob: Blob): Promise<{ blob: Blob; width: number; h
   const decoded = await decodePhoto(blob);
   try {
     let lastBlob: Blob | null = null;
-    let lastWidth = decoded.width;
-    let lastHeight = decoded.height;
 
     for (const attempt of PHOTO_COMPRESSION_ATTEMPTS) {
       const scale = Math.min(1, attempt.maxSide / Math.max(decoded.width, decoded.height));
@@ -267,11 +360,9 @@ async function compressPhoto(blob: Blob): Promise<{ blob: Blob; width: number; h
       canvas.width = 1;
       canvas.height = 1;
       lastBlob = encoded;
-      lastWidth = width;
-      lastHeight = height;
 
       if (encoded.size <= QT_PHOTO_MAX_STORED_SIZE) {
-        const validation = await validatePhotoBlob(encoded);
+        const validation = await verifyQTPhotoBlob(encoded, { checkPixels: true });
         return {
           blob: encoded,
           width: validation.width,
@@ -280,51 +371,61 @@ async function compressPhoto(blob: Blob): Promise<{ blob: Blob; width: number; h
       }
     }
 
-    if (!lastBlob) throw new QTPhotoPreparationError("encode_failed");
-    if (lastBlob.size > QT_PHOTO_MAX_STORED_SIZE) {
+    if (!lastBlob || lastBlob.size > QT_PHOTO_MAX_STORED_SIZE) {
       throw new QTPhotoPreparationError("stored_too_large");
     }
 
-    const validation = await validatePhotoBlob(lastBlob);
+    const validation = await verifyQTPhotoBlob(lastBlob, { checkPixels: true });
     return {
       blob: lastBlob,
-      width: validation.width || lastWidth,
-      height: validation.height || lastHeight,
+      width: validation.width,
+      height: validation.height,
     };
   } finally {
     decoded.cleanup();
   }
 }
 
-export async function prepareQTPhoto(file: File): Promise<PreparedQTPhoto> {
-  const mimeType = normalizeMimeType(file.type, file.name);
-  if (!mimeType.startsWith("image/")) {
+export async function prepareQTPhoto(
+  file: File,
+  options: { validateDirectPixels?: boolean } = {},
+): Promise<PreparedQTPhoto> {
+  if (file.size <= 0) throw new QTPhotoPreparationError("decode_failed");
+  if (file.size > QT_PHOTO_MAX_INPUT_SIZE) throw new QTPhotoPreparationError("input_too_large");
+
+  const detectedSourceType = await detectQTPhotoMimeType(file, file.name);
+  if (!detectedSourceType.startsWith("image/")) {
     throw new QTPhotoPreparationError("unsupported");
   }
-  if (file.size <= 0) {
-    throw new QTPhotoPreparationError("decode_failed");
-  }
-  if (file.size > QT_PHOTO_MAX_INPUT_SIZE) {
-    throw new QTPhotoPreparationError("input_too_large");
-  }
 
-  if (DIRECT_UPLOAD_MIME_TYPES.has(mimeType) && file.size <= QT_PHOTO_MAX_STORED_SIZE) {
-    const validation = await validatePhotoBlob(file);
-    const contentType = mimeType as PreparedQTPhoto["contentType"];
+  const sourceBlob = file.type === detectedSourceType
+    ? file
+    : new Blob([file], { type: detectedSourceType });
+
+  // For an already-supported file under the Storage limit, preserve the exact
+  // original bytes. Pixel reads are deliberately avoided here because some
+  // Android browsers can display a valid photo but fail Canvas/getImageData.
+  if (DIRECT_UPLOAD_MIME_TYPES.has(detectedSourceType) && sourceBlob.size <= QT_PHOTO_MAX_STORED_SIZE) {
+    const validation = await verifyQTPhotoBlob(sourceBlob, {
+      checkPixels: options.validateDirectPixels === true,
+    });
+    const contentType = detectedSourceType as PreparedQTPhoto["contentType"];
     return {
-      blob: file,
+      blob: sourceBlob,
       contentType,
       extension: getExtension(contentType),
       width: validation.width,
       height: validation.height,
       originalSize: file.size,
       wasTransformed: false,
+      sourceMimeType: detectedSourceType,
+      detectedSourceType,
     };
   }
 
   let compressed: { blob: Blob; width: number; height: number };
   try {
-    compressed = await compressPhoto(file);
+    compressed = await compressPhoto(sourceBlob);
   } catch (error) {
     if (error instanceof QTPhotoPreparationError) throw error;
     throw new QTPhotoPreparationError("decode_failed");
@@ -338,5 +439,7 @@ export async function prepareQTPhoto(file: File): Promise<PreparedQTPhoto> {
     height: compressed.height,
     originalSize: file.size,
     wasTransformed: true,
+    sourceMimeType: detectedSourceType,
+    detectedSourceType,
   };
 }

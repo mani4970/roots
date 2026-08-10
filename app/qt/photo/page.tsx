@@ -1,14 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ImagePlus, Loader2, X, Check, UploadCloud, Plus } from "lucide-react";
+import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCcw, X, Check, UploadCloud, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
-import { storageSet } from "@/lib/clientStorage";
+import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
@@ -21,6 +22,23 @@ import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { prepareQTPhoto, QTPhotoPreparationError, type PreparedQTPhoto } from "@/lib/qtPhotoProcessing";
+import { removeQTPhotoBestEffort, uploadQTPhotoDurably } from "@/lib/qtPhotoStorage";
+import {
+  createQTPhotoAttemptId,
+  flushQTPhotoDiagnostics,
+  getQTPhotoDiagnosticError,
+  recordQTPhotoDiagnostic,
+  type QTPhotoSource,
+} from "@/lib/qtPhotoDiagnostics";
+import {
+  findCompletedQTRecordForDate,
+  getQTPhotoAuthenticatedUser,
+  insertQTPhotoRecordDurably,
+  loadOwnedQTPhotoRecord,
+  QTPhotoRecordError,
+  type QTPhotoRecordPatch,
+  updateQTPhotoRecordDurably,
+} from "@/lib/qtPhotoRecord";
 
 type CompletePhotoOptions = {
   visibility?: string;
@@ -28,28 +46,79 @@ type CompletePhotoOptions = {
 };
 
 type PhotoSaveStage =
+  | "photo-process"
   | "auth"
   | "duplicate-check"
   | "upload"
+  | "upload-verify"
   | "record"
+  | "edit-load"
+  | "edit-record"
   | "recipients"
   | "progress"
-  | "notifications";
+  | "notifications"
+  | "complete";
+
+
+type ParsedPhotoReference = {
+  book: string;
+  chapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
+};
 
 const PHOTO_BUCKET = "qt-photos";
+const PENDING_NATIVE_SOURCE_KEY = "roots_qt_photo_pending_native_source";
+const OPTIONAL_STAGE_TIMEOUT_MS = 25_000;
+const NOTIFICATION_STAGE_TIMEOUT_MS = 12_000;
 const BOOKS = [...OT_BOOKS, ...NT_BOOKS];
+
+function withPhotoStageTimeout<T>(
+  operation: PromiseLike<T>,
+  label: string,
+  timeoutMs = OPTIONAL_STAGE_TIMEOUT_MS,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+    Promise.resolve(operation).then(
+      value => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 const PHOTO_COPY = {
   title: { ko: "사진으로 묵상 기록하기", de: "Reflexion als Foto speichern", en: "Record reflection with a photo", fr: "Enregistrer une méditation en photo" },
   sub: { ko: "책이나 노트에 묵상한 내용을 사진으로 남겨요.", de: "Speichere deine handschriftliche Reflexion als Foto.", en: "Save a photo of your reflection from a book or notebook.", fr: "Gardez une photo de votre méditation écrite dans un livre ou un carnet." },
+  editTitle: { ko: "사진 묵상 수정하기", de: "Foto-Reflexion bearbeiten", en: "Edit photo reflection", fr: "Modifier la méditation photo" },
+  editSub: { ko: "사진과 기록 내용을 안전하게 수정할 수 있어요.", de: "Du kannst das Foto und den Eintrag sicher bearbeiten.", en: "Safely update the photo and reflection details.", fr: "Modifiez en toute sécurité la photo et les détails de la méditation." },
   passage: { ko: "묵상 본문", de: "Bibelstelle", en: "Passage", fr: "Passage" },
   todayOnly: { ko: "사진 묵상은 오늘 날짜의 말씀 묵상으로 저장됩니다.", de: "Die Foto-Reflexion wird für heute gespeichert.", en: "Photo reflections are saved as today's Bible reflection.", fr: "La méditation photo est enregistrée pour aujourd’hui." },
   catchupOnly: { ko: "지난 말씀 묵상 기록으로 저장됩니다. 말씀동행일은 증가하지 않아요.", de: "Wird als nachgetragene Reflexion gespeichert. Dein Fortschritt wird nicht erhöht.", en: "This will be saved as a past Bible reflection. Word Walk progress will not increase.", fr: "Cette méditation sera enregistrée pour une date passée. La progression n’augmentera pas." },
-  choosePhoto: { ko: "사진 선택하기", de: "Foto auswählen", en: "Choose photo", fr: "Choisir une photo" },
+  choosePhoto: { ko: "사진 추가하기", de: "Foto hinzufügen", en: "Add photo", fr: "Ajouter une photo" },
+  uploadNewPhoto: { ko: "새 사진 올리기", de: "Neues Foto hochladen", en: "Upload a new photo", fr: "Importer une nouvelle photo" },
   changePhoto: { ko: "사진 바꾸기", de: "Foto ändern", en: "Change photo", fr: "Changer la photo" },
+  sourceTitle: { ko: "사진을 어떻게 추가할까요?", de: "Wie möchtest du das Foto hinzufügen?", en: "How would you like to add the photo?", fr: "Comment souhaitez-vous ajouter la photo ?" },
+  takePhoto: { ko: "사진 촬영", de: "Foto aufnehmen", en: "Take photo", fr: "Prendre une photo" },
+  chooseGallery: { ko: "갤러리에서 선택", de: "Aus Galerie wählen", en: "Choose from gallery", fr: "Choisir dans la galerie" },
+  cancel: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler" },
+  removePhoto: { ko: "사진 제거", de: "Foto entfernen", en: "Remove photo", fr: "Supprimer la photo" },
+  restorePhoto: { ko: "기존 사진 다시 사용", de: "Vorheriges Foto wiederverwenden", en: "Use previous photo again", fr: "Réutiliser la photo précédente" },
   memoLabel: { ko: "메모 또는 제목", de: "Notiz oder Titel", en: "Note or title", fr: "Note ou titre" },
   memoPlaceholder: { ko: "선택사항이에요. 오늘 받은 은혜를 짧게 적어도 좋아요.", de: "Optional. Du kannst kurz notieren, was du heute empfangen hast.", en: "Optional. You can briefly note the grace you received today.", fr: "Facultatif. Vous pouvez noter brièvement la grâce reçue aujourd’hui." },
   shareAndSave: { ko: "나눔 설정하고 저장하기", de: "Teilen einstellen und speichern", en: "Set sharing and save", fr: "Définir le partage et enregistrer" },
+  editSave: { ko: "수정 내용 저장하기", de: "Änderungen speichern", en: "Save changes", fr: "Enregistrer les modifications" },
+  editLoading: { ko: "사진 묵상 기록을 불러오고 있어요…", de: "Die Foto-Reflexion wird geladen…", en: "Loading the photo reflection…", fr: "Chargement de la méditation photo…" },
+  editLoadError: { ko: "수정할 사진 묵상 기록을 불러오지 못했어요.", de: "Die Foto-Reflexion konnte nicht geladen werden.", en: "Could not load the photo reflection to edit.", fr: "Impossible de charger la méditation photo à modifier." },
+  editSaveError: { ko: "사진 묵상 수정 내용을 저장하지 못했어요. 기존 기록은 그대로 유지됩니다.", de: "Die Änderungen konnten nicht gespeichert werden. Der bisherige Eintrag bleibt erhalten.", en: "Could not save the changes. The existing record remains unchanged.", fr: "Impossible d’enregistrer les modifications. L’entrée existante reste inchangée." },
+  editSaved: { ko: "사진 묵상 수정 내용을 저장했어요.", de: "Die Änderungen wurden gespeichert.", en: "Photo reflection changes saved.", fr: "Les modifications ont été enregistrées." },
   customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage" },
   translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique" },
   sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon" },
@@ -66,7 +135,12 @@ const PHOTO_COPY = {
   photoReadError: { ko: "이 사진 형식을 읽지 못했어요. 다른 사진이나 원본 사진의 스크린샷을 선택해주세요.", de: "Dieses Fotoformat konnte nicht gelesen werden. Bitte wähle ein anderes Foto oder einen Screenshot des Originals.", en: "This photo format could not be read. Choose another photo or a screenshot of the original.", fr: "Ce format de photo n’a pas pu être lu. Choisissez une autre photo ou une capture d’écran de l’original." },
   photoBlankOrBlack: { ko: "사진 변환 결과가 비어 있거나 검게 나와 저장하지 않았어요. 원본 사진의 스크린샷을 선택해주세요.", de: "Das umgewandelte Foto war leer oder schwarz und wurde nicht gespeichert. Bitte wähle einen Screenshot des Originals.", en: "The converted photo was blank or black, so it was not saved. Choose a screenshot of the original.", fr: "La photo convertie était vide ou noire et n’a pas été enregistrée. Choisissez une capture d’écran de l’original." },
   photoProcessError: { ko: "사진을 저장용으로 변환하지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht für die Speicherung verarbeitet werden. Bitte wähle ein anderes Foto.", en: "The photo could not be prepared for saving. Choose another photo.", fr: "La photo n’a pas pu être préparée pour l’enregistrement. Choisissez-en une autre." },
-  uploadError: { ko: "사진 업로드에 실패했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Das Hochladen des Fotos ist fehlgeschlagen. Prüfe deine Internetverbindung und versuche es erneut.", en: "The photo upload failed. Check your internet connection and try again.", fr: "Le téléversement de la photo a échoué. Vérifiez votre connexion Internet et réessayez." },
+  authError: { ko: "로그인 상태를 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Der Anmeldestatus konnte nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not verify your sign-in. Check your connection and try again.", fr: "Impossible de vérifier votre connexion. Vérifiez Internet et réessayez." },
+  preflightError: { ko: "기존 묵상 기록을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Vorhandene Einträge konnten nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not check your existing reflection. Check your connection and try again.", fr: "Impossible de vérifier votre méditation existante. Vérifiez Internet et réessayez." },
+  cameraPermissionError: { ko: "카메라를 사용할 수 없어요. 기기 설정에서 Roots의 카메라 권한을 허용해주세요.", de: "Die Kamera ist nicht verfügbar. Erlaube Roots den Kamerazugriff in den Geräteeinstellungen.", en: "The camera is unavailable. Allow camera access for Roots in your device settings.", fr: "L’appareil photo n’est pas disponible. Autorisez l’accès à l’appareil photo pour Roots dans les réglages." },
+  galleryPermissionError: { ko: "사진 보관함을 사용할 수 없어요. 기기 설정에서 Roots의 사진 접근 권한을 허용해주세요.", de: "Die Fotomediathek ist nicht verfügbar. Erlaube Roots den Fotozugriff in den Geräteeinstellungen.", en: "The photo library is unavailable. Allow photo access for Roots in your device settings.", fr: "La photothèque n’est pas disponible. Autorisez l’accès aux photos pour Roots dans les réglages." },
+  uploadError: { ko: "사진 업로드에 실패했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Das Hochladen ist fehlgeschlagen. Prüfe die Internetverbindung und versuche es erneut. Das ausgewählte Foto bleibt erhalten.", en: "The photo upload failed. Check your connection and try again. The selected photo is still here.", fr: "Le téléversement a échoué. Vérifiez Internet et réessayez. La photo sélectionnée est conservée." },
+  uploadVerifyError: { ko: "사진 업로드를 확인하지 못했어요. 잠시 후 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Der Foto-Upload konnte nicht bestätigt werden. Versuche es später erneut. Das Foto bleibt erhalten.", en: "Could not verify the photo upload. Try again shortly. The selected photo is still here.", fr: "Impossible de vérifier le téléversement. Réessayez bientôt. La photo sélectionnée est conservée." },
   recordError: { ko: "사진은 준비됐지만 묵상 기록 저장에 실패했어요. 다시 시도해주세요.", de: "Das Foto ist vorbereitet, aber die Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "The photo was prepared, but the reflection record could not be saved. Please try again.", fr: "La photo a été préparée, mais la méditation n’a pas pu être enregistrée. Veuillez réessayer." },
   savedShareWarning: { ko: "사진 묵상은 저장됐지만 일부 나눔 설정을 반영하지 못했어요.", de: "Die Foto-Reflexion wurde gespeichert, aber einige Freigabeeinstellungen konnten nicht übernommen werden.", en: "The photo reflection was saved, but some sharing settings could not be applied.", fr: "La méditation photo a été enregistrée, mais certains réglages de partage n’ont pas pu être appliqués." },
   savedFollowupWarning: { ko: "사진 묵상은 안전하게 저장됐어요. 완료 상태를 다시 확인해주세요.", de: "Die Foto-Reflexion wurde sicher gespeichert. Bitte prüfe den Abschlussstatus erneut.", en: "The photo reflection was safely saved. Please check the completion status again.", fr: "La méditation photo a été enregistrée en toute sécurité. Vérifiez à nouveau son état de finalisation." },
@@ -103,6 +177,49 @@ function buildSundayBibleRef(title: string, refs: string[]) {
   if (!cleanTitle && !cleanRefs) return "";
   if (cleanRefs) return `설교: ${cleanTitle} (${cleanRefs})`;
   return `설교: ${cleanTitle}`;
+}
+
+function parseSimplePhotoReference(raw: string): ParsedPhotoReference | null {
+  const match = raw.trim().match(/^(.+?)\s+(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/);
+  if (!match) return null;
+  const parsed = {
+    book: match[1].trim(),
+    chapter: Number(match[2]),
+    startVerse: Number(match[3]),
+    endChapter: match[4] ? Number(match[4]) : Number(match[2]),
+    endVerse: match[5] ? Number(match[5]) : Number(match[3]),
+  };
+  if (!BOOKS.includes(parsed.book)) return null;
+  if (![parsed.chapter, parsed.startVerse, parsed.endChapter, parsed.endVerse].every(Number.isFinite)) return null;
+  return parsed;
+}
+
+function parseStoredPhotoBibleRef(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim();
+  let title = "";
+  let referenceText = value;
+  let sunday = value.startsWith("설교:");
+
+  if (sunday) {
+    const body = value.replace(/^설교:\s*/, "").trim();
+    const parenthesisIndex = body.lastIndexOf(" (");
+    const parenthesized = parenthesisIndex >= 0 && body.endsWith(")")
+      ? body.slice(parenthesisIndex + 2, -1).trim()
+      : "";
+    if (parenthesized && /\d+:\d+/.test(parenthesized)) {
+      title = body.slice(0, parenthesisIndex).trim();
+      referenceText = parenthesized;
+    } else {
+      title = body;
+      referenceText = "";
+    }
+  }
+
+  const refs = referenceText
+    ? referenceText.split(/\s*,\s*(?=[^,]+?\s+\d+:\d+)/).filter(Boolean)
+    : [];
+  const parsedRefs = refs.map(parseSimplePhotoReference).filter((item): item is ParsedPhotoReference => Boolean(item));
+  return { sunday, title, refs, parsedRefs };
 }
 
 function splitShareTargets(targets: string[]) {
@@ -143,6 +260,18 @@ function isPhotoPickerCancellation(error: unknown) {
   return code.includes("cancel") || message.includes("cancelled") || message.includes("canceled") || message.includes("user cancelled");
 }
 
+function isPhotoPermissionError(error: unknown) {
+  const value = error && typeof error === "object" ? error as { code?: unknown; message?: unknown } : {};
+  const text = `${String(value.code ?? "")} ${String(value.message ?? error ?? "")}`.toLowerCase();
+  return /permission|denied|not authorized|unauthorized|restricted/.test(text);
+}
+
+function isSupabaseAuthLikeError(error: unknown) {
+  const code = getErrorCode(error).toLowerCase();
+  const message = getErrorMessage(error).toLowerCase();
+  return code === "401" || code === "403" || /jwt|token|not authenticated|auth session missing|refresh_token/.test(`${code} ${message}`);
+}
+
 function getNativePhotoMimeType(format: string | undefined) {
   const normalized = String(format ?? "jpeg").toLowerCase();
   if (normalized === "png") return "image/png";
@@ -158,6 +287,27 @@ function base64ToPhotoFile(base64: string, mimeType: string) {
   }
   const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
   return new File([bytes], `qt-photo.${extension}`, { type: mimeType, lastModified: Date.now() });
+}
+
+function storePendingNativePhotoChoice(source: QTPhotoSource, attemptId: string) {
+  storageSet(PENDING_NATIVE_SOURCE_KEY, JSON.stringify({ source, attemptId }));
+}
+
+function readPendingNativePhotoChoice() {
+  const raw = storageGet(PENDING_NATIVE_SOURCE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { source?: unknown; attemptId?: unknown };
+    const source = parsed.source === "camera" || parsed.source === "gallery"
+      ? parsed.source
+      : "unknown";
+    const attemptId = typeof parsed.attemptId === "string" && parsed.attemptId
+      ? parsed.attemptId
+      : createQTPhotoAttemptId();
+    return { source: source as QTPhotoSource, attemptId };
+  } catch {
+    return { source: "unknown" as QTPhotoSource, attemptId: createQTPhotoAttemptId() };
+  }
 }
 
 function getErrorCode(error: unknown) {
@@ -186,8 +336,11 @@ function getPhotoPreparationNotice(error: unknown, lang: string) {
 }
 
 function getPhotoSaveNotice(stage: PhotoSaveStage, lang: string) {
+  if (stage === "auth") return pc("authError", lang);
+  if (stage === "duplicate-check") return pc("preflightError", lang);
   if (stage === "upload") return pc("uploadError", lang);
-  if (stage === "record") return pc("recordError", lang);
+  if (stage === "upload-verify") return pc("uploadVerifyError", lang);
+  if (stage === "record" || stage === "edit-record") return pc("recordError", lang);
   return pc("saveError", lang);
 }
 
@@ -196,15 +349,25 @@ function PhotoReflectionContent() {
   const searchParams = useSearchParams();
   const lang = useLang();
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const saveLockRef = useRef(false);
+  const skipBookResetRef = useRef<string | null>(null);
+  const photoAttemptIdRef = useRef(createQTPhotoAttemptId());
+  const pendingPhotoSourceRef = useRef<QTPhotoSource>("unknown");
 
+  const editId = searchParams.get("editId");
+  const isEditMode = Boolean(editId);
   const today = getLocalDateString();
   const requestedDate = searchParams.get("date") || today;
-  const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : today;
-  const isCatchup = searchParams.get("catchup") === "true" && targetDate !== today;
-  const source = searchParams.get("source") === "scheduled" ? "scheduled" : "custom";
-  const sundayContext = searchParams.get("sundayContext") === "true" || parseLocalDateString(targetDate).getDay() === 0;
+  const initialTargetDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : today;
+  const [editTargetDate, setEditTargetDate] = useState<string | null>(null);
+  const targetDate = isEditMode && editTargetDate ? editTargetDate : initialTargetDate;
+  const isCatchup = targetDate !== today && (isEditMode || searchParams.get("catchup") === "true");
+  const baseSundayContext = searchParams.get("sundayContext") === "true" || parseLocalDateString(targetDate).getDay() === 0;
+  const [editSundayContext, setEditSundayContext] = useState<boolean | null>(null);
+  const sundayContext = editSundayContext ?? baseSundayContext;
+  const source = isEditMode ? "custom" : searchParams.get("source") === "scheduled" ? "scheduled" : "custom";
   const scheduledBook = searchParams.get("schedBook") ?? "";
   const scheduledChapter = Number(searchParams.get("schedChapter") ?? "0");
   const scheduledStart = Number(searchParams.get("schedStartV") ?? "1");
@@ -226,6 +389,8 @@ function PhotoReflectionContent() {
   const [extraRefs, setExtraRefs] = useState<string[]>([]);
   const [preparedPhoto, setPreparedPhoto] = useState<PreparedQTPhoto | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [photoSource, setPhotoSource] = useState<QTPhotoSource>("unknown");
+  const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
   const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [caption, setCaption] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -235,6 +400,13 @@ function PhotoReflectionContent() {
   const [groups, setGroups] = useState<ShareTargetGroup[]>([]);
   const [partners, setPartners] = useState<ShareTargetPartner[]>([]);
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
+  const [editLoading, setEditLoading] = useState(isEditMode);
+  const [editLoadError, setEditLoadError] = useState(false);
+  const [existingPhotoPath, setExistingPhotoPath] = useState<string | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+  const [existingPhotoRemoved, setExistingPhotoRemoved] = useState(false);
+  const [originalBibleRef, setOriginalBibleRef] = useState<string | null>(null);
+  const [passageTouched, setPassageTouched] = useState(false);
 
   const maxChapter = BIBLE_CHAPTERS[book]?.length ?? 1;
   const safeEndChapter = Math.min(Math.max(endChapter, chapter), maxChapter);
@@ -253,8 +425,16 @@ function PhotoReflectionContent() {
     : "";
   const customRefs = extraRefs.length > 0 ? extraRefs : [currentCustomRef];
   const bibleRef = scheduledRef || (sundayContext ? buildSundayBibleRef(sermonTitle, customRefs) : customRefs.join(", "));
+  const effectiveBibleRef = isEditMode && !passageTouched && originalBibleRef
+    ? originalBibleRef
+    : bibleRef;
 
   useEffect(() => {
+    if (skipBookResetRef.current === book) {
+      skipBookResetRef.current = null;
+      return;
+    }
+    skipBookResetRef.current = null;
     setChapter(1);
     setEndChapter(1);
     setStartVerse(1);
@@ -275,8 +455,74 @@ function PhotoReflectionContent() {
 
   function showNotice(message: string) {
     setNotice(message);
-    window.setTimeout(() => setNotice(null), 2600);
+    window.setTimeout(() => setNotice(null), 3200);
   }
+
+  useEffect(() => {
+    void flushQTPhotoDiagnostics();
+    const flushWhenOnline = () => { void flushQTPhotoDiagnostics(); };
+    window.addEventListener("online", flushWhenOnline);
+    return () => window.removeEventListener("online", flushWhenOnline);
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+    let disposed = false;
+
+    void CapacitorApp.addListener("appRestoredResult", result => {
+      const restored = result as unknown as {
+        pluginId?: string;
+        methodName?: string;
+        success?: boolean;
+        data?: { base64String?: string; format?: string };
+        error?: { message?: string } | string;
+      };
+      if (restored.pluginId !== "Camera") return;
+
+      const pending = readPendingNativePhotoChoice();
+      storageRemove(PENDING_NATIVE_SOURCE_KEY);
+      if (pending) {
+        pendingPhotoSourceRef.current = pending.source;
+        photoAttemptIdRef.current = pending.attemptId;
+      }
+      const sourceChoice = pending?.source === "camera" || pending?.source === "gallery"
+        ? pending.source
+        : "gallery";
+
+      if (!restored.success || !restored.data?.base64String) {
+        if (!isPhotoPickerCancellation(restored.error)) {
+          recordQTPhotoDiagnostic({
+            attemptId: photoAttemptIdRef.current,
+            targetDate,
+            operation: isEditMode ? "edit" : "create",
+            stage: "photo-process",
+            status: "failed",
+            photoSource: sourceChoice,
+            ...getQTPhotoDiagnosticError(restored.error),
+          });
+          showNotice(pc("photoReadError", lang));
+        }
+        return;
+      }
+
+      const selected = base64ToPhotoFile(
+        restored.data.base64String,
+        getNativePhotoMimeType(restored.data.format),
+      );
+      void prepareSelectedPhoto(selected, sourceChoice);
+    }).then(handle => {
+      if (disposed) void handle.remove();
+      else listenerHandle = handle;
+    });
+
+    return () => {
+      disposed = true;
+      if (listenerHandle) void listenerHandle.remove();
+    };
+  // The listener needs current edit/date/language context after Android restores the app.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, lang, targetDate]);
 
   useEffect(() => {
     return () => {
@@ -284,15 +530,166 @@ function PhotoReflectionContent() {
     };
   }, [previewUrl]);
 
-  async function prepareSelectedPhoto(selected: File, source: "native" | "web") {
+  useEffect(() => {
+    if (!isEditMode || !editId) return;
+    const editRecordId = editId;
+    let cancelled = false;
+    const attemptId = createQTPhotoAttemptId();
+    photoAttemptIdRef.current = attemptId;
+
+    async function loadEditRecord() {
+      setEditLoading(true);
+      setEditLoadError(false);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "edit",
+        stage: "edit-load",
+        status: "started",
+        photoSource: "existing",
+      });
+
+      try {
+        const supabase = createClient();
+        const user = await getQTPhotoAuthenticatedUser(supabase);
+        const record = await loadOwnedQTPhotoRecord(supabase, editRecordId, user.id);
+        if (cancelled) return;
+
+        setEditTargetDate(record.date);
+        setOriginalBibleRef(record.bible_ref ?? "");
+        setPassageTouched(false);
+        const parsedStoredRef = parseStoredPhotoBibleRef(record.bible_ref);
+        const isSundayRecord = record.qt_mode === "sunday" || parsedStoredRef.sunday;
+        setEditSundayContext(isSundayRecord);
+        setCaption(String(record.photo_caption ?? record.meditation ?? ""));
+        setExistingPhotoPath(record.photo_path ?? null);
+        setExistingPhotoRemoved(false);
+        setPhotoSource("existing");
+
+        const versionId = Number(record.bible_version ?? "");
+        if (Number.isFinite(versionId) && versionId > 0) setSelectedTranslation(versionId);
+
+        if (isSundayRecord) setSermonTitle(parsedStoredRef.title);
+        if (parsedStoredRef.refs.length > 0) {
+          // A single stored reference is represented by the active selectors so
+          // changing it works naturally. Multiple references stay in the list
+          // and can be removed/re-added individually.
+          setExtraRefs(parsedStoredRef.refs.length > 1 ? parsedStoredRef.refs : []);
+          const first = parsedStoredRef.parsedRefs[0];
+          if (first && BIBLE_CHAPTERS[first.book]) {
+            skipBookResetRef.current = first.book;
+            setBook(first.book);
+            setChapter(first.chapter);
+            setStartVerse(first.startVerse);
+            setEndChapter(first.endChapter);
+            setEndVerse(first.endVerse);
+          }
+        }
+
+        if (record.photo_path) {
+          const { data: signed, error: signedError } = await withPhotoStageTimeout(
+            supabase.storage
+              .from(PHOTO_BUCKET)
+              .createSignedUrl(record.photo_path, 60 * 60) as unknown as PromiseLike<{
+                data: { signedUrl?: string } | null;
+                error: unknown;
+              }>,
+            "photo edit signed URL",
+          );
+          if (signedError) throw signedError;
+          if (!cancelled) setExistingPhotoUrl(signed?.signedUrl ?? null);
+        } else {
+          setExistingPhotoUrl(record.photo_url ?? null);
+        }
+
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate: record.date,
+          operation: "edit",
+          stage: "edit-load",
+          status: "ok",
+          photoSource: "existing",
+          storagePath: record.photo_path,
+          qtRecordId: record.id,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        const diagnostic = getQTPhotoDiagnosticError(error);
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate,
+          operation: "edit",
+          stage: "edit-load",
+          status: "failed",
+          photoSource: "existing",
+          ...diagnostic,
+        });
+        console.error("photo reflection edit load failed", error);
+        setEditLoadError(true);
+        showNotice(pc("editLoadError", lang));
+      } finally {
+        if (!cancelled) setEditLoading(false);
+      }
+    }
+
+    void loadEditRecord();
+    return () => { cancelled = true; };
+  // The edit record id is immutable for the lifetime of this page.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, isEditMode]);
+
+  async function prepareSelectedPhoto(selected: File, sourceChoice: QTPhotoSource) {
+    const attemptId = photoAttemptIdRef.current || createQTPhotoAttemptId();
+    photoAttemptIdRef.current = attemptId;
     setPreparingPhoto(true);
+    recordQTPhotoDiagnostic({
+      attemptId,
+      targetDate,
+      operation: isEditMode ? "edit" : "create",
+      stage: "photo-process",
+      status: "started",
+      photoSource: sourceChoice,
+      mimeType: selected.type || null,
+      fileSize: selected.size,
+    });
+
     try {
-      const prepared = await prepareQTPhoto(selected);
+      const prepared = await prepareQTPhoto(selected, {
+        validateDirectPixels: Capacitor.isNativePlatform(),
+      });
       setPreparedPhoto(prepared);
+      setPhotoSource(sourceChoice);
+      setExistingPhotoRemoved(isEditMode);
       setPreviewUrl(URL.createObjectURL(prepared.blob));
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: isEditMode ? "edit" : "create",
+        stage: "photo-process",
+        status: "ok",
+        photoSource: sourceChoice,
+        mimeType: prepared.sourceMimeType,
+        fileSize: prepared.blob.size,
+        width: prepared.width,
+        height: prepared.height,
+        wasTransformed: prepared.wasTransformed,
+        metadata: { originalSize: prepared.originalSize },
+      });
     } catch (error) {
+      const diagnostic = getQTPhotoDiagnosticError(error);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: isEditMode ? "edit" : "create",
+        stage: "photo-process",
+        status: "failed",
+        photoSource: sourceChoice,
+        mimeType: selected.type || null,
+        fileSize: selected.size,
+        ...diagnostic,
+      });
       console.error("photo reflection selection preparation failed", {
-        source,
+        source: sourceChoice,
         targetDate,
         isCatchup,
         fileType: selected.type || null,
@@ -307,58 +704,103 @@ function PhotoReflectionContent() {
     }
   }
 
-  async function choosePhoto() {
+  function choosePhoto() {
     if (preparingPhoto || saving) return;
+    setShowPhotoSourceModal(true);
+  }
+
+  async function choosePhotoSource(sourceChoice: "camera" | "gallery") {
+    if (preparingPhoto || saving) return;
+    setShowPhotoSourceModal(false);
+    pendingPhotoSourceRef.current = sourceChoice;
+    photoAttemptIdRef.current = createQTPhotoAttemptId();
 
     if (Capacitor.isNativePlatform()) {
       setPreparingPhoto(true);
+      storePendingNativePhotoChoice(sourceChoice, photoAttemptIdRef.current);
       try {
-        // Normalize device-specific HEIC/HDR/color-space photos in the native
-        // photo library before the bytes enter the WebView.
         const photo = await NativeCamera.getPhoto({
-          source: CameraSource.Photos,
+          source: sourceChoice === "camera" ? CameraSource.Camera : CameraSource.Photos,
           resultType: CameraResultType.Base64,
           quality: 90,
           width: 1800,
           height: 1800,
           correctOrientation: true,
           allowEditing: false,
+          saveToGallery: false,
         });
         if (!photo.base64String) throw new QTPhotoPreparationError("decode_failed");
         const selected = base64ToPhotoFile(photo.base64String, getNativePhotoMimeType(photo.format));
-        const prepared = await prepareQTPhoto(selected);
-        setPreparedPhoto(prepared);
-        setPreviewUrl(URL.createObjectURL(prepared.blob));
+        await prepareSelectedPhoto(selected, sourceChoice);
       } catch (error) {
         if (isPhotoPickerCancellation(error)) return;
-        console.error("photo reflection native picker failed", {
+        const diagnostic = getQTPhotoDiagnosticError(error);
+        recordQTPhotoDiagnostic({
+          attemptId: photoAttemptIdRef.current,
           targetDate,
-          isCatchup,
-          code: getErrorCode(error),
-          message: getErrorMessage(error),
-          error,
+          operation: isEditMode ? "edit" : "create",
+          stage: "photo-process",
+          status: "failed",
+          photoSource: sourceChoice,
+          ...diagnostic,
         });
-        showNotice(getPhotoPreparationNotice(error, lang));
+        console.error("photo reflection native picker failed", error);
+        if (isPhotoPermissionError(error)) {
+          showNotice(pc(sourceChoice === "camera" ? "cameraPermissionError" : "galleryPermissionError", lang));
+        } else {
+          showNotice(getPhotoPreparationNotice(error, lang));
+        }
       } finally {
+        storageRemove(PENDING_NATIVE_SOURCE_KEY);
         setPreparingPhoto(false);
       }
       return;
     }
 
-    fileInputRef.current?.click();
+    if (sourceChoice === "camera") cameraInputRef.current?.click();
+    else galleryInputRef.current?.click();
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(
+    event: ChangeEvent<HTMLInputElement>,
+    sourceChoice: "camera" | "gallery",
+  ) {
     const selected = event.target.files?.[0] ?? null;
     event.currentTarget.value = "";
     if (!selected) return;
-    void prepareSelectedPhoto(selected, "web");
+    pendingPhotoSourceRef.current = sourceChoice;
+    void prepareSelectedPhoto(selected, sourceChoice);
+  }
+
+  function clearPreparedPhoto() {
+    setPreparedPhoto(null);
+    setPhotoSource("unknown");
+    setPreviewUrl(null);
+  }
+
+  function removeDisplayedPhoto() {
+    if (preparedPhoto) {
+      clearPreparedPhoto();
+      return;
+    }
+    if (isEditMode && (existingPhotoPath || existingPhotoUrl)) {
+      setExistingPhotoRemoved(true);
+    }
+  }
+
+  function restoreExistingPhoto() {
+    clearPreparedPhoto();
+    setExistingPhotoRemoved(false);
+    setPhotoSource("existing");
   }
 
   async function loadShareOptions() {
     setLoadingShareOptions(true);
     try {
-      const options = await loadSharePromptOptions(t("profile_default_name", lang));
+      const options = await withPhotoStageTimeout(
+        loadSharePromptOptions(t("profile_default_name", lang)),
+        "photo share options",
+      );
       setGroups(options.groups);
       setPartners(options.partners);
     } catch (error) {
@@ -370,11 +812,17 @@ function PhotoReflectionContent() {
     }
   }
 
+  function markPassageTouched() {
+    if (isEditMode) setPassageTouched(true);
+  }
+
   function addCurrentPassage() {
+    markPassageTouched();
     setExtraRefs(prev => prev.includes(currentCustomRef) ? prev : [...prev, currentCustomRef]);
   }
 
   function removeExtraRef(ref: string) {
+    markPassageTouched();
     setExtraRefs(prev => prev.filter(item => item !== ref));
   }
 
@@ -408,6 +856,7 @@ function PhotoReflectionContent() {
     return progress.updated;
   }
 
+
   async function savePhotoReflection(options: CompletePhotoOptions = {}) {
     if (preparingPhoto) {
       showNotice(pc("preparingPhoto", lang));
@@ -420,32 +869,49 @@ function PhotoReflectionContent() {
     if (saveLockRef.current || saving) return;
 
     const photoToSave = preparedPhoto;
+    const attemptId = photoAttemptIdRef.current || createQTPhotoAttemptId();
+    photoAttemptIdRef.current = attemptId;
     saveLockRef.current = true;
     setSaving(true);
     const supabase = createClient();
     let stage: PhotoSaveStage = "auth";
     let uploadedPath: string | null = null;
     let insertedRecordId: string | null = null;
+
+    recordQTPhotoDiagnostic({
+      attemptId,
+      targetDate,
+      operation: "create",
+      stage: "auth",
+      status: "started",
+      photoSource,
+      mimeType: photoToSave.sourceMimeType,
+      fileSize: photoToSave.blob.size,
+      width: photoToSave.width,
+      height: photoToSave.height,
+      wasTransformed: photoToSave.wasTransformed,
+    });
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+      const user = await getQTPhotoAuthenticatedUser(supabase);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "create",
+        stage: "auth",
+        status: "ok",
+        photoSource,
+      });
 
       stage = "duplicate-check";
-      const { data: existingRows, error: existingError } = await supabase
-        .from("qt_records")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("date", targetDate)
-        .eq("is_draft", false)
-        .limit(1);
-      if (existingError) throw existingError;
-      if ((existingRows ?? []).length > 0) {
+      const existingRecord = await findCompletedQTRecordForDate(supabase, user.id, targetDate);
+      if (existingRecord) {
         if (targetDate === today) {
           try {
-            const recoveredProgress = await recordTodayPhotoProgress(supabase, user.id);
+            const recoveredProgress = await withPhotoStageTimeout(
+              recordTodayPhotoProgress(supabase, user.id),
+              "photo progress recovery",
+            );
             if (recoveredProgress) {
               try {
                 await markBibleReflectionCompletedForNotifications(today, lang);
@@ -467,45 +933,70 @@ function PhotoReflectionContent() {
         return;
       }
 
-      const random = Math.random().toString(36).slice(2, 10);
-      uploadedPath = `${user.id}/${targetDate}/${Date.now()}-${random}.${photoToSave.extension}`;
+      uploadedPath = `${user.id}/${targetDate}/${attemptId}.${photoToSave.extension}`;
 
       stage = "upload";
-      const { error: uploadError } = await supabase.storage
-        .from(PHOTO_BUCKET)
-        .upload(uploadedPath, photoToSave.blob, {
-          contentType: photoToSave.contentType,
-          cacheControl: "3600",
-          upsert: false,
+      await uploadQTPhotoDurably(supabase, uploadedPath, photoToSave, attempt => {
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate,
+          operation: "create",
+          stage: "upload",
+          status: "started",
+          photoSource,
+          mimeType: photoToSave.contentType,
+          fileSize: photoToSave.blob.size,
+          width: photoToSave.width,
+          height: photoToSave.height,
+          wasTransformed: photoToSave.wasTransformed,
+          storagePath: uploadedPath,
+          metadata: { uploadAttempt: attempt },
         });
-      if (uploadError) throw uploadError;
+      });
+      stage = "upload-verify";
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "create",
+        stage: "upload-verify",
+        status: "ok",
+        photoSource,
+        mimeType: photoToSave.contentType,
+        fileSize: photoToSave.blob.size,
+        width: photoToSave.width,
+        height: photoToSave.height,
+        wasTransformed: photoToSave.wasTransformed,
+        storagePath: uploadedPath,
+      });
 
-      // Create the durable record privately first. A later group/partner metadata
-      // error must never erase an uploaded reflection.
       stage = "record";
-      const { data: insertedRecord, error: insertError } = await supabase
-        .from("qt_records")
-        .insert({
-          user_id: user.id,
-          date: targetDate,
-          qt_mode: "photo",
-          reflection_type: "photo",
-          bible_ref: bibleRef,
-          meditation: caption.trim(),
-          photo_caption: caption.trim(),
-          photo_path: uploadedPath,
-          visibility: "private",
-          is_draft: false,
-        })
-        .select("id,photo_path,date")
-        .single();
-      if (insertError) throw insertError;
-
-      const recordId = insertedRecord?.id;
-      if (!recordId || insertedRecord.photo_path !== uploadedPath || insertedRecord.date !== targetDate) {
-        throw new Error("Photo reflection verification failed");
-      }
-      insertedRecordId = String(recordId);
+      const insertedRecord = await insertQTPhotoRecordDurably(supabase, {
+        id: attemptId,
+        user_id: user.id,
+        date: targetDate,
+        qt_mode: "photo",
+        reflection_type: "photo",
+        bible_ref: bibleRef,
+        bible_version: String(selectedTranslation),
+        meditation: caption.trim(),
+        photo_caption: caption.trim(),
+        photo_path: uploadedPath,
+        photo_url: null,
+        visibility: "private",
+        is_draft: false,
+      });
+      insertedRecordId = insertedRecord.id;
+      const recordId = insertedRecord.id;
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "create",
+        stage: "record",
+        status: "ok",
+        photoSource,
+        storagePath: uploadedPath,
+        qtRecordId: recordId,
+      });
 
       const requestedVisibility = options.visibility ?? "private";
       const requestedPartnerRecipientIds = Array.isArray(options.partnerRecipientIds)
@@ -518,49 +1009,103 @@ function PhotoReflectionContent() {
       stage = "recipients";
       try {
         if (requestedPartnerRecipientIds.length > 0) {
-          await replaceQtRecordRecipients(supabase, recordId, user.id, requestedPartnerRecipientIds);
+          await withPhotoStageTimeout(
+            replaceQtRecordRecipients(supabase, recordId, user.id, requestedPartnerRecipientIds),
+            "photo recipient save",
+          );
         }
         if (requestedVisibility !== "private") {
-          const { error: visibilityError } = await supabase
-            .from("qt_records")
-            .update({ visibility: requestedVisibility })
-            .eq("id", recordId)
-            .eq("user_id", user.id);
+          const { error: visibilityError } = await withPhotoStageTimeout(
+            supabase
+              .from("qt_records")
+              .update({ visibility: requestedVisibility })
+              .eq("id", recordId)
+              .eq("user_id", user.id) as unknown as PromiseLike<{ error: unknown }>,
+            "photo visibility save",
+          );
           if (visibilityError) throw visibilityError;
         }
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate,
+          operation: "create",
+          stage: "recipients",
+          status: "ok",
+          photoSource,
+          storagePath: uploadedPath,
+          qtRecordId: recordId,
+        });
       } catch (sharingError) {
         sharingFailed = true;
         effectiveVisibility = "private";
         effectivePartnerRecipientIds = [];
-        console.warn("photo reflection sharing save failed; record kept private", {
+        const diagnostic = getQTPhotoDiagnosticError(sharingError);
+        recordQTPhotoDiagnostic({
+          attemptId,
           targetDate,
-          isCatchup,
-          code: getErrorCode(sharingError),
-          message: getErrorMessage(sharingError),
+          operation: "create",
+          stage: "recipients",
+          status: "warning",
+          photoSource,
+          storagePath: uploadedPath,
+          qtRecordId: recordId,
+          ...diagnostic,
         });
+        console.warn("photo reflection sharing save failed; record kept private", sharingError);
 
-        const { error: recipientCleanupError } = await supabase
-          .from("qt_record_recipients")
-          .delete()
-          .eq("qt_record_id", recordId)
-          .eq("owner_id", user.id);
-        if (recipientCleanupError) console.warn("photo reflection recipient cleanup failed", recipientCleanupError);
+        try {
+          const { error: recipientCleanupError } = await withPhotoStageTimeout(
+            supabase
+              .from("qt_record_recipients")
+              .delete()
+              .eq("qt_record_id", recordId)
+              .eq("owner_id", user.id) as unknown as PromiseLike<{ error: unknown }>,
+            "photo recipient cleanup",
+          );
+          if (recipientCleanupError) console.warn("photo reflection recipient cleanup failed", recipientCleanupError);
+        } catch (cleanupError) {
+          console.warn("photo reflection recipient cleanup failed", cleanupError);
+        }
 
-        const { error: privateFallbackError } = await supabase
-          .from("qt_records")
-          .update({ visibility: "private" })
-          .eq("id", recordId)
-          .eq("user_id", user.id);
-        if (privateFallbackError) console.warn("photo reflection private fallback failed", privateFallbackError);
+        try {
+          const { error: privateFallbackError } = await withPhotoStageTimeout(
+            supabase
+              .from("qt_records")
+              .update({ visibility: "private" })
+              .eq("id", recordId)
+              .eq("user_id", user.id) as unknown as PromiseLike<{ error: unknown }>,
+            "photo private fallback",
+          );
+          if (privateFallbackError) console.warn("photo reflection private fallback failed", privateFallbackError);
+        } catch (fallbackError) {
+          console.warn("photo reflection private fallback failed", fallbackError);
+        }
       }
 
       if (targetDate === today) {
         stage = "progress";
         try {
-          await recordTodayPhotoProgress(supabase, user.id);
+          await withPhotoStageTimeout(
+            recordTodayPhotoProgress(supabase, user.id),
+            "photo progress save",
+          );
         } catch (progressError) {
+          const diagnostic = getQTPhotoDiagnosticError(progressError);
+          recordQTPhotoDiagnostic({
+            attemptId,
+            targetDate,
+            operation: "create",
+            stage: "progress",
+            status: "warning",
+            photoSource,
+            storagePath: uploadedPath,
+            qtRecordId: recordId,
+            ...diagnostic,
+          });
           console.warn("photo reflection progress failed; record preserved", progressError);
-          showNotice(pc("progressError", lang));
+          setShowShareModal(false);
+          showNotice(pc("savedFollowupWarning", lang));
+          window.setTimeout(() => router.push(`/qt/record?id=${recordId}`), 1400);
           return;
         }
 
@@ -572,15 +1117,30 @@ function PhotoReflectionContent() {
 
         stage = "notifications";
         try {
-          await createBibleReflectionShareNotificationsBestEffort({
-            qtRecordId: recordId,
-            visibility: effectiveVisibility,
-            partnerRecipientIds: effectivePartnerRecipientIds,
-          });
+          await withPhotoStageTimeout(
+            createBibleReflectionShareNotificationsBestEffort({
+              qtRecordId: recordId,
+              visibility: effectiveVisibility,
+              partnerRecipientIds: effectivePartnerRecipientIds,
+            }),
+            "photo share notifications",
+            NOTIFICATION_STAGE_TIMEOUT_MS,
+          );
         } catch (notificationError) {
           console.warn("photo reflection share notification creation failed", notificationError);
         }
 
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate,
+          operation: "create",
+          stage: "complete",
+          status: "ok",
+          photoSource,
+          storagePath: uploadedPath,
+          qtRecordId: recordId,
+          metadata: { sharingFailed },
+        });
         setShowShareModal(false);
         if (sharingFailed) {
           showNotice(pc("savedShareWarning", lang));
@@ -593,15 +1153,30 @@ function PhotoReflectionContent() {
 
       stage = "notifications";
       try {
-        await createBibleReflectionShareNotificationsBestEffort({
-          qtRecordId: recordId,
-          visibility: effectiveVisibility,
-          partnerRecipientIds: effectivePartnerRecipientIds,
-        });
+        await withPhotoStageTimeout(
+          createBibleReflectionShareNotificationsBestEffort({
+            qtRecordId: recordId,
+            visibility: effectiveVisibility,
+            partnerRecipientIds: effectivePartnerRecipientIds,
+          }),
+          "past photo share notifications",
+          NOTIFICATION_STAGE_TIMEOUT_MS,
+        );
       } catch (notificationError) {
         console.warn("past photo reflection share notification creation failed", notificationError);
       }
 
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "create",
+        stage: "complete",
+        status: "ok",
+        photoSource,
+        storagePath: uploadedPath,
+        qtRecordId: recordId,
+        metadata: { sharingFailed },
+      });
       setShowShareModal(false);
       if (sharingFailed) {
         showNotice(pc("savedShareWarning", lang));
@@ -610,6 +1185,23 @@ function PhotoReflectionContent() {
         router.push(`/qt/record?id=${recordId}`);
       }
     } catch (error) {
+      const diagnostic = getQTPhotoDiagnosticError(error);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "create",
+        stage,
+        status: "failed",
+        photoSource,
+        mimeType: photoToSave.contentType,
+        fileSize: photoToSave.blob.size,
+        width: photoToSave.width,
+        height: photoToSave.height,
+        wasTransformed: photoToSave.wasTransformed,
+        storagePath: uploadedPath,
+        qtRecordId: insertedRecordId,
+        ...diagnostic,
+      });
       console.error("photo reflection save failed", {
         stage,
         targetDate,
@@ -627,15 +1219,14 @@ function PhotoReflectionContent() {
         error,
       });
 
-      // Remove only an unreferenced upload. Once the core row exists, later
-      // optional sharing/progress/notification failures must not delete it.
-      if (!insertedRecordId && uploadedPath) {
-        const { error: cleanupError } = await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]);
-        if (cleanupError) console.warn("photo reflection upload cleanup failed", cleanupError);
-      }
-
+      // Do not delete an uploaded object on an ambiguous database/network
+      // failure. A harmless orphan is safer than deleting bytes that may have
+      // been committed and linked while the mobile response was lost.
       const errorCode = getErrorCode(error);
-      if (errorCode === "23505") {
+      const duplicateCompleted = errorCode === "23505"
+        || (error instanceof QTPhotoRecordError && error.code === "duplicate_completed");
+      if (duplicateCompleted) {
+        if (uploadedPath) await removeQTPhotoBestEffort(supabase, uploadedPath);
         setShowShareModal(false);
         showNotice(pc("alreadyDone", lang));
         router.push("/qt");
@@ -651,10 +1242,205 @@ function PhotoReflectionContent() {
     } finally {
       saveLockRef.current = false;
       setSaving(false);
+      void flushQTPhotoDiagnostics();
+    }
+  }
+
+  async function savePhotoEdit() {
+    if (!isEditMode || !editId) return;
+    if (preparingPhoto) {
+      showNotice(pc("preparingPhoto", lang));
+      return;
+    }
+    const hasExistingPhoto = Boolean((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved);
+    if (!preparedPhoto && !hasExistingPhoto) {
+      showNotice(pc("needPhoto", lang));
+      return;
+    }
+    if (saveLockRef.current || saving) return;
+
+    const attemptId = photoAttemptIdRef.current || createQTPhotoAttemptId();
+    const sourceForEdit: QTPhotoSource = preparedPhoto ? photoSource : "existing";
+    const supabase = createClient();
+    saveLockRef.current = true;
+    setSaving(true);
+    let stage: PhotoSaveStage = "auth";
+    let newUploadedPath: string | null = null;
+    let oldPhotoPath: string | null = existingPhotoPath;
+
+    try {
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "edit",
+        stage: "auth",
+        status: "started",
+        photoSource: sourceForEdit,
+      });
+      const user = await getQTPhotoAuthenticatedUser(supabase);
+      const currentRecord = await loadOwnedQTPhotoRecord(supabase, editId, user.id);
+      oldPhotoPath = currentRecord.photo_path;
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate: currentRecord.date,
+        operation: "edit",
+        stage: "auth",
+        status: "ok",
+        photoSource: sourceForEdit,
+        qtRecordId: editId,
+      });
+
+      if (preparedPhoto) {
+        newUploadedPath = `${user.id}/${currentRecord.date}/${attemptId}.${preparedPhoto.extension}`;
+        stage = "upload";
+        await uploadQTPhotoDurably(supabase, newUploadedPath, preparedPhoto, attempt => {
+          recordQTPhotoDiagnostic({
+            attemptId,
+            targetDate: currentRecord.date,
+            operation: "edit",
+            stage: "upload",
+            status: "started",
+            photoSource: sourceForEdit,
+            mimeType: preparedPhoto.contentType,
+            fileSize: preparedPhoto.blob.size,
+            width: preparedPhoto.width,
+            height: preparedPhoto.height,
+            wasTransformed: preparedPhoto.wasTransformed,
+            storagePath: newUploadedPath,
+            qtRecordId: editId,
+            metadata: { uploadAttempt: attempt },
+          });
+        });
+        stage = "upload-verify";
+        recordQTPhotoDiagnostic({
+          attemptId,
+          targetDate: currentRecord.date,
+          operation: "edit",
+          stage: "upload-verify",
+          status: "ok",
+          photoSource: sourceForEdit,
+          storagePath: newUploadedPath,
+          qtRecordId: editId,
+        });
+      }
+
+      stage = "edit-record";
+      const patch: QTPhotoRecordPatch = {
+        bible_ref: effectiveBibleRef,
+        bible_version: String(selectedTranslation),
+        meditation: caption.trim(),
+        photo_caption: caption.trim(),
+      };
+      if (newUploadedPath) {
+        patch.photo_path = newUploadedPath;
+        patch.photo_url = null;
+      }
+
+      const updated = await updateQTPhotoRecordDurably(supabase, editId, user.id, patch);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate: currentRecord.date,
+        operation: "edit",
+        stage: "edit-record",
+        status: "ok",
+        photoSource: sourceForEdit,
+        storagePath: updated.photo_path,
+        qtRecordId: editId,
+      });
+
+      if (newUploadedPath && oldPhotoPath && oldPhotoPath !== newUploadedPath) {
+        await removeQTPhotoBestEffort(supabase, oldPhotoPath);
+      }
+
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate: currentRecord.date,
+        operation: "edit",
+        stage: "complete",
+        status: "ok",
+        photoSource: sourceForEdit,
+        storagePath: updated.photo_path,
+        qtRecordId: editId,
+      });
+      router.push(`/qt/record?id=${editId}`);
+    } catch (error) {
+      const diagnostic = getQTPhotoDiagnosticError(error);
+      recordQTPhotoDiagnostic({
+        attemptId,
+        targetDate,
+        operation: "edit",
+        stage,
+        status: "failed",
+        photoSource: sourceForEdit,
+        storagePath: newUploadedPath,
+        qtRecordId: editId,
+        ...diagnostic,
+      });
+      console.error("photo reflection edit save failed", { stage, editId, error });
+
+      // Recover an update whose success response was lost. Only remove the new
+      // object after a successful read proves that the database still points
+      // to the old photo. If that read is unavailable, keep the object rather
+      // than risking deletion of a committed replacement.
+      if (newUploadedPath) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const recoveryUserId = sessionData.session?.user?.id;
+          if (recoveryUserId) {
+            const recovered = await loadOwnedQTPhotoRecord(supabase, editId, recoveryUserId);
+            if (recovered.photo_path === newUploadedPath) {
+              if (oldPhotoPath && oldPhotoPath !== newUploadedPath) {
+                await removeQTPhotoBestEffort(supabase, oldPhotoPath);
+              }
+              router.push(`/qt/record?id=${editId}`);
+              return;
+            }
+            await removeQTPhotoBestEffort(supabase, newUploadedPath);
+          }
+        } catch (recoveryError) {
+          console.warn("photo reflection edit recovery check failed; uploaded photo kept", recoveryError);
+        }
+      }
+
+      if (error instanceof QTPhotoRecordError && error.code === "auth_failed") {
+        showNotice(pc("authError", lang));
+      } else {
+        showNotice(pc("editSaveError", lang));
+      }
+    } finally {
+      saveLockRef.current = false;
+      setSaving(false);
+      void flushQTPhotoDiagnostics();
     }
   }
 
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
+  const displayedPhotoUrl = previewUrl || (!existingPhotoRemoved ? existingPhotoUrl : null);
+  const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
+
+  if (isEditMode && editLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="card" style={{ width: "100%", maxWidth: 360, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <Loader2 size={30} className="spin" style={{ color: "var(--qt-sage-text)" }} />
+          <p style={{ color: "var(--text2)", fontSize: 14, fontWeight: 750 }}>{pc("editLoading", lang)}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEditMode && editLoadError) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 40px" }}>
+        <button onClick={() => router.push(editId ? `/qt/record?id=${editId}` : "/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 24, cursor: "pointer" }}>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+        </button>
+        <div className="card" style={{ textAlign: "center" }}>
+          <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.65 }}>{pc("editLoadError", lang)}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
@@ -665,7 +1451,10 @@ function PhotoReflectionContent() {
       )}
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+        <button
+          onClick={() => router.push(isEditMode && editId ? `/qt/record?id=${editId}` : "/qt")}
+          style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}
+        >
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -673,8 +1462,8 @@ function PhotoReflectionContent() {
             <ImagePlus size={23} />
           </div>
           <div>
-            <h1 style={{ fontSize: 21, fontWeight: 850, color: "var(--text)", marginBottom: 3 }}>{pc("title", lang)}</h1>
-            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{pc("sub", lang)}</p>
+            <h1 style={{ fontSize: 21, fontWeight: 850, color: "var(--text)", marginBottom: 3 }}>{pc(isEditMode ? "editTitle" : "title", lang)}</h1>
+            <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>{pc(isEditMode ? "editSub" : "sub", lang)}</p>
           </div>
         </div>
       </div>
@@ -682,7 +1471,7 @@ function PhotoReflectionContent() {
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="card-sage">
           <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
-          <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(bibleRef, bibleDisplayLang)}</p>
+          <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
           {isCatchup && (
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString()}</p>
           )}
@@ -698,7 +1487,7 @@ function PhotoReflectionContent() {
                 <select
                   className="input-field"
                   value={selectedTranslation}
-                  onChange={(e) => {
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     const next = Number(e.target.value);
                     setSelectedTranslation(next);
                     if (typeof window !== "undefined") {
@@ -708,7 +1497,7 @@ function PhotoReflectionContent() {
                 >
                   {TRANSLATIONS.map(group => (
                     <optgroup key={group.group} label={group.group}>
-                      {group.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      {group.items.map((item: { id: number; name: string }) => <option key={item.id} value={item.id}>{item.name}</option>)}
                     </optgroup>
                   ))}
                 </select>
@@ -716,37 +1505,37 @@ function PhotoReflectionContent() {
               {sundayContext && (
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("sermonTitle", lang)}</span>
-                  <CursorStableInput className="input-field" value={sermonTitle} onValueChange={setSermonTitle} placeholder={pc("sermonTitlePlaceholder", lang)} />
+                  <CursorStableInput className="input-field" value={sermonTitle} onValueChange={(value: string) => { markPassageTouched(); setSermonTitle(value); }} placeholder={pc("sermonTitlePlaceholder", lang)} />
                 </label>
               )}
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("book", lang)}</span>
-                <select className="input-field" value={book} onChange={e => setBook(e.target.value)}>
+                <select className="input-field" value={book} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setBook(e.target.value); }}>
                   {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, bibleDisplayLang)}</option>)}
                 </select>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("chapter", lang)}</span>
-                  <select className="input-field" value={chapter} onChange={e => { const next = Number(e.target.value); setChapter(next); setEndChapter(prev => Math.max(prev, next)); }}>
+                  <select className="input-field" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setChapter(next); setEndChapter(prev => Math.max(prev, next)); }}>
                     {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <select className="input-field" value={Math.min(startVerse, maxStartVerses)} onChange={e => { const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > endVerse) setEndVerse(next); }}>
+                  <select className="input-field" value={Math.min(startVerse, maxStartVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > endVerse) setEndVerse(next); }}>
                     {Array.from({ length: maxStartVerses }, (_, i) => i + 1).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <select className="input-field" value={safeEndChapter} onChange={e => { const next = Number(e.target.value); setEndChapter(next); if (next === chapter && startVerse > endVerse) setEndVerse(startVerse); }}>
+                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && startVerse > endVerse) setEndVerse(startVerse); }}>
                     {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
-                  <select className="input-field" value={safeEndChapter === chapter ? Math.max(endVerse, startVerse) : Math.min(endVerse, maxEndVerses)} onChange={e => setEndVerse(Number(e.target.value))}>
+                  <select className="input-field" value={safeEndChapter === chapter ? Math.max(endVerse, startVerse) : Math.min(endVerse, maxEndVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
                     {Array.from({ length: maxEndVerses }, (_, i) => i + 1).filter(v => safeEndChapter !== chapter || v >= startVerse).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
@@ -773,27 +1562,64 @@ function PhotoReflectionContent() {
 
         <div className="card" style={{ textAlign: "center" }}>
           <input
-            ref={fileInputRef}
+            ref={galleryInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif"
-            onChange={handleFileChange}
+            accept="image/*"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "gallery")}
             style={{ display: "none" }}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "camera")}
+            style={{ display: "none" }}
+          />
+
           {preparingPhoto ? (
             <div style={{ minHeight: 170, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--qt-sage-text)" }}>
               <Loader2 size={30} className="spin" />
               <span style={{ fontSize: 13, fontWeight: 800 }}>{pc("preparingPhoto", lang)}</span>
             </div>
-          ) : previewUrl ? (
+          ) : displayedPhotoUrl ? (
             <div>
-              <img src={previewUrl} alt="preview" style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", marginBottom: 12 }} />
-              <button type="button" onClick={() => void choosePhoto()} disabled={saving} className="btn-outline" style={{ width: "100%" }}>{pc("changePhoto", lang)}</button>
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <img
+                  src={displayedPhotoUrl}
+                  alt="photo reflection"
+                  style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", display: "block" }}
+                />
+                <button
+                  type="button"
+                  onClick={removeDisplayedPhoto}
+                  disabled={saving}
+                  aria-label={pc("removePhoto", lang)}
+                  title={pc("removePhoto", lang)}
+                  style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.45)", background: "rgba(20,24,28,0.78)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.22)" }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
           ) : (
-            <button type="button" className="qt-photo-upload" onClick={() => void choosePhoto()} disabled={saving} style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}>
-              <UploadCloud size={34} />
-              {pc("choosePhoto", lang)}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                type="button"
+                className="qt-photo-upload"
+                onClick={choosePhoto}
+                disabled={saving}
+                style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}
+              >
+                <UploadCloud size={34} />
+                {pc(isEditMode ? "uploadNewPhoto" : "choosePhoto", lang)}
+              </button>
+              {isEditMode && existingPhotoRemoved && (existingPhotoPath || existingPhotoUrl) && (
+                <button type="button" onClick={restoreExistingPhoto} disabled={saving} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                  <RotateCcw size={15} /> {pc("restorePhoto", lang)}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -802,12 +1628,62 @@ function PhotoReflectionContent() {
           <CursorStableTextarea value={caption} onValueChange={setCaption} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
         </label>
 
-        <button type="button" onClick={openSharePrompt} disabled={saving || preparingPhoto || !preparedPhoto} className="btn-primary" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />} {pc("shareAndSave", lang)}
+        <button
+          type="button"
+          onClick={() => {
+            if (isEditMode) void savePhotoEdit();
+            else openSharePrompt();
+          }}
+          disabled={saving || preparingPhoto || (isEditMode ? !hasUsablePhoto : !preparedPhoto)}
+          className="btn-primary"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+          {pc(isEditMode ? "editSave" : "shareAndSave", lang)}
         </button>
       </div>
 
-      {showShareModal && (
+      {showPhotoSourceModal && (
+        <div
+          onClick={() => !preparingPhoto && setShowPhotoSourceModal(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(18px + env(safe-area-inset-bottom))" }}
+        >
+          <div
+            onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}
+            className="roots-elevation-modal"
+            style={{ width: "100%", maxWidth: 440, borderRadius: 24, background: "var(--surface-card)", border: "1px solid var(--border)", padding: 18 }}
+          >
+            <h2 style={{ fontSize: 17, fontWeight: 850, color: "var(--text)", textAlign: "center", marginBottom: 14 }}>{pc("sourceTitle", lang)}</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => void choosePhotoSource("camera")}
+                className="btn-outline"
+                style={{ minHeight: 96, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, fontWeight: 800 }}
+              >
+                <CameraIcon size={27} /> {pc("takePhoto", lang)}
+              </button>
+              <button
+                type="button"
+                onClick={() => void choosePhotoSource("gallery")}
+                className="btn-outline"
+                style={{ minHeight: 96, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, fontWeight: 800 }}
+              >
+                <Images size={27} /> {pc("chooseGallery", lang)}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPhotoSourceModal(false)}
+              style={{ width: "100%", marginTop: 10, padding: "12px 14px", borderRadius: 14, border: "none", background: "transparent", color: "var(--text3)", fontWeight: 750, cursor: "pointer" }}
+            >
+              {pc("cancel", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isEditMode && showShareModal && (
         <SharePromptModal
           title={t("qt_complete_share_title", lang)}
           description={t("qt_complete_share_sub", lang)}
