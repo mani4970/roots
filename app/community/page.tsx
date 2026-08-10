@@ -85,6 +85,7 @@ import {
 } from "@/lib/companionChallenges";
 import {
   getCompanionChallengeDisplayTitle,
+  getCompanionChallengeRewardTeaser,
   getCompanionChallengeStatusLabel,
   getCompanionChallengeText,
 } from "@/lib/companionChallengeText";
@@ -6425,7 +6426,9 @@ function CommunityPageContent() {
 
 
         <p style={{ fontSize: 11, color: "var(--challenge-reward-text)", fontWeight: 800, margin: "12px 0 0", lineHeight: 1.45 }}>
-          {status.awarded ? text.awardedLabel : text.rewardTeaser}
+          {status.awarded
+            ? text.awardedLabel
+            : getCompanionChallengeRewardTeaser(status.rewardHearts, lang)}
         </p>
       </div>
     );

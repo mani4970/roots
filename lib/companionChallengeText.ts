@@ -47,11 +47,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     partnerStatusLabel: "동역자",
     doneLabel: "완료",
     waitingLabel: "아직",
-    rewardTeaser: "성공하면 특별 배지와 하트 10개를 받아요.",
+    rewardTeaser: "성공하면 특별 배지와 하트를 받아요.",
     claimButton: "배지 받기",
     awardedLabel: "배지 지급 완료",
     popupTitle: "동역자 챌린지 완료!",
-    popupBody: "15일 동안 말씀 안에서 함께 걸어온 여러분의 발걸음을 축복해요.",
+    popupBody: "말씀 안에서 함께 걸어온 여러분의 발걸음을 축복해요.",
     popupButton: "배지 확인하기",
     heartsLabel: "사랑 하트",
   },
@@ -72,11 +72,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     partnerStatusLabel: "Companion",
     doneLabel: "Done",
     waitingLabel: "Waiting",
-    rewardTeaser: "Complete it together to receive a special badge and 10 Hearts.",
+    rewardTeaser: "Complete it together to receive a special badge and Love Hearts.",
     claimButton: "Receive badge",
     awardedLabel: "Badge awarded",
     popupTitle: "Companion Challenge completed!",
-    popupBody: "Blessings on the steps you walked together in the Word for 15 days.",
+    popupBody: "Blessings on the steps you walked together in the Word.",
     popupButton: "View badge",
     heartsLabel: "Love Hearts",
   },
@@ -97,11 +97,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     partnerStatusLabel: "Partner",
     doneLabel: "Fertig",
     waitingLabel: "Offen",
-    rewardTeaser: "Wenn ihr gemeinsam abschließt, erhaltet ihr ein besonderes Abzeichen und 10 Herzen.",
+    rewardTeaser: "Wenn ihr gemeinsam abschließt, erhaltet ihr ein besonderes Abzeichen und Liebesherzen.",
     claimButton: "Abzeichen erhalten",
     awardedLabel: "Abzeichen erhalten",
     popupTitle: "Partner-Challenge abgeschlossen!",
-    popupBody: "Gesegnet seien eure Schritte, die ihr 15 Tage lang gemeinsam im Wort gegangen seid.",
+    popupBody: "Gesegnet seien eure Schritte, die ihr gemeinsam im Wort gegangen seid.",
     popupButton: "Abzeichen ansehen",
     heartsLabel: "Liebesherzen",
   },
@@ -122,11 +122,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     partnerStatusLabel: "Partenaire",
     doneLabel: "Terminé",
     waitingLabel: "En attente",
-    rewardTeaser: "Terminez-le ensemble pour recevoir un badge spécial et 10 cœurs.",
+    rewardTeaser: "Terminez-le ensemble pour recevoir un badge spécial et des cœurs d’amour.",
     claimButton: "Recevoir le badge",
     awardedLabel: "Badge reçu",
     popupTitle: "Défi avec partenaire terminé !",
-    popupBody: "Que les pas que vous avez faits ensemble dans la Parole pendant 15 jours soient bénis.",
+    popupBody: "Que les pas que vous avez faits ensemble dans la Parole soient bénis.",
     popupButton: "Voir le badge",
     heartsLabel: "Cœurs d’amour",
   },
@@ -137,21 +137,28 @@ function normalizeLang(lang: string): CompanionChallengeLang {
   return "en";
 }
 
+export const COMPANION_CHALLENGE_1_ID = "0d92d123-3fbd-48a7-b7f2-ebeee368f660";
+export const COMPANION_CHALLENGE_2_ID = "f7dbeeac-d739-425b-b26e-536650e5e20f";
 
-const COMPANION_CHALLENGE_1_ID = "0d92d123-3fbd-48a7-b7f2-ebeee368f660";
-
-const CHALLENGE_TITLE_TEXT: Record<CompanionChallengeLang, Record<string, string>> = {
+const CHALLENGE_TITLE_TEXT: Record<
+  CompanionChallengeLang,
+  { companionChallenge1: string; companionChallenge2: string }
+> = {
   ko: {
     companionChallenge1: "우리의 신앙 여정 Part 1",
+    companionChallenge2: "우리의 신앙 여정 Part 2",
   },
   en: {
     companionChallenge1: "Our Faith Journey Part 1",
+    companionChallenge2: "Our Faith Journey Part 2",
   },
   de: {
     companionChallenge1: "Unsere Glaubensreise Teil 1",
+    companionChallenge2: "Unsere Glaubensreise Teil 2",
   },
   fr: {
     companionChallenge1: "Notre chemin de foi Partie 1",
+    companionChallenge2: "Notre chemin de foi Partie 2",
   },
 };
 
@@ -175,16 +182,23 @@ function isCompanionChallenge1Title(value?: string | null) {
   );
 }
 
-export function getCompanionChallengeDisplayTitle(
-  challenge: CompanionChallengeTitleInput | string | null | undefined,
-  lang: Lang | string,
-) {
-  const normalizedLang = normalizeLang(String(lang));
+function isCompanionChallenge2Title(value?: string | null) {
+  const normalized = normalizeTitleValue(value);
+  return (
+    normalized === "우리의 신앙 여정 part 2" ||
+    normalized === "our faith journey part 2" ||
+    normalized === "unsere glaubensreise teil 2" ||
+    normalized === "notre chemin de foi partie 2"
+  );
+}
 
+function getKnownChallengePart(
+  challenge: CompanionChallengeTitleInput | string | null | undefined,
+): 1 | 2 | null {
   if (typeof challenge === "string") {
-    return isCompanionChallenge1Title(challenge)
-      ? CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1
-      : challenge;
+    if (isCompanionChallenge1Title(challenge)) return 1;
+    if (isCompanionChallenge2Title(challenge)) return 2;
+    return null;
   }
 
   const challengeId = String(challenge?.challengeId ?? "").trim();
@@ -196,24 +210,95 @@ export function getCompanionChallengeDisplayTitle(
     isCompanionChallenge1Title(title) ||
     isCompanionChallenge1Title(badgeName)
   ) {
-    return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1;
+    return 1;
   }
 
+  if (
+    challengeId === COMPANION_CHALLENGE_2_ID ||
+    isCompanionChallenge2Title(title) ||
+    isCompanionChallenge2Title(badgeName)
+  ) {
+    return 2;
+  }
+
+  return null;
+}
+
+export function getCompanionChallengeDisplayTitle(
+  challenge: CompanionChallengeTitleInput | string | null | undefined,
+  lang: Lang | string,
+) {
+  const normalizedLang = normalizeLang(String(lang));
+  const part = getKnownChallengePart(challenge);
+
+  if (part === 1) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1;
+  if (part === 2) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge2;
+
+  if (typeof challenge === "string") return challenge;
+
+  const title = String(challenge?.title ?? "").trim();
+  const badgeName = String(challenge?.badgeName ?? "").trim();
   return title || badgeName || TEXT[normalizedLang].sectionTitle;
 }
 
-export function getCompanionChallengeText(lang: Lang | string): CompanionChallengeText {
-  return TEXT[normalizeLang(lang)];
+export function getCompanionChallengeRewardTeaser(
+  rewardHearts: number,
+  lang: Lang | string,
+) {
+  const normalizedLang = normalizeLang(String(lang));
+  const hearts = Math.max(0, Math.round(Number(rewardHearts) || 0));
+
+  if (normalizedLang === "ko") {
+    return `성공하면 특별 배지와 하트 ${hearts}개를 받아요.`;
+  }
+  if (normalizedLang === "de") {
+    return `Wenn ihr gemeinsam abschließt, erhaltet ihr ein besonderes Abzeichen und ${hearts} Liebesherzen.`;
+  }
+  if (normalizedLang === "fr") {
+    return `Terminez-le ensemble pour recevoir un badge spécial et ${hearts} cœurs d’amour.`;
+  }
+  return `Complete it together to receive a special badge and ${hearts} Love Hearts.`;
 }
 
-export function getCompanionChallengeStatusLabel(status: CompanionChallengeStatus, lang: Lang | string) {
+export function getCompanionChallengeRewardPopupBody(
+  challenge: CompanionChallengeTitleInput | string | null | undefined,
+  lang: Lang | string,
+) {
+  const normalizedLang = normalizeLang(String(lang));
+  const part = getKnownChallengePart(challenge);
+  const days = part === 1 ? 15 : part === 2 ? 17 : null;
+
+  if (!days) return TEXT[normalizedLang].popupBody;
+  if (normalizedLang === "ko") {
+    return `${days}일 동안 말씀 안에서 함께 걸어온 여러분의 발걸음을 축복해요.`;
+  }
+  if (normalizedLang === "de") {
+    return `Gesegnet seien eure Schritte, die ihr ${days} Tage lang gemeinsam im Wort gegangen seid.`;
+  }
+  if (normalizedLang === "fr") {
+    return `Que les pas que vous avez faits ensemble dans la Parole pendant ${days} jours soient bénis.`;
+  }
+  return `Blessings on the steps you walked together in the Word for ${days} days.`;
+}
+
+export function getCompanionChallengeText(lang: Lang | string): CompanionChallengeText {
+  return TEXT[normalizeLang(String(lang))];
+}
+
+export function getCompanionChallengeStatusLabel(
+  status: CompanionChallengeStatus,
+  lang: Lang | string,
+) {
   const text = getCompanionChallengeText(lang);
   if (status.status === "scheduled") return text.scheduledLabel;
   if (status.status === "completed") return text.completedLabel;
   return text.activeLabel;
 }
 
-export function getCompanionChallengeTodayMessage(status: CompanionChallengeStatus, lang: Lang | string) {
+export function getCompanionChallengeTodayMessage(
+  status: CompanionChallengeStatus,
+  lang: Lang | string,
+) {
   const text = getCompanionChallengeText(lang);
   if (status.status === "scheduled") return text.scheduledMessage;
   if (status.todayPairCompleted) return text.todayTogetherDone;

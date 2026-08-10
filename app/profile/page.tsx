@@ -1440,7 +1440,14 @@ export default function ProfilePage() {
               />
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", marginBottom: 12 }}>
-              {selectedCompanionChallengeBadge.badgeName || companionChallengeText.sectionTitle}
+              {getCompanionChallengeDisplayTitle(
+                {
+                  challengeId: selectedCompanionChallengeBadge.challengeId,
+                  title: selectedCompanionChallengeBadge.title,
+                  badgeName: selectedCompanionChallengeBadge.badgeName,
+                },
+                lang,
+              )}
             </h3>
             <div style={{ display: "grid", gap: 8, textAlign: "left", marginBottom: 16 }}>
               <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>

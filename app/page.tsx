@@ -19,6 +19,7 @@ import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import PetShopAnnouncementPopup from "@/components/PetShopAnnouncementPopup";
+import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -42,6 +43,13 @@ import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharact
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { claimPendingChallengeRewards, type ChallengeReward } from "@/lib/challengeRewards";
+import {
+  COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+  getUserCampaignLocalStorageKey,
+  isCompanionChallenge2AnnouncementWindow,
+  loadUserCampaignSeen,
+  markUserCampaignSeen,
+} from "@/lib/userCampaignImpressions";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -279,6 +287,9 @@ export default function HomePage() {
   const challengeRewardCheckStartedRef = useRef(false);
   const petShopAnnouncementUserIdRef = useRef<string | null>(null);
   const [showPetShopAnnouncement, setShowPetShopAnnouncement] = useState(false);
+  const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
+  const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
+  const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
 
   function showToast(message: string) {
     setToast(message);
@@ -296,6 +307,43 @@ export default function HomePage() {
   function openPetShopFromAnnouncement() {
     closePetShopAnnouncement();
     router.push("/profile?openHeartShop=1");
+  }
+
+  async function completeCompanionChallengeAnnouncement(openCompanions: boolean) {
+    if (handlingCompanionChallengeAnnouncement) return;
+
+    const userId =
+      companionChallengeAnnouncementUserIdRef.current ?? profile?.id ?? "";
+    if (userId) {
+      storageSet(
+        getUserCampaignLocalStorageKey(
+          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+          userId,
+        ),
+        "true",
+      );
+    }
+
+    setHandlingCompanionChallengeAnnouncement(true);
+    setShowCompanionChallengeAnnouncement(false);
+
+    try {
+      if (userId) {
+        const supabase = createClient();
+        await markUserCampaignSeen(
+          supabase,
+          userId,
+          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+        );
+      }
+    } catch (error) {
+      // The local receipt still prevents an annoying repeat on this device.
+      // A temporary campaign-receipt failure must never block Home or companions.
+      console.warn("동역자 챌린지 안내 확인 저장 실패:", error);
+    } finally {
+      setHandlingCompanionChallengeAnnouncement(false);
+      if (openCompanions) router.push("/companions");
+    }
   }
 
   async function checkPendingChallengeRewards(
@@ -412,6 +460,7 @@ export default function HomePage() {
     const user = session?.user ?? null;
     if (!user) { router.push("/welcome"); return; }
     petShopAnnouncementUserIdRef.current = user.id;
+    companionChallengeAnnouncementUserIdRef.current = user.id;
 
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
@@ -459,6 +508,29 @@ export default function HomePage() {
 
     const today = getLocalDateString();
     void checkPendingChallengeRewards(supabase, today);
+
+    if (isCompanionChallenge2AnnouncementWindow(today)) {
+      const localCampaignKey = getUserCampaignLocalStorageKey(
+        COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+        user.id,
+      );
+
+      if (!storageGet(localCampaignKey)) {
+        void loadUserCampaignSeen(
+          supabase,
+          user.id,
+          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+        ).then((seen) => {
+          if (seen === true) {
+            storageSet(localCampaignKey, "true");
+            return;
+          }
+          if (!storageGet(localCampaignKey)) {
+            setShowCompanionChallengeAnnouncement(true);
+          }
+        });
+      }
+    }
     const pendingAwardedBadges = consumePendingAwardedBadges(user.id, today);
     pendingAwardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
 
@@ -1214,9 +1286,16 @@ export default function HomePage() {
     showHomePrayerSharePrompt ||
     chapterPopup.show;
   const visiblePetShopAnnouncement = showPetShopAnnouncement && !petShopAnnouncementBlocked;
-  const visibleChallengeReward = petShopAnnouncementBlocked || showPetShopAnnouncement
-    ? null
-    : challengeRewardQueue[0] ?? null;
+  const visibleCompanionChallengeAnnouncement =
+    showCompanionChallengeAnnouncement &&
+    !petShopAnnouncementBlocked &&
+    !visiblePetShopAnnouncement;
+  const visibleChallengeReward =
+    petShopAnnouncementBlocked ||
+    showPetShopAnnouncement ||
+    showCompanionChallengeAnnouncement
+      ? null
+      : challengeRewardQueue[0] ?? null;
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -1472,6 +1551,17 @@ export default function HomePage() {
         show={visiblePetShopAnnouncement}
         onClose={closePetShopAnnouncement}
         onOpenShop={openPetShopFromAnnouncement}
+      />
+
+      <CompanionChallengeAnnouncementPopup
+        show={visibleCompanionChallengeAnnouncement}
+        busy={handlingCompanionChallengeAnnouncement}
+        onManageCompanions={() => {
+          void completeCompanionChallengeAnnouncement(true);
+        }}
+        onClose={() => {
+          void completeCompanionChallengeAnnouncement(false);
+        }}
       />
 
       <ChallengeRewardPopup

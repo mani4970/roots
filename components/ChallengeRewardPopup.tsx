@@ -8,6 +8,7 @@ import {
 } from "@/lib/companionChallenges";
 import {
   getCompanionChallengeDisplayTitle,
+  getCompanionChallengeRewardPopupBody,
   getCompanionChallengeText,
 } from "@/lib/companionChallengeText";
 import {
@@ -49,7 +50,14 @@ export default function ChallengeRewardPopup({
     : reward.challengeTitle;
   const contextName = isCompanion ? reward.companionName : reward.groupName;
   const body = isCompanion
-    ? `${companionText.popupBody}\n💛 +${reward.rewardHearts} ${companionText.heartsLabel}`
+    ? `${getCompanionChallengeRewardPopupBody(
+        {
+          challengeId: reward.challengeId,
+          title: reward.challengeTitle,
+          badgeName: reward.badgeName,
+        },
+        lang,
+      )}\n💛 +${reward.rewardHearts} ${companionText.heartsLabel}`
     : t("group_challenge_award_popup_body", lang);
   const button = isCompanion
     ? companionText.popupButton
