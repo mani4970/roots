@@ -1299,16 +1299,18 @@ export default function HomePage() {
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
-      <img
-        src="/roots-logo-transparent-160.png"
-        alt="Roots sprout"
-        width={82}
-        height={82}
-        style={{ objectFit: "contain" }}
-      />
-      <div style={{ textAlign: "center" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-        <p style={{ fontSize: 13, color: "var(--text3)" }}>{t("home_loading_sub", lang)}</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <img
+          src="/roots-logo-transparent-160.png"
+          alt="Roots sprout"
+          width={82}
+          height={82}
+          style={{ objectFit: "contain" }}
+        />
+        <div style={{ textAlign: "center" }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
+          <p style={{ fontSize: 13, color: "var(--text3)" }}>{t("home_loading_sub", lang)}</p>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         {[0,1,2].map(i => (
