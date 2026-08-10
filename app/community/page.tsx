@@ -132,8 +132,11 @@ type GroupChallengeRequestSummary = {
 
 const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
-const COMMUNITY_FEED_PREFETCH_LIMIT = 90;
-const COMMUNITY_PARTNER_HISTORY_LIMIT = 500;
+const COMMUNITY_ALL_QT_LIMIT = 30;
+const COMMUNITY_RELATION_QT_LIMIT = 120;
+const COMMUNITY_PRAYER_PREFETCH_LIMIT = 90;
+const COMMUNITY_PARTNER_QT_HISTORY_LIMIT = 120;
+const COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT = 500;
 type CommunitySectionKey = "qt" | "praying" | "answered";
 
 type ReflectionNudgeStatus = {
@@ -221,66 +224,39 @@ function mergeRowsById<T extends Record<string, any>>(
 async function fetchQtFeedRows(
   supabase: ReturnType<typeof createClient>,
   visibilityPattern: string,
+  limit: number,
 ) {
-  // Feed order is the first final-completion time, not the time a draft row was
-  // created or the time sharing was edited later. Keep a created_at query as a
-  // compatibility fallback until migration 125 is present everywhere.
-  const [createdAtQuery, completedAtQuery, sharedAtQuery] = await Promise.all([
-    supabase
-      .from("qt_records")
-      .select("*")
-      .ilike("visibility", visibilityPattern)
-      .eq("is_draft", false)
-      .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
-    supabase
-      .from("qt_records")
-      .select("*")
-      .ilike("visibility", visibilityPattern)
-      .eq("is_draft", false)
-      .order("completed_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
-    supabase
-      .from("qt_records")
-      .select("*")
-      .ilike("visibility", visibilityPattern)
-      .eq("is_draft", false)
-      .order("shared_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
-  ]);
+  // Fetch only the records this surface can actually show. Completion order is
+  // authoritative; created_at remains a compatibility fallback for an
+  // environment where migration 125 has not been applied yet.
+  const completedAtQuery = await supabase
+    .from("qt_records")
+    .select("*")
+    .ilike("visibility", visibilityPattern)
+    .eq("is_draft", false)
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!completedAtQuery.error) {
+    return sortQtFeedRows(completedAtQuery.data ?? []).slice(0, limit);
+  }
+
+  console.warn(
+    "qt_records completed_at ordering failed. Falling back to legacy completion ordering:",
+    completedAtQuery.error.message,
+  );
+
+  const createdAtQuery = await supabase
+    .from("qt_records")
+    .select("*")
+    .ilike("visibility", visibilityPattern)
+    .eq("is_draft", false)
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   if (createdAtQuery.error) throw createdAtQuery.error;
-
-  if (completedAtQuery.error) {
-    if (/completed_at/i.test(completedAtQuery.error.message ?? "")) {
-      console.warn(
-        "qt_records.completed_at column is not available yet. Falling back to legacy completion ordering:",
-        completedAtQuery.error.message,
-      );
-    } else {
-      console.warn(
-        "qt_records completed_at ordering failed. Falling back to legacy completion ordering:",
-        completedAtQuery.error.message,
-      );
-    }
-  }
-
-  if (sharedAtQuery.error) {
-    console.warn(
-      "qt_records shared_at coverage query failed:",
-      sharedAtQuery.error.message,
-    );
-  }
-
-  return sortQtFeedRows(
-    mergeRowsById([
-      createdAtQuery.data ?? [],
-      completedAtQuery.error ? [] : (completedAtQuery.data ?? []),
-      sharedAtQuery.error ? [] : (sharedAtQuery.data ?? []),
-    ]),
-  );
+  return sortQtFeedRows(createdAtQuery.data ?? []).slice(0, limit);
 }
 
 async function fetchPrayerFeedRows(
@@ -296,7 +272,7 @@ async function fetchPrayerFeedRows(
       .select("*")
       .ilike("visibility", visibilityPattern)
       .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+      .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
     supabase
       .from("prayer_items")
       .select("*")
@@ -304,7 +280,7 @@ async function fetchPrayerFeedRows(
       .eq("is_answered", false)
       .order("shared_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+      .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
     supabase
       .from("prayer_items")
       .select("*")
@@ -312,7 +288,7 @@ async function fetchPrayerFeedRows(
       .eq("is_answered", true)
       .order("answered_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
-      .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+      .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
   ]);
 
   if (createdAtQuery.error) throw createdAtQuery.error;
@@ -3914,7 +3890,7 @@ function CommunityPageContent() {
           `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
         )
         .order("created_at", { ascending: false })
-        .limit(COMMUNITY_PARTNER_HISTORY_LIMIT);
+        .limit(COMMUNITY_PARTNER_QT_HISTORY_LIMIT);
 
       if (qtRecipientError) throw qtRecipientError;
       const qtIds = Array.from(
@@ -3987,7 +3963,7 @@ function CommunityPageContent() {
             `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
           )
           .order("created_at", { ascending: false })
-          .limit(COMMUNITY_PARTNER_HISTORY_LIMIT);
+          .limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT);
 
       if (prayerRecipientError) throw prayerRecipientError;
       const prayerIds = Array.from(
@@ -4281,15 +4257,15 @@ function CommunityPageContent() {
           .ilike("visibility", "%all%")
           .eq("is_answered", false)
           .order("created_at", { ascending: false })
-          .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
+          .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
         supabase
           .from("prayer_items")
           .select("*")
           .ilike("visibility", "%all%")
           .eq("is_answered", true)
           .order("answered_at", { ascending: false })
-          .limit(COMMUNITY_FEED_PREFETCH_LIMIT),
-        fetchQtFeedRows(supabase, "%all%"),
+          .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
+        fetchQtFeedRows(supabase, "%all%", COMMUNITY_ALL_QT_LIMIT),
       ]);
 
       const prayingRows = prayingResult.data ?? [];
@@ -4679,7 +4655,11 @@ function CommunityPageContent() {
     }
     setLoadingGroupChallenges(false);
 
-    const data = await fetchQtFeedRows(supabase, `%group_${group.id}%`);
+    const data = await fetchQtFeedRows(
+      supabase,
+      `%group_${group.id}%`,
+      COMMUNITY_RELATION_QT_LIMIT,
+    );
     if (data && user) {
       const profMap = await fetchProfiles(supabase, data);
       const withProfs = filterHiddenItems(

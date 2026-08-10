@@ -192,6 +192,19 @@ export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
 export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
 export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260809_v3";
 
+// Existing character assets stay on their current PNG paths. Register every new
+// Love Shop character asset here as WebP so future additions do not need a path
+// generator rewrite. Transparent character layers should use lossless WebP.
+const HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES: Partial<
+  Record<HeartShopCharacterItemId, "webp">
+> = {};
+
+function getCharacterAssetExtension(
+  itemId: HeartShopCharacterItemId,
+): "png" | "webp" {
+  return HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES[itemId] ?? "png";
+}
+
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
   if (itemId.includes("_pet_")) return "pet";
@@ -237,8 +250,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
               ? 100
               : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
-  const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
-  const characterLayerPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.png`;
+  const assetExtension = getCharacterAssetExtension(itemId);
+  const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
+  const characterLayerPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
   const layerPath = avatarType === "shared"
     ? slot === "background"
       ? `${sharedLayerPath}?v=${isNewTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
