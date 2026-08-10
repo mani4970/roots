@@ -7069,7 +7069,12 @@ function CommunityPageContent() {
                       opacity: p.is_answered ? 0.72 : 1,
                     }}
                   >
-                    {p.content}
+                    {p.content}{" "}
+                    {p.is_answered && (
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                        ({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})
+                      </span>
+                    )}
                   </p>
 
                   {p.testimony && (
@@ -8330,7 +8335,12 @@ function CommunityPageContent() {
                         opacity: p.is_answered ? 0.72 : 1,
                       }}
                     >
-                      {p.content}
+                      {p.content}{" "}
+                      {p.is_answered && (
+                        <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                          ({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})
+                        </span>
+                      )}
                     </p>
 
                     {p.testimony && (
@@ -10216,7 +10226,10 @@ function CommunityPageContent() {
                         opacity: 0.7,
                       }}
                     >
-                      {p.content}
+                      {p.content}{" "}
+                      <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                        ({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})
+                      </span>
                     </p>
                     {p.testimony && (
                       <div
