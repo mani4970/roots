@@ -289,6 +289,27 @@ function base64ToPhotoFile(base64: string, mimeType: string) {
   return new File([bytes], `qt-photo.${extension}`, { type: mimeType, lastModified: Date.now() });
 }
 
+function restoreIOSViewportAfterPhotoPicker(scrollY: number) {
+  if (!(Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform())) return;
+
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLElement) activeElement.blur();
+
+  // iOS의 네이티브 카메라/사진 보관함이 닫힌 뒤 status bar와 safe-area가
+  // 다시 overlay 상태처럼 계산되는 경우가 있어 공통 네이티브 viewport 설정을
+  // 재적용하고, 사진 선택 전 페이지 위치를 여러 프레임에 걸쳐 복원합니다.
+  const restore = () => {
+    window.dispatchEvent(new Event("roots:native-viewport-refresh"));
+    window.dispatchEvent(new Event("resize"));
+    document.documentElement.style.setProperty("--roots-viewport-refresh", String(Date.now()));
+    window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
+  };
+
+  window.setTimeout(restore, 80);
+  window.setTimeout(restore, 260);
+  window.setTimeout(restore, 650);
+}
+
 function storePendingNativePhotoChoice(source: QTPhotoSource, attemptId: string) {
   storageSet(PENDING_NATIVE_SOURCE_KEY, JSON.stringify({ source, attemptId }));
 }
@@ -711,6 +732,7 @@ function PhotoReflectionContent() {
 
   async function choosePhotoSource(sourceChoice: "camera" | "gallery") {
     if (preparingPhoto || saving) return;
+    const scrollYBeforePicker = window.scrollY;
     setShowPhotoSourceModal(false);
     pendingPhotoSourceRef.current = sourceChoice;
     photoAttemptIdRef.current = createQTPhotoAttemptId();
@@ -753,6 +775,7 @@ function PhotoReflectionContent() {
       } finally {
         storageRemove(PENDING_NATIVE_SOURCE_KEY);
         setPreparingPhoto(false);
+        restoreIOSViewportAfterPhotoPicker(scrollYBeforePicker);
       }
       return;
     }
