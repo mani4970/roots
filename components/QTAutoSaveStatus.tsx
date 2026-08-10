@@ -7,7 +7,7 @@ import {
 } from "react";
 import { Loader2, Save } from "lucide-react";
 
-export type QTAutoSaveStatusValue = "idle" | "saving" | "saved" | "error";
+export type QTAutoSaveStatusValue = "idle" | "saving" | "saved" | "local" | "error";
 
 export type QTAutoSaveStatusHandle = {
   setStatus: (status: QTAutoSaveStatusValue, savedAt?: string) => void;
@@ -22,6 +22,7 @@ type QTAutoSaveStatusProps = {
   savingText: string;
   savedText: string;
   savedWithTimeText: string;
+  localText: string;
   errorText: string;
   editModeText: string;
 };
@@ -50,6 +51,7 @@ const QTAutoSaveStatus = forwardRef<QTAutoSaveStatusHandle, QTAutoSaveStatusProp
       savingText,
       savedText,
       savedWithTimeText,
+      localText,
       errorText,
       editModeText,
     },
@@ -87,12 +89,20 @@ const QTAutoSaveStatus = forwardRef<QTAutoSaveStatusHandle, QTAutoSaveStatusProp
       ? savingText
       : state.status === "saved"
         ? (state.savedAt ? savedWithTimeText.replace("{time}", state.savedAt) : savedText)
-        : state.status === "error"
-          ? errorText
-          : idleText;
+        : state.status === "local"
+          ? localText
+          : state.status === "error"
+            ? errorText
+            : idleText;
+
+    const statusColor = state.status === "error"
+      ? "var(--terra-dark)"
+      : state.status === "local"
+        ? "var(--sage-dark)"
+        : "var(--text-muted-readable)";
 
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: state.status === "error" ? "var(--terra-dark)" : "var(--text-muted-readable)", fontSize: 11 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 18, color: statusColor, fontSize: 11 }}>
         {state.status === "saving" ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
         <span>{statusText}</span>
       </div>

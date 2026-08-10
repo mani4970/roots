@@ -9,6 +9,7 @@ import { t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
+import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
@@ -76,6 +77,7 @@ export default function QTPage() {
   const [records, setRecords] = useState<QTRecord[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [draftCheckPending, setDraftCheckPending] = useState(true);
   const [expandedYear, setExpandedYear] = useState<number | null>(() => parseLocalDateString(getLocalDateString()).getFullYear());
   const [expandedMonthKeys, setExpandedMonthKeys] = useState<Set<string>>(() => new Set([getYearMonthKey()]));
   const [showStartModal, setShowStartModal] = useState(false);
@@ -108,20 +110,30 @@ export default function QTPage() {
   async function load() {
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getQtDraftSessionUser(supabase);
       if (!user) { router.push("/login"); return; }
       const today = getLocalDateString();
-      const { data: todayRows } = await supabase.from("qt_records")
-        .select("id,is_draft")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .order("created_at", { ascending: false });
+      const localDraftExists = !!loadQTDraftBackup(user.id, today);
+      if (localDraftExists) setHasDraft(true);
+
+      const { data: todayRows, error: todayRowsError } = await withQtDraftTimeout(
+        supabase.from("qt_records")
+          .select("id,is_draft")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .order("created_at", { ascending: false }),
+        8_000,
+        "qt overview draft check",
+      );
+      if (todayRowsError) throw todayRowsError;
+
       const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
       const remoteDraftExists = !!todayRows?.some((row: any) => row.is_draft === true);
-      const localDraftExists = !!loadQTDraftBackup(user.id, today);
       const draftExists = !completedExists && (remoteDraftExists || localDraftExists);
+      if (completedExists && localDraftExists) removeQTDraftBackup(user.id, today);
       setTodayDone(completedExists);
       setHasDraft(draftExists);
+      setDraftCheckPending(false);
       if (draftExists) setShowDraftPopup(true);
       const { data } = await supabase.from("qt_records").select("*")
         .eq("user_id", user.id).eq("is_draft", false)
@@ -145,6 +157,7 @@ export default function QTPage() {
       console.error("qt load failed", error);
       showToast(t("qt_error_load", lang));
     } finally {
+      setDraftCheckPending(false);
       setLoading(false);
     }
   }
@@ -196,12 +209,13 @@ export default function QTPage() {
   async function deleteDraftAndStart() {
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getQtDraftSessionUser(supabase);
       if (!user) return;
       const today = getLocalDateString();
       const { error } = await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
       if (error) throw error;
-      removeQTDraftBackup(user.id, today);
+      const localDraftRemoved = removeQTDraftBackup(user.id, today);
+      if (!localDraftRemoved) throw new Error("Could not remove the device draft backup");
       setHasDraft(false);
       setShowDraftPopup(false);
       setShowStartModal(true);
@@ -317,8 +331,18 @@ export default function QTPage() {
                 <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{t("qt_sunday_desc", lang)}</p>
               </div>
             )}
-            <button onClick={() => { if (hasDraft) { setShowDraftPopup(true); } else { setShowStartModal(true); } }} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Plus size={18} /> {t("qt_today_start", lang)}
+            <button
+              onClick={() => {
+                if (draftCheckPending) return;
+                if (hasDraft) setShowDraftPopup(true);
+                else setShowStartModal(true);
+              }}
+              disabled={draftCheckPending}
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: 8, opacity: draftCheckPending ? 0.65 : 1, cursor: draftCheckPending ? "default" : "pointer" }}
+            >
+              {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
+              {t("qt_today_start", lang)}
             </button>
             <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <CalendarDays size={17} /> {t("qt_catchup_start", lang)}

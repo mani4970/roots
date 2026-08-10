@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
+import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
@@ -90,10 +91,14 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
   "자동 임시저장 중...": { de: "Automatisches Speichern...", en: "Auto-saving...", fr: "Enregistrement automatique..." },
   "자동 임시저장됨": { de: "Automatisch gespeichert", en: "Auto-saved", fr: "Enregistré automatiquement" },
   "자동 임시저장됨 · {time}": { de: "Automatisch gespeichert · {time}", en: "Auto-saved · {time}", fr: "Enregistré automatiquement · {time}" },
+  "기기에 안전하게 저장됨 · 연결되면 다시 동기화돼요": { de: "Sicher auf dem Gerät gespeichert · Synchronisiert sich wieder bei Verbindung", en: "Safely saved on this device · It will sync when connected", fr: "Enregistré en sécurité sur cet appareil · Synchronisation dès la reconnexion" },
   "작성 내용은 자동으로 임시저장돼요": { de: "Ihre Eingaben werden automatisch als Entwurf gespeichert", en: "Your writing is auto-saved as a draft", fr: "Votre texte est enregistré automatiquement comme brouillon" },
   "자동 임시저장 실패 · 수동 임시저장을 눌러주세요": { de: "Automatisches Speichern fehlgeschlagen · Bitte manuell speichern", en: "Auto-save failed · Please save manually", fr: "Échec de l’enregistrement automatique · Enregistrez manuellement" },
   "수정 모드에서는 자동 임시저장이 꺼져 있어요": { de: "Im Bearbeitungsmodus ist die automatische Speicherung deaktiviert", en: "Auto-save is off while editing", fr: "L’enregistrement automatique est désactivé pendant la modification" },
   "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
+  "기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.": { de: "Der Entwurf ist sicher auf diesem Gerät gespeichert. Bitte versuchen Sie es nach der Verbindung erneut.", en: "Your draft is safely saved on this device. Please try again when connected.", fr: "Votre brouillon est enregistré en sécurité sur cet appareil. Réessayez lorsque la connexion sera rétablie." },
+  "작성 중인 묵상을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.": { de: "Der gespeicherte Entwurf konnte nicht geprüft werden. Bitte Verbindung prüfen und erneut versuchen.", en: "We couldn't check your saved draft. Check your connection and try again.", fr: "Impossible de vérifier votre brouillon. Vérifiez la connexion puis réessayez." },
+  "다시 시도": { de: "Erneut versuchen", en: "Try again", fr: "Réessayer" },
   "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
   "말씀동행 반영에 실패했어요. 다시 완료해주세요.": { de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
   // UI 문자열
@@ -186,6 +191,7 @@ function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>
 
 type QTWriteMode = "6step" | "sunday" | "free";
 type DraftSnapshot = {
+  clientUpdatedAt: string;
   selectedDate: string;
   mode: QTWriteMode;
   translationId: number;
@@ -400,6 +406,11 @@ function QTWriteContent() {
   // 주일예배 말씀 선택 step
   const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
   const [pageReady, setPageReady] = useState(false);
+  const [draftProbeDone, setDraftProbeDone] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState(false);
+  const [draftRetryNonce, setDraftRetryNonce] = useState(0);
+  const draftRestoredRef = useRef(false);
+  const scheduleLoadStartedRef = useRef(false);
   const [passageOpen, setPassageOpen] = useState(false);
 
   // 장 변경 시 절 범위 초과 자동 조정
@@ -443,12 +454,13 @@ function QTWriteContent() {
   const [completeSharePartners, setCompleteSharePartners] = useState<ShareTargetPartner[]>([]);
   const [loadingCompleteShareOptions, setLoadingCompleteShareOptions] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
-  const autoSavingRef = useRef(false);
-  const queuedAutoSaveRef = useRef<{ snapshot: DraftSnapshot; signature: string } | null>(null);
+  const draftSaveChainRef = useRef<Promise<unknown>>(Promise.resolve());
   const lastAutoSaveSignatureRef = useRef("");
   const [draftBackupUserId, setDraftBackupUserId] = useState("");
   const latestDraftSnapshotRef = useRef<DraftSnapshot | null>(null);
   const lastLocalBackupSignatureRef = useRef("");
+  const localSyncRetryRef = useRef(false);
+  const lastDraftClientTimestampRef = useRef(0);
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
@@ -457,13 +469,9 @@ function QTWriteContent() {
   useEffect(() => {
     let cancelled = false;
     const loadDraftBackupUser = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!cancelled) setDraftBackupUserId(user?.id ?? "");
-      } catch {
-        if (!cancelled) setDraftBackupUserId("");
-      }
+      const supabase = createClient();
+      const user = await getQtDraftSessionUser(supabase);
+      if (!cancelled) setDraftBackupUserId(user?.id ?? "");
     };
     void loadDraftBackupUser();
     return () => { cancelled = true; };
@@ -540,10 +548,18 @@ function QTWriteContent() {
     if (cross) {
       const koBook = toKoreanBookName(bookName);
       const maxV1 = getBibleChapterMaxVerse(koBook, chap, translationId);
-      const r1 = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+      const r1 = await withQtDraftTimeout(
+        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`),
+        8_000,
+        "restore first passage chapter",
+      );
       const d1 = await r1.json();
       if (!r1.ok || d1.error) throw new Error(d1.error || "Could not restore the first passage chapter");
-      const r2 = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+      const r2 = await withQtDraftTimeout(
+        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`),
+        8_000,
+        "restore final passage chapter",
+      );
       const d2 = await r2.json();
       if (!r2.ok || d2.error) throw new Error(d2.error || "Could not restore the final passage chapter");
       const verses = [
@@ -553,7 +569,11 @@ function QTWriteContent() {
       if (verses.length === 0) throw new Error("Restored passage was empty");
       return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: true, verses, ref };
     }
-    const res = await fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+    const res = await withQtDraftTimeout(
+      fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`),
+      8_000,
+      "restore passage",
+    );
     const data = await res.json();
     if (!res.ok || data.error || !Array.isArray(data.verses) || data.verses.length === 0) {
       throw new Error(data.error || "Restored passage was empty");
@@ -603,10 +623,10 @@ function QTWriteContent() {
   // - 지난 큐티 6단계: 선택한 날짜의 qt_schedule을 다시 조회해서 기록 보완용으로 로드
   // - 자유형식 지난 큐티: qt_schedule 자동 로드 없이 일반 자유형식처럼 수동 본문 선택으로 시작
   useEffect(() => {
+    if (!draftProbeDone || scheduleLoadStartedRef.current || draftRestoredRef.current || isEditMode) return;
+    scheduleLoadStartedRef.current = true;
+
     const loadSchedulePassage = async () => {
-      // resume=true일 때는 draft 복원이 끝날 때까지 빈 화면을 유지해
-      // 기본 말씀 선택 화면이 잠깐 보이는 flicker를 막는다.
-      if (isResume || isEditMode) return;
       if (mode !== "6step") {
         setPageReady(true);
         return;
@@ -703,16 +723,22 @@ function QTWriteContent() {
         setPageReady(true);
       }
     };
-    loadSchedulePassage();
-  }, []);
+    void loadSchedulePassage();
+  }, [draftProbeDone]);
 
   // 임시저장 데이터 로드
   useEffect(() => {
+    setDraftLoadError(false);
+    setDraftProbeDone(false);
+    setPageReady(false);
+    draftRestoredRef.current = false;
+    scheduleLoadStartedRef.current = false;
+
     const resetDraftState = () => {
       if (initMode === "free") setMode("free");
       else if (initMode === "sunday") setMode("sunday");
       else if (initMode === "6step") setMode("6step");
-      else setMode(isSunday(selectedDate) ? "sunday" : "6step");
+      else setMode(isSunday(initialDate) ? "sunday" : "6step");
       setBibleRef("");
       setKeyVerse("");
       setPassageVerses([]);
@@ -731,9 +757,10 @@ function QTWriteContent() {
     };
 
     const loadDraft = async () => {
-      if (isEditMode && editId) {
+      try {
+        if (isEditMode && editId) {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getQtDraftSessionUser(supabase);
         if (!user) { router.push("/login"); return; }
         const { data: record, error } = await supabase
           .from("qt_records")
@@ -744,6 +771,7 @@ function QTWriteContent() {
           .maybeSingle();
         if (error || !record) {
           showToast(t("qt_record_error_load", lang), "error");
+          setDraftProbeDone(true);
           setPageReady(true);
           return;
         }
@@ -847,42 +875,87 @@ function QTWriteContent() {
             // 본문 재로드 실패해도 저장된 QT 내용은 수정 가능
           }
         }
+        setDraftProbeDone(true);
         setPageReady(true);
         return;
       }
-      if (!isResume) {
-        if (!hasSchedule) setPageReady(true);
-        return;
-      } // 이어쓰기 모드일 때만 로드
-      if (selectedDate !== todayStr) {
-        resetDraftState();
-        setPageReady(true);
+
+      draftRestoredRef.current = false;
+      setDraftLoadError(false);
+
+      // Draft autosave applies only to today's QT. Catch-up dates continue
+      // through the existing schedule/manual-passage flow.
+      if (initialDate !== todayStr) {
+        if (isResume) resetDraftState();
+        setDraftProbeDone(true);
         return;
       }
-      const { createClient: cc } = await import("@/lib/supabase");
-      const supabase = cc();
-      const { data: { user } } = await supabase.auth.getUser();
+
+      const supabase = createClient();
+      const user = await getQtDraftSessionUser(supabase);
       if (!user) {
-        setPageReady(true);
+        setDraftLoadError(true);
         return;
       }
-      const { data: drafts, error } = await supabase.from("qt_records")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("date", selectedDate)
-        .eq("is_draft", true)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) {
-        setPageReady(true);
+      setDraftBackupUserId(user.id);
+
+      // Read the verified device snapshot before the network call. If the
+      // connection is unavailable, the exact local text can still be restored
+      // instead of opening an empty writer over an existing draft.
+      const localBackup = loadQTDraftBackup(user.id, initialDate);
+      let sameDateRows: any[] | null = null;
+      let draftQueryError: unknown = null;
+      const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const attempts = isOffline ? 0 : (localBackup ? 1 : 2);
+      if (isOffline) draftQueryError = new Error("offline");
+
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          const result = await withQtDraftTimeout(
+            supabase.from("qt_records")
+              .select("*")
+              .eq("user_id", user.id)
+              .eq("date", initialDate)
+              .order("created_at", { ascending: false })
+              .limit(3),
+            7_000,
+            `load draft attempt ${attempt + 1}`,
+          );
+          if (result.error) throw result.error;
+          sameDateRows = result.data ?? [];
+          draftQueryError = null;
+          break;
+        } catch (error) {
+          draftQueryError = error;
+          if (attempt + 1 < attempts) {
+            await new Promise(resolve => window.setTimeout(resolve, 500));
+          }
+        }
+      }
+
+      if (draftQueryError && !localBackup) {
+        console.error("qt draft initial load failed", draftQueryError);
+        setDraftLoadError(true);
         return;
       }
-      const localBackup = loadQTDraftBackup(user.id, selectedDate);
-      let draft = drafts?.[0] ?? null;
+      if (draftQueryError && localBackup) {
+        console.warn("qt draft server load failed; restoring verified device backup", draftQueryError);
+        updateAutoSaveStatus("local");
+      }
+
+      const completedRecord = sameDateRows?.find((row: any) => row.is_draft === false) ?? null;
+      if (completedRecord?.id) {
+        removeQTDraftBackup(user.id, initialDate);
+        router.replace(`/qt/record?id=${completedRecord.id}`);
+        return;
+      }
+
+      let draft = sameDateRows?.find((row: any) => row.is_draft === true) ?? null;
       if (!draft && localBackup) {
         draft = mergeQtDraftRowWithBackup({
           qt_mode: localBackup.mode,
           current_step: localBackup.currentStep,
+          bible_version: localBackup.translationId ? String(localBackup.translationId) : "",
           bible_ref: "",
           key_verse: "",
           opening_prayer: "",
@@ -891,22 +964,37 @@ function QTWriteContent() {
           application: "",
           decision: "",
           closing_prayer: "",
+          created_at: "",
+          updated_at: "",
+          draft_client_updated_at: "",
         }, localBackup);
       }
       if (!draft) {
-        resetDraftState();
-        setPageReady(true);
+        if (isResume) resetDraftState();
+        setDraftProbeDone(true);
         return;
       }
+
       draft = mergeQtDraftRowWithBackup(draft, localBackup);
+      rememberDraftClientUpdatedAt(draft.draft_client_updated_at);
+      rememberDraftClientUpdatedAt(localBackup?.updatedAt);
+      draftRestoredRef.current = true;
       let restoreTranslationId = getSupportedBibleTranslationId(draft.bible_version);
-      if (!restoreTranslationId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("preferred_translation")
-          .eq("id", user.id)
-          .maybeSingle();
-        restoreTranslationId = getSupportedBibleTranslationId(profile?.preferred_translation);
+      if (!restoreTranslationId && !isOffline) {
+        try {
+          const { data: profile } = await withQtDraftTimeout(
+            supabase
+              .from("profiles")
+              .select("preferred_translation")
+              .eq("id", user.id)
+              .maybeSingle(),
+            5_000,
+            "load draft preferred translation",
+          );
+          restoreTranslationId = getSupportedBibleTranslationId(profile?.preferred_translation);
+        } catch {
+          // The draft text is still recoverable with the current translation.
+        }
       }
       restoreTranslationId = normalizeBibleTranslationId(restoreTranslationId, selectedTranslation);
       setSelectedTranslation(restoreTranslationId);
@@ -996,14 +1084,26 @@ function QTWriteContent() {
               const idx = allLocalBooks.indexOf(bookName);
               const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
               const maxV1 = getBibleChapterMaxVerse(koBook, chap, restoreTranslationId);
-              const r1 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+              const r1 = await withQtDraftTimeout(
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`),
+                8_000,
+                "reload draft first passage chapter",
+              );
               const d1 = await r1.json();
-              const r2 = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+              const r2 = await withQtDraftTimeout(
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`),
+                8_000,
+                "reload draft final passage chapter",
+              );
               const d2 = await r2.json();
               const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
               if (verses.length > 0) setPassageVerses(verses);
             } else {
-              const res = await fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+              const res = await withQtDraftTimeout(
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`),
+                8_000,
+                "reload draft passage",
+              );
               const data = await res.json();
               if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
             }
@@ -1018,10 +1118,15 @@ function QTWriteContent() {
       // 저장된 단계로 이동
       const savedStep = draft.current_step ?? 0;
       if (savedStep > 0) setCur(savedStep);
+      setDraftProbeDone(true);
       setPageReady(true);
-    }
-    loadDraft();
-  }, [isResume, isEditMode, editId, selectedDate]);
+      } catch (error) {
+        console.error("qt draft initialization failed", error);
+        setDraftLoadError(true);
+      }
+    };
+    void loadDraft();
+  }, [isResume, isEditMode, editId, initialDate, draftRetryNonce]);
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
@@ -1570,8 +1675,23 @@ function QTWriteContent() {
     if (isAppleIsolatedEditor) activeElement.blur();
   }
 
+  function rememberDraftClientUpdatedAt(value: unknown) {
+    const parsed = Date.parse(String(value ?? ""));
+    if (Number.isFinite(parsed)) {
+      lastDraftClientTimestampRef.current = Math.max(lastDraftClientTimestampRef.current, parsed);
+    }
+  }
+
+  function nextDraftClientUpdatedAt() {
+    const now = Date.now();
+    const next = Math.max(now, lastDraftClientTimestampRef.current + 1);
+    lastDraftClientTimestampRef.current = next;
+    return new Date(next).toISOString();
+  }
+
   function getDraftSnapshot(): DraftSnapshot {
     return {
+      clientUpdatedAt: nextDraftClientUpdatedAt(),
       selectedDate,
       mode,
       translationId: selectedTranslation,
@@ -1600,12 +1720,22 @@ function QTWriteContent() {
 
   function persistDraftBackup(snapshot: DraftSnapshot = getDraftSnapshot()) {
     latestDraftSnapshotRef.current = snapshot;
-    if (!draftBackupUserId || snapshot.selectedDate !== todayStr || isEditMode || !hasDraftContent(snapshot)) return;
+    if (!draftBackupUserId || snapshot.selectedDate !== todayStr || isEditMode) return false;
 
     const signature = getDraftSignature(snapshot);
-    if (signature === lastLocalBackupSignatureRef.current) return;
+    if (!hasDraftContent(snapshot)) {
+      removeQTDraftBackup(draftBackupUserId, snapshot.selectedDate);
+      lastLocalBackupSignatureRef.current = "";
+      return true;
+    }
 
-    saveQTDraftBackup({
+    if (signature === lastLocalBackupSignatureRef.current) {
+      const verifiedExisting = loadQTDraftBackup(draftBackupUserId, snapshot.selectedDate);
+      if (verifiedExisting) return true;
+      lastLocalBackupSignatureRef.current = "";
+    }
+
+    const saved = saveQTDraftBackup({
       userId: draftBackupUserId,
       date: snapshot.selectedDate,
       mode: snapshot.mode,
@@ -1618,16 +1748,23 @@ function QTWriteContent() {
       freeText: snapshot.freeText,
       sermonTitle: snapshot.sermonTitle,
       passageRefs: snapshot.passageRefs,
-      updatedAt: new Date().toISOString(),
+      updatedAt: snapshot.clientUpdatedAt,
     });
-    lastLocalBackupSignatureRef.current = signature;
+
+    if (saved) {
+      lastLocalBackupSignatureRef.current = signature;
+    } else {
+      console.warn("qt draft device backup could not be verified");
+    }
+    return saved;
   }
 
   function getDraftSignature(snapshot: DraftSnapshot) {
-    return JSON.stringify(snapshot);
+    const { clientUpdatedAt: _clientUpdatedAt, ...content } = snapshot;
+    return JSON.stringify(content);
   }
 
-  function buildDraftData(userId: string, snapshot: DraftSnapshot) {
+  function buildDraftData(snapshot: DraftSnapshot) {
     const decisionText = snapshot.decisions.filter(d => d.trim()).join("\n");
     const sundayRefs = [snapshot.bibleRef, ...snapshot.passageRefs].filter(Boolean);
     const draftBibleRef = snapshot.mode === "sunday"
@@ -1635,20 +1772,19 @@ function QTWriteContent() {
       : snapshot.bibleRef;
 
     return {
-      user_id: userId,
       date: snapshot.selectedDate,
-      qt_mode: snapshot.mode,
-      is_draft: true,
-      current_step: snapshot.currentStep,
-      bible_version: String(snapshot.translationId),
-      bible_ref: draftBibleRef,
-      key_verse: snapshot.keyVerse,
-      opening_prayer: snapshot.mode === "free" ? "" : (snapshot.answers.opening_prayer ?? ""),
+      clientUpdatedAt: snapshot.clientUpdatedAt,
+      qtMode: snapshot.mode,
+      currentStep: snapshot.currentStep,
+      bibleVersion: String(snapshot.translationId),
+      bibleRef: draftBibleRef,
+      keyVerse: snapshot.keyVerse,
+      openingPrayer: snapshot.mode === "free" ? "" : (snapshot.answers.opening_prayer ?? ""),
       summary: snapshot.mode === "free" ? "" : (snapshot.answers.summary ?? ""),
       meditation: snapshot.mode === "free" ? snapshot.freeText : (snapshot.answers.meditation ?? ""),
       application: snapshot.mode === "free" ? "" : (snapshot.answers.application ?? ""),
       decision: decisionText,
-      closing_prayer: snapshot.mode === "free" ? "" : (snapshot.answers.closing_prayer ?? ""),
+      closingPrayer: snapshot.mode === "free" ? "" : (snapshot.answers.closing_prayer ?? ""),
     };
   }
 
@@ -1670,10 +1806,16 @@ function QTWriteContent() {
         savingText={trQT("자동 임시저장 중...", lang)}
         savedText={trQT("자동 임시저장됨", lang)}
         savedWithTimeText={trQT("자동 임시저장됨 · {time}", lang)}
+        localText={trQT("기기에 안전하게 저장됨 · 연결되면 다시 동기화돼요", lang)}
         errorText={trQT("자동 임시저장 실패 · 수동 임시저장을 눌러주세요", lang)}
         editModeText={trQT("수정 모드에서는 자동 임시저장이 꺼져 있어요", lang)}
       />
     );
+  }
+
+  function retryDraftLoad() {
+    setDraftLoadError(false);
+    setDraftRetryNonce(value => value + 1);
   }
 
   // 주일예배 canNext
@@ -1713,6 +1855,12 @@ function QTWriteContent() {
     if (isEditMode) return false;
     const silent = options.silent ?? false;
     const markSaving = options.markSaving ?? true;
+
+    if (markSaving && autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
     const snapshot = options.snapshot ?? getDraftSnapshot();
     const signature = options.signature ?? getDraftSignature(snapshot);
 
@@ -1721,133 +1869,150 @@ function QTWriteContent() {
       return false;
     }
 
-    if (!hasDraftContent(snapshot)) return false;
-
-    // WebView가 백그라운드로 내려가면 네트워크 임시저장이 중단될 수 있으므로,
-    // Supabase 저장을 시도하기 전에 먼저 기기 안에 최신 초안을 즉시 남긴다.
-    persistDraftBackup(snapshot);
-
-    if (!markSaving && autoSavingRef.current) {
-      queuedAutoSaveRef.current = { snapshot, signature };
+    if (!hasDraftContent(snapshot)) {
+      persistDraftBackup(snapshot);
       return false;
     }
 
+    // Write and verify the device snapshot before any network operation. Every
+    // server write is then serialized, while the database also compares the
+    // client snapshot timestamp so a delayed older HTTP request cannot replace
+    // newer text.
+    const localBackupSaved = persistDraftBackup(snapshot);
     if (markSaving) setSaving(true);
-    else {
-      autoSavingRef.current = true;
-      updateAutoSaveStatus("saving");
-    }
 
-    // Supabase 호출이 매달리는 경우를 대비한 타임아웃 헬퍼.
-    // 네트워크 끊김·세션 만료·CORS 등으로 응답이 안 올 때, 사용자가 페이지를 떠나기 전에
-    // 명확한 실패 토스트가 뜨도록 강제로 throw 한다.
-    const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> =>
-      new Promise((resolve, reject) => {
-        const timer = window.setTimeout(() => {
-          reject(new Error(`[saveDraft timeout] ${label} (${ms}ms)`));
-        }, ms);
-        Promise.resolve(promise).then(
-          (v) => { window.clearTimeout(timer); resolve(v); },
-          (e) => { window.clearTimeout(timer); reject(e); }
-        );
-      });
+    const executeSave = async () => {
+      if (!markSaving) updateAutoSaveStatus("saving");
 
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 6000, "auth.getUser");
-      if (!user) {
-        if (!silent) router.push("/login");
-        else updateAutoSaveStatus("error");
-        return false;
-      }
-
-      const draftData = buildDraftData(user.id, snapshot);
-
-      const { data: rows, error: rowsError } = await withTimeout(
-        supabase.from("qt_records")
-          .select("id,is_draft,created_at")
-          .eq("user_id", user.id)
-          .eq("date", snapshot.selectedDate)
-          .order("created_at", { ascending: false }),
-        8000,
-        "select existing rows"
-      );
-      if (rowsError) throw rowsError;
-
-      const completedRecord = rows?.find((row: any) => row.is_draft === false);
-      if (completedRecord) {
-        if (!silent) showToast(trQTVars("이미 큐티 기록이 있어요", lang, { date: snapshot.selectedDate }), "info");
-        return false;
-      }
-
-      const draftRecord = rows?.find((row: any) => row.is_draft === true);
-      if (draftRecord) {
-        const { error } = await withTimeout(
-          supabase.from("qt_records").update(draftData).eq("id", draftRecord.id).eq("is_draft", true),
-          8000,
-          "update draft"
-        );
-        if (error) throw error;
-      } else {
-        const { error } = await withTimeout(
-          supabase.from("qt_records").insert(draftData),
-          8000,
-          "insert draft"
-        );
-        if (error) throw error;
-      }
-
-      lastAutoSaveSignatureRef.current = signature;
-      if (silent) {
-        updateAutoSaveStatus("saved", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-      } else {
-        showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
-        updateAutoSaveStatus("saved", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-      }
-      return true;
-    } catch (e) {
-      // 디버깅을 위한 상세 로그 — 사용자가 다음에 같은 문제 보고할 때 콘솔에서 즉시 추적 가능
-      console.error("[saveDraft] failed:", e);
-      if (silent) updateAutoSaveStatus("error");
-      else showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
-      return false;
-    } finally {
-      if (markSaving) setSaving(false);
-      else {
-        autoSavingRef.current = false;
-        const queued = queuedAutoSaveRef.current;
-        if (queued && queued.signature !== lastAutoSaveSignatureRef.current) {
-          queuedAutoSaveRef.current = null;
-          autoSaveTimerRef.current = window.setTimeout(() => {
-            void saveDraft({ silent: true, markSaving: false, snapshot: queued.snapshot, signature: queued.signature });
-          }, 600);
+      try {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          if (silent) {
+            updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+          } else if (localBackupSaved) {
+            showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
+            updateAutoSaveStatus("local");
+          } else {
+            showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+            updateAutoSaveStatus("error");
+          }
+          return false;
         }
+
+        const supabase = createClient();
+        const user = await getQtDraftSessionUser(supabase);
+        if (!user) {
+          if (!silent) router.push("/login");
+          else updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+          return false;
+        }
+
+        const result = await saveQtDraftAtomically(
+          supabase,
+          buildDraftData(snapshot),
+        );
+        rememberDraftClientUpdatedAt(result.clientUpdatedAt);
+
+        const submittedTimestamp = Date.parse(snapshot.clientUpdatedAt);
+        const storedTimestamp = Date.parse(result.clientUpdatedAt);
+        const newerServerSnapshotExists = Number.isFinite(submittedTimestamp)
+          && Number.isFinite(storedTimestamp)
+          && storedTimestamp > submittedTimestamp;
+        if (newerServerSnapshotExists) {
+          if (!silent && localBackupSaved) {
+            showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
+          }
+          updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+          return false;
+        }
+
+        if (result.status === "completed_exists") {
+          removeQTDraftBackup(user.id, snapshot.selectedDate);
+          lastLocalBackupSignatureRef.current = "";
+          lastAutoSaveSignatureRef.current = signature;
+          updateAutoSaveStatus("saved", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+          return false;
+        }
+
+        lastAutoSaveSignatureRef.current = signature;
+        const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        updateAutoSaveStatus("saved", savedAt);
+        if (!silent) {
+          showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
+        }
+        return true;
+      } catch (error) {
+        console.error("[saveDraft] failed:", error);
+        if (silent) {
+          updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+        } else if (localBackupSaved) {
+          showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
+          updateAutoSaveStatus("local");
+        } else {
+          showToast(trQT("임시저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+          updateAutoSaveStatus("error");
+        }
+        return false;
+      } finally {
+        if (markSaving) setSaving(false);
       }
-    }
+    };
+
+    const task = draftSaveChainRef.current
+      .catch(() => undefined)
+      .then(executeSave);
+    draftSaveChainRef.current = task.then(() => undefined, () => undefined);
+    return task;
   }
 
   useEffect(() => {
     if (isEditMode || !pageReady || selectedDate !== todayStr || !draftBackupUserId) return;
     const snapshot = getDraftSnapshot();
     latestDraftSnapshotRef.current = snapshot;
-    if (hasDraftContent(snapshot)) persistDraftBackup(snapshot);
+    persistDraftBackup(snapshot);
   }, [draftBackupUserId, isEditMode, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     if (isEditMode || !draftBackupUserId) return;
+
     const persistLatestBeforeLeave = () => {
       const snapshot = latestDraftSnapshotRef.current ?? getDraftSnapshot();
-      persistDraftBackup(snapshot);
+      const localSaved = persistDraftBackup(snapshot);
+      if (
+        localSaved
+        && hasDraftContent(snapshot)
+        && getDraftSignature(snapshot) !== lastAutoSaveSignatureRef.current
+      ) {
+        updateAutoSaveStatus("local");
+      }
     };
+
+    const retryLocalOnlyDraft = () => {
+      if (localSyncRetryRef.current) return;
+      if (autoSaveStatusStateRef.current.status !== "local") return;
+      const snapshot = latestDraftSnapshotRef.current ?? getDraftSnapshot();
+      if (snapshot.selectedDate !== todayStr || !hasDraftContent(snapshot)) return;
+
+      localSyncRetryRef.current = true;
+      const signature = getDraftSignature(snapshot);
+      void saveDraft({ silent: true, markSaving: false, snapshot, signature })
+        .finally(() => { localSyncRetryRef.current = false; });
+    };
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") persistLatestBeforeLeave();
+      if (document.visibilityState === "hidden") {
+        persistLatestBeforeLeave();
+      } else {
+        retryLocalOnlyDraft();
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", retryLocalOnlyDraft);
     window.addEventListener("pagehide", persistLatestBeforeLeave);
     window.addEventListener("beforeunload", persistLatestBeforeLeave);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", retryLocalOnlyDraft);
       window.removeEventListener("pagehide", persistLatestBeforeLeave);
       window.removeEventListener("beforeunload", persistLatestBeforeLeave);
     };
@@ -2066,11 +2231,15 @@ function QTWriteContent() {
       window.clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = null;
     }
-    queuedAutoSaveRef.current = null;
     setSaving(true);
     try {
+      // Let every already-started draft save finish before converting the row
+      // into a completed record. This prevents a delayed autosave from writing
+      // an older snapshot over the user's final text during completion.
+      await draftSaveChainRef.current.catch(() => undefined);
+
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getQtDraftSessionUser(supabase);
       if (!user) { router.push("/login"); return; }
 
       const recordData = buildCompleteRecordData(user.id, options);
@@ -2231,6 +2400,32 @@ function QTWriteContent() {
   }
 
   // ─── 말씀 선택 화면 (6step & free) ───
+  if (draftLoadError) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 24px" }}>
+        <button
+          type="button"
+          onClick={() => router.push("/qt")}
+          style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer", padding: 0 }}
+        >
+          <ChevronLeft size={18} />
+          <span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
+        </button>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="roots-elevation-card" style={{ width: "100%", maxWidth: 390, background: "var(--qt-card-surface)", border: "1px solid var(--qt-card-border)", borderRadius: 20, padding: "28px 22px", textAlign: "center" }}>
+            <BookOpen size={34} style={{ color: "var(--sage)", marginBottom: 12 }} />
+            <p style={{ color: "var(--text)", fontSize: 15, fontWeight: 750, lineHeight: 1.55, marginBottom: 18 }}>
+              {trQT("작성 중인 묵상을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", lang)}
+            </p>
+            <button type="button" onClick={retryDraftLoad} className="btn-primary" style={{ width: "100%" }}>
+              {trQT("다시 시도", lang)}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!pageReady) return <div style={{ minHeight: "100vh", background: "var(--bg)" }} />;
 
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {

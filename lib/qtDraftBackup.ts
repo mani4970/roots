@@ -59,6 +59,24 @@ function normalizeBackup(value: unknown, userId: string, date: string): QTDraftB
   };
 }
 
+function parseTimestamp(value: unknown) {
+  const timestamp = Date.parse(String(value ?? ""));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function buildSundayBibleRef(backup: QTDraftBackup) {
+  const title = backup.sermonTitle.trim();
+  const refs = Array.from(new Set(
+    [backup.bibleRef, ...backup.passageRefs]
+      .map(ref => ref.trim())
+      .filter(Boolean),
+  ));
+
+  if (!title && refs.length === 0) return "";
+  if (refs.length > 0) return `설교: ${title} (${refs.join(", ")})`;
+  return `설교: ${title}`;
+}
+
 export function hasMeaningfulQTDraftBackup(backup: QTDraftBackup | null) {
   if (!backup) return false;
   return Boolean(
@@ -78,54 +96,73 @@ export function loadQTDraftBackup(userId: string, date: string) {
   return hasMeaningfulQTDraftBackup(backup) ? backup : null;
 }
 
+/**
+ * Writes the full latest snapshot and verifies it can be read back. Returning a
+ * boolean lets autosave distinguish a real device backup from storage that is
+ * unavailable in a restricted browser/WebView.
+ */
 export function saveQTDraftBackup(backup: QTDraftBackup) {
-  if (!hasMeaningfulQTDraftBackup(backup)) return;
-  storageSetJson(backupKey(backup.userId, backup.date), backup);
+  const key = backupKey(backup.userId, backup.date);
+  if (!hasMeaningfulQTDraftBackup(backup)) {
+    storageRemove(key);
+    return storageGetJson<unknown>(key, null) === null;
+  }
+
+  storageSetJson(key, backup);
+  const saved = normalizeBackup(storageGetJson<unknown>(key, null), backup.userId, backup.date);
+  return Boolean(saved && saved.updatedAt === backup.updatedAt);
 }
 
 export function removeQTDraftBackup(userId: string, date: string) {
-  storageRemove(backupKey(userId, date));
+  const key = backupKey(userId, date);
+  storageRemove(key);
+  return storageGetJson<unknown>(key, null) === null;
 }
 
-export function mergeQtDraftRowWithBackup<T extends Record<string, unknown>>(draft: T, backup: QTDraftBackup | null): T {
+/**
+ * Chooses one coherent snapshot instead of combining individual fields by
+ * length. The old "longer string wins" rule could revive older text after the
+ * user intentionally shortened or rewrote it. A newer device backup now wins
+ * as a whole; otherwise the newer server row remains authoritative.
+ */
+export function mergeQtDraftRowWithBackup<T extends Record<string, unknown>>(
+  draft: T,
+  backup: QTDraftBackup | null,
+): T {
   if (!backup) return draft;
+
+  const serverClientTimestamp = parseTimestamp(draft.draft_client_updated_at);
+  const backupTimestamp = parseTimestamp(backup.updatedAt);
+
+  // Compare timestamps attached to the actual snapshots, not when the network
+  // request happened to finish. A slow save of an older snapshot can finish
+  // after a newer local edit; server updated_at alone would then be misleading.
+  // Legacy rows without a client timestamp intentionally defer to a verified
+  // device snapshot when one exists.
+  if (
+    serverClientTimestamp > 0
+    && (backupTimestamp <= 0 || serverClientTimestamp >= backupTimestamp)
+  ) {
+    return draft;
+  }
+
   const merged: Record<string, unknown> = { ...draft };
+  const isFree = backup.mode === "free";
 
-  const useLonger = (column: string, backupValue: string) => {
-    const saved = String(merged[column] ?? "");
-    if (backupValue.trim().length > saved.trim().length) {
-      merged[column] = backupValue;
-    }
-  };
-
-  useLonger("bible_ref", backup.bibleRef);
-  useLonger("key_verse", backup.keyVerse);
-  useLonger("opening_prayer", backup.answers.opening_prayer ?? "");
-  useLonger("summary", backup.answers.summary ?? "");
-  useLonger("meditation", backup.mode === "free" ? backup.freeText : (backup.answers.meditation ?? ""));
-  useLonger("application", backup.answers.application ?? "");
-  useLonger("closing_prayer", backup.answers.closing_prayer ?? "");
-
-  const backupDecision = backup.decisions.filter(item => item.trim()).join("\n");
-  useLonger("decision", backupDecision);
-  if (backup.translationId && !merged.bible_version) {
-    merged.bible_version = String(backup.translationId);
-  }
-
-  if (backup.mode === "sunday" && backup.sermonTitle.trim()) {
-    const currentRef = String(merged.bible_ref ?? "");
-    if (!currentRef.trim() || currentRef.startsWith("설교:")) {
-      const refs = Array.from(new Set([backup.bibleRef, ...backup.passageRefs].map(ref => ref.trim()).filter(Boolean)));
-      merged.bible_ref = refs.length > 0
-        ? `설교: ${backup.sermonTitle.trim()} (${refs.join(", ")})`
-        : `설교: ${backup.sermonTitle.trim()}`;
-    }
-  }
-
-  if (backup.mode && !merged.qt_mode) merged.qt_mode = backup.mode;
-  if (Number.isFinite(backup.currentStep) && backup.currentStep > Number(merged.current_step ?? 0)) {
-    merged.current_step = backup.currentStep;
-  }
+  merged.qt_mode = backup.mode;
+  merged.current_step = Math.max(0, backup.currentStep);
+  merged.draft_client_updated_at = backup.updatedAt;
+  if (backup.translationId) merged.bible_version = String(backup.translationId);
+  merged.bible_ref = backup.mode === "sunday"
+    ? buildSundayBibleRef(backup)
+    : backup.bibleRef;
+  merged.key_verse = backup.keyVerse;
+  merged.opening_prayer = isFree ? "" : (backup.answers.opening_prayer ?? "");
+  merged.summary = isFree ? "" : (backup.answers.summary ?? "");
+  merged.meditation = isFree ? backup.freeText : (backup.answers.meditation ?? "");
+  merged.application = isFree ? "" : (backup.answers.application ?? "");
+  merged.decision = backup.decisions.filter(item => item.trim()).join("\n");
+  merged.closing_prayer = isFree ? "" : (backup.answers.closing_prayer ?? "");
 
   return merged as T;
 }
