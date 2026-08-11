@@ -788,11 +788,12 @@ const SECTIONS: {
 ];
 
 type CommunityModalHistoryKind = "qt-detail" | "photo-viewer";
+type CommunityMainTab = "partner" | "group" | "all";
 
 function CommunityPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<"partner" | "group" | "all">(() => {
+  const [tab, setTab] = useState<CommunityMainTab>(() => {
     const initialTab = searchParams.get("tab");
     if (initialTab === "group" || initialTab === "all") return initialTab;
     return "partner";
@@ -1372,6 +1373,50 @@ function CommunityPageContent() {
     return "qt";
   }
 
+  function isCommunityMainTab(value: unknown): value is CommunityMainTab {
+    return value === "partner" || value === "group" || value === "all";
+  }
+
+  function selectCommunityMainTab(nextTab: CommunityMainTab) {
+    if (nextTab === tab) return;
+
+    if (typeof window !== "undefined") {
+      try {
+        const currentState =
+          window.history.state && typeof window.history.state === "object"
+            ? window.history.state
+            : {};
+        window.history.pushState(
+          { ...currentState, rootsCommunityTab: nextTab },
+          "",
+          window.location.href,
+        );
+      } catch {
+        // The visual tab still changes if a browser refuses history mutation.
+      }
+    }
+
+    setTab(nextTab);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      if (currentState.rootsCommunityTab === tab) return;
+      window.history.replaceState(
+        { ...currentState, rootsCommunityTab: tab },
+        "",
+        window.location.href,
+      );
+    } catch {
+      // Keep navigation functional even if history state is unavailable.
+    }
+  }, [tab]);
+
   function pushCommunityDetailHistory(kind: "partner" | "group") {
     if (typeof window === "undefined") return;
     if (communityDetailHistoryRef.current) return;
@@ -1491,7 +1536,7 @@ function CommunityPageContent() {
   }
 
   useEffect(() => {
-    function handleCommunityPopState() {
+    function handleCommunityPopState(event: PopStateEvent) {
       const activeModal = popCommunityModalHistory();
       if (activeModal === "photo-viewer") {
         setPhotoViewer(null);
@@ -1511,6 +1556,12 @@ function CommunityPageContent() {
       if (activeDetail === "group") {
         clearCommunityDetailHistory("group");
         resetGroupDetailState();
+        return;
+      }
+
+      const previousTab = event.state?.rootsCommunityTab;
+      if (isCommunityMainTab(previousTab)) {
+        setTab(previousTab);
       }
     }
 
@@ -9547,7 +9598,7 @@ function CommunityPageContent() {
           {TABS.map((t) => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => selectCommunityMainTab(t.id)}
               style={{
                 flex: 1,
                 padding: "10px 0",

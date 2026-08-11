@@ -21,6 +21,9 @@ import {
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
+function isPrayerTab(value: unknown): value is PrayerTab {
+  return value === "mine" || value === "answered" || value === "intercession";
+}
 
 function PrayerPageContent() {
   const router = useRouter();
@@ -62,6 +65,51 @@ function PrayerPageContent() {
     const timer = window.setTimeout(() => setNotice(null), 2400);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  function selectPrayerTab(nextTab: PrayerTab) {
+    if (nextTab === tab) return;
+    try {
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      window.history.pushState(
+        { ...currentState, rootsPrayerTab: nextTab },
+        "",
+        window.location.href,
+      );
+    } catch {
+      // The tab still changes if browser history is unavailable.
+    }
+    setTab(nextTab);
+  }
+
+  useEffect(() => {
+    try {
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      if (currentState.rootsPrayerTab === tab) return;
+      window.history.replaceState(
+        { ...currentState, rootsPrayerTab: tab },
+        "",
+        window.location.href,
+      );
+    } catch {
+      // Keep the prayer page usable without mutable history state.
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    function handlePrayerPopState(event: PopStateEvent) {
+      const previousTab = event.state?.rootsPrayerTab;
+      if (isPrayerTab(previousTab)) setTab(previousTab);
+    }
+
+    window.addEventListener("popstate", handlePrayerPopState);
+    return () => window.removeEventListener("popstate", handlePrayerPopState);
+  }, []);
 
   useEffect(() => { loadPrayers(); }, []);
 
@@ -681,7 +729,7 @@ function PrayerPageContent() {
             return (
               <button
                 key={key}
-                onClick={() => setTab(key)}
+                onClick={() => selectPrayerTab(key)}
                 style={{
                   flex: 1, minWidth: 0, padding: "10px 0 12px",
                   background: "none", border: "none",

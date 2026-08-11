@@ -74,6 +74,41 @@ const OPTIONAL_STAGE_TIMEOUT_MS = 25_000;
 const NOTIFICATION_STAGE_TIMEOUT_MS = 12_000;
 const BOOKS = [...OT_BOOKS, ...NT_BOOKS];
 
+type NavigatorWithUAData = Navigator & {
+  userAgentData?: {
+    platform?: string;
+    mobile?: boolean;
+  };
+};
+
+function looksLikeAndroidWebRuntime() {
+  if (typeof navigator === "undefined") return false;
+
+  const nav = navigator as NavigatorWithUAData;
+  const userAgent = nav.userAgent || "";
+  const platform = nav.platform || "";
+  const uaPlatform = nav.userAgentData?.platform || "";
+  const mobileHint =
+    nav.userAgentData?.mobile === true ||
+    /Mobile|;\s*wv\)|GSA\//i.test(userAgent) ||
+    nav.maxTouchPoints > 0;
+  const iosHint =
+    /iPhone|iPad|iPod/i.test(userAgent) ||
+    (/Mac/i.test(platform) && nav.maxTouchPoints > 1);
+
+  return (
+    /Android/i.test(userAgent) ||
+    /Android/i.test(uaPlatform) ||
+    /Android/i.test(platform) ||
+    (!iosHint && /GSA\//i.test(userAgent) && mobileHint) ||
+    (!iosHint && /Linux/i.test(platform) && mobileHint)
+  );
+}
+
+function isSynchronousRootsNativeAndroid() {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+}
+
 function withPhotoStageTimeout<T>(
   operation: PromiseLike<T>,
   label: string,
@@ -489,11 +524,38 @@ function PhotoReflectionContent() {
   }, []);
 
   useEffect(() => {
-    setAndroidWebPhotoUnsupported(
-      !Capacitor.isNativePlatform()
-      && typeof navigator !== "undefined"
-      && /Android/i.test(navigator.userAgent),
-    );
+    let cancelled = false;
+
+    const androidLikeRuntime = looksLikeAndroidWebRuntime();
+    if (!androidLikeRuntime) {
+      setAndroidWebPhotoUnsupported(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Web browsers on Android (including Google app in-app browsing) must stay
+    // blocked. Only the actual installed Roots Android container is allowed.
+    if (!isSynchronousRootsNativeAndroid()) {
+      setAndroidWebPhotoUnsupported(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void CapacitorApp.getInfo()
+      .then(info => {
+        if (cancelled) return;
+        setAndroidWebPhotoUnsupported(info.id !== "com.rootspuce.app");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAndroidWebPhotoUnsupported(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
