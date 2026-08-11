@@ -18,6 +18,7 @@ import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
+import { getLocalDateString } from "@/lib/date";
 import {
   checkAndAwardCompanionBadge,
   getRewardBadgePopup,
@@ -53,6 +54,7 @@ type CompanionRow = {
   created_at: string;
   updated_at?: string | null;
   responded_at?: string | null;
+  accepted_local_date?: string | null;
 };
 
 type CompanionWithProfile = CompanionRow & { other: ProfileRow | null };
@@ -234,7 +236,7 @@ function CompanionsContent() {
     const { data: companionRows, error } = await supabase
       .from("companions")
       .select(
-        "id,requester_id,receiver_id,status,created_at,updated_at,responded_at",
+        "id,requester_id,receiver_id,status,created_at,updated_at,responded_at,accepted_local_date",
       )
       .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
@@ -316,6 +318,7 @@ function CompanionsContent() {
           .update({
             status: "accepted",
             responded_at: new Date().toISOString(),
+            accepted_local_date: getLocalDateString(),
           })
           .eq("id", existing.id);
         if (error) throw error;
@@ -325,6 +328,7 @@ function CompanionsContent() {
           receiver_id: userId,
           status: "accepted",
           responded_at: new Date().toISOString(),
+          accepted_local_date: getLocalDateString(),
         });
         if (error) throw error;
       }
@@ -355,7 +359,11 @@ function CompanionsContent() {
       const supabase = createClient();
       const { error } = await supabase
         .from("companions")
-        .update({ status, responded_at: new Date().toISOString() })
+        .update({
+          status,
+          responded_at: new Date().toISOString(),
+          accepted_local_date: status === "accepted" ? getLocalDateString() : null,
+        })
         .eq("id", row.id);
       if (error) throw error;
       if (status === "accepted") {

@@ -2208,7 +2208,11 @@ function QTWriteContent() {
   }
 
   
-  async function recordProgressBeforeCompletion(supabase: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+  async function recordProgressBeforeCompletion(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    qtRecordId?: string | null,
+  ): Promise<boolean> {
     if (selectedDate !== getLocalDateString()) return true;
 
     try {
@@ -2216,7 +2220,7 @@ function QTWriteContent() {
       if (progress.awardedBadges.length > 0) {
         storageSet(getPendingAwardedBadgesKey(userId, selectedDate), JSON.stringify(progress.awardedBadges));
       }
-      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, selectedDate);
+      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, selectedDate, qtRecordId);
       storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
       return true;
     } catch (progressError) {
@@ -2305,7 +2309,7 @@ function QTWriteContent() {
             }
           }
 
-          const progressSaved = await recordProgressBeforeCompletion(supabase, user.id);
+          const progressSaved = await recordProgressBeforeCompletion(supabase, user.id, completedRecord.id);
           if (!progressSaved) return;
 
           try {
@@ -2373,7 +2377,7 @@ function QTWriteContent() {
       // 오늘 말씀 묵상 완료는 홈/물주기 UI에 도달하기 전에도 progress가 먼저 저장되어야 합니다.
       // progress 저장 실패를 조용히 넘기면 사용자의 말씀동행이 누락될 수 있으므로,
       // 완료 화면으로 넘어가기 전에 반드시 저장 성공을 확인합니다.
-      const progressSaved = await recordProgressBeforeCompletion(supabase, user.id);
+      const progressSaved = await recordProgressBeforeCompletion(supabase, user.id, completedRecordId);
       if (!progressSaved) return;
 
       // 알림 상태 업데이트는 progress 저장 성공 후 처리합니다.

@@ -439,6 +439,42 @@ export default function HomePage() {
     };
   }, [profile?.id]);
 
+  useEffect(() => {
+    if (loading || !profile?.id || !completedQtRecordId) return;
+
+    const today = getLocalDateString();
+    const repairTodayCompanionLedger = () => {
+      const supabase = createClient();
+      void recordCompanionChallengeReflectionCompletedBestEffort(
+        supabase,
+        today,
+        completedQtRecordId,
+      );
+    };
+
+    // Reward-layer repair only: never calls or mutates Bible Reflection
+    // streak/progress. This safely fills a same-day companion ledger row if the
+    // immediate post-completion RPC lost its response or briefly failed.
+    repairTodayCompanionLedger();
+    window.addEventListener("online", repairTodayCompanionLedger);
+
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) repairTodayCompanionLedger();
+      }).then(handle => {
+        appStateListener = handle;
+      }).catch(error => {
+        console.warn("동역자 챌린지 완료일 복구 리스너 등록 실패:", error);
+      });
+    }
+
+    return () => {
+      window.removeEventListener("online", repairTodayCompanionLedger);
+      if (appStateListener) void appStateListener.remove();
+    };
+  }, [loading, profile?.id, completedQtRecordId]);
+
   async function load() {
     if (typeof window !== "undefined") {
       const saved = storageGet("roots_theme");

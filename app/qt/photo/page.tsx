@@ -103,6 +103,7 @@ const PHOTO_COPY = {
   todayOnly: { ko: "사진 묵상은 오늘 날짜의 말씀 묵상으로 저장됩니다.", de: "Die Foto-Reflexion wird für heute gespeichert.", en: "Photo reflections are saved as today's Bible reflection.", fr: "La méditation photo est enregistrée pour aujourd’hui." },
   catchupOnly: { ko: "지난 말씀 묵상 기록으로 저장됩니다. 말씀동행일은 증가하지 않아요.", de: "Wird als nachgetragene Reflexion gespeichert. Dein Fortschritt wird nicht erhöht.", en: "This will be saved as a past Bible reflection. Word Walk progress will not increase.", fr: "Cette méditation sera enregistrée pour une date passée. La progression n’augmentera pas." },
   choosePhoto: { ko: "사진 추가하기", de: "Foto hinzufügen", en: "Add photo", fr: "Ajouter une photo" },
+  androidWebAppOnly: { ko: "Android 웹에서는 사진 묵상 기록을 지원하지 않아요. Christian Roots 앱에서 이용해주세요.", de: "Foto-Reflexionen werden im Android-Webbrowser nicht unterstützt. Bitte nutze die Christian Roots App.", en: "Photo reflections aren't supported in Android web browsers. Please use the Christian Roots app.", fr: "Les méditations photo ne sont pas prises en charge dans les navigateurs Android. Utilisez l’application Christian Roots." },
   uploadNewPhoto: { ko: "새 사진 올리기", de: "Neues Foto hochladen", en: "Upload a new photo", fr: "Importer une nouvelle photo" },
   changePhoto: { ko: "사진 바꾸기", de: "Foto ändern", en: "Change photo", fr: "Changer la photo" },
   sourceTitle: { ko: "사진을 어떻게 추가할까요?", de: "Wie möchtest du das Foto hinzufügen?", en: "How would you like to add the photo?", fr: "Comment souhaitez-vous ajouter la photo ?" },
@@ -411,6 +412,7 @@ function PhotoReflectionContent() {
   const [preparedPhoto, setPreparedPhoto] = useState<PreparedQTPhoto | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [photoSource, setPhotoSource] = useState<QTPhotoSource>("unknown");
+  const [androidWebPhotoUnsupported, setAndroidWebPhotoUnsupported] = useState(false);
   const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
   const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [caption, setCaption] = useState("");
@@ -484,6 +486,14 @@ function PhotoReflectionContent() {
     const flushWhenOnline = () => { void flushQTPhotoDiagnostics(); };
     window.addEventListener("online", flushWhenOnline);
     return () => window.removeEventListener("online", flushWhenOnline);
+  }, []);
+
+  useEffect(() => {
+    setAndroidWebPhotoUnsupported(
+      !Capacitor.isNativePlatform()
+      && typeof navigator !== "undefined"
+      && /Android/i.test(navigator.userAgent),
+    );
   }, []);
 
   useEffect(() => {
@@ -727,11 +737,20 @@ function PhotoReflectionContent() {
 
   function choosePhoto() {
     if (preparingPhoto || saving) return;
+    if (androidWebPhotoUnsupported) {
+      showNotice(pc("androidWebAppOnly", lang));
+      return;
+    }
     setShowPhotoSourceModal(true);
   }
 
   async function choosePhotoSource(sourceChoice: "camera" | "gallery") {
     if (preparingPhoto || saving) return;
+    if (androidWebPhotoUnsupported) {
+      setShowPhotoSourceModal(false);
+      showNotice(pc("androidWebAppOnly", lang));
+      return;
+    }
     const scrollYBeforePicker = window.scrollY;
     setShowPhotoSourceModal(false);
     pendingPhotoSourceRef.current = sourceChoice;
@@ -867,15 +886,23 @@ function PhotoReflectionContent() {
     setShareTargets(prev => prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]);
   }
 
-  async function recordTodayPhotoProgress(supabase: ReturnType<typeof createClient>, userId: string) {
+  async function recordTodayPhotoProgress(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    qtRecordId?: string | null,
+  ) {
     const progress = await recordBibleReflectionProgress(supabase, userId, today);
     if (progress.updated) {
       if (progress.awardedBadges.length > 0) {
         storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(progress.awardedBadges));
       }
-      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today);
       storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
     }
+
+    // Keep the companion challenge as an independent reward layer. Even when
+    // streak/progress was already recorded, retry the same-day companion ledger
+    // so a prior transient failure cannot leave photo reflections behind.
+    await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, qtRecordId);
     return progress.updated;
   }
 
@@ -932,7 +959,7 @@ function PhotoReflectionContent() {
         if (targetDate === today) {
           try {
             const recoveredProgress = await withPhotoStageTimeout(
-              recordTodayPhotoProgress(supabase, user.id),
+              recordTodayPhotoProgress(supabase, user.id, existingRecord.id),
               "photo progress recovery",
             );
             if (recoveredProgress) {
@@ -1109,7 +1136,7 @@ function PhotoReflectionContent() {
         stage = "progress";
         try {
           await withPhotoStageTimeout(
-            recordTodayPhotoProgress(supabase, user.id),
+            recordTodayPhotoProgress(supabase, user.id, recordId),
             "photo progress save",
           );
         } catch (progressError) {
@@ -1637,6 +1664,11 @@ function PhotoReflectionContent() {
                 <UploadCloud size={34} />
                 {pc(isEditMode ? "uploadNewPhoto" : "choosePhoto", lang)}
               </button>
+              {androidWebPhotoUnsupported && (
+                <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-muted-readable)", textAlign: "left", padding: "0 2px" }}>
+                  {pc("androidWebAppOnly", lang)}
+                </div>
+              )}
               {isEditMode && existingPhotoRemoved && (existingPhotoPath || existingPhotoUrl) && (
                 <button type="button" onClick={restoreExistingPhoto} disabled={saving} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
                   <RotateCcw size={15} /> {pc("restorePhoto", lang)}

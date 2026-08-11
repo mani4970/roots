@@ -110,19 +110,30 @@ export async function recordCompanionChallengeReflectionCompletedBestEffort(
   qtRecordId?: string | null,
 ) {
   if (!completionDate) return null;
-  try {
-    const { data, error } = await supabase.rpc("record_companion_challenge_completion", {
-      p_completion_date: completionDate,
-      p_qt_record_id: qtRecordId ?? null,
-    });
-    if (error) throw error;
-    return data ?? null;
-  } catch (error) {
-    // Companion challenge progress is a reward-layer ledger. It must never block
-    // the core Bible Reflection completion/progress/streak flow.
-    console.warn("동역자 챌린지 완료일 기록 실패:", error);
-    return null;
+
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+
+    try {
+      const { data, error } = await supabase.rpc("record_companion_challenge_completion", {
+        p_completion_date: completionDate,
+        p_qt_record_id: qtRecordId ?? null,
+      });
+      if (error) throw error;
+      return data ?? null;
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  // Companion challenge progress is a reward-layer ledger. It must never block
+  // the core Bible Reflection completion/progress/streak flow. A later Home load,
+  // app resume, or network reconnect will retry today's ledger independently.
+  console.warn("동역자 챌린지 완료일 기록 실패:", lastError);
+  return null;
 }
 
 export async function loadCompanionChallengeStatus(
