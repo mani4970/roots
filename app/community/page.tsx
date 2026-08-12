@@ -8591,11 +8591,22 @@ function CommunityPageContent() {
                   groupMemberProfiles.map((member) => (
                     <div
                       key={member.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={member.name || c("community_member_unknown")}
+                      onClick={(event) => void openAuthorProfile(member, member.id, event)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        void openAuthorProfile(member, member.id);
+                      }}
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
-                        padding: "9px 0",
+                        padding: "9px 4px",
+                        borderRadius: 12,
+                        cursor: "pointer",
                       }}
                     >
                       <Avatar
@@ -8640,7 +8651,10 @@ function CommunityPageContent() {
                       </div>
                       {viewerIsGroupLeader && !member.isLeader && (
                         <button
-                          onClick={() => openMemberRemovalConfirm(member)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openMemberRemovalConfirm(member);
+                          }}
                           style={{
                             border: "1px solid var(--community-danger-border)",
                             borderRadius: 10,
