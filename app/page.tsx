@@ -18,7 +18,6 @@ import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
-import PetShopAnnouncementPopup from "@/components/PetShopAnnouncementPopup";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -78,7 +77,6 @@ const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
-const PET_SHOP_ANNOUNCEMENT_KEY_PREFIX = "pet_shop_announcement_20260802_seen_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -87,10 +85,6 @@ function getScopedStorageKey(prefix: string, userId: string, date: string) {
 
 function getOnboardingDoneKey(userId: string) {
   return `${ONBOARDING_DONE_KEY_PREFIX}${userId}`;
-}
-
-function getPetShopAnnouncementKey(userId: string) {
-  return `${PET_SHOP_ANNOUNCEMENT_KEY_PREFIX}${userId}`;
 }
 
 function isRecentSignup(createdAt: string | null | undefined) {
@@ -285,8 +279,6 @@ export default function HomePage() {
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
   const challengeRewardCheckStartedRef = useRef(false);
-  const petShopAnnouncementUserIdRef = useRef<string | null>(null);
-  const [showPetShopAnnouncement, setShowPetShopAnnouncement] = useState(false);
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
@@ -294,19 +286,6 @@ export default function HomePage() {
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
-  }
-
-  function closePetShopAnnouncement() {
-    const userId = petShopAnnouncementUserIdRef.current ?? profile?.id;
-    if (userId) {
-      storageSet(getPetShopAnnouncementKey(userId), "true");
-    }
-    setShowPetShopAnnouncement(false);
-  }
-
-  function openPetShopFromAnnouncement() {
-    closePetShopAnnouncement();
-    router.push("/profile?openHeartShop=1");
   }
 
   async function completeCompanionChallengeAnnouncement(openCompanions: boolean) {
@@ -495,7 +474,6 @@ export default function HomePage() {
     }
     const user = session?.user ?? null;
     if (!user) { router.push("/welcome"); return; }
-    petShopAnnouncementUserIdRef.current = user.id;
     companionChallengeAnnouncementUserIdRef.current = user.id;
 
     void loadOwnedHeartShopItems(supabase)
@@ -673,9 +651,6 @@ export default function HomePage() {
       setShowOnboarding(true);
     }
 
-    if (!storageGet(getPetShopAnnouncementKey(user.id))) {
-      setShowPetShopAnnouncement(true);
-    }
 
     setLoading(false);
   }
@@ -1300,7 +1275,7 @@ export default function HomePage() {
   const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
-  const petShopAnnouncementBlocked =
+  const homePopupBlocked =
     loading ||
     showFirstLangPicker ||
     showOnboarding ||
@@ -1321,15 +1296,10 @@ export default function HomePage() {
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
-  const visiblePetShopAnnouncement = showPetShopAnnouncement && !petShopAnnouncementBlocked;
   const visibleCompanionChallengeAnnouncement =
-    showCompanionChallengeAnnouncement &&
-    !petShopAnnouncementBlocked &&
-    !visiblePetShopAnnouncement;
+    showCompanionChallengeAnnouncement && !homePopupBlocked;
   const visibleChallengeReward =
-    petShopAnnouncementBlocked ||
-    showPetShopAnnouncement ||
-    showCompanionChallengeAnnouncement
+    homePopupBlocked || showCompanionChallengeAnnouncement
       ? null
       : challengeRewardQueue[0] ?? null;
 
@@ -1585,11 +1555,6 @@ export default function HomePage() {
         />
       )}
 
-      <PetShopAnnouncementPopup
-        show={visiblePetShopAnnouncement}
-        onClose={closePetShopAnnouncement}
-        onOpenShop={openPetShopFromAnnouncement}
-      />
 
       <CompanionChallengeAnnouncementPopup
         show={visibleCompanionChallengeAnnouncement}

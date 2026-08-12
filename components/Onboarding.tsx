@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { storageSet } from "@/lib/clientStorage";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/useLang";
@@ -18,8 +18,6 @@ type OnboardingSlide = {
 export default function Onboarding({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(0);
   const lang = useLang();
-  const startXRef = useRef<number | null>(null);
-  const startYRef = useRef<number | null>(null);
 
   useEffect(() => {
     const imageSources = [
@@ -84,8 +82,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
 
   const slide = SLIDES[page];
   const isLast = page === SLIDES.length - 1;
-  const canGoPrevious = page > 0;
-  const canGoNext = page < SLIDES.length - 1;
   const lowerTextBlock = page === 1 || page === 3 || page === 4;
 
   function completeOnboarding() {
@@ -97,29 +93,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     setPage((current) => Math.min(current + 1, SLIDES.length - 1));
   }
 
-  function goToPreviousSlide() {
-    setPage((current) => Math.max(current - 1, 0));
-  }
 
-  function handleSwipeStart(clientX: number, clientY: number) {
-    startXRef.current = clientX;
-    startYRef.current = clientY;
-  }
-
-  function handleSwipeEnd(clientX: number, clientY: number) {
-    const startX = startXRef.current;
-    const startY = startYRef.current;
-    startXRef.current = null;
-    startYRef.current = null;
-    if (startX === null || startY === null) return;
-
-    const dx = clientX - startX;
-    const dy = clientY - startY;
-    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-
-    if (dx < 0) goToNextSlide();
-    else goToPreviousSlide();
-  }
 
   return (
     <div
@@ -136,18 +110,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       }}
     >
       <div
-        onTouchStart={(event) => handleSwipeStart(event.touches[0]?.clientX ?? 0, event.touches[0]?.clientY ?? 0)}
-        onTouchEnd={(event) => handleSwipeEnd(event.changedTouches[0]?.clientX ?? 0, event.changedTouches[0]?.clientY ?? 0)}
-        onPointerDown={(event) => {
-          if (event.pointerType === "mouse" || event.pointerType === "pen") {
-            handleSwipeStart(event.clientX, event.clientY);
-          }
-        }}
-        onPointerUp={(event) => {
-          if (event.pointerType === "mouse" || event.pointerType === "pen") {
-            handleSwipeEnd(event.clientX, event.clientY);
-          }
-        }}
         style={{
           width: "100%",
           maxWidth: 390,
@@ -164,7 +126,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          touchAction: "pan-y",
           userSelect: "none",
         }}
       >
@@ -181,80 +142,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
             background: "rgba(122,157,122,0.48)",
           }}
         />
-
-        {canGoPrevious ? (
-          <button
-            type="button"
-            aria-label="Previous onboarding slide"
-            onClick={(event) => {
-              event.stopPropagation();
-              goToPreviousSlide();
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-            onTouchStart={(event) => event.stopPropagation()}
-            style={{
-              position: "absolute",
-              left: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 3,
-              width: 34,
-              height: 48,
-              border: "none",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-              color: "rgba(79,106,79,0.82)",
-              fontSize: 34,
-              fontWeight: 700,
-              lineHeight: "44px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            ‹
-          </button>
-        ) : null}
-
-        {canGoNext ? (
-          <button
-            type="button"
-            aria-label="Next onboarding slide"
-            onClick={(event) => {
-              event.stopPropagation();
-              goToNextSlide();
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-            onTouchStart={(event) => event.stopPropagation()}
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 3,
-              width: 34,
-              height: 48,
-              border: "none",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-              color: "rgba(79,106,79,0.82)",
-              fontSize: 34,
-              fontWeight: 700,
-              lineHeight: "44px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            ›
-          </button>
-        ) : null}
 
         <div style={{ paddingTop: lowerTextBlock ? 80 : isLast ? 42 : 22 }}>
           {slide.title ? (
@@ -349,7 +236,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 11, marginBottom: isLast ? 18 : 4 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 11, marginBottom: 18 }}>
             {SLIDES.map((_, index) => (
               <span
                 key={index}
@@ -368,7 +255,11 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
             <button onClick={completeOnboarding} className="btn-sage" style={{ width: "100%" }}>
               {t("onboarding_start", lang)}
             </button>
-          ) : null}
+          ) : (
+            <button onClick={goToNextSlide} className="btn-sage" style={{ width: "100%" }}>
+              {t("onboarding_next", lang)}
+            </button>
+          )}
         </div>
       </div>
     </div>

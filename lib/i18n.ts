@@ -606,7 +606,7 @@ export const T = {
   onboarding_title6: { ko: "", de: "", en: "", fr: "" },
   onboarding_desc6: { ko: "혼자가 아닌, 공동체 안에서 함께 말씀 안에 뿌리내리고 성장할 당신을 축복합니다!", de: "Sie sind nicht allein: Mögen Sie in der Gemeinschaft im Wort Wurzeln schlagen und wachsen. Wir segnen Ihren Weg!", en: "You are not alone—may you take root in the Word and grow together within community. Blessings on your journey!", fr: "Vous n’êtes pas seul : que vous puissiez vous enraciner dans la Parole et grandir en communauté. Soyez béni dans votre marche !" },
   onboarding_desc6_sub: { ko: "", de: "", en: "", fr: "" },
-  onboarding_next: { ko: "다음 →", de: "Weiter →", en: "Next", fr: "Suivant" },
+  onboarding_next: { ko: "다음", de: "Weiter", en: "Next", fr: "Suivant" },
   onboarding_start: { ko: "시작하기", de: "Loslegen", en: "Start", fr: "Commencer" },
   onboarding_skip: { ko: "건너뛰기", de: "Überspringen", en: "Skip", fr: "Passer" },
 
