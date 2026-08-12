@@ -2,9 +2,9 @@ import type { Lang } from "@/lib/i18n";
 
 export const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
   ko: 92, // 개역개정
-  de: 29, // Lutherbibel 1912
+  de: 97, // Hoffnung für alle
   en: 80, // NIV
-  fr: 26, // Louis Segond 1910
+  fr: 21, // La Bible du Semeur 2015
 };
 
 function hasDefaultTranslation(lang: Lang | string | undefined | null): lang is Lang {

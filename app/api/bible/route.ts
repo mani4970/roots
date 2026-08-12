@@ -4,7 +4,6 @@ import {
   getYouVersionBibleSource,
   parseYouVersionHtmlVerses,
   ROOTS_END_OF_CHAPTER_SENTINEL,
-  youVersionHtmlToPlainText,
   type BibleVerse,
   type YouVersionBibleSource,
 } from "@/lib/youVersionBible";
@@ -234,18 +233,16 @@ async function fetchYouVersionPassage(params: {
   if (!content) throw new Error("YouVersion passage response was empty");
 
   const verses = parseYouVersionHtmlVerses(content, params.startVerse, params.endVerse);
-  if (verses.length > 0) return verses;
+  if (verses.length === 0) {
+    throw new Error("YouVersion passage could not be split into individual verses");
+  }
 
-  // Defensive fallback for an unexpected upstream markup change. It preserves
-  // the passage instead of silently switching the licensed translation back to
-  // the legacy provider.
-  const plainText = youVersionHtmlToPlainText(content);
-  if (!plainText) throw new Error("YouVersion passage could not be parsed");
+  const hasCombinedVerse = verses.some((verse) => !/^\d+$/.test(String(verse.num)));
+  if (hasCombinedVerse) {
+    throw new Error("YouVersion passage contained a combined or non-numeric verse marker");
+  }
 
-  return [{
-    num: params.endVerse > params.startVerse ? `${params.startVerse}-${params.endVerse}` : params.startVerse,
-    text: plainText,
-  }];
+  return verses;
 }
 
 async function fetchLicensedPassage(params: {

@@ -1,4 +1,4 @@
-export type YouVersionLicenseKind = "lockman" | "public-domain";
+export type YouVersionLicenseKind = "lockman" | "biblica" | "public-domain";
 
 export type YouVersionBibleSource = {
   rootsTranslationId: number;
@@ -23,6 +23,19 @@ export const ROOTS_END_OF_CHAPTER_SENTINEL = 176;
  * reflection records remain compatible. Only the upstream Bible source changes.
  */
 const YOUVERSION_BIBLE_BY_ROOTS_TRANSLATION_ID: Readonly<Record<number, YouVersionBibleSource>> = {
+  // English — Biblica Fast-Track Bible License
+  80: {
+    rootsTranslationId: 80,
+    youVersionBibleId: 111,
+    displayName: "New International Version",
+    abbreviation: "NIV",
+    license: "biblica",
+    copyrightNotice:
+      "The Holy Bible, New International Version® NIV® Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.® All rights reserved worldwide.",
+    attributionUrl: "https://www.bible.com/versions/111",
+    attributionLabel: "YouVersion",
+  },
+
   // English — Lockman Fast-Track Bible License
   62: {
     rootsTranslationId: 62,
@@ -34,6 +47,19 @@ const YOUVERSION_BIBLE_BY_ROOTS_TRANSLATION_ID: Readonly<Record<number, YouVersi
       "Scripture quotations from the New American Standard Bible – NASB 1995 Copyright © 1960, 1971, 1977, 1995 by The Lockman Foundation. All rights reserved. Used by permission.",
     attributionUrl: "https://www.lockman.org",
     attributionLabel: "Lockman.org",
+  },
+
+  // German — Biblica Fast-Track Bible License
+  97: {
+    rootsTranslationId: 97,
+    youVersionBibleId: 73,
+    displayName: "Hoffnung für alle",
+    abbreviation: "HFA",
+    license: "biblica",
+    copyrightNotice:
+      "Hoffnung für alle® (Hope for all) Copyright © 1983, 1996, 2002, 2015 by Biblica, Inc.® Used by Permission of Biblica, Inc.® All rights reserved worldwide.",
+    attributionUrl: "https://www.bible.com/versions/73",
+    attributionLabel: "YouVersion",
   },
 
   // German — Public Domain and Creative Commons Fast-Track Bible License
@@ -55,6 +81,19 @@ const YOUVERSION_BIBLE_BY_ROOTS_TRANSLATION_ID: Readonly<Record<number, YouVersi
     license: "public-domain",
     copyrightNotice: "Elberfelder 1871 (ELB71) · Gemeinfrei · Bereitgestellt über YouVersion.",
     attributionUrl: "https://www.bible.com/versions/58",
+    attributionLabel: "YouVersion",
+  },
+
+  // French — Biblica Fast-Track Bible License
+  21: {
+    rootsTranslationId: 21,
+    youVersionBibleId: 21,
+    displayName: "La Bible du Semeur 2015",
+    abbreviation: "BDS",
+    license: "biblica",
+    copyrightNotice:
+      "La Bible du Semeur™ Copyright © 1992, 1999, 2015, Biblica, Inc. Utilisé avec permission. Tous droits internationaux réservés.",
+    attributionUrl: "https://www.bible.com/versions/21",
     attributionLabel: "YouVersion",
   },
 

@@ -18,25 +18,29 @@ export const TRANSLATIONS = [
     { id: 95, name: "The Message" },
   ]},
   { group: "Deutsch", items: [
+    { id: 97, name: "Hoffnung für alle" },
     { id: 29, name: "Lutherbibel 1912" },
     { id: 27, name: "Elberfelder 1871" },
-    { id: 97, name: "Hoffnung für Alle" },
     { id: 31, name: "Schlachter" },
   ]},
   { group: "Français", items: [
+    { id: 21, name: "La Bible du Semeur 2015" },
     { id: 26, name: "Louis Segond 1910" },
-    { id: 24, name: "Jérusalem" },
   ]},
 ];
 
-export const ALL_TRANSLATIONS = TRANSLATIONS.flatMap(g => g.items);
+// Jérusalem (24) is no longer selectable, but remains recognized so historical
+// reflection records that already reference it can still be restored safely.
+const LEGACY_TRANSLATIONS = [{ id: 24, name: "Jérusalem" }] as const;
+
+export const ALL_TRANSLATIONS = [...TRANSLATIONS.flatMap(g => g.items), ...LEGACY_TRANSLATIONS];
 
 // 번역본 ID → 언어 코드
 export const TRANSLATION_LANG: Record<number, string> = {
   92:"KO", 84:"KO", 98:"KO", 88:"KO", 89:"KO",
   80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
   29:"DE", 27:"DE", 97:"DE", 31:"DE",
-  26:"FR", 24:"FR",
+  21:"FR", 26:"FR", 24:"FR",
 };
 
 // 언어별 책 이름 (구약 39권 + 신약 27권)
