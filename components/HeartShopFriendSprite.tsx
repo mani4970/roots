@@ -27,7 +27,7 @@ export default function HeartShopFriendSprite({
 
   useEffect(() => {
     setFrame(0);
-    if (!animate) return;
+    if (!animate || item.frameCount <= 1) return;
 
     const timer = window.setInterval(() => {
       setFrame(current => (current + 1) % item.frameCount);

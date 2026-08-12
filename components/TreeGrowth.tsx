@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import RewardMapAction from "./RewardMapAction";
 import HeartShopMapFriends from "./HeartShopMapFriends";
+import PeaceArkStaticItems from "./PeaceArkStaticItems";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
@@ -178,6 +179,9 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
         <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
 
+        {cycle.kind === "peaceArk" && (
+          <PeaceArkStaticItems stageNumber={stage.stageNumber} enabledItemIds={heartShopItemIds} />
+        )}
         <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} stageNumber={stage.stageNumber} />
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>

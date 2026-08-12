@@ -34,6 +34,7 @@ import { getProfileAvatarText } from "@/lib/profileAvatarText";
 import { storageClear } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
+import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -1186,6 +1187,11 @@ export default function ProfilePage() {
   }
 
 
+  const currentRewardMapCycle = getCurrentRewardMapCycle(Number(profile?.total_days ?? 0));
+  const currentPeaceArkStageNumber = currentRewardMapCycle.kind === "peaceArk"
+    ? getRewardMapStage(currentRewardMapCycle).stageNumber
+    : null;
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
@@ -1214,6 +1220,7 @@ export default function ProfilePage() {
         lang={lang}
         heartBalance={loveHeartBalance}
         avatarType={currentAvatarType}
+        peaceArkStageNumber={currentPeaceArkStageNumber}
         onHeartBalanceChange={setLoveHeartBalance}
         onOwnedItemsChange={setOwnedHeartShopItems}
         onClose={() => setShowHeartShop(false)}

@@ -29,6 +29,7 @@ import {
   type HeartShopCharacterSlot,
   type HeartShopCharacterItemId,
   type HeartShopItemId,
+  isHeartShopPeaceArkStaticItemId,
   type HeartShopMapItemId,
 } from "@/lib/heartShopItems";
 import {
@@ -47,6 +48,7 @@ type HeartShopModalProps = {
   lang: Lang | string;
   heartBalance: number;
   avatarType: RootsAvatarType;
+  peaceArkStageNumber?: number | null;
   onHeartBalanceChange?: (balance: number) => void;
   onOwnedItemsChange?: (items: OwnedHeartShopItem[]) => void;
   onClose: () => void;
@@ -74,6 +76,9 @@ function getLargeSpriteWidth(itemId: HeartShopMapItemId) {
   if (itemId === "bamtoli" || itemId === "mongsili") return 96;
   if (itemId === "nabi" || itemId === "kkangchongi") return 96;
   if (itemId === "salgeumi") return 130;
+  if (itemId === "ark_supplies") return 148;
+  if (itemId === "ark_workbench") return 185;
+  if (itemId === "ark_lantern") return 72;
   return 145;
 }
 
@@ -230,6 +235,7 @@ export default function HeartShopModal({
   lang,
   heartBalance,
   avatarType,
+  peaceArkStageNumber = null,
   onHeartBalanceChange,
   onOwnedItemsChange,
   onClose,
@@ -540,6 +546,15 @@ export default function HeartShopModal({
 
   async function toggleOwnedItem(item: OwnedHeartShopItem) {
     if (togglingItemId) return;
+    const nextEnabled = !item.isEnabled;
+    if (
+      nextEnabled
+      && peaceArkStageNumber === 9
+      && isHeartShopPeaceArkStaticItemId(item.itemId)
+    ) {
+      setNotice(text.arkFloodToggleUnavailable);
+      return;
+    }
     setTogglingItemId(item.itemId);
     try {
       const supabase = createClient();
@@ -586,6 +601,14 @@ export default function HeartShopModal({
         style={{ width }}
       />
     );
+  }
+
+  function getMapPreviewBadge(itemId: HeartShopMapItemId) {
+    return isHeartShopPeaceArkStaticItemId(itemId) ? text.staticPreviewBadge : text.previewBadge;
+  }
+
+  function getMapPreviewTitle(itemId: HeartShopMapItemId) {
+    return isHeartShopPeaceArkStaticItemId(itemId) ? text.staticPreviewTitle : text.previewTitle;
   }
 
   function renderDialogVisual(item: HeartShopCatalogItem) {
@@ -659,7 +682,7 @@ export default function HeartShopModal({
                     const owned = ownedById.has(item.id);
                     return (
                       <article key={item.id} className="card" style={{ minWidth: 0, padding: "10px 10px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)", boxShadow: "0 8px 24px rgba(75,62,45,.06)" }}>
-                        <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${text.previewBadge}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
+                        <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${getMapPreviewBadge(item.id)}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
                           {(item.isBest || item.isNew) && (
                             <span
                               aria-label={item.isBest ? "Best" : "New"}
@@ -683,7 +706,7 @@ export default function HeartShopModal({
                             </span>
                           )}
                           <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
-                          <span style={{ position: "absolute", right: 7, bottom: 7, borderRadius: 999, padding: "4px 7px", background: "rgba(26,28,30,.72)", color: "#fff", fontSize: 8.5, fontWeight: 900 }}>{text.previewBadge}</span>
+                          <span style={{ position: "absolute", right: 7, bottom: 7, borderRadius: 999, padding: "4px 7px", background: "rgba(26,28,30,.72)", color: "#fff", fontSize: 8.5, fontWeight: 900 }}>{getMapPreviewBadge(item.id)}</span>
                         </button>
                         <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <p style={{ margin: 0, minHeight: 36, color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
@@ -930,8 +953,8 @@ export default function HeartShopModal({
 
       {previewItem && (
         <div role="presentation" onClick={closeTopLayer} style={{ position: "fixed", inset: 0, zIndex: 538, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
-          <div role="dialog" aria-modal="true" aria-label={`${isHeartShopMapCatalogItem(previewItem) ? text.previewTitle : text.characterPreviewTitle}: ${getItemName(previewItem)}`} onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "calc(100dvh - 44px)", overflowY: "auto", borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(122,157,122,.28)", boxShadow: "0 24px 70px rgba(0,0,0,.3)", padding: "20px 18px 18px", textAlign: "center" }}>
-            <div style={{ display: "inline-flex", borderRadius: 999, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", padding: "5px 9px", fontSize: 10, fontWeight: 900, marginBottom: 8 }}>{isHeartShopMapCatalogItem(previewItem) ? text.previewTitle : text.characterPreviewTitle}</div>
+          <div role="dialog" aria-modal="true" aria-label={`${isHeartShopMapCatalogItem(previewItem) ? getMapPreviewTitle(previewItem.id) : text.characterPreviewTitle}: ${getItemName(previewItem)}`} onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "calc(100dvh - 44px)", overflowY: "auto", borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(122,157,122,.28)", boxShadow: "0 24px 70px rgba(0,0,0,.3)", padding: "20px 18px 18px", textAlign: "center" }}>
+            <div style={{ display: "inline-flex", borderRadius: 999, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", padding: "5px 9px", fontSize: 10, fontWeight: 900, marginBottom: 8 }}>{isHeartShopMapCatalogItem(previewItem) ? getMapPreviewTitle(previewItem.id) : text.characterPreviewTitle}</div>
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(previewItem) ? 248 : 180, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>{renderDialogVisual(previewItem)}</div>
             <h3 style={{ margin: "0 0 8px", color: "var(--text)", fontSize: 20, lineHeight: 1.35, fontWeight: 950 }}>{getItemName(previewItem)}</h3>
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{getItemDescription(previewItem)}</p>

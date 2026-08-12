@@ -2,7 +2,10 @@
 
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import { isHeartShopItemAvailableOnMap } from "@/lib/heartShopCatalog";
-import type { HeartShopMapItemId } from "@/lib/heartShopItems";
+import {
+  isHeartShopPeaceArkStaticItemId,
+  type HeartShopMapItemId,
+} from "@/lib/heartShopItems";
 import type { RewardMapKind } from "@/lib/rewardMaps";
 
 type HeartShopMapFriendsProps = {
@@ -18,8 +21,9 @@ type FriendPlacement = {
   renderWidth: number;
 };
 
+type AnimatedMapItemId = Exclude<HeartShopMapItemId, "ark_supplies" | "ark_workbench" | "ark_lantern">;
 type MovingFriendId = "jjaekjjaek" | "nabi" | "kkangchongi" | "salgeumi";
-type FixedGroundFriendId = Exclude<HeartShopMapItemId, MovingFriendId>;
+type FixedGroundFriendId = Exclude<AnimatedMapItemId, MovingFriendId>;
 type GroundFriendPlacements = Record<FixedGroundFriendId, FriendPlacement>;
 
 const GARDEN_GROUND_PLACEMENTS: GroundFriendPlacements = {
@@ -47,7 +51,7 @@ function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
     // friends stay on the higher rear ground line, so the character can pass
     // in front of them without a foot/ground collision.
     bamtoli: { right: "13%", bottom: "calc(20% - 14px)", renderWidth: 30 },
-    mongsili: { right: "2%", bottom: "calc(20% - 12px)", renderWidth: 28 },
+    mongsili: { right: "5.5%", bottom: "calc(20% - 12px)", renderWidth: 28 },
   };
 }
 
@@ -66,7 +70,13 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
   // the friends are only hidden until stage 10 has safe ground again.
   if (mapKind === "peaceArk" && stageNumber === 9) return null;
 
-  const visible = new Set(itemIds.filter(itemId => isHeartShopItemAvailableOnMap(itemId, mapKind)));
+  const visible = new Set(
+    itemIds.filter(
+      (itemId): itemId is AnimatedMapItemId =>
+        !isHeartShopPeaceArkStaticItemId(itemId)
+        && isHeartShopItemAvailableOnMap(itemId, mapKind),
+    ),
+  );
   if (visible.size === 0) return null;
 
   const placements = getGroundPlacements(mapKind, stageNumber);
