@@ -23,6 +23,8 @@ function ResultContent() {
   const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
 
   // lang이 localStorage에서 확정될 때까지 대기
@@ -41,13 +43,17 @@ function ResultContent() {
   useEffect(() => {
     if (!langReady) return;
     async function loadVerse() {
+      setLoading(true);
+      setLoadError(false);
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const today = getLocalDateString();
-        const translationId = Number(storageGet("roots_default_translation") ?? getDefaultTranslationId(lang));
+        // Today's Word always uses the fixed default for the current UI language.
+        // A translation chosen inside a normal Bible Reflection must not affect it.
+        const translationId = getDefaultTranslationId(lang);
 
         // 오늘 이미 같은 언어/번역본의 말씀이 있으면 API 호출 없이 기존 말씀 사용
         const { data: existing } = await supabase
@@ -64,7 +70,7 @@ function ResultContent() {
           lang !== "ko" &&
           /[가-힣]/.test(String(existingVerse ?? ""));
         const sameLang = !legacyKoreanMismatch && (!existing?.verse_lang || existing.verse_lang === lang);
-        const sameTranslation = !existing?.verse_translation_id || Number(existing.verse_translation_id) === translationId;
+        const sameTranslation = Number(existing?.verse_translation_id) === translationId;
 
         if (existingVerse && sameLang && sameTranslation) {
           setResult({
@@ -100,7 +106,6 @@ function ResultContent() {
             userId: user.id,
             date: today,
             lang,
-            translationId,
             prevVerseRefId: prevDay?.verse_ref_id ?? null,
             prevReference: prevDay?.verse_reference ?? prevDay?.reference ?? null,
           }),
@@ -145,22 +150,39 @@ function ResultContent() {
           console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
         }
 
-      } catch {
-        setResult({
-          verse: t("result_fallback_verse", lang),
-          reference: t("result_fallback_reference", lang),
-        });
+      } catch (error) {
+        console.error("오늘의 말씀 로드 실패:", error);
+        setResult(null);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
     }
     loadVerse();
-  }, [langReady, lang, selectedEmotion]);
+  }, [langReady, lang, selectedEmotion, retryNonce]);
 
   if (loading) return (
     <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
       <Loader2 size={32} style={{ color: "var(--daily-word-sage-text)" }} className="spin" />
       <p style={{ color: "var(--daily-word-muted-text)", fontSize: 14 }}>{t("result_loading", lang)}</p>
+      <BottomNav />
+    </div>
+  );
+
+  if (loadError || !result) return (
+    <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "24px 24px calc(82px + var(--bottom-nav-bottom-padding))", textAlign: "center" }}>
+      <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>{t("network_error_retry", lang)}</p>
+      <button
+        type="button"
+        onClick={() => setRetryNonce((value) => value + 1)}
+        className="btn-primary"
+        style={{ width: "auto", minWidth: 120, padding: "11px 18px" }}
+      >
+        {lang === "de" ? "Erneut versuchen" : lang === "en" ? "Try again" : lang === "fr" ? "Réessayer" : "다시 시도"}
+      </button>
+      <button type="button" onClick={() => router.push("/")} style={{ border: "none", background: "transparent", color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
+        {t("result_home_btn", lang)}
+      </button>
       <BottomNav />
     </div>
   );

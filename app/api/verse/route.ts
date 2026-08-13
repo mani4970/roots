@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { getDefaultTranslationId, normalizeSelectableTranslationId } from "@/lib/translationDefaults";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
+import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import {
   formatKoReference,
   pickEmotionVerseRef,
@@ -12,9 +13,6 @@ function normalizeLang(value: unknown): Lang {
   return value === "de" || value === "en" || value === "fr" || value === "ko" ? value : "ko";
 }
 
-function normalizeTranslationId(value: unknown, lang: Lang): number {
-  return normalizeSelectableTranslationId(value, lang);
-}
 
 function normalizeOptionalString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -25,7 +23,14 @@ function normalizeEmotionKey(value: unknown): string | null {
   return normalizeOptionalString(value);
 }
 
+function getTodayVerseFetchOptions(translationId: number) {
+  return translationId === ESV_TRANSLATION_ID
+    ? ({ cache: "no-store" } as const)
+    : ({ next: { revalidate: 86400 } } as const);
+}
+
 async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, translationId: number) {
+  const fetchOptions = getTodayVerseFetchOptions(translationId);
   if (refItem.startChapter === refItem.endChapter) {
     const url = new URL("/api/bible", origin);
     url.searchParams.set("translation", String(translationId));
@@ -34,7 +39,7 @@ async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, trans
     url.searchParams.set("startVerse", String(refItem.startVerse));
     url.searchParams.set("endVerse", String(refItem.endVerse));
 
-    const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
+    const res = await fetch(url.toString(), fetchOptions);
     if (!res.ok) throw new Error("Bible API failed");
     const data = await res.json();
     const verses = Array.isArray(data.verses) ? data.verses : [];
@@ -57,8 +62,8 @@ async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, trans
   secondUrl.searchParams.set("endVerse", String(refItem.endVerse));
 
   const [firstRes, secondRes] = await Promise.all([
-    fetch(firstUrl.toString(), { next: { revalidate: 86400 } }),
-    fetch(secondUrl.toString(), { next: { revalidate: 86400 } }),
+    fetch(firstUrl.toString(), fetchOptions),
+    fetch(secondUrl.toString(), fetchOptions),
   ]);
 
   if (!firstRes.ok || !secondRes.ok) throw new Error("Bible API failed");
@@ -72,29 +77,6 @@ async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, trans
     .join("\n");
 }
 
-const FALLBACK_VERSE_BY_LANG: Record<Lang, { verse: string; reference: string }> = {
-  ko: {
-    verse: "수고하고 무거운 짐 진 자들아 다 내게로 오라 내가 너희를 쉬게 하리라",
-    reference: "마태복음 11:28",
-  },
-  de: {
-    verse: "Kommt her zu mir, alle, die ihr mühselig und beladen seid; ich will euch erquicken.",
-    reference: "Matthäus 11:28",
-  },
-  en: {
-    verse: "Come to me, all who labor and are heavy laden, and I will give you rest.",
-    reference: "Matthew 11:28",
-  },
-  fr: {
-    verse: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
-    reference: "Matthieu 11:28",
-  },
-};
-
-function fallbackVerse(lang: Lang) {
-  return FALLBACK_VERSE_BY_LANG[lang] ?? FALLBACK_VERSE_BY_LANG.ko;
-}
-
 export async function POST(req: NextRequest) {
   const origin = new URL(req.url).origin;
   let lang: Lang = "ko";
@@ -103,7 +85,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     lang = normalizeLang(body?.lang);
     const emotionKey = normalizeEmotionKey(body?.emotions);
-    const translationId = normalizeTranslationId(body?.translationId ?? body?.translation_id, lang);
+    // Today's Word is intentionally fixed to the language default and must not
+    // follow the translation a user chose for a regular Bible Reflection.
+    const translationId = getDefaultTranslationId(lang);
 
     const picked = pickEmotionVerseRef({
       emotionKey,
@@ -137,21 +121,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     console.error("Fixed verse API error:", e);
-    const fallback = fallbackVerse(lang);
-    return NextResponse.json({
-      ...fallback,
-      verse_id: "fallback_matthew_11_28",
-      verseRefId: "fallback_matthew_11_28",
-      emotion_key: "tired",
-      emotionKey: "tired",
-      book: "마태복음",
-      start_chapter: 11,
-      start_verse: 28,
-      end_chapter: 11,
-      end_verse: 28,
-      translation_id: getDefaultTranslationId(lang),
-      verse_lang: lang,
-      ko_reference: "마태복음 11:28",
-    });
+    return NextResponse.json(
+      { error: "오늘의 말씀을 불러오지 못했어요." },
+      { status: 500 },
+    );
   }
 }

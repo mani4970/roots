@@ -18,6 +18,7 @@ import {
   BOOK_NAMES,
   getBibleChapterMaxVerse,
   getBibleVerseNumbers,
+  isSelectableBibleTranslationId,
   NT_BOOKS,
   OT_BOOKS,
   TRANSLATION_LANG,
@@ -219,11 +220,10 @@ type CompleteSaveOptions = {
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
 const DEFAULT_BIBLE_TRANSLATION_ID = 92;
-const SUPPORTED_BIBLE_TRANSLATION_IDS = new Set(TRANSLATIONS.flatMap(group => group.items.map(item => item.id)));
 
 function getSupportedBibleTranslationId(value: unknown): number | null {
   const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
-  return Number.isSafeInteger(parsed) && SUPPORTED_BIBLE_TRANSLATION_IDS.has(parsed) ? parsed : null;
+  return isSelectableBibleTranslationId(parsed) ? parsed : null;
 }
 
 function normalizeBibleTranslationId(value: unknown, fallback: unknown = DEFAULT_BIBLE_TRANSLATION_ID) {
@@ -314,11 +314,7 @@ function QTWriteContent() {
         value={selectedTranslation}
         onChange={async e => {
           const newId = parseInt(e.target.value);
-          setSelectedTranslation(newId);
-          storageSet("roots_default_translation", String(newId));
-          if (passages.length > 0 || (bibleRef && passageVerses.length > 0)) {
-            await reloadDisplayPassagesWithTranslation(newId);
-          }
+          await handleBibleTranslationChange(newId);
         }}
         aria-label={trQT("번역본", lang)}
         style={compact
@@ -1131,32 +1127,7 @@ function QTWriteContent() {
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
-  // 번역본 변경 시 현재 본문 다시 로드
-  async function reloadPassageWithTranslation(newTranslationId: number) {
-    if (!bibleRef || passageVerses.length === 0) return;
-    setLoadingBible(true);
-    try {
-      const effectiveEndChapter = crossChapter ? endChapter : chapter;
-      if (crossChapter && effectiveEndChapter !== chapter) {
-        const allKo = [...OT_BOOKS, ...NT_BOOKS];
-        const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
-        const koBook = (() => { const i=allLoc.indexOf(book); return i>=0?allKo[i]:book; })();
-        const maxV1 = getBibleChapterMaxVerse(koBook, chapter, newTranslationId);
-        const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
-        const d1 = await r1.json();
-        const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
-        const d2 = await r2.json();
-        const allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chapter}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${effectiveEndChapter}:${v.num}`}))];
-        if (allVerses.length > 0) setPassageVerses(allVerses);
-      } else {
-        const res = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
-        const data = await res.json();
-        if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
-      }
-    } catch (e) { /* 로드 실패 무시 */ }
-    setLoadingBible(false);
-  }
-
+  // 번역본 변경은 아래 공통 경로에서 모든 표시 본문을 먼저 검증한 뒤 한 번에 반영합니다.
   async function fetchPassageItemWithTranslation(item: PassageItem, newTranslationId: number): Promise<PassageItem> {
     const effectiveEndChapter = item.cross ? item.endChapter : item.chapter;
     const koBook = (() => {
@@ -1168,44 +1139,74 @@ function QTWriteContent() {
 
     if (item.cross && effectiveEndChapter !== item.chapter) {
       const maxV1 = getBibleChapterMaxVerse(koBook, item.chapter, newTranslationId);
-      const r1 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${maxV1}`);
-      const d1 = await r1.json();
-      const r2 = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${item.endV}`);
-      const d2 = await r2.json();
+      const [r1, r2] = await Promise.all([
+        fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${maxV1}`),
+        fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${item.endV}`),
+      ]);
+      if (!r1.ok || !r2.ok) throw new Error("Bible translation reload failed");
+      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      const firstVerses = Array.isArray(d1.verses) ? d1.verses : [];
+      const secondVerses = Array.isArray(d2.verses) ? d2.verses : [];
+      if (firstVerses.length === 0 || secondVerses.length === 0) throw new Error("Bible translation reload was empty");
       const verses = [
-        ...(d1.verses ?? []).map((v: any) => ({ ...v, num: `${item.chapter}:${v.num}` })),
-        ...(d2.verses ?? []).map((v: any) => ({ ...v, num: `${effectiveEndChapter}:${v.num}` })),
+        ...firstVerses.map((v: any) => ({ ...v, num: `${item.chapter}:${v.num}` })),
+        ...secondVerses.map((v: any) => ({ ...v, num: `${effectiveEndChapter}:${v.num}` })),
       ];
       return { ...item, verses, ref: `${item.book} ${item.chapter}:${item.startV}-${effectiveEndChapter}:${item.endV}` };
     }
 
     const res = await fetch(`/api/bible?translation=${newTranslationId}&book=${encodeURIComponent(item.book)}&chapter=${item.chapter}&startVerse=${item.startV}&endVerse=${item.endV}`);
+    if (!res.ok) throw new Error("Bible translation reload failed");
     const data = await res.json();
-    return { ...item, verses: data.verses ?? [], ref: data.reference || item.ref };
+    const verses = Array.isArray(data.verses) ? data.verses : [];
+    if (verses.length === 0) throw new Error("Bible translation reload was empty");
+    return { ...item, verses, ref: data.reference || item.ref };
   }
 
-  async function reloadDisplayPassagesWithTranslation(newTranslationId: number) {
+  async function reloadDisplayPassagesWithTranslation(newTranslationId: number): Promise<boolean> {
     const displayPassages = getDisplayPassages();
-    if (displayPassages.length === 0) return;
+    if (displayPassages.length === 0) return true;
 
     setLoadingBible(true);
     try {
+      // Fetch every visible passage first. Commit UI state only after the whole
+      // translation succeeds, so the label can never say ESV while NIV text remains.
       const reloaded = await Promise.all(displayPassages.map(item => fetchPassageItemWithTranslation(item, newTranslationId)));
       const safeIndex = Math.min(activePassageIndex, reloaded.length - 1);
       const active = reloaded[safeIndex] ?? reloaded[0];
+      if (!active) return false;
 
       if (passages.length > 0) {
         setPassages(reloaded);
       }
-      if (active) {
-        setPassageVerses(active.verses);
-        setBibleRef(active.ref);
-      }
-    } catch (e) {
-      // 번역본 변경 중 본문 재로드가 실패해도 작성 중인 묵상 내용은 유지합니다.
+      setPassageVerses(active.verses);
+      setBibleRef(active.ref);
+      return true;
+    } catch (error) {
+      console.error("Bible translation reload failed", error);
+      return false;
     } finally {
       setLoadingBible(false);
     }
+  }
+
+  async function handleBibleTranslationChange(newTranslationId: number): Promise<boolean> {
+    if (newTranslationId === selectedTranslation) return true;
+
+    const hasLoadedPassage = passages.length > 0 || (bibleRef && passageVerses.length > 0);
+    if (hasLoadedPassage) {
+      const reloaded = await reloadDisplayPassagesWithTranslation(newTranslationId);
+      if (!reloaded) {
+        showToast(trQT("본문을 불러오지 못했어요.", lang), "error");
+        return false;
+      }
+    }
+
+    // Regular Bible Reflection remains user-selectable. Only Today's Word is
+    // fixed to the language default; a successful QT choice is kept as selected.
+    setSelectedTranslation(newTranslationId);
+    storageSet("roots_default_translation", String(newTranslationId));
+    return true;
   }
 
   function resetFreePassageSelection() {
@@ -2547,11 +2548,12 @@ function QTWriteContent() {
                   <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px", marginBottom: 8 }}>{group.group}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {group.items.map(t => (
-                      <button className="qt-option-card" key={t.id} onClick={() => {
+                      <button className="qt-option-card" key={t.id} onClick={async () => {
+                const changed = await handleBibleTranslationChange(t.id);
+                if (!changed) return;
                 const newLang = TRANSLATION_LANG[t.id] ?? "KO";
                 const newBooks = BOOK_NAMES[newLang] ?? BOOK_NAMES["KO"];
-                setBook(newBooks[0]); // 첫 번째 책으로 리셋
-                setSelectedTranslation(t.id);
+                setBook(newBooks[0]); // 기존 UX 유지: 번역 언어 변경 시 첫 번째 책으로 리셋
                 setShowTranslationPicker(false);
               }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: selectedTranslation === t.id ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", cursor: "pointer" }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: selectedTranslation === t.id ? "var(--qt-sage-text)" : "var(--text)" }}>{t.name}</span>

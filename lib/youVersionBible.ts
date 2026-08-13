@@ -129,9 +129,6 @@ export function getYouVersionBookCode(bookNumber: number): string | null {
   return USFM_BOOK_CODES[bookNumber - 1] ?? null;
 }
 
-export function isYouVersionBibleTranslation(rootsTranslationId: number): boolean {
-  return getYouVersionBibleSource(rootsTranslationId) !== null;
-}
 
 export function buildYouVersionPassageId(params: {
   bookNum: number;

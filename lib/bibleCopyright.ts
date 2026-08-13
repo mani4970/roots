@@ -38,6 +38,3 @@ export function getBibleCopyrightInfo(translationId: number): BibleCopyrightInfo
   };
 }
 
-export function getBibleCopyrightNotice(translationId: number) {
-  return getBibleCopyrightInfo(translationId)?.notice ?? null;
-}

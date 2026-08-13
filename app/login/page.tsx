@@ -14,6 +14,7 @@ import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuth
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 
@@ -62,8 +63,7 @@ export default function LoginPage() {
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
     // preferred_translation도 갱신
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 21 };
-    const trId = defaultTr[lang] ?? 92;
+    const trId = getDefaultTranslationId(lang);
     storageSet("roots_default_translation", String(trId));
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -91,8 +91,7 @@ export default function LoginPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 21 };
-    storageSet("roots_default_translation", String(defaultTr[lang] ?? 92));
+    storageSet("roots_default_translation", String(getDefaultTranslationId(lang)));
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
     } catch (error) {

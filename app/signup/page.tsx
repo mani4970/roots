@@ -13,6 +13,7 @@ import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuth
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
@@ -53,8 +54,7 @@ export default function SignupPage() {
     const supabase = createClient();
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const d: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 21 };
-    storageSet("roots_default_translation", String(d[lang] ?? 92));
+    storageSet("roots_default_translation", String(getDefaultTranslationId(lang)));
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
     } catch (error) {
@@ -80,11 +80,11 @@ export default function SignupPage() {
     // 언어 설정도 함께 저장
     storageSet("roots_lang", lang);
     storageSet("roots_lang_selected", "true");
-    const defaultTr: Record<Lang, number> = { ko: 92, de: 97, en: 80, fr: 21 };
+    const defaultTranslationId = getDefaultTranslationId(lang);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: nickname, preferred_language: lang, preferred_translation: defaultTr[lang] ?? 92 } },
+      options: { data: { name: nickname, preferred_language: lang, preferred_translation: defaultTranslationId } },
     });
     if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
     if (data.user) {
@@ -92,7 +92,7 @@ export default function SignupPage() {
       try {
         await saveProfilePreferences(supabase, {
           preferredLanguage: lang,
-          preferredTranslation: defaultTr[lang] ?? 92,
+          preferredTranslation: defaultTranslationId,
         });
       } catch (error) {
         console.error("signup language preference save failed", error);

@@ -27,7 +27,7 @@ import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
-import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
+import { getDefaultTranslationId, normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
@@ -1194,7 +1194,7 @@ export default function HomePage() {
   async function openChapterPopup() {
     if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
 
-    const translation = Number(todayVerse.verse_translation_id ?? profile?.preferred_translation ?? homeQTState.preferredTranslation ?? 92);
+    const translation = Number(todayVerse.verse_translation_id ?? getDefaultTranslationId(lang));
     await loadChapterText(translation);
   }
 
