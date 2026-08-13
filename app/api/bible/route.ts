@@ -20,6 +20,7 @@ import {
   createClient as createSupabaseClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
+import { isSelectableBibleTranslationId } from "@/lib/bibleData";
 
 // 언어별 책 이름 → 번호 매핑
 const BOOK_MAP_KO: Record<string, number> = {
@@ -79,7 +80,6 @@ function getBookNum(book: string): number | null {
   return BOOK_MAP_KO[normalized] ?? BOOK_MAP_EN[normalized] ?? BOOK_MAP_DE[normalized] ?? BOOK_MAP_FR[normalized] ?? null;
 }
 
-const API_BASE = "https://bible.asher.design/api/v1";
 const YOUVERSION_API_BASE = "https://api.youversion.com/v1";
 type LicensedBibleTable = "kbs_bible_verses" | "duranno_bible_verses";
 const LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID = new Map<number, LicensedBibleTable>([
@@ -99,23 +99,6 @@ let licensedBibleClient: SupabaseClient | null = null;
 function readServerEnv(name: string, fallback = "") {
   const value = process.env[name] ?? fallback;
   return value.trim().replace(/^([\"'])(.*)\1$/, "$2");
-}
-
-function getBibleApiHeaders(): HeadersInit {
-  const authorization = readServerEnv("BIBLE_API_AUTHORIZATION");
-
-  if (!authorization) {
-    throw new Error("Missing BIBLE_API_AUTHORIZATION");
-  }
-
-  return {
-    Accept: "application/json",
-    "X-API-Key-ID": readServerEnv("BIBLE_API_KEY_ID", "roots-puce"),
-    Authorization: authorization,
-    "X-Client-Type": readServerEnv("BIBLE_API_CLIENT_TYPE", "vercel-server"),
-    "X-App-Name": readServerEnv("BIBLE_API_APP_NAME", "Roots Puce"),
-    "X-App-Version": readServerEnv("BIBLE_API_APP_VERSION", "1.0.0"),
-  };
 }
 
 function getLicensedBibleClient() {
@@ -138,10 +121,6 @@ function getLicensedBibleClient() {
   return licensedBibleClient;
 }
 
-type VerseApiItem = {
-  verse?: number | string;
-  text?: string;
-};
 
 function parsePositiveInteger(value: string | null, fallback: number): number | null {
   if (value == null || value === "") return fallback;
@@ -150,44 +129,11 @@ function parsePositiveInteger(value: string | null, fallback: number): number | 
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-function buildBibleApiUrl(params: {
-  translationId: number;
-  bookNum: number;
-  chapter: number;
-  startVerse: number;
-  endVerse: number;
-}) {
-  const url = new URL("verse.php", `${API_BASE}/`);
-  url.searchParams.set("translation", String(params.translationId));
-  url.searchParams.set("book", String(params.bookNum));
-  url.searchParams.set("chapter", String(params.chapter));
-  url.searchParams.set("verse", String(params.startVerse));
-
-  if (params.endVerse > params.startVerse) {
-    url.searchParams.set("verse_to", String(params.endVerse));
-  }
-
-  return url.toString();
-}
-
-async function fetchWithTimeout(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    return await fetch(url, {
-      headers: getBibleApiHeaders(),
-      next: { revalidate: 86400 },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 function getEsvApiHeaders(): HeadersInit {
   const apiKey = readServerEnv("ESV_API_KEY");
@@ -388,6 +334,7 @@ export async function GET(req: NextRequest) {
   if (startVerse == null || startVerse > MAX_VERSE) return jsonError("시작 절 번호가 올바르지 않아요.", 400);
   if (endVerse == null || endVerse > MAX_VERSE) return jsonError("끝 절 번호가 올바르지 않아요.", 400);
   if (translationId == null || translationId > 9999) return jsonError("번역본 ID가 올바르지 않아요.", 400);
+  if (!isSelectableBibleTranslationId(translationId)) return jsonError("현재 사용할 수 없는 번역본이에요.", 404);
   if (endVerse < startVerse) return jsonError("끝 절은 시작 절보다 작을 수 없어요.", 400);
   if (endVerse - startVerse + 1 > MAX_VERSE_RANGE) return jsonError("요청한 본문 범위가 너무 길어요.", 400);
 
@@ -425,26 +372,7 @@ export async function GET(req: NextRequest) {
         endVerse,
       }, youVersionSource);
     } else {
-      const url = buildBibleApiUrl({ translationId, bookNum, chapter, startVerse, endVerse });
-      const res = await fetchWithTimeout(url);
-
-      if (!res.ok) {
-        console.error("Bible API request failed", { status: res.status });
-        return jsonError("본문을 불러올 수 없어요.", 502);
-      }
-
-      const json = await res.json();
-
-      if (!json?.ok || !Array.isArray(json.data?.gospel)) {
-        return jsonError("본문을 불러올 수 없어요.", 404);
-      }
-
-      verses = json.data.gospel
-        .map((v: VerseApiItem) => ({
-          num: Number(v.verse),
-          text: String(v.text ?? "").trim(),
-        }))
-        .filter((v: { num: number; text: string }) => Number.isFinite(v.num) && v.text);
+      return jsonError("현재 사용할 수 없는 번역본이에요.", 404);
     }
 
     if (verses.length === 0) {
@@ -463,7 +391,7 @@ export async function GET(req: NextRequest) {
         verses,
         reference,
         version: String(translationId),
-        source: esvSource ? "esv-api" : youVersionSource ? "youversion" : licensedBibleTable ? "licensed-database" : "legacy-bible-api",
+        source: esvSource ? "esv-api" : youVersionSource ? "youversion" : "licensed-database",
         providerVersion: esvSource ? "ESV API v3" : youVersionSource ? String(youVersionSource.youVersionBibleId) : String(translationId),
         versionName: esvSource ? "English Standard Version" : youVersionSource?.displayName ?? null,
         copyright: esvSource ? ESV_SHORT_COPYRIGHT_NOTICE : youVersionSource?.copyrightNotice ?? null,

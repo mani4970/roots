@@ -346,7 +346,7 @@ function RecordContent() {
       headerLine,
       record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
       record.summary ? `\n${trR("본문 요약", lang)}\n${record.summary}` : "",
-      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}${isEsvRecord ? `\n(ESV) ${ESV_ATTRIBUTION_URL}` : ""}` : "",
+      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}${isEsvRecord ? `\n(ESV)` : ""}` : "",
       record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",

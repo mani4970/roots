@@ -27,6 +27,7 @@ import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
+import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
@@ -542,7 +543,7 @@ export default function HomePage() {
       }
       setHomeQTState(prev => ({
         ...prev,
-        preferredTranslation: p.preferred_translation || 92,
+        preferredTranslation: normalizeSelectableTranslationId(p.preferred_translation, lang),
       }));
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       if (lastCheckin) {

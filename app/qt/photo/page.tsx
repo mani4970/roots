@@ -15,6 +15,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
+import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -437,10 +438,10 @@ function PhotoReflectionContent() {
   const [endChapter, setEndChapter] = useState(scheduledEndChapter || scheduledChapter || 1);
   const [endVerse, setEndVerse] = useState(scheduledEnd || 1);
   const [selectedTranslation, setSelectedTranslation] = useState<number>(() => {
-    if (typeof window === "undefined") return 92;
-    const saved = window.localStorage.getItem("roots_default_translation");
-    const parsed = saved ? Number(saved) : 92;
-    return Number.isFinite(parsed) ? parsed : 92;
+    const requested = searchParams.get("translation");
+    if (requested) return normalizeSelectableTranslationId(requested, lang);
+    if (typeof window === "undefined") return normalizeSelectableTranslationId(null, lang);
+    return normalizeSelectableTranslationId(window.localStorage.getItem("roots_default_translation"), lang);
   });
   const [sermonTitle, setSermonTitle] = useState("");
   const [extraRefs, setExtraRefs] = useState<string[]>([]);

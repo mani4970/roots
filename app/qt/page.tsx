@@ -12,6 +12,7 @@ import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
+import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -96,9 +97,9 @@ export default function QTPage() {
   const [preferredTranslation, setPreferredTranslation] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = storageGet("roots_default_translation");
-      if (saved) return parseInt(saved);
+      if (saved) return normalizeSelectableTranslationId(saved, lang);
     }
-    return 92;
+    return normalizeSelectableTranslationId(null, lang);
   });
   const [toast, setToast] = useState<string | null>(null);
 
@@ -154,7 +155,11 @@ export default function QTPage() {
 
       const { data: prof } = await supabase.from("profiles")
         .select("preferred_translation").eq("id", user.id).single();
-      if (prof?.preferred_translation) { setPreferredTranslation(prof.preferred_translation); storageSet("roots_default_translation", String(prof.preferred_translation)); }
+      if (prof?.preferred_translation) {
+        const safeTranslation = normalizeSelectableTranslationId(prof.preferred_translation, lang);
+        setPreferredTranslation(safeTranslation);
+        storageSet("roots_default_translation", String(safeTranslation));
+      }
     } catch (error) {
       console.error("qt load failed", error);
       showToast(t("qt_error_load", lang));

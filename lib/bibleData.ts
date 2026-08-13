@@ -7,21 +7,17 @@ export const TRANSLATIONS = [
     { id: 92, name: "개역개정" },
     { id: 84, name: "개역한글" },
     { id: 98, name: "새번역" },
-    { id: 88, name: "쉬운성경" },
     { id: 89, name: "우리말성경" },
   ]},
   { group: "English", items: [
     { id: 80, name: "NIV" },
     { id: 100, name: "ESV" },
     { id: 62, name: "NASB 1995" },
-    { id: 82, name: "NLT" },
-    { id: 95, name: "The Message" },
   ]},
   { group: "Deutsch", items: [
     { id: 97, name: "Hoffnung für alle" },
     { id: 29, name: "Lutherbibel 1912" },
     { id: 27, name: "Elberfelder 1871" },
-    { id: 31, name: "Schlachter" },
   ]},
   { group: "Français", items: [
     { id: 21, name: "La Bible du Semeur 2015" },
@@ -29,11 +25,24 @@ export const TRANSLATIONS = [
   ]},
 ];
 
-// Jérusalem (24) is no longer selectable, but remains recognized so historical
-// reflection records that already reference it can still be restored safely.
-const LEGACY_TRANSLATIONS = [{ id: 24, name: "Jérusalem" }] as const;
+// These translations are no longer selectable because Roots does not currently
+// have a secured distribution/source license for them. Keep their IDs/names only
+// so historical reflection records can still be labeled without reusing IDs.
+const LEGACY_TRANSLATIONS = [
+  { id: 24, name: "Jérusalem" },
+  { id: 31, name: "Schlachter" },
+  { id: 82, name: "NLT" },
+  { id: 88, name: "쉬운성경" },
+  { id: 95, name: "The Message" },
+] as const;
 
 export const ALL_TRANSLATIONS = [...TRANSLATIONS.flatMap(g => g.items), ...LEGACY_TRANSLATIONS];
+export const SELECTABLE_TRANSLATION_IDS = new Set(TRANSLATIONS.flatMap(group => group.items.map(item => item.id)));
+
+export function isSelectableBibleTranslationId(value: unknown): boolean {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
+  return Number.isSafeInteger(parsed) && SELECTABLE_TRANSLATION_IDS.has(parsed);
+}
 
 // 번역본 ID → 언어 코드
 export const TRANSLATION_LANG: Record<number, string> = {

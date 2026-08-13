@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { getDefaultTranslationId } from "@/lib/translationDefaults";
+import { getDefaultTranslationId, normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import {
   formatKoReference,
   pickEmotionVerseRef,
@@ -13,18 +13,7 @@ function normalizeLang(value: unknown): Lang {
 }
 
 function normalizeTranslationId(value: unknown, lang: Lang): number {
-  const fallback = getDefaultTranslationId(lang);
-
-  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= 9999) {
-    return value;
-  }
-
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    const parsed = Number(value);
-    if (Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 9999) return parsed;
-  }
-
-  return fallback;
+  return normalizeSelectableTranslationId(value, lang);
 }
 
 function normalizeOptionalString(value: unknown): string | null {

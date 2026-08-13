@@ -219,7 +219,7 @@ type CompleteSaveOptions = {
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
 const DEFAULT_BIBLE_TRANSLATION_ID = 92;
-const SUPPORTED_BIBLE_TRANSLATION_IDS = new Set(ALL_TRANSLATIONS.map(item => item.id));
+const SUPPORTED_BIBLE_TRANSLATION_IDS = new Set(TRANSLATIONS.flatMap(group => group.items.map(item => item.id)));
 
 function getSupportedBibleTranslationId(value: unknown): number | null {
   const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
