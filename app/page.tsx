@@ -96,6 +96,16 @@ function isRecentSignup(createdAt: string | null | undefined) {
   return Date.now() - createdAtMs < RECENT_SIGNUP_ONBOARDING_WINDOW_MS;
 }
 
+function hasEstablishedProfileActivity(profile: any) {
+  if (!profile) return false;
+  return Boolean(
+    profile.avatar_choice_seen === true ||
+    profile.last_checkin ||
+    Number(profile.total_days ?? 0) > 0 ||
+    Number(profile.streak_days ?? 0) > 0
+  );
+}
+
 function getLegacyStorageKey(prefix: string, date: string) {
   return `${prefix}${date}`;
 }
@@ -694,12 +704,18 @@ export default function HomePage() {
     const onboardingDoneKey = getOnboardingDoneKey(user.id);
     const scopedOnboardingDone = storageGet(onboardingDoneKey);
     const legacyOnboardingDone = storageGet(ONBOARDING_DONE_KEY);
+    const existingUserMissingLocalMarker =
+      !scopedOnboardingDone &&
+      !isRecentSignup(user.created_at) &&
+      hasEstablishedProfileActivity(p);
     const shouldMigrateLegacyOnboarding =
       !!legacyOnboardingDone &&
       !scopedOnboardingDone &&
       !isRecentSignup(user.created_at);
 
-    if (shouldMigrateLegacyOnboarding) {
+    if (shouldMigrateLegacyOnboarding || existingUserMissingLocalMarker) {
+      // Recover established accounts whose device marker was removed (for
+      // example when another test account was deleted on the same device).
       storageSet(onboardingDoneKey, "true");
     } else if (!scopedOnboardingDone) {
       setShowOnboarding(true);

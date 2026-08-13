@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { storageSet } from "@/lib/clientStorage";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/useLang";
 
@@ -85,7 +84,6 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
   const lowerTextBlock = page === 1 || page === 3 || page === 4;
 
   function completeOnboarding() {
-    storageSet("onboarding_done", "true");
     onClose();
   }
 

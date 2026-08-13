@@ -31,7 +31,7 @@ import {
   uploadProfileCharacterAvatar,
 } from "@/lib/profileAvatar";
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
-import { storageClear } from "@/lib/clientStorage";
+import { storageClearAfterAccountDeletion } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
@@ -951,7 +951,7 @@ export default function ProfilePage() {
 
       const supabase = createClient();
       await supabase.auth.signOut();
-      storageClear();
+      storageClearAfterAccountDeletion(profileUserId || profileRef.current?.id || "");
       router.push("/welcome");
     } catch (e) {
       console.error(e);
