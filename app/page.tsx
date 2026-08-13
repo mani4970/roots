@@ -27,6 +27,7 @@ import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
 import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
+import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -154,6 +155,45 @@ function formatChapterReference(book: string, chapter: number, lang: "ko" | "de"
   if (lang === "de") return `${translatedBook} ${chapter}`;
   if (lang === "fr") return `${translatedBook} ${chapter}`;
   return `${translatedBook} ${chapter}`;
+}
+
+async function fetchStoredDailyVerseText(row: any): Promise<string> {
+  const translationId = Number(row?.verse_translation_id);
+  const book = String(row?.verse_book ?? "").trim();
+  const startChapter = Number(row?.verse_start_chapter);
+  const startVerse = Number(row?.verse_start_verse);
+  const endChapter = Number(row?.verse_end_chapter ?? startChapter);
+  const endVerse = Number(row?.verse_end_verse ?? startVerse);
+
+  if (!book || !Number.isFinite(translationId) || !Number.isFinite(startChapter) || !Number.isFinite(startVerse)) {
+    return "";
+  }
+
+  const load = async (chapter: number, fromVerse: number, toVerse: number) => {
+    const params = new URLSearchParams({
+      translation: String(translationId),
+      book,
+      chapter: String(chapter),
+      startVerse: String(fromVerse),
+      endVerse: String(toVerse),
+    });
+    const response = await fetch(`/api/bible?${params.toString()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Stored daily verse reload failed");
+    const payload = await response.json();
+    return Array.isArray(payload?.verses)
+      ? payload.verses.map((verse: any) => String(verse?.text ?? "").trim()).filter(Boolean)
+      : [];
+  };
+
+  if (startChapter === endChapter) {
+    return (await load(startChapter, startVerse, endVerse)).join("\n");
+  }
+
+  const [first, second] = await Promise.all([
+    load(startChapter, startVerse, 176),
+    load(endChapter, 1, endVerse),
+  ]);
+  return [...first, ...second].join("\n");
 }
 
 function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
@@ -552,11 +592,24 @@ export default function HomePage() {
       .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
       .eq("user_id", user.id).eq("date", today).maybeSingle();
     if (ci) {
-      setTodayVerse({
+      const storedVerse = ci.verse_text ?? ci.verse;
+      const baseTodayVerse = {
         ...ci,
-        verse: ci.verse_text ?? ci.verse,
+        verse: storedVerse,
         reference: ci.verse_reference ?? ci.reference,
-      });
+      };
+      setTodayVerse(baseTodayVerse);
+
+      if (!storedVerse && Number(ci.verse_translation_id) === ESV_TRANSLATION_ID) {
+        try {
+          const reloadedVerse = await fetchStoredDailyVerseText(ci);
+          if (reloadedVerse) {
+            setTodayVerse({ ...baseTodayVerse, verse: reloadedVerse });
+          }
+        } catch (error) {
+          console.warn("ESV 오늘의 말씀 다시 불러오기 실패:", error);
+        }
+      }
     }
 
     const { data: qtRecords } = await supabase.from("qt_records")

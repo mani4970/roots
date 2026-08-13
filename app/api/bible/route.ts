@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  buildEsvPassageQuery,
+  ESV_API_BASE,
+  ESV_ATTRIBUTION_LABEL,
+  ESV_ATTRIBUTION_URL,
+  ESV_SHORT_COPYRIGHT_NOTICE,
+  isEsvTranslation,
+  parseEsvHtmlVerses,
+} from "@/lib/esvBible";
+import {
   buildYouVersionPassageId,
   getYouVersionBibleSource,
   parseYouVersionHtmlVerses,
@@ -84,6 +93,7 @@ const MAX_VERSE_RANGE = 176;
 const FETCH_TIMEOUT_MS = 10_000;
 const BIBLE_CACHE_CONTROL = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800";
 const YOUVERSION_RESPONSE_CACHE_CONTROL = "private, max-age=300, must-revalidate";
+const ESV_RESPONSE_CACHE_CONTROL = "private, no-store, max-age=0";
 let licensedBibleClient: SupabaseClient | null = null;
 
 function readServerEnv(name: string, fallback = "") {
@@ -177,6 +187,88 @@ async function fetchWithTimeout(url: string) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function getEsvApiHeaders(): HeadersInit {
+  const apiKey = readServerEnv("ESV_API_KEY");
+
+  if (!apiKey) {
+    throw new Error("Missing ESV_API_KEY");
+  }
+
+  return {
+    Accept: "application/json",
+    Authorization: `Token ${apiKey}`,
+  };
+}
+
+async function fetchEsvWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      headers: getEsvApiHeaders(),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchEsvPassage(params: {
+  bookNum: number;
+  chapter: number;
+  startVerse: number;
+  endVerse: number;
+}): Promise<BibleVerse[]> {
+  const query = buildEsvPassageQuery({
+    ...params,
+    endOfChapterSentinel: ROOTS_END_OF_CHAPTER_SENTINEL,
+  });
+  const url = new URL("passage/html/", `${ESV_API_BASE}/`);
+  url.searchParams.set("q", query);
+  url.searchParams.set("include-passage-references", "false");
+  url.searchParams.set("include-verse-numbers", "true");
+  url.searchParams.set("include-first-verse-numbers", "true");
+  url.searchParams.set("include-footnotes", "false");
+  url.searchParams.set("include-footnote-body", "false");
+  url.searchParams.set("include-headings", "false");
+  url.searchParams.set("include-short-copyright", "false");
+  url.searchParams.set("include-copyright", "false");
+  url.searchParams.set("include-audio-link", "false");
+  url.searchParams.set("include-crossrefs", "false");
+  url.searchParams.set("include-subheadings", "false");
+  url.searchParams.set("include-chapter-numbers", "false");
+
+  const response = await fetchEsvWithTimeout(url.toString());
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`ESV passage request failed (${response.status}): ${body.slice(0, 240)}`);
+  }
+
+  const payload = await response.json() as { passages?: unknown };
+  const passages = Array.isArray(payload.passages) ? payload.passages : [];
+  const content = typeof passages[0] === "string" ? passages[0] : "";
+  if (!content) throw new Error("ESV passage response was empty");
+
+  const verses = parseEsvHtmlVerses(
+    content,
+    params.startVerse,
+    params.endVerse,
+    ROOTS_END_OF_CHAPTER_SENTINEL,
+  );
+  if (verses.length === 0) {
+    throw new Error("ESV passage could not be split into individual verses");
+  }
+
+  const hasCombinedVerse = verses.some((verse) => !/^\d+$/.test(String(verse.num)));
+  if (hasCombinedVerse) {
+    throw new Error("ESV passage contained a combined or non-numeric verse marker");
+  }
+
+  return verses;
 }
 
 function getYouVersionApiHeaders(): HeadersInit {
@@ -307,6 +399,7 @@ export async function GET(req: NextRequest) {
   try {
     let verses: BibleVerse[];
     const licensedBibleTable = LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID.get(translationId);
+    const esvSource = isEsvTranslation(translationId);
     const youVersionSource = getYouVersionBibleSource(translationId);
 
     if (licensedBibleTable) {
@@ -317,6 +410,13 @@ export async function GET(req: NextRequest) {
         startVerse,
         endVerse,
       }, licensedBibleTable);
+    } else if (esvSource) {
+      verses = await fetchEsvPassage({
+        bookNum,
+        chapter,
+        startVerse,
+        endVerse,
+      });
     } else if (youVersionSource) {
       verses = await fetchYouVersionPassage({
         bookNum,
@@ -363,17 +463,20 @@ export async function GET(req: NextRequest) {
         verses,
         reference,
         version: String(translationId),
-        source: youVersionSource ? "youversion" : licensedBibleTable ? "licensed-database" : "legacy-bible-api",
-        providerVersion: youVersionSource ? String(youVersionSource.youVersionBibleId) : String(translationId),
-        versionName: youVersionSource?.displayName ?? null,
-        copyright: youVersionSource?.copyrightNotice ?? null,
-        attributionUrl: youVersionSource?.attributionUrl ?? null,
+        source: esvSource ? "esv-api" : youVersionSource ? "youversion" : licensedBibleTable ? "licensed-database" : "legacy-bible-api",
+        providerVersion: esvSource ? "ESV API v3" : youVersionSource ? String(youVersionSource.youVersionBibleId) : String(translationId),
+        versionName: esvSource ? "English Standard Version" : youVersionSource?.displayName ?? null,
+        copyright: esvSource ? ESV_SHORT_COPYRIGHT_NOTICE : youVersionSource?.copyrightNotice ?? null,
+        attributionUrl: esvSource ? ESV_ATTRIBUTION_URL : youVersionSource?.attributionUrl ?? null,
+        attributionLabel: esvSource ? ESV_ATTRIBUTION_LABEL : youVersionSource?.attributionLabel ?? null,
       },
       {
         headers: {
-          "Cache-Control": youVersionSource
-            ? YOUVERSION_RESPONSE_CACHE_CONTROL
-            : BIBLE_CACHE_CONTROL,
+          "Cache-Control": esvSource
+            ? ESV_RESPONSE_CACHE_CONTROL
+            : youVersionSource
+              ? YOUVERSION_RESPONSE_CACHE_CONTROL
+              : BIBLE_CACHE_CONTROL,
         },
       },
     );

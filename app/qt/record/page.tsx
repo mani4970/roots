@@ -11,6 +11,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
+import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { copyText } from "@/lib/nativeShare";
 import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
@@ -281,6 +282,7 @@ function RecordContent() {
 
   async function copyAll() {
     if (!record) return;
+    const isEsvRecord = Number(record.bible_version) === ESV_TRANSLATION_ID;
     const isSunday = record.qt_mode === "sunday";
     // 한국어 + 주일예배일 때 날짜 끝에 "주일" 추가 (예: "2026년 5월 3일 주일")
     const dateObj = parseLocalDateString(record.date);
@@ -344,7 +346,7 @@ function RecordContent() {
       headerLine,
       record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
       record.summary ? `\n${trR("본문 요약", lang)}\n${record.summary}` : "",
-      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}` : "",
+      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}${isEsvRecord ? `\n(ESV) ${ESV_ATTRIBUTION_URL}` : ""}` : "",
       record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
       (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
       record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
@@ -389,6 +391,7 @@ function RecordContent() {
   const isShared = sharedTargets.length > 0;
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
   const canEdit = Boolean(currentUserId && record?.user_id === currentUserId);
+  const isEsvRecord = Number(record?.bible_version) === ESV_TRANSLATION_ID;
   const SECTIONS = [
     { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
     { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
@@ -523,7 +526,21 @@ function RecordContent() {
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>{value}</p>
+                <>
+                  <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>
+                    {value}{key === "key_verse" && isEsvRecord ? " (ESV)" : ""}
+                  </p>
+                  {key === "key_verse" && isEsvRecord && (
+                    <a
+                      href={ESV_ATTRIBUTION_URL}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ display: "inline-block", marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", textDecoration: "underline", textUnderlineOffset: 2 }}
+                    >
+                      ESV.org
+                    </a>
+                  )}
+                </>
               )}
             </div>
           );

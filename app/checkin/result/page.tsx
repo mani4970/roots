@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
+import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { storageGet } from "@/lib/clientStorage";
 import HeartBurst from "@/components/HeartBurst";
 import BottomNav from "@/components/BottomNav";
@@ -112,6 +113,9 @@ function ResultContent() {
         const reference = data.reference;
         const verse = data.verse;
 
+        const resolvedTranslationId = Number(data.translation_id ?? translationId);
+        const persistVerseText = resolvedTranslationId !== ESV_TRANSLATION_ID;
+
         await supabase.from("daily_checkins").upsert({
           user_id: user.id,
           date: today,
@@ -123,12 +127,14 @@ function ResultContent() {
           verse_start_verse: data.start_verse,
           verse_end_chapter: data.end_chapter,
           verse_end_verse: data.end_verse,
-          verse_translation_id: data.translation_id ?? translationId,
+          verse_translation_id: resolvedTranslationId,
           verse_lang: data.verse_lang ?? lang,
           verse_reference: reference,
-          verse_text: verse,
+          // Crossway permits ESV API display but limits local storage. Keep only
+          // the reference metadata for Today's Word and re-fetch ESV on demand.
+          verse_text: persistVerseText ? verse : null,
           // 기존 화면/쿼리 호환용
-          verse,
+          verse: persistVerseText ? verse : null,
           reference,
         }, { onConflict: "user_id,date" });
 

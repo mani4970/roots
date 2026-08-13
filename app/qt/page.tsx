@@ -11,6 +11,7 @@ import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -36,6 +37,7 @@ type QTRecord = {
   date: string;
   bible_ref?: string | null;
   key_verse?: string | null;
+  bible_version?: string | null;
   qt_mode?: string | null;
   meditation?: string | null;
   [key: string]: any;
@@ -412,7 +414,7 @@ export default function QTPage() {
                                     <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
                                       {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
                                     </p>
-                                    {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"</p>}
+                                    {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"{Number(r.bible_version) === ESV_TRANSLATION_ID ? " (ESV)" : ""}</p>}
                                     {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
                                   </div>
                                   <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
@@ -428,6 +430,19 @@ export default function QTPage() {
               </div>
             ))}
           </div>
+        )}
+        {records.some((record) => record.key_verse && Number(record.bible_version) === ESV_TRANSLATION_ID) && (
+          <p style={{ marginTop: 10, fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
+            ESV Scripture: {" "}
+            <a
+              href={ESV_ATTRIBUTION_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+            >
+              ESV.org
+            </a>
+          </p>
         )}
       </div>
 

@@ -57,6 +57,7 @@ import {
   sortQtRowsByCompletion,
 } from "@/lib/communityContentOrder";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
+import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import {
   checkAndAwardPrayTogetherBadge,
@@ -117,6 +118,38 @@ import {
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
+
+function isEsvQtRecord(row: any) {
+  return Number(row?.bible_version) === ESV_TRANSLATION_ID;
+}
+
+function EsvInlineAttribution({ row }: { row: any }) {
+  if (!isEsvQtRecord(row)) return null;
+
+  return (
+    <>
+      {" "}
+      <span style={{ whiteSpace: "nowrap" }}>
+        (ESV ·{" "}
+        <a
+          href={ESV_ATTRIBUTION_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            color: "inherit",
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            fontSize: "0.9em",
+          }}
+        >
+          ESV.org
+        </a>
+        )
+      </span>
+    </>
+  );
+}
 
 type ShareScope = "all" | "group" | "partner";
 
@@ -5828,6 +5861,7 @@ function CommunityPageContent() {
                     }}
                   >
                     "{r.key_verse}"
+                    <EsvInlineAttribution row={r} />
                   </p>
                 )}
               </div>
@@ -6888,6 +6922,7 @@ function CommunityPageContent() {
                       >
                         "{r.key_verse.slice(0, 60)}
                         {r.key_verse.length > 60 ? "..." : ""}"
+                        <EsvInlineAttribution row={r} />
                       </p>
                     )}
                     {r.photo_path && qtPhotoUrls[r.id] && (
@@ -8185,6 +8220,7 @@ function CommunityPageContent() {
                         >
                           "{r.key_verse.slice(0, 60)}
                           {r.key_verse.length > 60 ? "..." : ""}"
+                          <EsvInlineAttribution row={r} />
                         </p>
                       )}
                       {r.photo_path && qtPhotoUrls[r.id] && (
@@ -10084,6 +10120,7 @@ function CommunityPageContent() {
                           >
                             "{r.key_verse.slice(0, 60)}
                             {r.key_verse.length > 60 ? "..." : ""}"
+                            <EsvInlineAttribution row={r} />
                           </p>
                         )}
                         {r.photo_path && qtPhotoUrls[r.id] && (

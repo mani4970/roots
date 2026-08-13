@@ -29,6 +29,7 @@ import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
+import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -3182,6 +3183,19 @@ function QTWriteContent() {
                   );
                 })}
               </div>
+              {selectedTranslation === ESV_TRANSLATION_ID && (
+                <p style={{ marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
+                  ESV ·{" "}
+                  <a
+                    href={ESV_ATTRIBUTION_URL}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                  >
+                    ESV.org
+                  </a>
+                </p>
+              )}
             </div>
           )}
 
