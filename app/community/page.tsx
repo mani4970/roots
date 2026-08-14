@@ -1086,7 +1086,7 @@ function CommunityPageContent() {
       <div
         style={{
           position: "fixed",
-          top: 18,
+          top: "calc(18px + var(--safe-area-top))",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 240,
@@ -1128,7 +1128,7 @@ function CommunityPageContent() {
         aria-live="polite"
         style={{
           position: "fixed",
-          top: 18,
+          top: "calc(18px + var(--safe-area-top))",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 241,
