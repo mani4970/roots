@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "i18n:audit:es": "node scripts/audit-spanish-localization.mjs",
     "start": "next start",
     "lint": "next lint",
     "bible:prepare:duranno": "node scripts/prepare-duranno-bible.mjs",
