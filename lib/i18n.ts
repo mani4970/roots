@@ -34,31 +34,31 @@ type Translation = Partial<Record<TranslationLang, string>> & { [K in typeof FAL
 
 export const T = {
   // ── BottomNav ──
-    nav_home:       { ko: "홈",       de: "Startseite", en: "Home", fr: "Accueil" },
-    nav_prayer:     { ko: "기도",     de: "Gebet", en: "Prayer", fr: "Prière" },
-    nav_qt:         { ko: "QT",       de: "QT", en: "QT", fr: "QT" },
-    nav_community:  { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté" },
-    nav_profile:    { ko: "프로필",   de: "Profil", en: "Profile", fr: "Profil" },
+    nav_home:       { ko: "홈",       de: "Startseite", en: "Home", fr: "Accueil", es: "Inicio" },
+    nav_prayer:     { ko: "기도",     de: "Gebet", en: "Prayer", fr: "Prière", es: "Oración" },
+    nav_qt:         { ko: "QT",       de: "QT", en: "QT", fr: "QT", es: "Devocional" },
+    nav_community:  { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
+    nav_profile:    { ko: "프로필",   de: "Profil", en: "Profile", fr: "Profil", es: "Perfil" },
 
   // ── Celebration ──
-  celebration_default_done: { ko: "완료!", de: "Geschafft!", en: "Done!", fr: "Terminé !" },
-  celebration_tap_to_close: { ko: "탭하면 닫혀요", de: "Antippen zum Schließen", en: "Tap to close", fr: "Appuyez pour fermer" },
+  celebration_default_done: { ko: "완료!", de: "Geschafft!", en: "Done!", fr: "Terminé !", es: "¡Completado!" },
+  celebration_tap_to_close: { ko: "탭하면 닫혀요", de: "Antippen zum Schließen", en: "Tap to close", fr: "Appuyez pour fermer", es: "Toca para cerrar" },
 
   // ── 홈 ──
-  home_title: { ko: "오늘",                    de: "Heute", en: "Today", fr: "Aujourd’hui" },
-  home_checkin_btn: { ko: "오늘의 말씀 받기",              de: "Tagesvers erhalten", en: "Get today's verse", fr: "Recevoir le verset du jour" },
-  home_checkin_done: { ko: "오늘의 말씀",                   de: "Tagesvers", en: "Today's verse", fr: "Verset du jour" },
-  home_qt_btn: { ko: "큐티하기",                     de: "Stille Zeit", en: "Quiet Time", fr: "Faire le QT" },
-  home_qt_done: { ko: "큐티 완료",                    de: "Stille Zeit ✓", en: "QT done ✓", fr: "QT terminé ✓" },
-  home_prayer_title: { ko: "오늘 잠깐이라도 기도하셨나요?",  de: "Haben Sie heute gebetet?", en: "Did you pray today?", fr: "Avez-vous prié aujourd’hui, même brièvement ?" },
-  home_prayer_yes: { ko: "네, 기도했어요",             de: "Ja, ich habe gebetet", en: "Yes, I prayed", fr: "Oui, j’ai prié" },
-  home_prayer_later: { ko: "나중에",                       de: "Später", en: "Later", fr: "Plus tard" },
-  home_prayer_done: { ko: "기도 완료",                 de: "Gebetet", en: "Prayed", fr: "Prière terminée" },
-  home_decision_title: { ko: "오늘의 결단",                  de: "Heutiger Vorsatz", en: "Today's resolution", fr: "Décision du jour" },
-  home_decision_done: { ko: "결단 완료 ✓",                  de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓" },
-  home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision" },
-  home_streak: { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}" },
-  home_routine_complete: { ko: "오늘 QT를 완료했어요. 정원을 확인해보세요.", de: "Die heutige QT ist abgeschlossen. Schauen Sie in den Garten.", en: "Today's QT is complete. Take a look at your garden.", fr: "Le QT du jour est terminé. Regardez votre jardin." },
+  home_title: { ko: "오늘",                    de: "Heute", en: "Today", fr: "Aujourd’hui", es: "Hoy" },
+  home_checkin_btn: { ko: "오늘의 말씀 받기",              de: "Tagesvers erhalten", en: "Get today's verse", fr: "Recevoir le verset du jour", es: "Recibir el versículo de hoy" },
+  home_checkin_done: { ko: "오늘의 말씀",                   de: "Tagesvers", en: "Today's verse", fr: "Verset du jour", es: "Versículo de hoy" },
+  home_qt_btn: { ko: "큐티하기",                     de: "Stille Zeit", en: "Quiet Time", fr: "Faire le QT", es: "Tiempo devocional" },
+  home_qt_done: { ko: "큐티 완료",                    de: "Stille Zeit ✓", en: "QT done ✓", fr: "QT terminé ✓", es: "Devocional completado ✓" },
+  home_prayer_title: { ko: "오늘 잠깐이라도 기도하셨나요?",  de: "Haben Sie heute gebetet?", en: "Did you pray today?", fr: "Avez-vous prié aujourd’hui, même brièvement ?", es: "¿Has orado hoy, aunque sea un momento?" },
+  home_prayer_yes: { ko: "네, 기도했어요",             de: "Ja, ich habe gebetet", en: "Yes, I prayed", fr: "Oui, j’ai prié", es: "Sí, he orado" },
+  home_prayer_later: { ko: "나중에",                       de: "Später", en: "Later", fr: "Plus tard", es: "Más tarde" },
+  home_prayer_done: { ko: "기도 완료",                 de: "Gebetet", en: "Prayed", fr: "Prière terminée", es: "Oración completada" },
+  home_decision_title: { ko: "오늘의 결단",                  de: "Heutiger Vorsatz", en: "Today's resolution", fr: "Décision du jour", es: "Compromiso de hoy" },
+  home_decision_done: { ko: "결단 완료 ✓",                  de: "Erledigt ✓", en: "Done ✓", fr: "Terminé ✓", es: "Compromiso cumplido ✓" },
+  home_decision_check: { ko: "결단 실천하기",                 de: "Vorsatz umsetzen", en: "Complete resolution", fr: "Valider la décision", es: "Cumplir mi compromiso" },
+  home_streak: { ko: "말씀동행 +{n}", de: "Wortweg +{n}", en: "Word walk +{n}", fr: "Chemin avec la Parole +{n}", es: "Caminar con la Palabra +{n}" },
+  home_routine_complete: { ko: "오늘 QT를 완료했어요. 정원을 확인해보세요.", de: "Die heutige QT ist abgeschlossen. Schauen Sie in den Garten.", en: "Today's QT is complete. Take a look at your garden.", fr: "Le QT du jour est terminé. Regardez votre jardin.", es: "Has completado el devocional de hoy. Echa un vistazo a tu jardín." },
 
   // ── 감정 체크인 ──
   checkin_title: { ko: "오늘 마음이\n어때요?",   de: "Wie fühlen\nSie sich?", en: "How are you\nfeeling?", fr: "Comment est votre\ncœur aujourd’hui ?" },
