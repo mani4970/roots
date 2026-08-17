@@ -179,6 +179,14 @@ function notificationText(lang: Lang) {
       prayerTitle: "C’est le moment de prier",
       prayer: "C’est le moment de prier ! Cherche Dieu et demande-lui 💛",
     },
+    es: {
+      roots: "Roots",
+      morning: "Empieza el día con Dios a través de la meditación bíblica 🌱",
+      eveningTitle: "Un momento ante la Palabra",
+      evening: "Antes de que termine el día, ¿qué tal si te acercas un momento a la Palabra?",
+      prayerTitle: "Es hora de orar",
+      prayer: "¡Es hora de orar! Busca a Dios y preséntale tus peticiones 💛",
+    },
   } as const;
   return messages[lang] ?? messages.ko;
 }

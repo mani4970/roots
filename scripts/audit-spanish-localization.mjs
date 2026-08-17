@@ -401,6 +401,72 @@ const notificationSettings = auditStandaloneLanguageRecord(
   "lib/notifications/settingsText.ts",
   "const NOTIFICATION_SETTINGS_TEXT",
 );
+
+const stagedStandaloneRecords = [
+  {
+    label: "lib/localNotifications.ts",
+    audit: auditStandaloneLanguageRecord("lib/localNotifications.ts", "const messages"),
+  },
+  {
+    label: "lib/reflectionNudgeText.ts",
+    audit: auditStandaloneLanguageRecord("lib/reflectionNudgeText.ts", "const REFLECTION_NUDGE_TEXT"),
+  },
+  {
+    label: "lib/companionChallengeText.ts",
+    audit: auditStandaloneLanguageRecord("lib/companionChallengeText.ts", "const TEXT"),
+  },
+  {
+    label: "lib/companionChallengeText.ts titles",
+    audit: auditStandaloneLanguageRecord("lib/companionChallengeText.ts", "const CHALLENGE_TITLE_TEXT"),
+  },
+  {
+    label: "lib/groupChallengeRequestText.ts",
+    audit: auditStandaloneLanguageRecord("lib/groupChallengeRequestText.ts", "const TEXT"),
+  },
+  {
+    label: "lib/groupLeaderText.ts",
+    audit: auditStandaloneLanguageRecord("lib/groupLeaderText.ts", "const GROUP_LEADER_TEXT"),
+  },
+  {
+    label: "lib/inviteLandingText.ts",
+    audit: auditStandaloneLanguageRecord("lib/inviteLandingText.ts", "const INVITE_LANDING_TEXT"),
+  },
+  {
+    label: "lib/sharePromptOptions.ts",
+    audit: auditStandaloneLanguageRecord("lib/sharePromptOptions.ts", "const SHARE_PROMPT_BULK_SELECTION_LABELS"),
+  },
+  {
+    label: "components/CompanionChallengeAnnouncementPopup.tsx",
+    audit: auditStandaloneLanguageRecord("components/CompanionChallengeAnnouncementPopup.tsx", "const COPY"),
+  },
+  {
+    label: "components/PetShopAnnouncementPopup.tsx",
+    audit: auditStandaloneLanguageRecord("components/PetShopAnnouncementPopup.tsx", "const COPY"),
+  },
+  {
+    label: "components/FeedbackSuccessPopup.tsx",
+    audit: auditStandaloneLanguageRecord("components/FeedbackSuccessPopup.tsx", "const FEEDBACK_SUCCESS_COPY"),
+  },
+];
+
+const stagedTranslationObjects = [
+  {
+    label: "lib/notifications/templates.ts",
+    audit: auditTranslationObject("lib/notifications/templates.ts", "export const NOTIFICATION_TEMPLATES"),
+  },
+  {
+    label: "lib/communityReactionText.ts",
+    audit: auditTranslationObject("lib/communityReactionText.ts", "const LABELS"),
+  },
+];
+
+const stagedBranchChecks = [
+  {
+    label: "lib/notifications/reflectionNudgeTemplates.ts Spanish branch",
+    ok: /if\s*\(lang\s*===\s*["']es["']\)/.test(read("lib/notifications/reflectionNudgeTemplates.ts")),
+  },
+];
+
 const hardcoded = collectHardcodedFourLanguageSurfaces();
 const bibleDataBooks = auditSpanishBibleBooks("lib/bibleData.ts");
 const bibleBooksBooks = auditSpanishBibleBooks("lib/bibleBooks.ts");
@@ -429,6 +495,23 @@ if (notificationSettings.missingFields.length > 0) {
 if (notificationSettings.extraFields.length > 0) {
   console.log(`    extra: ${notificationSettings.extraFields.join(", ")}`);
 }
+for (const entry of stagedStandaloneRecords) {
+  const { audit } = entry;
+  console.log(`  - ${entry.label}: ${audit.translated}/${audit.expected} Spanish fields`);
+  if (audit.missingFields.length > 0) {
+    console.log(`    missing: ${audit.missingFields.join(", ")}`);
+  }
+  if (audit.extraFields.length > 0) {
+    console.log(`    extra: ${audit.extraFields.join(", ")}`);
+  }
+}
+for (const entry of stagedTranslationObjects) {
+  const translated = entry.audit.total - entry.audit.missingSpanish.length;
+  console.log(`  - ${entry.label}: ${translated}/${entry.audit.total} Spanish entries`);
+}
+for (const entry of stagedBranchChecks) {
+  console.log(`  - ${entry.label}: ${entry.ok ? "yes" : "no"}`);
+}
 console.log("\nFoundation status");
 console.log(`  - SUPPORTED_LANGS includes es: ${supportedLangsHasSpanish ? "yes" : "no"}`);
 console.log(`  - Spanish default translation is Roots ID 101: ${spanishDefaultIs101 ? "yes" : "no"}`);
@@ -444,6 +527,13 @@ const strictFailures = [
   !notificationSettings.spanishPresent,
   notificationSettings.missingFields.length > 0,
   notificationSettings.extraFields.length > 0,
+  ...stagedStandaloneRecords.flatMap(({ audit }) => [
+    !audit.spanishPresent,
+    audit.missingFields.length > 0,
+    audit.extraFields.length > 0,
+  ]),
+  ...stagedTranslationObjects.map(({ audit }) => audit.missingSpanish.length > 0),
+  ...stagedBranchChecks.map(({ ok }) => !ok),
   hardcoded.length > 0,
   !supportedLangsHasSpanish,
   !spanishDefaultIs101,

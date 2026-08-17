@@ -26,6 +26,7 @@ const SHARE_PROMPT_BULK_SELECTION_LABELS = {
   de: { selectAll: "Alle auswählen", deselectAll: "Auswahl aufheben" },
   en: { selectAll: "Select all", deselectAll: "Clear selection" },
   fr: { selectAll: "Tout sélectionner", deselectAll: "Tout désélectionner" },
+  es: { selectAll: "Seleccionar todo", deselectAll: "Quitar selección" },
 } as const;
 
 export function getSharePromptBulkSelectionLabels(lang: string) {

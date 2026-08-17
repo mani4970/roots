@@ -1,5 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 
+type ReflectionNudgeLang = Lang | "es";
+
 type ReflectionNudgeText = {
   sendPartner: (name: string) => string;
   sendGroup: (name: string) => string;
@@ -16,7 +18,7 @@ type ReflectionNudgeText = {
   failed: string;
 };
 
-const REFLECTION_NUDGE_TEXT: Record<Lang, ReflectionNudgeText> = {
+const REFLECTION_NUDGE_TEXT: Record<ReflectionNudgeLang, ReflectionNudgeText> = {
   ko: {
     sendPartner: (name) => `${name}님에게 같이 묵상하자고 넛지 보내기`,
     sendGroup: (name) => `${name} 그룹에 같이 묵상하자고 넛지 보내기`,
@@ -97,8 +99,30 @@ const REFLECTION_NUDGE_TEXT: Record<Lang, ReflectionNudgeText> = {
     failed:
       "L’invitation n’a pas pu être envoyée. Veuillez réessayer dans un instant.",
   },
+  es: {
+    sendPartner: (name) => `Invitar a ${name} a meditar juntos en la Palabra`,
+    sendGroup: (name) => `Invitar al grupo ${name} a meditar juntos en la Palabra`,
+    partnerCompleted: (name) =>
+      `${name} ya completó la meditación bíblica de hoy`,
+    groupCompleted: (name) =>
+      `En el grupo ${name} ya no hay miembros pendientes de completar la meditación bíblica de hoy`,
+    alreadySent: "Ya enviaste una invitación hoy",
+    loading: "Comprobando el estado de la invitación de hoy",
+    sending: "Enviando la invitación para meditar en la Palabra",
+    partnerSuccess: (name) =>
+      `¡Invitaste a ${name} a meditar juntos en la Palabra! 👋`,
+    groupSuccess: (name) =>
+      `¡Invitaste al grupo ${name} a meditar juntos en la Palabra! 👋`,
+    completedNotice:
+      "Tu compañero de fe ya completó la meditación bíblica de hoy.",
+    groupCompletedNotice:
+      "Ya no hay miembros del grupo pendientes de completar la meditación bíblica de hoy.",
+    alreadySentNotice: "Ya enviaste una invitación hoy.",
+    failed:
+      "No se pudo enviar la invitación. Vuelve a intentarlo dentro de un momento.",
+  },
 };
 
-export function getReflectionNudgeText(lang: Lang): ReflectionNudgeText {
+export function getReflectionNudgeText(lang: ReflectionNudgeLang): ReflectionNudgeText {
   return REFLECTION_NUDGE_TEXT[lang] ?? REFLECTION_NUDGE_TEXT.ko;
 }

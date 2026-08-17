@@ -1,6 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 
 type ReflectionNudgeScope = "group" | "partner";
+type ReflectionNudgeLang = Lang | "es";
 
 type ReflectionNudgeTemplateVariables = {
   actorName?: string | null;
@@ -18,7 +19,7 @@ function safeName(value: string | null | undefined) {
 
 export function getReflectionNudgeNotificationTemplate(
   scope: ReflectionNudgeScope,
-  lang: Lang,
+  lang: ReflectionNudgeLang,
   variables: ReflectionNudgeTemplateVariables,
 ): ReflectionNudgeTemplate {
   const actorName = safeName(variables.actorName);
@@ -57,6 +58,18 @@ export function getReflectionNudgeNotificationTemplate(
       : {
           title: `${actorName} vous invite à méditer la Parole ensemble ! 👋`,
           body: "Aujourd’hui encore, avançons ensemble vers la Parole de Dieu !",
+        };
+  }
+
+  if (lang === "es") {
+    return scope === "group"
+      ? {
+          title: `${groupName}, ¡meditemos juntos en la Palabra! 👋`,
+          body: "¡Acerquémonos hoy también a la Palabra de Dios!",
+        }
+      : {
+          title: `${actorName} te invita a meditar juntos en la Palabra 👋`,
+          body: "¡Acerquémonos hoy también a la Palabra de Dios!",
         };
   }
 

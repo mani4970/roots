@@ -3,7 +3,7 @@
 import { Loader2, Users } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 
-type AnnouncementLang = "ko" | "en" | "de" | "fr";
+type AnnouncementLang = "ko" | "en" | "de" | "fr" | "es";
 
 type CompanionChallengeAnnouncementPopupProps = {
   show: boolean;
@@ -60,6 +60,16 @@ const COPY: Record<
     manage: "Gérer les partenaires",
     close: "Fermer",
     badgeAlt: "Notre chemin de foi Partie 2 – badge spécial",
+  },
+  es: {
+    title: "¡El desafío con compañero de fe comenzará pronto!",
+    body:
+      "Conecta con un compañero de fe para compartir una meditación bíblica cada día.",
+    reward:
+      "¡Completen el desafío para recibir una insignia especial y 20 corazones de amor!",
+    manage: "Gestionar compañeros de fe",
+    close: "Cerrar",
+    badgeAlt: "Insignia especial Nuestro camino de fe Parte 2",
   },
 };
 

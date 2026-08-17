@@ -33,6 +33,8 @@ export function resolveInviteLandingLang(
   return isLang(savedLang) ? savedLang : FALLBACK_LANG;
 }
 
+type InviteLandingTextLang = InviteLandingLang | "es";
+
 type InviteLandingText = {
   brandTagline: string;
   languageAria: string;
@@ -52,7 +54,7 @@ type InviteLandingText = {
   inAppBrowserHint: string;
 };
 
-const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
+const INVITE_LANDING_TEXT: Record<InviteLandingTextLang, InviteLandingText> = {
   ko: {
     brandTagline: "말씀에 뿌리내리고, 함께 자라다",
     languageAria: "초대 페이지 언어 선택",
@@ -147,6 +149,31 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "Après avoir installé l’application, ouvrez de nouveau ce lien d’invitation pour accepter l’invitation.",
     inAppBrowserHint:
       "Si la connexion ne fonctionne pas dans KakaoTalk, veuillez ouvrir cette page dans un navigateur externe.",
+  },
+  es: {
+    brandTagline: "Echar raíces en la Palabra y crecer en comunidad",
+    languageAria: "Elegir el idioma de la página de invitación",
+    privateGroupName: "Grupo privado",
+    groupTitle: (name) => `Te invitaron a unirte a ${name}`,
+    groupBody:
+      "Un grupo de Roots para compartir meditaciones bíblicas y orar los unos por los otros.",
+    groupMembers: (count) => `${count} personas ya forman parte`,
+    groupJoinButton: "Unirme al grupo",
+    groupJoinAuthButton: "Registrarme o iniciar sesión para unirme",
+    groupAfterAuthHint:
+      "Podrás unirte después de registrarte o iniciar sesión.",
+    groupAppDownloadHint:
+      "Después de instalar la app, vuelve a abrir este enlace de invitación para unirte al grupo.",
+    companionTitle: "Te invitaron a compartir el camino de la fe",
+    companionBody:
+      "Empieza a caminar con alguien en la fe, compartiendo meditaciones bíblicas y orando mutuamente.",
+    companionPrimary: "Registrarme o iniciar sesión para aceptar",
+    companionAfterAuthHint:
+      "Podrás aceptar después de registrarte o iniciar sesión.",
+    companionAppDownloadHint:
+      "Después de instalar la app, vuelve a abrir este enlace de invitación para aceptar la invitación.",
+    inAppBrowserHint:
+      "Si no puedes iniciar sesión dentro de KakaoTalk, abre esta página en un navegador externo.",
   },
 };
 

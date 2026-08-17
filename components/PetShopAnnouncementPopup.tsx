@@ -9,7 +9,7 @@ type PetShopAnnouncementPopupProps = {
   onOpenShop: () => void;
 };
 
-type AnnouncementLang = "ko" | "en" | "de" | "fr";
+type AnnouncementLang = "ko" | "en" | "de" | "fr" | "es";
 
 const COPY: Record<AnnouncementLang, {
   title: string;
@@ -40,6 +40,12 @@ const COPY: Record<AnnouncementLang, {
     button: "Voir la Boutique d’amour",
     close: "Fermer",
     petNames: ["Schnauzer", "Bichon frisé", "Bleu russe", "Chat persan"],
+  },
+  es: {
+    title: "¡Ya hay mascotas para\nRootsman y Rootswoman!",
+    button: "Visitar la Tienda de corazones",
+    close: "Cerrar",
+    petNames: ["Schnauzer", "Bichón frisé", "Azul ruso", "Gato persa"],
   },
 };
 

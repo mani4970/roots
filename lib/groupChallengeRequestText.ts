@@ -1,5 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 
+type GroupChallengeRequestLang = Lang | "es";
+
 type GroupChallengeRequestText = {
   leadTimeNotice: string;
   endDateLabel: string;
@@ -12,7 +14,7 @@ type GroupChallengeRequestText = {
   preparingSchedule: string;
 };
 
-const TEXT: Record<Lang, GroupChallengeRequestText> = {
+const TEXT: Record<GroupChallengeRequestLang, GroupChallengeRequestText> = {
   ko: {
     leadTimeNotice: "챌린지는 시작일 기준 최소 15일 전에 신청해주세요.",
     endDateLabel: "희망 종료일",
@@ -57,9 +59,20 @@ const TEXT: Record<Lang, GroupChallengeRequestText> = {
     maxDurationError: "Un défi peut durer au maximum 120 jours.",
     preparingSchedule: "Prévu du {start} au {end}.",
   },
+  es: {
+    leadTimeNotice: "Envía la solicitud al menos 15 días antes de que comience el desafío.",
+    endDateLabel: "Fecha de finalización deseada",
+    leaderOnlyNotice: "Solo quien lidera el grupo puede solicitar un desafío grupal.",
+    activeRequestError: "Este grupo ya tiene una solicitud de desafío en curso.",
+    requiredError: "Revisa el nombre del desafío, la fecha de inicio, la fecha de finalización y el correo electrónico.",
+    startTooSoonError: "La fecha de inicio deseada debe ser al menos 15 días después de hoy.",
+    invalidDateRangeError: "La fecha de finalización debe ser igual o posterior a la fecha de inicio.",
+    maxDurationError: "El desafío puede durar como máximo 120 días.",
+    preparingSchedule: "Previsto del {start} al {end}.",
+  },
 };
 
-export function getGroupChallengeRequestText(lang: Lang) {
+export function getGroupChallengeRequestText(lang: GroupChallengeRequestLang) {
   return TEXT[lang] ?? TEXT.ko;
 }
 
