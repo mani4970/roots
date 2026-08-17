@@ -48,7 +48,7 @@ const COPY = {
     sections: [
       { title: "Support email", paragraphs: [SUPPORT_EMAIL] },
       { title: "Help us investigate", paragraphs: ["Include your account email, device type, operating system and app version, the affected screen, and steps to reproduce the issue. Please hide personal information in screenshots."] },
-      { title: "Do not send", paragraphs: ["Do not email passwords, sign-in codes, API keys, payment details, or full reflection and prayer content that is not necessary to resolve the request."] },
+      { title: "Do not send", paragraphs: ["Do not email passwords, sign-in codes, API keys, payment details, or full Bible Reflection and prayer content that is not necessary to resolve the request."] },
       { title: "Account and privacy requests", paragraphs: ["If you can sign in, delete the account directly from Profile account management. Access, correction, deletion, portability, and other privacy requests may be sent by email. We may verify identity to protect the account."] },
     ],
   },
@@ -63,7 +63,7 @@ const COPY = {
     sections: [
       { title: "E-mail d’assistance", paragraphs: [SUPPORT_EMAIL] },
       { title: "Pour faciliter la vérification", paragraphs: ["Indiquez l’e-mail du compte, le type d’appareil, le système et la version de l’app, l’écran concerné et les étapes permettant de reproduire le problème. Masquez les données personnelles sur les captures."] },
-      { title: "Informations à ne pas envoyer", paragraphs: ["N’envoyez pas de mots de passe, codes de connexion, clés API, données de paiement ni le texte complet de méditations ou prières sans rapport avec la demande."] },
+      { title: "Informations à ne pas envoyer", paragraphs: ["N’envoyez pas de mots de passe, codes de connexion, clés API, données de paiement ni le texte complet de méditations bibliques ou de prières sans rapport avec la demande."] },
       { title: "Compte et demandes de confidentialité", paragraphs: ["Si vous pouvez vous connecter, supprimez directement le compte dans la gestion du profil. Les demandes d’accès, rectification, suppression, portabilité ou autres demandes peuvent être envoyées par e-mail. Une vérification d’identité peut être demandée."] },
     ],
   },

@@ -155,7 +155,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     deleteGroup: "Supprimer le groupe",
     deleteGroupTitle: "Supprimer ce groupe ?",
     deleteGroupMessage: (name) =>
-      `Le groupe « ${name} » sera définitivement supprimé. Les adhésions, invitations et défis en cours prendront fin, mais les méditations personnelles, la progression, les cœurs et les badges déjà obtenus seront conservés.`,
+      `Le groupe « ${name} » sera définitivement supprimé. Les adhésions, invitations et défis en cours prendront fin, mais les méditations bibliques personnelles, la progression, les cœurs et les badges déjà obtenus seront conservés.`,
     deleteGroupAction: "Supprimer",
     deleteGroupError:
       "Impossible de supprimer le groupe. Veuillez réessayer dans un instant.",

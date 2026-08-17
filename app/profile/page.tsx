@@ -64,9 +64,9 @@ const PROFILE_MONTH_LOCALE = {
 
 const PROFILE_HEART_GUIDE_TEXT = {
   ko: "다른 사람들의 묵상을 축복하고, 함께 기도하면 💛가 쌓여요.",
-  en: "Bless others’ reflections and pray together to collect 💛.",
+  en: "Bless others’ Bible Reflections and pray together to collect 💛.",
   de: "Segne die Stille Zeit anderer und bete mit ihnen, um 💛 zu sammeln.",
-  fr: "Bénis les méditations des autres et prie avec eux pour gagner des 💛.",
+  fr: "Bénis les méditations bibliques des autres et prie avec eux pour gagner des 💛.",
 } as const;
 
 type QtRecord = { date: string };

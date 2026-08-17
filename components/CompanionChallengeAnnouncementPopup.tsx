@@ -34,7 +34,7 @@ const COPY: Record<
   },
   en: {
     title: "The Companion Challenge is starting soon!",
-    body: "Connect with a faith partner and share Bible Reflection each day.",
+    body: "Connect with a faith partner and share a Bible Reflection each day.",
     reward:
       "Complete the challenge to receive a special badge and 20 Love Hearts!",
     manage: "Manage companions",

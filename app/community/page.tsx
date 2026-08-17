@@ -1548,7 +1548,7 @@ function CommunityPageContent() {
 
   function openPhotoViewer(src: string, alt?: string) {
     pushCommunityModalHistory("photo-viewer");
-    setPhotoViewer({ src, alt: alt || "photo reflection" });
+    setPhotoViewer({ src, alt: alt || "Bible Reflection photo" });
   }
 
   function resetPhotoViewerState() {
@@ -5735,7 +5735,7 @@ function CommunityPageContent() {
       >
         <img
           src={src}
-          alt={alt || "photo reflection"}
+          alt={alt || "Bible Reflection photo"}
           loading="lazy"
           decoding="async"
           style={style}
@@ -5871,7 +5871,7 @@ function CommunityPageContent() {
                 {qtPhotoUrls[r.id] ? (
                   renderPhotoReflectionImage({
                     src: qtPhotoUrls[r.id],
-                    alt: "photo reflection",
+                    alt: "Bible Reflection photo",
                     style: {
                       width: "100%",
                       maxHeight: 520,
@@ -6928,7 +6928,7 @@ function CommunityPageContent() {
                     {r.photo_path && qtPhotoUrls[r.id] && (
                       renderPhotoReflectionImage({
                         src: qtPhotoUrls[r.id],
-                        alt: "photo reflection",
+                        alt: "Bible Reflection photo",
                         style: {
                           width: "100%",
                           maxHeight: 220,
@@ -8226,7 +8226,7 @@ function CommunityPageContent() {
                       {r.photo_path && qtPhotoUrls[r.id] && (
                         renderPhotoReflectionImage({
                           src: qtPhotoUrls[r.id],
-                          alt: "photo reflection",
+                          alt: "Bible Reflection photo",
                           style: {
                             width: "100%",
                             maxHeight: 220,
@@ -10126,7 +10126,7 @@ function CommunityPageContent() {
                         {r.photo_path && qtPhotoUrls[r.id] && (
                           renderPhotoReflectionImage({
                             src: qtPhotoUrls[r.id],
-                            alt: "photo reflection",
+                            alt: "Bible Reflection photo",
                             style: {
                               width: "100%",
                               maxHeight: 220,

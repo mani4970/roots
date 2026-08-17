@@ -81,7 +81,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
     privateGroupName: "Private group",
     groupTitle: (name) => `You’re invited to ${name}`,
     groupBody:
-      "A Roots group where you can share Bible reflections and pray for one another.",
+      "A Roots group where you can share Bible Reflections and pray for one another.",
     groupMembers: (count) => `${count} people are already together`,
     groupJoinButton: "Join group",
     groupJoinAuthButton: "Sign up or log in to join",
@@ -90,7 +90,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "After installing the app, open this invite link again to join the group.",
     companionTitle: "You’re invited to become faith partners",
     companionBody:
-      "Start a faith partnership to share Bible reflections and pray for one another.",
+      "Start a faith partnership to share Bible Reflections and pray for one another.",
     companionPrimary: "Sign up or log in to connect",
     companionAfterAuthHint: "You can accept after signing up or logging in.",
     companionAppDownloadHint:
@@ -104,7 +104,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
     privateGroupName: "Private Gruppe",
     groupTitle: (name) => `Du wurdest zu ${name} eingeladen`,
     groupBody:
-      "Eine Roots Gruppe, in der ihr Bibelreflexionen teilen und füreinander beten könnt.",
+      "Eine Roots-Gruppe, in der ihr Stille Zeiten teilen und füreinander beten könnt.",
     groupMembers: (count) => `${count} Personen sind schon dabei`,
     groupJoinButton: "Beitreten",
     groupJoinAuthButton: "Registrieren/anmelden und beitreten",
@@ -114,7 +114,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "Nach der App-Installation kannst du diesen Einladungslink erneut öffnen, um der Gruppe beizutreten.",
     companionTitle: "Du wurdest als Glaubenspartner eingeladen",
     companionBody:
-      "Beginne eine Glaubenspartnerschaft, um Bibelreflexionen zu teilen und füreinander zu beten.",
+      "Beginne eine Glaubenspartnerschaft, um Stille Zeiten zu teilen und füreinander zu beten.",
     companionPrimary: "Registrieren/anmelden und verbinden",
     companionAfterAuthHint:
       "Nach der Registrierung oder Anmeldung kannst du die Einladung annehmen.",

@@ -39,11 +39,11 @@ export function getReflectionNudgeNotificationTemplate(
   if (lang === "en") {
     return scope === "group"
       ? {
-          title: `${groupName}, let’s reflect together! 👋`,
+          title: `${groupName}, let’s reflect on the Word together! 👋`,
           body: "Let’s come before God’s Word together today!",
         }
       : {
-          title: `${actorName} wants to reflect together! 👋`,
+          title: `${actorName} invites you to reflect on the Word together! 👋`,
           body: "Let’s come before God’s Word together today!",
         };
   }
@@ -51,11 +51,11 @@ export function getReflectionNudgeNotificationTemplate(
   if (lang === "fr") {
     return scope === "group"
       ? {
-          title: `${groupName}, méditons ensemble ! 👋`,
+          title: `${groupName}, méditons la Parole ensemble ! 👋`,
           body: "Aujourd’hui encore, avançons ensemble vers la Parole de Dieu !",
         }
       : {
-          title: `${actorName} vous invite à méditer ensemble ! 👋`,
+          title: `${actorName} vous invite à méditer la Parole ensemble ! 👋`,
           body: "Aujourd’hui encore, avançons ensemble vers la Parole de Dieu !",
         };
   }

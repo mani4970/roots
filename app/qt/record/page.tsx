@@ -487,14 +487,14 @@ function RecordContent() {
         />
       )}
 
-      {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt="photo reflection" onClose={() => setPhotoViewerOpen(false)} />}
+      {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt="Bible Reflection photo" onClose={() => setPhotoViewerOpen(false)} />}
 
       {isPhotoRecord && (
         <div style={{ padding: "16px 16px 0" }}>
           <div className="card roots-elevation-card">
             {photoUrl ? (
               <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
-                <img src={photoUrl} alt="photo reflection" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                <img src={photoUrl} alt="Bible Reflection photo" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
               </button>
             ) : (
               <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
