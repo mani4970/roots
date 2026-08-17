@@ -15,7 +15,10 @@ type NotificationSettingsText = {
   pushRegistrationFailed: string;
 };
 
-const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
+// Spanish copy is staged before Español becomes selectable in the app.
+type NotificationSettingsLang = Lang | "es";
+
+const NOTIFICATION_SETTINGS_TEXT: Record<NotificationSettingsLang, NotificationSettingsText> = {
   ko: {
     modalDescription: "말씀 묵상과 기도의 시간, 그리고 커뮤니티의 알림을 설정해보세요.",
     devicePermissionDescription: "기기 알림 권한을 설정합니다",
@@ -71,6 +74,20 @@ const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
     partnerDescription: "Recevez les méditations bibliques et prières de vos partenaires de foi.",
     pushPermissionDenied: "Les notifications du téléphone ne sont pas autorisées. Veuillez autoriser les notifications Roots dans les réglages de l’appareil.",
     pushRegistrationFailed: "Un problème est survenu lors de la préparation des notifications du téléphone. Veuillez réessayer plus tard.",
+  },
+  es: {
+    modalDescription: "Configura tus horarios de meditación bíblica y oración, y gestiona las notificaciones de la comunidad.",
+    devicePermissionDescription: "Configura el permiso de notificaciones del dispositivo.",
+    eveningReminderDescription: "Antes de que termine el día, te recordaremos la meditación bíblica de hoy.",
+    loadFailed: "No se pudo cargar la configuración de notificaciones de compañeros de fe y grupos.",
+    pushTitle: "Notificaciones de compañeros de fe y grupos",
+    pushDescription: "Elige si quieres recibir en tu teléfono novedades sobre meditaciones bíblicas, peticiones de oración y oraciones respondidas.",
+    groupTitle: "Notificaciones de grupos",
+    groupDescription: "Recibe novedades sobre las meditaciones bíblicas y las oraciones de los grupos a los que perteneces.",
+    partnerTitle: "Notificaciones de compañeros de fe",
+    partnerDescription: "Recibe novedades sobre las meditaciones bíblicas y las oraciones de tus compañeros de fe.",
+    pushPermissionDenied: "Las notificaciones del teléfono no están permitidas. Habilita las notificaciones de Roots en la configuración de tu dispositivo.",
+    pushRegistrationFailed: "Hubo un problema al preparar las notificaciones del teléfono. Inténtalo de nuevo más tarde.",
   },
 };
 

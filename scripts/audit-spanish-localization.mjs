@@ -246,6 +246,27 @@ function auditTranslationObject(relativePath, marker) {
   };
 }
 
+function auditStandaloneLanguageRecord(relativePath, marker) {
+  const source = read(relativePath);
+  const objectRange = findObjectByMarker(source, marker);
+  const entries = parseTopLevelObjectEntries(source, objectRange);
+  const koreanEntry = entries.find((entry) => entry.key === "ko");
+  const spanishEntry = entries.find((entry) => entry.key === "es");
+  const expectedFields = koreanEntry ? getLanguageKeys(koreanEntry.value) : new Set();
+  const spanishFields = spanishEntry ? getLanguageKeys(spanishEntry.value) : new Set();
+  const missingFields = [...expectedFields].filter((field) => !spanishFields.has(field));
+  const extraFields = [...spanishFields].filter((field) => !expectedFields.has(field));
+
+  return {
+    relativePath,
+    expected: expectedFields.size,
+    translated: expectedFields.size - missingFields.length,
+    missingFields,
+    extraFields,
+    spanishPresent: Boolean(spanishEntry),
+  };
+}
+
 function walk(relativeRoot) {
   const absoluteRoot = path.join(PROJECT_ROOT, relativeRoot);
   if (!fs.existsSync(absoluteRoot)) return [];
@@ -376,6 +397,10 @@ function printFindingList(title, findings, limit = 30) {
 const central = auditTranslationObject("lib/i18n.ts", "export const T");
 const qtWrite = auditTranslationObject("app/qt/write/page.tsx", "const QT_WRITE_TRANSLATIONS");
 const photo = auditTranslationObject("app/qt/photo/page.tsx", "const PHOTO_COPY");
+const notificationSettings = auditStandaloneLanguageRecord(
+  "lib/notifications/settingsText.ts",
+  "const NOTIFICATION_SETTINGS_TEXT",
+);
 const hardcoded = collectHardcodedFourLanguageSurfaces();
 const bibleDataBooks = auditSpanishBibleBooks("lib/bibleData.ts");
 const bibleBooksBooks = auditSpanishBibleBooks("lib/bibleBooks.ts");
@@ -394,6 +419,16 @@ console.log("\nTranslation dictionaries");
 console.log(`  - lib/i18n.ts: ${central.total} total, ${central.missingSpanish.length} missing es`);
 console.log(`  - app/qt/write/page.tsx: ${qtWrite.total} total, ${qtWrite.missingSpanish.length} missing es`);
 console.log(`  - app/qt/photo/page.tsx: ${photo.total} total, ${photo.missingSpanish.length} missing es`);
+console.log("\nStaged standalone dictionaries");
+console.log(
+  `  - lib/notifications/settingsText.ts: ${notificationSettings.translated}/${notificationSettings.expected} Spanish fields`,
+);
+if (notificationSettings.missingFields.length > 0) {
+  console.log(`    missing: ${notificationSettings.missingFields.join(", ")}`);
+}
+if (notificationSettings.extraFields.length > 0) {
+  console.log(`    extra: ${notificationSettings.extraFields.join(", ")}`);
+}
 console.log("\nFoundation status");
 console.log(`  - SUPPORTED_LANGS includes es: ${supportedLangsHasSpanish ? "yes" : "no"}`);
 console.log(`  - Spanish default translation is Roots ID 101: ${spanishDefaultIs101 ? "yes" : "no"}`);
@@ -406,6 +441,9 @@ const strictFailures = [
   central.missingSpanish.length > 0,
   qtWrite.missingSpanish.length > 0,
   photo.missingSpanish.length > 0,
+  !notificationSettings.spanishPresent,
+  notificationSettings.missingFields.length > 0,
+  notificationSettings.extraFields.length > 0,
   hardcoded.length > 0,
   !supportedLangsHasSpanish,
   !spanishDefaultIs101,
