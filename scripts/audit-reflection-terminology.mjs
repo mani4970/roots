@@ -210,6 +210,17 @@ requireEntry("lib/i18n.ts", "group_challenge_card_body", [
   "défi de méditation biblique",
 ]);
 
+for (const [key, fragments] of [
+  ["badge_rootsman_desc", ["Stille Zeiten", "Bible Reflections", "méditations bibliques"]],
+  ["badge_joseph_desc", ["Stille Zeit", "Bible Reflection", "méditation biblique"]],
+  ["badge_qt_bird_desc", ["Stille Zeiten", "Bible Reflections", "méditations bibliques"]],
+  ["badge_word_peace_desc", ["Stille Zeiten", "Bible Reflections", "méditations bibliques"]],
+  ["badge_angel_desc", ["Stille Zeiten", "Bible Reflections", "méditations bibliques"]],
+  ["garden_badge_100days", ["durch Stille Zeit", "through Bible Reflection", "par la méditation biblique"]],
+]) {
+  requireEntry("lib/i18n.ts", key, fragments);
+}
+
 requireFragments("lib/qtWriteConfig.ts", "Korean step-four meaning", [
   "말씀을 통해 받은 생각과 깨달음을 솔직하게 써보세요.",
 ]);

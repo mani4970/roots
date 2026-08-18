@@ -11,10 +11,10 @@ export function getRootsAvatarImageSrc(avatarType: unknown): string {
 }
 
 
-type SupportedLang = "ko" | "en" | "de" | "fr";
+type SupportedLang = "ko" | "en" | "de" | "fr" | "es";
 
 function safeLang(lang: string): SupportedLang {
-  return lang === "en" || lang === "de" || lang === "fr" ? lang : "ko";
+  return lang === "en" || lang === "de" || lang === "fr" || lang === "es" ? lang : "ko";
 }
 
 const AVATAR_LABELS: Record<RootsAvatarType, Record<SupportedLang, string>> = {
@@ -23,12 +23,14 @@ const AVATAR_LABELS: Record<RootsAvatarType, Record<SupportedLang, string>> = {
     en: "Rootsman",
     de: "RootsMan",
     fr: "RootsMan",
+    es: "Rootsman",
   },
   rootswoman: {
     ko: "루츠우먼",
     en: "Rootswoman",
     de: "RootsWoman",
     fr: "RootsWoman",
+    es: "Rootswoman",
   },
 };
 
@@ -38,84 +40,98 @@ const AVATAR_CHOICE_TEXT = {
     en: "Choose your character",
     de: "Wählen Sie Ihren Charakter",
     fr: "Choisissez votre personnage",
+    es: "Elige tu personaje",
   },
   changeTitle: {
     ko: "당신의 캐릭터를 선택해주세요",
     en: "Choose your character",
     de: "Wählen Sie Ihren Charakter",
     fr: "Choisissez votre personnage",
+    es: "Elige tu personaje",
   },
   introBody: {
     ko: "말씀 여정을 함께할 캐릭터를 선택해보세요. 캐릭터는 프로필에서 바꿀 수 있습니다.",
     en: "Choose the character who will walk with you through your Bible Reflection journey. You can change this later in your profile.",
     de: "Wählen Sie den Charakter, der Sie auf Ihrer Stille-Zeit-Reise begleitet. Sie können ihn später im Profil ändern.",
     fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique. Vous pourrez le changer plus tard dans votre profil.",
+    es: "Elige el personaje que te acompañará en tu camino con la Palabra. Podrás cambiarlo más tarde en tu perfil.",
   },
   changeBody: {
     ko: "말씀 여정을 함께할 캐릭터를 선택해보세요.",
     en: "Choose the character who will walk with you through your Bible Reflection journey.",
     de: "Wählen Sie den Charakter, der Sie auf Ihrer Stille-Zeit-Reise begleitet.",
     fr: "Choisissez le personnage qui vous accompagnera dans votre méditation biblique.",
+    es: "Elige el personaje que te acompañará en tu camino con la Palabra.",
   },
   select: {
     ko: "선택하기",
     en: "Choose",
     de: "Auswählen",
     fr: "Choisir",
+    es: "Elegir",
   },
   selected: {
     ko: "선택됨",
     en: "Selected",
     de: "Ausgewählt",
     fr: "Sélectionné",
+    es: "Seleccionado",
   },
   confirm: {
     ko: "확인",
     en: "Confirm",
     de: "Bestätigen",
     fr: "Confirmer",
+    es: "Confirmar",
   },
   later: {
     ko: "나중에 하기",
     en: "Later",
     de: "Später",
     fr: "Plus tard",
+    es: "Más tarde",
   },
   close: {
     ko: "닫기",
     en: "Close",
     de: "Schließen",
     fr: "Fermer",
+    es: "Cerrar",
   },
   profileTitle: {
     ko: "내 캐릭터",
     en: "My character",
     de: "Mein Charakter",
     fr: "Mon personnage",
+    es: "Mi personaje",
   },
   change: {
     ko: "캐릭터 변경",
     en: "Change character",
     de: "Charakter ändern",
     fr: "Changer de personnage",
+    es: "Cambiar personaje",
   },
   customizeSoon: {
     ko: "꾸미기 준비 중",
     en: "Customization coming",
     de: "Anpassung folgt",
     fr: "Personnalisation à venir",
+    es: "Personalización próximamente",
   },
   popupGardenTitleRootsman: {
     ko: "루츠맨이 물을 주고 있어요",
     en: "Rootsman is watering the garden",
     de: "RootsMan gießt den Garten",
     fr: "RootsMan arrose le jardin",
+    es: "Rootsman está regando el jardín",
   },
   popupGardenTitleRootswoman: {
     ko: "루츠우먼이 물을 주고 있어요",
     en: "Rootswoman is watering the garden",
     de: "RootsWoman gießt den Garten",
     fr: "RootsWoman arrose le jardin",
+    es: "Rootswoman está regando el jardín",
   },
 };
 

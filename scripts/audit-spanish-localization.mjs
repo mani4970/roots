@@ -267,6 +267,65 @@ function auditStandaloneLanguageRecord(relativePath, marker) {
   };
 }
 
+function collectValueShape(value, prefix = "") {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{")) {
+    let closeIndex;
+    try {
+      closeIndex = findMatchingDelimiter(trimmed, 0, "{", "}");
+    } catch {
+      return [`${prefix}:invalid-object`];
+    }
+    return parseTopLevelObjectEntries(trimmed, { openIndex: 0, closeIndex }).flatMap((entry) =>
+      collectValueShape(entry.value, prefix ? `${prefix}.${entry.key}` : entry.key),
+    );
+  }
+  if (trimmed.startsWith("[")) {
+    return [`${prefix}[]:${countArrayStringItems(trimmed)}`];
+  }
+  return [prefix];
+}
+
+function countStringLeaves(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{")) {
+    let closeIndex;
+    try {
+      closeIndex = findMatchingDelimiter(trimmed, 0, "{", "}");
+    } catch {
+      return 0;
+    }
+    return parseTopLevelObjectEntries(trimmed, { openIndex: 0, closeIndex })
+      .reduce((sum, entry) => sum + countStringLeaves(entry.value), 0);
+  }
+  if (trimmed.startsWith("[")) return countArrayStringItems(trimmed);
+  return trimmed.startsWith('"') || trimmed.startsWith("'") || trimmed.startsWith("`") ? 1 : 0;
+}
+
+function auditDeepStandaloneLanguageRecord(relativePath, marker) {
+  const source = read(relativePath);
+  const objectRange = findObjectByMarker(source, marker);
+  const entries = parseTopLevelObjectEntries(source, objectRange);
+  const koreanEntry = entries.find((entry) => entry.key === "ko");
+  const spanishEntry = entries.find((entry) => entry.key === "es");
+  const expectedShape = new Set(koreanEntry ? collectValueShape(koreanEntry.value) : []);
+  const spanishShape = new Set(spanishEntry ? collectValueShape(spanishEntry.value) : []);
+  const missingPaths = [...expectedShape].filter((field) => !spanishShape.has(field));
+  const extraPaths = [...spanishShape].filter((field) => !expectedShape.has(field));
+
+  return {
+    relativePath,
+    expected: expectedShape.size,
+    translated: expectedShape.size - missingPaths.length,
+    missingPaths,
+    extraPaths,
+    spanishPresent: Boolean(spanishEntry),
+    expectedStrings: koreanEntry ? countStringLeaves(koreanEntry.value) : 0,
+    translatedStrings: spanishEntry ? countStringLeaves(spanishEntry.value) : 0,
+  };
+}
+
+
 function walk(relativeRoot) {
   const absoluteRoot = path.join(PROJECT_ROOT, relativeRoot);
   if (!fs.existsSync(absoluteRoot)) return [];
@@ -402,6 +461,44 @@ const notificationSettings = auditStandaloneLanguageRecord(
   "const NOTIFICATION_SETTINGS_TEXT",
 );
 
+const rewardStandaloneRecords = [
+  {
+    label: "lib/heartShopText.ts",
+    audit: auditDeepStandaloneLanguageRecord("lib/heartShopText.ts", "const TEXT"),
+  },
+  {
+    label: "lib/profileCharacterText.ts UI",
+    audit: auditDeepStandaloneLanguageRecord("lib/profileCharacterText.ts", "const TEXT"),
+  },
+  {
+    label: "lib/profileCharacterText.ts backgrounds",
+    audit: auditDeepStandaloneLanguageRecord("lib/profileCharacterText.ts", "const BACKGROUND_NAMES"),
+  },
+  {
+    label: "lib/profileCharacterText.ts item names",
+    audit: auditDeepStandaloneLanguageRecord("lib/profileCharacterText.ts", "const ITEM_NAMES"),
+  },
+  {
+    label: "lib/profileAvatarText.ts",
+    audit: auditDeepStandaloneLanguageRecord("lib/profileAvatarText.ts", "const TEXT"),
+  },
+];
+
+const rewardTranslationObjects = [
+  {
+    label: "lib/avatar.ts labels",
+    audit: auditTranslationObject("lib/avatar.ts", "const AVATAR_LABELS"),
+  },
+  {
+    label: "lib/avatar.ts choice copy",
+    audit: auditTranslationObject("lib/avatar.ts", "const AVATAR_CHOICE_TEXT"),
+  },
+  {
+    label: "lib/loveHeartText.ts",
+    audit: auditTranslationObject("lib/loveHeartText.ts", "const LOVE_HEART_TOASTS"),
+  },
+];
+
 const stagedStandaloneRecords = [
   {
     label: "lib/localNotifications.ts",
@@ -495,6 +592,23 @@ if (notificationSettings.missingFields.length > 0) {
 if (notificationSettings.extraFields.length > 0) {
   console.log(`    extra: ${notificationSettings.extraFields.join(", ")}`);
 }
+for (const entry of rewardStandaloneRecords) {
+  const { audit } = entry;
+  console.log(
+    `  - ${entry.label}: ${audit.translated}/${audit.expected} Spanish paths, ` +
+      `${audit.translatedStrings}/${audit.expectedStrings} Spanish strings`,
+  );
+  if (audit.missingPaths.length > 0) {
+    console.log(`    missing: ${audit.missingPaths.join(", ")}`);
+  }
+  if (audit.extraPaths.length > 0) {
+    console.log(`    extra: ${audit.extraPaths.join(", ")}`);
+  }
+}
+for (const entry of rewardTranslationObjects) {
+  const translated = entry.audit.total - entry.audit.missingSpanish.length;
+  console.log(`  - ${entry.label}: ${translated}/${entry.audit.total} Spanish entries`);
+}
 for (const entry of stagedStandaloneRecords) {
   const { audit } = entry;
   console.log(`  - ${entry.label}: ${audit.translated}/${audit.expected} Spanish fields`);
@@ -527,6 +641,13 @@ const strictFailures = [
   !notificationSettings.spanishPresent,
   notificationSettings.missingFields.length > 0,
   notificationSettings.extraFields.length > 0,
+  ...rewardStandaloneRecords.flatMap(({ audit }) => [
+    !audit.spanishPresent,
+    audit.missingPaths.length > 0,
+    audit.extraPaths.length > 0,
+    audit.translatedStrings !== audit.expectedStrings,
+  ]),
+  ...rewardTranslationObjects.map(({ audit }) => audit.missingSpanish.length > 0),
   ...stagedStandaloneRecords.flatMap(({ audit }) => [
     !audit.spanishPresent,
     audit.missingFields.length > 0,
