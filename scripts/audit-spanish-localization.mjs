@@ -233,6 +233,77 @@ function getLanguageKeys(value) {
   return new Set(parseTopLevelObjectEntries(value, { openIndex, closeIndex }).map((entry) => entry.key));
 }
 
+function getLanguageValueMap(value) {
+  const openIndex = value.indexOf("{");
+  if (openIndex === -1) return new Map();
+
+  let closeIndex;
+  try {
+    closeIndex = findMatchingDelimiter(value, openIndex, "{", "}");
+  } catch {
+    return new Map();
+  }
+
+  return new Map(
+    parseTopLevelObjectEntries(value, { openIndex, closeIndex })
+      .map((entry) => [entry.key, entry.value]),
+  );
+}
+
+function extractPlaceholders(value) {
+  return new Set(value.match(/\{[A-Za-z_][A-Za-z0-9_]*\}/g) ?? []);
+}
+
+function isEmptyStringLiteral(value) {
+  const trimmed = value.trim();
+  return trimmed === '""' || trimmed === "''" || trimmed === "``";
+}
+
+function auditTranslationEmptyParity(relativePath, marker, sourceLang = "ko", targetLang = "es") {
+  const source = read(relativePath);
+  const objectRange = findObjectByMarker(source, marker);
+  const entries = parseTopLevelObjectEntries(source, objectRange);
+  const blankTargets = [];
+  let compared = 0;
+
+  for (const entry of entries) {
+    const languageValues = getLanguageValueMap(entry.value);
+    if (!languageValues.has(sourceLang) || !languageValues.has(targetLang)) continue;
+    compared += 1;
+    const sourceIsEmpty = isEmptyStringLiteral(languageValues.get(sourceLang));
+    const targetIsEmpty = isEmptyStringLiteral(languageValues.get(targetLang));
+    if (!sourceIsEmpty && targetIsEmpty) {
+      blankTargets.push({ key: entry.key, line: entry.line });
+    }
+  }
+
+  return { relativePath, compared, blankTargets };
+}
+
+function auditTranslationPlaceholderParity(relativePath, marker, sourceLang = "ko", targetLang = "es") {
+  const source = read(relativePath);
+  const objectRange = findObjectByMarker(source, marker);
+  const entries = parseTopLevelObjectEntries(source, objectRange);
+  const mismatches = [];
+  let compared = 0;
+
+  for (const entry of entries) {
+    const languageValues = getLanguageValueMap(entry.value);
+    if (!languageValues.has(sourceLang) || !languageValues.has(targetLang)) continue;
+    compared += 1;
+
+    const sourcePlaceholders = extractPlaceholders(languageValues.get(sourceLang));
+    const targetPlaceholders = extractPlaceholders(languageValues.get(targetLang));
+    const missing = [...sourcePlaceholders].filter((placeholder) => !targetPlaceholders.has(placeholder));
+    const extra = [...targetPlaceholders].filter((placeholder) => !sourcePlaceholders.has(placeholder));
+    if (missing.length > 0 || extra.length > 0) {
+      mismatches.push({ key: entry.key, line: entry.line, missing, extra });
+    }
+  }
+
+  return { relativePath, compared, mismatches };
+}
+
 function auditTranslationObject(relativePath, marker) {
   const source = read(relativePath);
   const objectRange = findObjectByMarker(source, marker);
@@ -456,6 +527,24 @@ function printFindingList(title, findings, limit = 30) {
 const central = auditTranslationObject("lib/i18n.ts", "export const T");
 const qtWrite = auditTranslationObject("app/qt/write/page.tsx", "const QT_WRITE_TRANSLATIONS");
 const photo = auditTranslationObject("app/qt/photo/page.tsx", "const PHOTO_COPY");
+const centralPlaceholderParity = auditTranslationPlaceholderParity("lib/i18n.ts", "export const T");
+const qtWritePlaceholderParity = auditTranslationPlaceholderParity(
+  "app/qt/write/page.tsx",
+  "const QT_WRITE_TRANSLATIONS",
+);
+const photoPlaceholderParity = auditTranslationPlaceholderParity(
+  "app/qt/photo/page.tsx",
+  "const PHOTO_COPY",
+);
+const centralEmptyParity = auditTranslationEmptyParity("lib/i18n.ts", "export const T");
+const qtWriteEmptyParity = auditTranslationEmptyParity(
+  "app/qt/write/page.tsx",
+  "const QT_WRITE_TRANSLATIONS",
+);
+const photoEmptyParity = auditTranslationEmptyParity(
+  "app/qt/photo/page.tsx",
+  "const PHOTO_COPY",
+);
 const notificationSettings = auditStandaloneLanguageRecord(
   "lib/notifications/settingsText.ts",
   "const NOTIFICATION_SETTINGS_TEXT",
@@ -582,6 +671,28 @@ console.log("\nTranslation dictionaries");
 console.log(`  - lib/i18n.ts: ${central.total} total, ${central.missingSpanish.length} missing es`);
 console.log(`  - app/qt/write/page.tsx: ${qtWrite.total} total, ${qtWrite.missingSpanish.length} missing es`);
 console.log(`  - app/qt/photo/page.tsx: ${photo.total} total, ${photo.missingSpanish.length} missing es`);
+console.log("\nPlaceholder parity (ko → es)");
+for (const audit of [centralPlaceholderParity, qtWritePlaceholderParity, photoPlaceholderParity]) {
+  console.log(
+    `  - ${audit.relativePath}: ${audit.compared} compared, ${audit.mismatches.length} mismatches`,
+  );
+  for (const mismatch of audit.mismatches.slice(0, 20)) {
+    const details = [
+      mismatch.missing.length > 0 ? `missing ${mismatch.missing.join(", ")}` : "",
+      mismatch.extra.length > 0 ? `extra ${mismatch.extra.join(", ")}` : "",
+    ].filter(Boolean).join("; ");
+    console.log(`    ${mismatch.key} (line ${mismatch.line}): ${details}`);
+  }
+}
+console.log("\nNon-empty copy parity (ko → es)");
+for (const audit of [centralEmptyParity, qtWriteEmptyParity, photoEmptyParity]) {
+  console.log(
+    `  - ${audit.relativePath}: ${audit.compared} compared, ${audit.blankTargets.length} unexpected blank es values`,
+  );
+  for (const blank of audit.blankTargets.slice(0, 20)) {
+    console.log(`    ${blank.key} (line ${blank.line})`);
+  }
+}
 console.log("\nStaged standalone dictionaries");
 console.log(
   `  - lib/notifications/settingsText.ts: ${notificationSettings.translated}/${notificationSettings.expected} Spanish fields`,
@@ -638,6 +749,12 @@ const strictFailures = [
   central.missingSpanish.length > 0,
   qtWrite.missingSpanish.length > 0,
   photo.missingSpanish.length > 0,
+  centralPlaceholderParity.mismatches.length > 0,
+  qtWritePlaceholderParity.mismatches.length > 0,
+  photoPlaceholderParity.mismatches.length > 0,
+  centralEmptyParity.blankTargets.length > 0,
+  qtWriteEmptyParity.blankTargets.length > 0,
+  photoEmptyParity.blankTargets.length > 0,
   !notificationSettings.spanishPresent,
   notificationSettings.missingFields.length > 0,
   notificationSettings.extraFields.length > 0,

@@ -197,18 +197,46 @@ for (const key of [
     'de: "Gedanken & Erkenntnisse"',
     'en: "Thoughts & Insights"',
     'fr: "Réflexions et enseignements"',
+    'es: "Pensamientos y aprendizajes"',
   ]);
 }
 requireEntry("lib/i18n.ts", "qt_step_meditate", [
   'de: "Schritt 4 · Gedanken & Erkenntnisse"',
   'en: "Step 4 · Thoughts & Insights"',
   'fr: "Étape 4 · Réflexions et enseignements"',
+  'es: "Paso 4 · Pensamientos y aprendizajes"',
 ]);
 requireEntry("lib/i18n.ts", "group_challenge_card_body", [
   "Stille-Zeit-Challenge",
   "Bible Reflection Challenge",
   "défi de méditation biblique",
 ]);
+
+for (const [key, fragments] of [
+  ["qt_title", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Meditación bíblica"']],
+  ["qt_start_btn", ["오늘 말씀 묵상 시작하기", "Heutige Stille Zeit beginnen", "Start today's Bible Reflection", "Commencer la méditation biblique du jour", "Comenzar la meditación bíblica de hoy"]],
+  ["qt_records", ["지난 말씀 묵상 기록", "Frühere Stille Zeiten", "Past Bible Reflections", "Méditations bibliques précédentes", "Meditaciones bíblicas anteriores"]],
+  ["qt_mode_6step", ["6단계 말씀 묵상", "Stille Zeit in 6 Schritten", "6-Step Bible Reflection", "Méditation biblique en 6 étapes"]],
+  ["qt_mode_sunday", ["주일예배 말씀 묵상", "Stille Zeit zum Sonntagsgottesdienst", "Sunday Worship Bible Reflection", "Méditation biblique du culte dominical"]],
+  ["qt_mode_free", ["자유형식 말씀 묵상", "Freie Stille Zeit", "Free-form Bible Reflection", "Méditation biblique libre"]],
+  ["welcome_back_btn", ["오늘 말씀 묵상 시작하기", "Heutige Stille Zeit beginnen", "Start today's Bible Reflection", "Commencer la méditation biblique du jour"]],
+  ["home_next_step_draft_title", ["작성 중인 말씀 묵상", "begonnene Stille Zeit", "Bible Reflection in progress", "méditation biblique est en cours"]],
+  ["home_qt_today_title", ["오늘의 말씀 묵상", "Heutige Stille Zeit", "Today’s Bible Reflection", "Méditation biblique du jour", "Meditación bíblica de hoy"]],
+  ["home_routine_qt", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Meditación bíblica"']],
+  ["home_qt_choice_title", ["오늘 말씀 묵상을 어떻게", "heute Ihre Stille Zeit", "Bible Reflection today", "méditation biblique aujourd’hui", "meditación bíblica"]],
+  ["qt_today_done", ["오늘 말씀 묵상 완료", "Stille Zeit heute abgeschlossen", "Bible Reflection complete today", "Méditation biblique terminée aujourd’hui", "Meditación bíblica de hoy completada"]],
+  ["qt_catchup_title", ["지난 말씀 묵상", "Vergangene Stille Zeit", "past Bible Reflection", "méditation biblique passée", "meditación bíblica anterior"]],
+  ["qt_how_title", ["어떻게 말씀 묵상", "Ihre Stille Zeit", "do Bible Reflection", "faire votre méditation biblique", "hacer tu meditación bíblica"]],
+  ["qt_mode_6step_title", ["6단계 말씀 묵상", "Stille Zeit in 6 Schritten", "6-Step Bible Reflection", "Méditation biblique en 6 étapes", "Meditación bíblica en 6 pasos"]],
+  ["qt_complete_title", ["말씀 묵상 완료", "Stille Zeit abgeschlossen", "Bible Reflection complete", "Méditation biblique terminée", "Meditación bíblica completada"]],
+  ["qt_record_edit", ["말씀 묵상 수정", "Stille Zeit bearbeiten", "Edit Bible Reflection", "Modifier la méditation biblique", "Editar meditación bíblica"]],
+  ["qt_record_share_title", ["말씀 묵상 나누기", "Stille Zeit teilen", "Share Bible Reflection", "Partager la méditation biblique", "Compartir meditación bíblica"]],
+  ["community_group_qt_exchange", ["그룹 말씀 묵상 나눔", "Stillen Zeit", "Bible Reflection sharing", "méditations bibliques", "Meditaciones bíblicas"]],
+  ["community_manage_qt_edit", ["말씀 묵상 수정", "Stille Zeit bearbeiten", "Edit Bible Reflection", "Modifier la méditation biblique", "Editar meditación bíblica"]],
+  ["qt_error_load", ["말씀 묵상 기록", "Einträge zur Stillen Zeit", "Bible Reflection records", "méditations bibliques", "registros de meditación bíblica"]],
+]) {
+  requireEntry("lib/i18n.ts", key, fragments);
+}
 
 for (const [key, fragments] of [
   ["badge_rootsman_desc", ["Stille Zeiten", "Bible Reflections", "méditations bibliques"]],
