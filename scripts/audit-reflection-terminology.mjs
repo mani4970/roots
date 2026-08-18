@@ -145,6 +145,14 @@ const forbiddenPhrases = [
   "Bible reflection",
   "Bible reflections",
   "Free Quiet Time",
+  "QT abschließen",
+  "QT Complete",
+  "QT terminé",
+  "Drafts only for today's QT",
+  "Brouillons : QT du jour seulement",
+  "QT für {date} vorhanden",
+  "QT exists for {date}",
+  "QT existant pour le {date}",
 ];
 
 for (const [file, source] of sources) {
@@ -256,22 +264,59 @@ requireEntry("app/qt/write/page.tsx", "느낌과 묵상", [
   'de: "Gedanken & Erkenntnisse"',
   'en: "Thoughts & Insights"',
   'fr: "Réflexions et enseignements"',
+  'es: "Pensamientos y aprendizajes"',
 ]);
 requireEntry("app/qt/write/page.tsx", "자유 큐티", [
+  'ko: "자유 묵상"',
   'de: "Freie Stille Zeit"',
   'en: "Free-form Bible Reflection"',
   'fr: "Méditation biblique libre"',
+  'es: "Meditación bíblica libre"',
+]);
+requireEntry("app/qt/write/page.tsx", "큐티 완료", [
+  'ko: "말씀 묵상 완료"',
+  'de: "Stille Zeit abschließen"',
+  'en: "Complete Bible Reflection"',
+  'fr: "Terminer la méditation biblique"',
+  'es: "Completar la meditación bíblica"',
+]);
+requireEntry("app/qt/write/page.tsx", "큐티할 말씀을 먼저 선택해요", [
+  'ko: "묵상할 말씀을 먼저 선택해요"',
+  'es: "Primero selecciona el pasaje para tu meditación bíblica"',
+]);
+requireEntry("app/qt/write/page.tsx", "임시저장은 오늘 큐티에만 가능해요.", [
+  'ko: "임시저장은 오늘 말씀 묵상에만 가능해요."',
+  'de: "Entwürfe sind nur für die heutige Stille Zeit möglich."',
+  'en: "Drafts are only available for today\'s Bible Reflection."',
+  'fr: "Les brouillons sont disponibles uniquement pour la méditation biblique du jour."',
+  'es: "Los borradores solo están disponibles para la meditación bíblica de hoy."',
+]);
+requireEntry("app/qt/write/page.tsx", "이미 큐티 기록이 있어요", [
+  'ko: "{date}에 이미 말씀 묵상 기록이 있어요"',
+  'de: "Für {date} gibt es bereits eine Stille Zeit"',
+  'en: "A Bible Reflection already exists for {date}"',
+  'fr: "Une méditation biblique existe déjà pour le {date}"',
+  'es: "Ya existe una meditación bíblica para {date}"',
+]);
+requireEntry("app/qt/write/page.tsx", "본문 글씨 작게", [
+  'es: "Reducir el tamaño del texto bíblico"',
+]);
+requireEntry("app/qt/write/page.tsx", "본문 글씨 크게", [
+  'es: "Aumentar el tamaño del texto bíblico"',
 ]);
 requireFragments("app/qt/write/page.tsx", "step-four insight prompt", [
   "말씀을 통해 받은 생각과 깨달음을 솔직하게 써보세요.",
   "thoughts and insights you received",
   "Gedanken und Erkenntnisse",
   "réflexions et enseignements",
+  "pensamientos y aprendizajes",
 ]);
 requireFragments("app/qt/photo/page.tsx", "Photo Bible Reflection names", [
   'de: "Stille Zeit mit Foto festhalten"',
   'en: "Record a Photo Bible Reflection"',
   'fr: "Enregistrer une méditation biblique en photo"',
+  'es: "Registrar una meditación bíblica con foto"',
+  'photoAlt: { ko: "말씀 묵상 사진", de: "Foto zur Stillen Zeit", en: "Bible Reflection photo", fr: "Photo de méditation biblique", es: "Foto de meditación bíblica" }',
 ]);
 requireFragments("lib/inviteLandingText.ts", "invite terminology", [
   "share Bible Reflections",

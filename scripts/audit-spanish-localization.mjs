@@ -259,7 +259,18 @@ function isEmptyStringLiteral(value) {
   return trimmed === '""' || trimmed === "''" || trimmed === "``";
 }
 
-function auditTranslationEmptyParity(relativePath, marker, sourceLang = "ko", targetLang = "es") {
+function getSourceTranslationValue(entry, languageValues, sourceLang, useEntryKeyAsSourceFallback) {
+  if (languageValues.has(sourceLang)) return languageValues.get(sourceLang);
+  return useEntryKeyAsSourceFallback ? JSON.stringify(entry.key) : null;
+}
+
+function auditTranslationEmptyParity(
+  relativePath,
+  marker,
+  sourceLang = "ko",
+  targetLang = "es",
+  useEntryKeyAsSourceFallback = false,
+) {
   const source = read(relativePath);
   const objectRange = findObjectByMarker(source, marker);
   const entries = parseTopLevelObjectEntries(source, objectRange);
@@ -268,9 +279,10 @@ function auditTranslationEmptyParity(relativePath, marker, sourceLang = "ko", ta
 
   for (const entry of entries) {
     const languageValues = getLanguageValueMap(entry.value);
-    if (!languageValues.has(sourceLang) || !languageValues.has(targetLang)) continue;
+    const sourceValue = getSourceTranslationValue(entry, languageValues, sourceLang, useEntryKeyAsSourceFallback);
+    if (sourceValue === null || !languageValues.has(targetLang)) continue;
     compared += 1;
-    const sourceIsEmpty = isEmptyStringLiteral(languageValues.get(sourceLang));
+    const sourceIsEmpty = isEmptyStringLiteral(sourceValue);
     const targetIsEmpty = isEmptyStringLiteral(languageValues.get(targetLang));
     if (!sourceIsEmpty && targetIsEmpty) {
       blankTargets.push({ key: entry.key, line: entry.line });
@@ -280,7 +292,13 @@ function auditTranslationEmptyParity(relativePath, marker, sourceLang = "ko", ta
   return { relativePath, compared, blankTargets };
 }
 
-function auditTranslationPlaceholderParity(relativePath, marker, sourceLang = "ko", targetLang = "es") {
+function auditTranslationPlaceholderParity(
+  relativePath,
+  marker,
+  sourceLang = "ko",
+  targetLang = "es",
+  useEntryKeyAsSourceFallback = false,
+) {
   const source = read(relativePath);
   const objectRange = findObjectByMarker(source, marker);
   const entries = parseTopLevelObjectEntries(source, objectRange);
@@ -289,10 +307,11 @@ function auditTranslationPlaceholderParity(relativePath, marker, sourceLang = "k
 
   for (const entry of entries) {
     const languageValues = getLanguageValueMap(entry.value);
-    if (!languageValues.has(sourceLang) || !languageValues.has(targetLang)) continue;
+    const sourceValue = getSourceTranslationValue(entry, languageValues, sourceLang, useEntryKeyAsSourceFallback);
+    if (sourceValue === null || !languageValues.has(targetLang)) continue;
     compared += 1;
 
-    const sourcePlaceholders = extractPlaceholders(languageValues.get(sourceLang));
+    const sourcePlaceholders = extractPlaceholders(sourceValue);
     const targetPlaceholders = extractPlaceholders(languageValues.get(targetLang));
     const missing = [...sourcePlaceholders].filter((placeholder) => !targetPlaceholders.has(placeholder));
     const extra = [...targetPlaceholders].filter((placeholder) => !sourcePlaceholders.has(placeholder));
@@ -531,6 +550,9 @@ const centralPlaceholderParity = auditTranslationPlaceholderParity("lib/i18n.ts"
 const qtWritePlaceholderParity = auditTranslationPlaceholderParity(
   "app/qt/write/page.tsx",
   "const QT_WRITE_TRANSLATIONS",
+  "ko",
+  "es",
+  true,
 );
 const photoPlaceholderParity = auditTranslationPlaceholderParity(
   "app/qt/photo/page.tsx",
@@ -540,6 +562,9 @@ const centralEmptyParity = auditTranslationEmptyParity("lib/i18n.ts", "export co
 const qtWriteEmptyParity = auditTranslationEmptyParity(
   "app/qt/write/page.tsx",
   "const QT_WRITE_TRANSLATIONS",
+  "ko",
+  "es",
+  true,
 );
 const photoEmptyParity = auditTranslationEmptyParity(
   "app/qt/photo/page.tsx",
