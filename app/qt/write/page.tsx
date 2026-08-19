@@ -53,6 +53,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "본문 글씨 작게": { de: "Bibeltext verkleinern", en: "Decrease Bible text size", fr: "Réduire la taille du texte biblique", es: "Reducir el tamaño del texto bíblico" },
   "본문 글씨 크게": { de: "Bibeltext vergrößern", en: "Increase Bible text size", fr: "Augmenter la taille du texte biblique", es: "Aumentar el tamaño del texto bíblico" },
   "번역본": { de: "Übersetzung", en: "Translation", fr: "Traduction", es: "Traducción" },
+  "번역본 선택": { ko: "번역본 선택", de: "Übersetzung auswählen", en: "Select translation", fr: "Choisir une traduction", es: "Seleccionar traducción" },
+  "날짜 선택": { ko: "날짜 선택", de: "Datum auswählen", en: "Select date", fr: "Choisir une date", es: "Seleccionar fecha" },
   "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé", es: "Resumen del pasaje y versículo clave" },
   "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur", es: "Lee el pasaje y guárdalo en tu corazón" },
   "느낌과 묵상": { de: "Gedanken & Erkenntnisse", en: "Thoughts & Insights", fr: "Réflexions et enseignements", es: "Pensamientos y aprendizajes" },
@@ -2544,7 +2546,7 @@ function QTWriteContent() {
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", maxHeight: "70vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>번역본 선택</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("번역본 선택", lang)}</h3>
                 <button onClick={() => setShowTranslationPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
               </div>
               {TRANSLATIONS.map(group => (
@@ -2576,7 +2578,7 @@ function QTWriteContent() {
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", maxHeight: "60vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>날짜 선택</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("날짜 선택", lang)}</h3>
                 <button onClick={() => setShowDatePicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

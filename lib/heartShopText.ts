@@ -27,6 +27,8 @@ export type HeartShopText = {
   purchaseButton: string;
   ownedButton: string;
   freeLabel: string;
+  bestLabel: string;
+  newLabel: string;
   applyButton: string;
   appliedButton: string;
   applyingLabel: string;
@@ -86,6 +88,8 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     purchaseButton: "아이템 구매",
     ownedButton: "구매 완료",
     freeLabel: "무료",
+    bestLabel: "인기",
+    newLabel: "신규",
     applyButton: "적용하기",
     appliedButton: "적용됨",
     applyingLabel: "적용 중...",
@@ -240,6 +244,8 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     purchaseButton: "Buy item",
     ownedButton: "Purchased",
     freeLabel: "Free",
+    bestLabel: "Best",
+    newLabel: "New",
     applyButton: "Apply",
     appliedButton: "Applied",
     applyingLabel: "Applying...",
@@ -394,6 +400,8 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     purchaseButton: "Item kaufen",
     ownedButton: "Gekauft",
     freeLabel: "Kostenlos",
+    bestLabel: "Beliebt",
+    newLabel: "Neu",
     applyButton: "Anwenden",
     appliedButton: "Angewendet",
     applyingLabel: "Wird angewendet...",
@@ -548,6 +556,8 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     purchaseButton: "Acheter l’objet",
     ownedButton: "Acheté",
     freeLabel: "Gratuit",
+    bestLabel: "Populaire",
+    newLabel: "Nouveau",
     applyButton: "Appliquer",
     appliedButton: "Appliqué",
     applyingLabel: "Application...",
@@ -703,6 +713,8 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     purchaseButton: "Comprar objeto",
     ownedButton: "Comprado",
     freeLabel: "Gratis",
+    bestLabel: "Popular",
+    newLabel: "Nuevo",
     applyButton: "Aplicar",
     appliedButton: "Aplicado",
     applyingLabel: "Aplicando...",

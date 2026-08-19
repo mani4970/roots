@@ -18,7 +18,7 @@ import GroupChallengeScheduleFields from "@/components/community/GroupChallengeS
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { t, type TKey } from "@/lib/i18n";
+import { t, type Lang, type TKey } from "@/lib/i18n";
 import {
   getDateLocale,
   getLocalDateString,
@@ -118,6 +118,16 @@ import {
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
+
+type CommunityCopyLang = Lang | "es";
+
+const COMMUNITY_LOCAL_TEXT: Record<CommunityCopyLang, { profileAlt: string; photoAlt: string; photoLoading: string }> = {
+  ko: { profileAlt: "프로필", photoAlt: "말씀 묵상 사진", photoLoading: "사진을 불러오는 중이에요." },
+  en: { profileAlt: "Profile", photoAlt: "Bible Reflection photo", photoLoading: "Loading photo..." },
+  de: { profileAlt: "Profil", photoAlt: "Foto zur Stillen Zeit", photoLoading: "Foto wird geladen..." },
+  fr: { profileAlt: "Profil", photoAlt: "Photo de méditation biblique", photoLoading: "Chargement de la photo..." },
+  es: { profileAlt: "Perfil", photoAlt: "Foto de meditación bíblica", photoLoading: "Cargando la foto..." },
+};
 
 function isEsvQtRecord(row: any) {
   return Number(row?.bible_version) === ESV_TRANSLATION_ID;
@@ -700,7 +710,7 @@ function Avatar({
     return (
       <img
         src={url}
-        alt={name ?? "프로필"}
+        alt={name ?? COMMUNITY_LOCAL_TEXT[lang].profileAlt}
         decoding="async"
         draggable={false}
         onDragStart={(event) => event.preventDefault()}
@@ -1548,7 +1558,7 @@ function CommunityPageContent() {
 
   function openPhotoViewer(src: string, alt?: string) {
     pushCommunityModalHistory("photo-viewer");
-    setPhotoViewer({ src, alt: alt || "Bible Reflection photo" });
+    setPhotoViewer({ src, alt: alt || COMMUNITY_LOCAL_TEXT[lang].photoAlt });
   }
 
   function resetPhotoViewerState() {
@@ -2633,7 +2643,7 @@ function CommunityPageContent() {
           e.stopPropagation();
           setActionMenu({ kind, item, scope, groupId, partnerId });
         }}
-        aria-label="Manage content"
+        aria-label={c("community_manage_other_content")}
         style={{
           width: 28,
           height: 28,
@@ -5735,7 +5745,7 @@ function CommunityPageContent() {
       >
         <img
           src={src}
-          alt={alt || "Bible Reflection photo"}
+          alt={alt || COMMUNITY_LOCAL_TEXT[lang].photoAlt}
           loading="lazy"
           decoding="async"
           style={style}
@@ -5871,7 +5881,7 @@ function CommunityPageContent() {
                 {qtPhotoUrls[r.id] ? (
                   renderPhotoReflectionImage({
                     src: qtPhotoUrls[r.id],
-                    alt: "Bible Reflection photo",
+                    alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
                     style: {
                       width: "100%",
                       maxHeight: 520,
@@ -5892,7 +5902,7 @@ function CommunityPageContent() {
                       textAlign: "center",
                     }}
                   >
-                    사진을 불러오는 중이에요.
+                    {COMMUNITY_LOCAL_TEXT[lang].photoLoading}
                   </div>
                 )}
               </div>
@@ -6101,7 +6111,7 @@ function CommunityPageContent() {
                 !challengeSaving && setShowChallengeRequestForm(false)
               }
               disabled={challengeSaving}
-              aria-label="Close"
+              aria-label={c("close")}
               style={{
                 width: 34,
                 height: 34,
@@ -6506,6 +6516,7 @@ function CommunityPageContent() {
           <PhotoViewerModal
             src={photoViewer.src}
             alt={photoViewer.alt}
+            lang={lang}
             onClose={closePhotoViewer}
           />
         )}
@@ -6586,7 +6597,7 @@ function CommunityPageContent() {
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
         <div
           style={{
             background: "var(--bg)",
@@ -6928,7 +6939,7 @@ function CommunityPageContent() {
                     {r.photo_path && qtPhotoUrls[r.id] && (
                       renderPhotoReflectionImage({
                         src: qtPhotoUrls[r.id],
-                        alt: "Bible Reflection photo",
+                        alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
                         style: {
                           width: "100%",
                           maxHeight: 220,
@@ -7285,7 +7296,7 @@ function CommunityPageContent() {
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
         <div
           style={{
             background: "var(--bg)",
@@ -8226,7 +8237,7 @@ function CommunityPageContent() {
                       {r.photo_path && qtPhotoUrls[r.id] && (
                         renderPhotoReflectionImage({
                           src: qtPhotoUrls[r.id],
-                          alt: "Bible Reflection photo",
+                          alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
                           style: {
                             width: "100%",
                             maxHeight: 220,
@@ -8582,7 +8593,7 @@ function CommunityPageContent() {
                 </div>
                 <button
                   onClick={() => setShowGroupMembers(false)}
-                  aria-label="Close"
+                  aria-label={c("close")}
                   style={{
                     width: 34,
                     height: 34,
@@ -8852,7 +8863,7 @@ function CommunityPageContent() {
               <button
                 onClick={() => setShowGroupEdit(false)}
                 disabled={savingGroupEdit}
-                aria-label="Close"
+                aria-label={c("close")}
                 style={{
                   width: 34,
                   height: 34,
@@ -9067,7 +9078,7 @@ function CommunityPageContent() {
               <button
                 onClick={() => setShowLeadershipTransfer(false)}
                 disabled={transferringLeadership}
-                aria-label="Close"
+                aria-label={c("close")}
                 style={{
                   width: 34,
                   height: 34,
@@ -9508,7 +9519,7 @@ function CommunityPageContent() {
     <div className="page roots-community-phase2d">
       {renderLoveHeartToast()}
       {renderReflectionNudgeToast()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay />}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
       {badgePopup && (
         <div
           onClick={() => setBadgePopup(null)}
@@ -9540,7 +9551,7 @@ function CommunityPageContent() {
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
               <img
                 src={badgePopup.img}
-                alt="badge"
+                alt={badgePopup.title}
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
             </div>
@@ -10126,7 +10137,7 @@ function CommunityPageContent() {
                         {r.photo_path && qtPhotoUrls[r.id] && (
                           renderPhotoReflectionImage({
                             src: qtPhotoUrls[r.id],
-                            alt: "Bible Reflection photo",
+                            alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
                             style: {
                               width: "100%",
                               maxHeight: 220,

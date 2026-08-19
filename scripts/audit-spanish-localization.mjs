@@ -522,6 +522,135 @@ function countArrayStringItems(value) {
   return count;
 }
 
+function parseTopLevelArrayItems(value) {
+  const openIndex = value.indexOf("[");
+  if (openIndex === -1) return [];
+
+  let closeIndex;
+  try {
+    closeIndex = findMatchingDelimiter(value, openIndex, "[", "]");
+  } catch {
+    return [];
+  }
+
+  const items = [];
+  let cursor = openIndex + 1;
+  let itemStart = cursor;
+  let braceDepth = 0;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+
+  while (cursor < closeIndex) {
+    const char = value[cursor];
+    if (char === '"' || char === "'" || char === "`") {
+      cursor = skipQuoted(value, cursor);
+      continue;
+    }
+    if (char === "/" && value[cursor + 1] === "/") {
+      cursor = skipLineComment(value, cursor);
+      continue;
+    }
+    if (char === "/" && value[cursor + 1] === "*") {
+      cursor = skipBlockComment(value, cursor);
+      continue;
+    }
+
+    if (char === "{") braceDepth += 1;
+    else if (char === "}") braceDepth -= 1;
+    else if (char === "[") bracketDepth += 1;
+    else if (char === "]") bracketDepth -= 1;
+    else if (char === "(") parenDepth += 1;
+    else if (char === ")") parenDepth -= 1;
+    else if (char === "," && braceDepth === 0 && bracketDepth === 0 && parenDepth === 0) {
+      const item = value.slice(itemStart, cursor).trim();
+      if (item) items.push(item);
+      itemStart = cursor + 1;
+    }
+    cursor += 1;
+  }
+
+  const finalItem = value.slice(itemStart, closeIndex).trim();
+  if (finalItem) items.push(finalItem);
+  return items;
+}
+
+function auditLegalDocumentSections(relativePath, marker) {
+  const source = read(relativePath);
+  const objectRange = findObjectByMarker(source, marker);
+  const languageEntries = parseTopLevelObjectEntries(source, objectRange);
+  const koreanEntry = languageEntries.find((entry) => entry.key === "ko");
+  const spanishEntry = languageEntries.find((entry) => entry.key === "es");
+
+  const result = {
+    relativePath,
+    spanishPresent: Boolean(spanishEntry),
+    expectedSections: 0,
+    translatedSections: 0,
+    mismatches: [],
+  };
+  if (!koreanEntry || !spanishEntry) return result;
+
+  const koFields = getLanguageValueMap(koreanEntry.value);
+  const esFields = getLanguageValueMap(spanishEntry.value);
+  const koSections = parseTopLevelArrayItems(koFields.get("sections") ?? "");
+  const esSections = parseTopLevelArrayItems(esFields.get("sections") ?? "");
+  result.expectedSections = koSections.length;
+  result.translatedSections = esSections.length;
+
+  if (koSections.length !== esSections.length) {
+    result.mismatches.push(`section count ${koSections.length} != ${esSections.length}`);
+  }
+
+  const sharedLength = Math.min(koSections.length, esSections.length);
+  for (let index = 0; index < sharedLength; index += 1) {
+    const koSection = koSections[index];
+    const esSection = esSections[index];
+    if (!koSection.startsWith("{") || !esSection.startsWith("{")) {
+      result.mismatches.push(`section ${index + 1}: expected object structure`);
+      continue;
+    }
+
+    let koClose;
+    let esClose;
+    try {
+      koClose = findMatchingDelimiter(koSection, 0, "{", "}");
+      esClose = findMatchingDelimiter(esSection, 0, "{", "}");
+    } catch {
+      result.mismatches.push(`section ${index + 1}: invalid object syntax`);
+      continue;
+    }
+
+    const koSectionFields = new Map(
+      parseTopLevelObjectEntries(koSection, { openIndex: 0, closeIndex: koClose })
+        .map((entry) => [entry.key, entry.value]),
+    );
+    const esSectionFields = new Map(
+      parseTopLevelObjectEntries(esSection, { openIndex: 0, closeIndex: esClose })
+        .map((entry) => [entry.key, entry.value]),
+    );
+    const koKeys = [...koSectionFields.keys()].sort();
+    const esKeys = [...esSectionFields.keys()].sort();
+    if (koKeys.join("|") !== esKeys.join("|")) {
+      result.mismatches.push(
+        `section ${index + 1}: fields ${koKeys.join(",")} != ${esKeys.join(",")}`,
+      );
+    }
+
+    for (const field of ["paragraphs", "items"]) {
+      if (!koSectionFields.has(field) && !esSectionFields.has(field)) continue;
+      const koCount = parseTopLevelArrayItems(koSectionFields.get(field) ?? "").length;
+      const esCount = parseTopLevelArrayItems(esSectionFields.get(field) ?? "").length;
+      if (koCount !== esCount) {
+        result.mismatches.push(
+          `section ${index + 1} ${field}: ${koCount} != ${esCount}`,
+        );
+      }
+    }
+  }
+
+  return result;
+}
+
 function auditSpanishBibleBooks(relativePath) {
   const source = read(relativePath);
   const objectRange = findObjectByMarker(source, "BOOK_NAMES");
@@ -541,6 +670,141 @@ function printFindingList(title, findings, limit = 30) {
   if (findings.length > limit) {
     console.log(`  ... ${findings.length - limit} more`);
   }
+}
+
+const forbiddenDirectUiLiterals = [
+  {
+    relativePath: "app/qt/write/page.tsx",
+    label: "hardcoded translation picker title",
+    pattern: />\s*번역본 선택\s*<\/h3>/g,
+  },
+  {
+    relativePath: "app/qt/write/page.tsx",
+    label: "hardcoded date picker title",
+    pattern: />\s*날짜 선택\s*<\/h3>/g,
+  },
+  {
+    relativePath: "app/qt/record/page.tsx",
+    label: "hardcoded Bible Reflection photo alt",
+    pattern: /alt=["']Bible Reflection photo["']/g,
+  },
+  {
+    relativePath: "app/qt/record/page.tsx",
+    label: "hardcoded Korean photo-loading copy",
+    pattern: />\s*사진을 불러오는 중이에요\.\s*</g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded content-management label",
+    pattern: /aria-label=["']Manage content["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded close label",
+    pattern: /aria-label=["']Close["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded Bible Reflection photo alt",
+    pattern: /alt:\s*["']Bible Reflection photo["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded Bible Reflection photo fallback",
+    pattern: /alt\s*\|\|\s*["']Bible Reflection photo["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded Korean profile image fallback",
+    pattern: /name\s*\?\?\s*["']프로필["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "hardcoded Korean photo-loading copy",
+    pattern: />\s*사진을 불러오는 중이에요\.\s*</g,
+  },
+  {
+    relativePath: "app/profile/page.tsx",
+    label: "hardcoded close label",
+    pattern: /aria-label=["']Close["']/g,
+  },
+  {
+    relativePath: "app/profile/page.tsx",
+    label: "hardcoded Love Hearts label",
+    pattern: /aria-label=["']Love Hearts["']/g,
+  },
+  {
+    relativePath: "app/profile/page.tsx",
+    label: "four-language spirit-fruit locked copy fallback",
+    pattern: /const\s+lockedDesc\s*=\s*lang\s*===/g,
+  },
+  {
+    relativePath: "components/HeartShopModal.tsx",
+    label: "hardcoded New label",
+    pattern: /aria-label=["']New["']|>\s*New\s*</g,
+  },
+  {
+    relativePath: "components/HeartShopModal.tsx",
+    label: "hardcoded Best/New map label",
+    pattern: /item\.isBest\s*\?\s*["']Best["']\s*:\s*["']New["']/g,
+  },
+  {
+    relativePath: "components/PetShopAnnouncementPopup.tsx",
+    label: "hardcoded NEW label",
+    pattern: />\s*NEW\s*</g,
+  },
+  {
+    relativePath: "app/qt/complete/page.tsx",
+    label: "legacy QT image alt",
+    pattern: /alt=["']QT["']/g,
+  },
+  {
+    relativePath: "app/page.tsx",
+    label: "legacy QT celebration icon alt",
+    pattern: /iconAlt=["']QT["']/g,
+  },
+  {
+    relativePath: "app/prayer/page.tsx",
+    label: "hardcoded prayer celebration icon alt",
+    pattern: /iconAlt=["']Prayer["']/g,
+  },
+  {
+    relativePath: "app/community/page.tsx",
+    label: "unlocalized profile image fallback",
+    pattern: /name\s*\?\?\s*["']Roots["']/g,
+  },
+  ...[
+    "app/checkin/result/page.tsx",
+    "app/prayer/page.tsx",
+    "app/page.tsx",
+    "app/qt/record/page.tsx",
+    "app/community/page.tsx",
+    "app/companions/page.tsx",
+  ].map((relativePath) => ({
+    relativePath,
+    label: "generic badge image alt",
+    pattern: /alt=["']badge["']/g,
+  })),
+];
+
+function auditForbiddenDirectUiLiterals() {
+  const findings = [];
+  for (const check of forbiddenDirectUiLiterals) {
+    const source = read(check.relativePath);
+    check.pattern.lastIndex = 0;
+    let match = check.pattern.exec(source);
+    while (match) {
+      findings.push({
+        relativePath: check.relativePath,
+        line: lineNumberAt(source, match.index),
+        label: check.label,
+        snippet: match[0].trim().replace(/\s+/g, " ").slice(0, 140),
+      });
+      if (match[0].length === 0) check.pattern.lastIndex += 1;
+      match = check.pattern.exec(source);
+    }
+  }
+  return findings;
 }
 
 const central = auditTranslationObject("lib/i18n.ts", "export const T");
@@ -574,6 +838,95 @@ const notificationSettings = auditStandaloneLanguageRecord(
   "lib/notifications/settingsText.ts",
   "const NOTIFICATION_SETTINGS_TEXT",
 );
+
+const remainingCopyStandaloneRecords = [
+  {
+    label: "app/welcome/page.tsx",
+    audit: auditDeepStandaloneLanguageRecord("app/welcome/page.tsx", "const TEXTS"),
+  },
+  {
+    label: "lib/requiredUpdateText.ts",
+    audit: auditDeepStandaloneLanguageRecord("lib/requiredUpdateText.ts", "const TEXT"),
+  },
+  {
+    label: "lib/inAppBrowser.ts",
+    audit: auditDeepStandaloneLanguageRecord("lib/inAppBrowser.ts", "const copy"),
+  },
+  {
+    label: "app/qt/record/page.tsx local photo copy",
+    audit: auditDeepStandaloneLanguageRecord("app/qt/record/page.tsx", "const QT_RECORD_LOCAL_TEXT"),
+  },
+  {
+    label: "app/community/page.tsx local profile/photo copy",
+    audit: auditDeepStandaloneLanguageRecord("app/community/page.tsx", "const COMMUNITY_LOCAL_TEXT"),
+  },
+  {
+    label: "components/PhotoViewerModal.tsx",
+    audit: auditDeepStandaloneLanguageRecord("components/PhotoViewerModal.tsx", "const PHOTO_VIEWER_COPY"),
+  },
+  {
+    label: "components/notifications/NotificationDirectOpenOverlay.tsx",
+    audit: auditDeepStandaloneLanguageRecord(
+      "components/notifications/NotificationDirectOpenOverlay.tsx",
+      "const NOTIFICATION_DIRECT_OPEN_COPY",
+    ),
+  },
+  {
+    label: "app/checkin/result/page.tsx",
+    audit: auditDeepStandaloneLanguageRecord("app/checkin/result/page.tsx", "const CHECKIN_RESULT_TEXT"),
+  },
+  {
+    label: "app/page.tsx local copy",
+    audit: auditDeepStandaloneLanguageRecord("app/page.tsx", "const HOME_LOCAL_TEXT"),
+  },
+  {
+    label: "app/profile/page.tsx local copy",
+    audit: auditDeepStandaloneLanguageRecord("app/profile/page.tsx", "const PROFILE_LOCAL_TEXT"),
+  },
+  {
+    label: "app/profile/page.tsx heart guide",
+    audit: auditDeepStandaloneLanguageRecord("app/profile/page.tsx", "const PROFILE_HEART_GUIDE_TEXT"),
+  },
+  {
+    label: "app/profile/page.tsx month locale",
+    audit: auditDeepStandaloneLanguageRecord("app/profile/page.tsx", "const PROFILE_MONTH_LOCALE"),
+  },
+];
+
+const remainingCopyTranslationObjects = [
+  {
+    label: "app/page.tsx chapter labels",
+    audit: auditTranslationObject("app/page.tsx", "const HOME_CHAPTER_LABELS"),
+  },
+];
+
+const legalDocumentRecords = [
+  {
+    label: "app/privacy/page.tsx",
+    deep: auditDeepStandaloneLanguageRecord("app/privacy/page.tsx", "const COPY"),
+    sections: auditLegalDocumentSections("app/privacy/page.tsx", "const COPY"),
+  },
+  {
+    label: "app/terms/page.tsx",
+    deep: auditDeepStandaloneLanguageRecord("app/terms/page.tsx", "const COPY"),
+    sections: auditLegalDocumentSections("app/terms/page.tsx", "const COPY"),
+  },
+  {
+    label: "app/impressum/page.tsx",
+    deep: auditDeepStandaloneLanguageRecord("app/impressum/page.tsx", "const COPY"),
+    sections: auditLegalDocumentSections("app/impressum/page.tsx", "const COPY"),
+  },
+  {
+    label: "app/support/page.tsx",
+    deep: auditDeepStandaloneLanguageRecord("app/support/page.tsx", "const COPY"),
+    sections: auditLegalDocumentSections("app/support/page.tsx", "const COPY"),
+  },
+  {
+    label: "app/account-deletion/page.tsx",
+    deep: auditDeepStandaloneLanguageRecord("app/account-deletion/page.tsx", "const COPY"),
+    sections: auditLegalDocumentSections("app/account-deletion/page.tsx", "const COPY"),
+  },
+];
 
 const rewardStandaloneRecords = [
   {
@@ -676,9 +1029,83 @@ const stagedBranchChecks = [
     label: "lib/notifications/reflectionNudgeTemplates.ts Spanish branch",
     ok: /if\s*\(lang\s*===\s*["']es["']\)/.test(read("lib/notifications/reflectionNudgeTemplates.ts")),
   },
+  {
+    label: "app/profile/page.tsx localized spirit-fruit locked copy",
+    ok: /PROFILE_LOCAL_TEXT\[lang\]\.spiritFruitLocked/.test(read("app/profile/page.tsx")),
+  },
+  {
+    label: "components/HeartShopModal.tsx localized Best and New labels",
+    ok:
+      /item\.isBest\s*\?\s*text\.bestLabel\s*:\s*text\.newLabel/.test(
+        read("components/HeartShopModal.tsx"),
+      ),
+  },
 ];
 
+const criticalSpanishCopyChecks = [
+  {
+    label: "Welcome Spanish faith copy and Psalm reference",
+    relativePath: "app/welcome/page.tsx",
+    fragments: ["Meditación bíblica", "Salmo 1:2", "Ley del SEÑOR", "Caminar con la Palabra"],
+  },
+  {
+    label: "Privacy protected service identifiers",
+    relativePath: "app/privacy/page.tsx",
+    fragments: [
+      "support@christian-roots.com",
+      "eu-west-2",
+      "lhr1",
+      "https://datenschutz.hessen.de",
+    ],
+  },
+  {
+    label: "Terms copyright and contact references",
+    relativePath: "app/terms/page.tsx",
+    fragments: ["ESV_FULL_COPYRIGHT_NOTICE", "support@christian-roots.com"],
+  },
+  {
+    label: "Impressum provider references",
+    relativePath: "app/impressum/page.tsx",
+    fragments: ["DDG", "Hauptstraße 11", "support@christian-roots.com"],
+  },
+  {
+    label: "Support contact reference",
+    relativePath: "app/support/page.tsx",
+    fragments: ["SUPPORT_EMAIL"],
+  },
+  {
+    label: "Account deletion support reference",
+    relativePath: "app/account-deletion/page.tsx",
+    fragments: ["${SUPPORT_EMAIL}"],
+  },
+  {
+    label: "Required update version reference",
+    relativePath: "lib/requiredUpdateText.ts",
+    fragments: ["Christian Roots 2.0.1", "Actualizar ahora"],
+  },
+  {
+    label: "Localized celebration accessibility labels",
+    relativePath: "app/page.tsx",
+    fragments: ['iconAlt={t("qt_complete_title", lang)}'],
+  },
+  {
+    label: "Localized prayer accessibility label",
+    relativePath: "app/prayer/page.tsx",
+    fragments: ['iconAlt={c("nav_prayer")}'],
+  },
+  {
+    label: "Localized community profile fallback",
+    relativePath: "app/community/page.tsx",
+    fragments: ["COMMUNITY_LOCAL_TEXT[lang].profileAlt"],
+  },
+].map((check) => {
+  const source = read(check.relativePath);
+  const missing = check.fragments.filter((fragment) => !source.includes(fragment));
+  return { ...check, missing, ok: missing.length === 0 };
+});
+
 const hardcoded = collectHardcodedFourLanguageSurfaces();
+const directUiLiterals = auditForbiddenDirectUiLiterals();
 const bibleDataBooks = auditSpanishBibleBooks("lib/bibleData.ts");
 const bibleBooksBooks = auditSpanishBibleBooks("lib/bibleBooks.ts");
 
@@ -728,6 +1155,40 @@ if (notificationSettings.missingFields.length > 0) {
 if (notificationSettings.extraFields.length > 0) {
   console.log(`    extra: ${notificationSettings.extraFields.join(", ")}`);
 }
+for (const entry of remainingCopyStandaloneRecords) {
+  const { audit } = entry;
+  console.log(
+    `  - ${entry.label}: ${audit.translated}/${audit.expected} Spanish paths, ` +
+      `${audit.translatedStrings}/${audit.expectedStrings} Spanish strings`,
+  );
+  if (audit.missingPaths.length > 0) {
+    console.log(`    missing: ${audit.missingPaths.join(", ")}`);
+  }
+  if (audit.extraPaths.length > 0) {
+    console.log(`    extra: ${audit.extraPaths.join(", ")}`);
+  }
+}
+for (const entry of remainingCopyTranslationObjects) {
+  const translated = entry.audit.total - entry.audit.missingSpanish.length;
+  console.log(`  - ${entry.label}: ${translated}/${entry.audit.total} Spanish entries`);
+}
+for (const entry of legalDocumentRecords) {
+  const { deep, sections } = entry;
+  console.log(
+    `  - ${entry.label}: ${deep.translated}/${deep.expected} Spanish paths, ` +
+      `${deep.translatedStrings}/${deep.expectedStrings} Spanish strings, ` +
+      `${sections.translatedSections}/${sections.expectedSections} sections`,
+  );
+  if (deep.missingPaths.length > 0) {
+    console.log(`    missing: ${deep.missingPaths.join(", ")}`);
+  }
+  if (deep.extraPaths.length > 0) {
+    console.log(`    extra: ${deep.extraPaths.join(", ")}`);
+  }
+  if (sections.mismatches.length > 0) {
+    console.log(`    structure: ${sections.mismatches.join("; ")}`);
+  }
+}
 for (const entry of rewardStandaloneRecords) {
   const { audit } = entry;
   console.log(
@@ -762,6 +1223,19 @@ for (const entry of stagedTranslationObjects) {
 for (const entry of stagedBranchChecks) {
   console.log(`  - ${entry.label}: ${entry.ok ? "yes" : "no"}`);
 }
+console.log("\nCritical Spanish copy guards");
+for (const check of criticalSpanishCopyChecks) {
+  console.log(`  - ${check.label}: ${check.ok ? "yes" : "no"}`);
+  if (!check.ok) console.log(`    missing: ${check.missing.join(", ")}`);
+}
+printFindingList(
+  "Unlocalized direct UI literals",
+  directUiLiterals.map((finding) => ({
+    relativePath: finding.relativePath,
+    line: finding.line,
+    snippet: `${finding.label}: ${finding.snippet}`,
+  })),
+);
 console.log("\nFoundation status");
 console.log(`  - SUPPORTED_LANGS includes es: ${supportedLangsHasSpanish ? "yes" : "no"}`);
 console.log(`  - Spanish default translation is Roots ID 101: ${spanishDefaultIs101 ? "yes" : "no"}`);
@@ -783,6 +1257,21 @@ const strictFailures = [
   !notificationSettings.spanishPresent,
   notificationSettings.missingFields.length > 0,
   notificationSettings.extraFields.length > 0,
+  ...remainingCopyStandaloneRecords.flatMap(({ audit }) => [
+    !audit.spanishPresent,
+    audit.missingPaths.length > 0,
+    audit.extraPaths.length > 0,
+    audit.translatedStrings !== audit.expectedStrings,
+  ]),
+  ...remainingCopyTranslationObjects.map(({ audit }) => audit.missingSpanish.length > 0),
+  ...legalDocumentRecords.flatMap(({ deep, sections }) => [
+    !deep.spanishPresent,
+    deep.missingPaths.length > 0,
+    deep.extraPaths.length > 0,
+    deep.translatedStrings !== deep.expectedStrings,
+    !sections.spanishPresent,
+    sections.mismatches.length > 0,
+  ]),
   ...rewardStandaloneRecords.flatMap(({ audit }) => [
     !audit.spanishPresent,
     audit.missingPaths.length > 0,
@@ -797,6 +1286,8 @@ const strictFailures = [
   ]),
   ...stagedTranslationObjects.map(({ audit }) => audit.missingSpanish.length > 0),
   ...stagedBranchChecks.map(({ ok }) => !ok),
+  ...criticalSpanishCopyChecks.map(({ ok }) => !ok),
+  directUiLiterals.length > 0,
   hardcoded.length > 0,
   !supportedLangsHasSpanish,
   !spanishDefaultIs101,

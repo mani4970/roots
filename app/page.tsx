@@ -127,6 +127,14 @@ const gardenTopRef_scroll = () => {
   window.scrollTo({ top: 0, behavior: "instant" });
 };
 
+const HOME_LOCAL_TEXT = {
+  ko: { characterSaveFailed: "캐릭터 선택을 저장하지 못했어요." },
+  de: { characterSaveFailed: "Die Charakterauswahl konnte nicht gespeichert werden." },
+  en: { characterSaveFailed: "Could not save your character choice." },
+  fr: { characterSaveFailed: "Impossible d’enregistrer le personnage." },
+  es: { characterSaveFailed: "No pudimos guardar tu personaje." },
+} as const;
+
 type HomeQTState = {
   hasDraft: boolean;
   preferredTranslation: number;
@@ -149,14 +157,16 @@ type ChapterPopupState = {
 };
 
 const HOME_CHAPTER_LABELS = {
-  open: { ko: "장 전체 보기", de: "Ganzes Kapitel", en: "Full chapter", fr: "Chapitre entier" },
-  close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer" },
-  loading: { ko: "장을 불러오고 있어요...", de: "Kapitel wird geladen...", en: "Loading chapter...", fr: "Chargement du chapitre..." },
-  error: { ko: "장 전체를 불러오지 못했어요.", de: "Das ganze Kapitel konnte nicht geladen werden.", en: "Could not load the full chapter.", fr: "Impossible de charger le chapitre entier." },
-  chapterSuffix: { ko: "장", de: "", en: "" , fr: "" },
+  open: { ko: "장 전체 보기", de: "Ganzes Kapitel", en: "Full chapter", fr: "Chapitre entier", es: "Capítulo completo" },
+  close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer", es: "Cerrar" },
+  loading: { ko: "장을 불러오고 있어요...", de: "Kapitel wird geladen...", en: "Loading chapter...", fr: "Chargement du chapitre...", es: "Cargando el capítulo..." },
+  error: { ko: "장 전체를 불러오지 못했어요.", de: "Das ganze Kapitel konnte nicht geladen werden.", en: "Could not load the full chapter.", fr: "Impossible de charger le chapitre entier.", es: "No pudimos cargar el capítulo completo." },
+  chapterSuffix: { ko: "장", de: "", en: "", fr: "", es: "" },
 } as const;
 
-function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: "ko" | "de" | "en" | "fr") {
+type HomeChapterCopyLang = "ko" | "de" | "en" | "fr" | "es";
+
+function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: HomeChapterCopyLang) {
   return HOME_CHAPTER_LABELS[key][lang] ?? HOME_CHAPTER_LABELS[key].ko;
 }
 
@@ -413,7 +423,7 @@ export default function HomePage() {
       setShowAvatarChoiceModal(false);
     } catch (error) {
       console.error("캐릭터 선택 저장 실패:", error);
-      showToast(lang === "ko" ? "캐릭터 선택을 저장하지 못했어요." : lang === "de" ? "Die Charakterauswahl konnte nicht gespeichert werden." : lang === "fr" ? "Impossible d’enregistrer le personnage." : "Could not save your character choice.");
+      showToast(HOME_LOCAL_TEXT[lang].characterSaveFailed);
     } finally {
       setSavingAvatarChoice(false);
     }
@@ -1658,7 +1668,7 @@ export default function HomePage() {
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
@@ -1676,7 +1686,7 @@ export default function HomePage() {
         message={celebration.message}
         subMessage={celebration.subMessage}
         iconSrc="/icon-qt.webp"
-        iconAlt="QT"
+        iconAlt={t("qt_complete_title", lang)}
         onClose={closeCelebration}
       />
 

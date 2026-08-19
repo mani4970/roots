@@ -67,6 +67,21 @@ const COPY = {
       { title: "Compte et demandes de confidentialité", paragraphs: ["Si vous pouvez vous connecter, supprimez directement le compte dans la gestion du profil. Les demandes d’accès, rectification, suppression, portabilité ou autres demandes peuvent être envoyées par e-mail. Une vérification d’identité peut être demandée."] },
     ],
   },
+  es: {
+    back: "Volver",
+    title: "Soporte",
+    subtitle: "Contacta con nosotros si necesitas ayuda con Roots o quieres informar de un problema.",
+    subject: "Solicitud de soporte de Roots",
+    mail: "Enviar correo al soporte",
+    privacy: "Política de privacidad",
+    deletion: "Eliminación de la cuenta",
+    sections: [
+      { title: "Correo de soporte", paragraphs: [SUPPORT_EMAIL] },
+      { title: "Ayúdanos a investigar", paragraphs: ["Incluye el correo electrónico de tu cuenta, el tipo de dispositivo, el sistema operativo y la versión de la app, la pantalla afectada y los pasos para reproducir el problema. Oculta la información personal de las capturas de pantalla."] },
+      { title: "Información que no debes enviar", paragraphs: ["No envíes por correo electrónico contraseñas, códigos de inicio de sesión, claves API, datos de pago ni el contenido completo de meditaciones bíblicas u oraciones que no sea necesario para resolver la solicitud."] },
+      { title: "Solicitudes sobre la cuenta y la privacidad", paragraphs: ["Si puedes iniciar sesión, elimina la cuenta directamente desde la gestión de la cuenta en el perfil. Las solicitudes de acceso, rectificación, eliminación, portabilidad y otras solicitudes de privacidad pueden enviarse por correo electrónico. Podemos verificar tu identidad para proteger la cuenta."] },
+    ],
+  },
 } as const;
 
 export default function SupportPage() {

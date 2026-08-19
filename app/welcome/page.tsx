@@ -9,6 +9,7 @@ import styles from "./page.module.css";
 // ── Types & constants ──────────────────────────────────────────────
 
 type Lang = "ko" | "en" | "de" | "fr";
+type WelcomeCopyLang = Lang | "es";
 
 const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
   { code: "ko", flag: "🇰🇷", name: "한국어" },
@@ -22,7 +23,7 @@ const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.roots
 
 // ── Translations ───────────────────────────────────────────────────
 
-const TEXTS: Record<Lang, {
+const TEXTS: Record<WelcomeCopyLang, {
   tagline: string;
   descParts: string[];
   growthEyebrow: string;
@@ -170,6 +171,38 @@ const TEXTS: Record<Lang, {
     googlePlay: "Google Play",
     footer: "Marche avec la Parole",
     footer2: "Sans publicité",
+  },
+  es: {
+    tagline: "Echa raíces en la Palabra",
+    descParts: [
+      "Camina cada día con la Palabra mediante la meditación bíblica,",
+      "y busca a Dios en oración.",
+    ],
+    growthEyebrow: "Mi jardín",
+    growthTitle: "Un jardín que crece\ndurante 100 días",
+    growthSub: "Cada meditación bíblica completada hace crecer una semilla de mostaza.\nDespués de 100 días, los árboles donde anidan las aves\ncompletan un jardín floreciente de la Palabra.",
+    growthStart: "Inicio",
+    growthEnd: "Después de 100 días",
+    badgeLabel: "Frutos del Espíritu y frutos de la fe",
+    badgeSub: "Cada vez que tu fe da fruto, recibes insignias y formas con alegría un hábito espiritual paso a paso.",
+    badgeNames: ["Amor", "Alegría", "Paz", "Paciencia", "Amabilidad", "Bondad", "Fidelidad", "Mansedumbre", "Dominio propio"],
+    faithBadgeNames: ["Moisés", "David", "José", "Mensajero de la Palabra", "Paz en la Palabra"],
+    featuresLabel: "Funciones",
+    f1t: "Meditación bíblica",
+    f1s: "Registra tu meditación bíblica en 6 pasos, en formato libre,\ncon una foto o para el culto dominical.",
+    f2t: "Oración",
+    f2s: "Registra tus peticiones, intercede por otros\ny guarda las respuestas como testimonios.",
+    f3t: "Comunidad",
+    f3s: "Conecta con compañeros de fe y crea grupos\npara orar unos por otros, compartir meditaciones bíblicas\ny avanzar juntos en el camino de la fe.",
+    verseRef: "Salmo 1:2",
+    verse: "sino que en la Ley del SEÑOR se deleita\ny día y noche medita en ella.",
+    btnStart: "Comenzar",
+    btnLogin: "Ya tengo una cuenta",
+    storePrompt: "Usa Roots más cómodamente en la app",
+    appStore: "App Store",
+    googlePlay: "Google Play",
+    footer: "Caminar con la Palabra",
+    footer2: "Sin anuncios",
   },
 };
 

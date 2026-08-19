@@ -1,13 +1,22 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import type { Lang } from "@/lib/i18n";
 
-export default function NotificationDirectOpenOverlay() {
+const NOTIFICATION_DIRECT_OPEN_COPY = {
+  ko: "알림 화면을 여는 중",
+  en: "Opening notification",
+  de: "Benachrichtigung wird geöffnet",
+  fr: "Ouverture de la notification",
+  es: "Abriendo la notificación",
+} as const;
+
+export default function NotificationDirectOpenOverlay({ lang }: { lang: Lang | "es" }) {
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading"
+      aria-label={NOTIFICATION_DIRECT_OPEN_COPY[lang] ?? NOTIFICATION_DIRECT_OPEN_COPY.ko}
       style={{
         position: "fixed",
         inset: 0,

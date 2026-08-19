@@ -52,6 +52,18 @@ const COPY = {
       { title: "Confidentialité", paragraphs: ["Les informations relatives au traitement des données personnelles figurent dans la Politique de confidentialité de l’app et du site web."] },
     ],
   },
+  es: {
+    back: "Volver",
+    title: "Aviso legal (Impressum)",
+    subtitle: "Información del proveedor conforme al artículo 5 de la Ley alemana de Servicios Digitales (DDG). La versión alemana es la referencia para la interpretación jurídica.",
+    sections: [
+      { title: "Proveedor del servicio", paragraphs: ["Chungman Jeong\nHauptstraße 11\n65812 Bad Soden am Taunus\nAlemania"] },
+      { title: "Contacto", paragraphs: ["Correo electrónico: support@christian-roots.com"] },
+      { title: "Información empresarial", paragraphs: ["El servicio es operado por una persona física. No existe inscripción en el registro mercantil ni número de identificación a efectos del IVA."] },
+      { title: "Resolución de litigios de consumo", paragraphs: ["El proveedor no está dispuesto ni obligado a participar en procedimientos de resolución de litigios ante una junta de arbitraje de consumo."] },
+      { title: "Privacidad", paragraphs: ["La información sobre el tratamiento de datos personales está disponible en la Política de privacidad de la app y del sitio web."] },
+    ],
+  },
 } as const;
 
 export default function ImpressumPage() {

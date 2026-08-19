@@ -20,6 +20,11 @@ const requiredFiles = [
   "app/privacy/page.tsx",
   "app/terms/page.tsx",
   "app/support/page.tsx",
+  "app/impressum/page.tsx",
+  "lib/requiredUpdateText.ts",
+  "lib/inAppBrowser.ts",
+  "components/PhotoViewerModal.tsx",
+  "components/notifications/NotificationDirectOpenOverlay.tsx",
   "lib/avatar.ts",
   "lib/groupLeaderText.ts",
   "lib/inviteLandingText.ts",
@@ -327,6 +332,8 @@ requireFragments("app/welcome/page.tsx", "welcome terminology", [
   "through Bible Reflection",
   "Stille Zeiten zu teilen",
   "partager des méditations bibliques",
+  "mediante la meditación bíblica",
+  "compartir meditaciones bíblicas",
 ]);
 requireFragments("lib/notifications/settingsText.ts", "notification terminology", [
   "today’s Bible Reflection",
@@ -351,6 +358,30 @@ requireFragments("lib/notifications/templates.ts", "shared-content notification 
   "A new Bible Reflection",
   "eine neue Stille Zeit",
   "Une nouvelle méditation biblique",
+]);
+requireFragments("app/privacy/page.tsx", "Spanish privacy terminology", [
+  "Las meditaciones bíblicas",
+  "meditaciones bíblicas con foto",
+]);
+requireFragments("app/terms/page.tsx", "Spanish terms terminology", [
+  "meditaciones bíblicas",
+  "meditaciones bíblicas con foto",
+]);
+requireFragments("app/support/page.tsx", "Spanish support terminology", [
+  "meditaciones bíblicas",
+]);
+requireFragments("app/account-deletion/page.tsx", "Spanish deletion terminology", [
+  "Meditaciones bíblicas",
+  "meditaciones bíblicas con foto",
+]);
+requireFragments("app/qt/record/page.tsx", "localized Bible Reflection photo copy", [
+  'es: { photoAlt: "Foto de meditación bíblica"',
+]);
+requireFragments("app/community/page.tsx", "localized community photo copy", [
+  'photoAlt: "Foto de meditación bíblica"',
+]);
+requireFragments("components/PhotoViewerModal.tsx", "localized photo viewer copy", [
+  'es: { photo: "Foto"',
 ]);
 requireFragments("ios/App/App/Info.plist", "native permission terminology", [
   "Bible Reflection photo",

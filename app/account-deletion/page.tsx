@@ -59,6 +59,19 @@ const COPY = {
       { title: "Traitement et récupération", paragraphs: ["Après vérification, nous supprimons les données actives liées au compte et confirmons l’opération. Roots ne conserve pas volontairement les données du compte après la suppression.", "Les données supprimées ne peuvent pas être restaurées. Des copies de sauvegarde techniques limitées peuvent rester jusqu’à leur remplacement dans le cycle normal du prestataire, sans être restaurées dans le service actif ni réutilisées."] },
     ],
   },
+  es: {
+    back: "Volver",
+    title: "Eliminación de la cuenta",
+    subtitle: "Cómo eliminar de forma permanente tu cuenta de Roots y los datos vinculados.",
+    privacy: "Política de privacidad",
+    support: "Soporte",
+    sections: [
+      { title: "Eliminar desde la app", paragraphs: ["Abre Perfil → Gestión de la cuenta → Eliminar cuenta y confirma la eliminación. Cuando termine, se cerrará tu sesión y la cuenta no podrá recuperarse."] },
+      { title: "Datos que se eliminan", items: ["Cuenta, dirección de correo electrónico y perfil", "Meditaciones bíblicas, oraciones, registros de estado emocional, meditaciones bíblicas con foto e imágenes subidas", "Contenido compartido en la comunidad, grupos y compañeros de fe, reacciones, participación en la oración, denuncias y registros de contenido oculto", "Ajustes de notificaciones y tokens de notificaciones push", "Progreso, desafíos, insignias e historial de Corazones de amor", "Compras de la tienda y personalización actual", "Comentarios y otros datos activos vinculados a la cuenta"], paragraphs: ["Después de eliminar correctamente la cuenta, también se borran los ajustes de Roots y los borradores temporales de meditaciones bíblicas guardados en ese dispositivo."] },
+      { title: "Si no puedes acceder a la app", paragraphs: [`Envía una solicitud a ${SUPPORT_EMAIL} e incluye la dirección de correo electrónico utilizada para la cuenta. Podemos pedirte que demuestres que eres su titular para protegerla.`] },
+      { title: "Proceso y recuperación", paragraphs: ["Después de verificar la solicitud, eliminamos los datos activos vinculados a la cuenta y confirmamos que el proceso ha terminado. Roots no conserva intencionadamente los datos de la cuenta una vez completada la eliminación.", "Los datos eliminados no pueden recuperarse. Es posible que un proveedor conserve copias de seguridad técnicas limitadas hasta que se sustituyan durante su ciclo normal de copias de seguridad, pero no se restauran en el servicio activo ni vuelven a utilizarse."] },
+    ],
+  },
 } as const;
 
 export default function AccountDeletionPage() {

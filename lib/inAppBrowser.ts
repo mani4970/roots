@@ -87,6 +87,15 @@ export function inAppBrowserText(lang: Lang) {
       copied: "Lien copié",
       close: "Fermer",
     },
+    es: {
+      title: "Abrir en un navegador externo",
+      body: "El inicio de sesión social puede bloquearse dentro de navegadores integrados como el de KakaoTalk. Abre Roots en Safari o Chrome para iniciar sesión.",
+      hint: "Si el botón no funciona, abre el menú de la esquina superior derecha y elige «Abrir en Safari» o «Abrir en el navegador».",
+      open: "Abrir en el navegador",
+      copy: "Copiar enlace",
+      copied: "Enlace copiado",
+      close: "Cerrar",
+    },
   } as const;
   return copy[lang] ?? copy.ko;
 }
