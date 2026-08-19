@@ -109,6 +109,18 @@ const YOUVERSION_BIBLE_BY_ROOTS_TRANSLATION_ID: Readonly<Record<number, YouVersi
     attributionUrl: "https://www.bible.com/versions/93",
     attributionLabel: "YouVersion",
   },
+  // Spanish — Biblica Fast-Track Bible License
+  101: {
+    rootsTranslationId: 101,
+    youVersionBibleId: 128,
+    displayName: "Nueva Versión Internacional 2025",
+    abbreviation: "NVI-S",
+    license: "biblica",
+    copyrightNotice:
+      "La Santa Biblia, Nueva Versión Internacional® NVI® Copyright © 1999, 2015, 2022 by Biblica, Inc. Used by permission. All rights reserved worldwide.",
+    attributionUrl: "https://www.bible.com/versions/128",
+    attributionLabel: "YouVersion",
+  },
 };
 
 const USFM_BOOK_CODES: readonly string[] = [
@@ -176,7 +188,10 @@ function decodeHtmlEntities(value: string): string {
     euml: "ë",
     gt: ">",
     hellip: "…",
+    iacute: "í",
     icirc: "î",
+    iexcl: "¡",
+    iquest: "¿",
     iuml: "ï",
     laquo: "«",
     ldquo: "“",
@@ -186,8 +201,11 @@ function decodeHtmlEntities(value: string): string {
     middot: "·",
     nbsp: " ",
     ndash: "–",
+    ntilde: "ñ",
     oacute: "ó",
     ocirc: "ô",
+    ordf: "ª",
+    ordm: "º",
     ouml: "ö",
     quot: '"',
     raquo: "»",

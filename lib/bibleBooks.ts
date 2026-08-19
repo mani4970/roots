@@ -1,5 +1,5 @@
 /**
- * 성경 66권 이름 — 4개 언어 매핑
+ * 성경 66권 이름 — 5개 언어 매핑
  * DB에는 한국어(KO)로 저장, 화면에 표시할 때 사용자 언어로 변환
  *
  * 새 언어 추가 시: 이 파일의 BOOK_NAMES에 새 배열만 추가하면 됨
@@ -7,12 +7,16 @@
 
 import type { Lang } from "./i18n";
 
+// Español is staged before it becomes selectable in the central Lang type.
+export type BibleDisplayLang = Lang | "es";
+
 // 언어 코드 → 성경 번역 언어 코드 매핑
-const LANG_TO_BIBLE: Record<Lang, string> = {
+const LANG_TO_BIBLE: Record<BibleDisplayLang, string> = {
   ko: "KO",
   de: "DE",
   en: "EN",
   fr: "FR",
+  es: "ES",
 };
 
 export const BOOK_NAMES: Record<string, string[]> = {
@@ -20,6 +24,7 @@ export const BOOK_NAMES: Record<string, string[]> = {
   EN: ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi","Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"],
   DE: ["1. Mose","2. Mose","3. Mose","4. Mose","5. Mose","Josua","Richter","Rut","1. Samuel","2. Samuel","1. Könige","2. Könige","1. Chronik","2. Chronik","Esra","Nehemia","Ester","Hiob","Psalmen","Sprüche","Prediger","Hoheslied","Jesaja","Jeremia","Klagelieder","Hesekiel","Daniel","Hosea","Joel","Amos","Obadja","Jona","Micha","Nahum","Habakuk","Zefanja","Haggai","Sacharja","Maleachi","Matthäus","Markus","Lukas","Johannes","Apostelgeschichte","Römer","1. Korinther","2. Korinther","Galater","Epheser","Philipper","Kolosser","1. Thessalonicher","2. Thessalonicher","1. Timotheus","2. Timotheus","Titus","Philemon","Hebräer","Jakobus","1. Petrus","2. Petrus","1. Johannes","2. Johannes","3. Johannes","Judas","Offenbarung"],
   FR: ["Genèse","Exode","Lévitique","Nombres","Deutéronome","Josué","Juges","Ruth","1 Samuel","2 Samuel","1 Rois","2 Rois","1 Chroniques","2 Chroniques","Esdras","Néhémie","Esther","Job","Psaumes","Proverbes","Ecclésiaste","Cantique","Ésaïe","Jérémie","Lamentations","Ézéchiel","Daniel","Osée","Joël","Amos","Abdias","Jonas","Michée","Nahum","Habacuc","Sophonie","Aggée","Zacharie","Malachie","Matthieu","Marc","Luc","Jean","Actes","Romains","1 Corinthiens","2 Corinthiens","Galates","Éphésiens","Philippiens","Colossiens","1 Thessaloniciens","2 Thessaloniciens","1 Timothée","2 Timothée","Tite","Philémon","Hébreux","Jacques","1 Pierre","2 Pierre","1 Jean","2 Jean","3 Jean","Jude","Apocalypse"],
+  ES: ["Génesis","Éxodo","Levítico","Números","Deuteronomio","Josué","Jueces","Rut","1 Samuel","2 Samuel","1 Reyes","2 Reyes","1 Crónicas","2 Crónicas","Esdras","Nehemías","Ester","Job","Salmos","Proverbios","Eclesiastés","Cantares","Isaías","Jeremías","Lamentaciones","Ezequiel","Daniel","Oseas","Joel","Amós","Abdías","Jonás","Miqueas","Nahúm","Habacuc","Sofonías","Hageo","Zacarías","Malaquías","Mateo","Marcos","Lucas","Juan","Hechos","Romanos","1 Corintios","2 Corintios","Gálatas","Efesios","Filipenses","Colosenses","1 Tesalonicenses","2 Tesalonicenses","1 Timoteo","2 Timoteo","Tito","Filemón","Hebreos","Santiago","1 Pedro","2 Pedro","1 Juan","2 Juan","3 Juan","Judas","Apocalipsis"],
 };
 
 /**
@@ -33,7 +38,7 @@ export const BOOK_NAMES: Record<string, string[]> = {
  * DB의 bible_ref "누가복음 10:1-24" 같은 전체 참조도 변환 가능:
  *   translateBibleRef("누가복음 10:1-24", "de")  → "Lukas 10:1-24"
  */
-export function translateBookName(koName: string, lang: Lang): string {
+export function translateBookName(koName: string, lang: BibleDisplayLang): string {
   const bibleLang = LANG_TO_BIBLE[lang] ?? "KO";
   const koBooks = BOOK_NAMES["KO"];
   const targetBooks = BOOK_NAMES[bibleLang];
@@ -51,7 +56,7 @@ export function translateBookName(koName: string, lang: Lang): string {
  * "누가복음 10:1-24" → "Lukas 10:1-24"
  * "창 1:1-10" (약어) → 그대로 (약어는 변환 안 함)
  */
-export function translateBibleRef(ref: string, lang: Lang): string {
+export function translateBibleRef(ref: string, lang: BibleDisplayLang): string {
   if (!ref) return ref;
 
   const targetLangCode = LANG_TO_BIBLE[lang] ?? "KO";

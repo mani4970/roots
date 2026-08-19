@@ -13,8 +13,8 @@ import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
-import { translateBibleRef } from "@/lib/bibleBooks";
-import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
+import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
+import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
 import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -195,13 +195,21 @@ function pc(key: keyof typeof PHOTO_COPY, lang: string) {
   return entry[lang] ?? entry.ko;
 }
 
-function getBibleDisplayLang(translationId: number, fallbackLang: string): Lang {
+function getBibleDisplayLang(translationId: number, fallbackLang: string): BibleDisplayLang {
   const bibleLang = TRANSLATION_LANG[translationId] ?? "KO";
   if (bibleLang === "EN") return "en";
   if (bibleLang === "DE") return "de";
   if (bibleLang === "FR") return "fr";
-  if (fallbackLang === "en" || fallbackLang === "de" || fallbackLang === "fr" || fallbackLang === "ko") return fallbackLang;
+  if (bibleLang === "ES") return "es";
+  if (fallbackLang === "en" || fallbackLang === "de" || fallbackLang === "fr" || fallbackLang === "es" || fallbackLang === "ko") return fallbackLang;
   return "ko";
+}
+
+function getNearestAvailableVerse(verses: number[], value: number, minimum = 1) {
+  const candidates = verses.filter((verse) => verse >= minimum);
+  if (candidates.length === 0) return minimum;
+  if (candidates.includes(value)) return value;
+  return candidates.find((verse) => verse >= value) ?? candidates[candidates.length - 1];
 }
 
 function buildRef(book: string, chapter: number, start: number, end: number, endChapter?: number | null) {
@@ -470,13 +478,22 @@ function PhotoReflectionContent() {
 
   const maxChapter = BIBLE_CHAPTERS[book]?.length ?? 1;
   const safeEndChapter = Math.min(Math.max(endChapter, chapter), maxChapter);
-  const maxStartVerses = BIBLE_CHAPTERS[book]?.[chapter - 1] ?? 1;
-  const maxEndVerses = BIBLE_CHAPTERS[book]?.[safeEndChapter - 1] ?? maxStartVerses;
+  const startVerseNumbers = getBibleVerseNumbers(book, chapter, selectedTranslation);
+  const safeStartVerse = getNearestAvailableVerse(startVerseNumbers, startVerse);
+  const rawEndVerseNumbers = getBibleVerseNumbers(book, safeEndChapter, selectedTranslation);
+  const endVerseNumbers = safeEndChapter === chapter
+    ? rawEndVerseNumbers.filter((verse) => verse >= safeStartVerse)
+    : rawEndVerseNumbers;
+  const safeEndVerse = getNearestAvailableVerse(
+    endVerseNumbers,
+    endVerse,
+    safeEndChapter === chapter ? safeStartVerse : 1,
+  );
   const currentCustomRef = buildRef(
     book,
     chapter,
-    Math.min(startVerse, maxStartVerses),
-    safeEndChapter === chapter ? Math.max(Math.min(startVerse, maxStartVerses), Math.min(endVerse, maxEndVerses)) : Math.min(endVerse, maxEndVerses),
+    safeStartVerse,
+    safeEndVerse,
     safeEndChapter,
   );
   const bibleDisplayLang = getBibleDisplayLang(selectedTranslation, lang);
@@ -502,16 +519,16 @@ function PhotoReflectionContent() {
   }, [book]);
 
   useEffect(() => {
-    const max = BIBLE_CHAPTERS[book]?.[chapter - 1] ?? 1;
-    setStartVerse(prev => Math.min(prev, max));
-    setEndChapter(prev => Math.max(prev, chapter));
-    setEndVerse(prev => Math.min(Math.max(prev, 1), max));
-  }, [book, chapter]);
+    const available = getBibleVerseNumbers(book, chapter, selectedTranslation);
+    setStartVerse((previous) => getNearestAvailableVerse(available, previous));
+    setEndChapter((previous) => Math.max(previous, chapter));
+  }, [book, chapter, selectedTranslation]);
 
   useEffect(() => {
-    const max = BIBLE_CHAPTERS[book]?.[safeEndChapter - 1] ?? 1;
-    setEndVerse(prev => Math.min(Math.max(prev, 1), max));
-  }, [book, safeEndChapter]);
+    const available = getBibleVerseNumbers(book, safeEndChapter, selectedTranslation);
+    const minimum = safeEndChapter === chapter ? safeStartVerse : 1;
+    setEndVerse((previous) => getNearestAvailableVerse(available, previous, minimum));
+  }, [book, chapter, safeEndChapter, safeStartVerse, selectedTranslation]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -1637,20 +1654,20 @@ function PhotoReflectionContent() {
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <select className="input-field" value={Math.min(startVerse, maxStartVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > endVerse) setEndVerse(next); }}>
-                    {Array.from({ length: maxStartVerses }, (_, i) => i + 1).map(item => <option key={item} value={item}>{item}</option>)}
+                  <select className="input-field" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > safeEndVerse) setEndVerse(next); }}>
+                    {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && startVerse > endVerse) setEndVerse(startVerse); }}>
+                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && safeStartVerse > safeEndVerse) setEndVerse(safeStartVerse); }}>
                     {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
-                  <select className="input-field" value={safeEndChapter === chapter ? Math.max(endVerse, startVerse) : Math.min(endVerse, maxEndVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
-                    {Array.from({ length: maxEndVerses }, (_, i) => i + 1).filter(v => safeEndChapter !== chapter || v >= startVerse).map(item => <option key={item} value={item}>{item}</option>)}
+                  <select className="input-field" value={safeEndVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
+                    {endVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
               </div>

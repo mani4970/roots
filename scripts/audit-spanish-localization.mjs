@@ -137,7 +137,7 @@ function parsePropertyKey(source, index, limit) {
     };
   }
 
-  const match = source.slice(cursor, limit).match(/^[$A-Z_a-z][$\w]*/);
+  const match = source.slice(cursor, limit).match(/^(?:[$A-Z_a-z][$\w]*|\d+)/);
   if (!match) return null;
   return {
     key: match[0],
@@ -651,15 +651,69 @@ function auditLegalDocumentSections(relativePath, marker) {
   return result;
 }
 
+function parseSimpleStringLiteral(value) {
+  const trimmed = value.trim();
+  const quote = trimmed[0];
+  if ((quote !== '"' && quote !== "'") || trimmed.at(-1) !== quote) return null;
+  if (quote === '"') {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  return trimmed
+    .slice(1, -1)
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, "\\");
+}
+
+function parseStringArray(value) {
+  return parseTopLevelArrayItems(value)
+    .map(parseSimpleStringLiteral)
+    .filter((item) => item !== null);
+}
+
+function arraysEqual(left, right) {
+  return Array.isArray(left) && Array.isArray(right) &&
+    left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function auditSpanishBibleBooks(relativePath) {
   const source = read(relativePath);
-  const objectRange = findObjectByMarker(source, "BOOK_NAMES");
+  const objectRange = findObjectByMarker(source, "export const BOOK_NAMES");
   const entries = parseTopLevelObjectEntries(source, objectRange);
   const spanish = entries.find((entry) => entry.key === "ES");
+  const values = spanish ? parseStringArray(spanish.value) : [];
   return {
     relativePath,
-    count: spanish ? countArrayStringItems(spanish.value) : 0,
+    count: values.length,
+    values,
   };
+}
+
+function auditNviOmittedVerses() {
+  const source = read("lib/bibleData.ts");
+  const objectRange = findObjectByMarker(source, "const TRANSLATION_OMITTED_VERSES");
+  const translations = parseTopLevelObjectEntries(source, objectRange);
+  const nvi = translations.find((entry) => entry.key === "101");
+  const keys = [];
+  if (!nvi || !nvi.value.startsWith("{")) return keys;
+
+  const nviClose = findMatchingDelimiter(nvi.value, 0, "{", "}");
+  const books = parseTopLevelObjectEntries(nvi.value, { openIndex: 0, closeIndex: nviClose });
+  for (const book of books) {
+    if (!book.value.startsWith("{")) continue;
+    const bookClose = findMatchingDelimiter(book.value, 0, "{", "}");
+    const chapters = parseTopLevelObjectEntries(book.value, { openIndex: 0, closeIndex: bookClose });
+    for (const chapter of chapters) {
+      for (const verseValue of parseTopLevelArrayItems(chapter.value)) {
+        const verse = Number(verseValue.trim());
+        if (Number.isSafeInteger(verse)) keys.push(`${book.key}:${chapter.key}:${verse}`);
+      }
+    }
+  }
+  return keys.sort();
 }
 
 function printFindingList(title, findings, limit = 30) {
@@ -1109,12 +1163,35 @@ const directUiLiterals = auditForbiddenDirectUiLiterals();
 const bibleDataBooks = auditSpanishBibleBooks("lib/bibleData.ts");
 const bibleBooksBooks = auditSpanishBibleBooks("lib/bibleBooks.ts");
 
+const EXPECTED_NVI_OMISSION_KEYS = [
+  "마태복음:17:21", "마태복음:18:11", "마태복음:23:14",
+  "마가복음:7:16", "마가복음:9:44", "마가복음:9:46", "마가복음:11:26", "마가복음:15:28",
+  "누가복음:17:36", "누가복음:23:17", "요한복음:5:4",
+  "사도행전:8:37", "사도행전:15:34", "사도행전:24:7", "사도행전:28:29",
+  "로마서:16:24",
+].sort();
+
 const i18nSource = read("lib/i18n.ts");
 const supportedLangsHasSpanish = /SUPPORTED_LANGS\s*=\s*\[[^\]]*["']es["']/.test(i18nSource);
+const bibleDataSource = read("lib/bibleData.ts");
+const spanishNviIsSelectable = /group:\s*["']Español["'][\s\S]*?id:\s*101[\s\S]*?name:\s*["']NVI["']/.test(bibleDataSource);
+const spanishNviMapsToEs = /\b101\s*:\s*["']ES["']/.test(bibleDataSource);
 const defaultTranslationSource = read("lib/translationDefaults.ts");
 const spanishDefaultIs101 = /\bes\s*:\s*101\b/.test(defaultTranslationSource);
 const youVersionSource = read("lib/youVersionBible.ts");
 const nviMappingIsPresent = /\b101\s*:\s*\{[\s\S]*?rootsTranslationId\s*:\s*101[\s\S]*?youVersionBibleId\s*:\s*128/.test(youVersionSource);
+const nviDisplayNameIsExact = /displayName:\s*["']Nueva Versión Internacional 2025["']/.test(youVersionSource);
+const nviCopyrightIsExact = youVersionSource.includes(
+  "La Santa Biblia, Nueva Versión Internacional® NVI® Copyright © 1999, 2015, 2022 by Biblica, Inc. Used by permission. All rights reserved worldwide.",
+);
+const verseRouteSource = read("app/api/verse/route.ts");
+const todayWordAcceptsSpanish = /value\s*===\s*["']es["']/.test(verseRouteSource);
+const photoQtSource = read("app/qt/photo/page.tsx");
+const photoQtMapsNviToSpanish = /bibleLang\s*===\s*["']ES["']\)\s*return\s*["']es["']/.test(photoQtSource);
+const photoQtUsesTranslationVerseLists = (photoQtSource.match(/getBibleVerseNumbers\(/g) ?? []).length >= 3;
+const bibleBookArraysMatch = arraysEqual(bibleDataBooks.values, bibleBooksBooks.values);
+const nviOmissionKeys = auditNviOmittedVerses();
+const nviOmissionsAreExact = arraysEqual(nviOmissionKeys, EXPECTED_NVI_OMISSION_KEYS);
 
 console.log("Spanish localization audit (read-only)");
 console.log(`Mode: ${STRICT ? "strict" : "report"}`);
@@ -1238,10 +1315,19 @@ printFindingList(
 );
 console.log("\nFoundation status");
 console.log(`  - SUPPORTED_LANGS includes es: ${supportedLangsHasSpanish ? "yes" : "no"}`);
+console.log(`  - NVI is selectable as Roots ID 101: ${spanishNviIsSelectable ? "yes" : "no"}`);
+console.log(`  - Roots ID 101 maps to Bible language ES: ${spanishNviMapsToEs ? "yes" : "no"}`);
 console.log(`  - Spanish default translation is Roots ID 101: ${spanishDefaultIs101 ? "yes" : "no"}`);
 console.log(`  - Roots 101 -> YouVersion 128 mapping: ${nviMappingIsPresent ? "yes" : "no"}`);
+console.log(`  - NVI display name is Nueva Versión Internacional 2025: ${nviDisplayNameIsExact ? "yes" : "no"}`);
+console.log(`  - NVI official copyright is exact: ${nviCopyrightIsExact ? "yes" : "no"}`);
+console.log(`  - Today’s Word accepts es and uses its language default: ${todayWordAcceptsSpanish ? "yes" : "no"}`);
 console.log(`  - lib/bibleData.ts Spanish book names: ${bibleDataBooks.count}/66`);
 console.log(`  - lib/bibleBooks.ts Spanish book names: ${bibleBooksBooks.count}/66`);
+console.log(`  - Spanish book arrays are identical: ${bibleBookArraysMatch ? "yes" : "no"}`);
+console.log(`  - NVI note-only/empty verse exclusions: ${nviOmissionKeys.length}/16 (${nviOmissionsAreExact ? "exact" : "mismatch"})`);
+console.log(`  - Photo Bible Reflection maps NVI references to Spanish: ${photoQtMapsNviToSpanish ? "yes" : "no"}`);
+console.log(`  - Photo Bible Reflection uses translation-specific verse lists: ${photoQtUsesTranslationVerseLists ? "yes" : "no"}`);
 printFindingList("Four-language hardcoded surfaces", hardcoded);
 
 const strictFailures = [
@@ -1290,10 +1376,19 @@ const strictFailures = [
   directUiLiterals.length > 0,
   hardcoded.length > 0,
   !supportedLangsHasSpanish,
+  !spanishNviIsSelectable,
+  !spanishNviMapsToEs,
   !spanishDefaultIs101,
   !nviMappingIsPresent,
+  !nviDisplayNameIsExact,
+  !nviCopyrightIsExact,
+  !todayWordAcceptsSpanish,
   bibleDataBooks.count !== 66,
   bibleBooksBooks.count !== 66,
+  !bibleBookArraysMatch,
+  !nviOmissionsAreExact,
+  !photoQtMapsNviToSpanish,
+  !photoQtUsesTranslationVerseLists,
 ];
 
 if (STRICT && strictFailures.some(Boolean)) {
