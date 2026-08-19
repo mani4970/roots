@@ -314,9 +314,18 @@ async function main() {
       check("Live NVI title identifies Nueva Versión Internacional", /Nueva\s+Versi[oó]n\s+Internacional/i.test(title), `title=${title || "missing"}`);
       check("Live NVI abbreviation contains NVI", /NVI/i.test(abbreviation), `abbreviation=${abbreviation || "missing"}`);
       check("Live NVI metadata exposes the canonical 66 books", arraysEqual(metadataBooks, EXPECTED_USFM_CODES), `books=${metadataBooks.length}`);
-      for (const fragment of ["Nueva Versión Internacional", "Biblica", "1999", "2015", "2022", "Used by permission", "All rights reserved worldwide"]) {
+
+      // YouVersion documents Bible.copyright as the publisher-provided short
+      // copyright field. It may omit permission/reservation sentences that
+      // Roots must still display from the licensed full notice above. Validate
+      // the live field only as provider identity/version evidence, while the
+      // exact in-app notice remains protected by the static equality check.
+      check("Live copyright is non-empty", copyright.length > 0);
+      for (const fragment of ["Nueva Versión Internacional", "Biblica", "1999", "2015", "2022"]) {
         check(`Live copyright contains “${fragment}”`, copyright.includes(fragment));
       }
+      check("App copyright contains “Used by permission”", nviSource?.copyrightNotice?.includes("Used by permission"));
+      check("App copyright contains “All rights reserved worldwide”", nviSource?.copyrightNotice?.includes("All rights reserved worldwide"));
 
       const booksPayload = await fetchJson(`${API_BASE}/bibles/${YOUVERSION_BIBLE_ID}/books`, appKey);
       const liveBooks = unwrapArray(booksPayload);

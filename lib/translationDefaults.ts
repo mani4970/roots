@@ -1,9 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 import { isSelectableBibleTranslationId } from "@/lib/bibleData";
 
-type DefaultTranslationLang = Lang | "es";
-
-export const LANG_DEFAULT_TRANSLATION: Record<DefaultTranslationLang, number> = {
+export const LANG_DEFAULT_TRANSLATION: Record<Lang, number> = {
   ko: 92, // 개역개정
   de: 97, // Hoffnung für alle
   en: 80, // NIV
@@ -11,7 +9,7 @@ export const LANG_DEFAULT_TRANSLATION: Record<DefaultTranslationLang, number> = 
   es: 101, // NVI
 };
 
-function hasDefaultTranslation(lang: Lang | string | undefined | null): lang is DefaultTranslationLang {
+function hasDefaultTranslation(lang: Lang | string | undefined | null): lang is Lang {
   return typeof lang === "string" && lang in LANG_DEFAULT_TRANSLATION;
 }
 

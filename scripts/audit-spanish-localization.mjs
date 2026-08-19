@@ -1158,7 +1158,18 @@ const criticalSpanishCopyChecks = [
   return { ...check, missing, ok: missing.length === 0 };
 });
 
-const hardcoded = collectHardcodedFourLanguageSurfaces();
+const allHardcoded = collectHardcodedFourLanguageSurfaces();
+const runtimeHardcoded = allHardcoded.filter((finding) => !finding.relativePath.startsWith("supabase/"));
+const historicalSqlHardcoded = allHardcoded.filter((finding) => finding.relativePath.startsWith("supabase/"));
+const EXPECTED_HISTORICAL_SQL_SURFACES = [
+  "supabase/100_kbs_bible_verses_and_translation_options_2_1.sql",
+  "supabase/103_easy_bible_translation_option_2_1.sql",
+  "supabase/129_remove_unlicensed_bible_options_2_1.sql",
+  "supabase/50_notifications_foundation_1_6.sql",
+  "supabase/87_profiles_user_preferences_rpc_2_1.sql",
+].sort();
+const historicalSqlPaths = [...new Set(historicalSqlHardcoded.map((finding) => finding.relativePath))].sort();
+const historicalSqlSnapshotsAreExpected = arraysEqual(historicalSqlPaths, EXPECTED_HISTORICAL_SQL_SURFACES);
 const directUiLiterals = auditForbiddenDirectUiLiterals();
 const bibleDataBooks = auditSpanishBibleBooks("lib/bibleData.ts");
 const bibleBooksBooks = auditSpanishBibleBooks("lib/bibleBooks.ts");
@@ -1173,6 +1184,34 @@ const EXPECTED_NVI_OMISSION_KEYS = [
 
 const i18nSource = read("lib/i18n.ts");
 const supportedLangsHasSpanish = /SUPPORTED_LANGS\s*=\s*\[[^\]]*["']es["']/.test(i18nSource);
+const langMetaHasSpanish = /\bes\s*:\s*\{\s*flag:\s*["']🇪🇸["'][\s\S]*?nativeName:\s*["']Español["'][\s\S]*?englishName:\s*["']Spanish["']/.test(i18nSource);
+const centralTranslationsRequireEveryLanguage = /type\s+Translation\s*=\s*Record<Lang,\s*string>/.test(i18nSource);
+const dateSource = read("lib/date.ts");
+const spanishDateLocaleIsConfigured = /\bes\s*:\s*["']es-ES["']/.test(dateSource);
+const welcomeSource = read("app/welcome/page.tsx");
+const welcomeSelectorIncludesSpanish = /WELCOME_LANG_ORDER\s*=\s*\[[^\]]*["']es["']/.test(welcomeSource) && /if\s*\(isLang\(stored\)\)/.test(welcomeSource);
+const inviteLandingSource = read("lib/inviteLandingText.ts");
+const inviteSelectorIncludesSpanish = /value:\s*["']es["'][\s\S]*?label:\s*["']Español["'][\s\S]*?shortLabel:\s*["']ES["']/.test(inviteLandingSource);
+const authCallbackSource = read("app/auth/callback/route.ts");
+const oauthCallbackAcceptsSpanish = /SUPPORTED_LANGS\s*=\s*\[[^\]]*["']es["']/.test(authCallbackSource);
+const capacitorAuthSource = read("components/CapacitorAuthBridge.tsx");
+const capacitorOAuthAcceptsSpanish = /SUPPORTED_LANGS\s*=\s*new Set<Lang>\(\[[^\]]*["']es["']/.test(capacitorAuthSource);
+const notificationCreateSource = read("app/api/notifications/create/route.ts");
+const notificationApiAcceptsSpanish = /VALID_LANGS\s*=\s*new Set<string>\(\[[^\]]*["']es["']/.test(notificationCreateSource);
+const reflectionNudgesSource = read("app/api/reflection-nudges/route.ts");
+const reflectionNudgeApiAcceptsSpanish = /VALID_LANGS\s*=\s*new Set<string>\(\[[^\]]*["']es["']/.test(reflectionNudgesSource);
+const layoutSource = read("app/layout.tsx");
+const useLangSource = read("lib/useLang.ts");
+const documentLanguageIsSynchronized = layoutSource.includes("document.documentElement.lang = savedLang") && useLangSource.includes("document.documentElement.lang = lang");
+const homeSource = read("app/page.tsx");
+const homeChapterSupportsSpanish = /function\s+formatChapterReference\([^)]*lang:\s*Lang\)/.test(homeSource);
+const photoDateUsesLanguageLocale = /toLocaleDateString\(getDateLocale\(lang\)\)/.test(read("app/qt/photo/page.tsx"));
+const androidOfflineSource = read("android/app/src/main/java/com/rootspuce/app/MainActivity.java");
+const iosOfflineSource = read("ios/App/App/AppDelegate.swift");
+const androidOfflineHasSpanish = /case\s+["']es["'][\s\S]*?Se necesita conexión a Internet/.test(androidOfflineSource);
+const iosOfflineHasSpanish = /case\s+["']es["'][\s\S]*?Se necesita conexión a Internet/.test(iosOfflineSource);
+const iosInfoPlistSource = read("ios/App/App/Info.plist");
+const iosDeclaresFiveLocalizations = /<key>CFBundleLocalizations<\/key>[\s\S]*?<string>ko<\/string>[\s\S]*?<string>en<\/string>[\s\S]*?<string>de<\/string>[\s\S]*?<string>fr<\/string>[\s\S]*?<string>es<\/string>/.test(iosInfoPlistSource);
 const bibleDataSource = read("lib/bibleData.ts");
 const spanishNviIsSelectable = /group:\s*["']Español["'][\s\S]*?id:\s*101[\s\S]*?name:\s*["']NVI["']/.test(bibleDataSource);
 const spanishNviMapsToEs = /\b101\s*:\s*["']ES["']/.test(bibleDataSource);
@@ -1313,8 +1352,24 @@ printFindingList(
     snippet: `${finding.label}: ${finding.snippet}`,
   })),
 );
-console.log("\nFoundation status");
+console.log("\nActivation status");
 console.log(`  - SUPPORTED_LANGS includes es: ${supportedLangsHasSpanish ? "yes" : "no"}`);
+console.log(`  - LANG_META includes Español: ${langMetaHasSpanish ? "yes" : "no"}`);
+console.log(`  - Central translations require all five languages: ${centralTranslationsRequireEveryLanguage ? "yes" : "no"}`);
+console.log(`  - Spanish date locale is es-ES: ${spanishDateLocaleIsConfigured ? "yes" : "no"}`);
+console.log(`  - Welcome selector includes Español: ${welcomeSelectorIncludesSpanish ? "yes" : "no"}`);
+console.log(`  - Invite selector includes Español: ${inviteSelectorIncludesSpanish ? "yes" : "no"}`);
+console.log(`  - Web OAuth callback accepts es: ${oauthCallbackAcceptsSpanish ? "yes" : "no"}`);
+console.log(`  - Capacitor OAuth callback accepts es: ${capacitorOAuthAcceptsSpanish ? "yes" : "no"}`);
+console.log(`  - Notification API accepts es: ${notificationApiAcceptsSpanish ? "yes" : "no"}`);
+console.log(`  - Reflection nudge API accepts es: ${reflectionNudgeApiAcceptsSpanish ? "yes" : "no"}`);
+console.log(`  - Document <html lang> follows the selected language: ${documentLanguageIsSynchronized ? "yes" : "no"}`);
+console.log(`  - Home chapter references accept Spanish: ${homeChapterSupportsSpanish ? "yes" : "no"}`);
+console.log(`  - Photo catch-up date uses the selected locale: ${photoDateUsesLanguageLocale ? "yes" : "no"}`);
+console.log(`  - Android offline screen includes Spanish: ${androidOfflineHasSpanish ? "yes" : "no"}`);
+console.log(`  - iOS offline screen includes Spanish: ${iosOfflineHasSpanish ? "yes" : "no"}`);
+console.log(`  - iOS declares ko/en/de/fr/es localizations: ${iosDeclaresFiveLocalizations ? "yes" : "no"}`);
+console.log("\nBible foundation status");
 console.log(`  - NVI is selectable as Roots ID 101: ${spanishNviIsSelectable ? "yes" : "no"}`);
 console.log(`  - Roots ID 101 maps to Bible language ES: ${spanishNviMapsToEs ? "yes" : "no"}`);
 console.log(`  - Spanish default translation is Roots ID 101: ${spanishDefaultIs101 ? "yes" : "no"}`);
@@ -1328,7 +1383,9 @@ console.log(`  - Spanish book arrays are identical: ${bibleBookArraysMatch ? "ye
 console.log(`  - NVI note-only/empty verse exclusions: ${nviOmissionKeys.length}/16 (${nviOmissionsAreExact ? "exact" : "mismatch"})`);
 console.log(`  - Photo Bible Reflection maps NVI references to Spanish: ${photoQtMapsNviToSpanish ? "yes" : "no"}`);
 console.log(`  - Photo Bible Reflection uses translation-specific verse lists: ${photoQtUsesTranslationVerseLists ? "yes" : "no"}`);
-printFindingList("Four-language hardcoded surfaces", hardcoded);
+printFindingList("Runtime four-language hardcoded surfaces", runtimeHardcoded);
+printFindingList("Historical SQL snapshots kept unchanged", historicalSqlHardcoded);
+console.log(`Historical SQL snapshot set is exact: ${historicalSqlSnapshotsAreExpected ? "yes" : "no"}`);
 
 const strictFailures = [
   central.missingSpanish.length > 0,
@@ -1374,8 +1431,24 @@ const strictFailures = [
   ...stagedBranchChecks.map(({ ok }) => !ok),
   ...criticalSpanishCopyChecks.map(({ ok }) => !ok),
   directUiLiterals.length > 0,
-  hardcoded.length > 0,
+  runtimeHardcoded.length > 0,
+  !historicalSqlSnapshotsAreExpected,
   !supportedLangsHasSpanish,
+  !langMetaHasSpanish,
+  !centralTranslationsRequireEveryLanguage,
+  !spanishDateLocaleIsConfigured,
+  !welcomeSelectorIncludesSpanish,
+  !inviteSelectorIncludesSpanish,
+  !oauthCallbackAcceptsSpanish,
+  !capacitorOAuthAcceptsSpanish,
+  !notificationApiAcceptsSpanish,
+  !reflectionNudgeApiAcceptsSpanish,
+  !documentLanguageIsSynchronized,
+  !homeChapterSupportsSpanish,
+  !photoDateUsesLanguageLocale,
+  !androidOfflineHasSpanish,
+  !iosOfflineHasSpanish,
+  !iosDeclaresFiveLocalizations,
   !spanishNviIsSelectable,
   !spanishNviMapsToEs,
   !spanishDefaultIs101,

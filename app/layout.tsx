@@ -4,6 +4,7 @@ import "./globals.css";
 import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 import NativeStatusBar from "@/components/NativeStatusBar";
 import NotificationBridge from "@/components/NotificationBridge";
+import { FALLBACK_LANG, SUPPORTED_LANGS } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://christian-roots.com"),
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang={FALLBACK_LANG} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -57,6 +58,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           __html: `
             (function(){
               try {
+                var savedLang = localStorage.getItem('roots_lang');
+                var supportedLangs = ${JSON.stringify(SUPPORTED_LANGS)};
+                if (supportedLangs.indexOf(savedLang) !== -1) {
+                  document.documentElement.lang = savedLang;
+                }
+
                 var t = localStorage.getItem('roots_theme');
                 if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
                 else document.documentElement.removeAttribute('data-theme');

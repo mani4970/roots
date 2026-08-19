@@ -4,19 +4,19 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveLangLocally } from "@/lib/useLang";
 import { storageGet } from "@/lib/clientStorage";
+import { LANG_META, isLang, type Lang } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 // ── Types & constants ──────────────────────────────────────────────
 
-type Lang = "ko" | "en" | "de" | "fr";
-type WelcomeCopyLang = Lang | "es";
+type WelcomeCopyLang = Lang;
 
-const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
-  { code: "ko", flag: "🇰🇷", name: "한국어" },
-  { code: "en", flag: "🇬🇧", name: "English" },
-  { code: "de", flag: "🇩🇪", name: "Deutsch" },
-  { code: "fr", flag: "🇫🇷", name: "Français" },
-];
+const WELCOME_LANG_ORDER = ["ko", "en", "de", "fr", "es"] as const satisfies readonly Lang[];
+const LANG_LIST: { code: Lang; flag: string; name: string }[] = WELCOME_LANG_ORDER.map((code) => ({
+  code,
+  flag: LANG_META[code].flag,
+  name: LANG_META[code].nativeName,
+}));
 
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
@@ -302,8 +302,8 @@ export default function WelcomePage() {
   // Restore saved lang
   useEffect(() => {
     const stored = storageGet("roots_lang");
-    if (stored && ["ko", "de", "en", "fr"].includes(stored)) {
-      setLang(stored as Lang);
+    if (isLang(stored)) {
+      setLang(stored);
     }
   }, []);
 

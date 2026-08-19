@@ -132,6 +132,12 @@ public class MainActivity extends BridgeActivity {
                         "Roots a besoin d’une connexion Internet.\nVérifie ta connexion, puis réessaie.",
                         "Réessayer"
                 );
+            case "es":
+                return new OfflineCopy(
+                        "Se necesita conexión a Internet",
+                        "Roots necesita conexión a Internet para cargarse.\nComprueba tu conexión e inténtalo de nuevo.",
+                        "Intentar de nuevo"
+                );
             default:
                 return new OfflineCopy(
                         "Internet connection needed",

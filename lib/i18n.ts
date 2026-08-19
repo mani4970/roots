@@ -1,7 +1,6 @@
 // ────────────────────────────────────────────────
 // Roots 앱 다국어 번역 (i18n)
-// 현재 지원: ko (한국어), de (독일어)
-// 확장 예정: en (English), fr (Français)
+// 현재 지원: ko (한국어), de (Deutsch), en (English), fr (Français), es (Español)
 //
 // ─── 확장 방법 ───
 // 1. SUPPORTED_LANGS 에 새 언어 코드 추가
@@ -10,7 +9,7 @@
 //    → 누락된 번역은 FALLBACK_LANG("ko")로 자동 대체되므로 점진적 추가 가능
 // ────────────────────────────────────────────────
 
-export const SUPPORTED_LANGS = ["ko", "de", "en", "fr"] as const;
+export const SUPPORTED_LANGS = ["ko", "de", "en", "fr", "es"] as const;
 export type Lang = typeof SUPPORTED_LANGS[number];
 
 export const FALLBACK_LANG: Lang = "ko";
@@ -21,16 +20,12 @@ export const LANG_META: Record<Lang, { flag: string; nativeName: string; english
   de: { flag: "🇩🇪", nativeName: "Deutsch", englishName: "German" },
   en: { flag: "🇬🇧", nativeName: "English", englishName: "English" },
   fr: { flag: "🇫🇷", nativeName: "Français", englishName: "French" },
+  es: { flag: "🇪🇸", nativeName: "Español", englishName: "Spanish" },
 };
 
-// Spanish copy is added in small, verified batches before Español becomes selectable.
-// Keeping the staged language out of SUPPORTED_LANGS prevents incomplete Spanish UI
-// from being exposed while still allowing each translation batch to be type-checked.
-type TranslationLang = Lang | "es";
-
-// 부분 번역 허용: 누락 시 FALLBACK_LANG 사용
-// FALLBACK_LANG("ko")만 required, 나머지는 optional → 새 언어 추가해도 TS 에러 없이 점진적 채움 가능
-type Translation = Partial<Record<TranslationLang, string>> & { [K in typeof FALLBACK_LANG]: string };
+// 정식 지원 언어는 모든 중앙 번역 키를 반드시 제공한다.
+// 누락은 TypeScript와 Spanish audit에서 빌드 전에 발견한다.
+type Translation = Record<Lang, string>;
 
 export const T = {
   // ── BottomNav ──

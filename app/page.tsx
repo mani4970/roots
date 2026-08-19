@@ -24,7 +24,7 @@ import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
 import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
-import { getLanguageOptions, LANG_META, t, type TKey } from "@/lib/i18n";
+import { getLanguageOptions, LANG_META, t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { getDefaultTranslationId, normalizeSelectableTranslationId } from "@/lib/translationDefaults";
@@ -164,13 +164,13 @@ const HOME_CHAPTER_LABELS = {
   chapterSuffix: { ko: "장", de: "", en: "", fr: "", es: "" },
 } as const;
 
-type HomeChapterCopyLang = "ko" | "de" | "en" | "fr" | "es";
+type HomeChapterCopyLang = Lang;
 
 function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: HomeChapterCopyLang) {
   return HOME_CHAPTER_LABELS[key][lang] ?? HOME_CHAPTER_LABELS[key].ko;
 }
 
-function formatChapterReference(book: string, chapter: number, lang: "ko" | "de" | "en" | "fr") {
+function formatChapterReference(book: string, chapter: number, lang: Lang) {
   const translatedBook = translateBookName(book, lang);
   if (lang === "ko") return `${translatedBook} ${chapter}장`;
   if (lang === "de") return `${translatedBook} ${chapter}`;

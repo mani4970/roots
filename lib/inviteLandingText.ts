@@ -11,6 +11,7 @@ export const INVITE_LANDING_LANG_OPTIONS: Array<{
   { value: "en", label: "English", shortLabel: "EN" },
   { value: "de", label: "Deutsch", shortLabel: "DE" },
   { value: "fr", label: "Français", shortLabel: "FR" },
+  { value: "es", label: "Español", shortLabel: "ES" },
 ];
 
 export function normalizeInviteLandingLang(
@@ -33,7 +34,7 @@ export function resolveInviteLandingLang(
   return isLang(savedLang) ? savedLang : FALLBACK_LANG;
 }
 
-type InviteLandingTextLang = InviteLandingLang | "es";
+type InviteLandingTextLang = InviteLandingLang;
 
 type InviteLandingText = {
   brandTagline: string;

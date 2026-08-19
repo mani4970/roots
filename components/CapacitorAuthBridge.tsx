@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import type { Lang } from "@/lib/i18n";
 
-const SUPPORTED_LANGS = new Set<Lang>(["ko", "de", "en", "fr"]);
+const SUPPORTED_LANGS = new Set<Lang>(["ko", "de", "en", "fr", "es"]);
 const ROOTS_WEB_HOSTS = new Set([
   "www.christian-roots.com",
   "christian-roots.com",

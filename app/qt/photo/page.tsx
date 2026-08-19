@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
-import { getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
@@ -1604,7 +1604,7 @@ function PhotoReflectionContent() {
           <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
           <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
           {isCatchup && (
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString()}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString(getDateLocale(lang))}</p>
           )}
           <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
         </div>

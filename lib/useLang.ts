@@ -10,11 +10,18 @@ const STORAGE_KEY = "roots_lang";
 const SELECTED_FLAG = "roots_lang_selected";
 const TRANSLATION_STORAGE_KEY = "roots_default_translation";
 
+function applyDocumentLanguage(lang: Lang): void {
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = lang;
+  }
+}
+
 export function saveLangLocally(lang: Lang): number {
   const translationId = getDefaultTranslationId(lang);
   storageSet(STORAGE_KEY, lang);
   storageSet(SELECTED_FLAG, "true");
   storageSet(TRANSLATION_STORAGE_KEY, String(translationId));
+  applyDocumentLanguage(lang);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("roots_lang_changed", { detail: { lang } }));
@@ -41,7 +48,10 @@ export function useLang(): Lang {
   useEffect(() => {
     function handleLangChanged(event: Event) {
       const next = (event as CustomEvent<{ lang?: string }>).detail?.lang;
-      if (isLang(next)) setLang(next);
+      if (isLang(next)) {
+        setLang(next);
+        applyDocumentLanguage(next);
+      }
     }
 
     window.addEventListener("roots_lang_changed", handleLangChanged as EventListener);
@@ -54,6 +64,7 @@ export function useLang(): Lang {
       if (isLang(stored)) {
         storedLang = stored;
         setLang(stored);
+        applyDocumentLanguage(stored);
       }
     }
 
@@ -85,6 +96,7 @@ export function useLang(): Lang {
         .then(({ data }) => {
           if (isLang(data?.preferred_language)) {
             setLang(data.preferred_language);
+            applyDocumentLanguage(data.preferred_language);
             storageSet(STORAGE_KEY, data.preferred_language);
             storageSet(SELECTED_FLAG, "true");
             if (!storageGet(TRANSLATION_STORAGE_KEY)) {
