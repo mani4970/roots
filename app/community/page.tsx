@@ -689,10 +689,12 @@ function isCharacterProfileAvatarUrl(url?: string | null) {
 function Avatar({
   url,
   name,
+  profileAlt,
   size = 28,
 }: {
   url?: string;
   name?: string;
+  profileAlt: string;
   size?: number;
   emoji?: string;
 }) {
@@ -710,7 +712,7 @@ function Avatar({
     return (
       <img
         src={url}
-        alt={name ?? COMMUNITY_LOCAL_TEXT[lang].profileAlt}
+        alt={name ?? profileAlt}
         decoding="async"
         draggable={false}
         onDragStart={(event) => event.preventDefault()}
@@ -2095,7 +2097,11 @@ function CommunityPageContent() {
             flexShrink: 0,
           }}
         >
-          <Avatar url={profile?.avatar_url} name={profile?.name} />
+          <Avatar
+            url={profile?.avatar_url}
+            name={profile?.name}
+            profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
+          />
         </button>
         <button
           type="button"
@@ -2242,10 +2248,20 @@ function CommunityPageContent() {
                 aria-label={c("community_profile_view")}
                 style={{ padding: 0, border: "none", borderRadius: "50%", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <Avatar url={avatarUrl ?? undefined} name={name} size={76} />
+                <Avatar
+                  url={avatarUrl ?? undefined}
+                  name={name}
+                  profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
+                  size={76}
+                />
               </button>
             ) : (
-              <Avatar url={avatarUrl ?? undefined} name={name} size={76} />
+              <Avatar
+                url={avatarUrl ?? undefined}
+                name={name}
+                profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
+                size={76}
+              />
             )}
             <div>
               <p
@@ -5808,6 +5824,7 @@ function CommunityPageContent() {
                 <Avatar
                   url={r.profiles?.avatar_url}
                   name={r.profiles?.name}
+                  profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
                   size={36}
                 />
                 <div>
@@ -6624,6 +6641,7 @@ function CommunityPageContent() {
             <Avatar
               url={partnerProfile.avatar_url}
               name={partnerName}
+              profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
               size={48}
             />
             <div style={{ minWidth: 0 }}>
@@ -8659,6 +8677,7 @@ function CommunityPageContent() {
                       <Avatar
                         url={member.avatar_url ?? undefined}
                         name={member.name ?? undefined}
+                        profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
                         size={38}
                       />
                       <div
@@ -9168,6 +9187,7 @@ function CommunityPageContent() {
                           <Avatar
                             url={member.avatar_url ?? undefined}
                             name={member.name ?? undefined}
+                            profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
                             size={38}
                           />
                           <span
@@ -9890,6 +9910,7 @@ function CommunityPageContent() {
                         <Avatar
                           url={profile.avatar_url}
                           name={partnerName}
+                          profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
                           size={42}
                         />
                         <div style={{ minWidth: 0 }}>
