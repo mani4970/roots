@@ -19,9 +19,11 @@ import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
+import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { createClient } from "@/lib/supabase";
 import {
   getPreferredTranslationForLang,
@@ -53,8 +55,10 @@ import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { claimPendingChallengeRewards, type ChallengeReward } from "@/lib/challengeRewards";
 import {
   COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+  SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
   getUserCampaignLocalStorageKey,
   isCompanionChallenge2AnnouncementWindow,
+  isEligibleForSpanishLanguageLaunchAnnouncement,
   loadUserCampaignSeen,
   markUserCampaignSeen,
 } from "@/lib/userCampaignImpressions";
@@ -87,6 +91,7 @@ const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
@@ -350,6 +355,9 @@ export default function HomePage() {
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
+  const spanishLanguageLaunchAnnouncementUserIdRef = useRef<string | null>(null);
+  const spanishLanguageLaunchAnnouncementHandledRef = useRef(false);
+  const [showSpanishLanguageLaunchAnnouncement, setShowSpanishLanguageLaunchAnnouncement] = useState(false);
 
   function showToast(message: string) {
     setToast(message);
@@ -391,6 +399,49 @@ export default function HomePage() {
       setHandlingCompanionChallengeAnnouncement(false);
       if (openCompanions) router.push("/companions");
     }
+  }
+
+  async function completeSpanishLanguageLaunchAnnouncement(invite: boolean) {
+    if (spanishLanguageLaunchAnnouncementHandledRef.current) return;
+    spanishLanguageLaunchAnnouncementHandledRef.current = true;
+
+    const userId =
+      spanishLanguageLaunchAnnouncementUserIdRef.current ?? profile?.id ?? "";
+    const localCampaignKey = userId
+      ? getUserCampaignLocalStorageKey(
+          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
+          userId,
+        )
+      : "";
+
+    if (localCampaignKey) storageSet(localCampaignKey, "true");
+    setShowSpanishLanguageLaunchAnnouncement(false);
+
+    const persistSeenTask = (userId
+      ? markUserCampaignSeen(
+          createClient(),
+          userId,
+          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
+        )
+      : Promise.resolve()
+    ).catch((error) => {
+      // The local receipt still guarantees one-time display on this device.
+      // A temporary campaign-receipt failure must never block Home or sharing.
+      console.warn("스페인어 출시 안내 확인 저장 실패:", error);
+    });
+
+    if (invite) {
+      const result = await shareInviteContent({
+        title: t("profile_invite_title", "es"),
+        text: t("profile_invite_text", "es"),
+        url: `${ROOTS_WEB_ORIGIN}/welcome?from=invite`,
+      });
+      if (result === "copied") {
+        showToast(t("profile_invite_copied", lang));
+      }
+    }
+
+    await persistSeenTask;
   }
 
   async function checkPendingChallengeRewards(
@@ -556,6 +607,7 @@ export default function HomePage() {
     const user = session?.user ?? null;
     if (!user) { router.push("/welcome"); return; }
     companionChallengeAnnouncementUserIdRef.current = user.id;
+    spanishLanguageLaunchAnnouncementUserIdRef.current = user.id;
 
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
@@ -606,6 +658,29 @@ export default function HomePage() {
           setWelcomeBackDays(missedDays);
           setShowWelcomeBack(true);
         }
+      }
+    }
+
+    if (isEligibleForSpanishLanguageLaunchAnnouncement(user.created_at)) {
+      const localCampaignKey = getUserCampaignLocalStorageKey(
+        SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
+        user.id,
+      );
+
+      if (!storageGet(localCampaignKey)) {
+        void loadUserCampaignSeen(
+          supabase,
+          user.id,
+          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
+        ).then((seen) => {
+          if (seen === true) {
+            storageSet(localCampaignKey, "true");
+            return;
+          }
+          if (!storageGet(localCampaignKey)) {
+            setShowSpanishLanguageLaunchAnnouncement(true);
+          }
+        });
       }
     }
 
@@ -1383,6 +1458,31 @@ export default function HomePage() {
   const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
+  const spanishLanguageLaunchAnnouncementBlocked =
+    loading ||
+    showFirstLangPicker ||
+    showOnboarding ||
+    !!requiredUpdatePlatform ||
+    !!badgePopup ||
+    celebration.show ||
+    gardenPopup.show ||
+    !!rewardMapNotice ||
+    showRootsManPopup ||
+    showAvatarChoiceModal ||
+    challengeRewardQueue.length > 0 ||
+    showLangPicker ||
+    showHomeQTChoice ||
+    showHomeQTPassageChoice ||
+    showHomeQTPhotoPassageChoice ||
+    showHomeQTGuide ||
+    showHomeSundayQT ||
+    showNotificationSettingsModal ||
+    showHomePrayerCompose ||
+    showHomePrayerSharePrompt ||
+    chapterPopup.show;
+  const visibleSpanishLanguageLaunchAnnouncement =
+    showSpanishLanguageLaunchAnnouncement &&
+    !spanishLanguageLaunchAnnouncementBlocked;
   const homePopupBlocked =
     loading ||
     showFirstLangPicker ||
@@ -1395,6 +1495,7 @@ export default function HomePage() {
     !!rewardMapNotice ||
     showRootsManPopup ||
     showAvatarChoiceModal ||
+    visibleSpanishLanguageLaunchAnnouncement ||
     showLangPicker ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -1664,6 +1765,17 @@ export default function HomePage() {
       )}
 
 
+      <SpanishLanguageLaunchAnnouncementPopup
+        show={visibleSpanishLanguageLaunchAnnouncement}
+        onInvite={() => {
+          void completeSpanishLanguageLaunchAnnouncement(true);
+        }}
+        onClose={() => {
+          void completeSpanishLanguageLaunchAnnouncement(false);
+        }}
+      />
+
+
       <CompanionChallengeAnnouncementPopup
         show={visibleCompanionChallengeAnnouncement}
         busy={handlingCompanionChallengeAnnouncement}
@@ -1686,7 +1798,7 @@ export default function HomePage() {
       />
 
       <WelcomeBackPopup
-        show={showWelcomeBack}
+        show={showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement}
         daysSince={welcomeBackDays}
         onClose={() => setShowWelcomeBack(false)}
       />
@@ -1761,7 +1873,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}

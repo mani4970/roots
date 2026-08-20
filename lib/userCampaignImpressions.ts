@@ -1,3 +1,25 @@
+export const SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY =
+  "spanish_language_launch_announcement_20260820";
+
+// Only accounts that already existed when the announcement was prepared
+// should see it. New signups already choose from all five languages during
+// their normal welcome flow and do not need a launch announcement later.
+export const SPANISH_LANGUAGE_LAUNCH_EXISTING_USER_CUTOFF =
+  "2026-08-20T15:00:00.000Z";
+
+export function isEligibleForSpanishLanguageLaunchAnnouncement(
+  createdAt: string | null | undefined,
+) {
+  if (!createdAt) return false;
+  const createdAtMs = Date.parse(createdAt);
+  const cutoffMs = Date.parse(SPANISH_LANGUAGE_LAUNCH_EXISTING_USER_CUTOFF);
+  return (
+    Number.isFinite(createdAtMs) &&
+    Number.isFinite(cutoffMs) &&
+    createdAtMs < cutoffMs
+  );
+}
+
 export const COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY =
   "companion_challenge_2_announcement_20260811";
 

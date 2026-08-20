@@ -1062,6 +1062,10 @@ const stagedStandaloneRecords = [
     audit: auditStandaloneLanguageRecord("components/PetShopAnnouncementPopup.tsx", "const COPY"),
   },
   {
+    label: "components/SpanishLanguageLaunchAnnouncementPopup.tsx",
+    audit: auditStandaloneLanguageRecord("components/SpanishLanguageLaunchAnnouncementPopup.tsx", "const COPY"),
+  },
+  {
     label: "components/FeedbackSuccessPopup.tsx",
     audit: auditStandaloneLanguageRecord("components/FeedbackSuccessPopup.tsx", "const FEEDBACK_SUCCESS_COPY"),
   },
@@ -1097,6 +1101,39 @@ const stagedBranchChecks = [
 ];
 
 const criticalSpanishCopyChecks = [
+  {
+    label: "Spanish language launch popup copy",
+    relativePath: "components/SpanishLanguageLaunchAnnouncementPopup.tsx",
+    fragments: [
+      "Christian Roots에 새로운 언어가 추가됐어요!",
+      "한국어, 영어, 독일어, 프랑스어에 이어 스페인어까지!",
+      "스페인어 사용하는 친구를 초대해보세요!",
+      'invite: "초대하기"',
+      'close: "닫기"',
+    ],
+  },
+  {
+    label: "Spanish launch announcement excludes new signups",
+    relativePath: "lib/userCampaignImpressions.ts",
+    fragments: [
+      "SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY",
+      "SPANISH_LANGUAGE_LAUNCH_EXISTING_USER_CUTOFF",
+      "isEligibleForSpanishLanguageLaunchAnnouncement",
+      "createdAtMs < cutoffMs",
+    ],
+  },
+  {
+    label: "Spanish launch announcement is one-time and shares the existing Spanish invite",
+    relativePath: "app/page.tsx",
+    fragments: [
+      "loadUserCampaignSeen",
+      "markUserCampaignSeen",
+      "setShowSpanishLanguageLaunchAnnouncement(true)",
+      'title: t("profile_invite_title", "es")',
+      'text: t("profile_invite_text", "es")',
+      "visibleSpanishLanguageLaunchAnnouncement",
+    ],
+  },
   {
     label: "Welcome Spanish faith copy and Psalm reference",
     relativePath: "app/welcome/page.tsx",
