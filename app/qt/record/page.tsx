@@ -34,7 +34,7 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "복사됨! ✓": "qt_record_copied",
   "나누기": "qt_record_share",
   "공유 중 (수정)": "qt_record_shared_edit",
-  "큐티 수정": "qt_record_edit",
+  "큐티 수정": "edit",
   "취소": "qt_record_cancel",
   "큐티 나누기": "qt_record_share_title",
   "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": "qt_record_share_sub",
