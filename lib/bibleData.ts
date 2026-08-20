@@ -23,6 +23,9 @@ export const TRANSLATIONS = [
     { id: 21, name: "La Bible du Semeur 2015" },
     { id: 26, name: "Louis Segond 1910" },
   ]},
+  { group: "Español", items: [
+    { id: 101, name: "NVI" },
+  ]},
 ];
 
 // These translations are no longer selectable because Roots does not currently
@@ -50,6 +53,7 @@ export const TRANSLATION_LANG: Record<number, string> = {
   80:"EN", 100:"EN", 62:"EN", 82:"EN", 95:"EN",
   29:"DE", 27:"DE", 97:"DE", 31:"DE",
   21:"FR", 26:"FR", 24:"FR",
+  101:"ES",
 };
 
 // 언어별 책 이름 (구약 39권 + 신약 27권)
@@ -58,6 +62,7 @@ export const BOOK_NAMES: Record<string, string[]> = {
   EN: ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi","Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"],
   DE: ["1. Mose","2. Mose","3. Mose","4. Mose","5. Mose","Josua","Richter","Rut","1. Samuel","2. Samuel","1. Könige","2. Könige","1. Chronik","2. Chronik","Esra","Nehemia","Ester","Hiob","Psalmen","Sprüche","Prediger","Hoheslied","Jesaja","Jeremia","Klagelieder","Hesekiel","Daniel","Hosea","Joel","Amos","Obadja","Jona","Micha","Nahum","Habakuk","Zefanja","Haggai","Sacharja","Maleachi","Matthäus","Markus","Lukas","Johannes","Apostelgeschichte","Römer","1. Korinther","2. Korinther","Galater","Epheser","Philipper","Kolosser","1. Thessalonicher","2. Thessalonicher","1. Timotheus","2. Timotheus","Titus","Philemon","Hebräer","Jakobus","1. Petrus","2. Petrus","1. Johannes","2. Johannes","3. Johannes","Judas","Offenbarung"],
   FR: ["Genèse","Exode","Lévitique","Nombres","Deutéronome","Josué","Juges","Ruth","1 Samuel","2 Samuel","1 Rois","2 Rois","1 Chroniques","2 Chroniques","Esdras","Néhémie","Esther","Job","Psaumes","Proverbes","Ecclésiaste","Cantique","Ésaïe","Jérémie","Lamentations","Ézéchiel","Daniel","Osée","Joël","Amos","Abdias","Jonas","Michée","Nahum","Habacuc","Sophonie","Aggée","Zacharie","Malachie","Matthieu","Marc","Luc","Jean","Actes","Romains","1 Corinthiens","2 Corinthiens","Galates","Éphésiens","Philippiens","Colossiens","1 Thessaloniciens","2 Thessaloniciens","1 Timothée","2 Timothée","Tite","Philémon","Hébreux","Jacques","1 Pierre","2 Pierre","1 Jean","2 Jean","3 Jean","Jude","Apocalypse"],
+  ES: ["Génesis","Éxodo","Levítico","Números","Deuteronomio","Josué","Jueces","Rut","1 Samuel","2 Samuel","1 Reyes","2 Reyes","1 Crónicas","2 Crónicas","Esdras","Nehemías","Ester","Job","Salmos","Proverbios","Eclesiastés","Cantares","Isaías","Jeremías","Lamentaciones","Ezequiel","Daniel","Oseas","Joel","Amós","Abdías","Jonás","Miqueas","Nahúm","Habacuc","Sofonías","Hageo","Zacarías","Malaquías","Mateo","Marcos","Lucas","Juan","Hechos","Romanos","1 Corintios","2 Corintios","Gálatas","Efesios","Filipenses","Colosenses","1 Tesalonicenses","2 Tesalonicenses","1 Timoteo","2 Timoteo","Tito","Filemón","Hebreos","Santiago","1 Pedro","2 Pedro","1 Juan","2 Juan","3 Juan","Judas","Apocalipsis"],
 };
 
 // 성경 66권 장별 최대 절수 데이터
@@ -84,6 +89,14 @@ const TRANSLATION_OMITTED_VERSES: Record<number, Record<string, Record<number, r
     "마태복음": { 17: [21], 18: [11], 23: [14] },
     "마가복음": { 9: [44, 46], 11: [26], 15: [28] },
     "누가복음": { 17: [36], 23: [17] },
+    "사도행전": { 8: [37], 15: [34], 24: [7], 28: [29] },
+    "로마서": { 16: [24] },
+  },
+  101: {
+    "마태복음": { 17: [21], 18: [11], 23: [14] },
+    "마가복음": { 7: [16], 9: [44, 46], 11: [26], 15: [28] },
+    "누가복음": { 17: [36], 23: [17] },
+    "요한복음": { 5: [4] },
     "사도행전": { 8: [37], 15: [34], 24: [7], 28: [29] },
     "로마서": { 16: [24] },
   },

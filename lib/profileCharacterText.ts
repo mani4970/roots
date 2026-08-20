@@ -19,7 +19,7 @@ export type ProfileCharacterCategory =
   | "accessories"
   | "bags";
 
-type ProfileCharacterLang = "ko" | "en" | "de" | "fr";
+type ProfileCharacterLang = "ko" | "en" | "de" | "fr" | "es";
 
 export type ProfileCharacterText = {
   previewLabel: string;
@@ -115,6 +115,27 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       bags: "Sacs",
     },
   },
+
+  es: {
+    previewLabel: "Vista previa",
+    restoreOutfitLabel: "Restaurar atuendo actual",
+    emptyTitle: "No hay objetos en esta categoría",
+    emptyBody: "Prueba con otra categoría.",
+    openFullViewLabel: "Ver mi personaje",
+    closeFullViewLabel: "Cerrar vista del personaje",
+    categories: {
+      all: "Todo",
+      backgrounds: "Fondos",
+      pets: "Mascotas",
+      tops: "Prendas superiores",
+      bottoms: "Prendas inferiores",
+      shoes: "Calzado",
+      eyewear: "Gafas y lentes de sol",
+      headwear: "Sombreros",
+      accessories: "Accesorios para el cabello",
+      bags: "Bolsos",
+    },
+  },
 };
 
 const BACKGROUND_NAMES: Record<ProfileCharacterLang, readonly string[]> = {
@@ -122,6 +143,8 @@ const BACKGROUND_NAMES: Record<ProfileCharacterLang, readonly string[]> = {
   en: ["Sunlit Garden", "Summer Beach", "Cozy Bookroom", "Sunset City Rooftop", "Lavender Starry Night", "Peaceful Church", "Swiss Alps", "Paris Eiffel Tower", "New York Harbor", "Seoul Han River", "London Thames", "Santorini Sea", "African Savanna", "Sydney Harbour"],
   de: ["Sonniger Garten", "Sommerstrand", "Gemütliches Bücherzimmer", "Dachterrasse bei Sonnenuntergang", "Lavendelfarbene Sternennacht", "Ruhiger Kirchenraum", "Schweizer Alpen", "Pariser Eiffelturm", "New Yorker Hafen", "Han-Fluss in Seoul", "Themse in London", "Santorini am Meer", "Afrikanische Savanne", "Hafen von Sydney"],
   fr: ["Jardin ensoleillé", "Plage d’été", "Bibliothèque chaleureuse", "Toit urbain au coucher du soleil", "Nuit étoilée lavande", "Église paisible", "Alpes suisses", "Tour Eiffel à Paris", "Port de New York", "Fleuve Han à Séoul", "Tamise à Londres", "Mer de Santorin", "Savane africaine", "Port de Sydney"],
+
+  es: ["Jardín soleado", "Playa de verano", "Sala de lectura acogedora", "Azotea urbana al atardecer", "Noche estrellada lavanda", "Iglesia tranquila", "Alpes suizos", "Torre Eiffel de París", "Puerto de Nueva York", "Río Han de Seúl", "Río Támesis de Londres", "Mar de Santorini", "Sabana africana", "Puerto de Sídney"],
 };
 
 const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
@@ -213,10 +236,33 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       headwear: ["Cloche ivoire à ruban", "Casquette cœur marine", "Béret anthracite à fleur", "Bob lavande à marguerites"],
     },
   },
+
+  es: {
+    rootsman: {
+      pet: ["Schnauzer", "Bichón frisé", "Azul ruso", "Gato persa"],
+      bottom: ["Bermudas color carbón con pinza", "Bermudas de mezclilla clara", "Shorts cargo verde oliva", "Pantalón sastre negro de pierna ancha", "Chinos rectos color crudo", "Jeans anchos índigo", "Jeans anchos de lavado claro", "Bermudas color carbón a rayas finas", "Jeans anchos negros desgastados", "Pantalón cargo ancho verde oliva", "Bermudas marrón con pinzas", "Pantalón de trabajo ancho color carbón", "Shorts deportivos azul marino con vivos", "Pantalón cargo beige arena"],
+      shoes: ["Tenis retro", "Tenis runner gris plata", "Mocasines chunky negros", "Zuecos arena con corazón y brote", "Zapatos náuticos marrones", "Mocasines penny marrón oscuro", "Sandalias pescador negras", "Tenis runner retro verde salvia"],
+      top: ["Sudadera GRACE color avena", "Suéter GOD IS GOOD en tono empolvado", "Sudadera con capucha AMEN color carbón", "Camiseta JESUS IS LOVE verde salvia", "Polo azul marino con cruz", "Camisa camp marfil", "Camisa abierta de lino color avena", "Camisa celeste con cuello camp", "Polo abierto tejido verde salvia", "Camiseta JESUS color carbón desgastado", "Polo de punto trenzado mostaza", "Camisa de rugby borgoña y crema", "Camisa de trabajo azul marino con contraste", "Anorak medio cierre azul marino y beige"],
+      bag: [],
+      eyewear: ["Gafas browline borgoña", "Gafas redondas azul marino", "Gafas cuadradas marrones", "Lentes de sol ovalados azules", "Lentes de sol rectangulares negros", "Lentes de sol cuadrados ámbar"],
+      hair_accessory: [],
+      headwear: ["Sombrero bucket de rafia azul marino", "Gorra color carbón desgastado", "Gorra newsboy color avena", "Gorro tejido verde bosque"],
+    },
+    rootswoman: {
+      pet: ["Schnauzer", "Bichón frisé", "Azul ruso", "Gato persa"],
+      bottom: ["Minifalda plisada color carbón", "Shorts sastre de mezclilla clara", "Minifalda cruzada marfil", "Pantalón sastre negro semiancho", "Jeans bootcut índigo oscuro", "Falda maxi azul marino intenso", "Pantalón ancho plisado crema", "Pantalón capri negro ajustado", "Shorts dolphin celestes", "Falda maxi de encaje marfil", "Shorts rosa baya con vuelta", "Bermudas cargo verde oliva", "Shorts marrón moca con cordón", "Falda midi amarilla mantequilla con lunares"],
+      shoes: ["Tenis retro marfil y rosa", "Mary Janes negras de doble correa", "Tenis runner plata y lila", "Mocasines penny borgoña", "Tenis retro celestes", "Mary Janes de malla marfil", "Sandalias pescador marrones", "Mary Janes amarillas con correa en T"],
+      top: ["Camiseta JESUS LOVES ME azul marino", "Cárdigan AMEN coral", "Suéter GOD IS GOOD verde salvia", "Sudadera con capucha de corazón color avena", "Polo JESUS lavanda", "Sudadera GRACE color carbón", "Blusa de encaje en capas marfil", "Blusa romántica amarilla mantequilla", "Camiseta de fútbol blockcore azul marino", "Chaleco corto en capas de mezclilla desgastada", "Vestido camisero celeste con cinturón", "Vestido azul marino con cuello Peter Pan", "Blusa cruzada celeste con lazo", "Blusa peplum coral con flores", "Blusa marfil de mangas abullonadas", "Top tejido azul con cuello", "Camiseta rosa con lazo", "Chaqueta beige de doble botonadura"],
+      bag: ["Bolso bandolera compacto de media luna negro", "Mini bolso bandolera borgoña", "Bolso de mano estructurado negro", "Mini bolso Boston marfil"],
+      eyewear: ["Gafas cat-eye rosa", "Gafas redondas lavanda", "Gafas cuadradas redondeadas doradas", "Lentes de sol cat-eye marfil", "Lentes de sol rojos de corazón", "Lentes de sol lila oversize"],
+      hair_accessory: ["Pasador de lazo marfil", "Pasador de flor con perlas", "Pasador de lazo de terciopelo negro", "Diadema fina de perlas", "Diadema acolchada negra", "Diadema trenzada rosa empolvado"],
+      headwear: ["Sombrero cloche marfil con lazo", "Gorra azul marino con corazón", "Boina color carbón con flor", "Sombrero bucket lavanda con margaritas"],
+    },
+  },
 };
 
 function normalizeLang(lang: Lang | string): ProfileCharacterLang {
-  return lang === "en" || lang === "de" || lang === "fr" ? lang : "ko";
+  return lang === "en" || lang === "de" || lang === "fr" || lang === "es" ? lang : "ko";
 }
 
 export function getProfileCharacterText(lang: Lang | string): ProfileCharacterText {

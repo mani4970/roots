@@ -3,7 +3,9 @@
 import { useLang } from "@/lib/useLang";
 import type { Lang } from "@/lib/i18n";
 
-const FEEDBACK_SUCCESS_COPY: Record<Lang, { message: string; close: string }> = {
+type FeedbackSuccessLang = Lang | "es";
+
+const FEEDBACK_SUCCESS_COPY: Record<FeedbackSuccessLang, { message: string; close: string }> = {
   ko: {
     message: "소중한 의견 감사합니다!",
     close: "확인",
@@ -19,6 +21,10 @@ const FEEDBACK_SUCCESS_COPY: Record<Lang, { message: string; close: string }> = 
   fr: {
     message: "Merci pour votre précieux retour !",
     close: "Fermer",
+  },
+  es: {
+    message: "¡Gracias por compartir tu valiosa opinión!",
+    close: "Cerrar",
   },
 };
 

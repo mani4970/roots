@@ -2,16 +2,26 @@
 
 import { useRef, useState } from "react";
 import { RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
+import type { Lang } from "@/lib/i18n";
 
 type PhotoViewerModalProps = {
   src: string;
   alt?: string;
+  lang: Lang | "es";
   onClose: () => void;
 };
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const SCALE_STEP = 0.35;
+
+const PHOTO_VIEWER_COPY = {
+  ko: { photo: "사진", close: "닫기", zoomOut: "축소", reset: "초기화", zoomIn: "확대" },
+  en: { photo: "Photo", close: "Close", zoomOut: "Zoom out", reset: "Reset", zoomIn: "Zoom in" },
+  de: { photo: "Foto", close: "Schließen", zoomOut: "Verkleinern", reset: "Zurücksetzen", zoomIn: "Vergrößern" },
+  fr: { photo: "Photo", close: "Fermer", zoomOut: "Réduire", reset: "Réinitialiser", zoomIn: "Agrandir" },
+  es: { photo: "Foto", close: "Cerrar", zoomOut: "Alejar", reset: "Restablecer", zoomIn: "Acercar" },
+} as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -24,7 +34,9 @@ function touchDistance(touches: { length: number; [index: number]: { clientX: nu
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
-export default function PhotoViewerModal({ src, alt = "photo", onClose }: PhotoViewerModalProps) {
+export default function PhotoViewerModal({ src, alt, lang, onClose }: PhotoViewerModalProps) {
+  const copy = PHOTO_VIEWER_COPY[lang] ?? PHOTO_VIEWER_COPY.ko;
+  const imageAlt = alt ?? copy.photo;
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const pinchRef = useRef<{ distance: number; scale: number } | null>(null);
@@ -88,24 +100,24 @@ export default function PhotoViewerModal({ src, alt = "photo", onClose }: PhotoV
       >
         <img
           src={src}
-          alt={alt}
+          alt={imageAlt}
           draggable={false}
           onDoubleClick={() => setClampedScale(scale > 1 ? 1 : 2.2)}
           style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 14, transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transition: dragRef.current || pinchRef.current ? "none" : "transform 0.16s ease", userSelect: "none", touchAction: "none" }}
         />
 
-        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 14, right: 14, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.45)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button onClick={onClose} aria-label={copy.close} style={{ position: "absolute", top: 14, right: 14, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.45)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <X size={21} />
         </button>
 
         <div style={{ position: "absolute", left: "50%", bottom: "calc(18px + env(safe-area-inset-bottom) + var(--native-bottom-system-bar))", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 999, background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.18)", color: "white" }}>
-          <button onClick={() => setClampedScale(scale - SCALE_STEP)} aria-label="Zoom out" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setClampedScale(scale - SCALE_STEP)} aria-label={copy.zoomOut} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ZoomOut size={18} />
           </button>
-          <button onClick={reset} aria-label="Reset" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={reset} aria-label={copy.reset} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <RotateCcw size={17} />
           </button>
-          <button onClick={() => setClampedScale(scale + SCALE_STEP)} aria-label="Zoom in" style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setClampedScale(scale + SCALE_STEP)} aria-label={copy.zoomIn} style={{ width: 34, height: 34, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ZoomIn size={18} />
           </button>
         </div>

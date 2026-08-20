@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Lang } from "@/lib/i18n";
-import { translateBibleRef } from "@/lib/bibleBooks";
+import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import {
@@ -9,10 +8,9 @@ import {
   type EmotionVerseRef,
 } from "@/lib/emotionVerseRefs";
 
-function normalizeLang(value: unknown): Lang {
-  return value === "de" || value === "en" || value === "fr" || value === "ko" ? value : "ko";
+function normalizeLang(value: unknown): BibleDisplayLang {
+  return value === "de" || value === "en" || value === "fr" || value === "es" || value === "ko" ? value : "ko";
 }
-
 
 function normalizeOptionalString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -79,7 +77,7 @@ async function fetchBiblePassage(origin: string, refItem: EmotionVerseRef, trans
 
 export async function POST(req: NextRequest) {
   const origin = new URL(req.url).origin;
-  let lang: Lang = "ko";
+  let lang: BibleDisplayLang = "ko";
 
   try {
     const body = await req.json();

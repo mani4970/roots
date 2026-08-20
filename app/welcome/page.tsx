@@ -4,25 +4,26 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveLangLocally } from "@/lib/useLang";
 import { storageGet } from "@/lib/clientStorage";
+import { LANG_META, isLang, type Lang } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 // ── Types & constants ──────────────────────────────────────────────
 
-type Lang = "ko" | "en" | "de" | "fr";
+type WelcomeCopyLang = Lang;
 
-const LANG_LIST: { code: Lang; flag: string; name: string }[] = [
-  { code: "ko", flag: "🇰🇷", name: "한국어" },
-  { code: "en", flag: "🇬🇧", name: "English" },
-  { code: "de", flag: "🇩🇪", name: "Deutsch" },
-  { code: "fr", flag: "🇫🇷", name: "Français" },
-];
+const WELCOME_LANG_ORDER = ["ko", "en", "de", "fr", "es"] as const satisfies readonly Lang[];
+const LANG_LIST: { code: Lang; flag: string; name: string }[] = WELCOME_LANG_ORDER.map((code) => ({
+  code,
+  flag: LANG_META[code].flag,
+  name: LANG_META[code].nativeName,
+}));
 
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
 // ── Translations ───────────────────────────────────────────────────
 
-const TEXTS: Record<Lang, {
+const TEXTS: Record<WelcomeCopyLang, {
   tagline: string;
   descParts: string[];
   growthEyebrow: string;
@@ -78,12 +79,12 @@ const TEXTS: Record<Lang, {
   en: {
     tagline: "Root yourself in the Word",
     descParts: [
-      "Walk with God’s Word each day through Bible reflection,",
+      "Walk with God’s Word each day through Bible Reflection,",
       "and seek Him in prayer.",
     ],
     growthEyebrow: "My Garden",
     growthTitle: "A garden that grows\nfor 100 days",
-    growthSub: "Every completed Bible reflection helps a mustard seed grow.\nAfter 100 days, trees where birds can nest\ncomplete a flourishing garden of the Word.",
+    growthSub: "Every completed Bible Reflection helps a mustard seed grow.\nAfter 100 days, trees where birds can nest\ncomplete a flourishing garden of the Word.",
     growthStart: "Start",
     growthEnd: "After 100 days",
     badgeLabel: "Fruits of the Spirit and faith milestones",
@@ -92,11 +93,11 @@ const TEXTS: Record<Lang, {
     faithBadgeNames: ["Moses", "David", "Joseph", "Word Carrier", "Peace in the Word"],
     featuresLabel: "Features",
     f1t: "Bible Reflection",
-    f1s: "Record with a 6-step guide, free writing, photo records,\nor Sunday worship reflection.",
+    f1s: "Record a Bible Reflection in 6 steps, in free form,\nwith a photo, or for Sunday worship.",
     f2t: "Prayer",
     f2s: "Record prayer requests, intercede for others,\nand keep answered prayers as testimonies.",
     f3t: "Community",
-    f3s: "Connect with faith partners and create groups\nto pray for one another, share reflections,\nand walk the journey of faith together.",
+    f3s: "Connect with faith partners and create groups\nto pray for one another, share Bible Reflections,\nand walk the journey of faith together.",
     verseRef: "Psalm 1:1–2",
     verse: "Blessed is the one whose delight\nis in the law of the LORD,\nand who meditates on his law day and night.",
     btnStart: "Get Started",
@@ -124,11 +125,11 @@ const TEXTS: Record<Lang, {
     faithBadgeNames: ["Mose", "David", "Josef", "Wortüberbringer", "Ruhe im Wort"],
     featuresLabel: "Funktionen",
     f1t: "Stille Zeit",
-    f1s: "Halten Sie Ihre Stille Zeit mit 6-Schritte-Guide, freiem Schreiben,\nFotoaufzeichnung oder Sonntagsgottesdienst-Reflexion fest.",
+    f1s: "Halten Sie Ihre Stille Zeit in 6 Schritten, im freien Format,\nmit einem Foto oder zum Sonntagsgottesdienst fest.",
     f2t: "Gebet",
     f2s: "Gebetsanliegen festhalten, Fürbitte leisten\nund Erhörungen als Zeugnis bewahren.",
     f3t: "Gemeinschaft",
-    f3s: "Finden Sie Glaubenspartner und erstellen Sie Gruppen,\num füreinander zu beten, Reflexionen zu teilen\nund gemeinsam im Glauben weiterzugehen.",
+    f3s: "Finden Sie Glaubenspartner und erstellen Sie Gruppen,\num füreinander zu beten, Stille Zeiten zu teilen\nund gemeinsam im Glauben weiterzugehen.",
     verseRef: "Psalm 1,1–2",
     verse: "Wohl dem, der Lust hat am Gesetz\ndes HERRN und über sein Gesetz\nnachsinnt Tag und Nacht.",
     btnStart: "Jetzt starten",
@@ -156,11 +157,11 @@ const TEXTS: Record<Lang, {
     faithBadgeNames: ["Moïse", "David", "Joseph", "Porteur de la Parole", "Paix dans la Parole"],
     featuresLabel: "Fonctions",
     f1t: "Méditation biblique",
-    f1s: "Notez votre méditation en 6 étapes, en forme libre,\navec une photo ou pour le culte du dimanche.",
+    f1s: "Notez votre méditation biblique en 6 étapes, au format libre,\navec une photo ou pour le culte dominical.",
     f2t: "Prière",
     f2s: "Notez vos sujets de prière, intercédez,\net gardez les réponses comme témoignages.",
     f3t: "Communauté",
-    f3s: "Créez des liens avec des partenaires de foi et des groupes\npour prier les uns pour les autres, partager les méditations\net avancer ensemble dans la foi.",
+    f3s: "Créez des liens avec des partenaires de foi et des groupes\npour prier les uns pour les autres, partager des méditations bibliques\net avancer ensemble dans la foi.",
     verseRef: "Psaume 1:1–2",
     verse: "Heureux l'homme qui trouve son plaisir\ndans la loi de l'Éternel,\net qui la médite jour et nuit !",
     btnStart: "Commencer",
@@ -170,6 +171,38 @@ const TEXTS: Record<Lang, {
     googlePlay: "Google Play",
     footer: "Marche avec la Parole",
     footer2: "Sans publicité",
+  },
+  es: {
+    tagline: "Echa raíces en la Palabra",
+    descParts: [
+      "Camina cada día con la Palabra mediante la meditación bíblica,",
+      "y busca a Dios en oración.",
+    ],
+    growthEyebrow: "Mi jardín",
+    growthTitle: "Un jardín que crece\ndurante 100 días",
+    growthSub: "Cada meditación bíblica completada hace crecer una semilla de mostaza.\nDespués de 100 días, los árboles donde anidan las aves\ncompletan un jardín floreciente de la Palabra.",
+    growthStart: "Inicio",
+    growthEnd: "Después de 100 días",
+    badgeLabel: "Frutos del Espíritu y frutos de la fe",
+    badgeSub: "Cada vez que tu fe da fruto, recibes insignias y formas con alegría un hábito espiritual paso a paso.",
+    badgeNames: ["Amor", "Alegría", "Paz", "Paciencia", "Amabilidad", "Bondad", "Fidelidad", "Mansedumbre", "Dominio propio"],
+    faithBadgeNames: ["Moisés", "David", "José", "Mensajero de la Palabra", "Paz en la Palabra"],
+    featuresLabel: "Funciones",
+    f1t: "Meditación bíblica",
+    f1s: "Registra tu meditación bíblica en 6 pasos, en formato libre,\ncon una foto o para el culto dominical.",
+    f2t: "Oración",
+    f2s: "Registra tus peticiones, intercede por otros\ny guarda las respuestas como testimonios.",
+    f3t: "Comunidad",
+    f3s: "Conecta con compañeros de fe y crea grupos\npara orar unos por otros, compartir meditaciones bíblicas\ny avanzar juntos en el camino de la fe.",
+    verseRef: "Salmo 1:2",
+    verse: "sino que en la Ley del SEÑOR se deleita\ny día y noche medita en ella.",
+    btnStart: "Comenzar",
+    btnLogin: "Ya tengo una cuenta",
+    storePrompt: "Usa Roots más cómodamente en la app",
+    appStore: "App Store",
+    googlePlay: "Google Play",
+    footer: "Caminar con la Palabra",
+    footer2: "Sin anuncios",
   },
 };
 
@@ -269,8 +302,8 @@ export default function WelcomePage() {
   // Restore saved lang
   useEffect(() => {
     const stored = storageGet("roots_lang");
-    if (stored && ["ko", "de", "en", "fr"].includes(stored)) {
-      setLang(stored as Lang);
+    if (isLang(stored)) {
+      setLang(stored);
     }
   }, []);
 

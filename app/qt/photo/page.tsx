@@ -10,12 +10,16 @@ import { createClient } from "@/lib/supabase";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
-import { getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { useLang } from "@/lib/useLang";
+import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  savePreferredTranslationLocally,
+  useLang,
+} from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
-import { translateBibleRef } from "@/lib/bibleBooks";
-import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG } from "@/lib/bibleData";
-import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
+import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
+import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -131,62 +135,63 @@ function withPhotoStageTimeout<T>(
 }
 
 const PHOTO_COPY = {
-  title: { ko: "사진으로 묵상 기록하기", de: "Reflexion als Foto speichern", en: "Record reflection with a photo", fr: "Enregistrer une méditation en photo" },
-  sub: { ko: "책이나 노트에 묵상한 내용을 사진으로 남겨요.", de: "Speichere deine handschriftliche Reflexion als Foto.", en: "Save a photo of your reflection from a book or notebook.", fr: "Gardez une photo de votre méditation écrite dans un livre ou un carnet." },
-  editTitle: { ko: "사진 묵상 수정하기", de: "Foto-Reflexion bearbeiten", en: "Edit photo reflection", fr: "Modifier la méditation photo" },
-  editSub: { ko: "사진과 기록 내용을 안전하게 수정할 수 있어요.", de: "Du kannst das Foto und den Eintrag sicher bearbeiten.", en: "Safely update the photo and reflection details.", fr: "Modifiez en toute sécurité la photo et les détails de la méditation." },
-  passage: { ko: "묵상 본문", de: "Bibelstelle", en: "Passage", fr: "Passage" },
-  todayOnly: { ko: "사진 묵상은 오늘 날짜의 말씀 묵상으로 저장됩니다.", de: "Die Foto-Reflexion wird für heute gespeichert.", en: "Photo reflections are saved as today's Bible reflection.", fr: "La méditation photo est enregistrée pour aujourd’hui." },
-  catchupOnly: { ko: "지난 말씀 묵상 기록으로 저장됩니다. 말씀동행일은 증가하지 않아요.", de: "Wird als nachgetragene Reflexion gespeichert. Dein Fortschritt wird nicht erhöht.", en: "This will be saved as a past Bible reflection. Word Walk progress will not increase.", fr: "Cette méditation sera enregistrée pour une date passée. La progression n’augmentera pas." },
-  choosePhoto: { ko: "사진 추가하기", de: "Foto hinzufügen", en: "Add photo", fr: "Ajouter une photo" },
-  androidWebAppOnly: { ko: "Android 웹에서는 사진 묵상 기록을 지원하지 않아요. Christian Roots 앱에서 이용해주세요.", de: "Foto-Reflexionen werden im Android-Webbrowser nicht unterstützt. Bitte nutze die Christian Roots App.", en: "Photo reflections aren't supported in Android web browsers. Please use the Christian Roots app.", fr: "Les méditations photo ne sont pas prises en charge dans les navigateurs Android. Utilisez l’application Christian Roots." },
-  uploadNewPhoto: { ko: "새 사진 올리기", de: "Neues Foto hochladen", en: "Upload a new photo", fr: "Importer une nouvelle photo" },
-  changePhoto: { ko: "사진 바꾸기", de: "Foto ändern", en: "Change photo", fr: "Changer la photo" },
-  sourceTitle: { ko: "사진을 어떻게 추가할까요?", de: "Wie möchtest du das Foto hinzufügen?", en: "How would you like to add the photo?", fr: "Comment souhaitez-vous ajouter la photo ?" },
-  takePhoto: { ko: "사진 촬영", de: "Foto aufnehmen", en: "Take photo", fr: "Prendre une photo" },
-  chooseGallery: { ko: "갤러리에서 선택", de: "Aus Galerie wählen", en: "Choose from gallery", fr: "Choisir dans la galerie" },
-  cancel: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler" },
-  removePhoto: { ko: "사진 제거", de: "Foto entfernen", en: "Remove photo", fr: "Supprimer la photo" },
-  restorePhoto: { ko: "기존 사진 다시 사용", de: "Vorheriges Foto wiederverwenden", en: "Use previous photo again", fr: "Réutiliser la photo précédente" },
-  memoLabel: { ko: "메모 또는 제목", de: "Notiz oder Titel", en: "Note or title", fr: "Note ou titre" },
-  memoPlaceholder: { ko: "선택사항이에요. 오늘 받은 은혜를 짧게 적어도 좋아요.", de: "Optional. Du kannst kurz notieren, was du heute empfangen hast.", en: "Optional. You can briefly note the grace you received today.", fr: "Facultatif. Vous pouvez noter brièvement la grâce reçue aujourd’hui." },
-  shareAndSave: { ko: "나눔 설정하고 저장하기", de: "Teilen einstellen und speichern", en: "Set sharing and save", fr: "Définir le partage et enregistrer" },
-  editSave: { ko: "수정 내용 저장하기", de: "Änderungen speichern", en: "Save changes", fr: "Enregistrer les modifications" },
-  editLoading: { ko: "사진 묵상 기록을 불러오고 있어요…", de: "Die Foto-Reflexion wird geladen…", en: "Loading the photo reflection…", fr: "Chargement de la méditation photo…" },
-  editLoadError: { ko: "수정할 사진 묵상 기록을 불러오지 못했어요.", de: "Die Foto-Reflexion konnte nicht geladen werden.", en: "Could not load the photo reflection to edit.", fr: "Impossible de charger la méditation photo à modifier." },
-  editSaveError: { ko: "사진 묵상 수정 내용을 저장하지 못했어요. 기존 기록은 그대로 유지됩니다.", de: "Die Änderungen konnten nicht gespeichert werden. Der bisherige Eintrag bleibt erhalten.", en: "Could not save the changes. The existing record remains unchanged.", fr: "Impossible d’enregistrer les modifications. L’entrée existante reste inchangée." },
-  editSaved: { ko: "사진 묵상 수정 내용을 저장했어요.", de: "Die Änderungen wurden gespeichert.", en: "Photo reflection changes saved.", fr: "Les modifications ont été enregistrées." },
-  customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage" },
-  translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique" },
-  sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon" },
-  sermonTitlePlaceholder: { ko: "예: 두려워하지 말라", de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. N’aie pas peur" },
-  book: { ko: "성경", de: "Buch", en: "Book", fr: "Livre" },
-  chapter: { ko: "시작 장", de: "Startkapitel", en: "Start chapter", fr: "Chapitre de début" },
-  verse: { ko: "시작 절", de: "Startvers", en: "Start verse", fr: "Verset de début" },
-  endChapter: { ko: "끝 장", de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin" },
-  endVerse: { ko: "끝 절", de: "Endvers", en: "End verse", fr: "Verset de fin" },
-  addPassage: { ko: "선택한 본문 추가", de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné" },
-  addPassageHelp: { ko: "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
-  saveError: { ko: "사진 묵상 저장에 실패했어요. 다시 시도해주세요.", de: "Die Foto-Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "Could not save the photo reflection. Please try again.", fr: "Impossible d’enregistrer la méditation photo. Veuillez réessayer." },
-  preparingPhoto: { ko: "저장할 사진을 안전하게 준비하고 있어요…", de: "Das Foto wird sicher vorbereitet…", en: "Preparing the photo safely…", fr: "Préparation sécurisée de la photo…" },
-  photoReadError: { ko: "이 사진 형식을 읽지 못했어요. 다른 사진이나 원본 사진의 스크린샷을 선택해주세요.", de: "Dieses Fotoformat konnte nicht gelesen werden. Bitte wähle ein anderes Foto oder einen Screenshot des Originals.", en: "This photo format could not be read. Choose another photo or a screenshot of the original.", fr: "Ce format de photo n’a pas pu être lu. Choisissez une autre photo ou une capture d’écran de l’original." },
-  photoBlankOrBlack: { ko: "사진 변환 결과가 비어 있거나 검게 나와 저장하지 않았어요. 원본 사진의 스크린샷을 선택해주세요.", de: "Das umgewandelte Foto war leer oder schwarz und wurde nicht gespeichert. Bitte wähle einen Screenshot des Originals.", en: "The converted photo was blank or black, so it was not saved. Choose a screenshot of the original.", fr: "La photo convertie était vide ou noire et n’a pas été enregistrée. Choisissez une capture d’écran de l’original." },
-  photoProcessError: { ko: "사진을 저장용으로 변환하지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht für die Speicherung verarbeitet werden. Bitte wähle ein anderes Foto.", en: "The photo could not be prepared for saving. Choose another photo.", fr: "La photo n’a pas pu être préparée pour l’enregistrement. Choisissez-en une autre." },
-  authError: { ko: "로그인 상태를 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Der Anmeldestatus konnte nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not verify your sign-in. Check your connection and try again.", fr: "Impossible de vérifier votre connexion. Vérifiez Internet et réessayez." },
-  preflightError: { ko: "기존 묵상 기록을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Vorhandene Einträge konnten nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not check your existing reflection. Check your connection and try again.", fr: "Impossible de vérifier votre méditation existante. Vérifiez Internet et réessayez." },
-  cameraPermissionError: { ko: "카메라를 사용할 수 없어요. 기기 설정에서 Roots의 카메라 권한을 허용해주세요.", de: "Die Kamera ist nicht verfügbar. Erlaube Roots den Kamerazugriff in den Geräteeinstellungen.", en: "The camera is unavailable. Allow camera access for Roots in your device settings.", fr: "L’appareil photo n’est pas disponible. Autorisez l’accès à l’appareil photo pour Roots dans les réglages." },
-  galleryPermissionError: { ko: "사진 보관함을 사용할 수 없어요. 기기 설정에서 Roots의 사진 접근 권한을 허용해주세요.", de: "Die Fotomediathek ist nicht verfügbar. Erlaube Roots den Fotozugriff in den Geräteeinstellungen.", en: "The photo library is unavailable. Allow photo access for Roots in your device settings.", fr: "La photothèque n’est pas disponible. Autorisez l’accès aux photos pour Roots dans les réglages." },
-  uploadError: { ko: "사진 업로드에 실패했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Das Hochladen ist fehlgeschlagen. Prüfe die Internetverbindung und versuche es erneut. Das ausgewählte Foto bleibt erhalten.", en: "The photo upload failed. Check your connection and try again. The selected photo is still here.", fr: "Le téléversement a échoué. Vérifiez Internet et réessayez. La photo sélectionnée est conservée." },
-  uploadVerifyError: { ko: "사진 업로드를 확인하지 못했어요. 잠시 후 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Der Foto-Upload konnte nicht bestätigt werden. Versuche es später erneut. Das Foto bleibt erhalten.", en: "Could not verify the photo upload. Try again shortly. The selected photo is still here.", fr: "Impossible de vérifier le téléversement. Réessayez bientôt. La photo sélectionnée est conservée." },
-  recordError: { ko: "사진은 준비됐지만 묵상 기록 저장에 실패했어요. 다시 시도해주세요.", de: "Das Foto ist vorbereitet, aber die Reflexion konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "The photo was prepared, but the reflection record could not be saved. Please try again.", fr: "La photo a été préparée, mais la méditation n’a pas pu être enregistrée. Veuillez réessayer." },
-  savedShareWarning: { ko: "사진 묵상은 저장됐지만 일부 나눔 설정을 반영하지 못했어요.", de: "Die Foto-Reflexion wurde gespeichert, aber einige Freigabeeinstellungen konnten nicht übernommen werden.", en: "The photo reflection was saved, but some sharing settings could not be applied.", fr: "La méditation photo a été enregistrée, mais certains réglages de partage n’ont pas pu être appliqués." },
-  savedFollowupWarning: { ko: "사진 묵상은 안전하게 저장됐어요. 완료 상태를 다시 확인해주세요.", de: "Die Foto-Reflexion wurde sicher gespeichert. Bitte prüfe den Abschlussstatus erneut.", en: "The photo reflection was safely saved. Please check the completion status again.", fr: "La méditation photo a été enregistrée en toute sécurité. Vérifiez à nouveau son état de finalisation." },
-  needPhoto: { ko: "사진을 먼저 선택해주세요.", de: "Bitte wähle zuerst ein Foto aus.", en: "Please choose a photo first.", fr: "Veuillez d’abord choisir une photo." },
-  unsupportedPhoto: { ko: "지원되는 이미지 파일을 선택해주세요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image." },
-  photoTooLarge: { ko: "15MB 이하의 사진만 선택할 수 있어요.", de: "Bitte wähle ein Foto bis 15 MB aus.", en: "Please choose a photo up to 15 MB.", fr: "Veuillez choisir une photo de 15 Mo maximum." },
-  compressedPhotoTooLarge: { ko: "사진을 2MB 이하로 줄이지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht auf unter 2 MB verkleinert werden. Bitte wähle ein anderes Foto.", en: "The photo could not be reduced below 2 MB. Please choose another photo.", fr: "La photo n’a pas pu être réduite à moins de 2 Mo. Veuillez en choisir une autre." },
-  alreadyDone: { ko: "해당 날짜의 말씀 묵상 기록이 이미 있어요.", de: "Für dieses Datum gibt es bereits eine Reflexion.", en: "You already have a Bible reflection for this date.", fr: "Vous avez déjà une méditation biblique pour cette date." },
-  progressError: { ko: "말씀동행 반영에 실패했어요. 다시 완료해주세요.", de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
+  title: { ko: "사진으로 묵상 기록하기", de: "Stille Zeit mit Foto festhalten", en: "Record a Photo Bible Reflection", fr: "Enregistrer une méditation biblique en photo", es: "Registrar una meditación bíblica con foto" },
+  sub: { ko: "책이나 노트에 묵상한 내용을 사진으로 남겨요.", de: "Speichere deine handschriftliche Stille Zeit als Foto.", en: "Save a photo of your Bible Reflection from a book or notebook.", fr: "Gardez une photo de votre méditation biblique écrite dans un livre ou un carnet.", es: "Guarda una foto de la meditación bíblica que escribiste en un libro o cuaderno." },
+  editTitle: { ko: "사진 묵상 수정하기", de: "Stille Zeit mit Foto bearbeiten", en: "Edit Photo Bible Reflection", fr: "Modifier la méditation biblique en photo", es: "Editar meditación bíblica con foto" },
+  editSub: { ko: "사진과 기록 내용을 안전하게 수정할 수 있어요.", de: "Du kannst das Foto und den Eintrag sicher bearbeiten.", en: "Safely update the photo and Bible Reflection details.", fr: "Modifiez en toute sécurité la photo et les détails de la méditation biblique.", es: "Puedes actualizar de forma segura la foto y los detalles de la meditación bíblica." },
+  passage: { ko: "묵상 본문", de: "Bibelstelle", en: "Passage", fr: "Passage", es: "Pasaje bíblico" },
+  todayOnly: { ko: "사진 묵상은 오늘 날짜의 말씀 묵상으로 저장됩니다.", de: "Die Stille Zeit mit Foto wird für heute gespeichert.", en: "A Photo Bible Reflection is saved as today's Bible Reflection.", fr: "La méditation biblique en photo est enregistrée pour aujourd’hui.", es: "La meditación bíblica con foto se guardará como la meditación bíblica de hoy." },
+  catchupOnly: { ko: "지난 말씀 묵상 기록으로 저장됩니다. 말씀동행일은 증가하지 않아요.", de: "Wird als nachgetragene Stille Zeit gespeichert. Dein Fortschritt wird nicht erhöht.", en: "This will be saved as a past Bible Reflection. Word Walk progress will not increase.", fr: "Cette méditation biblique sera enregistrée pour une date passée. La progression n’augmentera pas.", es: "Se guardará como una meditación bíblica anterior. Tu progreso en Caminar con la Palabra no aumentará." },
+  choosePhoto: { ko: "사진 추가하기", de: "Foto hinzufügen", en: "Add photo", fr: "Ajouter une photo", es: "Añadir foto" },
+  androidWebAppOnly: { ko: "Android 웹에서는 사진 묵상 기록을 지원하지 않아요. Christian Roots 앱에서 이용해주세요.", de: "Stille Zeiten mit Foto werden im Android-Webbrowser nicht unterstützt. Bitte nutze die Christian Roots App.", en: "Photo Bible Reflections aren't supported in Android web browsers. Please use the Christian Roots app.", fr: "Les méditations bibliques en photo ne sont pas prises en charge dans les navigateurs Android. Utilisez l’application Christian Roots.", es: "Las meditaciones bíblicas con foto no están disponibles en navegadores web de Android. Usa la app Christian Roots." },
+  uploadNewPhoto: { ko: "새 사진 올리기", de: "Neues Foto hochladen", en: "Upload a new photo", fr: "Importer une nouvelle photo", es: "Subir una foto nueva" },
+  changePhoto: { ko: "사진 바꾸기", de: "Foto ändern", en: "Change photo", fr: "Changer la photo", es: "Cambiar foto" },
+  sourceTitle: { ko: "사진을 어떻게 추가할까요?", de: "Wie möchtest du das Foto hinzufügen?", en: "How would you like to add the photo?", fr: "Comment souhaitez-vous ajouter la photo ?", es: "¿Cómo quieres añadir la foto?" },
+  takePhoto: { ko: "사진 촬영", de: "Foto aufnehmen", en: "Take photo", fr: "Prendre une photo", es: "Tomar una foto" },
+  chooseGallery: { ko: "갤러리에서 선택", de: "Aus Galerie wählen", en: "Choose from gallery", fr: "Choisir dans la galerie", es: "Elegir de la galería" },
+  cancel: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler", es: "Cancelar" },
+  removePhoto: { ko: "사진 제거", de: "Foto entfernen", en: "Remove photo", fr: "Supprimer la photo", es: "Eliminar foto" },
+  restorePhoto: { ko: "기존 사진 다시 사용", de: "Vorheriges Foto wiederverwenden", en: "Use previous photo again", fr: "Réutiliser la photo précédente", es: "Volver a usar la foto anterior" },
+  memoLabel: { ko: "메모 또는 제목", de: "Notiz oder Titel", en: "Note or title", fr: "Note ou titre", es: "Nota o título" },
+  memoPlaceholder: { ko: "선택사항이에요. 오늘 받은 은혜를 짧게 적어도 좋아요.", de: "Optional. Du kannst kurz notieren, was du heute empfangen hast.", en: "Optional. You can briefly note the grace you received today.", fr: "Facultatif. Vous pouvez noter brièvement la grâce reçue aujourd’hui.", es: "Es opcional. También puedes escribir brevemente la gracia que recibiste hoy." },
+  shareAndSave: { ko: "나눔 설정하고 저장하기", de: "Teilen einstellen und speichern", en: "Set sharing and save", fr: "Définir le partage et enregistrer", es: "Elegir dónde compartir y guardar" },
+  editSave: { ko: "수정 내용 저장하기", de: "Änderungen speichern", en: "Save changes", fr: "Enregistrer les modifications", es: "Guardar cambios" },
+  editLoading: { ko: "사진 묵상 기록을 불러오고 있어요…", de: "Die Stille Zeit mit Foto wird geladen…", en: "Loading the Photo Bible Reflection…", fr: "Chargement de la méditation biblique en photo…", es: "Cargando la meditación bíblica con foto…" },
+  editLoadError: { ko: "수정할 사진 묵상 기록을 불러오지 못했어요.", de: "Die Stille Zeit mit Foto konnte nicht geladen werden.", en: "Could not load the Photo Bible Reflection to edit.", fr: "Impossible de charger la méditation biblique en photo à modifier.", es: "No pudimos cargar la meditación bíblica con foto para editarla." },
+  editSaveError: { ko: "사진 묵상 수정 내용을 저장하지 못했어요. 기존 기록은 그대로 유지됩니다.", de: "Die Änderungen konnten nicht gespeichert werden. Der bisherige Eintrag bleibt erhalten.", en: "Could not save the changes. The existing record remains unchanged.", fr: "Impossible d’enregistrer les modifications. L’entrée existante reste inchangée.", es: "No pudimos guardar los cambios. El registro existente se conservará sin cambios." },
+  editSaved: { ko: "사진 묵상 수정 내용을 저장했어요.", de: "Die Änderungen wurden gespeichert.", en: "Photo Bible Reflection changes saved.", fr: "Les modifications ont été enregistrées.", es: "Se guardaron los cambios de la meditación bíblica con foto." },
+  customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage", es: "Elegir pasaje" },
+  translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique", es: "Traducción bíblica" },
+  sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon", es: "Título del sermón" },
+  sermonTitlePlaceholder: { ko: "예: 두려워하지 말라", de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. N’aie pas peur", es: "Ej.: No temas" },
+  book: { ko: "성경", de: "Buch", en: "Book", fr: "Livre", es: "Libro" },
+  chapter: { ko: "시작 장", de: "Startkapitel", en: "Start chapter", fr: "Chapitre de début", es: "Capítulo inicial" },
+  verse: { ko: "시작 절", de: "Startvers", en: "Start verse", fr: "Verset de début", es: "Versículo inicial" },
+  endChapter: { ko: "끝 장", de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin", es: "Capítulo final" },
+  endVerse: { ko: "끝 절", de: "Endvers", en: "End verse", fr: "Verset de fin", es: "Versículo final" },
+  addPassage: { ko: "선택한 본문 추가", de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné", es: "Añadir el pasaje seleccionado" },
+  addPassageHelp: { ko: "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", de: "Wenn Sie mehrere Bibeltexte in Ihrer Stillen Zeit betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour inclure plusieurs passages dans votre méditation biblique, choisissez un autre passage puis ajoutez-le.", es: "Para incluir varios pasajes en tu meditación bíblica, selecciona otro y añádelo." },
+  saveError: { ko: "사진 묵상 저장에 실패했어요. 다시 시도해주세요.", de: "Die Stille Zeit mit Foto konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "Could not save the Photo Bible Reflection. Please try again.", fr: "Impossible d’enregistrer la méditation biblique en photo. Veuillez réessayer.", es: "No pudimos guardar la meditación bíblica con foto. Inténtalo de nuevo." },
+  preparingPhoto: { ko: "저장할 사진을 안전하게 준비하고 있어요…", de: "Das Foto wird sicher vorbereitet…", en: "Preparing the photo safely…", fr: "Préparation sécurisée de la photo…", es: "Preparando la foto de forma segura…" },
+  photoReadError: { ko: "이 사진 형식을 읽지 못했어요. 다른 사진이나 원본 사진의 스크린샷을 선택해주세요.", de: "Dieses Fotoformat konnte nicht gelesen werden. Bitte wähle ein anderes Foto oder einen Screenshot des Originals.", en: "This photo format could not be read. Choose another photo or a screenshot of the original.", fr: "Ce format de photo n’a pas pu être lu. Choisissez une autre photo ou une capture d’écran de l’original.", es: "No pudimos leer este formato de foto. Elige otra foto o una captura de pantalla del original." },
+  photoBlankOrBlack: { ko: "사진 변환 결과가 비어 있거나 검게 나와 저장하지 않았어요. 원본 사진의 스크린샷을 선택해주세요.", de: "Das umgewandelte Foto war leer oder schwarz und wurde nicht gespeichert. Bitte wähle einen Screenshot des Originals.", en: "The converted photo was blank or black, so it was not saved. Choose a screenshot of the original.", fr: "La photo convertie était vide ou noire et n’a pas été enregistrée. Choisissez une capture d’écran de l’original.", es: "La foto convertida quedó vacía o negra, por lo que no se guardó. Elige una captura de pantalla del original." },
+  photoProcessError: { ko: "사진을 저장용으로 변환하지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht für die Speicherung verarbeitet werden. Bitte wähle ein anderes Foto.", en: "The photo could not be prepared for saving. Choose another photo.", fr: "La photo n’a pas pu être préparée pour l’enregistrement. Choisissez-en une autre.", es: "No pudimos preparar la foto para guardarla. Elige otra foto." },
+  authError: { ko: "로그인 상태를 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Der Anmeldestatus konnte nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not verify your sign-in. Check your connection and try again.", fr: "Impossible de vérifier votre connexion. Vérifiez Internet et réessayez.", es: "No pudimos verificar tu sesión. Revisa tu conexión a Internet e inténtalo de nuevo." },
+  preflightError: { ko: "기존 묵상 기록을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.", de: "Vorhandene Einträge zur Stillen Zeit konnten nicht geprüft werden. Prüfe die Internetverbindung und versuche es erneut.", en: "Could not check your existing Bible Reflection. Check your connection and try again.", fr: "Impossible de vérifier votre méditation biblique existante. Vérifiez Internet et réessayez.", es: "No pudimos comprobar tu meditación bíblica existente. Revisa tu conexión a Internet e inténtalo de nuevo." },
+  cameraPermissionError: { ko: "카메라를 사용할 수 없어요. 기기 설정에서 Roots의 카메라 권한을 허용해주세요.", de: "Die Kamera ist nicht verfügbar. Erlaube Roots den Kamerazugriff in den Geräteeinstellungen.", en: "The camera is unavailable. Allow camera access for Roots in your device settings.", fr: "L’appareil photo n’est pas disponible. Autorisez l’accès à l’appareil photo pour Roots dans les réglages.", es: "La cámara no está disponible. Permite que Roots acceda a la cámara en los ajustes de tu dispositivo." },
+  galleryPermissionError: { ko: "사진 보관함을 사용할 수 없어요. 기기 설정에서 Roots의 사진 접근 권한을 허용해주세요.", de: "Die Fotomediathek ist nicht verfügbar. Erlaube Roots den Fotozugriff in den Geräteeinstellungen.", en: "The photo library is unavailable. Allow photo access for Roots in your device settings.", fr: "La photothèque n’est pas disponible. Autorisez l’accès aux photos pour Roots dans les réglages.", es: "La biblioteca de fotos no está disponible. Permite que Roots acceda a tus fotos en los ajustes de tu dispositivo." },
+  uploadError: { ko: "사진 업로드에 실패했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Das Hochladen ist fehlgeschlagen. Prüfe die Internetverbindung und versuche es erneut. Das ausgewählte Foto bleibt erhalten.", en: "The photo upload failed. Check your connection and try again. The selected photo is still here.", fr: "Le téléversement a échoué. Vérifiez Internet et réessayez. La photo sélectionnée est conservée.", es: "No pudimos subir la foto. Revisa tu conexión a Internet e inténtalo de nuevo. La foto seleccionada se conservará." },
+  uploadVerifyError: { ko: "사진 업로드를 확인하지 못했어요. 잠시 후 다시 시도해주세요. 선택한 사진은 그대로 유지됩니다.", de: "Der Foto-Upload konnte nicht bestätigt werden. Versuche es später erneut. Das Foto bleibt erhalten.", en: "Could not verify the photo upload. Try again shortly. The selected photo is still here.", fr: "Impossible de vérifier le téléversement. Réessayez bientôt. La photo sélectionnée est conservée.", es: "No pudimos verificar la subida de la foto. Inténtalo de nuevo en unos momentos. La foto seleccionada se conservará." },
+  recordError: { ko: "사진은 준비됐지만 묵상 기록 저장에 실패했어요. 다시 시도해주세요.", de: "Das Foto ist vorbereitet, aber die Stille Zeit konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "The photo was prepared, but the Bible Reflection record could not be saved. Please try again.", fr: "La photo a été préparée, mais la méditation biblique n’a pas pu être enregistrée. Veuillez réessayer.", es: "La foto está preparada, pero no pudimos guardar la meditación bíblica con foto. Inténtalo de nuevo." },
+  savedShareWarning: { ko: "사진 묵상은 저장됐지만 일부 나눔 설정을 반영하지 못했어요.", de: "Die Stille Zeit mit Foto wurde gespeichert, aber einige Freigabeeinstellungen konnten nicht übernommen werden.", en: "The Photo Bible Reflection was saved, but some sharing settings could not be applied.", fr: "La méditation biblique en photo a été enregistrée, mais certains réglages de partage n’ont pas pu être appliqués.", es: "La meditación bíblica con foto se guardó, pero no pudimos aplicar algunas opciones para compartir." },
+  savedFollowupWarning: { ko: "사진 묵상은 안전하게 저장됐어요. 완료 상태를 다시 확인해주세요.", de: "Die Stille Zeit mit Foto wurde sicher gespeichert. Bitte prüfe den Abschlussstatus erneut.", en: "The Photo Bible Reflection was safely saved. Please check the completion status again.", fr: "La méditation biblique en photo a été enregistrée en toute sécurité. Vérifiez à nouveau son état de finalisation.", es: "La meditación bíblica con foto se guardó de forma segura. Vuelve a comprobar que aparezca como completada." },
+  needPhoto: { ko: "사진을 먼저 선택해주세요.", de: "Bitte wähle zuerst ein Foto aus.", en: "Please choose a photo first.", fr: "Veuillez d’abord choisir une photo.", es: "Primero elige una foto." },
+  unsupportedPhoto: { ko: "지원되는 이미지 파일을 선택해주세요.", de: "Bitte wähle eine Bilddatei aus.", en: "Please choose an image file.", fr: "Veuillez choisir un fichier image.", es: "Elige un archivo de imagen compatible." },
+  photoTooLarge: { ko: "15MB 이하의 사진만 선택할 수 있어요.", de: "Bitte wähle ein Foto bis 15 MB aus.", en: "Please choose a photo up to 15 MB.", fr: "Veuillez choisir une photo de 15 Mo maximum.", es: "Elige una foto de 15 MB o menos." },
+  compressedPhotoTooLarge: { ko: "사진을 2MB 이하로 줄이지 못했어요. 다른 사진을 선택해주세요.", de: "Das Foto konnte nicht auf unter 2 MB verkleinert werden. Bitte wähle ein anderes Foto.", en: "The photo could not be reduced below 2 MB. Please choose another photo.", fr: "La photo n’a pas pu être réduite à moins de 2 Mo. Veuillez en choisir une autre.", es: "No pudimos reducir la foto a menos de 2 MB. Elige otra foto." },
+  alreadyDone: { ko: "해당 날짜의 말씀 묵상 기록이 이미 있어요.", de: "Für dieses Datum gibt es bereits eine Stille Zeit.", en: "You already have a Bible Reflection for this date.", fr: "Vous avez déjà une méditation biblique pour cette date.", es: "Ya tienes un registro de meditación bíblica para esta fecha." },
+  progressError: { ko: "말씀동행 반영에 실패했어요. 다시 완료해주세요.", de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Stille Zeit erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau.", es: "No pudimos guardar tu progreso en Caminar con la Palabra. Completa de nuevo la meditación bíblica." },
+  photoAlt: { ko: "말씀 묵상 사진", de: "Foto zur Stillen Zeit", en: "Bible Reflection photo", fr: "Photo de méditation biblique", es: "Foto de meditación bíblica" },
 } as const;
 
 function pc(key: keyof typeof PHOTO_COPY, lang: string) {
@@ -194,13 +199,21 @@ function pc(key: keyof typeof PHOTO_COPY, lang: string) {
   return entry[lang] ?? entry.ko;
 }
 
-function getBibleDisplayLang(translationId: number, fallbackLang: string): Lang {
+function getBibleDisplayLang(translationId: number, fallbackLang: string): BibleDisplayLang {
   const bibleLang = TRANSLATION_LANG[translationId] ?? "KO";
   if (bibleLang === "EN") return "en";
   if (bibleLang === "DE") return "de";
   if (bibleLang === "FR") return "fr";
-  if (fallbackLang === "en" || fallbackLang === "de" || fallbackLang === "fr" || fallbackLang === "ko") return fallbackLang;
+  if (bibleLang === "ES") return "es";
+  if (fallbackLang === "en" || fallbackLang === "de" || fallbackLang === "fr" || fallbackLang === "es" || fallbackLang === "ko") return fallbackLang;
   return "ko";
+}
+
+function getNearestAvailableVerse(verses: number[], value: number, minimum = 1) {
+  const candidates = verses.filter((verse) => verse >= minimum);
+  if (candidates.length === 0) return minimum;
+  if (candidates.includes(value)) return value;
+  return candidates.find((verse) => verse >= value) ?? candidates[candidates.length - 1];
 }
 
 function buildRef(book: string, chapter: number, start: number, end: number, endChapter?: number | null) {
@@ -438,10 +451,13 @@ function PhotoReflectionContent() {
   const [endChapter, setEndChapter] = useState(scheduledEndChapter || scheduledChapter || 1);
   const [endVerse, setEndVerse] = useState(scheduledEnd || 1);
   const [selectedTranslation, setSelectedTranslation] = useState<number>(() => {
-    const requested = searchParams.get("translation");
-    if (requested) return normalizeSelectableTranslationId(requested, lang);
-    if (typeof window === "undefined") return normalizeSelectableTranslationId(null, lang);
-    return normalizeSelectableTranslationId(window.localStorage.getItem("roots_default_translation"), lang);
+    const activeLang = getStoredLang() ?? lang;
+    const preferredTranslation = getPreferredTranslationForLang(activeLang);
+    const requestedTranslation = Number(searchParams.get("translation") ?? "");
+
+    return Number.isSafeInteger(requestedTranslation) && requestedTranslation === preferredTranslation
+      ? requestedTranslation
+      : preferredTranslation;
   });
   const [sermonTitle, setSermonTitle] = useState("");
   const [extraRefs, setExtraRefs] = useState<string[]>([]);
@@ -461,6 +477,18 @@ function PhotoReflectionContent() {
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
   const [editLoading, setEditLoading] = useState(isEditMode);
   const [editLoadError, setEditLoadError] = useState(false);
+
+  // A fresh photo reflection follows the current app-language preference.
+  // Editing an existing record keeps its stored bible_version.
+  useEffect(() => {
+    if (isEditMode) return;
+    const storedLang = getStoredLang();
+    if (!storedLang || storedLang !== lang) return;
+
+    const nextTranslation = getPreferredTranslationForLang(lang);
+    savePreferredTranslationLocally(lang, nextTranslation);
+    setSelectedTranslation(current => current === nextTranslation ? current : nextTranslation);
+  }, [lang, isEditMode]);
   const [existingPhotoPath, setExistingPhotoPath] = useState<string | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [existingPhotoRemoved, setExistingPhotoRemoved] = useState(false);
@@ -469,13 +497,22 @@ function PhotoReflectionContent() {
 
   const maxChapter = BIBLE_CHAPTERS[book]?.length ?? 1;
   const safeEndChapter = Math.min(Math.max(endChapter, chapter), maxChapter);
-  const maxStartVerses = BIBLE_CHAPTERS[book]?.[chapter - 1] ?? 1;
-  const maxEndVerses = BIBLE_CHAPTERS[book]?.[safeEndChapter - 1] ?? maxStartVerses;
+  const startVerseNumbers = getBibleVerseNumbers(book, chapter, selectedTranslation);
+  const safeStartVerse = getNearestAvailableVerse(startVerseNumbers, startVerse);
+  const rawEndVerseNumbers = getBibleVerseNumbers(book, safeEndChapter, selectedTranslation);
+  const endVerseNumbers = safeEndChapter === chapter
+    ? rawEndVerseNumbers.filter((verse) => verse >= safeStartVerse)
+    : rawEndVerseNumbers;
+  const safeEndVerse = getNearestAvailableVerse(
+    endVerseNumbers,
+    endVerse,
+    safeEndChapter === chapter ? safeStartVerse : 1,
+  );
   const currentCustomRef = buildRef(
     book,
     chapter,
-    Math.min(startVerse, maxStartVerses),
-    safeEndChapter === chapter ? Math.max(Math.min(startVerse, maxStartVerses), Math.min(endVerse, maxEndVerses)) : Math.min(endVerse, maxEndVerses),
+    safeStartVerse,
+    safeEndVerse,
     safeEndChapter,
   );
   const bibleDisplayLang = getBibleDisplayLang(selectedTranslation, lang);
@@ -501,16 +538,16 @@ function PhotoReflectionContent() {
   }, [book]);
 
   useEffect(() => {
-    const max = BIBLE_CHAPTERS[book]?.[chapter - 1] ?? 1;
-    setStartVerse(prev => Math.min(prev, max));
-    setEndChapter(prev => Math.max(prev, chapter));
-    setEndVerse(prev => Math.min(Math.max(prev, 1), max));
-  }, [book, chapter]);
+    const available = getBibleVerseNumbers(book, chapter, selectedTranslation);
+    setStartVerse((previous) => getNearestAvailableVerse(available, previous));
+    setEndChapter((previous) => Math.max(previous, chapter));
+  }, [book, chapter, selectedTranslation]);
 
   useEffect(() => {
-    const max = BIBLE_CHAPTERS[book]?.[safeEndChapter - 1] ?? 1;
-    setEndVerse(prev => Math.min(Math.max(prev, 1), max));
-  }, [book, safeEndChapter]);
+    const available = getBibleVerseNumbers(book, safeEndChapter, selectedTranslation);
+    const minimum = safeEndChapter === chapter ? safeStartVerse : 1;
+    setEndVerse((previous) => getNearestAvailableVerse(available, previous, minimum));
+  }, [book, chapter, safeEndChapter, safeStartVerse, selectedTranslation]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -1586,7 +1623,7 @@ function PhotoReflectionContent() {
           <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
           <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
           {isCatchup && (
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString()}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString(getDateLocale(lang))}</p>
           )}
           <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
         </div>
@@ -1603,9 +1640,7 @@ function PhotoReflectionContent() {
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     const next = Number(e.target.value);
                     setSelectedTranslation(next);
-                    if (typeof window !== "undefined") {
-                      window.localStorage.setItem("roots_default_translation", String(next));
-                    }
+                    savePreferredTranslationLocally(getStoredLang() ?? lang, next);
                   }}
                 >
                   {TRANSLATIONS.map(group => (
@@ -1636,20 +1671,20 @@ function PhotoReflectionContent() {
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <select className="input-field" value={Math.min(startVerse, maxStartVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > endVerse) setEndVerse(next); }}>
-                    {Array.from({ length: maxStartVerses }, (_, i) => i + 1).map(item => <option key={item} value={item}>{item}</option>)}
+                  <select className="input-field" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > safeEndVerse) setEndVerse(next); }}>
+                    {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && startVerse > endVerse) setEndVerse(startVerse); }}>
+                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && safeStartVerse > safeEndVerse) setEndVerse(safeStartVerse); }}>
                     {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
-                  <select className="input-field" value={safeEndChapter === chapter ? Math.max(endVerse, startVerse) : Math.min(endVerse, maxEndVerses)} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
-                    {Array.from({ length: maxEndVerses }, (_, i) => i + 1).filter(v => safeEndChapter !== chapter || v >= startVerse).map(item => <option key={item} value={item}>{item}</option>)}
+                  <select className="input-field" value={safeEndVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
+                    {endVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
               </div>
@@ -1700,7 +1735,7 @@ function PhotoReflectionContent() {
               <div style={{ position: "relative", marginBottom: 12 }}>
                 <img
                   src={displayedPhotoUrl}
-                  alt="photo reflection"
+                  alt={pc("photoAlt", lang)}
                   style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", display: "block" }}
                 />
                 <button

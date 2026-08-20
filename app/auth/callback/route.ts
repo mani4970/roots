@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { getDefaultTranslationId } from '@/lib/translationDefaults'
 import { saveProfilePreferences } from '@/lib/profilePreferences'
 
-const SUPPORTED_LANGS = ["ko", "de", "en", "fr"] as const
+const SUPPORTED_LANGS = ["ko", "de", "en", "fr", "es"] as const
 type Lang = typeof SUPPORTED_LANGS[number]
 
 function isLang(value: string | null): value is Lang {

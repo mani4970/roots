@@ -60,13 +60,63 @@ const PROFILE_MONTH_LOCALE = {
   de: "de-DE",
   en: "en-US",
   fr: "fr-FR",
+  es: "es-ES",
 } as const;
 
 const PROFILE_HEART_GUIDE_TEXT = {
   ko: "다른 사람들의 묵상을 축복하고, 함께 기도하면 💛가 쌓여요.",
-  en: "Bless others’ reflections and pray together to collect 💛.",
+  en: "Bless others’ Bible Reflections and pray together to collect 💛.",
   de: "Segne die Stille Zeit anderer und bete mit ihnen, um 💛 zu sammeln.",
-  fr: "Bénis les méditations des autres et prie avec eux pour gagner des 💛.",
+  fr: "Bénis les méditations bibliques des autres et prie avec eux pour gagner des 💛.",
+  es: "Bendice las meditaciones bíblicas de otras personas y ora con ellas para conseguir 💛.",
+} as const;
+
+const PROFILE_LOCAL_TEXT = {
+  ko: {
+    characterUpdated: "캐릭터가 변경되었어요.",
+    characterSaveFailed: "캐릭터 선택을 저장하지 못했어요.",
+    badgeNotEarned: "아직 미획득",
+    previousBadges: "이전 배지",
+    nextBadges: "다음 배지",
+    loveHearts: "사랑 하트",
+    spiritFruitLocked: "{days}일 말씀동행을 채우면 {fruit}의 열매를 받을 수 있어요.",
+  },
+  de: {
+    characterUpdated: "Der Charakter wurde geändert.",
+    characterSaveFailed: "Die Charakterauswahl konnte nicht gespeichert werden.",
+    badgeNotEarned: "Noch nicht erhalten",
+    previousBadges: "Vorherige Abzeichen",
+    nextBadges: "Nächste Abzeichen",
+    loveHearts: "Liebesherzen",
+    spiritFruitLocked: "Nach {days} Tagen im Wortweg können Sie die Frucht {fruit} erhalten.",
+  },
+  en: {
+    characterUpdated: "Character updated.",
+    characterSaveFailed: "Could not save your character choice.",
+    badgeNotEarned: "Not earned yet",
+    previousBadges: "Previous badges",
+    nextBadges: "Next badges",
+    loveHearts: "Love Hearts",
+    spiritFruitLocked: "Complete {days} Word-walk days to receive the fruit of {fruit}.",
+  },
+  fr: {
+    characterUpdated: "Le personnage a été modifié.",
+    characterSaveFailed: "Impossible d’enregistrer le personnage.",
+    badgeNotEarned: "Pas encore obtenu",
+    previousBadges: "Badges précédents",
+    nextBadges: "Badges suivants",
+    loveHearts: "Cœurs d’amour",
+    spiritFruitLocked: "Après {days} jours de chemin avec la Parole, vous pourrez recevoir le fruit {fruit}.",
+  },
+  es: {
+    characterUpdated: "Personaje actualizado.",
+    characterSaveFailed: "No pudimos guardar tu personaje.",
+    badgeNotEarned: "Aún no obtenida",
+    previousBadges: "Insignias anteriores",
+    nextBadges: "Insignias siguientes",
+    loveHearts: "Corazones",
+    spiritFruitLocked: "Al completar {days} días caminando con la Palabra, podrás recibir el fruto «{fruit}».",
+  },
 } as const;
 
 type QtRecord = { date: string };
@@ -1045,10 +1095,10 @@ export default function ProfilePage() {
         updateProfileState(updates);
       }
       setShowAvatarChoiceModal(false);
-      showToast(lang === "ko" ? "캐릭터가 변경되었어요." : lang === "de" ? "Der Charakter wurde geändert." : lang === "fr" ? "Le personnage a été modifié." : "Character updated.");
+      showToast(PROFILE_LOCAL_TEXT[lang].characterUpdated);
     } catch (error) {
       console.error("캐릭터 선택 저장 실패:", error);
-      showToast(lang === "ko" ? "캐릭터 선택을 저장하지 못했어요." : lang === "de" ? "Die Charakterauswahl konnte nicht gespeichert werden." : lang === "fr" ? "Impossible d’enregistrer le personnage." : "Could not save your character choice.");
+      showToast(PROFILE_LOCAL_TEXT[lang].characterSaveFailed);
     } finally {
       setSavingAvatarChoice(false);
     }
@@ -1168,14 +1218,9 @@ export default function ProfilePage() {
     const earned = profile?.[b.key] ?? false;
     const fruitName = t(b.descKey, lang);
     const targetDay = (index + 1) * 100;
-    const lockedDesc =
-      lang === "ko"
-        ? `${targetDay}일 말씀동행을 채우면 ${fruitName}의 열매를 받을 수 있어요.`
-        : lang === "de"
-          ? `Nach ${targetDay} Tagen im Wortweg können Sie die Frucht ${fruitName} erhalten.`
-          : lang === "fr"
-            ? `Après ${targetDay} jours de chemin avec la Parole, vous pourrez recevoir le fruit ${fruitName}.`
-            : `Complete ${targetDay} Word-walk days to receive the fruit of ${fruitName}.`;
+    const lockedDesc = PROFILE_LOCAL_TEXT[lang].spiritFruitLocked
+      .replace("{days}", String(targetDay))
+      .replace("{fruit}", fruitName);
 
     setSelectedBadge({
       img: earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG,
@@ -1247,7 +1292,7 @@ export default function ProfilePage() {
           >
             <button
               onClick={() => setShowBadgeGallery(false)}
-              aria-label="Close"
+              aria-label={t("close", lang)}
               style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
             >
               ×
@@ -1295,7 +1340,7 @@ export default function ProfilePage() {
           >
             <button
               onClick={() => setShowGroupChallengeBadgeGallery(false)}
-              aria-label="Close"
+              aria-label={t("close", lang)}
               style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
             >
               ×
@@ -1354,7 +1399,7 @@ export default function ProfilePage() {
           >
             <button
               onClick={() => setSelectedBadge(null)}
-              aria-label="Close"
+              aria-label={t("close", lang)}
               style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
             >
               ×
@@ -1369,7 +1414,7 @@ export default function ProfilePage() {
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{selectedBadge.title}</h3>
             <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginBottom: 12 }}>{selectedBadge.desc}</p>
             <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, padding: "7px 12px", background: selectedBadge.earned ? "var(--profile-gold-surface)" : "var(--profile-card-muted-surface)", border: selectedBadge.earned ? "1px solid var(--profile-gold-border)" : "1px solid var(--border)", color: selectedBadge.earned ? "var(--profile-gold-text)" : "var(--profile-muted-text)", fontSize: 11, fontWeight: 800 }}>
-              {selectedBadge.earned ? t("profile_badge_earned", lang) : lang === "ko" ? "아직 미획득" : lang === "de" ? "Noch nicht erhalten" : lang === "fr" ? "Pas encore obtenu" : "Not earned yet"}
+              {selectedBadge.earned ? t("profile_badge_earned", lang) : PROFILE_LOCAL_TEXT[lang].badgeNotEarned}
             </div>
           </div>
         </div>
@@ -1386,7 +1431,7 @@ export default function ProfilePage() {
           >
             <button
               onClick={() => setSelectedGroupChallengeBadge(null)}
-              aria-label="Close"
+              aria-label={t("close", lang)}
               style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
             >
               ×
@@ -1434,7 +1479,7 @@ export default function ProfilePage() {
           >
             <button
               onClick={() => setSelectedCompanionChallengeBadge(null)}
-              aria-label="Close"
+              aria-label={t("close", lang)}
               style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
             >
               ×
@@ -1533,7 +1578,7 @@ export default function ProfilePage() {
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
-              <span aria-label="Love Hearts" style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
+              <span aria-label={PROFILE_LOCAL_TEXT[lang].loveHearts} style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
                 💛 +{loveHeartBalance}
               </span>
             </div>
@@ -1738,12 +1783,12 @@ export default function ProfilePage() {
         <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
           <button
             onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: -200, behavior: "smooth" }); }}
-            aria-label={lang === "ko" ? "이전 배지" : lang === "de" ? "Vorherige Abzeichen" : lang === "fr" ? "Badges précédents" : "Previous badges"}
+            aria-label={PROFILE_LOCAL_TEXT[lang].previousBadges}
             style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
           >‹</button>
           <button
             onClick={() => { const el = document.getElementById("spirit-fruit-scroll"); if (el) el.scrollBy({ left: 200, behavior: "smooth" }); }}
-            aria-label={lang === "ko" ? "다음 배지" : lang === "de" ? "Nächste Abzeichen" : lang === "fr" ? "Badges suivants" : "Next badges"}
+            aria-label={PROFILE_LOCAL_TEXT[lang].nextBadges}
             style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", zIndex: 2, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text3)", fontSize: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
           >›</button>
           <div id="spirit-fruit-scroll" style={{ display: "flex", overflowX: "auto", gap: 16, paddingBottom: 4, scrollbarWidth: "none", paddingLeft: 20, paddingRight: 20 }}>

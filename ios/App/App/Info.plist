@@ -4,6 +4,14 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>ko</string>
+		<string>en</string>
+		<string>de</string>
+		<string>fr</string>
+		<string>es</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Roots</string>
 	<key>CFBundleExecutable</key>
@@ -53,9 +61,9 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Roots uses the camera so you can take a profile or reflection photo.</string>
+	<string>Roots uses the camera so you can take a profile or Bible Reflection photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Roots uses your photo library so you can choose a profile or reflection photo.</string>
+	<string>Roots uses your photo library so you can choose a profile or Bible Reflection photo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Roots may save selected profile images when needed.</string>
 </dict>

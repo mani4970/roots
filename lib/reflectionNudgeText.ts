@@ -1,5 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 
+type ReflectionNudgeLang = Lang | "es";
+
 type ReflectionNudgeText = {
   sendPartner: (name: string) => string;
   sendGroup: (name: string) => string;
@@ -16,7 +18,7 @@ type ReflectionNudgeText = {
   failed: string;
 };
 
-const REFLECTION_NUDGE_TEXT: Record<Lang, ReflectionNudgeText> = {
+const REFLECTION_NUDGE_TEXT: Record<ReflectionNudgeLang, ReflectionNudgeText> = {
   ko: {
     sendPartner: (name) => `${name}님에게 같이 묵상하자고 넛지 보내기`,
     sendGroup: (name) => `${name} 그룹에 같이 묵상하자고 넛지 보내기`,
@@ -56,34 +58,34 @@ const REFLECTION_NUDGE_TEXT: Record<Lang, ReflectionNudgeText> = {
       "Der Impuls konnte nicht gesendet werden. Bitte versuche es später erneut.",
   },
   en: {
-    sendPartner: (name) => `Nudge ${name} to reflect together`,
-    sendGroup: (name) => `Nudge ${name} to reflect together`,
+    sendPartner: (name) => `Nudge ${name} to reflect on the Word together`,
+    sendGroup: (name) => `Nudge ${name} to reflect on the Word together`,
     partnerCompleted: (name) =>
       `${name} has completed today’s Bible Reflection`,
     groupCompleted: (name) =>
-      `No one in ${name} is still waiting to complete today’s reflection`,
+      `No one in ${name} is still waiting to complete today’s Bible Reflection`,
     alreadySent: "You already sent a nudge today",
     loading: "Checking today’s nudge status",
-    sending: "Sending the reflection nudge",
-    partnerSuccess: (name) => `You sent ${name} a reflection nudge! 👋`,
-    groupSuccess: (name) => `You sent ${name} a reflection nudge! 👋`,
+    sending: "Sending the Bible Reflection nudge",
+    partnerSuccess: (name) => `You invited ${name} to reflect on the Word together! 👋`,
+    groupSuccess: (name) => `You invited ${name} to reflect on the Word together! 👋`,
     completedNotice:
       "Your faith partner has completed today’s Bible Reflection.",
     groupCompletedNotice:
-      "No group members are still waiting to complete today’s reflection.",
+      "No group members are still waiting to complete today’s Bible Reflection.",
     alreadySentNotice: "You already sent a nudge today.",
     failed: "Could not send the nudge. Please try again shortly.",
   },
   fr: {
-    sendPartner: (name) => `Inviter ${name} à méditer ensemble`,
-    sendGroup: (name) => `Inviter le groupe ${name} à méditer ensemble`,
+    sendPartner: (name) => `Inviter ${name} à méditer la Parole ensemble`,
+    sendGroup: (name) => `Inviter le groupe ${name} à méditer la Parole ensemble`,
     partnerCompleted: (name) =>
       `${name} a terminé la méditation biblique d’aujourd’hui`,
     groupCompleted: (name) =>
-      `Dans le groupe ${name}, personne n’attend encore pour méditer aujourd’hui`,
+      `Dans le groupe ${name}, personne n’attend encore pour faire sa méditation biblique aujourd’hui`,
     alreadySent: "Vous avez déjà envoyé une invitation aujourd’hui",
     loading: "Vérification de l’invitation du jour",
-    sending: "Envoi de l’invitation à méditer",
+    sending: "Envoi de l’invitation à méditer la Parole",
     partnerSuccess: (name) =>
       `Vous avez envoyé une invitation à ${name} ! 👋`,
     groupSuccess: (name) =>
@@ -91,14 +93,36 @@ const REFLECTION_NUDGE_TEXT: Record<Lang, ReflectionNudgeText> = {
     completedNotice:
       "Votre partenaire de foi a terminé la méditation biblique d’aujourd’hui.",
     groupCompletedNotice:
-      "Aucun membre du groupe n’attend encore pour méditer aujourd’hui.",
+      "Aucun membre du groupe n’attend encore pour faire sa méditation biblique aujourd’hui.",
     alreadySentNotice:
       "Vous avez déjà envoyé une invitation aujourd’hui.",
     failed:
       "L’invitation n’a pas pu être envoyée. Veuillez réessayer dans un instant.",
   },
+  es: {
+    sendPartner: (name) => `Invitar a ${name} a meditar juntos en la Palabra`,
+    sendGroup: (name) => `Invitar al grupo ${name} a meditar juntos en la Palabra`,
+    partnerCompleted: (name) =>
+      `${name} ya completó la meditación bíblica de hoy`,
+    groupCompleted: (name) =>
+      `En el grupo ${name} ya no hay miembros pendientes de completar la meditación bíblica de hoy`,
+    alreadySent: "Ya enviaste una invitación hoy",
+    loading: "Comprobando el estado de la invitación de hoy",
+    sending: "Enviando la invitación para meditar en la Palabra",
+    partnerSuccess: (name) =>
+      `¡Invitaste a ${name} a meditar juntos en la Palabra! 👋`,
+    groupSuccess: (name) =>
+      `¡Invitaste al grupo ${name} a meditar juntos en la Palabra! 👋`,
+    completedNotice:
+      "Tu compañero de fe ya completó la meditación bíblica de hoy.",
+    groupCompletedNotice:
+      "Ya no hay miembros del grupo pendientes de completar la meditación bíblica de hoy.",
+    alreadySentNotice: "Ya enviaste una invitación hoy.",
+    failed:
+      "No se pudo enviar la invitación. Vuelve a intentarlo dentro de un momento.",
+  },
 };
 
-export function getReflectionNudgeText(lang: Lang): ReflectionNudgeText {
+export function getReflectionNudgeText(lang: ReflectionNudgeLang): ReflectionNudgeText {
   return REFLECTION_NUDGE_TEXT[lang] ?? REFLECTION_NUDGE_TEXT.ko;
 }

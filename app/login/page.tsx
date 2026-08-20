@@ -3,18 +3,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
-import { setPreferredLang, useLang } from "@/lib/useLang";
+import { saveLangLocally, setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import LanguagePicker from "@/components/LanguagePicker";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
 import { Loader2, ChevronLeft } from "lucide-react";
-import { storageGet, storageSet } from "@/lib/clientStorage";
+import { storageGet } from "@/lib/clientStorage";
 import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
-import { saveProfilePreferences } from "@/lib/profilePreferences";
-import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 
@@ -62,20 +60,6 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
-    // preferred_translation도 갱신
-    const trId = getDefaultTranslationId(lang);
-    storageSet("roots_default_translation", String(trId));
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      try {
-        await saveProfilePreferences(supabase, {
-          preferredLanguage: lang,
-          preferredTranslation: trId,
-        });
-      } catch (error) {
-        console.error("login language preference save failed", error);
-      }
-    }
     router.push(getSafeRedirectFromLocation()); router.refresh();
   }
 
@@ -89,9 +73,7 @@ export default function LoginPage() {
     setError("");
     setResetMessage("");
     const supabase = createClient();
-    storageSet("roots_lang", lang);
-    storageSet("roots_lang_selected", "true");
-    storageSet("roots_default_translation", String(getDefaultTranslationId(lang)));
+    saveLangLocally(lang);
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
     } catch (error) {

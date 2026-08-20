@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "i18n:audit:es": "node scripts/audit-spanish-localization.mjs",
+    "i18n:audit:reflection-terms": "node scripts/audit-reflection-terminology.mjs",
+    "bible:audit:es": "node --no-warnings --experimental-strip-types scripts/audit-spanish-bible.mjs --live",
     "start": "next start",
     "lint": "next lint",
     "bible:prepare:duranno": "node scripts/prepare-duranno-bible.mjs",

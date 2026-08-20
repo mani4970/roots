@@ -6,8 +6,13 @@ import { storageGet, storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
-import { useLang } from "@/lib/useLang";
-import { t, type Lang } from "@/lib/i18n";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  savePreferredTranslationLocally,
+  useLang,
+} from "@/lib/useLang";
+import { isLang, t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
@@ -43,133 +48,139 @@ function isSunday(dateStr: string) {
 // 원본 STEPS_6 / STEPS_SUNDAY 배열의 한국어 문자열을 key로 쓰고,
 // 렌더링 시점에 `trQT(str, lang)` 로 감싸서 독일어/영어로 변환.
 // 배열 구조를 건드리지 않아 기존 로직(step.id, step.isPassageStep 등) 그대로 동작.
-const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<Lang, string>>> = {
+type QTWriteTranslationLang = Lang | "es";
+
+const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLang, string>>> = {
   // 6단계 제목/부제목
-  "들어가는 기도": { de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture" },
-  "말씀 앞에 나아가기 전 기도": { de: "Gebet vor dem Wort", en: "Prayer before the Word", fr: "Prière avant la Parole" },
-  "본문 글씨": { de: "Bibeltext", en: "Bible text", fr: "Texte biblique" },
-  "번역본": { de: "Übersetzung", en: "Translation", fr: "Traduction" },
-  "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé" },
-  "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur" },
-  "느낌과 묵상": { de: "Empfinden & Meditation", en: "Reflection & Meditation", fr: "Méditation" },
-  "이 말씀이 내게 주는 의미": { de: "Was bedeutet das Wort für mich?", en: "What this Word means to me", fr: "Ce que cette Parole signifie pour moi" },
-  "적용과 결단": { de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Décision" },
-  "오늘 하루 어떻게 살 건가요?": { de: "Wie leben Sie heute?", en: "How will you live today?", fr: "Comment allez-vous vivre aujourd’hui ?" },
-  "올려드리는 기도": { de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale" },
-  "말씀으로 드리는 기도": { de: "Gebet mit dem Wort", en: "Prayer with the Word", fr: "Prière avec la Parole" },
+  "들어가는 기도": { de: "Eröffnungsgebet", en: "Opening Prayer", fr: "Prière d’ouverture", es: "Oración inicial" },
+  "말씀 앞에 나아가기 전 기도": { de: "Gebet vor dem Wort", en: "Prayer before the Word", fr: "Prière avant la Parole", es: "Oración antes de acercarte a la Palabra" },
+  "본문 글씨": { de: "Bibeltext", en: "Bible text", fr: "Texte biblique", es: "Tamaño del texto" },
+  "본문 글씨 작게": { de: "Bibeltext verkleinern", en: "Decrease Bible text size", fr: "Réduire la taille du texte biblique", es: "Reducir el tamaño del texto bíblico" },
+  "본문 글씨 크게": { de: "Bibeltext vergrößern", en: "Increase Bible text size", fr: "Augmenter la taille du texte biblique", es: "Aumentar el tamaño del texto bíblico" },
+  "번역본": { de: "Übersetzung", en: "Translation", fr: "Traduction", es: "Traducción" },
+  "번역본 선택": { ko: "번역본 선택", de: "Übersetzung auswählen", en: "Select translation", fr: "Choisir une traduction", es: "Seleccionar traducción" },
+  "날짜 선택": { ko: "날짜 선택", de: "Datum auswählen", en: "Select date", fr: "Choisir une date", es: "Seleccionar fecha" },
+  "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé", es: "Resumen del pasaje y versículo clave" },
+  "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur", es: "Lee el pasaje y guárdalo en tu corazón" },
+  "느낌과 묵상": { de: "Gedanken & Erkenntnisse", en: "Thoughts & Insights", fr: "Réflexions et enseignements", es: "Pensamientos y aprendizajes" },
+  "이 말씀이 내게 주는 의미": { de: "Was bedeutet das Wort für mich?", en: "What this Word means to me", fr: "Ce que cette Parole signifie pour moi", es: "Lo que esta Palabra significa para mí" },
+  "적용과 결단": { de: "Anwendung & Entschluss", en: "Application & Resolution", fr: "Décision", es: "Aplicación y compromiso" },
+  "오늘 하루 어떻게 살 건가요?": { de: "Wie leben Sie heute?", en: "How will you live today?", fr: "Comment allez-vous vivre aujourd’hui ?", es: "¿Cómo vivirás hoy?" },
+  "올려드리는 기도": { de: "Abschlussgebet", en: "Closing Prayer", fr: "Prière finale", es: "Oración final" },
+  "말씀으로 드리는 기도": { de: "Gebet mit dem Wort", en: "Prayer with the Word", fr: "Prière avec la Parole", es: "Oración basada en la Palabra" },
   // 6단계 placeholder / hint
-  "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart.", fr: "Seigneur, je viens devant ta Parole aujourd’hui...\nOuvre mes yeux, mes oreilles et mon cœur." },
-  "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart.", fr: "Court, c’est très bien. Une prière avec un cœur ouvert." },
-  "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n솔직하게 느낀 것을 써보세요.": { de: "Was sagt dieses Wort in mein Leben hinein?\nSchreiben Sie ehrlich, was Sie empfinden.", en: "What does this word mean for my life? Write honestly about your feelings.", fr: "Que dit cette Parole dans ma vie aujourd’hui ?\nÉcrivez honnêtement ce que vous ressentez." },
-  "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you.", fr: "Il n’y a pas de bonne réponse unique. Laissez-vous guider par le Saint-Esprit." },
-  "붙잡은 말씀으로 묵상해요": { de: "Mit dem Schlüsselvers meditieren", en: "Reflect with your key verse", fr: "Méditer avec le verset clé" },
-  "이 말씀을 붙들고 느낌과 묵상을 적어보세요.": { de: "Halten Sie dieses Wort fest und schreiben Sie Ihre Gedanken auf.", en: "Hold on to this verse and write your reflection.", fr: "Appuyez-vous sur cette Parole et écrivez votre méditation." },
-  "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the decision of the heart, action is shown through hands and feet.", fr: "Le caractère est la décision du cœur ; l’action se voit par les mains et les pieds." },
-  "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält...", en: "Hold on to the Word and pray...", fr: "Priez en vous appuyant sur la Parole..." },
-  "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen.", en: "Bring the Word and resolution before God once more.", fr: "Présentez encore une fois la Parole et votre décision devant Dieu." },
+  "주님, 오늘 말씀 앞에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute vor dein Wort...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart.", fr: "Seigneur, je viens devant ta Parole aujourd’hui...\nOuvre mes yeux, mes oreilles et mon cœur.", es: "Señor, hoy me acerco a tu Palabra...\nAbre mis ojos, mis oídos y mi corazón." },
+  "짧아도 괜찮아요. 마음을 열고 주님께 나아가는 기도예요.": { de: "Kurz reicht auch. Ein Gebet mit offenem Herzen.", en: "Short is fine. A prayer with an open heart.", fr: "Court, c’est très bien. Une prière avec un cœur ouvert.", es: "No importa si es breve. Es una oración para acercarte al Señor con el corazón abierto." },
+  "이 말씀이 오늘 내 삶에 무슨 말씀인가요?\n말씀을 통해 받은 생각과 깨달음을 솔직하게 써보세요.": { de: "Was sagt dieses Wort heute in Ihr Leben hinein?\nSchreiben Sie ehrlich auf, welche Gedanken und Erkenntnisse Sie daraus mitnehmen.", en: "What is this Word saying to your life today?\nWrite honestly about the thoughts and insights you received.", fr: "Que vous dit cette Parole aujourd’hui ?\nÉcrivez honnêtement les réflexions et enseignements que vous en recevez.", es: "¿Qué me dice hoy esta Palabra para mi vida?\nEscribe con sinceridad los pensamientos y aprendizajes que recibiste por medio de ella." },
+  "정답이 없어요. 성령님의 이끄심에 맡겨봐요.": { de: "Es gibt keine richtige Antwort. Lassen Sie sich vom Heiligen Geist leiten.", en: "There's no right answer. Let the Holy Spirit guide you.", fr: "Il n’y a pas de bonne réponse unique. Laissez-vous guider par le Saint-Esprit.", es: "No hay una única respuesta correcta. Déjate guiar por el Espíritu Santo." },
+  "붙잡은 말씀으로 묵상해요": { de: "Den Schlüsselvers vertiefen", en: "Reflect on your key verse", fr: "Réfléchir à partir du verset clé", es: "Profundiza en tu versículo clave" },
+  "이 말씀을 붙들고 느낌과 묵상을 적어보세요.": { de: "Halten Sie dieses Wort fest und schreiben Sie Ihre Gedanken und Erkenntnisse auf.", en: "Hold on to this verse and write down your thoughts and insights.", fr: "Appuyez-vous sur cette Parole et notez vos réflexions et les enseignements reçus.", es: "Aférrate a esta Palabra y escribe tus pensamientos y aprendizajes." },
+  "성품은 마음을 정하는 것, 행동은 손과 발로 드러나는 것이에요.": { de: "Charakter ist die Entscheidung des Herzens, Handlung wird mit Händen und Füßen sichtbar.", en: "Character is the decision of the heart, action is shown through hands and feet.", fr: "Le caractère est la décision du cœur ; l’action se voit par les mains et les pieds.", es: "El carácter es una decisión del corazón; la acción se manifiesta con las manos y los pies." },
+  "말씀을 붙들고 기도를 올려드려요...": { de: "Gebet, das das Wort festhält...", en: "Hold on to the Word and pray...", fr: "Priez en vous appuyant sur la Parole...", es: "Aférrate a la Palabra y ora..." },
+  "말씀과 결단을 간결하게 다시 하나님께 올려드려요.": { de: "Wort und Entschluss noch einmal kurz vor Gott bringen.", en: "Bring the Word and resolution before God once more.", fr: "Présentez encore une fois la Parole et votre décision devant Dieu.", es: "Presenta de nuevo a Dios, de forma breve, la Palabra y tu compromiso." },
   // 6단계 진행바 라벨
-  "본문 요약": { de: "Zusammenf.", en: "Summary", fr: "Résumé du passage" },
-  "붙잡은 말씀": { de: "Schlüsselvers", en: "Key Verse", fr: "Verset clé" },
+  "본문 요약": { de: "Zusammenf.", en: "Summary", fr: "Résumé du passage", es: "Resumen del pasaje" },
+  "붙잡은 말씀": { de: "Schlüsselvers", en: "Key Verse", fr: "Verset clé", es: "Versículo clave" },
   // 주일예배
-  "설교 정보": { de: "Predigt-Info", en: "Sermon Info", fr: "Infos du sermon" },
-  "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt", en: "Write the sermon title and passage", fr: "Écrivez le titre du sermon et le passage biblique" },
-  "예배 전 마음을 준비해요": { de: "Herz vor dem Gottesdienst vorbereiten", en: "Prepare your heart for worship", fr: "Préparez votre cœur avant le culte" },
-  "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart.", fr: "Seigneur, je viens au culte aujourd’hui...\nOuvre mes yeux, mes oreilles et mon cœur." },
-  "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with an open heart before worship.", fr: "Une prière pour ouvrir votre cœur devant Dieu avant le culte." },
-  "말씀 요약": { de: "Zusammenfassung", en: "Summary", fr: "Résumé de la Parole" },
-  "설교 말씀을 요약해요": { de: "Predigt zusammenfassen", en: "Summarize the sermon", fr: "Résumez la prédication" },
-  "오늘 설교 핵심 내용을 요약해보세요": { de: "Fassen Sie die Kernaussagen der heutigen Predigt zusammen.", en: "Summarize the key points of today's sermon.", fr: "Résumez les points essentiels de la prédication d’aujourd’hui." },
-  "목사님이 전한 핵심 메시지를 정리해요": { de: "Die Kernbotschaft des Pastors festhalten.", en: "Capture the key message shared by the pastor.", fr: "Relevez le message central transmis par le pasteur." },
-  "깨달음과 결단": { de: "Erkenntnis & Entschluss", en: "Insight & Resolution", fr: "Compréhension et décision" },
-  "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word", fr: "Ce que la Parole m’enseigne et ma décision" },
-  "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out.", fr: "Écrivez ce que vous avez compris par la Parole et la décision que vous voulez vivre." },
-  "예배의 마무리 기도": { de: "Abschlussgebet des Gottesdienstes", en: "Closing prayer of worship", fr: "Prière finale du culte" },
-  "오늘 받은 은혜와 결단을 하나님께 올려드려요...": { de: "Die empfangene Gnade und den Entschluss vor Gott bringen...", en: "Bring today's grace and resolution before God...", fr: "Présentez à Dieu la grâce reçue aujourd’hui et votre décision..." },
-  "받은 말씀과 결단을 하나님께 올려드려요.": { de: "Das Wort und den Entschluss Gott darbringen.", en: "Offer the Word and resolution to God.", fr: "Offrez à Dieu la Parole reçue et votre décision." },
+  "설교 정보": { de: "Predigt-Info", en: "Sermon Info", fr: "Infos du sermon", es: "Información del sermón" },
+  "설교 제목과 본문 말씀을 적어요": { de: "Titel und Bibelstelle der Predigt", en: "Write the sermon title and passage", fr: "Écrivez le titre du sermon et le passage biblique", es: "Escribe el título del sermón y el pasaje bíblico" },
+  "예배 전 마음을 준비해요": { de: "Herz vor dem Gottesdienst vorbereiten", en: "Prepare your heart for worship", fr: "Préparez votre cœur avant le culte", es: "Prepara tu corazón antes del culto" },
+  "주님, 오늘 예배에 나아갑니다...\n제 눈과 귀와 마음을 열어주세요.": { de: "Herr, ich komme heute zum Gottesdienst...\nÖffne meine Augen, Ohren und mein Herz.", en: "Lord, I come before your word today...\nOpen my eyes, ears, and heart.", fr: "Seigneur, je viens au culte aujourd’hui...\nOuvre mes yeux, mes oreilles et mon cœur.", es: "Señor, hoy me acerco a ti en este culto...\nAbre mis ojos, mis oídos y mi corazón." },
+  "예배 전 마음을 열고 주님께 나아가는 기도예요.": { de: "Gebet mit offenem Herzen vor dem Gottesdienst.", en: "A prayer with an open heart before worship.", fr: "Une prière pour ouvrir votre cœur devant Dieu avant le culte.", es: "Es una oración para acercarte al Señor con el corazón abierto antes del culto." },
+  "말씀 요약": { de: "Zusammenfassung", en: "Summary", fr: "Résumé de la Parole", es: "Resumen del mensaje" },
+  "설교 말씀을 요약해요": { de: "Predigt zusammenfassen", en: "Summarize the sermon", fr: "Résumez la prédication", es: "Resume el mensaje del sermón" },
+  "오늘 설교 핵심 내용을 요약해보세요": { de: "Fassen Sie die Kernaussagen der heutigen Predigt zusammen.", en: "Summarize the key points of today's sermon.", fr: "Résumez les points essentiels de la prédication d’aujourd’hui.", es: "Resume los puntos centrales del sermón de hoy" },
+  "목사님이 전한 핵심 메시지를 정리해요": { de: "Die Kernbotschaft des Pastors festhalten.", en: "Capture the key message shared by the pastor.", fr: "Relevez le message central transmis par le pasteur.", es: "Identifica el mensaje principal que compartió el pastor" },
+  "깨달음과 결단": { de: "Erkenntnis & Entschluss", en: "Insight & Resolution", fr: "Compréhension et décision", es: "Aprendizajes y compromiso" },
+  "말씀이 내게 주는 깨달음과 결단": { de: "Erkenntnis und Entschluss aus dem Wort", en: "Insight and resolution from the Word", fr: "Ce que la Parole m’enseigne et ma décision", es: "Lo que la Palabra me enseña y mi compromiso" },
+  "말씀을 통해 깨달은 것, 그리고 삶으로 살아낼 결단을 적어요.": { de: "Was Sie erkannt haben und wie Sie es leben wollen.", en: "What you realized and how you'll live it out.", fr: "Écrivez ce que vous avez compris par la Parole et la décision que vous voulez vivre.", es: "Escribe lo que aprendiste por medio de la Palabra y el compromiso que llevarás a la práctica." },
+  "예배의 마무리 기도": { de: "Abschlussgebet des Gottesdienstes", en: "Closing prayer of worship", fr: "Prière finale du culte", es: "Oración final del culto" },
+  "오늘 받은 은혜와 결단을 하나님께 올려드려요...": { de: "Die empfangene Gnade und den Entschluss vor Gott bringen...", en: "Bring today's grace and resolution before God...", fr: "Présentez à Dieu la grâce reçue aujourd’hui et votre décision...", es: "Presenta ante Dios la gracia recibida hoy y tu compromiso..." },
+  "받은 말씀과 결단을 하나님께 올려드려요.": { de: "Das Wort und den Entschluss Gott darbringen.", en: "Offer the Word and resolution to God.", fr: "Offrez à Dieu la Parole reçue et votre décision.", es: "Presenta a Dios la Palabra que recibiste y tu compromiso." },
   // 에러 메시지 / alert
-  "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial" },
-  "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage." },
-  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert", en: "Saved as draft", fr: "Brouillon enregistré" },
-  "자동 임시저장 중...": { de: "Automatisches Speichern...", en: "Auto-saving...", fr: "Enregistrement automatique..." },
-  "자동 임시저장됨": { de: "Automatisch gespeichert", en: "Auto-saved", fr: "Enregistré automatiquement" },
-  "자동 임시저장됨 · {time}": { de: "Automatisch gespeichert · {time}", en: "Auto-saved · {time}", fr: "Enregistré automatiquement · {time}" },
-  "기기에 안전하게 저장됨 · 연결되면 다시 동기화돼요": { de: "Sicher auf dem Gerät gespeichert · Synchronisiert sich wieder bei Verbindung", en: "Safely saved on this device · It will sync when connected", fr: "Enregistré en sécurité sur cet appareil · Synchronisation dès la reconnexion" },
-  "작성 내용은 자동으로 임시저장돼요": { de: "Ihre Eingaben werden automatisch als Entwurf gespeichert", en: "Your writing is auto-saved as a draft", fr: "Votre texte est enregistré automatiquement comme brouillon" },
-  "자동 임시저장 실패 · 수동 임시저장을 눌러주세요": { de: "Automatisches Speichern fehlgeschlagen · Bitte manuell speichern", en: "Auto-save failed · Please save manually", fr: "Échec de l’enregistrement automatique · Enregistrez manuellement" },
-  "수정 모드에서는 자동 임시저장이 꺼져 있어요": { de: "Im Bearbeitungsmodus ist die automatische Speicherung deaktiviert", en: "Auto-save is off while editing", fr: "L’enregistrement automatique est désactivé pendant la modification" },
-  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
-  "기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.": { de: "Der Entwurf ist sicher auf diesem Gerät gespeichert. Bitte versuchen Sie es nach der Verbindung erneut.", en: "Your draft is safely saved on this device. Please try again when connected.", fr: "Votre brouillon est enregistré en sécurité sur cet appareil. Réessayez lorsque la connexion sera rétablie." },
-  "작성 중인 묵상을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.": { de: "Der gespeicherte Entwurf konnte nicht geprüft werden. Bitte Verbindung prüfen und erneut versuchen.", en: "We couldn't check your saved draft. Check your connection and try again.", fr: "Impossible de vérifier votre brouillon. Vérifiez la connexion puis réessayez." },
-  "다시 시도": { de: "Erneut versuchen", en: "Try again", fr: "Réessayer" },
-  "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer" },
-  "말씀동행 반영에 실패했어요. 다시 완료해주세요.": { de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Andacht erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau." },
+  "끝 절이 시작 절보다 작아요": { de: "Endvers ist kleiner als Startvers", en: "End verse is smaller than start verse", fr: "Le verset final est avant le verset initial", es: "El versículo final no puede ser anterior al inicial" },
+  "본문을 불러오지 못했어요.": { de: "Abschnitt konnte nicht geladen werden.", en: "Could not load the passage.", fr: "Impossible de charger le passage.", es: "No pudimos cargar el pasaje." },
+  "임시저장됐어요! 나중에 이어쓸 수 있어요": { de: "Als Entwurf gespeichert", en: "Saved as draft", fr: "Brouillon enregistré", es: "¡Guardado como borrador! Puedes continuar más tarde" },
+  "자동 임시저장 중...": { de: "Automatisches Speichern...", en: "Auto-saving...", fr: "Enregistrement automatique...", es: "Guardando borrador automáticamente..." },
+  "자동 임시저장됨": { de: "Automatisch gespeichert", en: "Auto-saved", fr: "Enregistré automatiquement", es: "Borrador guardado automáticamente" },
+  "자동 임시저장됨 · {time}": { de: "Automatisch gespeichert · {time}", en: "Auto-saved · {time}", fr: "Enregistré automatiquement · {time}", es: "Borrador guardado automáticamente · {time}" },
+  "기기에 안전하게 저장됨 · 연결되면 다시 동기화돼요": { de: "Sicher auf dem Gerät gespeichert · Synchronisiert sich wieder bei Verbindung", en: "Safely saved on this device · It will sync when connected", fr: "Enregistré en sécurité sur cet appareil · Synchronisation dès la reconnexion", es: "Guardado de forma segura en este dispositivo · Se sincronizará cuando haya conexión" },
+  "작성 내용은 자동으로 임시저장돼요": { de: "Ihre Eingaben werden automatisch als Entwurf gespeichert", en: "Your writing is auto-saved as a draft", fr: "Votre texte est enregistré automatiquement comme brouillon", es: "Tu contenido se guarda automáticamente como borrador" },
+  "자동 임시저장 실패 · 수동 임시저장을 눌러주세요": { de: "Automatisches Speichern fehlgeschlagen · Bitte manuell speichern", en: "Auto-save failed · Please save manually", fr: "Échec de l’enregistrement automatique · Enregistrez manuellement", es: "Falló el guardado automático · Guarda el borrador manualmente" },
+  "수정 모드에서는 자동 임시저장이 꺼져 있어요": { de: "Im Bearbeitungsmodus ist die automatische Speicherung deaktiviert", en: "Auto-save is off while editing", fr: "L’enregistrement automatique est désactivé pendant la modification", es: "El guardado automático está desactivado mientras editas" },
+  "임시저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer", es: "No pudimos guardar el borrador. Inténtalo de nuevo." },
+  "기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.": { de: "Der Entwurf ist sicher auf diesem Gerät gespeichert. Bitte versuchen Sie es nach der Verbindung erneut.", en: "Your draft is safely saved on this device. Please try again when connected.", fr: "Votre brouillon est enregistré en sécurité sur cet appareil. Réessayez lorsque la connexion sera rétablie.", es: "Tu borrador está guardado de forma segura en este dispositivo. Inténtalo de nuevo cuando tengas conexión." },
+  "작성 중인 묵상을 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.": { de: "Der gespeicherte Entwurf konnte nicht geprüft werden. Bitte Verbindung prüfen und erneut versuchen.", en: "We couldn't check your saved draft. Check your connection and try again.", fr: "Impossible de vérifier votre brouillon. Vérifiez la connexion puis réessayez.", es: "No pudimos comprobar tu borrador de meditación bíblica. Revisa tu conexión e inténtalo de nuevo." },
+  "다시 시도": { de: "Erneut versuchen", en: "Try again", fr: "Réessayer", es: "Intentar de nuevo" },
+  "저장에 실패했어요. 다시 시도해주세요.": { de: "Speichern fehlgeschlagen. Erneut versuchen", en: "Save failed. Try again", fr: "Échec. Veuillez réessayer", es: "No pudimos guardar. Inténtalo de nuevo." },
+  "말씀동행 반영에 실패했어요. 다시 완료해주세요.": { de: "Die Speicherung deines Fortschritts ist fehlgeschlagen. Bitte schließe die Stille Zeit erneut ab.", en: "Your Word Walk progress could not be saved. Please complete it again.", fr: "La progression de votre cheminement n’a pas pu être enregistrée. Veuillez terminer à nouveau.", es: "No pudimos guardar tu progreso en Caminar con la Palabra. Completa de nuevo la meditación bíblica." },
   // UI 문자열
-  "오늘": { de: "Heute", en: "Today", fr: "Aujourd’hui" },
-  "오늘의 말씀 찾기": { de: "Heutigen Abschnitt finden", en: "Find today's passage", fr: "Trouver le passage du jour" },
-  "오늘의 말씀 찾기 (선택)": { de: "Heutigen Abschnitt finden (optional)", en: "Find today's passage (optional)", fr: "Trouver le passage du jour (optionnel)" },
-  "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)": { de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)", en: "Cross-chapter (e.g. 9:25 – 10:6)", fr: "Passage sur deux chapitres (ex. 9.25 – 10.6)" },
-  "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...": { de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse...", en: "Write freely about the Word, your thoughts and insights...", fr: "Écrivez librement la Parole lue aujourd’hui, vos ressentis et vos découvertes..." },
-  "예: 두려워하지 말라": { de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. Ne crains pas" },
-  "예: 이사야 41:10 / 요한복음 3:16": { de: "z. B. Jesaja 41,10 / Johannes 3,16", en: "e.g. Isaiah 41:10 / John 3:16", fr: "ex. Ésaïe 41.10 / Jean 3.16" },
-  "개인적이고 솔직하게 써보세요...": { de: "Persönlich und ehrlich schreiben...", en: "Write personally and honestly...", fr: "Écrivez de façon personnelle et honnête..." },
-  "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?": { de: "Welche Haltung nehmen Sie vor diesem Wort ein?", en: "What attitude will you take before this Word?", fr: "Quelle disposition de cœur choisissez-vous devant cette Parole ?" },
-  "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen...", en: "Summarize the text in your own words...", fr: "Résumez le texte avec vos propres mots..." },
-  "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben...", en: "Write the verse that touched you or select above...", fr: "Écrivez le verset qui vous touche ou choisissez-le ci-dessus..." },
+  "오늘": { de: "Heute", en: "Today", fr: "Aujourd’hui", es: "Hoy" },
+  "오늘의 말씀 찾기": { de: "Heutigen Abschnitt finden", en: "Find today's passage", fr: "Trouver le passage du jour", es: "Buscar el pasaje de hoy" },
+  "오늘의 말씀 찾기 (선택)": { de: "Heutigen Abschnitt finden (optional)", en: "Find today's passage (optional)", fr: "Trouver le passage du jour (optionnel)", es: "Buscar el pasaje de hoy (opcional)" },
+  "장이 넘어가는 말씀 (예: 9장 25절~10장 6절)": { de: "Kapitel-übergreifend (z. B. 9,25 – 10,6)", en: "Cross-chapter (e.g. 9:25 – 10:6)", fr: "Passage sur deux chapitres (ex. 9.25 – 10.6)", es: "Pasaje entre capítulos (ej.: 9:25–10:6)" },
+  "오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...": { de: "Schreiben Sie frei über das Wort, Ihre Gedanken und Erkenntnisse...", en: "Write freely about the Word, your thoughts and insights...", fr: "Écrivez librement sur la Parole lue aujourd’hui, vos réflexions et les enseignements reçus...", es: "Escribe libremente sobre la Palabra que leíste hoy, tus pensamientos y aprendizajes..." },
+  "예: 두려워하지 말라": { de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. Ne crains pas", es: "Ej.: No temas" },
+  "예: 이사야 41:10 / 요한복음 3:16": { de: "z. B. Jesaja 41,10 / Johannes 3,16", en: "e.g. Isaiah 41:10 / John 3:16", fr: "ex. Ésaïe 41.10 / Jean 3.16", es: "Ej.: Isaías 41:10 / Juan 3:16" },
+  "개인적이고 솔직하게 써보세요...": { de: "Persönlich und ehrlich schreiben...", en: "Write personally and honestly...", fr: "Écrivez de façon personnelle et honnête...", es: "Escribe de manera personal y sincera..." },
+  "이 말씀 앞에서 어떤 마음을 품기로 결심했나요?": { de: "Welche Haltung nehmen Sie vor diesem Wort ein?", en: "What attitude will you take before this Word?", fr: "Quelle disposition de cœur choisissez-vous devant cette Parole ?", es: "¿Qué actitud decidiste adoptar ante esta Palabra?" },
+  "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen...", en: "Summarize the text in your own words...", fr: "Résumez le texte avec vos propres mots...", es: "Resume el pasaje con tus propias palabras..." },
+  "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben...", en: "Write the verse that touched you or select above...", fr: "Écrivez le verset qui vous touche ou choisissez-le ci-dessus...", es: "Escribe el versículo que tocó tu corazón o selecciónalo arriba..." },
   // 요일 단어
-  "일": { de: "So", en: "Sun", fr: "Dim" }, "월": { de: "Mo", en: "Mon", fr: "Lun" }, "화": { de: "Di", en: "Tue", fr: "Mar" }, "수": { de: "Mi", en: "Wed", fr: "Mer" },
-  "목": { de: "Do", en: "Thu", fr: "Jeu" }, "금": { de: "Fr", en: "Fri", fr: "Ven" }, "토": { de: "Sa", en: "Sat", fr: "Sam" },
-  "· 오늘": { de: "· Heute", en: "· Today", fr: "· Aujourd’hui" },
+  "일": { de: "So", en: "Sun", fr: "Dim", es: "Dom" }, "월": { de: "Mo", en: "Mon", fr: "Lun", es: "Lun" }, "화": { de: "Di", en: "Tue", fr: "Mar", es: "Mar" }, "수": { de: "Mi", en: "Wed", fr: "Mer", es: "Mié" },
+  "목": { de: "Do", en: "Thu", fr: "Jeu", es: "Jue" }, "금": { de: "Fr", en: "Fri", fr: "Ven", es: "Vie" }, "토": { de: "Sa", en: "Sat", fr: "Sam", es: "Sáb" },
+  "· 오늘": { de: "· Heute", en: "· Today", fr: "· Aujourd’hui", es: "· Hoy" },
   // 버튼 / 라벨
-  "나가기": { de: "Zurück", en: "Exit", fr: "Sortir" },
-  "이전": { de: "Zurück", en: "Back", fr: "Retour" },
-  "더보기": { de: "Mehr", en: "More", fr: "Voir plus" },
-  "접기": { de: "Weniger", en: "Less", fr: "Réduire" },
-  "다음 단계 →": { de: "Nächster Schritt →", en: "Next Step →", fr: "Étape suivante →" },
-  "← 이전": { de: "← Zurück", en: "← Back", fr: "← Retour" },
-  "임시저장하고 나중에 이어쓰기": { de: "Als Entwurf speichern", en: "Save as draft", fr: "Enregistrer comme brouillon" },
-  "성품 (마음의 결심)": { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)", fr: "Caractère (décision du cœur)" },
-  "행동 (구체적인 결단)": { de: "Handlung (konkreter Vorsatz)", en: "Action (concrete resolution)", fr: "Action (décision concrète)" },
-  "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé" },
-  "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage" },
-  "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé" },
-  "(위 절 탭하면 자동 추가)": { de: "(Vers oben antippen)", en: "(Tap verse above)", fr: "(Touchez un verset ci-dessus pour l’ajouter)" },
-  "행동 1": { de: "Handlung 1", en: "Action 1", fr: "Action 1" },
-  "단계": { de: "Schritt", en: "Step", fr: "Étape" },
-  "자유 큐티": { de: "Freie Stille Zeit", en: "Free Quiet Time", fr: "QT libre" },
-  "오늘의 묵상": { de: "Heutige Meditation", en: "Today's Meditation", fr: "Méditation du jour" },
-  "결단 — 말씀을 삶에 적용해보세요!": { de: "Vorsatz — Wort im Leben anwenden!", en: "Resolution — Apply the Word to life!", fr: "Décision — appliquez la Parole dans votre vie !" },
-  "결단 1": { de: "Vorsatz 1", en: "Resolution 1", fr: "Décision 1" },
-  "큐티 완료": { de: "QT abschließen", en: "QT Complete", fr: "QT terminé" },
-  "저장 중...": { de: "Wird gespeichert...", en: "Saving...", fr: "Enregistrement..." },
-  "성경 책": { de: "Buch der Bibel", en: "Book of the Bible", fr: "Livre biblique" },
-  "성경 책 선택": { de: "Buch der Bibel wählen", en: "Select a book", fr: "Choisir un livre" },
-  "시작 장": { de: "Anfangskapitel", en: "Start chapter", fr: "Chapitre de début" },
-  "시작 절": { de: "Anfangsvers", en: "Start verse", fr: "Verset de début" },
-  "끝 절": { de: "Endvers", en: "End verse", fr: "Verset de fin" },
-  "말씀 불러오기": { de: "Abschnitt laden", en: "Load passage", fr: "Charger le passage" },
-  "불러오는 중...": { de: "Wird geladen...", en: "Loading...", fr: "Chargement..." },
-  "말씀 없이 자유롭게 작성하기": { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage", fr: "Écrire librement sans passage" },
-  "큐티할 말씀을 먼저 선택해요": { de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage" },
-  "다시 선택": { de: "Neu wählen", en: "Reselect", fr: "Choisir à nouveau" },
-  "설교 제목": { ko: "제목", de: "Titel", en: "Title", fr: "Titre" },
-  "본문 말씀": { de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique" },
-  "깨달음 (말씀이 내게 주는 것)": { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)", fr: "Compréhension (ce que la Parole me donne)" },
-  "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?", fr: "Qu’est-ce que Dieu m’a dit aujourd’hui à travers le sermon ?" },
-  "구약": { de: "AT", en: "OT", fr: "Ancien Testament" },
-  "신약": { de: "NT", en: "NT", fr: "Nouveau Testament" },
-  "임시저장은 오늘 큐티에만 가능해요.": { de: "Entwürfe nur für heute", en: "Drafts only for today's QT", fr: "Brouillons : QT du jour seulement" },
-  "이미 큐티 기록이 있어요": { de: "QT für {date} vorhanden", en: "QT exists for {date}", fr: "QT existant pour le {date}" },
-  "끝 장": { de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin" },
-  "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !" },
-  "결단": { de: "Entschluss", en: "Resolution", fr: "Décision" },
-  "말씀 추가하기 (여러 본문일 경우)": { de: "Abschnitt hinzufügen (bei mehreren Texten)", en: "Add passage (for multiple passages)", fr: "Ajouter un passage (si plusieurs passages)" },
-  "여러 본문 추가": { de: "Weiteren Bibeltext hinzufügen", en: "Add another passage", fr: "Ajouter un autre passage" },
-  "본문 선택 완료": { de: "Bibeltext-Auswahl abschließen", en: "Finish passage selection", fr: "Terminer la sélection du passage" },
-  "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.": { de: "Wenn Sie mehrere Bibeltexte betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour méditer plusieurs passages, choisissez un autre passage puis ajoutez-le." },
-  "성품": { de: "Charakter", en: "Character", fr: "Caractère" },
-  "행동": { de: "Handlung", en: "action", fr: "Action" },
-  "은 마음을 정하는 것,": { de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, " },
-  "은 손과 발로 드러나는 것이에요.": { de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds." },
+  "나가기": { de: "Zurück", en: "Exit", fr: "Sortir", es: "Salir" },
+  "이전": { de: "Zurück", en: "Back", fr: "Retour", es: "Atrás" },
+  "더보기": { de: "Mehr", en: "More", fr: "Voir plus", es: "Ver más" },
+  "접기": { de: "Weniger", en: "Less", fr: "Réduire", es: "Ver menos" },
+  "다음 단계 →": { de: "Nächster Schritt →", en: "Next Step →", fr: "Étape suivante →", es: "Siguiente paso →" },
+  "← 이전": { de: "← Zurück", en: "← Back", fr: "← Retour", es: "← Atrás" },
+  "임시저장하고 나중에 이어쓰기": { de: "Als Entwurf speichern", en: "Save as draft", fr: "Enregistrer comme brouillon", es: "Guardar como borrador" },
+  "성품 (마음의 결심)": { de: "Charakter (Haltung des Herzens)", en: "Character (heart's decision)", fr: "Caractère (décision du cœur)", es: "Carácter (decisión del corazón)" },
+  "행동 (구체적인 결단)": { de: "Handlung (konkreter Vorsatz)", en: "Action (concrete resolution)", fr: "Action (décision concrète)", es: "Acción (compromiso concreto)" },
+  "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé", es: "Toca un versículo para añadirlo como versículo clave" },
+  "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage", es: "Paso 2 · Resumen del pasaje" },
+  "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé", es: "Paso 3 · Versículo clave" },
+  "(위 절 탭하면 자동 추가)": { de: "(Vers oben antippen)", en: "(Tap verse above)", fr: "(Touchez un verset ci-dessus pour l’ajouter)", es: "(Toca un versículo arriba para añadirlo)" },
+  "행동 1": { de: "Handlung 1", en: "Action 1", fr: "Action 1", es: "Acción 1" },
+  "단계": { de: "Schritt", en: "Step", fr: "Étape", es: "Paso" },
+  "자유 큐티": { ko: "자유 묵상", de: "Freie Stille Zeit", en: "Free-form Bible Reflection", fr: "Méditation biblique libre", es: "Meditación bíblica libre" },
+  "오늘의 묵상": { de: "Heutige Stille Zeit", en: "Today's Bible Reflection", fr: "Méditation biblique du jour", es: "Meditación bíblica de hoy" },
+  "결단 — 말씀을 삶에 적용해보세요!": { de: "Vorsatz — Wort im Leben anwenden!", en: "Resolution — Apply the Word to life!", fr: "Décision — appliquez la Parole dans votre vie !", es: "Compromiso — ¡Aplica la Palabra a tu vida!" },
+  "결단 1": { de: "Vorsatz 1", en: "Resolution 1", fr: "Décision 1", es: "Compromiso 1" },
+  "큐티 완료": { ko: "말씀 묵상 완료", de: "Stille Zeit abschließen", en: "Complete Bible Reflection", fr: "Terminer la méditation biblique", es: "Completar la meditación bíblica" },
+  "저장 중...": { de: "Wird gespeichert...", en: "Saving...", fr: "Enregistrement...", es: "Guardando..." },
+  "성경 책": { de: "Buch der Bibel", en: "Book of the Bible", fr: "Livre biblique", es: "Libro de la Biblia" },
+  "성경 책 선택": { de: "Buch der Bibel wählen", en: "Select a book", fr: "Choisir un livre", es: "Seleccionar libro" },
+  "시작 장": { de: "Anfangskapitel", en: "Start chapter", fr: "Chapitre de début", es: "Capítulo inicial" },
+  "시작 절": { de: "Anfangsvers", en: "Start verse", fr: "Verset de début", es: "Versículo inicial" },
+  "끝 절": { de: "Endvers", en: "End verse", fr: "Verset de fin", es: "Versículo final" },
+  "말씀 불러오기": { de: "Abschnitt laden", en: "Load passage", fr: "Charger le passage", es: "Cargar pasaje" },
+  "불러오는 중...": { de: "Wird geladen...", en: "Loading...", fr: "Chargement...", es: "Cargando..." },
+  "말씀 없이 자유롭게 작성하기": { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage", fr: "Écrire librement sans passage", es: "Escribir libremente sin un pasaje" },
+  "큐티할 말씀을 먼저 선택해요": { ko: "묵상할 말씀을 먼저 선택해요", de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage", es: "Primero selecciona el pasaje para tu meditación bíblica" },
+  "다시 선택": { de: "Neu wählen", en: "Reselect", fr: "Choisir à nouveau", es: "Seleccionar de nuevo" },
+  "설교 제목": { ko: "제목", de: "Titel", en: "Title", fr: "Titre", es: "Título" },
+  "본문 말씀": { de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique", es: "Pasaje bíblico" },
+  "깨달음 (말씀이 내게 주는 것)": { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)", fr: "Compréhension (ce que la Parole me donne)", es: "Aprendizaje (lo que la Palabra me enseña)" },
+  "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?", fr: "Qu’est-ce que Dieu m’a dit aujourd’hui à travers le sermon ?", es: "¿Qué me dijo Dios por medio del sermón de hoy?" },
+  "구약": { de: "AT", en: "OT", fr: "Ancien Testament", es: "AT" },
+  "신약": { de: "NT", en: "NT", fr: "Nouveau Testament", es: "NT" },
+  "임시저장은 오늘 큐티에만 가능해요.": { ko: "임시저장은 오늘 말씀 묵상에만 가능해요.", de: "Entwürfe sind nur für die heutige Stille Zeit möglich.", en: "Drafts are only available for today's Bible Reflection.", fr: "Les brouillons sont disponibles uniquement pour la méditation biblique du jour.", es: "Los borradores solo están disponibles para la meditación bíblica de hoy." },
+  "이미 큐티 기록이 있어요": { ko: "{date}에 이미 말씀 묵상 기록이 있어요", de: "Für {date} gibt es bereits eine Stille Zeit", en: "A Bible Reflection already exists for {date}", fr: "Une méditation biblique existe déjà pour le {date}", es: "Ya existe una meditación bíblica para {date}" },
+  "끝 장": { de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin", es: "Capítulo final" },
+  "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !", es: "¡Aplica la Palabra a tu vida!" },
+  "결단": { de: "Entschluss", en: "Resolution", fr: "Décision", es: "Compromiso" },
+  "말씀 추가하기 (여러 본문일 경우)": { de: "Abschnitt hinzufügen (bei mehreren Texten)", en: "Add passage (for multiple passages)", fr: "Ajouter un passage (si plusieurs passages)", es: "Añadir pasaje (si hay varios)" },
+  "여러 본문 추가": { de: "Weiteren Bibeltext hinzufügen", en: "Add another passage", fr: "Ajouter un autre passage", es: "Añadir otro pasaje" },
+  "본문 선택 완료": { de: "Bibeltext-Auswahl abschließen", en: "Finish passage selection", fr: "Terminer la sélection du passage", es: "Finalizar selección de pasajes" },
+  "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.": { de: "Wenn Sie mehrere Bibeltexte in Ihrer Stillen Zeit betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour inclure plusieurs passages dans votre méditation biblique, choisissez un autre passage puis ajoutez-le.", es: "Para incluir varios pasajes en tu meditación bíblica, selecciona otro pasaje y añádelo." },
+  "성품": { de: "Charakter", en: "Character", fr: "Caractère", es: "Carácter" },
+  "행동": { de: "Handlung", en: "action", fr: "Action", es: "Acción" },
+  "은 마음을 정하는 것,": { de: " ist die Entscheidung des Herzens, ", en: " is the decision of the heart, ", fr: " est la décision du cœur, ", es: " es una decisión del corazón, " },
+  "은 손과 발로 드러나는 것이에요.": { de: " wird mit Händen und Füßen sichtbar.", en: " is shown through hands and feet.", fr: " se manifeste par les mains et les pieds.", es: " se manifiesta con las manos y los pies." },
 };
 
 const QT_WRITE_FALLBACK_LANG_BY_LANG: Partial<Record<Lang, Lang>> = {
@@ -263,7 +274,7 @@ function QTWriteContent() {
           type="button"
           onClick={() => changeBibleTextSize(-1)}
           disabled={bibleTextSizeIndex === 0}
-          aria-label="Decrease Bible text size"
+          aria-label={trQT("본문 글씨 작게", lang)}
           style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === 0 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
         >
           A-
@@ -272,7 +283,7 @@ function QTWriteContent() {
           type="button"
           onClick={() => changeBibleTextSize(1)}
           disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
-          aria-label="Increase Bible text size"
+          aria-label={trQT("본문 글씨 크게", lang)}
           style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
         >
           A+
@@ -288,7 +299,7 @@ function QTWriteContent() {
           type="button"
           onClick={() => changeBibleTextSize(-1)}
           disabled={bibleTextSizeIndex === 0}
-          aria-label="Decrease Bible text size"
+          aria-label={trQT("본문 글씨 작게", lang)}
           title={trQT("본문 글씨", lang)}
           style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === 0 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1, padding: "0 5px" }}
         >
@@ -298,7 +309,7 @@ function QTWriteContent() {
           type="button"
           onClick={() => changeBibleTextSize(1)}
           disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
-          aria-label="Increase Bible text size"
+          aria-label={trQT("본문 글씨 크게", lang)}
           title={trQT("본문 글씨", lang)}
           style={{ minWidth: 24, height: 22, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 10, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1, padding: "0 5px" }}
         >
@@ -360,14 +371,25 @@ function QTWriteContent() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(() => {
-    if (translationParam) return normalizeBibleTranslationId(translationParam);
-    if (typeof window !== "undefined") {
-      const saved = storageGet("roots_default_translation");
-      if (saved) return normalizeBibleTranslationId(saved);
-    }
-    return DEFAULT_BIBLE_TRANSLATION_ID;
+    const activeLang = getStoredLang() ?? lang;
+    const preferredTranslation = getPreferredTranslationForLang(activeLang);
+    const requestedTranslation = getSupportedBibleTranslationId(translationParam);
+
+    // Fresh entry links may carry a translation query, but a stale query from
+    // the previous app language must not override the current local preference.
+    return requestedTranslation === preferredTranslation
+      ? requestedTranslation
+      : preferredTranslation;
   });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
+
+  function applyFreshTranslationPreference() {
+    const activeLang = getStoredLang() ?? lang;
+    const freshTranslation = getPreferredTranslationForLang(activeLang);
+    savePreferredTranslationLocally(activeLang, freshTranslation);
+    setSelectedTranslation(freshTranslation);
+    return freshTranslation;
+  }
 
   const [mode, setMode] = useState<QTWriteMode>(() => {
     if (initMode === "free") return "free";
@@ -779,7 +801,6 @@ function QTWriteContent() {
         setCur(0);
         const recordTranslationId = normalizeBibleTranslationId(record.bible_version, selectedTranslation);
         setSelectedTranslation(recordTranslationId);
-        storageSet("roots_default_translation", String(recordTranslationId));
 
         const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
         const isLegacyFreeSermonRef = record.qt_mode === "free" && isSermonRef;
@@ -884,6 +905,7 @@ function QTWriteContent() {
       // through the existing schedule/manual-passage flow.
       if (initialDate !== todayStr) {
         if (isResume) resetDraftState();
+        applyFreshTranslationPreference();
         setDraftProbeDone(true);
         return;
       }
@@ -968,6 +990,7 @@ function QTWriteContent() {
       }
       if (!draft) {
         if (isResume) resetDraftState();
+        applyFreshTranslationPreference();
         setDraftProbeDone(true);
         return;
       }
@@ -982,20 +1005,25 @@ function QTWriteContent() {
           const { data: profile } = await withQtDraftTimeout(
             supabase
               .from("profiles")
-              .select("preferred_translation")
+              .select("preferred_language,preferred_translation")
               .eq("id", user.id)
               .maybeSingle(),
             5_000,
             "load draft preferred translation",
           );
-          restoreTranslationId = getSupportedBibleTranslationId(profile?.preferred_translation);
+          const profileLang = isLang(profile?.preferred_language) ? profile.preferred_language : null;
+          const activeLang = getStoredLang() ?? profileLang ?? lang;
+          restoreTranslationId = getPreferredTranslationForLang(
+            activeLang,
+            profile?.preferred_translation,
+            profileLang,
+          );
         } catch {
           // The draft text is still recoverable with the current translation.
         }
       }
       restoreTranslationId = normalizeBibleTranslationId(restoreTranslationId, selectedTranslation);
       setSelectedTranslation(restoreTranslationId);
-      storageSet("roots_default_translation", String(restoreTranslationId));
 
       resetDraftState();
 
@@ -1205,7 +1233,7 @@ function QTWriteContent() {
     // Regular Bible Reflection remains user-selectable. Only Today's Word is
     // fixed to the language default; a successful QT choice is kept as selected.
     setSelectedTranslation(newTranslationId);
-    storageSet("roots_default_translation", String(newTranslationId));
+    savePreferredTranslationLocally(getStoredLang() ?? lang, newTranslationId);
     return true;
   }
 
@@ -2540,7 +2568,7 @@ function QTWriteContent() {
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", maxHeight: "70vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>번역본 선택</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("번역본 선택", lang)}</h3>
                 <button onClick={() => setShowTranslationPicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
               </div>
               {TRANSLATIONS.map(group => (
@@ -2572,7 +2600,7 @@ function QTWriteContent() {
           <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", maxHeight: "60vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>날짜 선택</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("날짜 선택", lang)}</h3>
                 <button onClick={() => setShowDatePicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

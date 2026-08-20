@@ -11,6 +11,7 @@ export const INVITE_LANDING_LANG_OPTIONS: Array<{
   { value: "en", label: "English", shortLabel: "EN" },
   { value: "de", label: "Deutsch", shortLabel: "DE" },
   { value: "fr", label: "Français", shortLabel: "FR" },
+  { value: "es", label: "Español", shortLabel: "ES" },
 ];
 
 export function normalizeInviteLandingLang(
@@ -33,6 +34,8 @@ export function resolveInviteLandingLang(
   return isLang(savedLang) ? savedLang : FALLBACK_LANG;
 }
 
+type InviteLandingTextLang = InviteLandingLang;
+
 type InviteLandingText = {
   brandTagline: string;
   languageAria: string;
@@ -52,7 +55,7 @@ type InviteLandingText = {
   inAppBrowserHint: string;
 };
 
-const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
+const INVITE_LANDING_TEXT: Record<InviteLandingTextLang, InviteLandingText> = {
   ko: {
     brandTagline: "말씀에 뿌리내리고, 함께 자라다",
     languageAria: "초대 페이지 언어 선택",
@@ -81,7 +84,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
     privateGroupName: "Private group",
     groupTitle: (name) => `You’re invited to ${name}`,
     groupBody:
-      "A Roots group where you can share Bible reflections and pray for one another.",
+      "A Roots group where you can share Bible Reflections and pray for one another.",
     groupMembers: (count) => `${count} people are already together`,
     groupJoinButton: "Join group",
     groupJoinAuthButton: "Sign up or log in to join",
@@ -90,7 +93,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "After installing the app, open this invite link again to join the group.",
     companionTitle: "You’re invited to become faith partners",
     companionBody:
-      "Start a faith partnership to share Bible reflections and pray for one another.",
+      "Start a faith partnership to share Bible Reflections and pray for one another.",
     companionPrimary: "Sign up or log in to connect",
     companionAfterAuthHint: "You can accept after signing up or logging in.",
     companionAppDownloadHint:
@@ -104,7 +107,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
     privateGroupName: "Private Gruppe",
     groupTitle: (name) => `Du wurdest zu ${name} eingeladen`,
     groupBody:
-      "Eine Roots Gruppe, in der ihr Bibelreflexionen teilen und füreinander beten könnt.",
+      "Eine Roots-Gruppe, in der ihr Stille Zeiten teilen und füreinander beten könnt.",
     groupMembers: (count) => `${count} Personen sind schon dabei`,
     groupJoinButton: "Beitreten",
     groupJoinAuthButton: "Registrieren/anmelden und beitreten",
@@ -114,7 +117,7 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "Nach der App-Installation kannst du diesen Einladungslink erneut öffnen, um der Gruppe beizutreten.",
     companionTitle: "Du wurdest als Glaubenspartner eingeladen",
     companionBody:
-      "Beginne eine Glaubenspartnerschaft, um Bibelreflexionen zu teilen und füreinander zu beten.",
+      "Beginne eine Glaubenspartnerschaft, um Stille Zeiten zu teilen und füreinander zu beten.",
     companionPrimary: "Registrieren/anmelden und verbinden",
     companionAfterAuthHint:
       "Nach der Registrierung oder Anmeldung kannst du die Einladung annehmen.",
@@ -147,6 +150,31 @@ const INVITE_LANDING_TEXT: Record<InviteLandingLang, InviteLandingText> = {
       "Après avoir installé l’application, ouvrez de nouveau ce lien d’invitation pour accepter l’invitation.",
     inAppBrowserHint:
       "Si la connexion ne fonctionne pas dans KakaoTalk, veuillez ouvrir cette page dans un navigateur externe.",
+  },
+  es: {
+    brandTagline: "Echar raíces en la Palabra y crecer en comunidad",
+    languageAria: "Elegir el idioma de la página de invitación",
+    privateGroupName: "Grupo privado",
+    groupTitle: (name) => `Te invitaron a unirte a ${name}`,
+    groupBody:
+      "Un grupo de Roots para compartir meditaciones bíblicas y orar los unos por los otros.",
+    groupMembers: (count) => `${count} personas ya forman parte`,
+    groupJoinButton: "Unirme al grupo",
+    groupJoinAuthButton: "Registrarme o iniciar sesión para unirme",
+    groupAfterAuthHint:
+      "Podrás unirte después de registrarte o iniciar sesión.",
+    groupAppDownloadHint:
+      "Después de instalar la app, vuelve a abrir este enlace de invitación para unirte al grupo.",
+    companionTitle: "Te invitaron a compartir el camino de la fe",
+    companionBody:
+      "Empieza a caminar con alguien en la fe, compartiendo meditaciones bíblicas y orando mutuamente.",
+    companionPrimary: "Registrarme o iniciar sesión para aceptar",
+    companionAfterAuthHint:
+      "Podrás aceptar después de registrarte o iniciar sesión.",
+    companionAppDownloadHint:
+      "Después de instalar la app, vuelve a abrir este enlace de invitación para aceptar la invitación.",
+    inAppBrowserHint:
+      "Si no puedes iniciar sesión dentro de KakaoTalk, abre esta página en un navegador externo.",
   },
 };
 

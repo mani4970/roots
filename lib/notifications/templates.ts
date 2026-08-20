@@ -21,7 +21,9 @@ type NotificationTemplate = {
   body: string;
 };
 
-export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, NotificationTemplate>> = {
+type NotificationTemplateLang = Lang | "es";
+
+export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<NotificationTemplateLang, NotificationTemplate>> = {
   group_qt_shared: {
     ko: {
       title: "{groupName}에 새 말씀 묵상이 올라왔어요",
@@ -38,6 +40,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
     fr: {
       title: "Une nouvelle méditation biblique a été partagée dans {groupName}",
       body: "Allons bénir cette personne ?",
+    },
+    es: {
+      title: "Se compartió una nueva meditación bíblica en {groupName}",
+      body: "¿Vamos a dejar una bendición?",
     },
   },
   group_prayer_shared: {
@@ -57,6 +63,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
       title: "Il y a un sujet de prière dans {groupName}",
       body: "Allons intercéder ensemble ?",
     },
+    es: {
+      title: "Hay una petición de oración en {groupName}",
+      body: "¿Intercedemos juntos?",
+    },
   },
   group_prayer_answered: {
     ko: {
@@ -74,6 +84,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
     fr: {
       title: "Il y a une prière exaucée dans {groupName} !",
       body: "Allons bénir ensemble !",
+    },
+    es: {
+      title: "¡Hay una oración respondida en {groupName}!",
+      body: "¡Celebremos y bendigamos juntos!",
     },
   },
   partner_qt_shared: {
@@ -93,6 +107,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
       title: "{name} a partagé une méditation biblique",
       body: "Allons bénir cette personne ?",
     },
+    es: {
+      title: "{name} compartió una meditación bíblica",
+      body: "¿Vamos a dejar una bendición?",
+    },
   },
   partner_prayer_shared: {
     ko: {
@@ -110,6 +128,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
     fr: {
       title: "{name} a partagé un sujet de prière",
       body: "Prions ensemble ?",
+    },
+    es: {
+      title: "{name} compartió una petición de oración",
+      body: "¿Oramos juntos?",
     },
   },
   partner_prayer_answered: {
@@ -129,6 +151,10 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationEventType, Record<Lang, 
       title: "{name} a reçu une réponse à la prière",
       body: "Rendons grâce et bénissons ensemble !",
     },
+    es: {
+      title: "Dios respondió una oración de {name}",
+      body: "¡Demos gracias y bendigamos juntos!",
+    },
   },
 };
 
@@ -140,7 +166,7 @@ function interpolate(template: string, variables: NotificationTemplateVariables)
   });
 }
 
-export function getNotificationTemplate(eventType: NotificationEventType, lang: Lang, variables: NotificationTemplateVariables = {}) {
+export function getNotificationTemplate(eventType: NotificationEventType, lang: NotificationTemplateLang, variables: NotificationTemplateVariables = {}) {
   const localized = NOTIFICATION_TEMPLATES[eventType]?.[lang] ?? NOTIFICATION_TEMPLATES[eventType].ko;
   return {
     title: interpolate(localized.title, variables),

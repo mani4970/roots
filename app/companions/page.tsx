@@ -752,7 +752,7 @@ function CompanionsContent() {
             >
               <img
                 src={badgePopup.img}
-                alt="badge"
+                alt={badgePopup.title}
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
             </div>

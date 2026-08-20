@@ -651,7 +651,7 @@ function PrayerPageContent() {
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--prayer-modal-surface)", borderRadius: 28, border: "1px solid var(--prayer-gold-border)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--prayer-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <div style={{ padding: "14px 16px", background: "var(--prayer-gold-surface)", borderRadius: 14, border: "1px solid var(--prayer-gold-border)", marginBottom: 20 }}>
@@ -673,7 +673,7 @@ function PrayerPageContent() {
         message={c("prayer_saved_message")}
         subMessage={c("prayer_saved_sub")}
         iconSrc="/icon-pray.webp"
-        iconAlt="Prayer"
+        iconAlt={c("nav_prayer")}
         onClose={() => setCelebration(false)}
       />
 

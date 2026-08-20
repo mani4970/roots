@@ -17,6 +17,16 @@ import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-reac
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 
 
+type QTRecordCopyLang = Lang | "es";
+
+const QT_RECORD_LOCAL_TEXT: Record<QTRecordCopyLang, { photoAlt: string; photoLoading: string }> = {
+  ko: { photoAlt: "말씀 묵상 사진", photoLoading: "사진을 불러오는 중이에요." },
+  en: { photoAlt: "Bible Reflection photo", photoLoading: "Loading photo..." },
+  de: { photoAlt: "Foto zur Stillen Zeit", photoLoading: "Foto wird geladen..." },
+  fr: { photoAlt: "Photo de méditation biblique", photoLoading: "Chargement de la photo..." },
+  es: { photoAlt: "Foto de meditación bíblica", photoLoading: "Cargando la foto..." },
+};
+
 // QT Record 전용 라벨 매핑
 const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "돌아가기": "qt_record_back",
@@ -24,7 +34,7 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "복사됨! ✓": "qt_record_copied",
   "나누기": "qt_record_share",
   "공유 중 (수정)": "qt_record_shared_edit",
-  "큐티 수정": "qt_record_edit",
+  "큐티 수정": "edit",
   "취소": "qt_record_cancel",
   "큐티 나누기": "qt_record_share_title",
   "여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)": "qt_record_share_sub",
@@ -414,7 +424,7 @@ function RecordContent() {
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-gold-strong)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <div style={{ padding: "14px 16px", background: "var(--surface-gold-subtle)", borderRadius: 14, border: "1px solid var(--border-gold-soft)", marginBottom: 20 }}>
@@ -487,17 +497,17 @@ function RecordContent() {
         />
       )}
 
-      {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt="photo reflection" onClose={() => setPhotoViewerOpen(false)} />}
+      {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt={QT_RECORD_LOCAL_TEXT[lang].photoAlt} lang={lang} onClose={() => setPhotoViewerOpen(false)} />}
 
       {isPhotoRecord && (
         <div style={{ padding: "16px 16px 0" }}>
           <div className="card roots-elevation-card">
             {photoUrl ? (
               <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
-                <img src={photoUrl} alt="photo reflection" loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                <img src={photoUrl} alt={QT_RECORD_LOCAL_TEXT[lang].photoAlt} loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
               </button>
             ) : (
-              <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>사진을 불러오는 중이에요.</div>
+              <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>{QT_RECORD_LOCAL_TEXT[lang].photoLoading}</div>
             )}
             {(record.photo_caption || record.meditation) && (
               <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{record.photo_caption || record.meditation}</p>

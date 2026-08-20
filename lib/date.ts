@@ -22,6 +22,7 @@ const DATE_LOCALE_BY_LANG: Record<Lang, string> = {
   de: "de-DE",
   en: "en-US",
   fr: "fr-FR",
+  es: "es-ES",
 };
 
 export function getDateLocale(lang: Lang): string {

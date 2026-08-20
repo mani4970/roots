@@ -685,7 +685,7 @@ export default function HeartShopModal({
                         <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${getMapPreviewBadge(item.id)}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
                           {(item.isBest || item.isNew) && (
                             <span
-                              aria-label={item.isBest ? "Best" : "New"}
+                              aria-label={item.isBest ? text.bestLabel : text.newLabel}
                               style={{
                                 position: "absolute",
                                 top: 7,
@@ -702,7 +702,7 @@ export default function HeartShopModal({
                                 letterSpacing: ".2px",
                               }}
                             >
-                              {item.isBest ? "Best" : "New"}
+                              {item.isBest ? text.bestLabel : text.newLabel}
                             </span>
                           )}
                           <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
@@ -810,7 +810,7 @@ export default function HeartShopModal({
                         >
                           {item.isNew && (
                             <span
-                              aria-label="New"
+                              aria-label={text.newLabel}
                               style={{
                                 position: "absolute",
                                 top: 7,
@@ -827,7 +827,7 @@ export default function HeartShopModal({
                                 letterSpacing: ".2px",
                               }}
                             >
-                              New
+                              {text.newLabel}
                             </span>
                           )}
                           <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />

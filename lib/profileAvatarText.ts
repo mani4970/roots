@@ -1,5 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 
+type ProfileAvatarLang = Lang | "es";
+
 type ProfileAvatarText = {
   useCharacterButton: string;
   characterActiveLabel: string;
@@ -9,7 +11,7 @@ type ProfileAvatarText = {
   autoUpdateFailed: string;
 };
 
-const TEXT: Record<Lang, ProfileAvatarText> = {
+const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   ko: {
     useCharacterButton: "프로필로 지정",
     characterActiveLabel: "캐릭터 프로필 사용 중",
@@ -42,8 +44,17 @@ const TEXT: Record<Lang, ProfileAvatarText> = {
     saveFailed: "Impossible de modifier l’image de profil.",
     autoUpdateFailed: "Impossible d’actualiser le profil avec la tenue actuelle.",
   },
+
+  es: {
+    useCharacterButton: "Usar como perfil",
+    characterActiveLabel: "Perfil de personaje activo",
+    savingLabel: "Guardando perfil…",
+    characterSaved: "Tu atuendo actual ahora es tu imagen de perfil.",
+    saveFailed: "No se pudo cambiar tu imagen de perfil.",
+    autoUpdateFailed: "No se pudo actualizar el perfil con tu atuendo actual.",
+  },
 };
 
 export function getProfileAvatarText(lang: Lang | string): ProfileAvatarText {
-  return TEXT[lang === "en" || lang === "de" || lang === "fr" ? lang : "ko"];
+  return TEXT[lang === "en" || lang === "de" || lang === "fr" || lang === "es" ? lang : "ko"];
 }

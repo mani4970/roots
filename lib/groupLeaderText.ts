@@ -1,4 +1,4 @@
-export type GroupLeaderTextLang = "ko" | "en" | "de" | "fr";
+export type GroupLeaderTextLang = "ko" | "en" | "de" | "fr" | "es";
 
 type GroupLeaderText = {
   groupLeader: string;
@@ -155,10 +155,45 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     deleteGroup: "Supprimer le groupe",
     deleteGroupTitle: "Supprimer ce groupe ?",
     deleteGroupMessage: (name) =>
-      `Le groupe « ${name} » sera définitivement supprimé. Les adhésions, invitations et défis en cours prendront fin, mais les méditations personnelles, la progression, les cœurs et les badges déjà obtenus seront conservés.`,
+      `Le groupe « ${name} » sera définitivement supprimé. Les adhésions, invitations et défis en cours prendront fin, mais les méditations bibliques personnelles, la progression, les cœurs et les badges déjà obtenus seront conservés.`,
     deleteGroupAction: "Supprimer",
     deleteGroupError:
       "Impossible de supprimer le groupe. Veuillez réessayer dans un instant.",
+  },
+  es: {
+    groupLeader: "Responsable del grupo",
+    groupManagement: "Gestionar grupo",
+    editGroup: "Editar información del grupo",
+    editGroupTitle: "Editar información del grupo",
+    editGroupError:
+      "No se pudo guardar la información del grupo. Vuelve a intentarlo dentro de un momento.",
+    transferLeadership: "Transferir la responsabilidad del grupo",
+    transferSelectMessage:
+      "Elige a la persona que asumirá la responsabilidad del grupo.",
+    transferEmpty:
+      "No hay otro miembro a quien transferir la responsabilidad.",
+    transferNext: "Siguiente",
+    transferConfirmTitle: "¿Transferir la responsabilidad del grupo?",
+    transferConfirmMessage: (name) =>
+      `¿Quieres transferir la responsabilidad del grupo a ${name}?`,
+    transferWarning:
+      "Después de la transferencia, pasarás a ser un miembro regular del grupo.",
+    transferAction: "Transferir responsabilidad",
+    transferError:
+      "No se pudo transferir la responsabilidad. Revisa el estado del miembro y vuelve a intentarlo.",
+    removeMember: "Quitar",
+    removeConfirmTitle: "¿Quitar a este miembro?",
+    removeConfirmMessage: (name) =>
+      `¿Quieres quitar a ${name} de este grupo? Podrá volver a unirse más adelante mediante un enlace de invitación o el grupo público.`,
+    removeError:
+      "No se pudo quitar al miembro. Vuelve a intentarlo dentro de un momento.",
+    deleteGroup: "Eliminar grupo",
+    deleteGroupTitle: "¿Eliminar este grupo?",
+    deleteGroupMessage: (name) =>
+      `"${name}" se eliminará de forma permanente. Las membresías, las invitaciones y los desafíos grupales activos finalizarán, pero se conservarán las meditaciones bíblicas personales, el progreso de Caminar con la Palabra, los corazones y las insignias ya obtenidas.`,
+    deleteGroupAction: "Eliminar grupo",
+    deleteGroupError:
+      "No se pudo eliminar el grupo. Vuelve a intentarlo dentro de un momento.",
   },
 };
 

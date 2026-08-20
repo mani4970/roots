@@ -15,6 +15,14 @@ import BottomNav from "@/components/BottomNav";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 
+const CHECKIN_RESULT_TEXT = {
+  ko: { retry: "다시 시도" },
+  de: { retry: "Erneut versuchen" },
+  en: { retry: "Try again" },
+  fr: { retry: "Réessayer" },
+  es: { retry: "Intentar de nuevo" },
+} as const;
+
 function ResultContent() {
   const params = useSearchParams();
   const router = useRouter();
@@ -178,7 +186,7 @@ function ResultContent() {
         className="btn-primary"
         style={{ width: "auto", minWidth: 120, padding: "11px 18px" }}
       >
-        {lang === "de" ? "Erneut versuchen" : lang === "en" ? "Try again" : lang === "fr" ? "Réessayer" : "다시 시도"}
+        {CHECKIN_RESULT_TEXT[lang].retry}
       </button>
       <button type="button" onClick={() => router.push("/")} style={{ border: "none", background: "transparent", color: "var(--text3)", fontSize: 13, cursor: "pointer" }}>
         {t("result_home_btn", lang)}
@@ -255,7 +263,7 @@ function ResultContent() {
           <ConfettiBurst />
           <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, background: "var(--daily-word-modal-surface)", border: "1px solid var(--daily-word-gold-border)", padding: "26px 22px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
             <div style={{ width: 118, height: 118, margin: "0 auto 16px", borderRadius: "50%", background: "var(--daily-word-reward-gradient)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src={badgePopup.img} alt="badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 850, color: "var(--daily-word-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: 18 }}>{badgePopup.msg}</p>

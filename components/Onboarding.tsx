@@ -47,7 +47,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       title: t("onboarding_title2", lang),
       desc: t("onboarding_desc2", lang),
       imageSrc: "/icon-qt.webp",
-      imageAlt: "Bible reflection icon",
+      imageAlt: "Bible Reflection icon",
       imageMaxHeight: 206,
       imagePadding: 10,
     },

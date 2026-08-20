@@ -3,17 +3,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
-import { setPreferredLang, useLang } from "@/lib/useLang";
+import { saveLangLocally, setPreferredLang, useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { Loader2, ChevronLeft } from "lucide-react";
 import AuthLanguageSwitcher from "@/components/AuthLanguageSwitcher";
-import { storageSet } from "@/lib/clientStorage";
 import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
-import { getDefaultTranslationId } from "@/lib/translationDefaults";
 
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
@@ -52,9 +50,7 @@ export default function SignupPage() {
     setOauthLoading(provider);
     setError("");
     const supabase = createClient();
-    storageSet("roots_lang", lang);
-    storageSet("roots_lang_selected", "true");
-    storageSet("roots_default_translation", String(getDefaultTranslationId(lang)));
+    saveLangLocally(lang);
     try {
       await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
     } catch (error) {
@@ -78,9 +74,7 @@ export default function SignupPage() {
     setLoading(true); setError("");
     const supabase = createClient();
     // 언어 설정도 함께 저장
-    storageSet("roots_lang", lang);
-    storageSet("roots_lang_selected", "true");
-    const defaultTranslationId = getDefaultTranslationId(lang);
+    const defaultTranslationId = saveLangLocally(lang);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

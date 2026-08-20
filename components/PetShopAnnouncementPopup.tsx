@@ -9,37 +9,49 @@ type PetShopAnnouncementPopupProps = {
   onOpenShop: () => void;
 };
 
-type AnnouncementLang = "ko" | "en" | "de" | "fr";
+type AnnouncementLang = "ko" | "en" | "de" | "fr" | "es";
 
 const COPY: Record<AnnouncementLang, {
   title: string;
   button: string;
   close: string;
+  newLabel: string;
   petNames: readonly string[];
 }> = {
   ko: {
     title: "루츠맨과 루츠우먼을 위한\n반려동물이 생겼어요!",
     button: "사랑 상점 구경하기",
     close: "닫기",
+    newLabel: "신규",
     petNames: ["슈나우저", "비숑 프리제", "러시안 블루", "페르시안 고양이"],
   },
   en: {
     title: "Pets have arrived for\nRootsman and Rootswoman!",
     button: "Visit the Love Shop",
     close: "Close",
+    newLabel: "New",
     petNames: ["Schnauzer", "Bichon Frise", "Russian Blue", "Persian Cat"],
   },
   de: {
     title: "Für Rootsman und Rootswoman\ngibt es jetzt Haustiere!",
     button: "Zum Herzenshop",
     close: "Schließen",
+    newLabel: "Neu",
     petNames: ["Schnauzer", "Bichon Frisé", "Russisch Blau", "Perserkatze"],
   },
   fr: {
     title: "Des animaux sont arrivés pour\nRootsman et Rootswoman !",
     button: "Voir la Boutique d’amour",
     close: "Fermer",
+    newLabel: "Nouveau",
     petNames: ["Schnauzer", "Bichon frisé", "Bleu russe", "Chat persan"],
+  },
+  es: {
+    title: "¡Ya hay mascotas para\nRootsman y Rootswoman!",
+    button: "Visitar la Tienda de corazones",
+    close: "Cerrar",
+    newLabel: "Nuevo",
+    petNames: ["Schnauzer", "Bichón frisé", "Azul ruso", "Gato persa"],
   },
 };
 
@@ -160,7 +172,7 @@ export default function PetShopAnnouncementPopup({
         </button>
 
         <div style={{ display: "inline-flex", marginBottom: 10, borderRadius: 999, padding: "5px 10px", background: "rgba(232,117,104,.12)", color: "#c65f54", fontSize: 10, fontWeight: 950, letterSpacing: ".3px" }}>
-          NEW
+          {copy.newLabel}
         </div>
         <h2
           id="pet-shop-announcement-title"

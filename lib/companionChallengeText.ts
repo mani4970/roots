@@ -1,7 +1,7 @@
 import type { Lang } from "@/lib/i18n";
 import type { CompanionChallengeStatus } from "@/lib/companionChallenges";
 
-type CompanionChallengeLang = "ko" | "en" | "de" | "fr";
+type CompanionChallengeLang = "ko" | "en" | "de" | "fr" | "es";
 
 type CompanionChallengeText = {
   sectionTitle: string;
@@ -61,11 +61,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     scheduledLabel: "Scheduled",
     activeLabel: "Active",
     completedLabel: "Completed",
-    scheduledMessage: "Complete Bible Reflection every day together with a companion.",
-    cardDescription: "Complete Bible Reflection every day together with a companion.",
-    todayTogetherDone: "You both completed Bible Reflection today",
+    scheduledMessage: "Complete a Bible Reflection together with a companion every day.",
+    cardDescription: "Complete a Bible Reflection together with a companion every day.",
+    todayTogetherDone: "You both completed today’s Bible Reflection",
     todayWaitingPartner: "You completed today. Waiting for your companion",
-    todayWaitingMe: "Your companion completed today. Start your Bible Reflection",
+    todayWaitingMe: "Your companion completed today’s Bible Reflection. Start yours",
     todayNotStarted: "You have not completed today together yet",
     progressLabel: "Days completed together",
     myStatusLabel: "Me",
@@ -111,11 +111,11 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     scheduledLabel: "Prévu",
     activeLabel: "En cours",
     completedLabel: "Terminé",
-    scheduledMessage: "Terminez chaque jour la méditation biblique avec un partenaire.",
-    cardDescription: "Terminez chaque jour la méditation biblique avec un partenaire.",
-    todayTogetherDone: "Vous avez tous les deux terminé la méditation biblique aujourd’hui",
+    scheduledMessage: "Terminez chaque jour une méditation biblique avec un partenaire.",
+    cardDescription: "Terminez chaque jour une méditation biblique avec un partenaire.",
+    todayTogetherDone: "Vous avez tous les deux terminé la méditation biblique d’aujourd’hui",
     todayWaitingPartner: "Vous avez terminé aujourd’hui. Votre partenaire n’a pas encore terminé",
-    todayWaitingMe: "Votre partenaire a terminé aujourd’hui. Commencez votre méditation biblique",
+    todayWaitingMe: "Votre partenaire a terminé la méditation biblique d’aujourd’hui. Commencez la vôtre",
     todayNotStarted: "Aujourd’hui n’est pas encore terminé ensemble",
     progressLabel: "Jours terminés ensemble",
     myStatusLabel: "Moi",
@@ -130,10 +130,35 @@ const TEXT: Record<CompanionChallengeLang, CompanionChallengeText> = {
     popupButton: "Voir le badge",
     heartsLabel: "Cœurs d’amour",
   },
+  es: {
+    sectionTitle: "Desafío Caminar con la Palabra con un compañero de fe",
+    loadingTitle: "Comprobando el desafío con tu compañero de fe",
+    scheduledLabel: "Programado",
+    activeLabel: "En curso",
+    completedLabel: "Completado",
+    scheduledMessage: "Completen juntos una meditación bíblica cada día.",
+    cardDescription: "Completen juntos una meditación bíblica cada día.",
+    todayTogetherDone: "Hoy completaron juntos la meditación bíblica",
+    todayWaitingPartner: "Ya completaste la de hoy. Esperando a tu compañero de fe",
+    todayWaitingMe: "Tu compañero de fe ya completó la meditación bíblica de hoy. Empieza la tuya",
+    todayNotStarted: "Aún no han completado juntos la meditación bíblica de hoy",
+    progressLabel: "Días completados juntos",
+    myStatusLabel: "Yo",
+    partnerStatusLabel: "Compañero de fe",
+    doneLabel: "Completado",
+    waitingLabel: "Pendiente",
+    rewardTeaser: "Completen el desafío juntos para recibir una insignia especial y corazones de amor.",
+    claimButton: "Recibir insignia",
+    awardedLabel: "Insignia recibida",
+    popupTitle: "¡Desafío con compañero de fe completado!",
+    popupBody: "Bendecimos los pasos que dieron juntos en la Palabra.",
+    popupButton: "Ver insignia",
+    heartsLabel: "Corazones de amor",
+  },
 };
 
 function normalizeLang(lang: string): CompanionChallengeLang {
-  if (lang === "ko" || lang === "en" || lang === "de" || lang === "fr") return lang;
+  if (lang === "ko" || lang === "en" || lang === "de" || lang === "fr" || lang === "es") return lang;
   return "en";
 }
 
@@ -160,6 +185,10 @@ const CHALLENGE_TITLE_TEXT: Record<
     companionChallenge1: "Notre chemin de foi Partie 1",
     companionChallenge2: "Notre chemin de foi Partie 2",
   },
+  es: {
+    companionChallenge1: "Nuestro camino de fe Parte 1",
+    companionChallenge2: "Nuestro camino de fe Parte 2",
+  },
 };
 
 type CompanionChallengeTitleInput = {
@@ -178,7 +207,8 @@ function isCompanionChallenge1Title(value?: string | null) {
     normalized === "우리의 신앙 여정 part 1" ||
     normalized === "our faith journey part 1" ||
     normalized === "unsere glaubensreise teil 1" ||
-    normalized === "notre chemin de foi partie 1"
+    normalized === "notre chemin de foi partie 1" ||
+    normalized === "nuestro camino de fe parte 1"
   );
 }
 
@@ -188,7 +218,8 @@ function isCompanionChallenge2Title(value?: string | null) {
     normalized === "우리의 신앙 여정 part 2" ||
     normalized === "our faith journey part 2" ||
     normalized === "unsere glaubensreise teil 2" ||
-    normalized === "notre chemin de foi partie 2"
+    normalized === "notre chemin de foi partie 2" ||
+    normalized === "nuestro camino de fe parte 2"
   );
 }
 
@@ -257,6 +288,9 @@ export function getCompanionChallengeRewardTeaser(
   if (normalizedLang === "fr") {
     return `Terminez-le ensemble pour recevoir un badge spécial et ${hearts} cœurs d’amour.`;
   }
+  if (normalizedLang === "es") {
+    return `Al completarlo juntos, recibirán una insignia especial y ${hearts} corazones de amor.`;
+  }
   return `Complete it together to receive a special badge and ${hearts} Love Hearts.`;
 }
 
@@ -277,6 +311,9 @@ export function getCompanionChallengeRewardPopupBody(
   }
   if (normalizedLang === "fr") {
     return `Que les pas que vous avez faits ensemble dans la Parole pendant ${days} jours soient bénis.`;
+  }
+  if (normalizedLang === "es") {
+    return `Bendecimos los pasos que dieron juntos en la Palabra durante ${days} días.`;
   }
   return `Blessings on the steps you walked together in the Word for ${days} days.`;
 }
