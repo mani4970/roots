@@ -6,8 +6,13 @@ import { storageGet, storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
-import { useLang } from "@/lib/useLang";
-import { t, type Lang } from "@/lib/i18n";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  savePreferredTranslationLocally,
+  useLang,
+} from "@/lib/useLang";
+import { isLang, t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
@@ -366,14 +371,25 @@ function QTWriteContent() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(() => {
-    if (translationParam) return normalizeBibleTranslationId(translationParam);
-    if (typeof window !== "undefined") {
-      const saved = storageGet("roots_default_translation");
-      if (saved) return normalizeBibleTranslationId(saved);
-    }
-    return DEFAULT_BIBLE_TRANSLATION_ID;
+    const activeLang = getStoredLang() ?? lang;
+    const preferredTranslation = getPreferredTranslationForLang(activeLang);
+    const requestedTranslation = getSupportedBibleTranslationId(translationParam);
+
+    // Fresh entry links may carry a translation query, but a stale query from
+    // the previous app language must not override the current local preference.
+    return requestedTranslation === preferredTranslation
+      ? requestedTranslation
+      : preferredTranslation;
   });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
+
+  function applyFreshTranslationPreference() {
+    const activeLang = getStoredLang() ?? lang;
+    const freshTranslation = getPreferredTranslationForLang(activeLang);
+    savePreferredTranslationLocally(activeLang, freshTranslation);
+    setSelectedTranslation(freshTranslation);
+    return freshTranslation;
+  }
 
   const [mode, setMode] = useState<QTWriteMode>(() => {
     if (initMode === "free") return "free";
@@ -785,7 +801,6 @@ function QTWriteContent() {
         setCur(0);
         const recordTranslationId = normalizeBibleTranslationId(record.bible_version, selectedTranslation);
         setSelectedTranslation(recordTranslationId);
-        storageSet("roots_default_translation", String(recordTranslationId));
 
         const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
         const isLegacyFreeSermonRef = record.qt_mode === "free" && isSermonRef;
@@ -890,6 +905,7 @@ function QTWriteContent() {
       // through the existing schedule/manual-passage flow.
       if (initialDate !== todayStr) {
         if (isResume) resetDraftState();
+        applyFreshTranslationPreference();
         setDraftProbeDone(true);
         return;
       }
@@ -974,6 +990,7 @@ function QTWriteContent() {
       }
       if (!draft) {
         if (isResume) resetDraftState();
+        applyFreshTranslationPreference();
         setDraftProbeDone(true);
         return;
       }
@@ -988,20 +1005,25 @@ function QTWriteContent() {
           const { data: profile } = await withQtDraftTimeout(
             supabase
               .from("profiles")
-              .select("preferred_translation")
+              .select("preferred_language,preferred_translation")
               .eq("id", user.id)
               .maybeSingle(),
             5_000,
             "load draft preferred translation",
           );
-          restoreTranslationId = getSupportedBibleTranslationId(profile?.preferred_translation);
+          const profileLang = isLang(profile?.preferred_language) ? profile.preferred_language : null;
+          const activeLang = getStoredLang() ?? profileLang ?? lang;
+          restoreTranslationId = getPreferredTranslationForLang(
+            activeLang,
+            profile?.preferred_translation,
+            profileLang,
+          );
         } catch {
           // The draft text is still recoverable with the current translation.
         }
       }
       restoreTranslationId = normalizeBibleTranslationId(restoreTranslationId, selectedTranslation);
       setSelectedTranslation(restoreTranslationId);
-      storageSet("roots_default_translation", String(restoreTranslationId));
 
       resetDraftState();
 
@@ -1211,7 +1233,7 @@ function QTWriteContent() {
     // Regular Bible Reflection remains user-selectable. Only Today's Word is
     // fixed to the language default; a successful QT choice is kept as selected.
     setSelectedTranslation(newTranslationId);
-    storageSet("roots_default_translation", String(newTranslationId));
+    savePreferredTranslationLocally(getStoredLang() ?? lang, newTranslationId);
     return true;
   }
 

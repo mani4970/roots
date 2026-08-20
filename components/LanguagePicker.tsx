@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { getLanguageOptions, t, type Lang, FALLBACK_LANG } from "@/lib/i18n";
-import { markLangSelected } from "@/lib/useLang";
-import { storageSet } from "@/lib/clientStorage";
+import { saveLangLocally } from "@/lib/useLang";
 
 interface LanguagePickerProps {
   onSelect: (lang: Lang) => void;
@@ -19,10 +18,7 @@ export default function LanguagePicker({ onSelect, initialLang = FALLBACK_LANG }
   const options = getLanguageOptions();
 
   function handleContinue() {
-    if (typeof window !== "undefined") {
-      storageSet("roots_lang", selected);
-    }
-    markLangSelected();
+    saveLangLocally(selected);
     onSelect(selected);
   }
 

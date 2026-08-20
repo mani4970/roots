@@ -4,15 +4,19 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
-import { useLang } from "@/lib/useLang";
-import { t, type TKey } from "@/lib/i18n";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  savePreferredTranslationLocally,
+  useLang,
+} from "@/lib/useLang";
+import { isLang, t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
-import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -95,11 +99,8 @@ export default function QTPage() {
   const [catchUpDate, setCatchUpDate] = useState(yesterday);
   const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = storageGet("roots_default_translation");
-      if (saved) return normalizeSelectableTranslationId(saved, lang);
-    }
-    return normalizeSelectableTranslationId(null, lang);
+    const activeLang = getStoredLang() ?? lang;
+    return getPreferredTranslationForLang(activeLang);
   });
   const [toast, setToast] = useState<string | null>(null);
 
@@ -109,6 +110,18 @@ export default function QTPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // New reflections follow the current app language. A detected draft is
+  // resumed with its own bible_version instead of being reset here.
+  useEffect(() => {
+    if (draftCheckPending || hasDraft) return;
+    const storedLang = getStoredLang();
+    if (!storedLang || storedLang !== lang) return;
+
+    const nextTranslation = getPreferredTranslationForLang(lang);
+    savePreferredTranslationLocally(lang, nextTranslation);
+    setPreferredTranslation(current => current === nextTranslation ? current : nextTranslation);
+  }, [lang, draftCheckPending, hasDraft]);
 
   async function load() {
     const supabase = createClient();
@@ -154,12 +167,16 @@ export default function QTPage() {
       }
 
       const { data: prof } = await supabase.from("profiles")
-        .select("preferred_translation").eq("id", user.id).single();
-      if (prof?.preferred_translation) {
-        const safeTranslation = normalizeSelectableTranslationId(prof.preferred_translation, lang);
-        setPreferredTranslation(safeTranslation);
-        storageSet("roots_default_translation", String(safeTranslation));
-      }
+        .select("preferred_language,preferred_translation").eq("id", user.id).single();
+      const profileLang = isLang(prof?.preferred_language) ? prof.preferred_language : null;
+      const activeLang = getStoredLang() ?? profileLang ?? lang;
+      const safeTranslation = getPreferredTranslationForLang(
+        activeLang,
+        prof?.preferred_translation,
+        profileLang,
+      );
+      savePreferredTranslationLocally(activeLang, safeTranslation);
+      setPreferredTranslation(safeTranslation);
     } catch (error) {
       console.error("qt load failed", error);
       showToast(t("qt_error_load", lang));

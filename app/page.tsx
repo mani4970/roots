@@ -23,11 +23,18 @@ import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createClient } from "@/lib/supabase";
-import { useLang, setPreferredLang, isFirstLaunch } from "@/lib/useLang";
-import { getLanguageOptions, LANG_META, t, type Lang, type TKey } from "@/lib/i18n";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  isFirstLaunch,
+  savePreferredTranslationLocally,
+  setPreferredLang,
+  useLang,
+} from "@/lib/useLang";
+import { getLanguageOptions, isLang, LANG_META, t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
-import { getDefaultTranslationId, normalizeSelectableTranslationId } from "@/lib/translationDefaults";
+import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
@@ -443,6 +450,19 @@ export default function HomePage() {
 
   useEffect(() => { load(); }, []);
 
+  // A language change resets only the translation for a new Bible Reflection.
+  // An existing draft keeps its own bible_version and is resumed unchanged.
+  useEffect(() => {
+    const storedLang = getStoredLang();
+    if (!storedLang || storedLang !== lang || homeQTState.hasDraft) return;
+
+    const preferredTranslation = getPreferredTranslationForLang(lang);
+    savePreferredTranslationLocally(lang, preferredTranslation);
+    setHomeQTState(prev => prev.preferredTranslation === preferredTranslation
+      ? prev
+      : { ...prev, preferredTranslation });
+  }, [lang, homeQTState.hasDraft]);
+
   useEffect(() => {
     if (!profile?.id) {
       setRequiredUpdatePlatform(null);
@@ -561,9 +581,17 @@ export default function HomePage() {
       if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
         setShowAvatarChoiceModal(true);
       }
+      const profileLang = isLang(p.preferred_language) ? p.preferred_language : null;
+      const activeLang = getStoredLang() ?? profileLang ?? lang;
+      const preferredTranslation = getPreferredTranslationForLang(
+        activeLang,
+        p.preferred_translation,
+        profileLang,
+      );
+      savePreferredTranslationLocally(activeLang, preferredTranslation);
       setHomeQTState(prev => ({
         ...prev,
-        preferredTranslation: normalizeSelectableTranslationId(p.preferred_translation, lang),
+        preferredTranslation,
       }));
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       if (lastCheckin) {

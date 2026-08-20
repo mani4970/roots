@@ -1232,6 +1232,48 @@ const bibleBookArraysMatch = arraysEqual(bibleDataBooks.values, bibleBooksBooks.
 const nviOmissionKeys = auditNviOmittedVerses();
 const nviOmissionsAreExact = arraysEqual(nviOmissionKeys, EXPECTED_NVI_OMISSION_KEYS);
 
+const translationStorageSurfaces = ["app", "components", "lib"]
+  .flatMap(walk)
+  .filter((absolutePath) => fs.readFileSync(absolutePath, "utf8").includes("roots_default_translation"))
+  .map((absolutePath) => path.relative(PROJECT_ROOT, absolutePath).split(path.sep).join("/"))
+  .sort();
+const translationStorageIsCentralized = arraysEqual(translationStorageSurfaces, ["lib/useLang.ts"]);
+const translationPreferenceHasLanguageOwner = useLangSource.includes("roots_default_translation_lang");
+const languageChangeResetsToItsDefault = /previousLang\s*===\s*lang[\s\S]*?getDefaultTranslationId\(lang\)/.test(useLangSource);
+const freshTranslationResolverSupportsExplicitCrossLanguageChoice =
+  defaultTranslationSource.includes("localLanguage === safeLang") &&
+  defaultTranslationSource.includes("profileLanguage === safeLang");
+const legacyPreferenceIsLanguageChecked =
+  defaultTranslationSource.includes("isTranslationNativeToLanguage") &&
+  defaultTranslationSource.includes("resolveFreshBibleTranslationId");
+const staleLocalPreferenceCannotBeReintroducedByProfile =
+  /if \(localId != null\)[\s\S]*?return getDefaultTranslationId\(safeLang\);[\s\S]*?const profileId/.test(defaultTranslationSource);
+const homeFreshTranslationFollowsLanguage =
+  homeSource.includes("getPreferredTranslationForLang") &&
+  homeSource.includes("homeQTState.hasDraft") &&
+  homeSource.includes("savePreferredTranslationLocally");
+const qtOverviewSource = read("app/qt/page.tsx");
+const qtOverviewFreshTranslationFollowsLanguage =
+  qtOverviewSource.includes("draftCheckPending || hasDraft") &&
+  qtOverviewSource.includes("preferred_language,preferred_translation") &&
+  qtOverviewSource.includes("getPreferredTranslationForLang");
+const qtWriteSource = read("app/qt/write/page.tsx");
+const qtWritePreservesStoredDraftTranslation =
+  qtWriteSource.includes("getSupportedBibleTranslationId(draft.bible_version)") &&
+  !qtWriteSource.includes('storageSet("roots_default_translation"');
+const qtWriteFreshTranslationFollowsLanguage =
+  qtWriteSource.includes("applyFreshTranslationPreference") &&
+  qtWriteSource.includes("savePreferredTranslationLocally(getStoredLang() ?? lang, newTranslationId)");
+const photoFreshTranslationFollowsLanguage =
+  photoQtSource.includes("if (isEditMode) return") &&
+  photoQtSource.includes("getPreferredTranslationForLang(lang)") &&
+  photoQtSource.includes("savePreferredTranslationLocally(getStoredLang() ?? lang, next)");
+const authLanguageSelectionSetsTranslationOwner =
+  read("components/LanguagePicker.tsx").includes("saveLangLocally(selected)") &&
+  read("app/login/page.tsx").includes("saveLangLocally(lang)") &&
+  read("app/signup/page.tsx").includes("saveLangLocally(lang)") &&
+  capacitorAuthSource.includes("saveLangLocally(lang)");
+
 console.log("Spanish localization audit (read-only)");
 console.log(`Mode: ${STRICT ? "strict" : "report"}`);
 console.log(`Project: ${PROJECT_ROOT}`);
@@ -1369,6 +1411,22 @@ console.log(`  - Photo catch-up date uses the selected locale: ${photoDateUsesLa
 console.log(`  - Android offline screen includes Spanish: ${androidOfflineHasSpanish ? "yes" : "no"}`);
 console.log(`  - iOS offline screen includes Spanish: ${iosOfflineHasSpanish ? "yes" : "no"}`);
 console.log(`  - iOS declares ko/en/de/fr/es localizations: ${iosDeclaresFiveLocalizations ? "yes" : "no"}`);
+console.log("\nFresh Bible Reflection translation preference");
+console.log(`  - Translation storage is centralized: ${translationStorageIsCentralized ? "yes" : "no"}`);
+if (!translationStorageIsCentralized) {
+  console.log(`    surfaces: ${translationStorageSurfaces.join(", ")}`);
+}
+console.log(`  - Stored translation records its app-language owner: ${translationPreferenceHasLanguageOwner ? "yes" : "no"}`);
+console.log(`  - Changing app language resets to that language default: ${languageChangeResetsToItsDefault ? "yes" : "no"}`);
+console.log(`  - Explicit cross-language Bible choices remain possible: ${freshTranslationResolverSupportsExplicitCrossLanguageChoice ? "yes" : "no"}`);
+console.log(`  - Legacy mismatched preferences are repaired: ${legacyPreferenceIsLanguageChecked ? "yes" : "no"}`);
+console.log(`  - A stale local Bible cannot be reintroduced by the profile: ${staleLocalPreferenceCannotBeReintroducedByProfile ? "yes" : "no"}`);
+console.log(`  - Home new-reflection entry follows current language: ${homeFreshTranslationFollowsLanguage ? "yes" : "no"}`);
+console.log(`  - Bible Reflection tab follows current language when no draft exists: ${qtOverviewFreshTranslationFollowsLanguage ? "yes" : "no"}`);
+console.log(`  - Writer preserves a draft's stored Bible translation: ${qtWritePreservesStoredDraftTranslation ? "yes" : "no"}`);
+console.log(`  - Writer fresh entry follows current language: ${qtWriteFreshTranslationFollowsLanguage ? "yes" : "no"}`);
+console.log(`  - Photo fresh entry follows current language while edit keeps its record: ${photoFreshTranslationFollowsLanguage ? "yes" : "no"}`);
+console.log(`  - Welcome/login/signup/native auth initialize the paired preference: ${authLanguageSelectionSetsTranslationOwner ? "yes" : "no"}`);
 console.log("\nBible foundation status");
 console.log(`  - NVI is selectable as Roots ID 101: ${spanishNviIsSelectable ? "yes" : "no"}`);
 console.log(`  - Roots ID 101 maps to Bible language ES: ${spanishNviMapsToEs ? "yes" : "no"}`);
@@ -1449,6 +1507,18 @@ const strictFailures = [
   !androidOfflineHasSpanish,
   !iosOfflineHasSpanish,
   !iosDeclaresFiveLocalizations,
+  !translationStorageIsCentralized,
+  !translationPreferenceHasLanguageOwner,
+  !languageChangeResetsToItsDefault,
+  !freshTranslationResolverSupportsExplicitCrossLanguageChoice,
+  !legacyPreferenceIsLanguageChecked,
+  !staleLocalPreferenceCannotBeReintroducedByProfile,
+  !homeFreshTranslationFollowsLanguage,
+  !qtOverviewFreshTranslationFollowsLanguage,
+  !qtWritePreservesStoredDraftTranslation,
+  !qtWriteFreshTranslationFollowsLanguage,
+  !photoFreshTranslationFollowsLanguage,
+  !authLanguageSelectionSetsTranslationOwner,
   !spanishNviIsSelectable,
   !spanishNviMapsToEs,
   !spanishDefaultIs101,

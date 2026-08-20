@@ -11,11 +11,15 @@ import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
-import { useLang } from "@/lib/useLang";
+import {
+  getPreferredTranslationForLang,
+  getStoredLang,
+  savePreferredTranslationLocally,
+  useLang,
+} from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
-import { normalizeSelectableTranslationId } from "@/lib/translationDefaults";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -447,10 +451,13 @@ function PhotoReflectionContent() {
   const [endChapter, setEndChapter] = useState(scheduledEndChapter || scheduledChapter || 1);
   const [endVerse, setEndVerse] = useState(scheduledEnd || 1);
   const [selectedTranslation, setSelectedTranslation] = useState<number>(() => {
-    const requested = searchParams.get("translation");
-    if (requested) return normalizeSelectableTranslationId(requested, lang);
-    if (typeof window === "undefined") return normalizeSelectableTranslationId(null, lang);
-    return normalizeSelectableTranslationId(window.localStorage.getItem("roots_default_translation"), lang);
+    const activeLang = getStoredLang() ?? lang;
+    const preferredTranslation = getPreferredTranslationForLang(activeLang);
+    const requestedTranslation = Number(searchParams.get("translation") ?? "");
+
+    return Number.isSafeInteger(requestedTranslation) && requestedTranslation === preferredTranslation
+      ? requestedTranslation
+      : preferredTranslation;
   });
   const [sermonTitle, setSermonTitle] = useState("");
   const [extraRefs, setExtraRefs] = useState<string[]>([]);
@@ -470,6 +477,18 @@ function PhotoReflectionContent() {
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
   const [editLoading, setEditLoading] = useState(isEditMode);
   const [editLoadError, setEditLoadError] = useState(false);
+
+  // A fresh photo reflection follows the current app-language preference.
+  // Editing an existing record keeps its stored bible_version.
+  useEffect(() => {
+    if (isEditMode) return;
+    const storedLang = getStoredLang();
+    if (!storedLang || storedLang !== lang) return;
+
+    const nextTranslation = getPreferredTranslationForLang(lang);
+    savePreferredTranslationLocally(lang, nextTranslation);
+    setSelectedTranslation(current => current === nextTranslation ? current : nextTranslation);
+  }, [lang, isEditMode]);
   const [existingPhotoPath, setExistingPhotoPath] = useState<string | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [existingPhotoRemoved, setExistingPhotoRemoved] = useState(false);
@@ -1621,9 +1640,7 @@ function PhotoReflectionContent() {
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     const next = Number(e.target.value);
                     setSelectedTranslation(next);
-                    if (typeof window !== "undefined") {
-                      window.localStorage.setItem("roots_default_translation", String(next));
-                    }
+                    savePreferredTranslationLocally(getStoredLang() ?? lang, next);
                   }}
                 >
                   {TRANSLATIONS.map(group => (

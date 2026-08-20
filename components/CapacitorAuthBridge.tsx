@@ -8,6 +8,7 @@ import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import type { Lang } from "@/lib/i18n";
+import { saveLangLocally } from "@/lib/useLang";
 
 const SUPPORTED_LANGS = new Set<Lang>(["ko", "de", "en", "fr", "es"]);
 const ROOTS_WEB_HOSTS = new Set([
@@ -206,8 +207,7 @@ export default function CapacitorAuthBridge() {
         handledCodeStored: Boolean(handledCodeKey && storageGet(handledCodeKey)),
       });
 
-      storageSet("roots_lang", lang);
-      storageSet("roots_lang_selected", "true");
+      saveLangLocally(lang);
 
       try {
         await Browser.close();
