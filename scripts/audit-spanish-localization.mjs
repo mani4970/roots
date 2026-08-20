@@ -1158,9 +1158,109 @@ const criticalSpanishCopyChecks = [
   return { ...check, missing, ok: missing.length === 0 };
 });
 
+const SPANISH_DATABASE_MIGRATION_PATH =
+  "supabase/130_spanish_language_preferences_2_2.sql";
+const spanishDatabaseMigrationExists = fs.existsSync(
+  path.join(PROJECT_ROOT, SPANISH_DATABASE_MIGRATION_PATH),
+);
+const spanishDatabaseMigrationSource = spanishDatabaseMigrationExists
+  ? read(SPANISH_DATABASE_MIGRATION_PATH)
+  : "";
+
+const spanishDatabaseMigrationChecks = [
+  {
+    label: "Additive Spanish database migration exists",
+    ok: spanishDatabaseMigrationExists,
+  },
+  {
+    label: "Profile preference RPC allows es",
+    ok: /p_preferred_language\s+not\s+in\s*\(\s*['"]ko['"]\s*,\s*['"]de['"]\s*,\s*['"]en['"]\s*,\s*['"]fr['"]\s*,\s*['"]es['"]\s*\)/s.test(
+      spanishDatabaseMigrationSource,
+    ),
+  },
+  {
+    label: "Profile preference RPC allows the exact active translation set plus NVI 101",
+    ok: /p_preferred_translation\s+not\s+in\s*\(\s*21\s*,\s*26\s*,\s*27\s*,\s*29\s*,\s*62\s*,\s*80\s*,\s*84\s*,\s*89\s*,\s*92\s*,\s*97\s*,\s*98\s*,\s*100\s*,\s*101\s*\)/s.test(
+      spanishDatabaseMigrationSource,
+    ),
+  },
+  {
+    label: "Notification locale constraint allows exactly ko/de/en/fr/es",
+    ok: /add\s+constraint\s+notifications_locale_check[\s\S]*?check\s*\(\s*locale\s+in\s*\(\s*['"]ko['"]\s*,\s*['"]de['"]\s*,\s*['"]en['"]\s*,\s*['"]fr['"]\s*,\s*['"]es['"]\s*\)\s*\)/i.test(
+      spanishDatabaseMigrationSource,
+    ),
+  },
+  {
+    label: "SECURITY DEFINER and empty search_path are preserved",
+    ok:
+      /security\s+definer/i.test(spanishDatabaseMigrationSource) &&
+      /set\s+search_path\s*=\s*['"]{2}/i.test(spanishDatabaseMigrationSource),
+  },
+  {
+    label: "RPC execution remains authenticated-only",
+    ok:
+      /revoke\s+execute[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated\s*,\s*service_role\s*;/i.test(
+        spanishDatabaseMigrationSource,
+      ) &&
+      /grant\s+execute[\s\S]*?to\s+authenticated\s*;/i.test(
+        spanishDatabaseMigrationSource,
+      ),
+  },
+  {
+    label: "Notification constraint is validated before commit",
+    ok:
+      /add\s+constraint\s+notifications_locale_check[\s\S]*?not\s+valid\s*;/i.test(
+        spanishDatabaseMigrationSource,
+      ) &&
+      /validate\s+constraint\s+notifications_locale_check\s*;/i.test(
+        spanishDatabaseMigrationSource,
+      ),
+  },
+  {
+    label: "Migration contains transaction safety stops and postchecks",
+    ok:
+      /begin\s*;/i.test(spanishDatabaseMigrationSource) &&
+      /set\s+local\s+lock_timeout/i.test(spanishDatabaseMigrationSource) &&
+      /set\s+local\s+statement_timeout/i.test(spanishDatabaseMigrationSource) &&
+      /Safety stop:/i.test(spanishDatabaseMigrationSource) &&
+      /Postcheck failed:/i.test(spanishDatabaseMigrationSource) &&
+      /commit\s*;/i.test(spanishDatabaseMigrationSource),
+  },
+  {
+    label: "Migration preserves RLS and avoids broad table grants",
+    ok:
+      /relrowsecurity/i.test(spanishDatabaseMigrationSource) &&
+      !/alter\s+table[\s\S]{0,160}?disable\s+row\s+level\s+security/i.test(
+        spanishDatabaseMigrationSource,
+      ) &&
+      !/grant\s+(?:all|select|insert|update|delete)[\s\S]{0,120}?on\s+(?:table\s+)?public\.(?:profiles|notifications)/i.test(
+        spanishDatabaseMigrationSource,
+      ),
+  },
+  {
+    label: "Migration does not rewrite existing profile or notification rows",
+    ok:
+      !/update\s+public\.profiles\s+set\s+preferred_/i.test(
+        spanishDatabaseMigrationSource,
+      ) &&
+      !/(?:update|delete\s+from|insert\s+into)\s+public\.notifications\b/i.test(
+        spanishDatabaseMigrationSource,
+      ),
+  },
+];
+const spanishDatabaseMigrationIsReady =
+  spanishDatabaseMigrationChecks.every((check) => check.ok);
+
 const allHardcoded = collectHardcodedFourLanguageSurfaces();
 const runtimeHardcoded = allHardcoded.filter((finding) => !finding.relativePath.startsWith("supabase/"));
-const historicalSqlHardcoded = allHardcoded.filter((finding) => finding.relativePath.startsWith("supabase/"));
+const spanishMigrationCompatibilityPrechecks = allHardcoded.filter(
+  (finding) => finding.relativePath === SPANISH_DATABASE_MIGRATION_PATH,
+);
+const historicalSqlHardcoded = allHardcoded.filter(
+  (finding) =>
+    finding.relativePath.startsWith("supabase/") &&
+    finding.relativePath !== SPANISH_DATABASE_MIGRATION_PATH,
+);
 const EXPECTED_HISTORICAL_SQL_SURFACES = [
   "supabase/100_kbs_bible_verses_and_translation_options_2_1.sql",
   "supabase/103_easy_bible_translation_option_2_1.sql",
@@ -1442,6 +1542,14 @@ console.log(`  - NVI note-only/empty verse exclusions: ${nviOmissionKeys.length}
 console.log(`  - Photo Bible Reflection maps NVI references to Spanish: ${photoQtMapsNviToSpanish ? "yes" : "no"}`);
 console.log(`  - Photo Bible Reflection uses translation-specific verse lists: ${photoQtUsesTranslationVerseLists ? "yes" : "no"}`);
 printFindingList("Runtime four-language hardcoded surfaces", runtimeHardcoded);
+console.log("\nSupabase Spanish database migration");
+for (const check of spanishDatabaseMigrationChecks) {
+  console.log(`  - ${check.label}: ${check.ok ? "yes" : "no"}`);
+}
+console.log(`  - Migration ready for manual SQL Editor execution: ${spanishDatabaseMigrationIsReady ? "yes" : "no"}`);
+console.log(
+  `  - Compatibility-only four-language precheck lines: ${spanishMigrationCompatibilityPrechecks.length}`,
+);
 printFindingList("Historical SQL snapshots kept unchanged", historicalSqlHardcoded);
 console.log(`Historical SQL snapshot set is exact: ${historicalSqlSnapshotsAreExpected ? "yes" : "no"}`);
 
@@ -1490,6 +1598,7 @@ const strictFailures = [
   ...criticalSpanishCopyChecks.map(({ ok }) => !ok),
   directUiLiterals.length > 0,
   runtimeHardcoded.length > 0,
+  !spanishDatabaseMigrationIsReady,
   !historicalSqlSnapshotsAreExpected,
   !supportedLangsHasSpanish,
   !langMetaHasSpanish,
