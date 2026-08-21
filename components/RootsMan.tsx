@@ -11,13 +11,13 @@ const WATER_FRAME_W = 682;
 const WATER_FRAME_H = 682;
 
 const WALK_RENDER_W: Record<RootsAvatarType, number> = {
-  rootsman: 65,
-  rootswoman: 72,
+  rootsman: 54,
+  rootswoman: 60,
 };
 
 const WATER_RENDER_W: Record<RootsAvatarType, number> = {
-  rootsman: 124,
-  rootswoman: 113,
+  rootsman: 102,
+  rootswoman: 92,
 };
 
 const WATER_BOTTOM_OFFSET: Record<RootsAvatarType, number> = {
