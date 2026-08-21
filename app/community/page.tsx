@@ -176,9 +176,9 @@ type GroupChallengeRequestSummary = {
 const APP_URL = "https://www.christian-roots.com";
 const COMMUNITY_FEED_PAGE_SIZE = 30;
 const COMMUNITY_ALL_QT_LIMIT = 30;
-const COMMUNITY_RELATION_QT_LIMIT = 120;
+const COMMUNITY_RELATION_QT_LIMIT = 60;
 const COMMUNITY_PRAYER_PREFETCH_LIMIT = 90;
-const COMMUNITY_PARTNER_QT_HISTORY_LIMIT = 120;
+const COMMUNITY_PARTNER_QT_HISTORY_LIMIT = 60;
 const COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT = 500;
 type CommunitySectionKey = "qt" | "praying" | "answered";
 
