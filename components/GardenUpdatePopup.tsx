@@ -3,6 +3,7 @@ import ConfettiBurst from "@/components/ConfettiBurst";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
+import { getNehemiahWallStageDescription, getNehemiahWallStageLabel } from "@/lib/nehemiahWallText";
 
 /**
  * 9가지 성령의 열매 — 번역은 i18n 키에서 관리
@@ -59,10 +60,14 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
   const stage = getStage(streakDays);
   const stageTitle = currentRewardMap.kind === "garden"
     ? t(STAGE_TITLE_KEYS[stage - 1], lang)
-    : t(rewardStage.labelKey, lang);
+    : currentRewardMap.kind === "nehemiahWall"
+      ? getNehemiahWallStageLabel(lang, rewardStage.stageNumber)
+      : t(rewardStage.labelKey, lang);
   const stageDesc = currentRewardMap.kind === "garden"
     ? t(STAGE_DESC_KEYS[stage - 1], lang)
-    : t(rewardStage.descKey, lang);
+    : currentRewardMap.kind === "nehemiahWall"
+      ? getNehemiahWallStageDescription(lang, rewardStage.stageNumber)
+      : t(rewardStage.descKey, lang);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.88)", backdropFilter: "blur(10px)" }}>

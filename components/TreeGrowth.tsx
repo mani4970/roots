@@ -8,6 +8,8 @@ import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getNehemiahStageProgress, getNehemiahWallStage } from "@/lib/nehemiahWall";
+import { getNehemiahWallCopy, getNehemiahWallStageDescription, getNehemiahWallStageLabel } from "@/lib/nehemiahWallText";
 import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 import {
   getRewardMapBackground,
@@ -77,6 +79,19 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const selectedStage = selectedCycle ? getRewardMapStage(selectedCycle) : null;
   const progressInTen = selectedCycle ? getRewardMapProgressInTen(selectedCycle) : 0;
   const periodProgress = selectedCycle ? getRewardMapProgressPercent(selectedCycle) : 0;
+  const selectedDescription = selectedCycle && selectedStage
+    ? selectedCycle.kind === "nehemiahWall"
+      ? getNehemiahWallStageDescription(lang, selectedStage.stageNumber)
+      : t(selectedStage.descKey, lang)
+    : "";
+  const selectedProgressLabel = selectedCycle
+    ? selectedCycle.kind === "nehemiahWall"
+      ? (() => {
+          const progress = getNehemiahStageProgress(selectedCycle.isComplete ? 100 : selectedCycle.progressDay);
+          return `${progress.current} / ${progress.total}`;
+        })()
+      : t("tree_progress", lang, { n: progressInTen })
+    : "";
 
   useEffect(() => {
     if (!selectedCycle) return;
@@ -147,9 +162,9 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
       {selectedStage && (
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 8, padding: "0 2px" }}>
           <span style={{ fontSize: 11, color: "var(--text3)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {t(selectedStage.descKey, lang)}
+            {selectedDescription}
           </span>
-          <span style={{ fontSize: 11, color: "var(--text3)", flexShrink: 0 }}>{t("tree_progress", lang, { n: progressInTen })}</span>
+          <span style={{ fontSize: 11, color: "var(--text3)", flexShrink: 0 }}>{selectedProgressLabel}</span>
         </div>
       )}
 
@@ -163,13 +178,23 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
 function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, heartShopItemIds }: { cycle: RewardMapCycle; days: number; isNight: boolean; owner: string; showAction: boolean; avatarType: RootsAvatarType; heartShopItemIds: HeartShopMapItemId[] }) {
   const lang = useLang();
   const stage = getRewardMapStage(cycle);
+  const isNehemiah = cycle.kind === "nehemiahWall";
+  const isFuture = cycle.kind === "futureJourney" || cycle.kind === "futureMap";
+  const nehemiahCopy = isNehemiah ? getNehemiahWallCopy(lang) : null;
   const titleKey = getRewardMapTitleKey(cycle.kind);
   const fallbackTitleKey = getRewardMapFallbackTitleKey(cycle.kind);
-  const title = t(titleKey, lang, { name: owner });
-  const defaultImgSrc = getRewardMapBackground(cycle, isNight);
+  const title = nehemiahCopy ? nehemiahCopy.title(owner) : t(titleKey, lang, { name: owner });
+  const fallbackTitle = nehemiahCopy?.fallbackTitle ?? t(fallbackTitleKey, lang);
+  const defaultImgSrc = isFuture ? null : getRewardMapBackground(cycle, isNight);
   const imgSrc = cycle.kind === "garden" && stage.stageNumber === 0
     ? `/images/reward-maps/garden/avatar-variants/${avatarType}/day0_${isNight ? "evening" : "morning"}.webp`
     : defaultImgSrc;
+  const stageLabel = isNehemiah
+    ? getNehemiahWallStageLabel(lang, stage.stageNumber)
+    : t(stage.labelKey, lang);
+  const nehemiahAction = isNehemiah
+    ? getNehemiahWallStage(cycle.isComplete ? 100 : cycle.progressDay).action
+    : undefined;
   const rangeLabel = cycle.isCurrent
     ? t("tree_day_count", lang, { n: days })
     : t("reward_map_day_range", lang, { start: cycle.startDay, end: cycle.endDay });
@@ -177,7 +202,23 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
   return (
     <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        <Image src={imgSrc} alt={title || t(fallbackTitleKey, lang)} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
+        {imgSrc ? (
+          <Image src={imgSrc} alt={title || fallbackTitle} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
+        ) : (
+          <div
+            aria-label={title || fallbackTitle}
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(145deg, var(--bg2), var(--sage-light))",
+            }}
+          >
+            <img src="/roots-logo-transparent-160.png" alt="Roots" width={72} height={72} style={{ objectFit: "contain", imageRendering: "pixelated", opacity: 0.72 }} />
+          </div>
+        )}
 
         {cycle.kind === "peaceArk" && (
           <PeaceArkStaticItems stageNumber={stage.stageNumber} enabledItemIds={heartShopItemIds} />
@@ -186,7 +227,7 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
           <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
-            {t(stage.labelKey, lang)}
+            {stageLabel}
           </div>
         </div>
 
@@ -194,7 +235,7 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
           {rangeLabel}
         </div>
 
-        <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} />
+        <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} nehemiahAction={nehemiahAction} />
       </div>
     </div>
   );

@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import RootsMan from "./RootsMan";
+import NehemiahWallAction from "./NehemiahWallAction";
 import type { RewardMapActionKind } from "@/lib/rewardMaps";
+import type { NehemiahWallActionKind } from "@/lib/nehemiahWall";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 
 interface RewardMapActionProps {
   trigger: boolean;
   action: RewardMapActionKind;
   avatarType?: RootsAvatarType | null;
+  nehemiahAction?: NehemiahWallActionKind;
 }
 
 type ArkSpriteSheet = {
@@ -356,8 +359,12 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
   );
 }
 
-export default function RewardMapAction({ trigger, action, avatarType }: RewardMapActionProps) {
+export default function RewardMapAction({ trigger, action, avatarType, nehemiahAction }: RewardMapActionProps) {
   if (action === "gardenWater") return <RootsMan trigger={trigger} avatarType={avatarType} />;
+  if (action === "nehemiah") {
+    if (!nehemiahAction) return null;
+    return <NehemiahWallAction trigger={trigger} action={nehemiahAction} avatarType={avatarType} />;
+  }
 
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const configs = normalizedAvatarType === "rootswoman" ? ROOTSWOMAN_ARK_MOTION_CONFIGS : ROOTSMAN_ARK_MOTION_CONFIGS;

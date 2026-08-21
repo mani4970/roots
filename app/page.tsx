@@ -44,6 +44,8 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
+import { getNehemiahWallStage } from "@/lib/nehemiahWall";
+import { getNehemiahWallCopy } from "@/lib/nehemiahWallText";
 import { getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
@@ -248,14 +250,16 @@ function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardM
   const lang = useLang();
   if (!notice) return null;
 
-  const mapKeyword = t(getRewardMapKeywordKey(notice.kind), lang);
+  const isNehemiah = notice.kind === "nehemiahWall";
+  const nehemiahCopy = isNehemiah ? getNehemiahWallCopy(lang) : null;
+  const mapKeyword = nehemiahCopy?.keyword ?? t(getRewardMapKeywordKey(notice.kind), lang);
   const isComplete = notice.type === "complete";
   const title = isComplete ? t("reward_map_completion_title", lang) : t("reward_map_start_title", lang);
   const message = isComplete
-    ? t("reward_map_completion_sub", lang, { map: mapKeyword })
-    : t(getRewardMapStartSubKey(notice.kind), lang);
+    ? nehemiahCopy?.completionNotice ?? t("reward_map_completion_sub", lang, { map: mapKeyword })
+    : nehemiahCopy?.startNotice ?? t(getRewardMapStartSubKey(notice.kind), lang);
   const button = isComplete
-    ? t("reward_map_completion_btn", lang, { map: mapKeyword })
+    ? nehemiahCopy?.completionButton ?? t("reward_map_completion_btn", lang, { map: mapKeyword })
     : t("reward_map_start_btn", lang);
 
   return (
@@ -899,6 +903,12 @@ export default function HomePage() {
   function requestPostReflectionRewardExperience(streakDays: number) {
     const currentMap = getCurrentRewardMapCycle(streakDays);
 
+    // No fourth map has been chosen yet. Keep Bible Reflection progress intact,
+    // but do not reuse Garden/Ark reward actions or announce a map that does not exist.
+    if (currentMap.kind === "futureJourney" || currentMap.kind === "futureMap") {
+      return;
+    }
+
     if (isRewardMapCompletionDay(streakDays)) {
       pendingRewardMapNoticeRef.current = { type: "complete", days: streakDays, kind: currentMap.kind };
       setRootsManRequestToken(token => token + 1);
@@ -956,15 +966,33 @@ export default function HomePage() {
       return true;
     }
 
-    // 정원 단계 변경 팝업 (11/21/31/.../91일마다)
+    // Reward-map stage change popup. Garden/Ark keep their verified 10-day
+    // cadence; Nehemiah uses its approved irregular 14-stage boundaries.
     // Roots의 streak_days는 연속 출석이 아니라 누적 QT 완료일(말씀 동행일)입니다.
-    const cycleDay = streak > 0 ? (streak % 100) : 0;
-    if (cycleDay % 10 === 1 && cycleDay > 1) {
-      const gardenKey = `garden_shown_${streak}`;
-      if (!storageGet(gardenKey)) {
-        storageSet(gardenKey, "true");
-        setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
-        return true;
+    const currentRewardMap = getCurrentRewardMapCycle(streak);
+    if (currentRewardMap.kind === "nehemiahWall") {
+      const stage = getNehemiahWallStage(currentRewardMap.progressDay);
+      const isStageStart =
+        currentRewardMap.progressDay === stage.startDay
+        && currentRewardMap.progressDay > 1
+        && currentRewardMap.progressDay < 100;
+      if (isStageStart) {
+        const stageKey = `nehemiah_stage_shown_${streak}`;
+        if (!storageGet(stageKey)) {
+          storageSet(stageKey, "true");
+          setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+          return true;
+        }
+      }
+    } else if (currentRewardMap.kind === "garden" || currentRewardMap.kind === "peaceArk") {
+      const cycleDay = streak > 0 ? (streak % 100) : 0;
+      if (cycleDay % 10 === 1 && cycleDay > 1) {
+        const gardenKey = `garden_shown_${streak}`;
+        if (!storageGet(gardenKey)) {
+          storageSet(gardenKey, "true");
+          setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+          return true;
+        }
       }
     }
 
@@ -1018,6 +1046,19 @@ export default function HomePage() {
   function closeRewardMapNotice() {
     const notice = rewardMapNotice;
     setRewardMapNotice(null);
+
+    if (notice?.type === "complete" && notice.kind === "nehemiahWall") {
+      // Day 300 uses the approved longer tambourine praise directly on the map.
+      setShowRootsMan(true);
+      requestAnimationFrame(() => {
+        if (treeSectionRef.current) {
+          treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+      return;
+    }
 
     if (notice?.type === "start" && pendingRootsManRef.current) {
       pendingRootsManRef.current = false;
@@ -1921,8 +1962,11 @@ export default function HomePage() {
           <div className="header-title">
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
-              const full = t(getRewardMapTitleKey(currentRewardMapKind), lang, { name });
-              const emWord = t(getRewardMapKeywordKey(currentRewardMapKind), lang);
+              const nehemiahCopy = currentRewardMapKind === "nehemiahWall" ? getNehemiahWallCopy(lang) : null;
+              const full = nehemiahCopy
+                ? nehemiahCopy.title(name)
+                : t(getRewardMapTitleKey(currentRewardMapKind), lang, { name });
+              const emWord = nehemiahCopy?.keyword ?? t(getRewardMapKeywordKey(currentRewardMapKind), lang);
               const idx = full.lastIndexOf(emWord);
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;

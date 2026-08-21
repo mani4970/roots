@@ -3,6 +3,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
 import { adaptRootsAvatarNameInText, getRootsAvatarChoiceText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getNehemiahWallCopy, getNehemiahWallStageDescription } from "@/lib/nehemiahWallText";
 
 interface RootsManPopupProps {
   show: boolean;
@@ -56,16 +57,26 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
   const lang = useLang();
   if (!show) return null;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
-  const copy = getPopupCopy(streakDays, normalizedAvatarType);
-  const isGardenMap = getCurrentRewardMapCycle(streakDays).kind === "garden";
-  const title = adaptRootsAvatarNameInText(t(copy.titleKey, lang), normalizedAvatarType);
-  const msg = adaptRootsAvatarNameInText(t(copy.messageKey, lang), normalizedAvatarType);
+  const currentMap = getCurrentRewardMapCycle(streakDays);
+  const isGardenMap = currentMap.kind === "garden";
+  const isNehemiahMap = currentMap.kind === "nehemiahWall";
+  const copy = isNehemiahMap ? null : getPopupCopy(streakDays, normalizedAvatarType);
+  const nehemiahCopy = isNehemiahMap ? getNehemiahWallCopy(lang) : null;
+  const rewardStage = getRewardMapStage(currentMap);
+  const title = isNehemiahMap
+    ? adaptRootsAvatarNameInText(nehemiahCopy!.popupTitle, normalizedAvatarType)
+    : adaptRootsAvatarNameInText(t(copy!.titleKey, lang), normalizedAvatarType);
+  const msg = isNehemiahMap
+    ? getNehemiahWallStageDescription(lang, rewardStage.stageNumber)
+    : adaptRootsAvatarNameInText(t(copy!.messageKey, lang), normalizedAvatarType);
+  const checkText = isNehemiahMap ? nehemiahCopy!.popupCheck : t(copy!.checkKey, lang);
+  const buttonText = isNehemiahMap ? nehemiahCopy!.popupButton : t(copy!.buttonKey, lang);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 24px 20px", margin: "0 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
         <div style={{ width: 88, height: 88, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid rgba(122,157,122,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", overflow: "hidden" }}>
           <img
-            src={copy.image}
+            src={getRootsAvatarImageSrc(normalizedAvatarType)}
             alt={normalizedAvatarType}
             style={{ width: 74, height: 74, objectFit: "contain", imageRendering: "pixelated" }}
           />
@@ -77,10 +88,10 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
           <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{msg}</p>
         </div>
         <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
-          {t(copy.checkKey, lang)}
+          {checkText}
         </p>
         <button onClick={onGoGarden} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-          {t(copy.buttonKey, lang)}
+          {buttonText}
         </button>
       </div>
     </div>

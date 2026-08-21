@@ -1,19 +1,19 @@
 import type { TKey } from "@/lib/i18n";
+import { getNehemiahStageProgress, getNehemiahWallBackground, getNehemiahWallStage } from "@/lib/nehemiahWall";
 
-export type RewardMapKind = "garden" | "peaceArk" | "futureJourney" | "futureMap";
+export type RewardMapKind = "garden" | "peaceArk" | "nehemiahWall" | "futureJourney" | "futureMap";
 
 const MAP_SEQUENCE: readonly RewardMapKind[] = [
   "garden",
   "peaceArk",
+  "nehemiahWall",
   "futureJourney",
-  "garden",
-  "futureMap",
 ] as const;
 
 export const REWARD_MAP_CYCLE_DAYS = 100;
 export const REWARD_MAP_SEQUENCE_DAYS = REWARD_MAP_CYCLE_DAYS * MAP_SEQUENCE.length;
 
-export type RewardMapActionKind = "gardenWater" | "arkCarryWood" | "arkHammer" | "arkWaveBird" | "arkPray" | "none";
+export type RewardMapActionKind = "gardenWater" | "arkCarryWood" | "arkHammer" | "arkWaveBird" | "arkPray" | "nehemiah" | "none";
 
 export interface RewardMapCycle {
   cycleIndex: number;
@@ -34,7 +34,8 @@ export interface RewardMapStageInfo {
 }
 
 export function getRewardMapKind(cycleIndex: number): RewardMapKind {
-  return MAP_SEQUENCE[((cycleIndex % MAP_SEQUENCE.length) + MAP_SEQUENCE.length) % MAP_SEQUENCE.length];
+  const safeIndex = Math.max(0, Math.floor(cycleIndex || 0));
+  return MAP_SEQUENCE[Math.min(safeIndex, MAP_SEQUENCE.length - 1)];
 }
 
 export function getRewardMapCycleIndexForDays(days: number): number {
@@ -82,7 +83,7 @@ export function getVisibleRewardMapCycles(days: number): RewardMapCycle[] {
 }
 
 function buildRewardMapCycle(cycleIndex: number, progressDay: number, isCurrent: boolean): RewardMapCycle {
-  const sequenceIndex = ((cycleIndex % MAP_SEQUENCE.length) + MAP_SEQUENCE.length) % MAP_SEQUENCE.length;
+  const sequenceIndex = Math.min(Math.max(0, cycleIndex), MAP_SEQUENCE.length - 1);
   const startDay = cycleIndex * REWARD_MAP_CYCLE_DAYS + 1;
   const endDay = (cycleIndex + 1) * REWARD_MAP_CYCLE_DAYS;
   return {
@@ -159,6 +160,16 @@ export function getArkStageNumber(progressDay: number, isComplete = false): numb
 }
 
 export function getRewardMapStage(cycle: RewardMapCycle): RewardMapStageInfo {
+  if (cycle.kind === "nehemiahWall") {
+    const stage = getNehemiahWallStage(cycle.isComplete ? 100 : cycle.progressDay);
+    return {
+      stageNumber: stage.stageNumber,
+      labelKey: "reward_map_future_stage",
+      descKey: "reward_map_future_desc",
+      action: "nehemiah",
+    };
+  }
+
   if (cycle.kind === "peaceArk") {
     const stageNumber = getArkStageNumber(cycle.progressDay, cycle.isComplete);
     return {
@@ -189,6 +200,9 @@ export function getRewardMapStage(cycle: RewardMapCycle): RewardMapStageInfo {
 }
 
 export function getRewardMapProgressInTen(cycle: RewardMapCycle): number {
+  if (cycle.kind === "nehemiahWall") {
+    return getNehemiahStageProgress(cycle.isComplete ? 100 : cycle.progressDay).current;
+  }
   if (cycle.isComplete) return 10;
   const dayInStage = cycle.progressDay % 10;
   if (dayInStage === 0 && cycle.progressDay > 0) return 10;
@@ -196,11 +210,18 @@ export function getRewardMapProgressInTen(cycle: RewardMapCycle): number {
 }
 
 export function getRewardMapProgressPercent(cycle: RewardMapCycle): number {
+  if (cycle.kind === "nehemiahWall") {
+    return getNehemiahStageProgress(cycle.isComplete ? 100 : cycle.progressDay).percent;
+  }
   if (cycle.isComplete) return 100;
   return (getRewardMapProgressInTen(cycle) / 10) * 100;
 }
 
 export function getRewardMapBackground(cycle: RewardMapCycle, isNight: boolean): string {
+  if (cycle.kind === "nehemiahWall") {
+    return getNehemiahWallBackground(cycle.isComplete ? 100 : cycle.progressDay, isNight);
+  }
+
   if (cycle.kind === "peaceArk") {
     const stage = getArkStageNumber(cycle.progressDay, cycle.isComplete);
     const time = isNight ? "evening" : "morning";

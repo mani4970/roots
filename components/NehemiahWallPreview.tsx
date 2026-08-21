@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import RewardMapAction from "@/components/RewardMapAction";
+import TreeGrowth from "@/components/TreeGrowth";
 import NehemiahWallAction, { NEHEMIAH_ACTION_LAYOUT } from "@/components/NehemiahWallAction";
 import {
   NEHEMIAH_WALL_STAGES,
@@ -23,6 +24,7 @@ export default function NehemiahWallPreview() {
   const [showGuides, setShowGuides] = useState(true);
   const [transparentCheck, setTransparentCheck] = useState(false);
   const [showPeaceArkReference, setShowPeaceArkReference] = useState(true);
+  const [showProductionIntegration, setShowProductionIntegration] = useState(true);
 
   const normalizedDay = normalizeNehemiahDay(day);
   const stage = useMemo(() => getNehemiahWallStage(normalizedDay), [normalizedDay]);
@@ -44,7 +46,7 @@ export default function NehemiahWallPreview() {
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <header style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 11, color: "var(--terra-dark)", fontWeight: 900, letterSpacing: ".08em", marginBottom: 6 }}>
-            DEV PREVIEW · 아직 201–300일 production 연결 전
+            DEV PREVIEW · 201–300일 production 연결 검증
           </div>
           <h1 style={{ margin: 0, fontSize: 24, lineHeight: 1.3 }}>느헤미야 성벽 중수 맵 프리뷰</h1>
           <p style={{ margin: "8px 0 0", color: "var(--text3)", fontSize: 13, lineHeight: 1.7 }}>
@@ -87,6 +89,7 @@ export default function NehemiahWallPreview() {
             <Toggle active={showGuides} onClick={() => setShowGuides(value => !value)}>기준선 {showGuides ? "ON" : "OFF"}</Toggle>
             <Toggle active={transparentCheck} onClick={() => setTransparentCheck(value => !value)}>투명 배경 검사 {transparentCheck ? "ON" : "OFF"}</Toggle>
             <Toggle active={showPeaceArkReference} onClick={() => setShowPeaceArkReference(value => !value)}>화평의 방주 비교 {showPeaceArkReference ? "ON" : "OFF"}</Toggle>
+            <Toggle active={showProductionIntegration} onClick={() => setShowProductionIntegration(value => !value)}>실제 맵 카드 {showProductionIntegration ? "ON" : "OFF"}</Toggle>
             <button type="button" onClick={replay} style={primaryButtonStyle}>동작 다시 재생</button>
           </div>
         </section>
@@ -146,6 +149,27 @@ export default function NehemiahWallPreview() {
           </div>
         </section>
 
+
+        {showProductionIntegration && (
+          <section style={{ ...panelStyle, marginTop: 22 }}>
+            <PreviewMeta
+              title={`실제 Reward Map 연결 · 누적 ${200 + normalizedDay}일`}
+              sub="TreeGrowth production renderer 그대로"
+            />
+            <div style={{ width: "100%", maxWidth: previewWidth + 32, margin: "0 auto" }}>
+              <TreeGrowth
+                key={`production-${normalizedDay}-${avatarType}-${runToken}`}
+                days={200 + normalizedDay}
+                lastCheckin={null}
+                showRootsMan
+                ownerName="Preview"
+                avatarType={avatarType}
+                heartShopItemIds={[]}
+              />
+            </div>
+          </section>
+        )}
+
         {showPeaceArkReference && (
           <section style={{ marginTop: 22 }}>
             <div style={{ width: "100%", maxWidth: previewWidth, margin: "0 auto" }}>
@@ -174,7 +198,7 @@ export default function NehemiahWallPreview() {
             <li>70일과 71–80일 모두 제공된 4프레임 wave 사용</li>
             <li>1–7일과 8–10일 배경이 같은 것은 의도된 구성</li>
             <li>등불 걷기 시트는 흰색 matte/fill 잔여 픽셀을 제거해 투명 배경을 정리</li>
-            <li>301일부터는 아직 새 맵으로 연결하지 않음</li>
+            <li>201–300일은 실제 Reward Map에 연결, 301일부터는 중립적인 준비 중 카드만 표시</li>
           </ul>
         </section>
       </div>
