@@ -21,6 +21,9 @@ const rewardMaps = read("lib/rewardMaps.ts");
 const treeGrowth = read("components/TreeGrowth.tsx");
 const rewardAction = read("components/RewardMapAction.tsx");
 const nehemiahAction = read("components/NehemiahWallAction.tsx");
+const spritePlayer = read("components/RewardMapSpritePlayer.tsx");
+const walkActor = read("components/RewardMapWalkActor.tsx");
+const stoneCarryActor = read("components/NehemiahStoneCarryActor.tsx");
 const home = read("app/page.tsx");
 const rootsPopup = read("components/RootsManPopup.tsx");
 const stagePopup = read("components/GardenUpdatePopup.tsx");
@@ -51,7 +54,7 @@ const parsedStages = [...wall.matchAll(stagePattern)].map((match) => [
 console.log("\nStage boundaries");
 check("14 approved stages are present", parsedStages.length === 14);
 check("Stage ranges and actions match the approved 1–100 plan", JSON.stringify(parsedStages) === JSON.stringify(expectedStages));
-check("Day 70 and days 71–80 both use the approved 4-frame wave action", wall.includes('{ stageNumber: 10, startDay: 70, endDay: 70, label: "완성된 성벽 앞에서 인사", action: "wave" }') && wall.includes('{ stageNumber: 11, startDay: 71, endDay: 80, label: "돌아오는 사람들을 환영", action: "wave" }'));
+check("Day 70 and days 71–80 both use the approved 4-frame wave action", wall.includes('{ stageNumber: 10, startDay: 70, endDay: 70, label: "52일 만에 성벽 중수 완료", action: "wave" }') && wall.includes('{ stageNumber: 11, startDay: 71, endDay: 80, label: "돌아오는 사람들을 환영", action: "wave" }'));
 check("Days 16–18 are lantern walk-through only", wall.includes('startDay: 16, endDay: 18') && wall.includes('action: "lanternWalkThrough"') && !wall.includes("lanternInspect"));
 
 console.log("\nBackground assets");
@@ -99,7 +102,20 @@ check("Future journey card uses a neutral placeholder instead of a Garden image"
 check("Dev preview includes the actual TreeGrowth production renderer", preview.includes("<TreeGrowth") && preview.includes("days={200 + normalizedDay}"));
 
 console.log("\nMotion invariants");
-check("Shared Peace Ark walk sheets are reused", nehemiahAction.includes("peace-ark/sprites/rootsman_walk_sheet.png") && nehemiahAction.includes("peace-ark/sprites/rootswoman_walk_sheet.webp"));
+check("Approved Garden walk frames remain the generic walk source", walkActor.includes("garden/sprites/frames") && walkActor.includes("walk_${frame}.webp"));
+check("Generic walk uses the stable Garden 135ms frame cadence", walkActor.includes("WALK_FRAME_INTERVAL_MS = 135"));
+check("Generic walk travel and frames share one requestAnimationFrame clock", walkActor.includes("window.requestAnimationFrame(tick)") && walkActor.includes("const nextWalkFrame = Math.floor(elapsed / WALK_FRAME_INTERVAL_MS)"));
+check("Rootsman walk compensates the single horizontally misaligned source frame", walkActor.includes('avatarType === "rootsman" && frame === 4') && walkActor.includes('(31 / WALK_FRAME_WIDTH) * renderWidth'));
+check("Stone-carry entry is isolated from the shared sprite player", nehemiahAction.includes("<NehemiahStoneCarryActor") && nehemiahAction.includes("sprite.src === sprites.carryStone.src"));
+check("Stone-carry keeps the isolated interval + CSS-left path with the new 8-frame sequential walk", stoneCarryActor.includes("setInterval(() =>") && stoneCarryActor.includes("tick = (tick + 1) % sprite.frames") && stoneCarryActor.includes("setFrame(tick)") && stoneCarryActor.includes("transition: `left ${durationMs}ms linear`"));
+check("Peace Ark and Nehemiah generic walking delegate to RewardMapWalkActor", rewardAction.includes("<RewardMapWalkActor") && nehemiahAction.includes("<RewardMapWalkActor"));
+check("Shared non-walk sprite player is restored to the working stepped-strip implementation", spritePlayer.includes("image.animate(") && spritePlayer.includes("steps(${stepCount}, end)") && !spritePlayer.includes("const frameKeyframes: Keyframe[]"));
+check("Generic walk remains independent from React setInterval and shared sprite animation", !walkActor.includes("setInterval(") && !walkActor.includes("image.animate(") && !rewardAction.includes("setInterval(") && !nehemiahAction.includes("setInterval("));
+check("Reward-map non-walk travel still uses compositor transform motion", rewardAction.includes("transform: `translate3d(${positionX}") && nehemiahAction.includes("transform: `translate3d(${positionX}"));
+check("Peace Ark and Nehemiah hammer actions are shortened to two loops", rewardAction.includes("actionLoops: 2") && /action === "hammer"[\s\S]*?actionLoops: 2/.test(nehemiahAction));
+check("Rootsman carry uses the new 8-frame 2048×411 sheet with matched visual scale", nehemiahAction.includes("src: \"/images/reward-maps/nehemiah-wall/sprites/rootsman_carry_stone_sheet.png\"") && nehemiahAction.includes("frames: 8") && nehemiahAction.includes("sheetWidth: 2048") && nehemiahAction.includes("sheetHeight: 411") && nehemiahAction.includes("renderWidth: 64,\n    intervalMs: 120,\n    bottomOffsetPx: -5"));
+check("Rootswoman carry uses the new 8-frame 2048×411 sheet with matched visual scale", nehemiahAction.includes("src: \"/images/reward-maps/nehemiah-wall/sprites/rootswoman_carry_stone_sheet.png\"") && nehemiahAction.includes("frames: 8") && nehemiahAction.includes("sheetWidth: 2048") && nehemiahAction.includes("sheetHeight: 411") && nehemiahAction.includes("renderWidth: 56,\n    intervalMs: 120,\n    bottomOffsetPx: -1"));
+check("Stone placement configs remain unchanged after the carry-only swap", nehemiahAction.includes("renderWidth: 85,\n    intervalMs: 320,\n    bottomOffsetPx: -5") && nehemiahAction.includes("renderWidth: 75,\n    intervalMs: 320,\n    bottomOffsetPx: -1"));
 check("Common action X is 57%", nehemiahAction.includes('const ACTION_LEFT = "57%"'));
 check("Common ground baseline is 7%", nehemiahAction.includes('const GROUND_BOTTOM = "7%"'));
 check("Normal entry/return uses the right-side 104% anchor", nehemiahAction.includes('const ENTER_FROM = "104%"') && nehemiahAction.includes('const EXIT_RIGHT = "104%"'));

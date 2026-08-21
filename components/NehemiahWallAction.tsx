@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import RewardMapSpritePlayer, { type RewardMapSpriteSheet } from "./RewardMapSpritePlayer";
+import RewardMapWalkActor from "./RewardMapWalkActor";
+import NehemiahStoneCarryActor from "./NehemiahStoneCarryActor";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import type { NehemiahWallActionKind } from "@/lib/nehemiahWall";
 
-type SpriteSheet = {
-  src: string;
-  frames: number;
-  sheetWidth: number;
-  sheetHeight: number;
-  renderWidth: number;
-  intervalMs: number;
+type SpriteSheet = RewardMapSpriteSheet & {
   bottomOffsetPx?: number;
 };
 
@@ -60,7 +57,7 @@ const ROOTSMAN_SPRITES: AvatarSpriteSet = {
     sheetWidth: 2172,
     sheetHeight: 724,
     renderWidth: 38,
-    intervalMs: 280,
+    intervalMs: 135,
   },
   pray: {
     src: "/images/reward-maps/peace-ark/sprites/rootsman_pray_kneel_sheet.png",
@@ -100,11 +97,11 @@ const ROOTSMAN_SPRITES: AvatarSpriteSet = {
   },
   carryStone: {
     src: "/images/reward-maps/nehemiah-wall/sprites/rootsman_carry_stone_sheet.png",
-    frames: 6,
+    frames: 8,
     sheetWidth: 2048,
     sheetHeight: 411,
-    renderWidth: 85,
-    intervalMs: 300,
+    renderWidth: 64,
+    intervalMs: 120,
     bottomOffsetPx: -5,
   },
   placeStone: {
@@ -112,9 +109,9 @@ const ROOTSMAN_SPRITES: AvatarSpriteSet = {
     frames: 6,
     sheetWidth: 2048,
     sheetHeight: 411,
-    renderWidth: 98,
+    renderWidth: 85,
     intervalMs: 320,
-    bottomOffsetPx: -8,
+    bottomOffsetPx: -5,
   },
   wave: {
     src: "/images/reward-maps/nehemiah-wall/sprites/rootsman_wave_sheet.png",
@@ -152,7 +149,7 @@ const ROOTSWOMAN_SPRITES: AvatarSpriteSet = {
     sheetWidth: 2172,
     sheetHeight: 724,
     renderWidth: 38,
-    intervalMs: 280,
+    intervalMs: 135,
   },
   pray: {
     src: "/images/reward-maps/peace-ark/sprites/rootswoman_pray_kneel_sheet.webp",
@@ -192,11 +189,11 @@ const ROOTSWOMAN_SPRITES: AvatarSpriteSet = {
   },
   carryStone: {
     src: "/images/reward-maps/nehemiah-wall/sprites/rootswoman_carry_stone_sheet.png",
-    frames: 6,
-    sheetWidth: 3600,
-    sheetHeight: 724,
-    renderWidth: 75,
-    intervalMs: 300,
+    frames: 8,
+    sheetWidth: 2048,
+    sheetHeight: 411,
+    renderWidth: 56,
+    intervalMs: 120,
     bottomOffsetPx: -1,
   },
   placeStone: {
@@ -204,9 +201,9 @@ const ROOTSWOMAN_SPRITES: AvatarSpriteSet = {
     frames: 6,
     sheetWidth: 3600,
     sheetHeight: 724,
-    renderWidth: 87,
+    renderWidth: 75,
     intervalMs: 320,
-    bottomOffsetPx: -4,
+    bottomOffsetPx: -1,
   },
   wave: {
     src: "/images/reward-maps/nehemiah-wall/sprites/rootswoman_wave_sheet.png",
@@ -294,7 +291,7 @@ function getMotionConfig(action: NehemiahWallActionKind, sprites: AvatarSpriteSe
       enterSprite: sprites.walk,
       actionSprite: sprites.hammer,
       exitSprite: sprites.walk,
-      actionLoops: 4,
+      actionLoops: 2,
     };
   }
 
@@ -344,16 +341,10 @@ export default function NehemiahWallAction({
   const sprites = normalizedAvatarType === "rootswoman" ? ROOTSWOMAN_SPRITES : ROOTSMAN_SPRITES;
   const config = getMotionConfig(action, sprites);
   const [phase, setPhase] = useState<Phase | null>(null);
-  const [frame, setFrame] = useState(0);
-  const [left, setLeft] = useState(ENTER_FROM);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [positionX, setPositionX] = useState(ENTER_FROM);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function clearAnimation() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
     timersRef.current.forEach(timer => clearTimeout(timer));
     timersRef.current = [];
   }
@@ -363,29 +354,17 @@ export default function NehemiahWallAction({
     timersRef.current.push(timer);
   }
 
-  function startFrames(sprite: SpriteSheet, loop: boolean) {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setFrame(0);
-    let tick = 0;
-    intervalRef.current = setInterval(() => {
-      tick += 1;
-      setFrame(loop ? tick % sprite.frames : Math.min(tick, sprite.frames - 1));
-    }, sprite.intervalMs);
-  }
-
   useEffect(() => {
     clearAnimation();
     setPhase(null);
-    setFrame(0);
-    setLeft(ENTER_FROM);
+    setPositionX(ENTER_FROM);
 
     if (!trigger) return () => clearAnimation();
 
     if (config.mode === "walkThrough") {
       const duration = config.walkThroughMs ?? WALK_THROUGH_MS;
       setPhase("enter");
-      startFrames(config.enterSprite, true);
-      schedule(() => setLeft(config.exitTo ?? EXIT_LEFT), 60);
+      schedule(() => setPositionX(config.exitTo ?? EXIT_LEFT), 60);
       schedule(() => {
         clearAnimation();
         setPhase(null);
@@ -404,27 +383,23 @@ export default function NehemiahWallAction({
     const actionMs = actionSprite.frames * actionSprite.intervalMs * actionLoops + (config.actionHoldMs ?? 0);
 
     setPhase("enter");
-    startFrames(config.enterSprite, true);
-    schedule(() => setLeft(ACTION_LEFT), 60);
+    schedule(() => setPositionX(ACTION_LEFT), 60);
 
     schedule(() => {
       setPhase("action");
-      setLeft(ACTION_LEFT);
-      startFrames(actionSprite, actionLoop);
+      setPositionX(ACTION_LEFT);
     }, enterMs);
 
     schedule(() => {
       setPhase("exit");
-      setFrame(0);
-      startFrames(exitSprite, true);
-      schedule(() => setLeft(config.exitTo ?? EXIT_RIGHT), 60);
+      setPositionX(ACTION_LEFT);
+      schedule(() => setPositionX(config.exitTo ?? EXIT_RIGHT), 60);
     }, enterMs + actionMs);
 
     schedule(() => {
       clearAnimation();
       setPhase(null);
-      setFrame(0);
-      setLeft(ENTER_FROM);
+      setPositionX(ENTER_FROM);
     }, enterMs + actionMs + exitMs + 160);
 
     return () => clearAnimation();
@@ -435,9 +410,6 @@ export default function NehemiahWallAction({
   }
 
   const sprite = phase === "enter" ? config.enterSprite : phase === "action" ? config.actionSprite! : config.exitSprite!;
-  const frameWidth = sprite.sheetWidth / sprite.frames;
-  const scale = sprite.renderWidth / frameWidth;
-  const renderHeight = Math.round(sprite.sheetHeight * scale);
   const moveDuration = config.mode === "walkThrough"
     ? config.walkThroughMs ?? WALK_THROUGH_MS
     : phase === "enter"
@@ -445,44 +417,99 @@ export default function NehemiahWallAction({
       : phase === "exit"
         ? config.exitMs ?? EXIT_MS
         : 0;
+  const actionLoops = Math.max(1, config.actionLoops ?? 1);
+  const actionLoop = config.actionLoop ?? actionLoops > 1;
+  const spriteLoop = phase === "action" ? actionLoop : true;
+  const spriteLoops = phase === "action" && actionLoop ? actionLoops : undefined;
+  const shouldFlip = phase === "exit" && (config.exitFlip ?? true);
+  const isStoneCarryEntry =
+    phase === "enter" && sprite.src === sprites.carryStone.src;
+  const isGenericMovingWalk =
+    phase !== "action" && sprite.src === sprites.walk.src;
+
+  if (isStoneCarryEntry) {
+    return (
+      <>
+        {showGuides && <MotionGuides />}
+        <NehemiahStoneCarryActor
+          sprite={sprite}
+          fromX={ENTER_FROM}
+          toX={ACTION_LEFT}
+          durationMs={moveDuration}
+          bottom={`calc(${GROUND_BOTTOM} + ${sprite.bottomOffsetPx ?? 0}px)`}
+          alt={normalizedAvatarType}
+        />
+      </>
+    );
+  }
+
+  if (isGenericMovingWalk) {
+    const fromX = config.mode === "walkThrough"
+      ? ENTER_FROM
+      : phase === "enter"
+        ? ENTER_FROM
+        : ACTION_LEFT;
+    const toX = config.mode === "walkThrough"
+      ? config.exitTo ?? EXIT_LEFT
+      : phase === "enter"
+        ? ACTION_LEFT
+        : config.exitTo ?? EXIT_RIGHT;
+
+    return (
+      <>
+        {showGuides && <MotionGuides />}
+        <RewardMapWalkActor
+          avatarType={normalizedAvatarType}
+          fromX={fromX}
+          toX={toX}
+          durationMs={moveDuration}
+          bottom={`calc(${GROUND_BOTTOM} + ${sprite.bottomOffsetPx ?? 0}px)`}
+          renderWidth={sprite.renderWidth}
+          flip={shouldFlip}
+          alt={normalizedAvatarType}
+        />
+      </>
+    );
+  }
 
   return (
     <>
       {showGuides && <MotionGuides />}
       <div
         data-nehemiah-phase={phase}
+        aria-hidden="true"
         style={{
           position: "absolute",
-          left,
-          bottom: `calc(${GROUND_BOTTOM} + ${sprite.bottomOffsetPx ?? 0}px)`,
-          width: sprite.renderWidth,
-          height: renderHeight,
-          overflow: "hidden",
-          transform: `translate3d(-50%, 0, 0)${phase === "exit" && (config.exitFlip ?? true) ? " scaleX(-1)" : ""}`,
-          transition: phase === "action" ? undefined : `left ${moveDuration}ms linear`,
+          inset: 0,
+          transform: `translate3d(${positionX}, 0, 0)`,
+          transition: phase === "action" ? undefined : `transform ${moveDuration}ms linear`,
           imageRendering: "pixelated",
           backfaceVisibility: "hidden",
-          willChange: "left, transform",
+          willChange: "transform",
           pointerEvents: "none",
           zIndex: 10,
         }}
       >
-        <img
-          src={sprite.src}
-          alt={normalizedAvatarType}
-          draggable={false}
+        <div
           style={{
             position: "absolute",
-            top: 0,
-            left: -frame * frameWidth * scale,
-            width: sprite.sheetWidth * scale,
-            height: sprite.sheetHeight * scale,
-            maxWidth: "none",
+            left: 0,
+            bottom: `calc(${GROUND_BOTTOM} + ${sprite.bottomOffsetPx ?? 0}px)`,
+            transform: `translate3d(-50%, 0, 0)${shouldFlip ? " scaleX(-1)" : ""}`,
+            transformOrigin: "center bottom",
             imageRendering: "pixelated",
-            userSelect: "none",
+            backfaceVisibility: "hidden",
             pointerEvents: "none",
           }}
-        />
+        >
+          <RewardMapSpritePlayer
+            key={`${phase}-${sprite.src}-${replayToken}`}
+            sprite={sprite}
+            alt={normalizedAvatarType}
+            loop={spriteLoop}
+            loops={spriteLoops}
+          />
+        </div>
       </div>
     </>
   );

@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import RewardMapSpritePlayer, { type RewardMapSpriteSheet } from "./RewardMapSpritePlayer";
+import RewardMapWalkActor from "./RewardMapWalkActor";
 import RootsMan from "./RootsMan";
 import NehemiahWallAction from "./NehemiahWallAction";
 import type { RewardMapActionKind } from "@/lib/rewardMaps";
@@ -13,15 +15,7 @@ interface RewardMapActionProps {
   nehemiahAction?: NehemiahWallActionKind;
 }
 
-type ArkSpriteSheet = {
-  src: string;
-  frames: number;
-  sheetWidth: number;
-  sheetHeight: number;
-  frameWidthPx?: number;
-  renderWidth: number;
-  intervalMs: number;
-};
+type ArkSpriteSheet = RewardMapSpriteSheet;
 
 type ArkMotionConfig = {
   enterFrom: string;
@@ -57,7 +51,7 @@ const ROOTSMAN_ARK_WALK_SPRITE: ArkSpriteSheet = {
   sheetWidth: 2172,
   sheetHeight: 724,
   renderWidth: 38,
-  intervalMs: 280,
+  intervalMs: 135,
 };
 
 const ROOTSMAN_ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
@@ -107,7 +101,7 @@ const ROOTSWOMAN_ARK_WALK_SPRITE: ArkSpriteSheet = {
   sheetWidth: 2172,
   sheetHeight: 724,
   renderWidth: 38,
-  intervalMs: 280,
+  intervalMs: 135,
 };
 
 const ROOTSWOMAN_ARK_CARRY_WOOD_SPRITE: ArkSpriteSheet = {
@@ -153,7 +147,7 @@ function makeDeckWalkSprite(walkSprite: ArkSpriteSheet): ArkSpriteSheet {
   return {
     ...walkSprite,
     renderWidth: 32,
-    intervalMs: 300,
+    intervalMs: 150,
   };
 }
 
@@ -198,7 +192,7 @@ function createArkMotionConfigs(sprites: ArkSpriteSet): Partial<Record<RewardMap
       bottom: "7%",
       enterMs: 4400,
       exitMs: 4000,
-      actionLoops: 4,
+      actionLoops: 2,
       enterSprite: sprites.walk,
       actionSprite: sprites.hammer,
       exitSprite: sprites.walk,
@@ -236,31 +230,23 @@ function createArkMotionConfigs(sprites: ArkSpriteSet): Partial<Record<RewardMap
 const ROOTSMAN_ARK_MOTION_CONFIGS = createArkMotionConfigs(ROOTSMAN_ARK_SPRITES);
 const ROOTSWOMAN_ARK_MOTION_CONFIGS = createArkMotionConfigs(ROOTSWOMAN_ARK_SPRITES);
 
-function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMotionConfig }) {
+function ArkSpriteAction({
+  trigger,
+  config,
+  avatarType,
+}: {
+  trigger: boolean;
+  config: ArkMotionConfig;
+  avatarType: RootsAvatarType;
+}) {
   const [phase, setPhase] = useState<ArkPhase | null>(null);
-  const [frame, setFrame] = useState(0);
-  const [left, setLeft] = useState(config.enterFrom);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [positionX, setPositionX] = useState(config.enterFrom);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasRunRef = useRef(false);
 
   function clearAnimationTimers() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
     timersRef.current.forEach((timer) => clearTimeout(timer));
     timersRef.current = [];
-  }
-
-  function startFrameLoop(sprite: ArkSpriteSheet, loop = true) {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    let tick = 0;
-    setFrame(0);
-    intervalRef.current = setInterval(() => {
-      tick += 1;
-      setFrame(loop ? tick % sprite.frames : Math.min(tick, sprite.frames - 1));
-    }, sprite.intervalMs);
   }
 
   function schedule(callback: () => void, delay: number) {
@@ -273,8 +259,7 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
       clearAnimationTimers();
       hasRunRef.current = false;
       setPhase(null);
-      setFrame(0);
-      setLeft(config.enterFrom);
+      setPositionX(config.enterFrom);
       return;
     }
 
@@ -285,28 +270,24 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
     const actionMs = config.actionPauseMs ?? config.actionSprite.frames * config.actionLoops * config.actionSprite.intervalMs;
 
     setPhase("enter");
-    setLeft(config.enterFrom);
-    startFrameLoop(config.enterSprite);
-    schedule(() => setLeft(config.actionLeft), 40);
+    setPositionX(config.enterFrom);
+    schedule(() => setPositionX(config.actionLeft), 40);
 
     schedule(() => {
       setPhase("action");
-      setLeft(config.actionLeft);
-      startFrameLoop(config.actionSprite, !config.actionPauseMs);
+      setPositionX(config.actionLeft);
     }, config.enterMs);
 
     schedule(() => {
       setPhase("exit");
-      setLeft(config.actionLeft);
-      startFrameLoop(config.exitSprite);
-      schedule(() => setLeft(config.exitTo), 40);
+      setPositionX(config.actionLeft);
+      schedule(() => setPositionX(config.exitTo), 40);
     }, config.enterMs + actionMs);
 
     schedule(() => {
       clearAnimationTimers();
       setPhase(null);
-      setFrame(0);
-      setLeft(config.enterFrom);
+      setPositionX(config.enterFrom);
       hasRunRef.current = false;
     }, config.enterMs + actionMs + config.exitMs + 120);
 
@@ -321,40 +302,65 @@ function ArkSpriteAction({ trigger, config }: { trigger: boolean; config: ArkMot
   if (!phase) return null;
 
   const sprite = phase === "enter" ? config.enterSprite : phase === "action" ? config.actionSprite : config.exitSprite;
-  const frameWidth = sprite.frameWidthPx ?? sprite.sheetWidth / sprite.frames;
-  const scale = sprite.renderWidth / frameWidth;
-  const renderHeight = Math.round(sprite.sheetHeight * scale);
-  const transition = phase === "action" ? undefined : `left ${phase === "enter" ? config.enterMs : config.exitMs}ms ease-in-out`;
   const shouldFlip = phase === "enter" ? config.enterFlip : phase === "action" ? config.actionFlip : config.exitFlip;
+  const actionLoops = Math.max(1, config.actionLoops);
+  const spriteLoops = phase === "action" && !config.actionPauseMs ? actionLoops : undefined;
+  const spriteLoop = phase !== "action" || !config.actionPauseMs;
+  const moveDuration = phase === "enter" ? config.enterMs : phase === "exit" ? config.exitMs : 0;
+  const isGenericMovingWalk =
+    phase !== "action" &&
+    (sprite.src.endsWith("/rootsman_walk_sheet.png") ||
+      sprite.src.endsWith("/rootswoman_walk_sheet.webp"));
+
+  if (isGenericMovingWalk) {
+    return (
+      <RewardMapWalkActor
+        avatarType={avatarType}
+        fromX={phase === "enter" ? config.enterFrom : config.actionLeft}
+        toX={phase === "enter" ? config.actionLeft : config.exitTo}
+        durationMs={moveDuration}
+        bottom={config.bottom}
+        renderWidth={sprite.renderWidth}
+        flip={Boolean(shouldFlip)}
+        alt="Roots"
+      />
+    );
+  }
 
   return (
     <div
+      aria-hidden="true"
       style={{
         position: "absolute",
-        left,
-        bottom: config.bottom,
-        transform: `translateX(-50%)${shouldFlip ? " scaleX(-1)" : ""}`,
-        transition,
-        width: sprite.renderWidth,
-        height: renderHeight,
-        overflow: "hidden",
-        imageRendering: "pixelated",
+        inset: 0,
+        transform: `translate3d(${positionX}, 0, 0)`,
+        transition: phase === "action" ? undefined : `transform ${moveDuration}ms linear`,
+        willChange: "transform",
+        backfaceVisibility: "hidden",
         zIndex: 10,
         pointerEvents: "none",
       }}
     >
-      <img
-        src={sprite.src}
-        alt="Rootsman"
+      <div
         style={{
           position: "absolute",
-          top: 0,
-          left: -frame * frameWidth * scale,
-          width: sprite.sheetWidth * scale,
-          height: sprite.sheetHeight * scale,
+          left: 0,
+          bottom: config.bottom,
+          transform: `translate3d(-50%, 0, 0)${shouldFlip ? " scaleX(-1)" : ""}`,
+          transformOrigin: "center bottom",
           imageRendering: "pixelated",
+          backfaceVisibility: "hidden",
+          pointerEvents: "none",
         }}
-      />
+      >
+        <RewardMapSpritePlayer
+          key={`${phase}-${sprite.src}`}
+          sprite={sprite}
+          alt="Roots"
+          loop={spriteLoop}
+          loops={spriteLoops}
+        />
+      </div>
     </div>
   );
 }
@@ -371,5 +377,5 @@ export default function RewardMapAction({ trigger, action, avatarType, nehemiahA
   const config = configs[action];
 
   if (!config) return null;
-  return <ArkSpriteAction trigger={trigger} config={config} />;
+  return <ArkSpriteAction trigger={trigger} config={config} avatarType={normalizedAvatarType} />;
 }
