@@ -27,7 +27,6 @@ const stoneCarryActor = read("components/NehemiahStoneCarryActor.tsx");
 const home = read("app/page.tsx");
 const rootsPopup = read("components/RootsManPopup.tsx");
 const stagePopup = read("components/GardenUpdatePopup.tsx");
-const preview = read("components/NehemiahWallPreview.tsx");
 
 const expectedStages = [
   [1, 1, 7, "pray"],
@@ -99,7 +98,8 @@ check("TreeGrowth uses localized Nehemiah labels/descriptions", treeGrowth.inclu
 check("TreeGrowth passes the exact Nehemiah action to RewardMapAction", treeGrowth.includes("nehemiahAction={nehemiahAction}"));
 check("RewardMapAction delegates Nehemiah motion to NehemiahWallAction", rewardAction.includes('action === "nehemiah"') && rewardAction.includes("<NehemiahWallAction"));
 check("Future journey card uses a neutral placeholder instead of a Garden image", treeGrowth.includes('cycle.kind === "futureJourney" || cycle.kind === "futureMap"') && treeGrowth.includes("roots-logo-transparent-160.png"));
-check("Dev preview includes the actual TreeGrowth production renderer", preview.includes("<TreeGrowth") && preview.includes("days={200 + normalizedDay}"));
+check("Nehemiah dev preview component is removed", !exists("components/NehemiahWallPreview.tsx"));
+check("Nehemiah dev preview route is removed", !exists("app/dev/nehemiah-map-preview/page.tsx"));
 
 console.log("\nMotion invariants");
 check("Approved Garden walk frames remain the generic walk source", walkActor.includes("garden/sprites/frames") && walkActor.includes("walk_${frame}.webp"));
