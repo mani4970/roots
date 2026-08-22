@@ -24,6 +24,7 @@ const SQUARE_CHARACTER_RENDER_TOP_PERCENT =
   (100 - SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT) / 2;
 const SQUARE_CHARACTER_RENDER_LEFT_PERCENT =
   (100 - SQUARE_CHARACTER_RENDER_WIDTH_PERCENT) / 2;
+const JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT = -8;
 
 const PET_LAYER_SCALE = 1.2;
 const PET_LAYER_SHIFT_X = 65;
@@ -76,9 +77,10 @@ export default function ProfileCharacterPreview({
   const backgroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0);
   const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const hasSquareBackground = backgroundLayers.some(layer => layer.slot === "background");
+  const hasJesusPhotoBackground = backgroundLayers.some(layer => layer.id === "shared_background_15");
   const characterLayerStyle: CSSProperties = hasSquareBackground
     ? {
-      left: `${SQUARE_CHARACTER_RENDER_LEFT_PERCENT}%`,
+      left: `${hasJesusPhotoBackground ? JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT : SQUARE_CHARACTER_RENDER_LEFT_PERCENT}%`,
       top: `${SQUARE_CHARACTER_RENDER_TOP_PERCENT}%`,
       width: `${SQUARE_CHARACTER_RENDER_WIDTH_PERCENT}%`,
       height: `${SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT}%`,

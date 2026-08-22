@@ -115,6 +115,14 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
   },
 };
 
+const CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES: Partial<
+  Record<HeartShopCharacterItemId, CharacterItemPreviewCrop>
+> = {
+  // Yeolmu is a flying pet and sits much higher on the shared 1086×1448 canvas
+  // than the ground pets, so the generic pet crop would show an empty tile.
+  shared_pet_07: { x: 690, y: 570, width: 330, height: 290 },
+};
+
 function CharacterItemLayerPreview({
   item,
   alt,
@@ -153,9 +161,10 @@ function CharacterItemLayerPreview({
     );
   }
 
-  const crop = item.avatarType === "shared"
-    ? CHARACTER_ITEM_PREVIEW_CROP.rootsman[item.slot]
-    : CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot];
+  const crop = CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES[item.id]
+    ?? (item.avatarType === "shared"
+      ? CHARACTER_ITEM_PREVIEW_CROP.rootsman[item.slot]
+      : CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot]);
   return (
     <div
       style={{

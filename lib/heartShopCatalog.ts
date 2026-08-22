@@ -71,7 +71,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 682,
     intervalMs: 390,
     sortOrder: 20,
-    isBest: true,
     mapKinds: GARDEN_AND_ARK,
   },
   {
@@ -130,7 +129,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "nabi",
     category: "map",
     price: 40,
-    isNew: true,
     previewPath: "/images/heart-shop/previews/nabi.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/nabi.png",
     frameCount: 6,
@@ -144,7 +142,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "kkangchongi",
     category: "map",
     price: 60,
-    isNew: true,
     previewPath: "/images/heart-shop/previews/kkangchongi.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/kkangchongi.png",
     frameCount: 8,
@@ -158,7 +155,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "salgeumi",
     category: "map",
     price: 25,
-    isNew: true,
     previewPath: "/images/heart-shop/previews/salgeumi.webp",
     sourceSpriteSheetPath: "/images/heart-shop/source-sprites/salgeumi.png",
     frameCount: 6,
@@ -172,7 +168,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "ark_supplies",
     category: "map",
     price: 40,
-    isNew: true,
     previewPath: "/images/reward-maps/peace-ark/static-items/ark-supplies.webp",
     sourceSpriteSheetPath: "/images/reward-maps/peace-ark/static-items/ark-supplies.webp",
     frameCount: 1,
@@ -186,7 +181,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "ark_workbench",
     category: "map",
     price: 40,
-    isNew: true,
     previewPath: "/images/reward-maps/peace-ark/static-items/ark-workbench.webp",
     sourceSpriteSheetPath: "/images/reward-maps/peace-ark/static-items/ark-workbench.webp",
     frameCount: 1,
@@ -200,7 +194,6 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     id: "ark_lantern",
     category: "map",
     price: 40,
-    isNew: true,
     previewPath: "/images/reward-maps/peace-ark/static-items/ark-lantern.webp",
     sourceSpriteSheetPath: "/images/reward-maps/peace-ark/static-items/ark-lantern.webp",
     frameCount: 1,
@@ -233,13 +226,20 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
 export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
 export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260809_v3";
+export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 
 // Existing character assets stay on their current PNG paths. Register every new
 // Love Shop character asset here as WebP so future additions do not need a path
 // generator rewrite. Transparent character layers should use lossless WebP.
 const HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES: Partial<
   Record<HeartShopCharacterItemId, "webp">
-> = {};
+> = {
+  shared_background_15: "webp",
+  shared_background_16: "webp",
+  shared_pet_05: "webp",
+  shared_pet_06: "webp",
+  shared_pet_07: "webp",
+};
 
 function getCharacterAssetExtension(
   itemId: HeartShopCharacterItemId,
@@ -274,30 +274,19 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isLatestRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 15 && itemNumber <= 18;
   const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
   const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
-  const isNewTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
-  const isNewShoes = slot === "shoes" && itemNumber >= 5 && itemNumber <= 8;
-  const isNewPet = slot === "pet";
+  const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
+  const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 16;
+  const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
   const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom;
-  const newPriority = isLatestRootsWomanBottom
-    ? 600
-    : isLatestRootsWomanTop || isNewRootsmanClothing
-      ? 500
-      : isExistingNewRootsWomanTop
-        ? 400
-        : isNewPet
-          ? 300
-          : isNewShoes
-            ? 200
-            : isNewTravelBackground
-              ? 100
-              : 0;
+  const isNew = isLatestProfileBackground || isLatestPet;
+  const newPriority = isLatestProfileBackground ? 1100 : isLatestPet ? 1000 : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const assetExtension = getCharacterAssetExtension(itemId);
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
   const characterLayerPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
   const layerPath = avatarType === "shared"
     ? slot === "background"
-      ? `${sharedLayerPath}?v=${isNewTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
+      ? `${sharedLayerPath}?v=${isLatestProfileBackground ? HEART_SHOP_LATEST_PROFILE_ASSET_VERSION : isTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
       : sharedLayerPath
     : isLatestClothingAsset
       ? `${characterLayerPath}?v=${HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION}`
@@ -308,8 +297,14 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     category: "character",
     avatarType,
     slot,
-    price: isRootsWomanDress ? 50 : config.price,
-    isNew: isNewTravelBackground || isNewShoes || isNewRootsmanClothing || isExistingNewRootsWomanTop || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewPet,
+    price: itemId === "shared_background_15"
+      ? 300
+      : itemId === "shared_pet_07"
+        ? 100
+        : isRootsWomanDress
+          ? 50
+          : config.price,
+    isNew,
     newPriority,
     layerPath,
     zIndex: config.zIndex,
