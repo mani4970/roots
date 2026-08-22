@@ -71,6 +71,7 @@ export type HeartShopText = {
   mapSelectorLabel: string;
   gardenMapLabel: string;
   peaceArkMapLabel: string;
+  nehemiahMapLabel: string;
   peaceArkComingSoonTitle: string;
   peaceArkComingSoonBody: string;
   items: Record<HeartShopMapItemId, HeartShopItemText>;
@@ -132,6 +133,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     mapSelectorLabel: "꾸밀 맵 선택",
     gardenMapLabel: "사랑의 정원",
     peaceArkMapLabel: "화평의 방주",
+    nehemiahMapLabel: "희락의 성읍",
     peaceArkComingSoonTitle: "화평의 방주 아이템 준비 중",
     peaceArkComingSoonBody: "방주 여정에 어울리는 새로운 친구들이 곧 찾아올 거예요.",
     items: {
@@ -288,6 +290,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     mapSelectorLabel: "Choose a map to decorate",
     gardenMapLabel: "Garden of Love",
     peaceArkMapLabel: "Ark of Peace",
+    nehemiahMapLabel: "City of Joy",
     peaceArkComingSoonTitle: "Ark of Peace items are coming",
     peaceArkComingSoonBody: "New friends for the ark journey will arrive soon.",
     items: {
@@ -444,6 +447,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     mapSelectorLabel: "Karte zum Gestalten auswählen",
     gardenMapLabel: "Garten der Liebe",
     peaceArkMapLabel: "Arche des Friedens",
+    nehemiahMapLabel: "Stadt der Freude",
     peaceArkComingSoonTitle: "Items für die Arche des Friedens kommen bald",
     peaceArkComingSoonBody: "Neue Freunde für die Reise mit der Arche sind in Vorbereitung.",
     items: {
@@ -600,6 +604,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     mapSelectorLabel: "Choisir la carte à décorer",
     gardenMapLabel: "Jardin de l’amour",
     peaceArkMapLabel: "Arche de paix",
+    nehemiahMapLabel: "Cité de la joie",
     peaceArkComingSoonTitle: "Les objets pour l’Arche de paix arrivent bientôt",
     peaceArkComingSoonBody: "De nouveaux amis pour le voyage de l’arche sont en préparation.",
     items: {
@@ -757,6 +762,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     mapSelectorLabel: "Elige el mapa que quieres decorar",
     gardenMapLabel: "Jardín del Amor",
     peaceArkMapLabel: "Arca de la Paz",
+    nehemiahMapLabel: "Ciudad de la Alegría",
     peaceArkComingSoonTitle: "Próximamente: objetos del Arca de la Paz",
     peaceArkComingSoonBody: "Muy pronto llegarán nuevos amigos para el camino del arca.",
     items: {

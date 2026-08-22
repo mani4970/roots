@@ -44,7 +44,7 @@ export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
 
 export type HeartShopCatalogItem = HeartShopMapCatalogItem | HeartShopCharacterCatalogItem;
 
-const GARDEN_AND_ARK = ["garden", "peaceArk"] as const satisfies readonly RewardMapKind[];
+const GENERAL_REWARD_MAPS = ["garden", "peaceArk", "nehemiahWall"] as const satisfies readonly RewardMapKind[];
 
 export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
   {
@@ -58,7 +58,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 512,
     intervalMs: 170,
     sortOrder: 10,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "hindungi",
@@ -71,7 +71,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 682,
     intervalMs: 390,
     sortOrder: 20,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "choko",
@@ -84,7 +84,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 512,
     intervalMs: 380,
     sortOrder: 30,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "kkumdeuli",
@@ -97,7 +97,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 512,
     intervalMs: 360,
     sortOrder: 40,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "bamtoli",
@@ -110,7 +110,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 682,
     intervalMs: 520,
     sortOrder: 50,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "mongsili",
@@ -123,7 +123,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 682,
     intervalMs: 540,
     sortOrder: 60,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "nabi",
@@ -136,7 +136,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 264,
     intervalMs: 180,
     sortOrder: 70,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "kkangchongi",
@@ -149,7 +149,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 200,
     intervalMs: 155,
     sortOrder: 80,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "salgeumi",
@@ -162,7 +162,7 @@ export const HEART_SHOP_MAP_CATALOG: readonly HeartShopMapCatalogItem[] = [
     sheetHeight: 160,
     intervalMs: 620,
     sortOrder: 90,
-    mapKinds: GARDEN_AND_ARK,
+    mapKinds: GENERAL_REWARD_MAPS,
   },
   {
     id: "ark_supplies",

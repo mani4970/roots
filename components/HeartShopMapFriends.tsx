@@ -55,8 +55,21 @@ function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
   };
 }
 
+const NEHEMIAH_GROUND_PLACEMENTS: GroundFriendPlacements = {
+  // Keep ground friends on the left half of the Nehemiah map so they do not
+  // occupy the action lane where the Roots character enters from the right
+  // and stops around 57%.
+  hindungi: { left: "3%", bottom: "1%", renderWidth: 48 },
+  choko: { left: "19%", bottom: "7%", renderWidth: 50 },
+  kkumdeuli: { left: "36%", bottom: "10%", renderWidth: 33 },
+  bamtoli: { left: "7%", bottom: "calc(23% - 14px)", renderWidth: 29 },
+  mongsili: { left: "25%", bottom: "calc(23% - 12px)", renderWidth: 27 },
+};
+
 function getGroundPlacements(mapKind: RewardMapKind, stageNumber: number) {
-  return mapKind === "peaceArk" ? getArkGroundPlacements(stageNumber) : GARDEN_GROUND_PLACEMENTS;
+  if (mapKind === "peaceArk") return getArkGroundPlacements(stageNumber);
+  if (mapKind === "nehemiahWall") return NEHEMIAH_GROUND_PLACEMENTS;
+  return GARDEN_GROUND_PLACEMENTS;
 }
 
 function getMotionClassName(itemId: HeartShopMapItemId) {
@@ -80,15 +93,16 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
   if (visible.size === 0) return null;
 
   const placements = getGroundPlacements(mapKind, stageNumber);
-  const birdRenderWidth = mapKind === "peaceArk" ? 43 : 46;
-  const butterflyRenderWidth = mapKind === "peaceArk" ? 17 : 18;
-  const rabbitRenderWidth = mapKind === "peaceArk" ? 30 : 33;
-  const snailRenderWidth = mapKind === "peaceArk" ? 28 : 30;
+  const compactMap = mapKind === "peaceArk" || mapKind === "nehemiahWall";
+  const birdRenderWidth = compactMap ? 43 : 46;
+  const butterflyRenderWidth = compactMap ? 17 : 18;
+  const rabbitRenderWidth = compactMap ? 30 : 33;
+  const snailRenderWidth = compactMap ? 28 : 30;
   // Hindungi's source sheet contains transparent space below its paws. These
   // offsets put Kkangchongi's standing frames on the same visible ground line
   // while keeping its existing right-side play area unchanged.
-  const rabbitBottom = mapKind === "peaceArk" ? "calc(1% + 17px)" : "calc(1% + 18px)";
-  const snailBottom = mapKind === "peaceArk" ? "1%" : "3%";
+  const rabbitBottom = compactMap ? "calc(1% + 17px)" : "calc(1% + 18px)";
+  const snailBottom = mapKind === "peaceArk" ? "1%" : mapKind === "nehemiahWall" ? "2%" : "3%";
 
   return (
     <div
@@ -148,6 +162,20 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
           will-change: left, transform;
         }
 
+        @keyframes roots-heart-shop-rabbit-travel-nehemiah {
+          0%   { left: 5%; transform: scaleX(1); }
+          42%  { left: 40%; transform: scaleX(1); }
+          48%  { left: 40%; transform: scaleX(1); }
+          50%  { left: 40%; transform: scaleX(-1); }
+          92%  { left: 5%; transform: scaleX(-1); }
+          98%  { left: 5%; transform: scaleX(-1); }
+          100% { left: 5%; transform: scaleX(1); }
+        }
+        .roots-heart-shop-rabbit-travel-nehemiah {
+          animation: roots-heart-shop-rabbit-travel-nehemiah 16s linear infinite;
+          will-change: left, transform;
+        }
+
         @keyframes roots-heart-shop-snail-travel {
           0%   { left: -18%; transform: scaleX(1); }
           47%  { left: 112%; transform: scaleX(1); }
@@ -157,6 +185,18 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
         }
         .roots-heart-shop-snail-travel {
           animation: roots-heart-shop-snail-travel 68s linear infinite;
+          will-change: left, transform;
+        }
+
+        @keyframes roots-heart-shop-snail-travel-nehemiah {
+          0%   { left: -18%; transform: scaleX(1); }
+          47%  { left: 48%; transform: scaleX(1); }
+          50%  { left: 48%; transform: scaleX(-1); }
+          97%  { left: -18%; transform: scaleX(-1); }
+          100% { left: -18%; transform: scaleX(1); }
+        }
+        .roots-heart-shop-snail-travel-nehemiah {
+          animation: roots-heart-shop-snail-travel-nehemiah 68s linear infinite;
           will-change: left, transform;
         }
 
@@ -198,9 +238,19 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
             left: 68% !important;
             transform: none !important;
           }
+          .roots-heart-shop-rabbit-travel-nehemiah {
+            animation: none;
+            left: 32% !important;
+            transform: none !important;
+          }
           .roots-heart-shop-snail-travel {
             animation: none;
             left: 45% !important;
+            transform: none !important;
+          }
+          .roots-heart-shop-snail-travel-nehemiah {
+            animation: none;
+            left: 30% !important;
             transform: none !important;
           }
           .roots-heart-shop-dog-drift,
@@ -231,7 +281,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
 
       {visible.has("kkangchongi") && (
         <div
-          className="roots-heart-shop-rabbit-travel"
+          className={mapKind === "nehemiahWall" ? "roots-heart-shop-rabbit-travel-nehemiah" : "roots-heart-shop-rabbit-travel"}
           style={{ position: "absolute", bottom: rabbitBottom }}
         >
           <HeartShopFriendSprite itemId="kkangchongi" renderWidth={rabbitRenderWidth} />
@@ -240,7 +290,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
 
       {visible.has("salgeumi") && (
         <div
-          className="roots-heart-shop-snail-travel"
+          className={mapKind === "nehemiahWall" ? "roots-heart-shop-snail-travel-nehemiah" : "roots-heart-shop-snail-travel"}
           style={{ position: "absolute", bottom: snailBottom }}
         >
           <HeartShopFriendSprite itemId="salgeumi" renderWidth={snailRenderWidth} />

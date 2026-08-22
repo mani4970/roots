@@ -55,7 +55,7 @@ type HeartShopModalProps = {
 };
 
 type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
-type HeartShopMapSection = "garden" | "peaceArk";
+type HeartShopMapSection = "garden" | "peaceArk" | "nehemiahWall";
 type HeartShopOwnedSection = "map" | "character";
 
 const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartShopCharacterSlot>> = {
@@ -251,7 +251,7 @@ export default function HeartShopModal({
 }: HeartShopModalProps) {
   const text = useMemo(() => getHeartShopText(lang), [lang]);
   const profileText = useMemo(() => getProfileCharacterText(lang), [lang]);
-  const [activeTab, setActiveTab] = useState<HeartShopTab>("map");
+  const [activeTab, setActiveTab] = useState<HeartShopTab>("character");
   const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>("garden");
   const [activeCharacterCategory, setActiveCharacterCategory] = useState<ProfileCharacterCategory>("all");
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
@@ -451,7 +451,7 @@ export default function HeartShopModal({
     if (!show) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    setActiveTab("map");
+    setActiveTab("character");
     setActiveMapSection("garden");
     setActiveCharacterCategory("all");
     setActiveOwnedSection("character");
@@ -581,8 +581,8 @@ export default function HeartShopModal({
   if (!show) return null;
 
   const tabs: { id: HeartShopTab; label: string }[] = [
-    { id: "map", label: text.mapTab },
     { id: "character", label: text.characterTab },
+    { id: "map", label: text.mapTab },
     { id: "owned", label: text.ownedTab },
   ];
   const characterCategories: { id: ProfileCharacterCategory; label: string }[] = [
@@ -674,12 +674,54 @@ export default function HeartShopModal({
 
           {activeTab === "map" && (
             <section>
-              <div role="tablist" aria-label={text.mapSelectorLabel} style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 6, padding: 4, marginBottom: 14, borderRadius: 16, background: "rgba(122,157,122,.07)", border: "1px solid rgba(122,157,122,.2)" }}>
-                {(["garden", "peaceArk"] as const).map(section => {
+              <div
+                role="tablist"
+                aria-label={text.mapSelectorLabel}
+                style={{
+                  display: "flex",
+                  gap: 7,
+                  overflowX: "auto",
+                  padding: 4,
+                  marginBottom: 14,
+                  borderRadius: 16,
+                  background: "rgba(122,157,122,.07)",
+                  border: "1px solid rgba(122,157,122,.2)",
+                  scrollSnapType: "x proximity",
+                  scrollbarWidth: "none",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {(["garden", "peaceArk", "nehemiahWall"] as const).map(section => {
                   const active = activeMapSection === section;
+                  const label = section === "garden"
+                    ? text.gardenMapLabel
+                    : section === "peaceArk"
+                      ? text.peaceArkMapLabel
+                      : text.nehemiahMapLabel;
                   return (
-                    <button key={section} type="button" role="tab" aria-selected={active} onClick={() => setActiveMapSection(section)} style={{ minHeight: 42, padding: "8px 7px", borderRadius: 13, border: active ? "1px solid rgba(122,157,122,.34)" : "1px solid transparent", background: active ? "rgba(122,157,122,.14)" : "transparent", color: active ? "var(--sage-dark)" : "var(--text2)", fontSize: 11.5, fontWeight: 900, cursor: "pointer" }}>
-                      {section === "garden" ? text.gardenMapLabel : text.peaceArkMapLabel}
+                    <button
+                      key={section}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveMapSection(section)}
+                      style={{
+                        flex: "0 0 auto",
+                        minWidth: 128,
+                        minHeight: 42,
+                        padding: "8px 12px",
+                        borderRadius: 13,
+                        border: active ? "1px solid rgba(122,157,122,.34)" : "1px solid transparent",
+                        background: active ? "rgba(122,157,122,.14)" : "transparent",
+                        color: active ? "var(--sage-dark)" : "var(--text2)",
+                        fontSize: 11.5,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        scrollSnapAlign: "start",
+                      }}
+                    >
+                      {label}
                     </button>
                   );
                 })}
