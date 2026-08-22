@@ -236,6 +236,9 @@ const HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES: Partial<
 > = {
   shared_background_15: "webp",
   shared_background_16: "webp",
+  shared_background_17: "webp",
+  shared_background_18: "webp",
+  shared_background_19: "webp",
   shared_pet_05: "webp",
   shared_pet_06: "webp",
   shared_pet_07: "webp",
@@ -275,11 +278,22 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
   const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
   const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
-  const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 16;
+  const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 19;
   const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
   const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom;
   const isNew = isLatestProfileBackground || isLatestPet;
-  const newPriority = isLatestProfileBackground ? 1100 : isLatestPet ? 1000 : 0;
+  const latestBackgroundPriority = itemId === "shared_background_17"
+    ? 1300
+    : itemId === "shared_background_15"
+      ? 1200
+      : itemId === "shared_background_18"
+        ? 1150
+        : itemId === "shared_background_19"
+          ? 1140
+          : itemId === "shared_background_16"
+            ? 1130
+            : 0;
+  const newPriority = isLatestProfileBackground ? latestBackgroundPriority : isLatestPet ? 1000 : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const assetExtension = getCharacterAssetExtension(itemId);
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
@@ -299,7 +313,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     slot,
     price: itemId === "shared_background_15"
       ? 300
-      : itemId === "shared_pet_07"
+      : itemId === "shared_background_17"
+        ? 100
+        : itemId === "shared_pet_07"
         ? 100
         : isRootsWomanDress
           ? 50

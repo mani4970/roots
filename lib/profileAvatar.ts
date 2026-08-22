@@ -110,7 +110,7 @@ function getSquareProfileBackgroundAsset(layerId: string) {
   if (!match) return null;
 
   const itemNumber = Number(match[1]);
-  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 16;
+  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 19;
   const isTravelBackground = itemNumber >= 11 && itemNumber <= 14;
   const extension = isLatestWebpBackground ? "webp" : "png";
   const version = isLatestWebpBackground
