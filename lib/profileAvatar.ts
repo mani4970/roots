@@ -1,6 +1,8 @@
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import {
+  HEART_SHOP_LATEST_PROFILE_ASSET_VERSION,
   HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION,
+  HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION,
   getProfileCharacterLayersForItemIds,
 } from "@/lib/heartShopCatalog";
 import type { HeartShopItemId } from "@/lib/heartShopItems";
@@ -22,12 +24,11 @@ type SaveProfileAvatarDisplayOptions = {
 
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260722_v1";
 const PROFILE_CHARACTER_PET_LAYOUT_VERSION = "20260808_v1";
-const PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION =
-  HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
 const PROFILE_CHARACTER_AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
   "/images/heart-shop/character/shared/profile-backgrounds";
+const JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT = -8;
 
 // Keep these values aligned with ProfileCharacterPreview so the saved square
 // avatar matches the live character preview exactly.
@@ -104,11 +105,24 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-function getSquareProfileBackgroundSrc(layerId: string) {
+function getSquareProfileBackgroundAsset(layerId: string) {
   const match = /^shared_background_(\d{2})$/.exec(layerId);
-  return match
-    ? `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.png?v=${PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION}`
-    : null;
+  if (!match) return null;
+
+  const itemNumber = Number(match[1]);
+  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 16;
+  const isTravelBackground = itemNumber >= 11 && itemNumber <= 14;
+  const extension = isLatestWebpBackground ? "webp" : "png";
+  const version = isLatestWebpBackground
+    ? HEART_SHOP_LATEST_PROFILE_ASSET_VERSION
+    : isTravelBackground
+      ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION
+      : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
+
+  return {
+    src: `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.${extension}?v=${version}`,
+    version,
+  };
 }
 
 export function getProfileCharacterAvatarSignature(
@@ -119,13 +133,15 @@ export function getProfileCharacterAvatarSignature(
   const layers = getProfileCharacterLayersForItemIds(itemIds, normalizedAvatarType)
     .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10));
   const layerIds = layers.map(layer => layer.id).sort();
-  const hasSquareProfileBackground = layers.some(
-    layer => (layer.zIndex ?? 10) < 0 && getSquareProfileBackgroundSrc(layer.id),
-  );
+  const squareBackgroundAsset = layers
+    .filter(layer => (layer.zIndex ?? 10) < 0)
+    .map(layer => getSquareProfileBackgroundAsset(layer.id))
+    .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
+    .at(-1) ?? null;
   const hasPetLayer = layers.some(layer => layer.slot === "pet");
   const assetVersion = [
     PROFILE_CHARACTER_AVATAR_ASSET_VERSION,
-    ...(hasSquareProfileBackground ? [PROFILE_CHARACTER_SQUARE_BACKGROUND_ASSET_VERSION] : []),
+    ...(squareBackgroundAsset ? [squareBackgroundAsset.version] : []),
     ...(hasPetLayer ? [PROFILE_CHARACTER_PET_LAYOUT_VERSION] : []),
   ].join(":");
   return [assetVersion, normalizedAvatarType, ...layerIds].join(":");
@@ -145,11 +161,11 @@ export async function createProfileCharacterAvatarBlob(
   const backgroundLayers = layers.filter(layer => (layer.zIndex ?? 10) < 0);
   const foregroundLayers = layers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const selectedBackgroundLayer = backgroundLayers[backgroundLayers.length - 1] ?? null;
-  const squareBackgroundSrc = selectedBackgroundLayer
-    ? getSquareProfileBackgroundSrc(selectedBackgroundLayer.id)
+  const squareBackgroundAsset = selectedBackgroundLayer
+    ? getSquareProfileBackgroundAsset(selectedBackgroundLayer.id)
     : null;
   const [squareBackgroundImage, characterImages] = await Promise.all([
-    squareBackgroundSrc ? loadImage(squareBackgroundSrc) : Promise.resolve(null),
+    squareBackgroundAsset ? loadImage(squareBackgroundAsset.src) : Promise.resolve(null),
     Promise.all([
       getProfileCharacterBaseImageSrc(normalizedAvatarType),
       ...foregroundLayers.map(layer => layer.src),
@@ -208,9 +224,12 @@ export async function createProfileCharacterAvatarBlob(
 
   const renderHeight = 620;
   const renderWidth = renderHeight * (PROFILE_CHARACTER_CANVAS.width / PROFILE_CHARACTER_CANVAS.height);
+  const renderLeft = selectedBackgroundLayer?.id === "shared_background_15"
+    ? (JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT / 100) * PROFILE_AVATAR_OUTPUT_SIZE
+    : (PROFILE_AVATAR_OUTPUT_SIZE - renderWidth) / 2;
   outputContext.drawImage(
     characterCanvas,
-    (PROFILE_AVATAR_OUTPUT_SIZE - renderWidth) / 2,
+    renderLeft,
     10,
     renderWidth,
     renderHeight,
