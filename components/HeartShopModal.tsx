@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Loader2, PackageOpen, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, PackageOpen, RotateCcw } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
+import HeartShopMapPreview from "@/components/HeartShopMapPreview";
+import HeartShopToggleSwitch from "@/components/HeartShopToggleSwitch";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { Lang } from "@/lib/i18n";
 import { getRootsAvatarLabel, type RootsAvatarType } from "@/lib/avatar";
@@ -29,6 +31,7 @@ import {
   type HeartShopCharacterSlot,
   type HeartShopCharacterItemId,
   type HeartShopItemId,
+  isHeartShopMapItemId,
   isHeartShopPeaceArkStaticItemId,
   type HeartShopMapItemId,
 } from "@/lib/heartShopItems";
@@ -42,12 +45,14 @@ import {
   getProfileCharacterText,
   type ProfileCharacterCategory,
 } from "@/lib/profileCharacterText";
+import { getVisibleRewardMapCycles } from "@/lib/rewardMaps";
 
 type HeartShopModalProps = {
   show: boolean;
   lang: Lang | string;
   heartBalance: number;
   avatarType: RootsAvatarType;
+  totalDays?: number;
   peaceArkStageNumber?: number | null;
   onHeartBalanceChange?: (balance: number) => void;
   onOwnedItemsChange?: (items: OwnedHeartShopItem[]) => void;
@@ -57,6 +62,21 @@ type HeartShopModalProps = {
 type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
 type HeartShopMapSection = "garden" | "peaceArk" | "nehemiahWall";
 type HeartShopOwnedSection = "map" | "character";
+
+const MAP_OPTIONS: readonly {
+  id: HeartShopMapSection;
+  unlockDay: number;
+}[] = [
+  { id: "garden", unlockDay: 1 },
+  { id: "peaceArk", unlockDay: 101 },
+  { id: "nehemiahWall", unlockDay: 201 },
+] as const;
+
+function getDefaultMapSection(totalDays: number): HeartShopMapSection {
+  if (totalDays >= 201) return "nehemiahWall";
+  if (totalDays >= 101) return "peaceArk";
+  return "garden";
+}
 
 const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartShopCharacterSlot>> = {
   backgrounds: "background",
@@ -196,54 +216,12 @@ function CharacterItemLayerPreview({
   );
 }
 
-function ToggleButton({
-  enabled,
-  loading,
-  enabledLabel,
-  disabledLabel,
-  onClick,
-}: {
-  enabled: boolean;
-  loading: boolean;
-  enabledLabel: string;
-  disabledLabel: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      onClick={onClick}
-      disabled={loading}
-      style={{
-        width: 66,
-        height: 34,
-        padding: 3,
-        borderRadius: 999,
-        border: enabled ? "1px solid rgba(122,157,122,0.42)" : "1px solid var(--border)",
-        background: enabled ? "var(--heart-shop-action)" : "var(--bg3)",
-        color: enabled ? "var(--heart-shop-on-action)" : "var(--heart-shop-muted-text)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        fontSize: 10.5,
-        fontWeight: 950,
-        cursor: loading ? "default" : "pointer",
-        opacity: loading ? 0.65 : 1,
-      }}
-    >
-      {loading ? <Loader2 size={14} className="spin" /> : (enabled ? enabledLabel : disabledLabel)}
-    </button>
-  );
-}
-
 export default function HeartShopModal({
   show,
   lang,
   heartBalance,
   avatarType,
+  totalDays = 0,
   peaceArkStageNumber = null,
   onHeartBalanceChange,
   onOwnedItemsChange,
@@ -252,7 +230,7 @@ export default function HeartShopModal({
   const text = useMemo(() => getHeartShopText(lang), [lang]);
   const profileText = useMemo(() => getProfileCharacterText(lang), [lang]);
   const [activeTab, setActiveTab] = useState<HeartShopTab>("character");
-  const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>("garden");
+  const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>(() => getDefaultMapSection(totalDays));
   const [activeCharacterCategory, setActiveCharacterCategory] = useState<ProfileCharacterCategory>("all");
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
   const [outfitPreviewItemIds, setOutfitPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
@@ -276,6 +254,20 @@ export default function HeartShopModal({
     () => ownedItems.filter(item => item.isEnabled).map(item => item.itemId),
     [ownedItems],
   );
+  const enabledMapItemIds = useMemo(
+    () => enabledItemIds.filter(isHeartShopMapItemId),
+    [enabledItemIds],
+  );
+  const normalizedTotalDays = Math.max(0, Math.floor(totalDays || 0));
+  const visibleMapCycles = useMemo(
+    () => getVisibleRewardMapCycles(normalizedTotalDays),
+    [normalizedTotalDays],
+  );
+  const unlockedMapSections = useMemo(
+    () => new Set(visibleMapCycles.map(cycle => cycle.kind)),
+    [visibleMapCycles],
+  );
+  const activeMapCycle = visibleMapCycles.find(cycle => cycle.kind === activeMapSection) ?? null;
   const currentLayers = useMemo(
     () => getProfileCharacterLayersForItemIds(enabledItemIds, avatarType),
     [avatarType, enabledItemIds],
@@ -452,7 +444,7 @@ export default function HeartShopModal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setActiveTab("character");
-    setActiveMapSection("garden");
+    setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
     setActiveCharacterCategory("all");
     setActiveOwnedSection("character");
     setOutfitPreviewItemIds({});
@@ -463,7 +455,13 @@ export default function HeartShopModal({
     setPurchaseError("");
     setApplyingFreeItemId(null);
     return () => { document.body.style.overflow = previousOverflow; };
-  }, [show]);
+  }, [show, normalizedTotalDays]);
+
+  useEffect(() => {
+    if (!unlockedMapSections.has(activeMapSection)) {
+      setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
+    }
+  }, [activeMapSection, normalizedTotalDays, unlockedMapSections]);
 
   useEffect(() => {
     if (!show) return;
@@ -691,41 +689,85 @@ export default function HeartShopModal({
                   WebkitOverflowScrolling: "touch",
                 }}
               >
-                {(["garden", "peaceArk", "nehemiahWall"] as const).map(section => {
-                  const active = activeMapSection === section;
-                  const label = section === "garden"
+                {MAP_OPTIONS.map(option => {
+                  const active = activeMapSection === option.id;
+                  const unlocked = unlockedMapSections.has(option.id);
+                  const label = option.id === "garden"
                     ? text.gardenMapLabel
-                    : section === "peaceArk"
+                    : option.id === "peaceArk"
                       ? text.peaceArkMapLabel
                       : text.nehemiahMapLabel;
                   return (
                     <button
-                      key={section}
+                      key={option.id}
                       type="button"
                       role="tab"
                       aria-selected={active}
-                      onClick={() => setActiveMapSection(section)}
+                      aria-disabled={!unlocked}
+                      disabled={!unlocked}
+                      onClick={() => {
+                        if (unlocked) setActiveMapSection(option.id);
+                      }}
                       style={{
                         flex: "0 0 auto",
-                        minWidth: 128,
-                        minHeight: 42,
-                        padding: "8px 12px",
+                        minWidth: 132,
+                        minHeight: 48,
+                        padding: "7px 12px",
                         borderRadius: 13,
-                        border: active ? "1px solid rgba(122,157,122,.34)" : "1px solid transparent",
-                        background: active ? "rgba(122,157,122,.14)" : "transparent",
-                        color: active ? "var(--sage-dark)" : "var(--text2)",
-                        fontSize: 11.5,
+                        border: active ? "1px solid rgba(122,157,122,.38)" : "1px solid transparent",
+                        background: active
+                          ? "rgba(122,157,122,.15)"
+                          : unlocked
+                            ? "transparent"
+                            : "rgba(125,127,124,.055)",
+                        color: active
+                          ? "var(--sage-dark)"
+                          : unlocked
+                            ? "var(--text2)"
+                            : "var(--heart-shop-muted-text)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 3,
+                        fontSize: 11,
                         fontWeight: 900,
                         whiteSpace: "nowrap",
-                        cursor: "pointer",
+                        cursor: unlocked ? "pointer" : "default",
+                        opacity: unlocked ? 1 : 0.62,
                         scrollSnapAlign: "start",
                       }}
                     >
-                      {label}
+                      <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        {!unlocked && <LockKeyhole size={12} aria-hidden="true" />}
+                        {label}
+                      </span>
+                      {!unlocked && (
+                        <small style={{ fontSize: 8.5, fontWeight: 800 }}>
+                          {formatHeartShopText(text.mapUnlockDayLabel, { day: option.unlockDay })}
+                        </small>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {activeMapCycle && (
+                <div style={{ marginBottom: 14 }}>
+                  <HeartShopMapPreview
+                    cycle={activeMapCycle}
+                    mapKind={activeMapSection}
+                    label={activeMapSection === "garden"
+                      ? text.gardenMapLabel
+                      : activeMapSection === "peaceArk"
+                        ? text.peaceArkMapLabel
+                        : text.nehemiahMapLabel}
+                    avatarType={avatarType}
+                    enabledItemIds={enabledMapItemIds}
+                  />
+                </div>
+              )}
+
               {visibleMapItems.length > 0 ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 11 }}>
                   {visibleMapItems.map(item => {
@@ -965,12 +1007,19 @@ export default function HeartShopModal({
                     const owned = ownedById.get(catalogItem.id)!;
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
                     return (
-                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "52px minmax(0,1fr) 66px", alignItems: "center", gap: 10, borderBottom: index < ownedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "52px minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < ownedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
                         <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <CharacterItemLayerPreview item={catalogItem} alt={name} maxWidth={44} />
                         </div>
                         <span style={{ minWidth: 0, color: "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{name}</span>
-                        <ToggleButton enabled={owned.isEnabled} loading={togglingItemId === owned.itemId} enabledLabel={text.enabledLabel} disabledLabel={text.disabledLabel} onClick={() => void toggleOwnedItem(owned)} />
+                        <HeartShopToggleSwitch
+                          enabled={owned.isEnabled}
+                          loading={togglingItemId === owned.itemId}
+                          enabledLabel={text.enabledLabel}
+                          disabledLabel={text.disabledLabel}
+                          ariaLabel={name}
+                          onChange={() => void toggleOwnedItem(owned)}
+                        />
                       </div>
                     );
                   })}
@@ -988,9 +1037,61 @@ export default function HeartShopModal({
                     {ownedMapItems.map((catalogItem, index) => {
                       const owned = ownedById.get(catalogItem.id)!;
                       return (
-                        <div key={owned.itemId} style={{ minHeight: 62, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, borderBottom: index < ownedMapItems.length - 1 ? "1px solid var(--border)" : "none" }}>
-                          <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 900 }}>{text.items[catalogItem.id].name}</span>
-                          <ToggleButton enabled={owned.isEnabled} loading={togglingItemId === owned.itemId} enabledLabel={text.enabledLabel} disabledLabel={text.disabledLabel} onClick={() => void toggleOwnedItem(owned)} />
+                        <div
+                          key={owned.itemId}
+                          style={{
+                            minHeight: 82,
+                            display: "grid",
+                            gridTemplateColumns: "64px minmax(0,1fr) 76px",
+                            alignItems: "center",
+                            gap: 11,
+                            borderBottom: index < ownedMapItems.length - 1 ? "1px solid var(--border)" : "none",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 60,
+                              height: 60,
+                              padding: 5,
+                              borderRadius: 12,
+                              border: "1px solid rgba(122,157,122,.18)",
+                              background: "var(--heart-shop-preview-surface)",
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <img
+                              src={catalogItem.previewPath}
+                              alt={text.items[catalogItem.id].name}
+                              draggable={false}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "contain",
+                                imageRendering: "pixelated",
+                                userSelect: "none",
+                                pointerEvents: "none",
+                              }}
+                            />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.35, fontWeight: 900 }}>
+                              {text.items[catalogItem.id].name}
+                            </div>
+                            <div style={{ marginTop: 3, color: "var(--heart-shop-muted-text)", fontSize: 9.8, lineHeight: 1.4, fontWeight: 650 }}>
+                              {text.items[catalogItem.id].description}
+                            </div>
+                          </div>
+                          <HeartShopToggleSwitch
+                            enabled={owned.isEnabled}
+                            loading={togglingItemId === owned.itemId}
+                            enabledLabel={text.enabledLabel}
+                            disabledLabel={text.disabledLabel}
+                            ariaLabel={text.items[catalogItem.id].name}
+                            onChange={() => void toggleOwnedItem(owned)}
+                          />
                         </div>
                       );
                     })}

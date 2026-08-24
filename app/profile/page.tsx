@@ -1265,6 +1265,7 @@ export default function ProfilePage() {
         lang={lang}
         heartBalance={loveHeartBalance}
         avatarType={currentAvatarType}
+        totalDays={Number(profile?.total_days ?? 0)}
         peaceArkStageNumber={currentPeaceArkStageNumber}
         onHeartBalanceChange={setLoveHeartBalance}
         onOwnedItemsChange={setOwnedHeartShopItems}
