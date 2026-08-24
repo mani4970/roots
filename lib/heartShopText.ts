@@ -54,6 +54,7 @@ export type HeartShopText = {
   enabledLabel: string;
   disabledLabel: string;
   currentLookTitle: string;
+  ownedAccessoriesCategoryLabel: string;
   characterPreviewTitle: string;
   characterPurchaseTitle: string;
   characterPurchaseBody: string;
@@ -117,6 +118,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "현재 코디",
+    ownedAccessoriesCategoryLabel: "액세서리",
     characterPreviewTitle: "캐릭터 미리보기",
     characterPurchaseTitle: "이 아이템을 구매할까요?",
     characterPurchaseBody: "하트 {price}개가 사용되며 구매 즉시 캐릭터에 착용됩니다.",
@@ -275,6 +277,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Current look",
+    ownedAccessoriesCategoryLabel: "Accessories",
     characterPreviewTitle: "Character preview",
     characterPurchaseTitle: "Buy this item?",
     characterPurchaseBody: "This uses {price} Love Hearts and equips the item immediately.",
@@ -433,6 +436,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "AN",
     disabledLabel: "AUS",
     currentLookTitle: "Aktuelles Outfit",
+    ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Figurenvorschau",
     characterPurchaseTitle: "Dieses Item kaufen?",
     characterPurchaseBody: "Dafür werden {price} Liebesherzen verwendet und das Item wird sofort angelegt.",
@@ -591,6 +595,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Tenue actuelle",
+    ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Aperçu du personnage",
     characterPurchaseTitle: "Acheter cet objet ?",
     characterPurchaseBody: "Cet achat utilise {price} cœurs d’amour et équipe immédiatement l’objet.",
@@ -750,6 +755,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Atuendo actual",
+    ownedAccessoriesCategoryLabel: "Accesorios",
     characterPreviewTitle: "Vista previa del personaje",
     characterPurchaseTitle: "¿Quieres comprar este objeto?",
     characterPurchaseBody: "Se usarán {price} corazones y el objeto se aplicará al personaje de inmediato.",

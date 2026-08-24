@@ -62,6 +62,28 @@ type HeartShopModalProps = {
 type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
 type HeartShopMapSection = "garden" | "peaceArk" | "nehemiahWall";
 type HeartShopOwnedSection = "map" | "character";
+type HeartShopOwnedCharacterCategory =
+  | "tops"
+  | "bottoms"
+  | "shoes"
+  | "accessories"
+  | "backgrounds"
+  | "pets";
+
+function isOwnedCharacterItemInCategory(
+  item: HeartShopCharacterCatalogItem,
+  category: HeartShopOwnedCharacterCategory,
+) {
+  if (category === "tops") return item.slot === "top";
+  if (category === "bottoms") return item.slot === "bottom";
+  if (category === "shoes") return item.slot === "shoes";
+  if (category === "backgrounds") return item.slot === "background";
+  if (category === "pets") return item.slot === "pet";
+  return item.slot === "headwear"
+    || item.slot === "eyewear"
+    || item.slot === "hair_accessory"
+    || item.slot === "bag";
+}
 
 const MAP_OPTIONS: readonly {
   id: HeartShopMapSection;
@@ -233,6 +255,8 @@ export default function HeartShopModal({
   const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>(() => getDefaultMapSection(totalDays));
   const [activeCharacterCategory, setActiveCharacterCategory] = useState<ProfileCharacterCategory>("all");
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
+  const [activeOwnedCharacterCategory, setActiveOwnedCharacterCategory] = useState<HeartShopOwnedCharacterCategory>("tops");
+  const [mapScenePreviewItemId, setMapScenePreviewItemId] = useState<HeartShopMapItemId | null>(null);
   const [outfitPreviewItemIds, setOutfitPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
@@ -246,6 +270,7 @@ export default function HeartShopModal({
   const [applyingFreeItemId, setApplyingFreeItemId] = useState<HeartShopCharacterItemId | null>(null);
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
+  const mapPreviewRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
 
@@ -258,6 +283,12 @@ export default function HeartShopModal({
     () => enabledItemIds.filter(isHeartShopMapItemId),
     [enabledItemIds],
   );
+  const displayedMapItemIds = useMemo(() => {
+    if (!mapScenePreviewItemId || enabledMapItemIds.includes(mapScenePreviewItemId)) {
+      return enabledMapItemIds;
+    }
+    return [...enabledMapItemIds, mapScenePreviewItemId];
+  }, [enabledMapItemIds, mapScenePreviewItemId]);
   const normalizedTotalDays = Math.max(0, Math.floor(totalDays || 0));
   const visibleMapCycles = useMemo(
     () => getVisibleRewardMapCycles(normalizedTotalDays),
@@ -311,6 +342,12 @@ export default function HeartShopModal({
     () => HEART_SHOP_MAP_CATALOG.filter(item => ownedById.has(item.id)),
     [ownedById],
   );
+  const visibleOwnedCharacterItems = useMemo(
+    () => ownedCharacterItems.filter(item =>
+      isOwnedCharacterItemInCategory(item, activeOwnedCharacterCategory),
+    ),
+    [activeOwnedCharacterCategory, ownedCharacterItems],
+  );
 
   const previewItem = getHeartShopCatalogItem(previewItemId);
   const selectedItem = getHeartShopCatalogItem(selectedItemId);
@@ -352,6 +389,13 @@ export default function HeartShopModal({
   function openPreview(itemId: HeartShopItemId) {
     pushHistory("preview");
     setPreviewItemId(itemId);
+  }
+
+  function previewMapItemInScene(itemId: HeartShopMapItemId) {
+    setMapScenePreviewItemId(current => current === itemId ? null : itemId);
+    window.requestAnimationFrame(() => {
+      mapPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   }
 
   function applyCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
@@ -447,6 +491,8 @@ export default function HeartShopModal({
     setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
     setActiveCharacterCategory("all");
     setActiveOwnedSection("character");
+    setActiveOwnedCharacterCategory("tops");
+    setMapScenePreviewItemId(null);
     setOutfitPreviewItemIds({});
     setNotice("");
     setPreviewItemId(null);
@@ -462,6 +508,14 @@ export default function HeartShopModal({
       setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
     }
   }, [activeMapSection, normalizedTotalDays, unlockedMapSections]);
+
+  useEffect(() => {
+    setMapScenePreviewItemId(null);
+  }, [activeMapSection]);
+
+  useEffect(() => {
+    if (activeTab !== "map") setMapScenePreviewItemId(null);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!show) return;
@@ -599,6 +653,14 @@ export default function HeartShopModal({
       { id: "bags", label: profileText.categories.bags },
     );
   }
+  const ownedCharacterCategories: { id: HeartShopOwnedCharacterCategory; label: string }[] = [
+    { id: "tops", label: profileText.categories.tops },
+    { id: "bottoms", label: profileText.categories.bottoms },
+    { id: "shoes", label: profileText.categories.shoes },
+    { id: "accessories", label: text.ownedAccessoriesCategoryLabel },
+    { id: "backgrounds", label: profileText.categories.backgrounds },
+    { id: "pets", label: profileText.categories.pets },
+  ];
   function renderCharacterPreview(item: HeartShopCharacterCatalogItem, width: string | number) {
     return (
       <ProfileCharacterPreview
@@ -753,7 +815,7 @@ export default function HeartShopModal({
               </div>
 
               {activeMapCycle && (
-                <div style={{ marginBottom: 14 }}>
+                <div ref={mapPreviewRef} style={{ marginBottom: 14 }}>
                   <HeartShopMapPreview
                     cycle={activeMapCycle}
                     mapKind={activeMapSection}
@@ -763,8 +825,23 @@ export default function HeartShopModal({
                         ? text.peaceArkMapLabel
                         : text.nehemiahMapLabel}
                     avatarType={avatarType}
-                    enabledItemIds={enabledMapItemIds}
+                    enabledItemIds={displayedMapItemIds}
                   />
+                  {mapScenePreviewItemId && (
+                    <div
+                      role="status"
+                      style={{
+                        marginTop: 7,
+                        color: "var(--sage-dark)",
+                        fontSize: 10.5,
+                        lineHeight: 1.4,
+                        fontWeight: 850,
+                        textAlign: "center",
+                      }}
+                    >
+                      {text.staticPreviewTitle}: {text.items[mapScenePreviewItemId].name}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -775,32 +852,99 @@ export default function HeartShopModal({
                     const owned = ownedById.has(item.id);
                     return (
                       <article key={item.id} className="card" style={{ minWidth: 0, padding: "10px 10px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)", boxShadow: "0 8px 24px rgba(75,62,45,.06)" }}>
-                        <button type="button" onClick={() => openPreview(item.id)} aria-label={`${itemText.name} · ${getMapPreviewBadge(item.id)}`} style={{ position: "relative", width: "100%", height: 112, padding: 0, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--heart-shop-preview-surface)", border: "1px solid var(--heart-shop-preview-border)", marginBottom: 10, cursor: "pointer" }}>
-                          {(item.isBest || item.isNew) && (
-                            <span
-                              aria-label={item.isBest ? text.bestLabel : text.newLabel}
-                              style={{
-                                position: "absolute",
-                                top: 7,
-                                left: 7,
-                                zIndex: 2,
-                                borderRadius: 999,
-                                padding: "4px 8px",
-                                background: item.isBest ? "#d4a337" : "#e87568",
-                                color: "#fff",
-                                boxShadow: "0 2px 7px rgba(71,41,35,.24)",
-                                fontSize: 9,
-                                lineHeight: 1,
-                                fontWeight: 950,
-                                letterSpacing: ".2px",
-                              }}
-                            >
-                              {item.isBest ? text.bestLabel : text.newLabel}
-                            </span>
-                          )}
-                          <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
-                          <span style={{ position: "absolute", right: 7, bottom: 7, borderRadius: 999, padding: "4px 7px", background: "rgba(26,28,30,.72)", color: "#fff", fontSize: 8.5, fontWeight: 900 }}>{getMapPreviewBadge(item.id)}</span>
-                        </button>
+                        <div style={{ position: "relative", width: "100%", height: 112, marginBottom: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => previewMapItemInScene(item.id)}
+                            aria-label={`${text.staticPreviewTitle}: ${itemText.name}`}
+                            aria-pressed={mapScenePreviewItemId === item.id}
+                            style={{
+                              position: "relative",
+                              width: "100%",
+                              height: "100%",
+                              padding: 0,
+                              borderRadius: 18,
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: mapScenePreviewItemId === item.id
+                                ? "rgba(122,157,122,.12)"
+                                : "var(--heart-shop-preview-surface)",
+                              border: mapScenePreviewItemId === item.id
+                                ? "2px solid rgba(101,142,105,.72)"
+                                : "1px solid var(--heart-shop-preview-border)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {(item.isBest || item.isNew) && (
+                              <span
+                                aria-label={item.isBest ? text.bestLabel : text.newLabel}
+                                style={{
+                                  position: "absolute",
+                                  top: 7,
+                                  left: 7,
+                                  zIndex: 2,
+                                  borderRadius: 999,
+                                  padding: "4px 8px",
+                                  background: item.isBest ? "#d4a337" : "#e87568",
+                                  color: "#fff",
+                                  boxShadow: "0 2px 7px rgba(71,41,35,.24)",
+                                  fontSize: 9,
+                                  lineHeight: 1,
+                                  fontWeight: 950,
+                                  letterSpacing: ".2px",
+                                }}
+                              >
+                                {item.isBest ? text.bestLabel : text.newLabel}
+                              </span>
+                            )}
+                            {mapScenePreviewItemId === item.id && (
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  position: "absolute",
+                                  top: 7,
+                                  right: 7,
+                                  zIndex: 2,
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: 999,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  background: "var(--heart-shop-action)",
+                                  color: "var(--heart-shop-on-action)",
+                                  boxShadow: "0 2px 7px rgba(71,41,35,.18)",
+                                }}
+                              >
+                                <CheckCircle2 size={15} strokeWidth={2.7} />
+                              </span>
+                            )}
+                            <img src={item.previewPath} alt={itemText.name} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated" }} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openPreview(item.id)}
+                            aria-label={`${itemText.name} · ${getMapPreviewBadge(item.id)}`}
+                            style={{
+                              position: "absolute",
+                              right: 7,
+                              bottom: 7,
+                              zIndex: 3,
+                              border: "none",
+                              borderRadius: 999,
+                              padding: "4px 7px",
+                              background: "rgba(26,28,30,.72)",
+                              color: "#fff",
+                              fontSize: 8.5,
+                              fontWeight: 900,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {getMapPreviewBadge(item.id)}
+                          </button>
+                        </div>
                         <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <p style={{ margin: 0, minHeight: 36, color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
                         <div style={{ color: "var(--heart-shop-price-text)", fontSize: 13, fontWeight: 950, margin: "10px 0 9px", textAlign: "center" }}>💛 {item.price}</div>
@@ -998,16 +1142,88 @@ export default function HeartShopModal({
                 </div>
               ) : activeOwnedSection === "character" ? (
                 <div className="card" style={{ padding: "12px 14px 6px", background: "var(--heart-shop-card-surface-owned)" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 250, borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
-                    <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 3, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={currentLayers} style={{ width: 165 }} />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 264, padding: "12px 12px 8px", borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
+                    <div style={{ width: "100%", display: "grid", gridTemplateColumns: "34px minmax(0,1fr) 34px", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                      <span aria-hidden="true" />
+                      <div style={{ justifySelf: "center", borderRadius: 999, padding: "5px 10px", background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
+                      <button
+                        type="button"
+                        onClick={() => setOutfitPreviewItemIds({})}
+                        disabled={!hasOutfitPreview}
+                        aria-label={profileText.restoreOutfitLabel}
+                        title={profileText.restoreOutfitLabel}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          padding: 0,
+                          borderRadius: 999,
+                          border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
+                          background: hasOutfitPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
+                          color: hasOutfitPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: hasOutfitPreview ? "pointer" : "default",
+                          opacity: hasOutfitPreview ? 1 : 0.45,
+                        }}
+                      >
+                        <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: 165 }} />
                   </div>
                   <p style={{ margin: "4px 2px 10px", color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
-                  {ownedCharacterItems.map((catalogItem, index) => {
+                  <div
+                    role="tablist"
+                    aria-label={text.characterOwnedTitle}
+                    style={{
+                      display: "flex",
+                      gap: 7,
+                      overflowX: "auto",
+                      padding: "2px 0 9px",
+                      scrollbarWidth: "none",
+                      WebkitOverflowScrolling: "touch",
+                    }}
+                  >
+                    {ownedCharacterCategories.map(category => {
+                      const active = activeOwnedCharacterCategory === category.id;
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => setActiveOwnedCharacterCategory(category.id)}
+                          style={{
+                            flex: "0 0 auto",
+                            minHeight: 34,
+                            padding: "6px 11px",
+                            borderRadius: 999,
+                            border: active ? "1px solid rgba(122,157,122,.36)" : "1px solid var(--border)",
+                            background: active ? "rgba(122,157,122,.14)" : "var(--bg2)",
+                            color: active ? "var(--sage-dark)" : "var(--text2)",
+                            fontSize: 10.5,
+                            fontWeight: 900,
+                            whiteSpace: "nowrap",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {category.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {visibleOwnedCharacterItems.length === 0 ? (
+                    <div style={{ minHeight: 150, padding: "26px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "var(--heart-shop-muted-text)" }}>
+                      <PackageOpen size={30} style={{ marginBottom: 10, color: "var(--sage-dark)" }} />
+                      <strong style={{ color: "var(--text)", fontSize: 13, marginBottom: 5 }}>{profileText.emptyTitle}</strong>
+                      <span style={{ fontSize: 11, lineHeight: 1.5, fontWeight: 650 }}>{profileText.emptyBody}</span>
+                    </div>
+                  ) : visibleOwnedCharacterItems.map((catalogItem, index) => {
                     const owned = ownedById.get(catalogItem.id)!;
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
                     return (
-                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "52px minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < ownedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "52px minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
                         <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <CharacterItemLayerPreview item={catalogItem} alt={name} maxWidth={44} />
                         </div>
