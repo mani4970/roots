@@ -35,6 +35,14 @@ import { storageClearAfterAccountDeletion } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
+import {
+  MONTHLY_BADGES_2026,
+  getLatestClosedMonthlyBadges,
+  getMonthlyBadgeStatus,
+  type MonthlyBadgeCompletionRecord,
+  type MonthlyBadgeStatus,
+} from "@/lib/monthlyBadges";
+import { getMonthlyBadgeText } from "@/lib/monthlyBadgeText";
 import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
@@ -245,15 +253,13 @@ export default function ProfilePage() {
   const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
   const [profileUserId, setProfileUserId] = useState("");
   const [loadingQtCalendar, setLoadingQtCalendar] = useState(false);
-  const [prayerStats, setPrayerStats] = useState({ total: 0, answered: 0, shared: 0 });
-  const [qtShareCount, setQtShareCount] = useState(0);
+  const [monthlyBadgeRecords, setMonthlyBadgeRecords] = useState<MonthlyBadgeCompletionRecord[] | null>(null);
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
   const [ownedHeartShopItems, setOwnedHeartShopItems] = useState<OwnedHeartShopItem[]>([]);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [showHeartShop, setShowHeartShop] = useState(false);
   const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
-  const [prayerSharedCount, setPrayerSharedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [userEmail, setUserEmail] = useState("");
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
@@ -267,6 +273,7 @@ export default function ProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<null | { img?: string; title: string; desc: string; earned: boolean; lockedPlaceholder?: boolean }>(null);
+  const [showMonthlyBadgeGallery, setShowMonthlyBadgeGallery] = useState(false);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
   const [showGroupChallengeBadgeGallery, setShowGroupChallengeBadgeGallery] = useState(false);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
@@ -373,31 +380,9 @@ export default function ProfilePage() {
       setNewName(p.name ?? "");
     }
     await loadQtRecordsForMonth(user.id, calendarMonth);
+    await loadMonthlyBadgeRecords(user.id);
     await loadGroupChallengeBadgesForProfile(user.id);
     await loadCompanionChallengeBadgesForProfile(user.id);
-    const { data: prayers } = await supabase.from("prayer_items").select("is_answered,visibility").eq("user_id", user.id);
-    let prayerSharedCnt = 0;
-    if (prayers) {
-      prayerSharedCnt = prayers.filter((p: any) => p.visibility && p.visibility !== "private").length;
-      setPrayerStats({
-        total: prayers.length,
-        answered: prayers.filter((p: any) => p.is_answered).length,
-        shared: prayerSharedCnt,
-      });
-      setPrayerSharedCount(prayerSharedCnt);
-    }
-
-    // 큐티 나눔 횟수
-    // visibility가 private인 기록은 실제 나눔이 아니므로 제외합니다.
-    const { data: qtShares } = await supabase.from("qt_records")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("is_draft", false)
-      .not("visibility", "is", null)
-      .neq("visibility", "private")
-      .neq("visibility", "");
-    const qtShareCnt = qtShares?.length ?? 0;
-    setQtShareCount(qtShareCnt);
 
     // 기존 기록이 이미 조건을 채웠는데 배지 컬럼만 false인 경우를 보정합니다.
     if (p) {
@@ -635,6 +620,24 @@ export default function ProfilePage() {
       heartsAwarded: Number(row.hearts_awarded ?? 0),
       awardedAt: row.awarded_at,
     })));
+  }
+
+  async function loadMonthlyBadgeRecords(userId: string) {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("qt_records")
+      .select("date,completed_at")
+      .eq("user_id", userId)
+      .eq("is_draft", false)
+      .gte("date", "2026-05-01")
+      .lte("date", "2026-12-31");
+
+    if (error) {
+      console.warn("월별 배지 기록 조회 실패:", error);
+      setMonthlyBadgeRecords(null);
+      return;
+    }
+
+    setMonthlyBadgeRecords((data ?? []) as MonthlyBadgeCompletionRecord[]);
   }
 
   async function loadQtRecordsForMonth(userId: string, monthDate: Date, options: { showSpinner?: boolean } = {}) {
@@ -1129,12 +1132,48 @@ export default function ProfilePage() {
   const calendarMonthLabel = calendarMonth.toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { year: "numeric", month: "long" });
   const qtCompletedDayCount = new Set(qtRecords.map(record => record.date)).size;
   const isViewingCurrentMonth = isSameCalendarMonth(calendarMonth, new Date());
+  const monthlyBadgeText = getMonthlyBadgeText(lang);
+  const monthlyBadgeNow = new Date();
+  const monthlyBadgeCards = MONTHLY_BADGES_2026.map((badge) => ({
+    ...badge,
+    status: monthlyBadgeRecords
+      ? getMonthlyBadgeStatus(badge, monthlyBadgeRecords, monthlyBadgeNow)
+      : "mystery" as MonthlyBadgeStatus,
+  }));
+  const latestClosedMonthlyBadgeDefinitions = getLatestClosedMonthlyBadges(
+    MONTHLY_BADGES_2026,
+    monthlyBadgeNow,
+    3,
+  );
+  const monthlyBadgePreviewDefinitions = latestClosedMonthlyBadgeDefinitions.length > 0
+    ? latestClosedMonthlyBadgeDefinitions
+    : MONTHLY_BADGES_2026.slice(0, 3);
+  const monthlyBadgePreview = monthlyBadgePreviewDefinitions.map((badge) => ({
+    ...badge,
+    status: monthlyBadgeRecords
+      ? getMonthlyBadgeStatus(badge, monthlyBadgeRecords, monthlyBadgeNow)
+      : "mystery" as MonthlyBadgeStatus,
+  }));
+  const earnedMonthlyBadgeCount = monthlyBadgeCards.filter((badge) => badge.status === "earned").length;
+  const monthlyBadgeYearLabel = new Date(2026, 0, 1).toLocaleDateString(
+    PROFILE_MONTH_LOCALE[lang],
+    { year: "numeric" },
+  );
+  const getMonthlyBadgeMonthLabel = (month: number) => new Date(2026, month - 1, 1).toLocaleDateString(
+    PROFILE_MONTH_LOCALE[lang],
+    { month: "long" },
+  );
+  const getMonthlyBadgeStatusLabel = (status: MonthlyBadgeStatus) => {
+    if (status === "earned") return monthlyBadgeText.earned;
+    if (status === "missed") return monthlyBadgeText.missed;
+    return monthlyBadgeText.mystery;
+  };
   const sortedFaithBadges = [...FAITH_BADGES].sort((a, b) => {
     const aEarned = profile?.[a.key] ? 1 : 0;
     const bEarned = profile?.[b.key] ? 1 : 0;
     return bEarned - aEarned;
   });
-  const previewFaithBadges = sortedFaithBadges.slice(0, 6);
+  const previewFaithBadges = sortedFaithBadges.slice(0, 3);
   const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
   const companionChallengeText = getCompanionChallengeText(lang);
@@ -1281,6 +1320,67 @@ export default function ProfilePage() {
         layers={profileCharacterLayers}
         onClose={() => setShowProfileCharacterViewer(false)}
       />
+
+      {showMonthlyBadgeGallery && (
+        <div
+          onClick={() => setShowMonthlyBadgeGallery(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 250, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+        >
+          <div
+            onClick={event => event.stopPropagation()}
+            style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "var(--shadow-modal)", position: "relative" }}
+          >
+            <button
+              onClick={() => setShowMonthlyBadgeGallery(false)}
+              aria-label={t("close", lang)}
+              style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ paddingRight: 36, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 6 }}>{monthlyBadgeText.galleryTitle}</h3>
+              <p style={{ fontSize: 12, color: "var(--profile-muted-text)", lineHeight: 1.55 }}>{monthlyBadgeText.gallerySubtitle}</p>
+            </div>
+
+            <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+              <span>{monthlyBadgeYearLabel}</span>
+              <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 700 }}>{earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", columnGap: 8, rowGap: 16 }}>
+              {monthlyBadgeCards.map((badge) => {
+                const monthLabel = getMonthlyBadgeMonthLabel(badge.month);
+                const isMystery = badge.status === "mystery";
+                const isMissed = badge.status === "missed";
+                return (
+                  <div key={`${badge.year}-${badge.month}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
+                    <div style={{ width: 68, height: 68, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
+                      <img
+                        src={isMystery ? LOCKED_FAITH_BADGE_IMG : badge.image}
+                        alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                          opacity: isMystery ? 0.62 : isMissed ? 0.76 : 1,
+                          filter: isMissed ? "grayscale(1) brightness(0.48) contrast(0.92)" : "none",
+                          imageRendering: isMystery ? "pixelated" : "auto",
+                        }}
+                      />
+                    </div>
+                    <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {monthLabel}
+                    </div>
+                    <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
+                      {getMonthlyBadgeStatusLabel(badge.status)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showBadgeGallery && (
         <div
@@ -1588,27 +1688,53 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 신앙 여정 통계 */}
+      {/* 월별 배지 */}
       <div style={{ padding: "14px 16px 0" }}>
-        <div className="sec-label">{t("profile_faith_journey", lang)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[
-            { label: t("profile_prayer_count", lang), value: prayerStats.total, iconSrc: "/icon-prayer-request.webp" },
-            { label: t("profile_prayer_answered_count", lang), value: prayerStats.answered, iconSrc: "/icon-prayer-answered.webp" },
-            { label: t("profile_qt_share", lang), value: qtShareCount, iconSrc: "/icon-qt-share.webp" },
-          ].map(s => (
-            <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ width: 44, height: 44, margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img
-                  src={s.iconSrc}
-                  alt={s.label}
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                />
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: "var(--profile-muted-text)" }}>{s.label}</div>
-            </div>
-          ))}
+        <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span>
+            {monthlyBadgeText.title}
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowMonthlyBadgeGallery(true)}
+            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+          >
+            {t("profile_badges_view_all", lang)}
+          </button>
+        </div>
+        <div className="card" style={{ padding: "16px 14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {monthlyBadgePreview.map((badge) => {
+              const monthLabel = getMonthlyBadgeMonthLabel(badge.month);
+              const isMystery = badge.status === "mystery";
+              const isMissed = badge.status === "missed";
+              return (
+                <div key={`${badge.year}-${badge.month}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
+                  <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img
+                      src={isMystery ? LOCKED_FAITH_BADGE_IMG : badge.image}
+                      alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        opacity: isMystery ? 0.62 : isMissed ? 0.76 : 1,
+                        filter: isMissed ? "grayscale(1) brightness(0.48) contrast(0.92)" : "none",
+                        imageRendering: isMystery ? "pixelated" : "auto",
+                      }}
+                    />
+                  </div>
+                  <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {monthLabel}
+                  </div>
+                  <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
+                    {getMonthlyBadgeStatusLabel(badge.status)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
