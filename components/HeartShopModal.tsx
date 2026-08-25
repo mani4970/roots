@@ -257,6 +257,7 @@ export default function HeartShopModal({
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
   const [activeOwnedCharacterCategory, setActiveOwnedCharacterCategory] = useState<HeartShopOwnedCharacterCategory>("tops");
   const [mapScenePreviewItemId, setMapScenePreviewItemId] = useState<HeartShopMapItemId | null>(null);
+  const [ownedMapScenePreviewItemId, setOwnedMapScenePreviewItemId] = useState<HeartShopMapItemId | null>(null);
   const [outfitPreviewItemIds, setOutfitPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
@@ -271,6 +272,7 @@ export default function HeartShopModal({
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
+  const ownedMapPreviewRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
 
@@ -294,6 +296,26 @@ export default function HeartShopModal({
     () => getVisibleRewardMapCycles(normalizedTotalDays),
     [normalizedTotalDays],
   );
+  const ownedMapCycle = useMemo(
+    () => [...visibleMapCycles].reverse().find(cycle =>
+      cycle.kind === "garden"
+      || cycle.kind === "peaceArk"
+      || cycle.kind === "nehemiahWall",
+    ) ?? null,
+    [visibleMapCycles],
+  );
+  const ownedMapSection: HeartShopMapSection | null = ownedMapCycle
+    && (ownedMapCycle.kind === "garden"
+      || ownedMapCycle.kind === "peaceArk"
+      || ownedMapCycle.kind === "nehemiahWall")
+    ? ownedMapCycle.kind
+    : null;
+  const displayedOwnedMapItemIds = useMemo(() => {
+    if (!ownedMapScenePreviewItemId || enabledMapItemIds.includes(ownedMapScenePreviewItemId)) {
+      return enabledMapItemIds;
+    }
+    return [...enabledMapItemIds, ownedMapScenePreviewItemId];
+  }, [enabledMapItemIds, ownedMapScenePreviewItemId]);
   const unlockedMapSections = useMemo(
     () => new Set(visibleMapCycles.map(cycle => cycle.kind)),
     [visibleMapCycles],
@@ -398,6 +420,30 @@ export default function HeartShopModal({
     });
   }
 
+  function previewOwnedMapItemInScene(itemId: HeartShopMapItemId) {
+    const catalogItem = getHeartShopCatalogItem(itemId);
+    if (
+      !catalogItem
+      || !isHeartShopMapCatalogItem(catalogItem)
+      || !ownedMapSection
+      || !catalogItem.mapKinds.includes(ownedMapSection)
+    ) {
+      return;
+    }
+    if (
+      ownedMapSection === "peaceArk"
+      && peaceArkStageNumber === 9
+      && isHeartShopPeaceArkStaticItemId(itemId)
+    ) {
+      setNotice(text.arkFloodToggleUnavailable);
+      return;
+    }
+    setOwnedMapScenePreviewItemId(current => current === itemId ? null : itemId);
+    window.requestAnimationFrame(() => {
+      ownedMapPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
   function applyCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
     setOutfitPreviewItemIds(current => {
       const next = { ...current };
@@ -493,6 +539,7 @@ export default function HeartShopModal({
     setActiveOwnedSection("character");
     setActiveOwnedCharacterCategory("tops");
     setMapScenePreviewItemId(null);
+    setOwnedMapScenePreviewItemId(null);
     setOutfitPreviewItemIds({});
     setNotice("");
     setPreviewItemId(null);
@@ -516,6 +563,16 @@ export default function HeartShopModal({
   useEffect(() => {
     if (activeTab !== "map") setMapScenePreviewItemId(null);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "owned" || activeOwnedSection !== "map") {
+      setOwnedMapScenePreviewItemId(null);
+    }
+  }, [activeOwnedSection, activeTab]);
+
+  useEffect(() => {
+    setOwnedMapScenePreviewItemId(null);
+  }, [ownedMapSection]);
 
   useEffect(() => {
     if (!show) return;
@@ -622,6 +679,18 @@ export default function HeartShopModal({
       const result = await setHeartShopItemEnabled(supabase, item.itemId, !item.isEnabled);
       if (!result.updated) throw new Error(result.reason || "toggle_failed");
       await reloadOwnedItems(supabase);
+      const catalogItem = getHeartShopCatalogItem(item.itemId);
+      if (catalogItem && isHeartShopCharacterCatalogItem(catalogItem)) {
+        setOutfitPreviewItemIds(current => {
+          if (!current[catalogItem.slot]) return current;
+          const next = { ...current };
+          delete next[catalogItem.slot];
+          return next;
+        });
+      }
+      if (isHeartShopMapItemId(item.itemId)) {
+        setOwnedMapScenePreviewItemId(null);
+      }
     } catch (error) {
       console.warn("사랑 상점 아이템 표시 설정 실패:", error);
       setNotice(text.toggleFailed);
@@ -1141,36 +1210,37 @@ export default function HeartShopModal({
                   <p style={{ margin: 0, maxWidth: 310, color: "var(--heart-shop-muted-text)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{text.characterOwnedEmptyBody}</p>
                 </div>
               ) : activeOwnedSection === "character" ? (
-                <div className="card" style={{ padding: "12px 14px 6px", background: "var(--heart-shop-card-surface-owned)" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 264, padding: "12px 12px 8px", borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
-                    <div style={{ width: "100%", display: "grid", gridTemplateColumns: "34px minmax(0,1fr) 34px", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                      <span aria-hidden="true" />
-                      <div style={{ justifySelf: "center", borderRadius: 999, padding: "5px 10px", background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                      <button
-                        type="button"
-                        onClick={() => setOutfitPreviewItemIds({})}
-                        disabled={!hasOutfitPreview}
-                        aria-label={profileText.restoreOutfitLabel}
-                        title={profileText.restoreOutfitLabel}
-                        style={{
-                          width: 34,
-                          height: 34,
-                          padding: 0,
-                          borderRadius: 999,
-                          border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
-                          background: hasOutfitPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
-                          color: hasOutfitPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: hasOutfitPreview ? "pointer" : "default",
-                          opacity: hasOutfitPreview ? 1 : 0.45,
-                        }}
-                      >
-                        <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />
-                      </button>
-                    </div>
-                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: 165 }} />
+                <div className="card" style={{ padding: "0 14px 6px", background: "var(--heart-shop-card-surface-owned)" }}>
+                  <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "10px 16px", borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setOutfitPreviewItemIds({})}
+                      disabled={!hasOutfitPreview}
+                      aria-label={profileText.restoreOutfitLabel}
+                      title={profileText.restoreOutfitLabel}
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 12,
+                        zIndex: 1,
+                        width: 34,
+                        height: 34,
+                        padding: 0,
+                        borderRadius: 999,
+                        border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
+                        background: hasOutfitPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
+                        color: hasOutfitPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: hasOutfitPreview ? "pointer" : "default",
+                        opacity: hasOutfitPreview ? 1 : 0.45,
+                      }}
+                    >
+                      <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
+                    <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
+                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} style={{ width: "clamp(120px,20dvh,180px)" }} />
                   </div>
                   <p style={{ margin: "4px 2px 10px", color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
                   <div
@@ -1222,12 +1292,34 @@ export default function HeartShopModal({
                   ) : visibleOwnedCharacterItems.map((catalogItem, index) => {
                     const owned = ownedById.get(catalogItem.id)!;
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
+                    const previewing = outfitPreviewItemIds[catalogItem.slot] === catalogItem.id;
                     return (
-                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "52px minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
-                        <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <CharacterItemLayerPreview item={catalogItem} alt={name} maxWidth={44} />
-                        </div>
-                        <span style={{ minWidth: 0, color: "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{name}</span>
+                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
+                        <button
+                          type="button"
+                          onClick={() => applyCharacterOutfitPreview(catalogItem)}
+                          aria-label={`${profileText.previewLabel}: ${name}`}
+                          aria-pressed={previewing}
+                          style={{
+                            minWidth: 0,
+                            minHeight: 68,
+                            padding: 0,
+                            border: "none",
+                            background: previewing ? "rgba(122,157,122,.08)" : "transparent",
+                            borderRadius: 11,
+                            display: "grid",
+                            gridTemplateColumns: "52px minmax(0,1fr)",
+                            alignItems: "center",
+                            gap: 10,
+                            textAlign: "left",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: previewing ? "2px solid rgba(122,157,122,.58)" : "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <CharacterItemLayerPreview item={catalogItem} alt={name} maxWidth={44} />
+                          </div>
+                          <span style={{ minWidth: 0, color: previewing ? "var(--sage-dark)" : "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{name}</span>
+                        </button>
                         <HeartShopToggleSwitch
                           enabled={owned.isEnabled}
                           loading={togglingItemId === owned.itemId}
@@ -1248,58 +1340,115 @@ export default function HeartShopModal({
                 </div>
               ) : (
                 <div>
+                  {ownedMapCycle && ownedMapSection && (
+                    <div ref={ownedMapPreviewRef} style={{ marginBottom: 14 }}>
+                      <HeartShopMapPreview
+                        cycle={ownedMapCycle}
+                        mapKind={ownedMapSection}
+                        label={ownedMapSection === "garden"
+                          ? text.gardenMapLabel
+                          : ownedMapSection === "peaceArk"
+                            ? text.peaceArkMapLabel
+                            : text.nehemiahMapLabel}
+                        avatarType={avatarType}
+                        enabledItemIds={displayedOwnedMapItemIds}
+                      />
+                      {ownedMapScenePreviewItemId && (
+                        <div
+                          role="status"
+                          style={{
+                            marginTop: 7,
+                            color: "var(--sage-dark)",
+                            fontSize: 10.5,
+                            lineHeight: 1.4,
+                            fontWeight: 850,
+                            textAlign: "center",
+                          }}
+                        >
+                          {text.staticPreviewTitle}: {text.items[ownedMapScenePreviewItemId].name}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p style={{ margin: "0 2px 10px", color: "var(--text2)", fontSize: 11.5, lineHeight: 1.5, fontWeight: 700 }}>{text.ownedIntro}</p>
                   <div className="card" style={{ padding: "6px 14px", background: "var(--heart-shop-card-surface-owned)" }}>
                     {ownedMapItems.map((catalogItem, index) => {
                       const owned = ownedById.get(catalogItem.id)!;
+                      const canPreviewOnCurrentMap = Boolean(
+                        ownedMapSection && catalogItem.mapKinds.includes(ownedMapSection),
+                      );
+                      const previewing = ownedMapScenePreviewItemId === catalogItem.id;
                       return (
                         <div
                           key={owned.itemId}
                           style={{
                             minHeight: 82,
                             display: "grid",
-                            gridTemplateColumns: "64px minmax(0,1fr) 76px",
+                            gridTemplateColumns: "minmax(0,1fr) 76px",
                             alignItems: "center",
                             gap: 11,
                             borderBottom: index < ownedMapItems.length - 1 ? "1px solid var(--border)" : "none",
                           }}
                         >
-                          <div
+                          <button
+                            type="button"
+                            onClick={() => previewOwnedMapItemInScene(catalogItem.id)}
+                            disabled={!canPreviewOnCurrentMap}
+                            aria-label={`${text.staticPreviewTitle}: ${text.items[catalogItem.id].name}`}
+                            aria-pressed={previewing}
                             style={{
-                              width: 60,
-                              height: 60,
-                              padding: 5,
+                              minWidth: 0,
+                              minHeight: 76,
+                              padding: 0,
+                              border: "none",
                               borderRadius: 12,
-                              border: "1px solid rgba(122,157,122,.18)",
-                              background: "var(--heart-shop-preview-surface)",
-                              overflow: "hidden",
-                              display: "flex",
+                              background: previewing ? "rgba(122,157,122,.08)" : "transparent",
+                              display: "grid",
+                              gridTemplateColumns: "64px minmax(0,1fr)",
                               alignItems: "center",
-                              justifyContent: "center",
+                              gap: 11,
+                              textAlign: "left",
+                              cursor: canPreviewOnCurrentMap ? "pointer" : "default",
+                              opacity: canPreviewOnCurrentMap ? 1 : 0.72,
                             }}
                           >
-                            <img
-                              src={catalogItem.previewPath}
-                              alt={text.items[catalogItem.id].name}
-                              draggable={false}
+                            <div
                               style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                                imageRendering: "pixelated",
-                                userSelect: "none",
-                                pointerEvents: "none",
+                                width: 60,
+                                height: 60,
+                                padding: 5,
+                                borderRadius: 12,
+                                border: previewing ? "2px solid rgba(122,157,122,.58)" : "1px solid rgba(122,157,122,.18)",
+                                background: "var(--heart-shop-preview-surface)",
+                                overflow: "hidden",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
                               }}
-                            />
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ color: "var(--text)", fontSize: 13, lineHeight: 1.35, fontWeight: 900 }}>
-                              {text.items[catalogItem.id].name}
+                            >
+                              <img
+                                src={catalogItem.previewPath}
+                                alt={text.items[catalogItem.id].name}
+                                draggable={false}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "contain",
+                                  imageRendering: "pixelated",
+                                  userSelect: "none",
+                                  pointerEvents: "none",
+                                }}
+                              />
                             </div>
-                            <div style={{ marginTop: 3, color: "var(--heart-shop-muted-text)", fontSize: 9.8, lineHeight: 1.4, fontWeight: 650 }}>
-                              {text.items[catalogItem.id].description}
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ color: previewing ? "var(--sage-dark)" : "var(--text)", fontSize: 13, lineHeight: 1.35, fontWeight: 900 }}>
+                                {text.items[catalogItem.id].name}
+                              </div>
+                              <div style={{ marginTop: 3, color: "var(--heart-shop-muted-text)", fontSize: 9.8, lineHeight: 1.4, fontWeight: 650 }}>
+                                {text.items[catalogItem.id].description}
+                              </div>
                             </div>
-                          </div>
+                          </button>
                           <HeartShopToggleSwitch
                             enabled={owned.isEnabled}
                             loading={togglingItemId === owned.itemId}
