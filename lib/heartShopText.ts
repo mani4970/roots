@@ -54,6 +54,9 @@ export type HeartShopText = {
   enabledLabel: string;
   disabledLabel: string;
   currentLookTitle: string;
+  restorePreviousLabel: string;
+  restorePreviousSuccess: string;
+  restorePreviousFailed: string;
   ownedAccessoriesCategoryLabel: string;
   characterPreviewTitle: string;
   characterPurchaseTitle: string;
@@ -118,6 +121,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "현재 코디",
+    restorePreviousLabel: "변경 전으로",
+    restorePreviousSuccess: "변경 전 모습으로 돌아왔어요.",
+    restorePreviousFailed: "변경 전 모습으로 돌아가지 못했어요.",
     ownedAccessoriesCategoryLabel: "액세서리",
     characterPreviewTitle: "캐릭터 미리보기",
     characterPurchaseTitle: "이 아이템을 구매할까요?",
@@ -277,6 +283,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Current look",
+    restorePreviousLabel: "Reset changes",
+    restorePreviousSuccess: "Restored the look from before your changes.",
+    restorePreviousFailed: "Could not restore the previous look.",
     ownedAccessoriesCategoryLabel: "Accessories",
     characterPreviewTitle: "Character preview",
     characterPurchaseTitle: "Buy this item?",
@@ -436,6 +445,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "AN",
     disabledLabel: "AUS",
     currentLookTitle: "Aktuelles Outfit",
+    restorePreviousLabel: "Änderungen zurück",
+    restorePreviousSuccess: "Der Zustand vor den Änderungen wurde wiederhergestellt.",
+    restorePreviousFailed: "Der vorherige Zustand konnte nicht wiederhergestellt werden.",
     ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Figurenvorschau",
     characterPurchaseTitle: "Dieses Item kaufen?",
@@ -595,6 +607,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Tenue actuelle",
+    restorePreviousLabel: "Annuler les changements",
+    restorePreviousSuccess: "La tenue d’avant vos modifications a été restaurée.",
+    restorePreviousFailed: "Impossible de restaurer la tenue précédente.",
     ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Aperçu du personnage",
     characterPurchaseTitle: "Acheter cet objet ?",
@@ -755,6 +770,9 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Atuendo actual",
+    restorePreviousLabel: "Deshacer cambios",
+    restorePreviousSuccess: "Se restauró el estilo anterior a tus cambios.",
+    restorePreviousFailed: "No se pudo restaurar el estilo anterior.",
     ownedAccessoriesCategoryLabel: "Accesorios",
     characterPreviewTitle: "Vista previa del personaje",
     characterPurchaseTitle: "¿Quieres comprar este objeto?",
