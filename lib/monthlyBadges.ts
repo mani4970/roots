@@ -35,6 +35,45 @@ function nextMonthStartKey(year: number, month: number) {
   return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-01`;
 }
 
+export const MONTHLY_BADGE_AWARD_POPUP_START = { year: 2026, month: 8 } as const;
+
+function monthlyBadgeKey(year: number, month: number) {
+  return `${year}-${pad(month)}`;
+}
+
+export function getPreviousMonthlyBadgeForAwardPopup(
+  now: Date = new Date(),
+): MonthlyBadgeDefinition | null {
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const candidate = MONTHLY_BADGES_2026.find(
+    (badge) =>
+      badge.year === previousMonth.getFullYear() &&
+      badge.month === previousMonth.getMonth() + 1,
+  ) ?? null;
+
+  if (!candidate) return null;
+  const startKey = monthlyBadgeKey(
+    MONTHLY_BADGE_AWARD_POPUP_START.year,
+    MONTHLY_BADGE_AWARD_POPUP_START.month,
+  );
+  return monthlyBadgeKey(candidate.year, candidate.month) >= startKey
+    ? candidate
+    : null;
+}
+
+export function getMonthlyBadgeAwardCampaignKey(
+  badge: MonthlyBadgeDefinition,
+) {
+  return `monthly_badge_award_${badge.year}_${pad(badge.month)}`;
+}
+
+export function getMonthlyBadgeDateRange(badge: MonthlyBadgeDefinition) {
+  return {
+    startDate: monthStartKey(badge.year, badge.month),
+    endDateExclusive: nextMonthStartKey(badge.year, badge.month),
+  };
+}
+
 export function isMonthlyBadgeMonthClosed(
   badge: MonthlyBadgeDefinition,
   now: Date = new Date(),
@@ -81,4 +120,28 @@ export function getLatestClosedMonthlyBadges(
   count = 3,
 ) {
   return badges.filter((badge) => isMonthlyBadgeMonthClosed(badge, now)).slice(-count);
+}
+
+export function getMonthlyBadgePreviewDefinitions(
+  badges: readonly MonthlyBadgeDefinition[],
+  now: Date = new Date(),
+  count = 4,
+) {
+  if (badges.length <= count) return [...badges];
+
+  const currentKey = monthlyBadgeKey(now.getFullYear(), now.getMonth() + 1);
+  let currentIndex = -1;
+  for (let index = 0; index < badges.length; index += 1) {
+    const badge = badges[index];
+    if (monthlyBadgeKey(badge.year, badge.month) <= currentKey) {
+      currentIndex = index;
+    }
+  }
+
+  if (currentIndex < 0) return badges.slice(0, count);
+  const startIndex = Math.min(
+    Math.max(0, currentIndex - count + 1),
+    badges.length - count,
+  );
+  return badges.slice(startIndex, startIndex + count);
 }

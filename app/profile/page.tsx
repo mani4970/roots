@@ -37,7 +37,7 @@ import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
 import {
   MONTHLY_BADGES_2026,
-  getLatestClosedMonthlyBadges,
+  getMonthlyBadgePreviewDefinitions,
   getMonthlyBadgeStatus,
   type MonthlyBadgeCompletionRecord,
   type MonthlyBadgeStatus,
@@ -1140,14 +1140,11 @@ export default function ProfilePage() {
       ? getMonthlyBadgeStatus(badge, monthlyBadgeRecords, monthlyBadgeNow)
       : "mystery" as MonthlyBadgeStatus,
   }));
-  const latestClosedMonthlyBadgeDefinitions = getLatestClosedMonthlyBadges(
+  const monthlyBadgePreviewDefinitions = getMonthlyBadgePreviewDefinitions(
     MONTHLY_BADGES_2026,
     monthlyBadgeNow,
-    3,
+    4,
   );
-  const monthlyBadgePreviewDefinitions = latestClosedMonthlyBadgeDefinitions.length > 0
-    ? latestClosedMonthlyBadgeDefinitions
-    : MONTHLY_BADGES_2026.slice(0, 3);
   const monthlyBadgePreview = monthlyBadgePreviewDefinitions.map((badge) => ({
     ...badge,
     status: monthlyBadgeRecords
@@ -1689,7 +1686,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 월별 배지 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div id="monthly-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 16 }}>
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {monthlyBadgeText.title}
@@ -1703,15 +1700,15 @@ export default function ProfilePage() {
             {t("profile_badges_view_all", lang)}
           </button>
         </div>
-        <div className="card" style={{ padding: "16px 14px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <div className="card" style={{ padding: "14px 10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
             {monthlyBadgePreview.map((badge) => {
               const monthLabel = getMonthlyBadgeMonthLabel(badge.month);
               const isMystery = badge.status === "mystery";
               const isMissed = badge.status === "missed";
               return (
                 <div key={`${badge.year}-${badge.month}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
-                  <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 62, height: 62, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
                       src={isMystery ? LOCKED_SPIRIT_FRUIT_BADGE_IMG : badge.image}
                       alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
