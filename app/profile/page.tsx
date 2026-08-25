@@ -1356,7 +1356,7 @@ export default function ProfilePage() {
                   <div key={`${badge.year}-${badge.month}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
                     <div style={{ width: 68, height: 68, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
                       <img
-                        src={isMystery ? LOCKED_FAITH_BADGE_IMG : badge.image}
+                        src={isMystery ? LOCKED_SPIRIT_FRUIT_BADGE_IMG : badge.image}
                         alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
                         style={{
                           width: "100%",
@@ -1713,7 +1713,7 @@ export default function ProfilePage() {
                 <div key={`${badge.year}-${badge.month}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0 }}>
                   <div style={{ width: 76, height: 76, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
-                      src={isMystery ? LOCKED_FAITH_BADGE_IMG : badge.image}
+                      src={isMystery ? LOCKED_SPIRIT_FRUIT_BADGE_IMG : badge.image}
                       alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
                       style={{
                         width: "100%",
