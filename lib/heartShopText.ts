@@ -54,6 +54,10 @@ export type HeartShopText = {
   enabledLabel: string;
   disabledLabel: string;
   currentLookTitle: string;
+  restorePreviousLabel: string;
+  restorePreviousSuccess: string;
+  restorePreviousFailed: string;
+  ownedAccessoriesCategoryLabel: string;
   characterPreviewTitle: string;
   characterPurchaseTitle: string;
   characterPurchaseBody: string;
@@ -72,6 +76,7 @@ export type HeartShopText = {
   gardenMapLabel: string;
   peaceArkMapLabel: string;
   nehemiahMapLabel: string;
+  mapUnlockDayLabel: string;
   peaceArkComingSoonTitle: string;
   peaceArkComingSoonBody: string;
   items: Record<HeartShopMapItemId, HeartShopItemText>;
@@ -116,6 +121,10 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "현재 코디",
+    restorePreviousLabel: "변경 전으로",
+    restorePreviousSuccess: "변경 전 모습으로 돌아왔어요.",
+    restorePreviousFailed: "변경 전 모습으로 돌아가지 못했어요.",
+    ownedAccessoriesCategoryLabel: "액세서리",
     characterPreviewTitle: "캐릭터 미리보기",
     characterPurchaseTitle: "이 아이템을 구매할까요?",
     characterPurchaseBody: "하트 {price}개가 사용되며 구매 즉시 캐릭터에 착용됩니다.",
@@ -134,6 +143,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     gardenMapLabel: "사랑의 정원",
     peaceArkMapLabel: "화평의 방주",
     nehemiahMapLabel: "희락의 성읍",
+    mapUnlockDayLabel: "{day}일에 열려요",
     peaceArkComingSoonTitle: "화평의 방주 아이템 준비 중",
     peaceArkComingSoonBody: "방주 여정에 어울리는 새로운 친구들이 곧 찾아올 거예요.",
     items: {
@@ -273,6 +283,10 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Current look",
+    restorePreviousLabel: "Reset changes",
+    restorePreviousSuccess: "Restored the look from before your changes.",
+    restorePreviousFailed: "Could not restore the previous look.",
+    ownedAccessoriesCategoryLabel: "Accessories",
     characterPreviewTitle: "Character preview",
     characterPurchaseTitle: "Buy this item?",
     characterPurchaseBody: "This uses {price} Love Hearts and equips the item immediately.",
@@ -291,6 +305,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     gardenMapLabel: "Garden of Love",
     peaceArkMapLabel: "Ark of Peace",
     nehemiahMapLabel: "City of Joy",
+    mapUnlockDayLabel: "Unlocks on day {day}",
     peaceArkComingSoonTitle: "Ark of Peace items are coming",
     peaceArkComingSoonBody: "New friends for the ark journey will arrive soon.",
     items: {
@@ -430,6 +445,10 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "AN",
     disabledLabel: "AUS",
     currentLookTitle: "Aktuelles Outfit",
+    restorePreviousLabel: "Änderungen zurück",
+    restorePreviousSuccess: "Der Zustand vor den Änderungen wurde wiederhergestellt.",
+    restorePreviousFailed: "Der vorherige Zustand konnte nicht wiederhergestellt werden.",
+    ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Figurenvorschau",
     characterPurchaseTitle: "Dieses Item kaufen?",
     characterPurchaseBody: "Dafür werden {price} Liebesherzen verwendet und das Item wird sofort angelegt.",
@@ -448,6 +467,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     gardenMapLabel: "Garten der Liebe",
     peaceArkMapLabel: "Arche des Friedens",
     nehemiahMapLabel: "Stadt der Freude",
+    mapUnlockDayLabel: "Ab Tag {day} verfügbar",
     peaceArkComingSoonTitle: "Items für die Arche des Friedens kommen bald",
     peaceArkComingSoonBody: "Neue Freunde für die Reise mit der Arche sind in Vorbereitung.",
     items: {
@@ -587,6 +607,10 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Tenue actuelle",
+    restorePreviousLabel: "Annuler les changements",
+    restorePreviousSuccess: "La tenue d’avant vos modifications a été restaurée.",
+    restorePreviousFailed: "Impossible de restaurer la tenue précédente.",
+    ownedAccessoriesCategoryLabel: "Accessoires",
     characterPreviewTitle: "Aperçu du personnage",
     characterPurchaseTitle: "Acheter cet objet ?",
     characterPurchaseBody: "Cet achat utilise {price} cœurs d’amour et équipe immédiatement l’objet.",
@@ -605,6 +629,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     gardenMapLabel: "Jardin de l’amour",
     peaceArkMapLabel: "Arche de paix",
     nehemiahMapLabel: "Cité de la joie",
+    mapUnlockDayLabel: "Disponible au jour {day}",
     peaceArkComingSoonTitle: "Les objets pour l’Arche de paix arrivent bientôt",
     peaceArkComingSoonBody: "De nouveaux amis pour le voyage de l’arche sont en préparation.",
     items: {
@@ -745,6 +770,10 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     enabledLabel: "ON",
     disabledLabel: "OFF",
     currentLookTitle: "Atuendo actual",
+    restorePreviousLabel: "Deshacer cambios",
+    restorePreviousSuccess: "Se restauró el estilo anterior a tus cambios.",
+    restorePreviousFailed: "No se pudo restaurar el estilo anterior.",
+    ownedAccessoriesCategoryLabel: "Accesorios",
     characterPreviewTitle: "Vista previa del personaje",
     characterPurchaseTitle: "¿Quieres comprar este objeto?",
     characterPurchaseBody: "Se usarán {price} corazones y el objeto se aplicará al personaje de inmediato.",
@@ -763,6 +792,7 @@ const TEXT: Record<ShopLang, HeartShopText> = {
     gardenMapLabel: "Jardín del Amor",
     peaceArkMapLabel: "Arca de la Paz",
     nehemiahMapLabel: "Ciudad de la Alegría",
+    mapUnlockDayLabel: "Se desbloquea el día {day}",
     peaceArkComingSoonTitle: "Próximamente: objetos del Arca de la Paz",
     peaceArkComingSoonBody: "Muy pronto llegarán nuevos amigos para el camino del arca.",
     items: {

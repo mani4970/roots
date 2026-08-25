@@ -20,6 +20,7 @@ import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
+import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -55,6 +56,14 @@ import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharact
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { claimPendingChallengeRewards, type ChallengeReward } from "@/lib/challengeRewards";
+import {
+  getMonthlyBadgeAwardCampaignKey,
+  getMonthlyBadgeDateRange,
+  getMonthlyBadgeStatus,
+  getPreviousMonthlyBadgeForAwardPopup,
+  type MonthlyBadgeCompletionRecord,
+  type MonthlyBadgeDefinition,
+} from "@/lib/monthlyBadges";
 import {
   COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
   SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
@@ -362,6 +371,9 @@ export default function HomePage() {
   const spanishLanguageLaunchAnnouncementUserIdRef = useRef<string | null>(null);
   const spanishLanguageLaunchAnnouncementHandledRef = useRef(false);
   const [showSpanishLanguageLaunchAnnouncement, setShowSpanishLanguageLaunchAnnouncement] = useState(false);
+  const monthlyBadgeAwardUserIdRef = useRef<string | null>(null);
+  const monthlyBadgeAwardHandledRef = useRef(false);
+  const [monthlyBadgeAward, setMonthlyBadgeAward] = useState<MonthlyBadgeDefinition | null>(null);
 
   function showToast(message: string) {
     setToast(message);
@@ -446,6 +458,76 @@ export default function HomePage() {
     }
 
     await persistSeenTask;
+  }
+
+  async function completeMonthlyBadgeAward(openProfile: boolean) {
+    if (monthlyBadgeAwardHandledRef.current || !monthlyBadgeAward) return;
+    monthlyBadgeAwardHandledRef.current = true;
+
+    const badge = monthlyBadgeAward;
+    const userId = monthlyBadgeAwardUserIdRef.current ?? profile?.id ?? "";
+    const campaignKey = getMonthlyBadgeAwardCampaignKey(badge);
+    const localCampaignKey = userId
+      ? getUserCampaignLocalStorageKey(campaignKey, userId)
+      : "";
+
+    if (localCampaignKey) storageSet(localCampaignKey, "true");
+    setMonthlyBadgeAward(null);
+
+    const persistSeenTask = (userId
+      ? markUserCampaignSeen(createClient(), userId, campaignKey)
+      : Promise.resolve()
+    ).catch((error) => {
+      // The local receipt still guarantees one-time display on this device.
+      // A temporary receipt failure must never block Home or Profile.
+      console.warn("월별 배지 축하 팝업 확인 저장 실패:", error);
+    });
+
+    if (openProfile) router.push("/profile#monthly-badges");
+    await persistSeenTask;
+  }
+
+  async function checkMonthlyBadgeAwardAnnouncement(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    now: Date = new Date(),
+  ) {
+    const badge = getPreviousMonthlyBadgeForAwardPopup(now);
+    if (!badge) return;
+
+    const campaignKey = getMonthlyBadgeAwardCampaignKey(badge);
+    const localCampaignKey = getUserCampaignLocalStorageKey(campaignKey, userId);
+    if (storageGet(localCampaignKey)) return;
+
+    const seen = await loadUserCampaignSeen(supabase, userId, campaignKey);
+    if (seen === true) {
+      storageSet(localCampaignKey, "true");
+      return;
+    }
+
+    const { startDate, endDateExclusive } = getMonthlyBadgeDateRange(badge);
+    const { data, error } = await supabase
+      .from("qt_records")
+      .select("date,completed_at")
+      .eq("user_id", userId)
+      .eq("is_draft", false)
+      .gte("date", startDate)
+      .lt("date", endDateExclusive);
+
+    if (error) {
+      console.warn("월별 배지 축하 대상 조회 실패:", error);
+      return;
+    }
+
+    const status = getMonthlyBadgeStatus(
+      badge,
+      (data ?? []) as MonthlyBadgeCompletionRecord[],
+      now,
+    );
+    if (status !== "earned" || storageGet(localCampaignKey)) return;
+
+    monthlyBadgeAwardHandledRef.current = false;
+    setMonthlyBadgeAward(badge);
   }
 
   async function checkPendingChallengeRewards(
@@ -612,6 +694,7 @@ export default function HomePage() {
     if (!user) { router.push("/welcome"); return; }
     companionChallengeAnnouncementUserIdRef.current = user.id;
     spanishLanguageLaunchAnnouncementUserIdRef.current = user.id;
+    monthlyBadgeAwardUserIdRef.current = user.id;
 
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
@@ -689,6 +772,7 @@ export default function HomePage() {
     }
 
     const today = getLocalDateString();
+    void checkMonthlyBadgeAwardAnnouncement(supabase, user.id);
     void checkPendingChallengeRewards(supabase, today);
 
     if (isCompanionChallenge2AnnouncementWindow(today)) {
@@ -1524,6 +1608,12 @@ export default function HomePage() {
   const visibleSpanishLanguageLaunchAnnouncement =
     showSpanishLanguageLaunchAnnouncement &&
     !spanishLanguageLaunchAnnouncementBlocked;
+  const monthlyBadgeAwardPopupBlocked =
+    spanishLanguageLaunchAnnouncementBlocked ||
+    visibleSpanishLanguageLaunchAnnouncement;
+  const visibleMonthlyBadgeAward =
+    !!monthlyBadgeAward &&
+    !monthlyBadgeAwardPopupBlocked;
   const homePopupBlocked =
     loading ||
     showFirstLangPicker ||
@@ -1537,6 +1627,7 @@ export default function HomePage() {
     showRootsManPopup ||
     showAvatarChoiceModal ||
     visibleSpanishLanguageLaunchAnnouncement ||
+    visibleMonthlyBadgeAward ||
     showLangPicker ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -1816,6 +1907,16 @@ export default function HomePage() {
         }}
       />
 
+      <MonthlyBadgeAwardPopup
+        badge={monthlyBadgeAward}
+        show={visibleMonthlyBadgeAward}
+        onConfirm={() => {
+          void completeMonthlyBadgeAward(true);
+        }}
+        onClose={() => {
+          void completeMonthlyBadgeAward(false);
+        }}
+      />
 
       <CompanionChallengeAnnouncementPopup
         show={visibleCompanionChallengeAnnouncement}
@@ -1839,7 +1940,7 @@ export default function HomePage() {
       />
 
       <WelcomeBackPopup
-        show={showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement}
+        show={showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward}
         daysSince={welcomeBackDays}
         onClose={() => setShowWelcomeBack(false)}
       />
@@ -1914,7 +2015,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}

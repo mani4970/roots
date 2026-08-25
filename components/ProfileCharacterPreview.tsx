@@ -14,6 +14,7 @@ type ProfileCharacterPreviewProps = {
   alt: string;
   layers?: readonly ProfileCharacterLayer[];
   style?: CSSProperties;
+  forceSquareCanvas?: boolean;
 };
 
 const SQUARE_CHARACTER_RENDER_HEIGHT_PERCENT = 96.875;
@@ -71,6 +72,7 @@ export default function ProfileCharacterPreview({
   alt,
   layers = [],
   style,
+  forceSquareCanvas = false,
 }: ProfileCharacterPreviewProps) {
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const visibleLayers = filterProfileCharacterLayers(layers, avatarType);
@@ -78,7 +80,8 @@ export default function ProfileCharacterPreview({
   const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const hasSquareBackground = backgroundLayers.some(layer => layer.slot === "background");
   const hasJesusPhotoBackground = backgroundLayers.some(layer => layer.id === "shared_background_15");
-  const characterLayerStyle: CSSProperties = hasSquareBackground
+  const useSquareCanvas = hasSquareBackground || forceSquareCanvas;
+  const characterLayerStyle: CSSProperties = useSquareCanvas
     ? {
       left: `${hasJesusPhotoBackground ? JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT : SQUARE_CHARACTER_RENDER_LEFT_PERCENT}%`,
       top: `${SQUARE_CHARACTER_RENDER_TOP_PERCENT}%`,
@@ -96,7 +99,7 @@ export default function ProfileCharacterPreview({
       style={{
         position: "relative",
         width: "100%",
-        aspectRatio: hasSquareBackground
+        aspectRatio: useSquareCanvas
           ? "1 / 1"
           : `${PROFILE_CHARACTER_CANVAS.width} / ${PROFILE_CHARACTER_CANVAS.height}`,
         overflow: "hidden",

@@ -225,7 +225,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
 
 export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
 export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
-export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260809_v3";
+export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260825_v4";
 export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 
 // Existing character assets stay on their current PNG paths. Register every new
@@ -242,6 +242,14 @@ const HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES: Partial<
   shared_pet_05: "webp",
   shared_pet_06: "webp",
   shared_pet_07: "webp",
+  rootsman_top_15: "webp",
+  rootsman_top_16: "webp",
+  rootsman_top_17: "webp",
+  rootsman_top_18: "webp",
+  rootswoman_top_19: "webp",
+  rootswoman_top_20: "webp",
+  rootswoman_top_21: "webp",
+  rootswoman_top_22: "webp",
 };
 
 function getCharacterAssetExtension(
@@ -275,13 +283,16 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     && itemNumber <= 14;
   const isExistingNewRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 11 && itemNumber <= 14;
   const isLatestRootsWomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 15 && itemNumber <= 18;
+  const isNewestRootsmanTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 15 && itemNumber <= 18;
+  const isNewestRootswomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 19 && itemNumber <= 22;
+  const isNewestTop = isNewestRootsmanTop || isNewestRootswomanTop;
   const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
   const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
   const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 19;
   const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
-  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom;
-  const isNew = isLatestProfileBackground || isLatestPet;
+  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop;
+  const isNew = isLatestProfileBackground || isLatestPet || isNewestTop;
   const latestBackgroundPriority = itemId === "shared_background_17"
     ? 1300
     : itemId === "shared_background_15"
@@ -293,7 +304,13 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
           : itemId === "shared_background_16"
             ? 1130
             : 0;
-  const newPriority = isLatestProfileBackground ? latestBackgroundPriority : isLatestPet ? 1000 : 0;
+  const newPriority = isNewestTop
+    ? 2000 - itemNumber
+    : isLatestProfileBackground
+      ? latestBackgroundPriority
+      : isLatestPet
+        ? 1000
+        : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const assetExtension = getCharacterAssetExtension(itemId);
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
@@ -311,7 +328,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     category: "character",
     avatarType,
     slot,
-    price: itemId === "shared_background_15"
+    price: isNewestTop
+      ? 50
+      : itemId === "shared_background_15"
       ? 300
       : itemId === "shared_background_17"
         ? 100
