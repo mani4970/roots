@@ -1260,40 +1260,37 @@ export default function HeartShopModal({
                 </div>
               ) : activeOwnedSection === "character" ? (
                 <div className="card" style={{ padding: "0 14px 6px", background: "var(--heart-shop-card-surface-owned)" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "10px 16px", borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
-                    <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                      <div style={{ borderRadius: 999, padding: "5px 10px", background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                      <button
-                        type="button"
-                        onClick={() => void restoreOwnedCharacterState()}
-                        disabled={!canRestoreOwnedCharacterState || restoringCharacterState}
-                        aria-label={text.restorePreviousLabel}
-                        title={text.restorePreviousLabel}
-                        style={{
-                          minHeight: 32,
-                          padding: "6px 9px",
-                          borderRadius: 999,
-                          border: canRestoreOwnedCharacterState ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
-                          background: canRestoreOwnedCharacterState ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
-                          color: canRestoreOwnedCharacterState ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          fontSize: 9.5,
-                          lineHeight: 1,
-                          fontWeight: 900,
-                          whiteSpace: "nowrap",
-                          cursor: canRestoreOwnedCharacterState && !restoringCharacterState ? "pointer" : "default",
-                          opacity: canRestoreOwnedCharacterState ? 1 : 0.45,
-                        }}
-                      >
-                        {restoringCharacterState
-                          ? <Loader2 size={14} className="spin" aria-hidden="true" />
-                          : <RotateCcw size={14} strokeWidth={2.5} aria-hidden="true" />}
-                        <span>{text.restorePreviousLabel}</span>
-                      </button>
-                    </div>
+                  <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "10px 16px", borderRadius: 18, background: "var(--heart-shop-owned-preview)", marginBottom: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => void restoreOwnedCharacterState()}
+                      disabled={!canRestoreOwnedCharacterState || restoringCharacterState}
+                      aria-label={text.restorePreviousLabel}
+                      title={text.restorePreviousLabel}
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 12,
+                        zIndex: 1,
+                        width: 34,
+                        height: 34,
+                        padding: 0,
+                        borderRadius: 999,
+                        border: canRestoreOwnedCharacterState ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
+                        background: canRestoreOwnedCharacterState ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
+                        color: canRestoreOwnedCharacterState ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: canRestoreOwnedCharacterState && !restoringCharacterState ? "pointer" : "default",
+                        opacity: canRestoreOwnedCharacterState ? 1 : 0.45,
+                      }}
+                    >
+                      {restoringCharacterState
+                        ? <Loader2 size={18} className="spin" aria-hidden="true" />
+                        : <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />}
+                    </button>
+                    <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
                     <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} forceSquareCanvas style={{ width: "clamp(120px,20dvh,180px)" }} />
                   </div>
                   <p style={{ margin: "4px 2px 10px", color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
