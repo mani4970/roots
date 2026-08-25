@@ -54,7 +54,7 @@ export default function MonthlyBadgeAwardPopup({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="monthly-badge-award-title"
+        aria-label={copy.awardBadgeAlt(monthLabel)}
         aria-describedby="monthly-badge-award-body"
         style={{
           width: "100%",
@@ -83,20 +83,6 @@ export default function MonthlyBadgeAwardPopup({
             style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
-
-        <h2
-          id="monthly-badge-award-title"
-          style={{
-            margin: "0 0 11px",
-            color: "var(--text)",
-            fontSize: 20,
-            fontWeight: 950,
-            lineHeight: 1.36,
-            wordBreak: "keep-all",
-          }}
-        >
-          {copy.awardTitle(monthLabel)}
-        </h2>
 
         <div
           style={{
