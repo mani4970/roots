@@ -1368,9 +1368,11 @@ export default function ProfilePage() {
                     <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {monthLabel}
                     </div>
-                    <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
-                      {getMonthlyBadgeStatusLabel(badge.status)}
-                    </div>
+                    {badge.status !== "mystery" && (
+                      <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
+                        {getMonthlyBadgeStatusLabel(badge.status)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1725,9 +1727,11 @@ export default function ProfilePage() {
                   <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {monthLabel}
                   </div>
-                  <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
-                    {getMonthlyBadgeStatusLabel(badge.status)}
-                  </div>
+                  {badge.status !== "mystery" && (
+                    <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
+                      {getMonthlyBadgeStatusLabel(badge.status)}
+                    </div>
+                  )}
                 </div>
               );
             })}
