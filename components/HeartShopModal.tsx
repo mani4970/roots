@@ -267,7 +267,8 @@ export default function HeartShopModal({
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
   const [activeOwnedCharacterCategory, setActiveOwnedCharacterCategory] = useState<HeartShopOwnedCharacterCategory>("tops");
   const [mapScenePreviewItemId, setMapScenePreviewItemId] = useState<HeartShopMapItemId | null>(null);
-  const [outfitPreviewItemIds, setOutfitPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
+  const [characterShopPreviewItemIds, setCharacterShopPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
+  const [ownedCharacterPreviewItemIds, setOwnedCharacterPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
   const [ownedCharacterSnapshotItemIds, setOwnedCharacterSnapshotItemIds] = useState<HeartShopCharacterItemId[] | null>(null);
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
@@ -316,8 +317,8 @@ export default function HeartShopModal({
     () => getProfileCharacterLayersForItemIds(enabledItemIds, avatarType),
     [avatarType, enabledItemIds],
   );
-  const displayedCharacterLayers = useMemo(() => {
-    const previewItemIds = Object.values(outfitPreviewItemIds).filter(
+  const characterShopDisplayedLayers = useMemo(() => {
+    const previewItemIds = Object.values(characterShopPreviewItemIds).filter(
       (itemId): itemId is HeartShopCharacterItemId => Boolean(itemId),
     );
     const previewLayers = getProfileCharacterLayersForItemIds(previewItemIds, avatarType);
@@ -326,8 +327,20 @@ export default function HeartShopModal({
       ...currentLayers.filter(layer => !previewSlots.has(layer.slot)),
       ...previewLayers,
     ];
-  }, [avatarType, currentLayers, outfitPreviewItemIds]);
-  const hasOutfitPreview = Object.keys(outfitPreviewItemIds).length > 0;
+  }, [avatarType, characterShopPreviewItemIds, currentLayers]);
+  const ownedCharacterDisplayedLayers = useMemo(() => {
+    const previewItemIds = Object.values(ownedCharacterPreviewItemIds).filter(
+      (itemId): itemId is HeartShopCharacterItemId => Boolean(itemId),
+    );
+    const previewLayers = getProfileCharacterLayersForItemIds(previewItemIds, avatarType);
+    const previewSlots = new Set(previewLayers.map(layer => layer.slot));
+    return [
+      ...currentLayers.filter(layer => !previewSlots.has(layer.slot)),
+      ...previewLayers,
+    ];
+  }, [avatarType, currentLayers, ownedCharacterPreviewItemIds]);
+  const hasCharacterShopPreview = Object.keys(characterShopPreviewItemIds).length > 0;
+  const hasOwnedCharacterPreview = Object.keys(ownedCharacterPreviewItemIds).length > 0;
   const visibleMapItems = useMemo(
     () => HEART_SHOP_MAP_CATALOG
       .filter(item => item.mapKinds.includes(activeMapSection))
@@ -360,7 +373,7 @@ export default function HeartShopModal({
   const hasStoredCharacterChanges = ownedCharacterSnapshotItemIds !== null
     && !haveSameItemIds(ownedCharacterSnapshotItemIds, enabledOwnedCharacterItemIds);
   const canRestoreOwnedCharacterState = ownedCharacterSnapshotItemIds !== null
-    && (hasOutfitPreview || hasStoredCharacterChanges);
+    && (hasOwnedCharacterPreview || hasStoredCharacterChanges);
   const ownedMapItems = useMemo(
     () => HEART_SHOP_MAP_CATALOG.filter(item => ownedById.has(item.id)),
     [ownedById],
@@ -421,8 +434,21 @@ export default function HeartShopModal({
     });
   }
 
-  function applyCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
-    setOutfitPreviewItemIds(current => {
+  function applyCharacterShopOutfitPreview(item: HeartShopCharacterCatalogItem) {
+    setCharacterShopPreviewItemIds(current => {
+      const next = { ...current };
+      const currentItemId = currentLayers.find(layer => layer.slot === item.slot)?.id;
+      if (currentItemId === item.id) {
+        delete next[item.slot];
+      } else {
+        next[item.slot] = item.id;
+      }
+      return next;
+    });
+  }
+
+  function applyOwnedCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
+    setOwnedCharacterPreviewItemIds(current => {
       const next = { ...current };
       const currentItemId = currentLayers.find(layer => layer.slot === item.slot)?.id;
       if (currentItemId === item.id) {
@@ -516,7 +542,8 @@ export default function HeartShopModal({
     setActiveOwnedSection("character");
     setActiveOwnedCharacterCategory("tops");
     setMapScenePreviewItemId(null);
-    setOutfitPreviewItemIds({});
+    setCharacterShopPreviewItemIds({});
+    setOwnedCharacterPreviewItemIds({});
     setOwnedCharacterSnapshotItemIds(null);
     setOwnedItemsLoaded(false);
     setRestoringCharacterState(false);
@@ -641,7 +668,7 @@ export default function HeartShopModal({
       const result = await applyFreeHeartShopItem(supabase, item.id);
       if (!result.applied) throw new Error(result.reason || "apply_failed");
       await reloadOwnedItems(supabase);
-      setOutfitPreviewItemIds(current => {
+      setCharacterShopPreviewItemIds(current => {
         const next = { ...current };
         delete next.background;
         return next;
@@ -674,7 +701,7 @@ export default function HeartShopModal({
       await reloadOwnedItems(supabase);
       const catalogItem = getHeartShopCatalogItem(item.itemId);
       if (catalogItem && isHeartShopCharacterCatalogItem(catalogItem)) {
-        setOutfitPreviewItemIds(current => {
+        setOwnedCharacterPreviewItemIds(current => {
           if (!current[catalogItem.slot]) return current;
           const next = { ...current };
           delete next[catalogItem.slot];
@@ -716,7 +743,7 @@ export default function HeartShopModal({
     );
 
     setRestoringCharacterState(true);
-    setOutfitPreviewItemIds({});
+    setOwnedCharacterPreviewItemIds({});
     try {
       if (itemsToDisable.length > 0 || itemsToEnable.length > 0) {
         const supabase = createClient();
@@ -1088,8 +1115,8 @@ export default function HeartShopModal({
               <div className="card" style={{ position: "relative", flexShrink: 0, margin: "0 16px", padding: "10px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-look-preview)" }}>
                 <button
                   type="button"
-                  onClick={() => setOutfitPreviewItemIds({})}
-                  disabled={!hasOutfitPreview}
+                  onClick={() => setCharacterShopPreviewItemIds({})}
+                  disabled={!hasCharacterShopPreview}
                   aria-label={profileText.restoreOutfitLabel}
                   title={profileText.restoreOutfitLabel}
                   style={{
@@ -1101,20 +1128,20 @@ export default function HeartShopModal({
                     height: 34,
                     padding: 0,
                     borderRadius: 999,
-                    border: hasOutfitPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
-                    background: hasOutfitPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
-                    color: hasOutfitPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
+                    border: hasCharacterShopPreview ? "1px solid rgba(122,157,122,.38)" : "1px solid var(--border)",
+                    background: hasCharacterShopPreview ? "var(--heart-shop-reset-surface)" : "var(--heart-shop-reset-surface-muted)",
+                    color: hasCharacterShopPreview ? "var(--sage-dark)" : "var(--heart-shop-muted-text)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: hasOutfitPreview ? "pointer" : "default",
-                    opacity: hasOutfitPreview ? 1 : 0.45,
+                    cursor: hasCharacterShopPreview ? "pointer" : "default",
+                    opacity: hasCharacterShopPreview ? 1 : 0.45,
                   }}
                 >
                   <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />
                 </button>
                 <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} forceSquareCanvas style={{ width: "clamp(120px,20dvh,180px)" }} />
+                <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={characterShopDisplayedLayers} forceSquareCanvas style={{ width: "clamp(120px,20dvh,180px)" }} />
               </div>
 
               <div role="tablist" aria-label={text.characterTab} style={{ flexShrink: 0, display: "flex", gap: 7, overflowX: "auto", padding: "2px 16px 8px", marginTop: 10, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
@@ -1137,13 +1164,13 @@ export default function HeartShopModal({
                     const isFreeBackground = item.slot === "background" && item.price === 0;
                     const isApplied = isFreeBackground && ownedItem?.isEnabled === true;
                     const isApplying = applyingFreeItemId === item.id;
-                    const previewing = outfitPreviewItemIds[item.slot] === item.id;
+                    const previewing = characterShopPreviewItemIds[item.slot] === item.id;
                     const previewLabel = `${profileText.previewLabel}: ${itemText.name}`;
                     return (
                       <article key={item.id} className="card" style={{ minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)" }}>
                         <button
                           type="button"
-                          onClick={() => applyCharacterOutfitPreview(item)}
+                          onClick={() => applyCharacterShopOutfitPreview(item)}
                           aria-label={previewLabel}
                           title={previewLabel}
                           aria-pressed={previewing}
@@ -1291,7 +1318,7 @@ export default function HeartShopModal({
                         : <RotateCcw size={18} strokeWidth={2.5} aria-hidden="true" />}
                     </button>
                     <div style={{ borderRadius: 999, padding: "5px 10px", marginBottom: 4, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", fontSize: 10.5, fontWeight: 900 }}>{text.currentLookTitle}</div>
-                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={displayedCharacterLayers} forceSquareCanvas style={{ width: "clamp(120px,20dvh,180px)" }} />
+                    <ProfileCharacterPreview avatarType={avatarType} alt={getRootsAvatarLabel(avatarType, lang)} layers={ownedCharacterDisplayedLayers} forceSquareCanvas style={{ width: "clamp(120px,20dvh,180px)" }} />
                   </div>
                   <p style={{ margin: "4px 2px 10px", color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.5, fontWeight: 650 }}>{text.sameSlotHint}</p>
                   <div
@@ -1343,12 +1370,12 @@ export default function HeartShopModal({
                   ) : visibleOwnedCharacterItems.map((catalogItem, index) => {
                     const owned = ownedById.get(catalogItem.id)!;
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
-                    const previewing = outfitPreviewItemIds[catalogItem.slot] === catalogItem.id;
+                    const previewing = ownedCharacterPreviewItemIds[catalogItem.slot] === catalogItem.id;
                     return (
                       <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
                         <button
                           type="button"
-                          onClick={() => applyCharacterOutfitPreview(catalogItem)}
+                          onClick={() => applyOwnedCharacterOutfitPreview(catalogItem)}
                           aria-label={`${profileText.previewLabel}: ${name}`}
                           aria-pressed={previewing}
                           style={{
