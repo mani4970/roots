@@ -103,6 +103,7 @@ const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
+const HOME_PROFILE_RETRY_DELAYS_MS = [300, 800] as const;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
   return `${prefix}${userId}_${date}`;
@@ -151,11 +152,11 @@ const gardenTopRef_scroll = () => {
 };
 
 const HOME_LOCAL_TEXT = {
-  ko: { characterSaveFailed: "캐릭터 선택을 저장하지 못했어요." },
-  de: { characterSaveFailed: "Die Charakterauswahl konnte nicht gespeichert werden." },
-  en: { characterSaveFailed: "Could not save your character choice." },
-  fr: { characterSaveFailed: "Impossible d’enregistrer le personnage." },
-  es: { characterSaveFailed: "No pudimos guardar tu personaje." },
+  ko: { characterSaveFailed: "캐릭터 선택을 저장하지 못했어요.", profileLoadFailed: "내 정보를 불러오지 못했어요.", retry: "다시 시도" },
+  de: { characterSaveFailed: "Die Charakterauswahl konnte nicht gespeichert werden.", profileLoadFailed: "Dein Profil konnte nicht geladen werden.", retry: "Erneut versuchen" },
+  en: { characterSaveFailed: "Could not save your character choice.", profileLoadFailed: "We couldn't load your profile.", retry: "Try again" },
+  fr: { characterSaveFailed: "Impossible d’enregistrer le personnage.", profileLoadFailed: "Impossible de charger votre profil.", retry: "Réessayer" },
+  es: { characterSaveFailed: "No pudimos guardar tu personaje.", profileLoadFailed: "No pudimos cargar tu perfil.", retry: "Intentar de nuevo" },
 } as const;
 
 type HomeQTState = {
@@ -308,6 +309,7 @@ export default function HomePage() {
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
+  const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
@@ -673,6 +675,8 @@ export default function HomePage() {
   }, [loading, profile?.id, completedQtRecordId]);
 
   async function load() {
+    setLoading(true);
+    setHomeLoadFailed(false);
     if (typeof window !== "undefined") {
       const saved = storageGet("roots_theme");
       if (saved === "dark") {
@@ -714,7 +718,19 @@ export default function HomePage() {
         setEnabledProfileCharacterItemIds([]);
       });
 
-    const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    let profileResponse = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    for (const delayMs of HOME_PROFILE_RETRY_DELAYS_MS) {
+      if (profileResponse.data) break;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      profileResponse = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    }
+    const p = profileResponse.data;
+    if (!p) {
+      console.error("홈 프로필 조회 실패:", profileResponse.error);
+      setHomeLoadFailed(true);
+      setLoading(false);
+      return;
+    }
     if (p) {
       setProfile(p);
       if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
@@ -1664,6 +1680,29 @@ export default function HomePage() {
           <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--sage)", animation: `pulse 1.2s ease-in-out ${i*0.2}s infinite` }} />
         ))}
       </div>
+    </div>
+  );
+
+  if (homeLoadFailed || !profile) return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 28, textAlign: "center" }}>
+      <img
+        src="/roots-logo-transparent-160.png"
+        alt="Roots sprout"
+        width={82}
+        height={82}
+        style={{ objectFit: "contain" }}
+      />
+      <div>
+        <h1 style={{ fontSize: 20, fontWeight: 850, color: "var(--text)", marginBottom: 8 }}>{HOME_LOCAL_TEXT[lang].profileLoadFailed}</h1>
+        <p style={{ maxWidth: 320, fontSize: 13, color: "var(--text3)", lineHeight: 1.65 }}>{t("network_error_retry", lang)}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => void load()}
+        style={{ minWidth: 140, minHeight: 44, padding: "10px 18px", border: "none", borderRadius: 14, background: "var(--sage)", color: "var(--bg)", fontSize: 13, fontWeight: 850, cursor: "pointer" }}
+      >
+        {HOME_LOCAL_TEXT[lang].retry}
+      </button>
     </div>
   );
 
