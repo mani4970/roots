@@ -784,6 +784,37 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     max-width: min(430px, 66.6667vw);
   }
 
+  /*
+   * The app uses many phone-sized inline pixel values for supporting UI copy.
+   * Enlarge only those small labels in the native iPad/Mac shell; scripture
+   * text (16px and above) remains under the reader's A-/A+ control.
+   */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:8px"], [style*="font-size: 8px"]) { font-size: 11px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:8.5px"], [style*="font-size: 8.5px"]) { font-size: 11.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9px"], [style*="font-size: 9px"]) { font-size: 12px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9.5px"], [style*="font-size: 9.5px"]) { font-size: 12.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9.8px"], [style*="font-size: 9.8px"]) { font-size: 12.8px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:10px"], [style*="font-size: 10px"]) { font-size: 13px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:10.5px"], [style*="font-size: 10.5px"]) { font-size: 13.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:11px"], [style*="font-size: 11px"]) { font-size: 14px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:11.5px"], [style*="font-size: 11.5px"]) { font-size: 14.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:12px"], [style*="font-size: 12px"]) { font-size: 15px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:12.5px"], [style*="font-size: 12.5px"]) { font-size: 15.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:13px"], [style*="font-size: 13px"]) { font-size: 16px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:13.5px"], [style*="font-size: 13.5px"]) { font-size: 16.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:14px"], [style*="font-size: 14px"]) { font-size: 17px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:15px"], [style*="font-size: 15px"]) { font-size: 18px !important; }
+
+  /* Shared class-based controls are not covered by the inline-size mapping. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, select, .input-field, .textarea-field) { font-size: 18px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .btn-primary { font-size: 18px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.btn-sage, .btn-outline) { font-size: 17px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .sec-label { font-size: 14px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .nav-item { font-size: 13px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .streak-chip span { font-size: 13px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .verse-text { font-size: 18px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .step-jump { font-size: 12px !important; }
+
   /* Keep the approved six-step alignment and safe-area fixes at the shared tablet scale. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-tabs { padding-inline: 8px; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-editor {
