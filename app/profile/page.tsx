@@ -1221,6 +1221,9 @@ export default function ProfilePage() {
     if (profile.profile_character_signature === currentProfileCharacterSignature) return;
 
     let cancelled = false;
+    setPhotoError(current => (
+      current === profileAvatarText.autoUpdateFailed ? "" : current
+    ));
     void enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
       currentAvatarType,
       ownedHeartShopItems,
