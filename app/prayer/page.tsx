@@ -1015,12 +1015,15 @@ function PrayerPageContent() {
 
       {/* + 버튼 (나의 기도 탭에서만) */}
       {tab === "mine" && (
-        <button
-          onClick={() => setShowForm(true)}
-          style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--prayer-sage-action)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "var(--prayer-fab-shadow)" }}
-        >
-          <Plus size={22} style={{ color: "var(--prayer-on-sage-action)" }} />
-        </button>
+        <div className="roots-prayer-fab-frame">
+          <button
+            className="roots-prayer-fab"
+            onClick={() => setShowForm(true)}
+            style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--prayer-sage-action)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "var(--prayer-fab-shadow)" }}
+          >
+            <Plus size={22} style={{ color: "var(--prayer-on-sage-action)" }} />
+          </button>
+        </div>
       )}
 
       <BottomNav />
