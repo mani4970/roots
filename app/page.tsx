@@ -1661,7 +1661,7 @@ export default function HomePage() {
       : challengeRewardQueue[0] ?? null;
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
+    <div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <img
           src="/roots-logo-transparent-160.png"

@@ -2978,7 +2978,7 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   return (
-    <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -3043,21 +3043,21 @@ function QTWriteContent() {
             );
           })}
         </div>
-        <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
+        <p className="qt-six-step-kicker" style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
           {step6.barIdx.map(i => trQT(BAR_LABELS_6[i], lang)).join(" & ")}
         </p>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
-        <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
+        <h1 className="qt-six-step-title" style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
+        <p className="qt-six-step-subtitle" style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
       </div>
 
       {/* 단계 탭 */}
-      <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+      <div className="qt-six-step-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         {STEPS_6.map((s, i) => {
           const done = i < cur;
           const isCurr = i === cur;
           return (
             <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
+              <span className="qt-six-step-tab-label" style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
               {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
             </button>
           );
@@ -3066,7 +3066,7 @@ function QTWriteContent() {
 
       {/* 본문 요약 & 붙잡은 말씀 단계 */}
       {step6.isPassageStep && (
-        <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* 본문 전체 보기 */}
           {getDisplayPassages().length > 0 && (() => {
@@ -3154,7 +3154,7 @@ function QTWriteContent() {
 
       {/* 결단 단계 */}
       {step6.isDecision && (
-        <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--qt-card-border)" }}>
             <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
               {t("qtw_decision_hint_prefix", lang)}
@@ -3191,9 +3191,9 @@ function QTWriteContent() {
 
       {/* 일반 텍스트 단계 (들어가는기도, 느낌과묵상, 올려드리는기도) */}
       {!step6.isPassageStep && !step6.isDecision && (
-        <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
 
-          <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
+          <p className="qt-six-step-hint" style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
 
           {step6.id === "meditation" && keyVerse.trim() && (
             <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
@@ -3234,7 +3234,7 @@ function QTWriteContent() {
       )}
 
       {/* 하단 버튼 */}
-      <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+      <div className="qt-six-step-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 8 }}>
           {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
           {step6.isLast ? (
