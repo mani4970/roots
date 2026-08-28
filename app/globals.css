@@ -766,6 +766,7 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     max-width: min(430px, 66.6667vw);
     min-height: 66.6667vh;
     min-height: 66.6667dvh;
+    font-size: 19px;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-native-tablet-viewport {
     min-height: 66.6667vh !important;
@@ -784,32 +785,51 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     max-width: min(430px, 66.6667vw);
   }
 
-  /*
-   * The app uses many phone-sized inline pixel values for supporting UI copy.
-   * Enlarge only those small labels in the native iPad/Mac shell; scripture
-   * text (16px and above) remains under the reader's A-/A+ control.
-   */
+  /* Enlarge every explicit inline pixel font by 3px in the native iPad/Mac shell. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:8px"], [style*="font-size: 8px"]) { font-size: 11px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:8.5px"], [style*="font-size: 8.5px"]) { font-size: 11.5px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9px"], [style*="font-size: 9px"]) { font-size: 12px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9.5px"], [style*="font-size: 9.5px"]) { font-size: 12.5px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:9.8px"], [style*="font-size: 9.8px"]) { font-size: 12.8px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:10px"], [style*="font-size: 10px"]) { font-size: 13px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:10.08px"], [style*="font-size: 10.08px"]) { font-size: 13.08px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:10.5px"], [style*="font-size: 10.5px"]) { font-size: 13.5px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:11px"], [style*="font-size: 11px"]) { font-size: 14px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:11.5px"], [style*="font-size: 11.5px"]) { font-size: 14.5px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:12px"], [style*="font-size: 12px"]) { font-size: 15px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:12.5px"], [style*="font-size: 12.5px"]) { font-size: 15.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:12.96px"], [style*="font-size: 12.96px"]) { font-size: 15.96px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:13px"], [style*="font-size: 13px"]) { font-size: 16px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:13.5px"], [style*="font-size: 13.5px"]) { font-size: 16.5px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:13.68px"], [style*="font-size: 13.68px"]) { font-size: 16.68px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:14px"], [style*="font-size: 14px"]) { font-size: 17px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:15px"], [style*="font-size: 15px"]) { font-size: 18px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:15.12px"], [style*="font-size: 15.12px"]) { font-size: 18.12px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:16px"], [style*="font-size: 16px"]) { font-size: 19px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:17px"], [style*="font-size: 17px"]) { font-size: 20px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:17.28px"], [style*="font-size: 17.28px"]) { font-size: 20.28px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:18px"], [style*="font-size: 18px"]) { font-size: 21px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:19px"], [style*="font-size: 19px"]) { font-size: 22px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:20px"], [style*="font-size: 20px"]) { font-size: 23px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:21px"], [style*="font-size: 21px"]) { font-size: 24px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:22px"], [style*="font-size: 22px"]) { font-size: 25px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:24px"], [style*="font-size: 24px"]) { font-size: 27px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:26px"], [style*="font-size: 26px"]) { font-size: 29px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:27.36px"], [style*="font-size: 27.36px"]) { font-size: 30.36px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:28px"], [style*="font-size: 28px"]) { font-size: 31px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:32px"], [style*="font-size: 32px"]) { font-size: 35px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:34px"], [style*="font-size: 34px"]) { font-size: 37px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:40px"], [style*="font-size: 40px"]) { font-size: 43px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:56px"], [style*="font-size: 56px"]) { font-size: 59px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is([style*="font-size:112px"], [style*="font-size: 112px"]) { font-size: 115px !important; }
 
-  /* Shared class-based controls are not covered by the inline-size mapping. */
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, select, .input-field, .textarea-field) { font-size: 18px !important; }
+  /* Shared class-based text is not covered by the inline-size mapping. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] button { font-size: 19px; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, select, .input-field, .textarea-field) { font-size: 19px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .btn-primary { font-size: 18px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.btn-sage, .btn-outline) { font-size: 17px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .sec-label { font-size: 14px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .header-title { font-size: 27px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .nav-item { font-size: 13px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .streak-chip span { font-size: 13px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .verse-text { font-size: 18px !important; }

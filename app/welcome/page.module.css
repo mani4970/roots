@@ -464,6 +464,35 @@
   opacity: 0.4;
 }
 
+/* Match the native iPad/Mac +3px typography boost used by the authenticated app. */
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .langBtn { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .langOpt { font-size: 16px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroTitle { font-size: 55px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroTitleSub { font-size: 17px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroDesc { font-size: 16px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthEyebrow { font-size: 13px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthTitle { font-size: 21px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthSub { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthTreeLabel { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthArrow { font-size: 20px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .sectionLabel { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .sectionSub { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featTitle { font-size: 20px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featSub { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featSmTitle { font-size: 17px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featSmSub { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .verseQuote { font-size: 123px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .verseRef { font-size: 13px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .verseText { font-size: 17px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .btnPrimary { font-size: 18px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .btnOutline { font-size: 17px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .storePrompt { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .storeButton { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .storeIcon { font-size: 18px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .footerNote { font-size: 13px; }
+}
+
 /* ── ANIMATIONS ── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(18px); }
