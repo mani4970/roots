@@ -760,31 +760,33 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] { --roots-pag
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width: 100%; max-width: 430px; margin: 0 auto; background: var(--bg); }
 @media (min-width: 600px) {
-  /* Keep the proven native tablet scale without stretching 100vh past the WKWebView. */
+  /* Enlarge the native iPad/Mac canvas while keeping viewport-height screens inside the WKWebView. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body {
-    zoom: 1.15;
-    min-height: 86.9565vh;
-    min-height: 86.9565dvh;
+    zoom: 1.25;
+    min-height: 80vh;
+    min-height: 80dvh;
+    -webkit-text-size-adjust: 110%;
+    text-size-adjust: 110%;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-native-tablet-viewport {
-    min-height: 86.9565vh !important;
-    min-height: 86.9565dvh !important;
+    min-height: 80vh !important;
+    min-height: 80dvh !important;
   }
 
-  /* The six-step writer needs real type and spacing adjustments, not more canvas zoom. */
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-kicker { font-size: 12px !important; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-title { font-size: 24px !important; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-subtitle { font-size: 14px !important; }
+  /* Most routes use either the shared page class or an inline 100vh root. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body > .page,
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100vh"],
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100dvh"] {
+    min-height: 80vh !important;
+    min-height: 80dvh !important;
+  }
+
+  /* Keep the approved six-step alignment and safe-area fixes at the shared tablet scale. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-tabs { padding-inline: 8px; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-tab-label { font-size: 14px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-editor {
     padding-left: 20px !important;
     padding-right: 20px !important;
   }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-editor label { font-size: 13px !important; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-hint { font-size: 14px !important; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-six-step .input-field,
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-six-step .textarea-field { font-size: 18px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-footer {
     padding-bottom: calc(32px + var(--safe-area-bottom)) !important;
   }
