@@ -785,6 +785,9 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     height: 66.6667vh !important;
     height: 66.6667dvh !important;
   }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-native-profile-settings-button {
+    top: 56px !important;
+  }
 
   /* Most routes use either the shared page class or an inline 100vh root. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > .page,

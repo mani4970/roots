@@ -1627,6 +1627,7 @@ export default function ProfilePage() {
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
+          className="roots-native-profile-settings-button"
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
           aria-label={t("profile_account_settings", lang)}
           style={{ position: "absolute", top: 72, right: 20, width: 36, height: 36, borderRadius: "50%", background: "var(--bg2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", cursor: "pointer" }}
