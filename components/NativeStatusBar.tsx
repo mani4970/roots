@@ -23,16 +23,25 @@ export default function NativeStatusBar() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    const nativePlatform = Capacitor.getPlatform();
     document.documentElement.setAttribute("data-native-app", "true");
-    document.documentElement.setAttribute("data-native-platform", Capacitor.getPlatform());
+    document.documentElement.setAttribute("data-native-platform", nativePlatform);
     const shortestScreenSide = Math.min(
       window.screen?.width || window.innerWidth,
       window.screen?.height || window.innerHeight,
     );
-    document.documentElement.setAttribute(
-      "data-native-form-factor",
-      shortestScreenSide >= 768 ? "tablet" : "phone",
-    );
+    const nativeFormFactor = shortestScreenSide >= 768 ? "tablet" : "phone";
+    document.documentElement.setAttribute("data-native-form-factor", nativeFormFactor);
+
+    if (nativePlatform === "ios" && nativeFormFactor === "tablet") {
+      // iPadOS keeps multi-touch capability; an iOS app running on a Mac does not.
+      document.documentElement.setAttribute(
+        "data-native-ios-device",
+        window.navigator.maxTouchPoints > 1 ? "ipad" : "mac",
+      );
+    } else {
+      document.documentElement.removeAttribute("data-native-ios-device");
+    }
 
     function applyNativeStatusBar() {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";

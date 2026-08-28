@@ -1277,7 +1277,7 @@ export default function ProfilePage() {
     : null;
 
   if (loading) return (
-    <div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
     </div>
   );
