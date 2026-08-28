@@ -854,7 +854,7 @@ export default function HeartShopModal({
         </div>
       )}
 
-      <div style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", overscrollBehavior: "contain", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)" }}>
+      <div className="roots-native-heart-shop-frame" style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", overscrollBehavior: "contain", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)" }}>
         <header style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "var(--heart-shop-header-surface)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
           <button type="button" onClick={closeTopLayer} aria-label={text.closeLabel} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={19} />
