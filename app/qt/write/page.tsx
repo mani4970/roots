@@ -322,6 +322,7 @@ function QTWriteContent() {
   function BibleTranslationSelect({ compact = false }: { compact?: boolean }) {
     return (
       <select
+        className={compact ? "roots-qt-compact-translation-select" : undefined}
         value={selectedTranslation}
         onChange={async e => {
           const newId = parseInt(e.target.value);
@@ -1572,7 +1573,7 @@ function QTWriteContent() {
     return (
       <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <p className="roots-qt-passage-reference" style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
           </p>
           {options.showTranslation !== false && <BibleTranslationSelect compact />}

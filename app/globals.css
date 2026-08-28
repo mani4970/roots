@@ -773,7 +773,7 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     min-height: 66.6667dvh !important;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"] .roots-native-centered-loader {
-    transform: translateY(8px);
+    transform: translateY(24px);
   }
 
   /* Most routes use either the shared page class or an inline 100vh root. */
@@ -848,6 +848,8 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   /* Shared class-based text is not covered by the inline-size mapping. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] button { font-size: 19px; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, select, .input-field, .textarea-field) { font-size: 19px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-compact-translation-select { font-size: 12px !important; line-height: 1.2; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-passage-reference { font-size: 16px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .btn-primary { font-size: 18px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.btn-sage, .btn-outline) { font-size: 17px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .sec-label { font-size: 14px !important; }
