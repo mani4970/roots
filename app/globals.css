@@ -773,7 +773,11 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     min-height: 66.6667dvh !important;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"] .roots-native-centered-loader {
-    transform: translateY(24px);
+    transform: translateY(48px);
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .roots-native-companions-loader {
+    min-height: 66.6667vh !important;
+    min-height: 66.6667dvh !important;
   }
 
   /* Most routes use either the shared page class or an inline 100vh root. */

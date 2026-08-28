@@ -477,7 +477,7 @@ function CompanionsContent() {
   if (loading) {
     return (
       <main
-        className="page-wrap roots-companions-phase2f"
+        className="page-wrap roots-companions-phase2f roots-native-companions-loader"
         style={{
           minHeight: "100dvh",
           display: "flex",
@@ -1241,7 +1241,7 @@ export default function CompanionsPage() {
     <Suspense
       fallback={
         <main
-          className="page-wrap roots-companions-phase2f"
+          className="page-wrap roots-companions-phase2f roots-native-companions-loader"
           style={{
             minHeight: "100dvh",
             display: "flex",
