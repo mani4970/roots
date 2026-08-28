@@ -9,6 +9,7 @@ out/
 # production/build artifacts
 *.tsbuildinfo
 /.cache/kbs-bible/
+/.cache/agape-easy-bible/
 /scripts/kbs-bible-data/
 
 # environment variables

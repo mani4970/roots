@@ -1,4 +1,6 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import {
   buildEsvPassageQuery,
   ESV_API_BASE,
@@ -34,12 +36,16 @@ function getBookNum(book: string): number | null {
 }
 
 const YOUVERSION_API_BASE = "https://api.youversion.com/v1";
-type LicensedBibleTable = "kbs_bible_verses" | "duranno_bible_verses";
+type LicensedBibleTable =
+  | "kbs_bible_verses"
+  | "duranno_bible_verses"
+  | "agape_bible_verses";
 const LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID = new Map<number, LicensedBibleTable>([
   [92, "kbs_bible_verses"],
   [84, "kbs_bible_verses"],
   [98, "kbs_bible_verses"],
   [89, "duranno_bible_verses"],
+  [88, "agape_bible_verses"],
 ]);
 const MAX_VERSE = ROOTS_END_OF_CHAPTER_SENTINEL;
 const MAX_VERSE_RANGE = 176;
@@ -47,11 +53,38 @@ const FETCH_TIMEOUT_MS = 10_000;
 const BIBLE_CACHE_CONTROL = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800";
 const YOUVERSION_RESPONSE_CACHE_CONTROL = "private, max-age=300, must-revalidate";
 const ESV_RESPONSE_CACHE_CONTROL = "private, no-store, max-age=0";
+const AGAPE_EASY_BIBLE_RESPONSE_CACHE_CONTROL = "private, no-store, max-age=0";
 let licensedBibleClient: SupabaseClient | null = null;
 
 function readServerEnv(name: string, fallback = "") {
   const value = process.env[name] ?? fallback;
   return value.trim().replace(/^([\"'])(.*)\1$/, "$2");
+}
+
+async function getAuthenticatedBibleUserId() {
+  const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const anonKey = readServerEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase authentication configuration");
+  }
+
+  const cookieStore = await cookies();
+  const authClient = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  const { data, error } = await authClient.auth.getClaims();
+  const userId = data?.claims?.sub;
+  return error || typeof userId !== "string" || !userId ? null : userId;
 }
 
 function getLicensedBibleClient() {
@@ -304,6 +337,19 @@ export async function GET(req: NextRequest) {
     const licensedBibleTable = LICENSED_BIBLE_TABLE_BY_TRANSLATION_ID.get(translationId);
     const esvSource = isEsvTranslation(translationId);
     const youVersionSource = getYouVersionBibleSource(translationId);
+    const isAgapeEasyBible = translationId === 88;
+
+    if (isAgapeEasyBible && !(await getAuthenticatedBibleUserId())) {
+      return NextResponse.json(
+        { error: "로그인이 필요한 번역본이에요." },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": AGAPE_EASY_BIBLE_RESPONSE_CACHE_CONTROL,
+          },
+        },
+      );
+    }
 
     if (licensedBibleTable) {
       verses = await fetchLicensedPassage({
@@ -356,11 +402,13 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": esvSource
-            ? ESV_RESPONSE_CACHE_CONTROL
-            : youVersionSource
-              ? YOUVERSION_RESPONSE_CACHE_CONTROL
-              : BIBLE_CACHE_CONTROL,
+          "Cache-Control": isAgapeEasyBible
+            ? AGAPE_EASY_BIBLE_RESPONSE_CACHE_CONTROL
+            : esvSource
+              ? ESV_RESPONSE_CACHE_CONTROL
+              : youVersionSource
+                ? YOUVERSION_RESPONSE_CACHE_CONTROL
+                : BIBLE_CACHE_CONTROL,
         },
       },
     );

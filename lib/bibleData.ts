@@ -8,6 +8,7 @@ export const TRANSLATIONS = [
     { id: 84, name: "개역한글" },
     { id: 98, name: "새번역" },
     { id: 89, name: "우리말성경" },
+    { id: 88, name: "쉬운성경" },
   ]},
   { group: "English", items: [
     { id: 80, name: "NIV" },
@@ -35,7 +36,6 @@ const LEGACY_TRANSLATIONS = [
   { id: 24, name: "Jérusalem" },
   { id: 31, name: "Schlachter" },
   { id: 82, name: "NLT" },
-  { id: 88, name: "쉬운성경" },
   { id: 95, name: "The Message" },
 ] as const;
 
