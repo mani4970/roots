@@ -762,23 +762,26 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
 @media (min-width: 600px) {
   /* Enlarge the native iPad/Mac canvas while keeping viewport-height screens inside the WKWebView. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body {
-    zoom: 1.25;
-    min-height: 80vh;
-    min-height: 80dvh;
-    -webkit-text-size-adjust: 110%;
-    text-size-adjust: 110%;
+    zoom: 1.5;
+    max-width: min(430px, 66.6667vw);
+    min-height: 66.6667vh;
+    min-height: 66.6667dvh;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-native-tablet-viewport {
-    min-height: 80vh !important;
-    min-height: 80dvh !important;
+    min-height: 66.6667vh !important;
+    min-height: 66.6667dvh !important;
   }
 
   /* Most routes use either the shared page class or an inline 100vh root. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > .page,
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100vh"],
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100dvh"] {
-    min-height: 80vh !important;
-    min-height: 80dvh !important;
+    min-height: 66.6667vh !important;
+    min-height: 66.6667dvh !important;
+  }
+
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .bottom-nav {
+    max-width: min(430px, 66.6667vw);
   }
 
   /* Keep the approved six-step alignment and safe-area fixes at the shared tablet scale. */
