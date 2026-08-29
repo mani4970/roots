@@ -229,36 +229,9 @@ export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260825_v4";
 export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 
-// Existing character assets stay on their current PNG paths. Register every new
-// Love Shop character asset here as WebP so future additions do not need a path
-// generator rewrite. Transparent character layers should use lossless WebP.
-const HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES: Partial<
-  Record<HeartShopCharacterItemId, "webp">
-> = {
-  shared_background_15: "webp",
-  shared_background_16: "webp",
-  shared_background_17: "webp",
-  shared_background_18: "webp",
-  shared_background_19: "webp",
-  shared_background_20: "webp",
-  shared_pet_05: "webp",
-  shared_pet_06: "webp",
-  shared_pet_07: "webp",
-  rootsman_top_15: "webp",
-  rootsman_top_16: "webp",
-  rootsman_top_17: "webp",
-  rootsman_top_18: "webp",
-  rootswoman_top_19: "webp",
-  rootswoman_top_20: "webp",
-  rootswoman_top_21: "webp",
-  rootswoman_top_22: "webp",
-};
-
-function getCharacterAssetExtension(
-  itemId: HeartShopCharacterItemId,
-): "png" | "webp" {
-  return HEART_SHOP_CHARACTER_ASSET_EXTENSION_OVERRIDES[itemId] ?? "png";
-}
+// Every current Love Shop character asset has a lossless WebP counterpart.
+// Legacy PNG files remain deployed temporarily for older app tabs and caches.
+const HEART_SHOP_CHARACTER_ASSET_EXTENSION = "webp";
 
 function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
   if (itemId.includes("_background_")) return "background";
@@ -316,7 +289,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
         ? 1000
         : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
-  const assetExtension = getCharacterAssetExtension(itemId);
+  const assetExtension = HEART_SHOP_CHARACTER_ASSET_EXTENSION;
   const profileBackgroundAssetVersion = itemId === "shared_background_20"
     ? HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION
     : HEART_SHOP_LATEST_PROFILE_ASSET_VERSION;

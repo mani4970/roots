@@ -117,7 +117,7 @@ import {
   UserMinus,
 } from "lucide-react";
 
-const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.png";
+const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.webp";
 
 type CommunityCopyLang = Lang | "es";
 
@@ -7751,7 +7751,7 @@ function CommunityPageContent() {
                             }}
                           >
                             <img
-                              src="/images/group-challenges/mystery-badge.png"
+                              src="/images/group-challenges/mystery-badge.webp"
                               alt=""
                               style={{
                                 width: "100%",

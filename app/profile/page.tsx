@@ -159,8 +159,8 @@ const FAITH_BADGES = [
   ...NEW_REWARD_BADGES,
 ] as const satisfies readonly { key: string; img: string; titleKey: TKey; descKey: TKey }[];
 
-const LOCKED_FAITH_BADGE_IMG = "/images/group-challenges/mystery-badge.png";
-const LOCKED_SPIRIT_FRUIT_BADGE_IMG = "/images/badges/spirit-fruit-locked-question.png";
+const LOCKED_FAITH_BADGE_IMG = "/images/group-challenges/mystery-badge.webp";
+const LOCKED_SPIRIT_FRUIT_BADGE_IMG = "/images/badges/spirit-fruit-locked-question.webp";
 const LOCKED_BADGE_IMAGE_OPACITY = 0.55;
 const LOCKED_SPIRIT_FRUIT_IMAGE_SCALE = 0.7;
 

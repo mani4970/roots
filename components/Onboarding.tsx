@@ -25,7 +25,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
       "/images/reward-maps/peace-ark/backgrounds/ark_stage01_morning.webp",
       "/images/reward-maps/peace-ark/backgrounds/ark_stage10_morning.webp",
       "/badge_rootswoman_fire.webp",
-      "/rootsman_rock.png",
+      "/rootsman_rock.webp",
     ];
 
     imageSources.forEach((src) => {
@@ -72,7 +72,7 @@ export default function Onboarding({ onClose }: { onClose: () => void }) {
     {
       title: t("onboarding_title6", lang),
       desc: t("onboarding_desc6", lang),
-      imageSrc: "/rootsman_rock.png",
+      imageSrc: "/rootsman_rock.webp",
       imageAlt: "Encouraging Rootsman",
       imageMaxHeight: 250,
       imagePadding: 4,

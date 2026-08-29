@@ -18,8 +18,8 @@ export type ProfileCharacterLayer = {
 
 export function getProfileCharacterBaseImageSrc(avatarType: unknown): string {
   return normalizeRootsAvatarType(avatarType) === "rootswoman"
-    ? "/images/profile-characters/rootswoman-profile.png"
-    : "/images/profile-characters/rootsman-profile.png";
+    ? "/images/profile-characters/rootswoman-profile.webp"
+    : "/images/profile-characters/rootsman-profile.webp";
 }
 
 export function filterProfileCharacterLayers(

@@ -9,36 +9,36 @@ export type NewRewardBadgeKey =
   | "badge_word_fruit";
 
 export const NEW_REWARD_BADGES = [
-  { key: "badge_jesus_love", img: "/Jesus_watering_plant.png", titleKey: "badge_jesus_love_title", descKey: "badge_jesus_love_desc" },
-  { key: "badge_jesus_and_me", img: "/Jesus_with_rootsman.png", titleKey: "badge_jesus_and_me_title", descKey: "badge_jesus_and_me_desc" },
-  { key: "badge_receive_my_love", img: "/rootsman_finger_heart.png", titleKey: "badge_receive_my_love_title", descKey: "badge_receive_my_love_desc" },
-  { key: "badge_prayer_cheer", img: "/rootsman_rock.png", titleKey: "badge_prayer_cheer_title", descKey: "badge_prayer_cheer_desc" },
-  { key: "badge_word_fruit", img: "/rootsman_with_plant.png", titleKey: "badge_word_fruit_title", descKey: "badge_word_fruit_desc" },
+  { key: "badge_jesus_love", img: "/Jesus_watering_plant.webp", titleKey: "badge_jesus_love_title", descKey: "badge_jesus_love_desc" },
+  { key: "badge_jesus_and_me", img: "/Jesus_with_rootsman.webp", titleKey: "badge_jesus_and_me_title", descKey: "badge_jesus_and_me_desc" },
+  { key: "badge_receive_my_love", img: "/rootsman_finger_heart.webp", titleKey: "badge_receive_my_love_title", descKey: "badge_receive_my_love_desc" },
+  { key: "badge_prayer_cheer", img: "/rootsman_rock.webp", titleKey: "badge_prayer_cheer_title", descKey: "badge_prayer_cheer_desc" },
+  { key: "badge_word_fruit", img: "/rootsman_with_plant.webp", titleKey: "badge_word_fruit_title", descKey: "badge_word_fruit_desc" },
 ] as const satisfies readonly { key: NewRewardBadgeKey; img: string; titleKey: TKey; descKey: TKey }[];
 
 const NEW_REWARD_BADGE_META = {
   badge_jesus_love: {
-    img: "/Jesus_watering_plant.png",
+    img: "/Jesus_watering_plant.webp",
     popupTitleKey: "badge_popup_jesus_love" as TKey,
     msgKey: "badge_jesus_love_msg" as TKey,
   },
   badge_jesus_and_me: {
-    img: "/Jesus_with_rootsman.png",
+    img: "/Jesus_with_rootsman.webp",
     popupTitleKey: "badge_popup_jesus_and_me" as TKey,
     msgKey: "badge_jesus_and_me_msg" as TKey,
   },
   badge_receive_my_love: {
-    img: "/rootsman_finger_heart.png",
+    img: "/rootsman_finger_heart.webp",
     popupTitleKey: "badge_popup_receive_my_love" as TKey,
     msgKey: "badge_receive_my_love_msg" as TKey,
   },
   badge_prayer_cheer: {
-    img: "/rootsman_rock.png",
+    img: "/rootsman_rock.webp",
     popupTitleKey: "badge_popup_prayer_cheer" as TKey,
     msgKey: "badge_prayer_cheer_msg" as TKey,
   },
   badge_word_fruit: {
-    img: "/rootsman_with_plant.png",
+    img: "/rootsman_with_plant.webp",
     popupTitleKey: "badge_popup_word_fruit" as TKey,
     msgKey: "badge_word_fruit_msg" as TKey,
   },
