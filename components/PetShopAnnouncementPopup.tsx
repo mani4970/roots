@@ -56,10 +56,10 @@ const COPY: Record<AnnouncementLang, {
 };
 
 const PET_PATHS = [
-  "/images/heart-shop/character/shared/pets/pet-01.png",
-  "/images/heart-shop/character/shared/pets/pet-02.png",
-  "/images/heart-shop/character/shared/pets/pet-03.png",
-  "/images/heart-shop/character/shared/pets/pet-04.png",
+  "/images/heart-shop/character/shared/pets/pet-01.webp",
+  "/images/heart-shop/character/shared/pets/pet-02.webp",
+  "/images/heart-shop/character/shared/pets/pet-03.webp",
+  "/images/heart-shop/character/shared/pets/pet-04.webp",
 ] as const;
 
 // Keep the popup crop independent from the full-canvas profile position.
