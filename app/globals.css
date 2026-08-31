@@ -1149,6 +1149,26 @@ a { text-decoration: none; color: inherit; }
 
 /* 하단 네비게이션 */
 .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; z-index: 50; padding: 6px 0 var(--bottom-nav-bottom-padding); }
+@media (min-width: 431px) {
+  /* Keep the prayer FAB inside the centered app frame on the desktop website only. */
+  html:not([data-native-app="true"]) .roots-prayer-fab-frame {
+    position: fixed;
+    left: 50%;
+    bottom: calc(82px + var(--bottom-nav-safe-extra));
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    height: 52px;
+    z-index: 30;
+    pointer-events: none;
+  }
+  html:not([data-native-app="true"]) .roots-prayer-fab {
+    position: absolute !important;
+    right: 16px !important;
+    bottom: 0 !important;
+    pointer-events: auto;
+  }
+}
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 2px; background: none; border: none; color: var(--text3); font-size: 10px; font-weight: 400; cursor: pointer; text-decoration: none; }
 .nav-item.active { color: var(--sage); font-weight: 600; }
 .nav-item svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
