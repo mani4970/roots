@@ -782,19 +782,21 @@ function PrayerPageContent() {
               <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`} style={{ position: "relative" }}>
 
                 {tab !== "intercession" && editId !== p.id && (
-                  <div style={{ position: "absolute", top: 10, right: 10, zIndex: 3 }}>
+                  <div style={{ position: "absolute", top: 2, right: 2, zIndex: 3 }}>
                     <button
+                      type="button"
                       aria-label={c("prayer_actions")}
+                      aria-expanded={actionMenuPrayerId === p.id}
                       onClick={(event) => {
                         event.stopPropagation();
                         setActionMenuPrayerId(actionMenuPrayerId === p.id ? null : p.id);
                       }}
-                      style={{ width: 28, height: 28, borderRadius: 999, border: "none", background: "transparent", color: "var(--prayer-muted-text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                      style={{ width: 44, height: 44, borderRadius: 999, border: "none", background: "transparent", color: "var(--prayer-muted-text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                     >
-                      <MoreHorizontal size={16} />
+                      <MoreHorizontal size={16} aria-hidden="true" />
                     </button>
                     {actionMenuPrayerId === p.id && (
-                      <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 34, right: 0, minWidth: 132, background: "var(--prayer-popover-surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "var(--shadow-popover)", zIndex: 4 }}>
+                      <div onClick={(event) => event.stopPropagation()} style={{ position: "absolute", top: 46, right: 0, minWidth: 132, background: "var(--prayer-popover-surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, boxShadow: "var(--shadow-popover)", zIndex: 4 }}>
                         {!p.is_answered && (
                           <button onClick={() => startEditPrayer(p)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", background: "transparent", border: "none", borderRadius: 10, color: "var(--text2)", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left" }}>
                             <Pencil size={13} /> {c("prayer_edit")}
@@ -1028,11 +1030,13 @@ function PrayerPageContent() {
       {tab === "mine" && (
         <div className="roots-prayer-fab-frame">
           <button
+            type="button"
             className="roots-prayer-fab"
             onClick={() => setShowForm(true)}
+            aria-label={c("prayer_write_title")}
             style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--prayer-sage-action)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "var(--prayer-fab-shadow)" }}
           >
-            <Plus size={22} style={{ color: "var(--prayer-on-sage-action)" }} />
+            <Plus size={22} aria-hidden="true" style={{ color: "var(--prayer-on-sage-action)" }} />
           </button>
         </div>
       )}

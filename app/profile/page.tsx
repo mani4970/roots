@@ -1645,12 +1645,15 @@ export default function ProfilePage() {
               )}
             </div>
             <button
+              type="button"
               onClick={() => setShowPhotoMenu(true)}
               disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar}
               aria-label={t("profile_photo_menu_title", lang)}
-              style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              style={{ position: "absolute", bottom: -11, right: -11, width: 44, height: 44, padding: 0, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              {uploadingPhoto || resettingPhoto || savingProfileAvatar ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
+              <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--sage)", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {uploadingPhoto || resettingPhoto || savingProfileAvatar ? <Loader2 size={9} style={{ color: "white" }} className="spin" /> : <Camera size={9} style={{ color: "white" }} />}
+              </span>
             </button>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} style={{ display: "none" }} />
           </div>

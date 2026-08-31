@@ -37,6 +37,42 @@ function QTGuideIcon({ icon, size = 20 }: { icon: typeof QT_GUIDE_KEYS[number]["
   return <CheckCircle2 size={size} strokeWidth={1.9} />;
 }
 
+function QTModalCloseButton({
+  onClick,
+  label,
+  color = "var(--text3)",
+  iconSize = 20,
+}: {
+  onClick: () => void;
+  label: string;
+  color?: string;
+  iconSize?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        width: 44,
+        height: 44,
+        margin: "-10px -12px -10px 0",
+        padding: 0,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "none",
+        border: "none",
+        color,
+        cursor: "pointer",
+      }}
+    >
+      <X size={iconSize} aria-hidden="true" />
+    </button>
+  );
+}
+
 type QTRecord = {
   id: string;
   date: string;
@@ -473,7 +509,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
-              <button onClick={() => setShowCatchUpModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              <QTModalCloseButton onClick={() => setShowCatchUpModal(false)} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
@@ -529,7 +565,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_mode_photo_title", lang)}</h2>
-              <button onClick={() => setShowPhotoPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              <QTModalCloseButton onClick={() => setShowPhotoPassageChoiceModal(false)} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>{t("qt_photo_passage_choice_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
@@ -557,7 +593,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
-              <button onClick={() => setShowPassageChoiceModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              <QTModalCloseButton onClick={() => setShowPassageChoiceModal(false)} label={t("close", lang)} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
               <button className="qt-option-card" onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
@@ -579,7 +615,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_how_title", lang)}</h2>
-              <button onClick={() => setShowStartModal(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
+              <QTModalCloseButton onClick={() => setShowStartModal(false)} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -645,7 +681,12 @@ export default function QTPage() {
             <div style={{ background: "var(--qt-sage-surface)", padding: "18px 20px 14px", borderBottom: "1px solid var(--qt-sage-border-soft)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "1px" }}>{t("qt_guide_step_label", lang)} {guidePage + 1}/6</p>
-                <button onClick={() => setShowGuideModal(false)} style={{ background: "none", border: "none", color: "var(--sage-dark)", cursor: "pointer" }}><X size={18} /></button>
+                <QTModalCloseButton
+                  onClick={() => setShowGuideModal(false)}
+                  label={t("close", lang)}
+                  color="var(--sage-dark)"
+                  iconSize={18}
+                />
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {QT_GUIDE_KEYS.map((_, i) => (
