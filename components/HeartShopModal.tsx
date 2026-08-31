@@ -179,10 +179,12 @@ function CharacterItemLayerPreview({
   item,
   alt,
   maxWidth,
+  loading = "eager",
 }: {
   item: HeartShopCharacterCatalogItem;
   alt: string;
   maxWidth?: number;
+  loading?: "eager" | "lazy";
 }) {
   if (item.slot === "background") {
     return (
@@ -199,6 +201,8 @@ function CharacterItemLayerPreview({
         <img
           src={item.layerPath}
           alt={alt}
+          loading={loading}
+          decoding="async"
           draggable={false}
           style={{
             width: "100%",
@@ -231,6 +235,8 @@ function CharacterItemLayerPreview({
       <img
         src={item.layerPath}
         alt={alt}
+        loading={loading}
+        decoding="async"
         draggable={false}
         style={{
           position: "absolute",
@@ -1157,7 +1163,7 @@ export default function HeartShopModal({
 
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "0 16px calc(28px + env(safe-area-inset-bottom))" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 11 }}>
-                  {visibleCharacterItems.map(item => {
+                  {visibleCharacterItems.map((item, index) => {
                     const itemText = getProfileCharacterItemText(item.id, lang);
                     const owned = ownedById.has(item.id);
                     const ownedItem = ownedById.get(item.id);
@@ -1212,7 +1218,12 @@ export default function HeartShopModal({
                               {text.newLabel}
                             </span>
                           )}
-                          <CharacterItemLayerPreview item={item} alt={itemText.name} maxWidth={145} />
+                          <CharacterItemLayerPreview
+                            item={item}
+                            alt={itemText.name}
+                            maxWidth={145}
+                            loading={index < 6 ? "eager" : "lazy"}
+                          />
                         </button>
                         <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <div style={{ color: isFreeBackground ? "var(--sage-dark)" : "var(--heart-shop-price-text)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>
@@ -1394,7 +1405,12 @@ export default function HeartShopModal({
                           }}
                         >
                           <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: previewing ? "2px solid rgba(122,157,122,.58)" : "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <CharacterItemLayerPreview item={catalogItem} alt={name} maxWidth={44} />
+                            <CharacterItemLayerPreview
+                              item={catalogItem}
+                              alt={name}
+                              maxWidth={44}
+                              loading={index < 6 ? "eager" : "lazy"}
+                            />
                           </div>
                           <span style={{ minWidth: 0, color: previewing ? "var(--sage-dark)" : "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{name}</span>
                         </button>
