@@ -36,7 +36,9 @@ import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notific
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
+import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
+import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 
@@ -1738,15 +1740,9 @@ function QTWriteContent() {
   }
 
   function hasDraftContent(snapshot: DraftSnapshot) {
-    return Boolean(
-      snapshot.bibleRef.trim() ||
-      snapshot.keyVerse.trim() ||
-      snapshot.freeText.trim() ||
-      snapshot.sermonTitle.trim() ||
-      snapshot.passageRefs.length > 0 ||
-      Object.values(snapshot.answers).some(value => value.trim()) ||
-      snapshot.decisions.some(value => value.trim())
-    );
+    return hasMeaningfulQTWriteDraftContent(snapshot, {
+      scheduledPassageWasPrefilled: hasSchedule,
+    });
   }
 
   function persistDraftBackup(snapshot: DraftSnapshot = getDraftSnapshot()) {
@@ -2461,7 +2457,7 @@ function QTWriteContent() {
     );
   }
 
-  if (!pageReady) return <div style={{ minHeight: "100vh", background: "var(--bg)" }} />;
+  if (!pageReady) return <QTWriteLoadingState lang={lang} />;
 
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     return (
