@@ -1,6 +1,9 @@
 "use client";
 
-import { Check, Globe, Loader2, Lock, UserPlus, UserRound, X } from "lucide-react";
+import { useState } from "react";
+import { Check, ChevronDown, ChevronUp, Globe, Loader2, UserPlus, UserRound, X } from "lucide-react";
+
+const COLLAPSED_ITEM_COUNT = 6;
 
 export type ShareTargetGroup = {
   id: string;
@@ -33,6 +36,8 @@ type SharePromptModalProps = {
   selectedCountLabel: string;
   selectAllLabel?: string;
   deselectAllLabel?: string;
+  showMoreLabel: string;
+  showLessLabel: string;
   loadingLabel: string;
   shareActionLabel: string;
   privateActionLabel: string;
@@ -68,6 +73,8 @@ export default function SharePromptModal({
   selectedCountLabel,
   selectAllLabel,
   deselectAllLabel,
+  showMoreLabel,
+  showLessLabel,
   loadingLabel,
   shareActionLabel,
   privateActionLabel,
@@ -85,6 +92,8 @@ export default function SharePromptModal({
   onPrivate,
   onClose,
 }: SharePromptModalProps) {
+  const [partnersExpanded, setPartnersExpanded] = useState(false);
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
   const allSelected = selectedTargets.includes("all");
   const directTargets = [
     ...partners.map(partner => `partner_${partner.id}`),
@@ -96,6 +105,10 @@ export default function SharePromptModal({
     && !!selectAllLabel
     && !!deselectAllLabel
     && directTargets.length > 0;
+  const visiblePartners = partnersExpanded ? partners : partners.slice(0, COLLAPSED_ITEM_COUNT);
+  const visibleGroups = groupsExpanded ? groups : groups.slice(0, COLLAPSED_ITEM_COUNT);
+  const hiddenPartnerCount = Math.max(0, partners.length - COLLAPSED_ITEM_COUNT);
+  const hiddenGroupCount = Math.max(0, groups.length - COLLAPSED_ITEM_COUNT);
 
   function toggleAllDirectTargets() {
     if (!onChangeTargets || directTargets.length === 0) return;
@@ -113,10 +126,13 @@ export default function SharePromptModal({
     const selected = selectedTargets.includes(target);
     return (
       <button
+        type="button"
         key={partner.id}
         onClick={() => onToggleTarget(target)}
         disabled={saving}
-        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+        aria-label={`${partner.name} · ${partnerSubLabel}`}
+        aria-pressed={selected}
+        style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, minWidth: 0, minHeight: 64, padding: "10px 32px 10px 10px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", opacity: saving ? 0.7 : 1 }}
       >
         {partner.avatar_url ? (
           <img
@@ -133,11 +149,10 @@ export default function SharePromptModal({
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{partner.name}</p>
-          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{partnerSubLabel}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.35, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflowWrap: "anywhere" }}>{partner.name}</p>
         </div>
-        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {selected && <Check size={12} style={{ color: "var(--on-sage-action)" }} />}
+        <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {selected && <Check size={11} style={{ color: "var(--on-sage-action)" }} />}
         </div>
       </button>
     );
@@ -148,33 +163,28 @@ export default function SharePromptModal({
     const selected = selectedTargets.includes(target);
     return (
       <button
+        type="button"
         key={group.id}
         onClick={() => onToggleTarget(target)}
         disabled={saving}
-        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+        aria-pressed={selected}
+        style={{ position: "relative", display: "flex", alignItems: "center", minWidth: 0, minHeight: 64, padding: "10px 32px 10px 12px", borderRadius: 14, border: `1px solid ${selected ? "var(--border-sage-strong)" : "var(--border)"}`, background: selected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", opacity: saving ? 0.7 : 1 }}
       >
-        <Lock size={20} style={{ color: selected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
-          <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.35, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
+          <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
         </div>
-        <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {selected && <Check size={12} style={{ color: "var(--on-sage-action)" }} />}
+        <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {selected && <Check size={11} style={{ color: "var(--on-sage-action)" }} />}
         </div>
       </button>
     );
   }
 
-  const scrollAreaStyle = {
-    display: "flex",
-    flexDirection: "column",
+  const optionGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 8,
-    maxHeight: 184,
-    overflowY: "auto",
-    minHeight: 0,
-    paddingRight: 2,
-    overscrollBehavior: "contain",
-    WebkitOverflowScrolling: "touch",
   } as const;
 
   const sectionStyle = {
@@ -189,17 +199,40 @@ export default function SharePromptModal({
     fontSize: 11,
     fontWeight: 700,
     color: "var(--text3)",
-    marginTop: 4,
-    paddingLeft: 4,
-    flexShrink: 0,
+    lineHeight: 1.4,
   } as const;
 
+  function renderSectionHeader(label: string, count: number) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 20, padding: "0 4px" }}>
+        <p style={sectionTitleStyle}>{label}</p>
+        <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "var(--surface-card-muted)", color: "var(--text3)", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+      </div>
+    );
+  }
+
+  function renderExpansionButton(expanded: boolean, hiddenCount: number, onToggle: () => void) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={saving}
+        aria-expanded={expanded}
+        style={{ alignSelf: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, minHeight: 32, padding: "6px 12px", border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.55 : 1 }}
+      >
+        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        {expanded ? showLessLabel : `${showMoreLabel} (+${hiddenCount})`}
+      </button>
+    );
+  }
 
   function renderAllCommunityOption() {
     return (
       <button
+        type="button"
         onClick={() => onToggleTarget("all")}
         disabled={saving}
+        aria-pressed={allSelected}
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px", borderRadius: 14, border: `1px solid ${allSelected ? "var(--border-sage-strong)" : "var(--border)"}`, background: allSelected ? "var(--surface-sage-selected)" : "var(--surface-card-muted)", cursor: saving ? "not-allowed" : "pointer", textAlign: "left", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
       >
         <Globe size={20} style={{ color: allSelected ? "var(--sage-dark)" : "var(--text3)", flexShrink: 0 }} />
@@ -254,6 +287,7 @@ export default function SharePromptModal({
               <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", lineHeight: 1.6, marginTop: 8 }}>{description}</p>
             </div>
             <button
+              type="button"
               onClick={onClose}
               aria-label={closeLabel}
               disabled={saving}
@@ -289,9 +323,15 @@ export default function SharePromptModal({
               )}
 
               <section style={sectionStyle}>
-                <p style={sectionTitleStyle}>{partnersLabel}</p>
-                <div style={scrollAreaStyle}>
-                  {partners.length > 0 ? partners.map(renderPartnerOption) : (
+                {renderSectionHeader(partnersLabel, partners.length)}
+                {partners.length > 0 ? (
+                  <>
+                    <div style={optionGridStyle}>
+                      {visiblePartners.map(renderPartnerOption)}
+                    </div>
+                    {hiddenPartnerCount > 0 && renderExpansionButton(partnersExpanded, hiddenPartnerCount, () => setPartnersExpanded(current => !current))}
+                  </>
+                ) : (
                     <div style={{ border: "1px dashed var(--border)", background: "var(--surface-card-muted)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
                       <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{noPartnersLabel}</p>
                       {onInvitePartners && invitePartnersLabel && (
@@ -307,19 +347,25 @@ export default function SharePromptModal({
                         </button>
                       )}
                     </div>
-                  )}
-                </div>
+                )}
               </section>
 
               <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
 
               <section style={sectionStyle}>
-                <p style={sectionTitleStyle}>{groupsLabel}</p>
-                <div style={scrollAreaStyle}>
-                  {groups.length > 0 ? groups.map(renderGroupOption) : (
-                    <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0" }}>{noGroupsLabel}</p>
-                  )}
-                </div>
+                {renderSectionHeader(groupsLabel, groups.length)}
+                {groups.length > 0 ? (
+                  <>
+                    <div style={optionGridStyle}>
+                      {visibleGroups.map(renderGroupOption)}
+                    </div>
+                    {hiddenGroupCount > 0 && renderExpansionButton(groupsExpanded, hiddenGroupCount, () => setGroupsExpanded(current => !current))}
+                  </>
+                ) : (
+                  <div style={{ border: "1px dashed var(--border)", background: "var(--surface-card-muted)", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "var(--text3)", lineHeight: 1.65 }}>{noGroupsLabel}</p>
+                  </div>
+                )}
               </section>
 
               <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
@@ -336,10 +382,10 @@ export default function SharePromptModal({
             <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 700 }}>{selectedCountLabel}</p>
           )}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onPrivate} disabled={saving} className="btn-outline" style={{ flex: 1, opacity: saving ? 0.55 : 1 }}>
+            <button type="button" onClick={onPrivate} disabled={saving} className="btn-outline" style={{ flex: 1, opacity: saving ? 0.55 : 1 }}>
               {privateActionLabel}
             </button>
-            <button onClick={onShare} disabled={saving || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1, opacity: saving || selectedTargets.length === 0 ? 0.55 : 1 }}>
+            <button type="button" onClick={onShare} disabled={saving || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1, opacity: saving || selectedTargets.length === 0 ? 0.55 : 1 }}>
               {saving ? <Loader2 size={16} className="spin" /> : `${shareActionLabel}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
             </button>
           </div>

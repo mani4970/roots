@@ -22,11 +22,11 @@ export type SharePromptOptions = {
 };
 
 const SHARE_PROMPT_BULK_SELECTION_LABELS = {
-  ko: { selectAll: "전체 선택", deselectAll: "전체 선택 해제" },
-  de: { selectAll: "Alle auswählen", deselectAll: "Auswahl aufheben" },
-  en: { selectAll: "Select all", deselectAll: "Clear selection" },
-  fr: { selectAll: "Tout sélectionner", deselectAll: "Tout désélectionner" },
-  es: { selectAll: "Seleccionar todo", deselectAll: "Quitar selección" },
+  ko: { selectAll: "전체 선택", deselectAll: "전체 선택 해제", showMore: "더보기", showLess: "접기" },
+  de: { selectAll: "Alle auswählen", deselectAll: "Auswahl aufheben", showMore: "Mehr anzeigen", showLess: "Weniger anzeigen" },
+  en: { selectAll: "Select all", deselectAll: "Clear selection", showMore: "Show more", showLess: "Show less" },
+  fr: { selectAll: "Tout sélectionner", deselectAll: "Tout désélectionner", showMore: "Afficher plus", showLess: "Réduire" },
+  es: { selectAll: "Seleccionar todo", deselectAll: "Quitar selección", showMore: "Ver más", showLess: "Ver menos" },
 } as const;
 
 export function getSharePromptBulkSelectionLabels(lang: string) {

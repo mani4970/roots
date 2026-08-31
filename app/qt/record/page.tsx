@@ -6,7 +6,7 @@ import PhotoViewerModal from "@/components/PhotoViewerModal";
 import BottomNav from "@/components/BottomNav";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
-import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -88,6 +88,7 @@ function RecordContent() {
   // 현재 공유 대상들
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
   const lang = useLang();
+  const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -482,6 +483,10 @@ function RecordContent() {
           privateGroupLabel={trR("비공개 그룹", lang)}
           noGroupsLabel={trR("그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", lang)}
           selectedCountLabel={t("qt_record_selected_count", lang, { count: selectedTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
+          showMoreLabel={bulkSelectionLabels.showMore}
+          showLessLabel={bulkSelectionLabels.showLess}
           loadingLabel={t("loading", lang)}
           shareActionLabel={trR("나누기", lang)}
           privateActionLabel={t("share_prompt_private_action", lang)}
@@ -491,6 +496,7 @@ function RecordContent() {
           selectedTargets={selectedTargets}
           saving={sharing}
           onToggleTarget={toggleTarget}
+          onChangeTargets={setSelectedTargets}
           onClose={() => setShowShareModal(false)}
           onPrivate={() => { void saveShareTargets(true); }}
           onShare={() => { void saveShareTargets(false); }}

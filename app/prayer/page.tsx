@@ -13,7 +13,7 @@ import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePro
 import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
-import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import {
   sortAnsweredPrayerRows,
   sortPrayerRequestRows,
@@ -29,6 +29,7 @@ function PrayerPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = useLang();
+  const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [intercessionPrayers, setIntercessionPrayers] = useState<any[]>([]);
@@ -694,6 +695,10 @@ function PrayerPageContent() {
           privateGroupLabel={c("prayer_intercession_private_group")}
           noGroupsLabel={c("prayer_intercession_no_groups")}
           selectedCountLabel={c("prayer_intercession_selected_count", { count: createShareTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
+          showMoreLabel={bulkSelectionLabels.showMore}
+          showLessLabel={bulkSelectionLabels.showLess}
           loadingLabel={c("loading")}
           shareActionLabel={c("prayer_intercession_share_action")}
           privateActionLabel={c("share_prompt_private_action")}
@@ -703,6 +708,7 @@ function PrayerPageContent() {
           selectedTargets={createShareTargets}
           saving={saving}
           onToggleTarget={toggleCreateShareTarget}
+          onChangeTargets={setCreateShareTargets}
           onClose={closeCreateSharePrompt}
           onPrivate={() => { void submit("private", []); }}
           onShare={() => { if (createShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitShareTargets(createShareTargets); void submit(visibility, partnerRecipientIds); } }}
@@ -951,6 +957,10 @@ function PrayerPageContent() {
           privateGroupLabel={c("prayer_intercession_private_group")}
           noGroupsLabel={c("prayer_intercession_no_groups")}
           selectedCountLabel={c("prayer_intercession_selected_count", { count: selectedTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
+          showMoreLabel={bulkSelectionLabels.showMore}
+          showLessLabel={bulkSelectionLabels.showLess}
           loadingLabel={c("loading")}
           shareActionLabel={c("prayer_intercession_share_action")}
           privateActionLabel={c("share_prompt_private_action")}
@@ -960,6 +970,7 @@ function PrayerPageContent() {
           selectedTargets={selectedTargets}
           saving={sharingIntercession}
           onToggleTarget={toggleTarget}
+          onChangeTargets={setSelectedTargets}
           onClose={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }}
           onPrivate={() => { void saveIntercessionTargets(true); }}
           onShare={() => { void saveIntercessionTargets(false); }}

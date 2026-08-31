@@ -23,7 +23,7 @@ import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguage
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
-import { loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { createClient } from "@/lib/supabase";
 import {
@@ -325,6 +325,7 @@ export default function HomePage() {
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const lang = useLang();
+  const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
@@ -2036,6 +2037,10 @@ export default function HomePage() {
           privateGroupLabel={t("prayer_intercession_private_group", lang)}
           noGroupsLabel={t("prayer_intercession_no_groups", lang)}
           selectedCountLabel={t("prayer_intercession_selected_count", lang, { count: homePrayerShareTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
+          showMoreLabel={bulkSelectionLabels.showMore}
+          showLessLabel={bulkSelectionLabels.showLess}
           loadingLabel={t("loading", lang)}
           shareActionLabel={t("prayer_intercession_share_action", lang)}
           privateActionLabel={t("share_prompt_private_action", lang)}
@@ -2047,6 +2052,7 @@ export default function HomePage() {
           loadingGroups={loadingHomePrayerShareOptions}
           loadingPartners={loadingHomePrayerShareOptions}
           onToggleTarget={toggleHomePrayerShareTarget}
+          onChangeTargets={setHomePrayerShareTargets}
           onClose={closeHomePrayerSharePrompt}
           onPrivate={() => { void saveHomePrayerRequest("private", []); }}
           onShare={() => { if (homePrayerShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitHomePrayerShareTargets(homePrayerShareTargets); void saveHomePrayerRequest(visibility, partnerRecipientIds); } }}

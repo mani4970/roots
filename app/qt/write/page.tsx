@@ -2172,6 +2172,8 @@ function QTWriteContent() {
         selectedCountLabel={t("qt_record_selected_count", lang, { count: completeShareTargets.length })}
         selectAllLabel={bulkSelectionLabels.selectAll}
         deselectAllLabel={bulkSelectionLabels.deselectAll}
+        showMoreLabel={bulkSelectionLabels.showMore}
+        showLessLabel={bulkSelectionLabels.showLess}
         loadingLabel={t("loading", lang)}
         shareActionLabel={t("qt_complete_share_action", lang)}
         privateActionLabel={t("share_prompt_private_action", lang)}
