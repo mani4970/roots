@@ -162,6 +162,14 @@ function CompanionsContent() {
     return `/companions${query ? `?${query}` : ""}`;
   }
 
+  function handleBack() {
+    if (inviteUserId) {
+      router.replace("/");
+      return;
+    }
+    router.back();
+  }
+
   function setBusy(id: string, busy: boolean) {
     setBusyIds((current) =>
       busy
@@ -797,7 +805,7 @@ function CompanionsContent() {
         }}
       >
         <button
-          onClick={() => router.back()}
+          onClick={handleBack}
           aria-label={c("common_back")}
           style={{
             width: 38,
