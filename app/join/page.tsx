@@ -11,7 +11,7 @@ import {
   resolveInviteLandingLang,
   type InviteLandingLang,
 } from "@/lib/inviteLandingText";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
 
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
@@ -242,8 +242,34 @@ function JoinContent() {
         alignItems: "center",
         justifyContent: "center",
         padding: "0 24px",
+        position: "relative",
       }}
     >
+      {!joined && (
+        <button
+          type="button"
+          onClick={() => router.replace("/")}
+          aria-label={t("common_back", inviteLang)}
+          style={{
+            position: "fixed",
+            top: "calc(env(safe-area-inset-top, 0px) + 18px)",
+            left: 18,
+            zIndex: 10,
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            border: "1px solid var(--border)",
+            background: "var(--bg2)",
+            color: "var(--text2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+      )}
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
         <img
           src="/roots-logo-transparent-160.png"
