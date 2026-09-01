@@ -860,7 +860,9 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
 
   /* Shared class-based text is not covered by the inline-size mapping. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] button { font-size: 19px; }
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, select, .input-field, .textarea-field) { font-size: 19px !important; }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] select { font-size: 19px !important; }
+  /* Keep typed text in proportion with the surrounding UI after the 1.5x tablet zoom. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, .input-field, .textarea-field) { font-size: 16px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-compact-translation-select { font-size: 12px !important; line-height: 1.2; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-passage-reference { font-size: 16px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .btn-primary { font-size: 18px !important; }
