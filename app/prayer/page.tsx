@@ -19,7 +19,6 @@ import {
   sortPrayerRequestRows,
 } from "@/lib/communityContentOrder";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
-import { usePrayerFormModalLayout } from "@/lib/usePrayerFormModalLayout";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -60,10 +59,6 @@ function PrayerPageContent() {
   const [actionMenuPrayerId, setActionMenuPrayerId] = useState<string | null>(null);
   const [pendingDeletePrayerId, setPendingDeletePrayerId] = useState<string | null>(null);
   const [deletingPrayer, setDeletingPrayer] = useState(false);
-  const prayerFormViewport = usePrayerFormModalLayout({
-    showForm,
-    hasShareModal: showShareModal || showCreateSharePrompt,
-  });
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -171,6 +166,18 @@ function PrayerPageContent() {
       router.replace("/prayer");
     }
   }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!showShareModal && !showCreateSharePrompt) return;
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [showShareModal, showCreateSharePrompt]);
 
   function visibilityTargets(visibility?: string | null) {
     return (visibility ?? "private")
@@ -1054,8 +1061,8 @@ function PrayerPageContent() {
 
       {/* 기도 작성 폼 */}
       {showForm && (
-        <div style={{ position: "fixed", top: prayerFormViewport?.offsetTop ?? 0, left: 0, right: 0, height: prayerFormViewport ? `${prayerFormViewport.height}px` : "100dvh", background: "var(--overlay-modal)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 20px", boxSizing: "border-box", overflow: "hidden" }}>
-          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, maxHeight: "100%", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{c("prayer_write_title")}</h2>
             <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>
             <textarea className="textarea-field" rows={4}
