@@ -58,7 +58,11 @@ export default function ChallengeRewardPopup({
         },
         lang,
       )}\n💛 +${reward.rewardHearts} ${companionText.heartsLabel}`
-    : t("group_challenge_award_popup_body", lang);
+    : `${t("group_challenge_award_popup_body", lang)}${
+        reward.rewardHearts > 0
+          ? `\n💛 +${reward.rewardHearts} ${companionText.heartsLabel}`
+          : ""
+      }`;
   const button = isCompanion
     ? companionText.popupButton
     : t("group_challenge_award_popup_btn", lang);
