@@ -12,6 +12,7 @@ import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuth
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 function getSafeRedirectFromLocation() {
   if (typeof window === "undefined") return "/";
@@ -39,6 +40,12 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [oauthLoading, setOauthLoading] = useState<AuthOAuthProvider | null>(null);
   const [showBrowserGuide, setShowBrowserGuide] = useState(false);
+
+  useAndroidBackHandler(() => {
+    if (!showBrowserGuide) return false;
+    setShowBrowserGuide(false);
+    return true;
+  });
   const [linkCopied, setLinkCopied] = useState(false);
 
   async function handleOAuth(provider: AuthOAuthProvider) {

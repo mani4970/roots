@@ -33,6 +33,7 @@ import {
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
 import { storageClearAfterAccountDeletion } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
 import {
@@ -284,6 +285,71 @@ export default function ProfilePage() {
   const calendarWheelLockRef = useRef(0);
   const profileRef = useRef<any>(null);
   const profileAvatarQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  useAndroidBackHandler(() => {
+    if (selectedCompanionChallengeBadge) {
+      setSelectedCompanionChallengeBadge(null);
+      return true;
+    }
+    if (selectedGroupChallengeBadge) {
+      setSelectedGroupChallengeBadge(null);
+      return true;
+    }
+    if (selectedBadge) {
+      setSelectedBadge(null);
+      return true;
+    }
+    if (showGroupChallengeBadgeGallery) {
+      setShowGroupChallengeBadgeGallery(false);
+      return true;
+    }
+    if (showBadgeGallery) {
+      setShowBadgeGallery(false);
+      return true;
+    }
+    if (showMonthlyBadgeGallery) {
+      setShowMonthlyBadgeGallery(false);
+      return true;
+    }
+    if (showNotificationSettingsModal) {
+      setShowNotificationSettingsModal(false);
+      return true;
+    }
+    if (showAvatarChoiceModal) {
+      if (!savingAvatarChoice) setShowAvatarChoiceModal(false);
+      return true;
+    }
+    if (showPhotoMenu) {
+      if (!uploadingPhoto && !resettingPhoto) setShowPhotoMenu(false);
+      return true;
+    }
+    if (showDeleteConfirm) {
+      if (!deletingAccount) setShowDeleteConfirm(false);
+      return true;
+    }
+    if (showSettingsModal) {
+      if (!savingName && !sendingPasswordReset && !deletingAccount) {
+        setShowSettingsModal(false);
+      }
+      return true;
+    }
+    if (showFeedbackSuccessPopup) {
+      setShowFeedbackSuccessPopup(false);
+      return true;
+    }
+    if (showFeedbackModal) {
+      if (!sendingFeedback) setShowFeedbackModal(false);
+      return true;
+    }
+    if (editingName) {
+      if (!savingName) {
+        setEditingName(false);
+        setNewName(profile?.name ?? "");
+      }
+      return true;
+    }
+    return false;
+  });
 
   function showToast(message: string) {
     setToast(message);

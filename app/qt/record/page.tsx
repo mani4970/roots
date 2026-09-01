@@ -15,6 +15,7 @@ import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { copyText } from "@/lib/nativeShare";
 import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 
 type QTRecordCopyLang = Lang | "es";
@@ -94,6 +95,22 @@ function RecordContent() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useAndroidBackHandler(() => {
+    if (photoViewerOpen) {
+      setPhotoViewerOpen(false);
+      return true;
+    }
+    if (badgePopup) {
+      setBadgePopup(null);
+      return true;
+    }
+    if (showShareModal) {
+      if (!sharing) setShowShareModal(false);
+      return true;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!notice) return;

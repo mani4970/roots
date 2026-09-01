@@ -25,6 +25,7 @@ import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { prepareQTPhoto, QTPhotoPreparationError, type PreparedQTPhoto } from "@/lib/qtPhotoProcessing";
 import { removeQTPhotoBestEffort, uploadQTPhotoDurably } from "@/lib/qtPhotoStorage";
@@ -477,6 +478,18 @@ function PhotoReflectionContent() {
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
   const [editLoading, setEditLoading] = useState(isEditMode);
   const [editLoadError, setEditLoadError] = useState(false);
+
+  useAndroidBackHandler(() => {
+    if (showShareModal) {
+      if (!saving && !loadingShareOptions) setShowShareModal(false);
+      return true;
+    }
+    if (showPhotoSourceModal) {
+      if (!preparingPhoto && !saving) setShowPhotoSourceModal(false);
+      return true;
+    }
+    return false;
+  });
 
   // A fresh photo reflection follows the current app-language preference.
   // Editing an existing record keeps its stored bible_version.

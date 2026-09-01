@@ -17,6 +17,7 @@ import CommunityReactionButtons from "@/components/community/CommunityReactionBu
 import GroupChallengeScheduleFields from "@/components/community/GroupChallengeScheduleFields";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import {
@@ -1046,6 +1047,89 @@ function CommunityPageContent() {
   const [directPrayerTargetId, setDirectPrayerTargetId] = useState<
     string | null
   >(null);
+
+  useAndroidBackHandler(() => {
+    if (notificationDirectOpenPending) return true;
+    if (badgePopup) {
+      setBadgePopup(null);
+      return true;
+    }
+    if (safetyConfirm) {
+      if (!manageSaving) closeSafetyConfirm();
+      return true;
+    }
+    if (actionMenu) {
+      setActionMenu(null);
+      return true;
+    }
+    if (manageModal) {
+      if (!manageSaving) closeManageModal();
+      return true;
+    }
+    if (profileModal) {
+      if (!profileModal.saving) setProfileModal(null);
+      return true;
+    }
+    if (publicGroupHideConfirm) {
+      if (!hidingPublicGroup) closePublicGroupHideConfirm();
+      return true;
+    }
+    if (showDeleteGroupConfirm) {
+      if (!deletingGroup) {
+        setShowDeleteGroupConfirm(false);
+        setDeleteGroupError(null);
+      }
+      return true;
+    }
+    if (memberRemovalTarget) {
+      if (!removingGroupMember) {
+        setMemberRemovalTarget(null);
+        setMemberRemovalError(null);
+      }
+      return true;
+    }
+    if (showLeadershipTransfer) {
+      if (transferringLeadership) return true;
+      if (leadershipTransferStep === "confirm") {
+        setLeadershipTransferStep("select");
+        setLeadershipTransferTargetId(null);
+        setLeadershipTransferError(null);
+      } else {
+        setShowLeadershipTransfer(false);
+        setLeadershipTransferTargetId(null);
+        setLeadershipTransferError(null);
+      }
+      return true;
+    }
+    if (showGroupEdit) {
+      if (!savingGroupEdit) {
+        setShowGroupEdit(false);
+        setGroupEditError(null);
+      }
+      return true;
+    }
+    if (showLeaveConfirm) {
+      if (!leavingGroup) setShowLeaveConfirm(false);
+      return true;
+    }
+    if (showGroupMembers) {
+      setShowGroupMembers(false);
+      return true;
+    }
+    if (showGroupActionMenu) {
+      setShowGroupActionMenu(false);
+      return true;
+    }
+    if (showChallengeRequestForm) {
+      if (!challengeSaving) resetChallengeRequestForm();
+      return true;
+    }
+    if (showGroupForm) {
+      if (!savingGroup) setShowGroupForm(false);
+      return true;
+    }
+    return false;
+  });
 
   const c = (key: TKey, vars?: Record<string, string | number>) =>
     t(key, lang, vars);

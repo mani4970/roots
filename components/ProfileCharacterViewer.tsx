@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { ProfileCharacterLayer } from "@/lib/profileCharacter";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 type ProfileCharacterViewerProps = {
   show: boolean;
@@ -26,6 +27,12 @@ export default function ProfileCharacterViewer({
 }: ProfileCharacterViewerProps) {
   const historyEntryActiveRef = useRef(false);
   const onCloseRef = useRef(onClose);
+
+  useAndroidBackHandler(() => {
+    if (!show) return false;
+    requestClose();
+    return true;
+  });
 
   useEffect(() => {
     onCloseRef.current = onClose;

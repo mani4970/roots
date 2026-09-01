@@ -19,6 +19,7 @@ import { isInAppBrowser } from "@/lib/inAppBrowser";
 import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 import { getLocalDateString } from "@/lib/date";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import {
   checkAndAwardCompanionBadge,
   getRewardBadgePopup,
@@ -140,6 +141,18 @@ function CompanionsContent() {
     title: string;
     msg: string;
   } | null>(null);
+
+  useAndroidBackHandler(() => {
+    if (badgePopup) {
+      setBadgePopup(null);
+      return true;
+    }
+    if (removeTarget) {
+      if (!busyIds.includes(removeTarget.id)) setRemoveTarget(null);
+      return true;
+    }
+    return false;
+  });
 
   const inviteUrl = useMemo(
     () =>

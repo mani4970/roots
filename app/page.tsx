@@ -25,6 +25,7 @@ import HomeDecisionItem from "@/components/HomeDecisionItem";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { createClient } from "@/lib/supabase";
 import {
@@ -1232,6 +1233,16 @@ export default function HomePage() {
     });
   }
 
+  function closeGardenUpdatePopup() {
+    setGardenPopup(previous => ({ ...previous, show: false }));
+    if (pendingRootsManRef.current) {
+      pendingRootsManRef.current = false;
+      openRootsManExperience();
+      return;
+    }
+    gardenTopRef_scroll();
+  }
+
   function openRequiredUpdate() {
     if (!requiredUpdatePlatform) return;
     openRequiredUpdateStore(requiredUpdatePlatform);
@@ -1648,6 +1659,16 @@ export default function HomePage() {
     startHomeQT(mode);
   }
 
+  function returnToHomeQTModeChoice() {
+    setShowHomeQTPassageChoice(false);
+    setShowHomeQTPhotoPassageChoice(false);
+    if (isSunday()) {
+      setShowHomeSundayQT(true);
+    } else {
+      setShowHomeQTChoice(true);
+    }
+  }
+
   function startHomeSixStepFromPassageChoice(passageSource: "scheduled" | "custom") {
     setShowHomeQTPassageChoice(false);
     startHomeQT("6step", passageSource);
@@ -1765,6 +1786,101 @@ export default function HomePage() {
     homePopupBlocked || showCompanionChallengeAnnouncement
       ? null
       : challengeRewardQueue[0] ?? null;
+
+  useAndroidBackHandler(() => {
+    if (requiredUpdatePlatform || showFirstLangPicker || showRootsManPopup) {
+      return true;
+    }
+    if (visibleChallengeReward) {
+      if (!challengeRewardActionInFlightRef.current) {
+        void completeChallengeReward(false);
+      }
+      return true;
+    }
+    if (visibleCompanionChallengeAnnouncement) {
+      if (!handlingCompanionChallengeAnnouncement) {
+        void completeCompanionChallengeAnnouncement(false);
+      }
+      return true;
+    }
+    if (visibleMonthlyBadgeAward) {
+      void completeMonthlyBadgeAward(false);
+      return true;
+    }
+    if (visibleSpanishLanguageLaunchAnnouncement) {
+      void completeSpanishLanguageLaunchAnnouncement(false);
+      return true;
+    }
+    if (showHomePrayerSharePrompt) {
+      if (!savingHomePrayer) closeHomePrayerSharePrompt();
+      return true;
+    }
+    if (showHomePrayerCompose) {
+      if (!savingHomePrayer) {
+        setShowHomePrayerCompose(false);
+        setHomePrayerInput("");
+      }
+      return true;
+    }
+    if (chapterPopup.show) {
+      setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" });
+      return true;
+    }
+    if (showNotificationSettingsModal) {
+      setShowNotificationSettingsModal(false);
+      return true;
+    }
+    if (showAvatarChoiceModal) {
+      if (!savingAvatarChoice) setShowAvatarChoiceModal(false);
+      return true;
+    }
+    if (showHomeQTDraftChoice) {
+      if (!deletingHomeQTDraft) setShowHomeQTDraftChoice(false);
+      return true;
+    }
+    if (showHomeQTGuide) {
+      setShowHomeQTGuide(false);
+      return true;
+    }
+    if (showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) {
+      returnToHomeQTModeChoice();
+      return true;
+    }
+    if (showHomeQTChoice || showHomeSundayQT) {
+      setShowHomeQTChoice(false);
+      setShowHomeSundayQT(false);
+      return true;
+    }
+    if (showLangPicker) {
+      setShowLangPicker(false);
+      return true;
+    }
+    if (showOnboarding) {
+      closeOnboarding();
+      return true;
+    }
+    if (celebration.show) {
+      closeCelebration();
+      return true;
+    }
+    if (badgePopup) {
+      setBadgePopup(null);
+      return true;
+    }
+    if (gardenPopup.show) {
+      closeGardenUpdatePopup();
+      return true;
+    }
+    if (rewardMapNotice) {
+      closeRewardMapNotice();
+      return true;
+    }
+    if (showWelcomeBack) {
+      setShowWelcomeBack(false);
+      return true;
+    }
+    return false;
+  });
 
   if (loading) return (
     <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
@@ -1887,7 +2003,7 @@ export default function HomePage() {
                 <button onClick={() => showHomeQTPhotoPassageChoice ? startHomePhotoFromPassageChoice("custom") : startHomeSixStepFromPassageChoice("custom")} className="btn-outline" style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center" }}>
                   {t("qt_passage_choice_custom", lang)}
                 </button>
-                <button onClick={() => { setShowHomeQTPassageChoice(false); setShowHomeQTPhotoPassageChoice(false); if (isSunday()) { setShowHomeSundayQT(true); } else { setShowHomeQTChoice(true); } }} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
+                <button onClick={returnToHomeQTModeChoice} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
                   {t("qt_passage_choice_back", lang)}
                 </button>
               </div>
@@ -2206,15 +2322,7 @@ export default function HomePage() {
         type={gardenPopup.type}
         streakDays={rewardMapDisplayDays}
         badgeIndex={gardenPopup.badgeIndex}
-        onClose={() => {
-          setGardenPopup(p => ({ ...p, show: false }));
-          if (pendingRootsManRef.current) {
-            pendingRootsManRef.current = false;
-            openRootsManExperience();
-            return;
-          }
-          gardenTopRef_scroll();
-        }}
+        onClose={closeGardenUpdatePopup}
       />
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

@@ -13,6 +13,7 @@ import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 
@@ -45,6 +46,15 @@ export default function LoginPage() {
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showBrowserGuide, setShowBrowserGuide] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  useAndroidBackHandler(() => {
+    if (showLangPicker) return true;
+    if (showBrowserGuide) {
+      setShowBrowserGuide(false);
+      return true;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;

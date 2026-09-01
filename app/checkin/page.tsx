@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 import BottomNav from "@/components/BottomNav";
 import { t, type TKey } from "@/lib/i18n";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 const EMOTION_GROUPS = [
   {
@@ -50,6 +51,12 @@ export default function CheckinPage() {
   }));
 
   const selectedItem = EMOTIONS.flatMap(g => g.items).find(e => e.id === selected);
+
+  useAndroidBackHandler(() => {
+    if (!selected) return false;
+    setSelected(null);
+    return true;
+  });
 
   return (
     <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: selected ? "calc(210px + var(--bottom-nav-bottom-padding))" : "calc(104px + var(--bottom-nav-bottom-padding))", position: "relative" }}>

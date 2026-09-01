@@ -47,6 +47,7 @@ import {
   type ProfileCharacterCategory,
 } from "@/lib/profileCharacterText";
 import { getVisibleRewardMapCycles } from "@/lib/rewardMaps";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 type HeartShopModalProps = {
   show: boolean;
@@ -293,6 +294,15 @@ export default function HeartShopModal({
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
+
+  useAndroidBackHandler(() => {
+    if (!show) return false;
+    if (purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState) {
+      return true;
+    }
+    closeTopLayer();
+    return true;
+  });
 
   const ownedById = useMemo(() => new Map(ownedItems.map(item => [item.itemId, item])), [ownedItems]);
   const enabledItemIds = useMemo(

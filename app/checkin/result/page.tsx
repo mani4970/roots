@@ -14,6 +14,7 @@ import HeartBurst from "@/components/HeartBurst";
 import BottomNav from "@/components/BottomNav";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 const CHECKIN_RESULT_TEXT = {
   ko: { retry: "다시 시도" },
@@ -34,6 +35,12 @@ function ResultContent() {
   const [loadError, setLoadError] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
+
+  useAndroidBackHandler(() => {
+    if (!badgePopup) return false;
+    setBadgePopup(null);
+    return true;
+  });
 
   // lang이 localStorage에서 확정될 때까지 대기
   const [langReady, setLangReady] = useState(false);

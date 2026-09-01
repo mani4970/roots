@@ -17,6 +17,7 @@ import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
 const QT_GUIDE_KEYS: { icon: "prayer" | "book" | "sparkles" | "reflect" | "leaf" | "complete"; titleKey: TKey; descKey: TKey; exKey: TKey }[] = [
@@ -158,6 +159,12 @@ export default function QTPage() {
   const [toast, setToast] = useState<string | null>(null);
   const activeQTModalRef = useRef<QTModalHistoryKind | null>(null);
   const hasQTModalHistoryEntryRef = useRef(false);
+
+  useAndroidBackHandler(() => {
+    if (!activeQTModalRef.current) return false;
+    closeQTModal();
+    return true;
+  });
 
   const setVisibleQTModal = useCallback((kind: QTModalHistoryKind | null) => {
     activeQTModalRef.current = kind;

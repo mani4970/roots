@@ -6,6 +6,7 @@ import { saveLangLocally } from "@/lib/useLang";
 import { storageGet } from "@/lib/clientStorage";
 import { LANG_META, isLang, type Lang } from "@/lib/i18n";
 import styles from "./page.module.css";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 // ── Types & constants ──────────────────────────────────────────────
 
@@ -295,6 +296,12 @@ export default function WelcomePage() {
   const router = useRouter();
   const [lang, setLang] = useState<Lang>("en");
   const [showDropdown, setShowDropdown] = useState(false);
+
+  useAndroidBackHandler(() => {
+    if (!showDropdown) return false;
+    setShowDropdown(false);
+    return true;
+  });
 
   const tx = TEXTS[lang];
   const currentLangMeta = LANG_LIST.find((l) => l.code === lang)!;

@@ -33,6 +33,7 @@ import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
@@ -493,6 +494,26 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
+
+  useAndroidBackHandler(() => {
+    if (showCompleteSharePrompt) {
+      if (!saving) closeCompleteSharePrompt();
+      return true;
+    }
+    if (showBookPicker) {
+      setShowBookPicker(false);
+      return true;
+    }
+    if (showTranslationPicker) {
+      setShowTranslationPicker(false);
+      return true;
+    }
+    if (showDatePicker) {
+      setShowDatePicker(false);
+      return true;
+    }
+    return false;
+  });
 
   useEffect(() => {
     let cancelled = false;

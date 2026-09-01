@@ -18,6 +18,7 @@ import {
   sortAnsweredPrayerRows,
   sortPrayerRequestRows,
 } from "@/lib/communityContentOrder";
+import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 type PrayerTab = "mine" | "answered" | "intercession";
 
@@ -60,6 +61,50 @@ function PrayerPageContent() {
   const [deletingPrayer, setDeletingPrayer] = useState(false);
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
+
+  useAndroidBackHandler(() => {
+    if (pendingDeletePrayerId) {
+      if (!deletingPrayer) setPendingDeletePrayerId(null);
+      return true;
+    }
+    if (badgePopup) {
+      setBadgePopup(null);
+      return true;
+    }
+    if (showCreateSharePrompt) {
+      if (!saving) closeCreateSharePrompt();
+      return true;
+    }
+    if (showShareModal) {
+      if (!sharingIntercession) closeIntercessionShareModal();
+      return true;
+    }
+    if (testimonyPrayerId) {
+      if (!savingTestimony) {
+        setTestimonyPrayerId(null);
+        setTestimonyText("");
+      }
+      return true;
+    }
+    if (showForm) {
+      if (!saving) setShowForm(false);
+      return true;
+    }
+    if (celebration) {
+      setCelebration(false);
+      return true;
+    }
+    if (actionMenuPrayerId) {
+      setActionMenuPrayerId(null);
+      return true;
+    }
+    if (editId) {
+      setEditId(null);
+      setEditText("");
+      return true;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!notice) return;
@@ -187,6 +232,13 @@ function PrayerPageContent() {
     if (saving) return;
     setShowCreateSharePrompt(false);
     setCreateShareTargets([]);
+  }
+
+  function closeIntercessionShareModal() {
+    if (sharingIntercession) return;
+    setShowShareModal(false);
+    setSharePrayerId(null);
+    setSelectedTargets([]);
   }
 
   function normalizedGroups() {
@@ -973,7 +1025,7 @@ function PrayerPageContent() {
           saving={sharingIntercession}
           onToggleTarget={toggleTarget}
           onChangeTargets={setSelectedTargets}
-          onClose={() => { setShowShareModal(false); setSharePrayerId(null); setSelectedTargets([]); }}
+          onClose={closeIntercessionShareModal}
           onPrivate={() => { void saveIntercessionTargets(true); }}
           onShare={() => { void saveIntercessionTargets(false); }}
         />
