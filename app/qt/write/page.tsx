@@ -14,7 +14,7 @@ import {
 } from "@/lib/useLang";
 import { isLang, t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
-import { getLocalDateString } from "@/lib/date";
+import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
 import {
@@ -39,8 +39,13 @@ import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import QTWriteLoadingState from "@/components/QTWriteLoadingState";
+import QTFreePassageChoice from "@/components/QTFreePassageChoice";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
+import {
+  loadYesterdayFreePassageContinuation,
+  type YesterdayFreePassageContinuation,
+} from "@/lib/qtFreePassageContinuation";
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + "T12:00:00").getDay() === 0;
@@ -428,6 +433,7 @@ function QTWriteContent() {
   // 주일예배 말씀 선택 step
   const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
   const [pageReady, setPageReady] = useState(false);
+  const [freePassageContinuation, setFreePassageContinuation] = useState<YesterdayFreePassageContinuation | null>(null);
   const [draftProbeDone, setDraftProbeDone] = useState(false);
   const [draftLoadError, setDraftLoadError] = useState(false);
   const [draftRetryNonce, setDraftRetryNonce] = useState(0);
@@ -649,6 +655,29 @@ function QTWriteContent() {
     scheduleLoadStartedRef.current = true;
 
     const loadSchedulePassage = async () => {
+      if (mode === "free") {
+        if (selectedDate === todayStr && draftBackupUserId && !isCatchUp) {
+          try {
+            const supabase = createClient();
+            const continuation = await withQtDraftTimeout(
+              loadYesterdayFreePassageContinuation({
+                supabase,
+                userId: draftBackupUserId,
+                yesterdayDate: getShiftedLocalDateString(-1),
+                translationId: selectedTranslation,
+              }),
+              5_000,
+              "load yesterday free passage",
+            );
+            setFreePassageContinuation(continuation);
+          } catch {
+            setFreePassageContinuation(null);
+          }
+        }
+        setPageReady(true);
+        return;
+      }
+
       if (mode !== "6step") {
         setPageReady(true);
         return;
@@ -757,6 +786,7 @@ function QTWriteContent() {
     scheduleLoadStartedRef.current = false;
 
     const resetDraftState = () => {
+      setFreePassageContinuation(null);
       if (initMode === "free") setMode("free");
       else if (initMode === "sunday") setMode("sunday");
       else if (initMode === "6step") setMode("6step");
@@ -1157,6 +1187,26 @@ function QTWriteContent() {
   }, [isResume, isEditMode, editId, initialDate, draftRetryNonce]);
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
+
+  function continueFromYesterdayPassage() {
+    if (!freePassageContinuation) return;
+
+    const { nextStart } = freePassageContinuation;
+    const koreanBooks = BOOK_NAMES.KO ?? [];
+    const bookIndex = koreanBooks.indexOf(nextStart.koreanBook);
+    const localizedBook = currentBookNames[bookIndex] ?? nextStart.koreanBook;
+    const nextChapter = String(nextStart.chapter);
+    const nextVerse = String(nextStart.verse);
+
+    setBook(localizedBook);
+    setChapter(nextChapter);
+    setStartV(nextVerse);
+    setEndChapter(nextChapter);
+    setEndV(nextVerse);
+    setCrossChapter(false);
+    setBibleError("");
+    setFreePassageContinuation(null);
+  }
 
   // 번역본 변경은 아래 공통 경로에서 모든 표시 본문을 먼저 검증한 뒤 한 번에 반영합니다.
   async function fetchPassageItemWithTranslation(item: PassageItem, newTranslationId: number): Promise<PassageItem> {
@@ -2462,8 +2512,24 @@ function QTWriteContent() {
   if (!pageReady) return <QTWriteLoadingState lang={lang} />;
 
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
+    const continuationPreviousReference = freePassageContinuation
+      ? translateBibleRef(freePassageContinuation.previousReference, lang)
+      : "";
+    const continuationNextReference = freePassageContinuation
+      ? `${translateBibleRef(freePassageContinuation.nextStart.koreanBook, lang)} ${freePassageContinuation.nextStart.chapter}:${freePassageContinuation.nextStart.verse}`
+      : "";
+
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      {mode === "free" && freePassageContinuation && (
+        <QTFreePassageChoice
+          lang={lang}
+          previousReference={continuationPreviousReference}
+          nextReference={continuationNextReference}
+          onContinue={continueFromYesterdayPassage}
+          onChooseNew={() => setFreePassageContinuation(null)}
+        />
+      )}
       {toast && (
         <div
           className="roots-elevation-toast"
