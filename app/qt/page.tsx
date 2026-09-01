@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
@@ -90,6 +90,23 @@ type QTMonthGroup = {
   records: QTRecord[];
 };
 
+type QTModalHistoryKind =
+  | "draft"
+  | "catch-up"
+  | "photo-passage"
+  | "passage"
+  | "start"
+  | "guide";
+
+function isQTModalHistoryKind(value: unknown): value is QTModalHistoryKind {
+  return value === "draft"
+    || value === "catch-up"
+    || value === "photo-passage"
+    || value === "passage"
+    || value === "start"
+    || value === "guide";
+}
+
 function getYearMonthKey(dateValue = getLocalDateString()) {
   const date = parseLocalDateString(dateValue);
   const year = date.getFullYear();
@@ -139,6 +156,84 @@ export default function QTPage() {
     return getPreferredTranslationForLang(activeLang);
   });
   const [toast, setToast] = useState<string | null>(null);
+  const activeQTModalRef = useRef<QTModalHistoryKind | null>(null);
+  const hasQTModalHistoryEntryRef = useRef(false);
+
+  const setVisibleQTModal = useCallback((kind: QTModalHistoryKind | null) => {
+    activeQTModalRef.current = kind;
+    setShowDraftPopup(kind === "draft");
+    setShowCatchUpModal(kind === "catch-up");
+    setShowPhotoPassageChoiceModal(kind === "photo-passage");
+    setShowPassageChoiceModal(kind === "passage");
+    setShowStartModal(kind === "start");
+    setShowGuideModal(kind === "guide");
+  }, []);
+
+  function currentHistoryState() {
+    return window.history.state && typeof window.history.state === "object"
+      ? window.history.state
+      : {};
+  }
+
+  function openQTModal(kind: QTModalHistoryKind) {
+    if (activeQTModalRef.current === kind) return;
+
+    try {
+      const historyState = currentHistoryState();
+      if (
+        hasQTModalHistoryEntryRef.current
+        || isQTModalHistoryKind(historyState.rootsQTModal)
+      ) {
+        window.history.replaceState(
+          { ...historyState, rootsQTModal: kind },
+          "",
+          window.location.href,
+        );
+      } else {
+        window.history.pushState(
+          { ...historyState, rootsQTModal: kind },
+          "",
+          window.location.href,
+        );
+      }
+      hasQTModalHistoryEntryRef.current = true;
+    } catch {
+      hasQTModalHistoryEntryRef.current = false;
+    }
+
+    setVisibleQTModal(kind);
+  }
+
+  function closeQTModal() {
+    const historyKind = isQTModalHistoryKind(window.history.state?.rootsQTModal)
+      ? window.history.state.rootsQTModal
+      : null;
+    if (historyKind) {
+      window.history.back();
+      return;
+    }
+
+    hasQTModalHistoryEntryRef.current = false;
+    setVisibleQTModal(null);
+  }
+
+  function navigateFromQTModal(href: string) {
+    const canReplaceModalEntry = isQTModalHistoryKind(
+      window.history.state?.rootsQTModal,
+    );
+    hasQTModalHistoryEntryRef.current = false;
+    setVisibleQTModal(null);
+
+    if (canReplaceModalEntry) {
+      const historyState = currentHistoryState();
+      const nextHistoryState = { ...historyState };
+      delete nextHistoryState.rootsQTModal;
+      window.history.replaceState(nextHistoryState, "", window.location.href);
+      router.replace(href);
+      return;
+    }
+    router.push(href);
+  }
 
   function showToast(message: string) {
     setToast(message);
@@ -146,6 +241,29 @@ export default function QTPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const initialModal = window.history.state?.rootsQTModal;
+    if (isQTModalHistoryKind(initialModal)) {
+      hasQTModalHistoryEntryRef.current = true;
+      setVisibleQTModal(initialModal);
+    }
+
+    function handleQTPopState(event: PopStateEvent) {
+      const nextModal = event.state?.rootsQTModal;
+      if (isQTModalHistoryKind(nextModal)) {
+        hasQTModalHistoryEntryRef.current = true;
+        setVisibleQTModal(nextModal);
+        return;
+      }
+
+      hasQTModalHistoryEntryRef.current = false;
+      setVisibleQTModal(null);
+    }
+
+    window.addEventListener("popstate", handleQTPopState);
+    return () => window.removeEventListener("popstate", handleQTPopState);
+  }, [setVisibleQTModal]);
 
   // New reflections follow the current app language. A detected draft is
   // resumed with its own bible_version instead of being reset here.
@@ -186,7 +304,7 @@ export default function QTPage() {
       setTodayDone(completedExists);
       setHasDraft(draftExists);
       setDraftCheckPending(false);
-      if (draftExists) setShowDraftPopup(true);
+      if (draftExists) openQTModal("draft");
       const { data } = await supabase.from("qt_records").select("*")
         .eq("user_id", user.id).eq("is_draft", false)
         .order("date", { ascending: false });
@@ -244,9 +362,7 @@ export default function QTPage() {
   }
 
   function startQT(mode: "6step" | "sunday" | "free", passageSource: "scheduled" | "custom" = "scheduled") {
-    setShowStartModal(false);
-    setShowPassageChoiceModal(false);
-    router.push(buildQTWriteHref({
+    navigateFromQTModal(buildQTWriteHref({
       mode,
       preferredTranslation,
       todaySchedule,
@@ -256,9 +372,7 @@ export default function QTPage() {
   }
 
   function startPhotoReflection(passageSource: "scheduled" | "custom" = "scheduled") {
-    setShowStartModal(false);
-    setShowPhotoPassageChoiceModal(false);
-    router.push(buildQTPhotoHref({
+    navigateFromQTModal(buildQTPhotoHref({
       preferredTranslation,
       todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
@@ -277,8 +391,7 @@ export default function QTPage() {
       const localDraftRemoved = removeQTDraftBackup(user.id, today);
       if (!localDraftRemoved) throw new Error("Could not remove the device draft backup");
       setHasDraft(false);
-      setShowDraftPopup(false);
-      setShowStartModal(true);
+      openQTModal("start");
     } catch (error) {
       console.error("qt draft delete failed", error);
       showToast(t("qt_error_draft_delete", lang));
@@ -292,9 +405,8 @@ export default function QTPage() {
       showToast(t("qt_catchup_no_dates", lang));
       return;
     }
-    setShowCatchUpModal(false);
     if (mode === "photo") {
-      router.push(buildQTPhotoHref({
+      navigateFromQTModal(buildQTPhotoHref({
         preferredTranslation,
         useTodaySchedule: false,
         date: targetDate,
@@ -313,7 +425,7 @@ export default function QTPage() {
     if (mode === "free" && parseLocalDateString(targetDate).getDay() === 0) {
       params.set("sundayContext", "true");
     }
-    router.push(`/qt/write?${params.toString()}`);
+    navigateFromQTModal(`/qt/write?${params.toString()}`);
   }
 
   const completedRecordDates = new Set(records.map(r => r.date));
@@ -340,9 +452,9 @@ export default function QTPage() {
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button onClick={() => { setShowDraftPopup(false); router.push("/qt/write?resume=true"); }} className="btn-primary">{t("qt_draft_continue", lang)}</button>
+              <button onClick={() => navigateFromQTModal("/qt/write?resume=true")} className="btn-primary">{t("qt_draft_continue", lang)}</button>
               <button onClick={deleteDraftAndStart} className="btn-outline">{t("qt_draft_new", lang)}</button>
-              <button onClick={() => setShowDraftPopup(false)} style={{ background: "none", border: "none", color: "var(--text-muted-readable)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
+              <button onClick={closeQTModal} style={{ background: "none", border: "none", color: "var(--text-muted-readable)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
             </div>
           </div>
         </div>
@@ -365,7 +477,7 @@ export default function QTPage() {
                 <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
               </div>
             </div>
-            <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <button onClick={() => openQTModal("catch-up")} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
             </button>
           </div>
@@ -394,8 +506,8 @@ export default function QTPage() {
             <button
               onClick={() => {
                 if (draftCheckPending) return;
-                if (hasDraft) setShowDraftPopup(true);
-                else setShowStartModal(true);
+                if (hasDraft) openQTModal("draft");
+                else openQTModal("start");
               }}
               disabled={draftCheckPending}
               className="btn-primary"
@@ -404,7 +516,7 @@ export default function QTPage() {
               {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
               {t("qt_today_start", lang)}
             </button>
-            <button onClick={() => setShowCatchUpModal(true)} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <button onClick={() => openQTModal("catch-up")} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
             </button>
           </div>
@@ -509,7 +621,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
-              <QTModalCloseButton onClick={() => setShowCatchUpModal(false)} label={t("close", lang)} />
+              <QTModalCloseButton onClick={closeQTModal} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
@@ -565,7 +677,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_mode_photo_title", lang)}</h2>
-              <QTModalCloseButton onClick={() => setShowPhotoPassageChoiceModal(false)} label={t("close", lang)} />
+              <QTModalCloseButton onClick={closeQTModal} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>{t("qt_photo_passage_choice_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
@@ -581,7 +693,7 @@ export default function QTPage() {
                 {t("qt_passage_choice_custom", lang)}
               </button>
             </div>
-            <button onClick={() => { setShowPhotoPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
+            <button onClick={() => openQTModal("start")} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               {t("qt_passage_choice_back", lang)}
             </button>
           </div>
@@ -593,7 +705,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
-              <QTModalCloseButton onClick={() => setShowPassageChoiceModal(false)} label={t("close", lang)} />
+              <QTModalCloseButton onClick={closeQTModal} label={t("close", lang)} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
               <button className="qt-option-card" onClick={() => startQT("6step", "scheduled")} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, padding: "0 16px", borderRadius: 16, border: "1px solid var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", cursor: "pointer", textAlign: "center", fontSize: 14, fontWeight: 700 }}>
@@ -603,7 +715,7 @@ export default function QTPage() {
                 {t("qt_passage_choice_custom", lang)}
               </button>
             </div>
-            <button onClick={() => { setShowPassageChoiceModal(false); setShowStartModal(true); }} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
+            <button onClick={() => openQTModal("start")} style={{ width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               {t("qt_passage_choice_back", lang)}
             </button>
           </div>
@@ -615,7 +727,7 @@ export default function QTPage() {
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_how_title", lang)}</h2>
-              <QTModalCloseButton onClick={() => setShowStartModal(false)} label={t("close", lang)} />
+              <QTModalCloseButton onClick={closeQTModal} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginBottom: 18 }}>{t("qt_how_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -627,8 +739,7 @@ export default function QTPage() {
                     showToast(t("qt_sunday_required", lang));
                     return;
                   }
-                  setShowStartModal(false);
-                  setShowPassageChoiceModal(true);
+                  openQTModal("passage");
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: isSundayToday ? "1px solid var(--qt-option-border)" : "1px solid var(--qt-sage-border)", background: isSundayToday ? "var(--qt-option-surface)" : "var(--qt-sage-surface)", cursor: isSundayToday ? "not-allowed" : "pointer", textAlign: "left", opacity: isSundayToday ? 0.6 : 1 }}
               >
@@ -660,7 +771,7 @@ export default function QTPage() {
                   <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{t("qt_mode_free_desc", lang)}</p>
                 </div>
               </button>
-              <button className="qt-option-card" onClick={() => { setShowStartModal(false); setShowPhotoPassageChoiceModal(true); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--qt-option-border)", background: "var(--qt-option-surface)", cursor: "pointer", textAlign: "left" }}>
+              <button className="qt-option-card" onClick={() => openQTModal("photo-passage")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--qt-option-border)", background: "var(--qt-option-surface)", cursor: "pointer", textAlign: "left" }}>
                 <ImagePlus size={28} strokeWidth={1.8} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>{t("qt_mode_photo_title", lang)}</p>
@@ -668,7 +779,7 @@ export default function QTPage() {
                 </div>
               </button>
             </div>
-            <button onClick={() => { setShowStartModal(false); setGuidePage(0); setShowGuideModal(true); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
+            <button onClick={() => { setGuidePage(0); openQTModal("guide"); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 14, padding: "10px", borderRadius: 12, border: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted-readable)" }}>
               <HelpCircle size={14} /> {t("qt_guide_btn", lang)}
             </button>
           </div>
@@ -682,7 +793,7 @@ export default function QTPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "1px" }}>{t("qt_guide_step_label", lang)} {guidePage + 1}/6</p>
                 <QTModalCloseButton
-                  onClick={() => setShowGuideModal(false)}
+                  onClick={closeQTModal}
                   label={t("close", lang)}
                   color="var(--sage-dark)"
                   iconSize={18}
@@ -712,7 +823,7 @@ export default function QTPage() {
               {guidePage < QT_GUIDE_KEYS.length - 1 ? (
                 <button onClick={() => setGuidePage(p => p + 1)} className="btn-sage" style={{ flex: 2 }}>{t("qt_guide_next", lang)}</button>
               ) : (
-                <button onClick={() => { storageSet("qt_guide_done", "true"); setShowGuideModal(false); setShowStartModal(true); }} className="btn-sage" style={{ flex: 2 }}>
+                <button onClick={() => { storageSet("qt_guide_done", "true"); openQTModal("start"); }} className="btn-sage" style={{ flex: 2 }}>
                   {t("qt_guide_start", lang)}
                 </button>
               )}
