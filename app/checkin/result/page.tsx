@@ -170,7 +170,7 @@ function ResultContent() {
   }, [langReady, lang, selectedEmotion, retryNonce]);
 
   if (loading) return (
-    <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
+    <div className="roots-daily-word-phase2e roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
       <Loader2 size={32} style={{ color: "var(--daily-word-sage-text)" }} className="spin" />
       <p style={{ color: "var(--daily-word-muted-text)", fontSize: 14 }}>{t("result_loading", lang)}</p>
       <BottomNav />
@@ -282,7 +282,7 @@ function ResultContent() {
 export default function ResultPage() {
   return (
     <Suspense fallback={
-      <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
+      <div className="roots-daily-word-phase2e roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
         <Loader2 size={32} style={{ color: "var(--daily-word-sage-text)" }} className="spin" />
         <BottomNav />
       </div>

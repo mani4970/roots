@@ -7,6 +7,7 @@ export default function QTWriteLoadingState({ lang }: { lang: Lang }) {
 
   return (
     <div
+      className="roots-native-tablet-viewport"
       role="status"
       aria-live="polite"
       aria-busy="true"
