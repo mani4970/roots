@@ -35,6 +35,7 @@ function PrayerPageContent() {
   const [prayers, setPrayers] = useState<any[]>([]);
   const [intercessionPrayers, setIntercessionPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [prayerFormViewport, setPrayerFormViewport] = useState<{ height: number; offsetTop: number } | null>(null);
   const [newPrayer, setNewPrayer] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -105,6 +106,35 @@ function PrayerPageContent() {
     }
     return false;
   });
+
+  useEffect(() => {
+    if (!showForm) {
+      setPrayerFormViewport(null);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const updatePrayerFormViewport = () => {
+      const height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight));
+      const offsetTop = Math.max(0, Math.round(viewport?.offsetTop ?? 0));
+      setPrayerFormViewport(current =>
+        current?.height === height && current.offsetTop === offsetTop
+          ? current
+          : { height, offsetTop },
+      );
+    };
+
+    updatePrayerFormViewport();
+    window.addEventListener("resize", updatePrayerFormViewport);
+    viewport?.addEventListener("resize", updatePrayerFormViewport);
+    viewport?.addEventListener("scroll", updatePrayerFormViewport);
+
+    return () => {
+      window.removeEventListener("resize", updatePrayerFormViewport);
+      viewport?.removeEventListener("resize", updatePrayerFormViewport);
+      viewport?.removeEventListener("scroll", updatePrayerFormViewport);
+    };
+  }, [showForm]);
 
   useEffect(() => {
     if (!notice) return;
@@ -1061,8 +1091,8 @@ function PrayerPageContent() {
 
       {/* 기도 작성 폼 */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ position: "fixed", top: prayerFormViewport?.offsetTop ?? 0, left: 0, right: 0, height: prayerFormViewport ? `${prayerFormViewport.height}px` : "100dvh", background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 20px", boxSizing: "border-box", overflow: "hidden" }}>
+          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, maxHeight: "100%", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{c("prayer_write_title")}</h2>
             <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>
             <textarea className="textarea-field" rows={4}
