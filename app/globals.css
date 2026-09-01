@@ -863,6 +863,8 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   html[data-native-platform="ios"][data-native-form-factor="tablet"] select { font-size: 19px !important; }
   /* Keep typed text in proportion with the surrounding UI after the 1.5x tablet zoom. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, .input-field, .textarea-field) { font-size: 14px !important; }
+  /* Keep QT writing guidance readable without enlarging the user's typed text. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-phase2h :is(.input-field, .textarea-field)::placeholder { font-size: 15px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-compact-translation-select { font-size: 12px !important; line-height: 1.2; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-passage-reference { font-size: 16px !important; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .btn-primary { font-size: 18px !important; }
