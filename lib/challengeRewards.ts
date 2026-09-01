@@ -64,3 +64,24 @@ export async function claimPendingChallengeRewards(
   if (error) throw error;
   return normalizeChallengeRewards(data);
 }
+
+export async function loadUnseenChallengeRewards(
+  supabase: any,
+): Promise<ChallengeReward[]> {
+  const { data, error } = await supabase.rpc("get_unseen_challenge_rewards");
+  if (error) throw error;
+  return normalizeChallengeRewards(data);
+}
+
+export async function markChallengeRewardSeen(
+  supabase: any,
+  reward: Pick<ChallengeReward, "kind" | "awardId">,
+) {
+  if (!reward.awardId) return;
+
+  const { error } = await supabase.rpc("mark_challenge_reward_seen", {
+    p_reward_type: reward.kind,
+    p_award_id: reward.awardId,
+  });
+  if (error) throw error;
+}

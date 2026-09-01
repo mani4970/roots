@@ -55,7 +55,12 @@ import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
-import { claimPendingChallengeRewards, type ChallengeReward } from "@/lib/challengeRewards";
+import {
+  claimPendingChallengeRewards,
+  loadUnseenChallengeRewards,
+  markChallengeRewardSeen,
+  type ChallengeReward,
+} from "@/lib/challengeRewards";
 import {
   getMonthlyBadgeAwardCampaignKey,
   getMonthlyBadgeDateRange,
@@ -368,6 +373,7 @@ export default function HomePage() {
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
   const challengeRewardCheckStartedRef = useRef(false);
+  const challengeRewardActionInFlightRef = useRef(false);
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
@@ -540,20 +546,65 @@ export default function HomePage() {
     if (challengeRewardCheckStartedRef.current) return;
     challengeRewardCheckStartedRef.current = true;
 
+    const rewardsByAwardId = new Map<string, ChallengeReward>();
+
     try {
-      const rewards = await claimPendingChallengeRewards(supabase, today);
-      if (rewards.length === 0) return;
-      setChallengeRewardQueue((current) => {
-        const existingAwardIds = new Set(current.map((reward) => reward.awardId));
-        return [
-          ...current,
-          ...rewards.filter((reward) => !existingAwardIds.has(reward.awardId)),
-        ];
+      const newlyClaimedRewards = await claimPendingChallengeRewards(supabase, today);
+      newlyClaimedRewards.forEach((reward) => {
+        rewardsByAwardId.set(reward.awardId, reward);
       });
     } catch (error) {
       // Challenge rewards are independent from Home and the core Bible Reflection flow.
       // A temporary reward check failure must never block Home, progress, or watering.
       console.warn("챌린지 미지급 보상 확인 실패:", error);
+    }
+
+    try {
+      const unseenRewards = await loadUnseenChallengeRewards(supabase);
+      unseenRewards.forEach((reward) => {
+        rewardsByAwardId.set(reward.awardId, reward);
+      });
+    } catch (error) {
+      // Keep newly claimed rewards visible even if the recovery RPC has not
+      // been deployed yet or is temporarily unavailable.
+      console.warn("미확인 챌린지 보상 조회 실패:", error);
+    }
+
+    const rewards = Array.from(rewardsByAwardId.values());
+    if (rewards.length === 0) return;
+
+    setChallengeRewardQueue((current) => {
+      const existingAwardIds = new Set(current.map((reward) => reward.awardId));
+      return [
+        ...current,
+        ...rewards.filter((reward) => !existingAwardIds.has(reward.awardId)),
+      ];
+    });
+  }
+
+  async function completeChallengeReward(openProfile: boolean) {
+    const reward = challengeRewardQueue[0] ?? null;
+    if (!reward || challengeRewardActionInFlightRef.current) return;
+
+    challengeRewardActionInFlightRef.current = true;
+    const hasAnotherReward = challengeRewardQueue.some(
+      (candidate) => candidate.awardId !== reward.awardId,
+    );
+    setChallengeRewardQueue((current) =>
+      current.filter((candidate) => candidate.awardId !== reward.awardId),
+    );
+
+    try {
+      await markChallengeRewardSeen(createClient(), reward);
+    } catch (error) {
+      // If this acknowledgement fails, the same already-paid reward may be
+      // shown again later. It never awards the badge or hearts twice.
+      console.warn("챌린지 보상 팝업 확인 저장 실패:", error);
+    } finally {
+      challengeRewardActionInFlightRef.current = false;
+      if (openProfile && !hasAnotherReward) {
+        router.push("/profile#special-badges");
+      }
     }
   }
 
@@ -1611,7 +1662,6 @@ export default function HomePage() {
     !!rewardMapNotice ||
     showRootsManPopup ||
     showAvatarChoiceModal ||
-    challengeRewardQueue.length > 0 ||
     showLangPicker ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -1971,11 +2021,11 @@ export default function HomePage() {
 
       <ChallengeRewardPopup
         reward={visibleChallengeReward}
-        onDismiss={() => setChallengeRewardQueue((current) => current.slice(1))}
+        onDismiss={() => {
+          void completeChallengeReward(false);
+        }}
         onConfirm={() => {
-          const hasAnotherReward = challengeRewardQueue.length > 1;
-          setChallengeRewardQueue((current) => current.slice(1));
-          if (!hasAnotherReward) router.push("/profile#special-badges");
+          void completeChallengeReward(true);
         }}
       />
 
