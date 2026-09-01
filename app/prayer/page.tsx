@@ -198,7 +198,7 @@ function PrayerPageContent() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (!showShareModal && !showCreateSharePrompt) return;
+    if (!showForm && !showShareModal && !showCreateSharePrompt) return;
     const bodyOverflow = document.body.style.overflow;
     const htmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -207,7 +207,7 @@ function PrayerPageContent() {
       document.body.style.overflow = bodyOverflow;
       document.documentElement.style.overflow = htmlOverflow;
     };
-  }, [showShareModal, showCreateSharePrompt]);
+  }, [showForm, showShareModal, showCreateSharePrompt]);
 
   function visibilityTargets(visibility?: string | null) {
     return (visibility ?? "private")
