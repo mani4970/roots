@@ -512,6 +512,10 @@ function QTWriteContent() {
       setShowDatePicker(false);
       return true;
     }
+    if ((mode === "6step" || mode === "sunday") && cur > 0) {
+      setCur(current => Math.max(0, current - 1));
+      return true;
+    }
     return false;
   });
 

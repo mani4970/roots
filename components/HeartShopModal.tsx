@@ -291,6 +291,7 @@ export default function HeartShopModal({
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const [restoringCharacterState, setRestoringCharacterState] = useState(false);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
+  const tabHistoryRef = useRef<HeartShopTab[]>([]);
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
@@ -298,6 +299,17 @@ export default function HeartShopModal({
   useAndroidBackHandler(() => {
     if (!show) return false;
     if (purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState) {
+      return true;
+    }
+    const historyStack = historyStackRef.current;
+    const activeHistoryLayer = historyStack[historyStack.length - 1] ?? null;
+    if (activeHistoryLayer && activeHistoryLayer !== "shop") {
+      closeTopLayer();
+      return true;
+    }
+    const previousTab = tabHistoryRef.current.pop();
+    if (previousTab) {
+      setActiveTab(previousTab);
       return true;
     }
     closeTopLayer();
@@ -430,6 +442,12 @@ export default function HeartShopModal({
     historyStackRef.current = [...stack.slice(0, -1), kind];
   }
 
+  function changeActiveTab(nextTab: HeartShopTab) {
+    if (nextTab === activeTab) return;
+    tabHistoryRef.current = [...tabHistoryRef.current, activeTab];
+    setActiveTab(nextTab);
+  }
+
   function closeTopLayer() {
     if (typeof window !== "undefined" && historyStackRef.current.length > 0) {
       window.history.back();
@@ -552,6 +570,7 @@ export default function HeartShopModal({
     if (!show) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    tabHistoryRef.current = [];
     setActiveTab("character");
     setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
     setActiveCharacterCategory("all");
@@ -660,7 +679,7 @@ export default function HeartShopModal({
         closeTopLayer();
         setNotice(text.alreadyOwned);
         setActiveOwnedSection(isHeartShopCharacterCatalogItem(selectedItem) ? "character" : "map");
-        setActiveTab("owned");
+        changeActiveTab("owned");
         return;
       }
       if (result.reason === "insufficient_hearts") {
@@ -886,7 +905,7 @@ export default function HeartShopModal({
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
-                <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ minHeight: 40, padding: "8px 6px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,.38)" : "1px solid transparent", background: active ? "var(--heart-shop-action)" : "transparent", color: active ? "var(--heart-shop-on-action)" : "var(--text2)", fontSize: 11.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+                <button key={tab.id} type="button" onClick={() => changeActiveTab(tab.id)} style={{ minHeight: 40, padding: "8px 6px", borderRadius: 14, border: active ? "1px solid rgba(122,157,122,.38)" : "1px solid transparent", background: active ? "var(--heart-shop-action)" : "transparent", color: active ? "var(--heart-shop-on-action)" : "var(--text2)", fontSize: 11.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
                   {tab.label}
                 </button>
               );
@@ -1109,7 +1128,7 @@ export default function HeartShopModal({
                         <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <p style={{ margin: 0, minHeight: 36, color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
                         <div style={{ color: "var(--heart-shop-price-text)", fontSize: 13, fontWeight: 950, margin: "10px 0 9px", textAlign: "center" }}>💛 {item.price}</div>
-                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); setActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--heart-shop-action)", color: owned ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
+                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); changeActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--heart-shop-action)", color: owned ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
                           {owned ? text.ownedButton : text.purchaseButton}
                         </button>
                       </article>
@@ -1247,7 +1266,7 @@ export default function HeartShopModal({
                               void applyFreeBackground(item);
                             } else if (owned) {
                               setActiveOwnedSection("character");
-                              setActiveTab("owned");
+                              changeActiveTab("owned");
                             } else {
                               openPurchase(item.id);
                             }
@@ -1536,7 +1555,7 @@ export default function HeartShopModal({
             <div style={{ marginTop: 12, color: "var(--heart-shop-price-text)", fontSize: 16, fontWeight: 950 }}>💛 {previewItem.price}</div>
             <div style={{ display: "grid", gridTemplateColumns: ".85fr 1.15fr", gap: 9, marginTop: 18 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: "pointer" }}>{text.closePreviewButton}</button>
-              <button type="button" onClick={() => { if (ownedById.has(previewItem.id)) { setActiveOwnedSection(isHeartShopCharacterCatalogItem(previewItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); } else { openPurchaseFromPreview(previewItem.id); } }} style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--heart-shop-action)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}>
+              <button type="button" onClick={() => { if (ownedById.has(previewItem.id)) { setActiveOwnedSection(isHeartShopCharacterCatalogItem(previewItem) ? "character" : "map"); changeActiveTab("owned"); closeTopLayer(); } else { openPurchaseFromPreview(previewItem.id); } }} style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--heart-shop-action)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}>
                 {ownedById.has(previewItem.id) ? text.ownedButton : text.purchaseButton}
               </button>
             </div>
@@ -1570,7 +1589,7 @@ export default function HeartShopModal({
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{isHeartShopMapCatalogItem(completedItem) ? text.items[completedItem.id].completeBody : text.characterCompleteBody}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginTop: 20 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>{text.continueShoppingButton}</button>
-              <button type="button" onClick={() => { setActiveOwnedSection(isHeartShopCharacterCatalogItem(completedItem) ? "character" : "map"); setActiveTab("owned"); closeTopLayer(); }} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12, fontWeight: 950, cursor: "pointer" }}>{text.viewOwnedButton}</button>
+              <button type="button" onClick={() => { setActiveOwnedSection(isHeartShopCharacterCatalogItem(completedItem) ? "character" : "map"); changeActiveTab("owned"); closeTopLayer(); }} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12, fontWeight: 950, cursor: "pointer" }}>{text.viewOwnedButton}</button>
             </div>
           </div>
         </div>
