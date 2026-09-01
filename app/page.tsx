@@ -22,6 +22,7 @@ import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallenge
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
+import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
@@ -39,7 +40,7 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
-import { buildQTPhotoHref, buildQTWriteHref, getRecommendedQTMode, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
+import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
@@ -48,7 +49,8 @@ import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubK
 import { getNehemiahWallStage } from "@/lib/nehemiahWall";
 import { getNehemiahWallCopy } from "@/lib/nehemiahWallText";
 import { getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
-import { loadQTDraftBackup } from "@/lib/qtDraftBackup";
+import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
+import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
@@ -320,6 +322,9 @@ export default function HomePage() {
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
   const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
+  const [showHomeQTDraftChoice, setShowHomeQTDraftChoice] = useState(false);
+  const [deletingHomeQTDraft, setDeletingHomeQTDraft] = useState(false);
+  const deletingHomeQTDraftRef = useRef(false);
   const [showHomeQTPassageChoice, setShowHomeQTPassageChoice] = useState(false);
   const [showHomeQTPhotoPassageChoice, setShowHomeQTPhotoPassageChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
@@ -1532,19 +1537,13 @@ export default function HomePage() {
     return `${translatedBook} ${verseRange}`;
   }
 
-  function startHomeQT(mode?: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
-    if (homeQTState.hasDraft && !mode) {
-      router.push("/qt/write?resume=true");
-      return;
-    }
-
-    const nextMode = mode ?? getRecommendedQTMode();
+  function startHomeQT(mode: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
     router.push(buildQTWriteHref({
-      mode: nextMode,
+      mode,
       preferredTranslation: homeQTState.preferredTranslation,
       todaySchedule: homeQTState.todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
-      sundayContext: nextMode === "free" && isSunday(),
+      sundayContext: mode === "free" && isSunday(),
     }));
   }
 
@@ -1564,7 +1563,7 @@ export default function HomePage() {
 
   function openHomeQT() {
     if (homeQTState.hasDraft) {
-      startHomeQT();
+      setShowHomeQTDraftChoice(true);
       return;
     }
     if (todayDone.qt) {
@@ -1578,6 +1577,60 @@ export default function HomePage() {
     setShowHomeQTPassageChoice(false);
     setShowHomeQTPhotoPassageChoice(false);
     setShowHomeQTChoice(true);
+  }
+
+  function continueHomeQTDraft() {
+    if (deletingHomeQTDraftRef.current) return;
+    setShowHomeQTDraftChoice(false);
+    router.push("/qt/write?resume=true");
+  }
+
+  async function deleteHomeQTDraftAndStartNew() {
+    if (deletingHomeQTDraftRef.current) return;
+    deletingHomeQTDraftRef.current = true;
+    setDeletingHomeQTDraft(true);
+
+    try {
+      const supabase = createClient();
+      const user = await getQtDraftSessionUser(supabase);
+      if (!user) throw new Error("No authenticated user for QT draft deletion");
+
+      const today = getLocalDateString();
+      const { error } = await withQtDraftTimeout(
+        supabase
+          .from("qt_records")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .eq("is_draft", true),
+        8_000,
+        "home delete QT draft",
+      );
+      if (error) throw error;
+      if (!removeQTDraftBackup(user.id, today)) {
+        throw new Error("Could not remove the device QT draft backup");
+      }
+
+      setHomeQTState(previous => ({ ...previous, hasDraft: false }));
+      setShowHomeQTDraftChoice(false);
+      setShowHomeQTPassageChoice(false);
+      setShowHomeQTPhotoPassageChoice(false);
+      setShowHomeQTGuide(false);
+
+      if (isSunday()) {
+        setShowHomeQTChoice(false);
+        setShowHomeSundayQT(true);
+      } else {
+        setShowHomeSundayQT(false);
+        setShowHomeQTChoice(true);
+      }
+    } catch (error) {
+      console.error("home QT draft delete failed", error);
+      showToast(t("qt_error_draft_delete", lang));
+    } finally {
+      deletingHomeQTDraftRef.current = false;
+      setDeletingHomeQTDraft(false);
+    }
   }
 
   function startHomeQTFromPopup(mode: QTMode) {
@@ -1663,6 +1716,7 @@ export default function HomePage() {
     showRootsManPopup ||
     showAvatarChoiceModal ||
     showLangPicker ||
+    showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
     showHomeQTPhotoPassageChoice ||
@@ -1696,6 +1750,7 @@ export default function HomePage() {
     visibleSpanishLanguageLaunchAnnouncement ||
     visibleMonthlyBadgeAward ||
     showLangPicker ||
+    showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
     showHomeQTPhotoPassageChoice ||
@@ -1763,6 +1818,16 @@ export default function HomePage() {
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
         </div>
+      )}
+
+      {showHomeQTDraftChoice && (
+        <HomeQTDraftChoice
+          lang={lang}
+          deleting={deletingHomeQTDraft}
+          onContinue={continueHomeQTDraft}
+          onStartNew={() => { void deleteHomeQTDraftAndStartNew(); }}
+          onClose={() => { if (!deletingHomeQTDraft) setShowHomeQTDraftChoice(false); }}
+        />
       )}
 
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
@@ -2110,7 +2175,7 @@ export default function HomePage() {
       )}
 
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward && !showFirstLangPicker && !showLangPicker && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
+        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward && !showFirstLangPicker && !showLangPicker && !showHomeQTDraftChoice && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
