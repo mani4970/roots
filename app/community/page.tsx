@@ -116,6 +116,7 @@ import {
   UserPlus,
   Crown,
   UserMinus,
+  Settings,
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.webp";
@@ -949,7 +950,9 @@ function CommunityPageContent() {
   const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [showGroupActionMenu, setShowGroupActionMenu] = useState(false);
+  const [openGroupHeaderMenu, setOpenGroupHeaderMenu] = useState<
+    "invite" | "settings" | null
+  >(null);
   const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [groupMemberProfiles, setGroupMemberProfiles] = useState<
     GroupMemberProfile[]
@@ -1116,8 +1119,8 @@ function CommunityPageContent() {
       setShowGroupMembers(false);
       return true;
     }
-    if (showGroupActionMenu) {
-      setShowGroupActionMenu(false);
+    if (openGroupHeaderMenu) {
+      setOpenGroupHeaderMenu(null);
       return true;
     }
     if (showChallengeRequestForm) {
@@ -2462,7 +2465,7 @@ function CommunityPageContent() {
 
   function resetGroupDetailState() {
     setActionMenu(null);
-    setShowGroupActionMenu(false);
+    setOpenGroupHeaderMenu(null);
     setShowGroupMembers(false);
     setGroupMemberProfiles([]);
     setShowGroupEdit(false);
@@ -5483,7 +5486,7 @@ function CommunityPageContent() {
     setEditGroupName(selectedGroup.name ?? "");
     setEditGroupDesc(selectedGroup.description ?? "");
     setEditGroupIsPublic(!!selectedGroup.is_public);
-    setShowGroupActionMenu(false);
+    setOpenGroupHeaderMenu(null);
     setShowGroupEdit(true);
   }
 
@@ -5542,7 +5545,7 @@ function CommunityPageContent() {
 
   async function openLeadershipTransferModal() {
     if (!selectedGroup || !isGroupLeader(selectedGroup)) return;
-    setShowGroupActionMenu(false);
+    setOpenGroupHeaderMenu(null);
     setLeadershipTransferStep("select");
     setLeadershipTransferTargetId(null);
     setLeadershipTransferError(null);
@@ -5682,7 +5685,7 @@ function CommunityPageContent() {
 
   function openDeleteGroupConfirm() {
     if (!selectedGroup || !isGroupLeader(selectedGroup)) return;
-    setShowGroupActionMenu(false);
+    setOpenGroupHeaderMenu(null);
     setDeleteGroupError(null);
     setShowDeleteGroupConfirm(true);
   }
@@ -5739,7 +5742,7 @@ function CommunityPageContent() {
 
     clearSharePromptOptionsCache();
     setShowLeaveConfirm(false);
-    setShowGroupActionMenu(false);
+    setOpenGroupHeaderMenu(null);
     setShowGroupMembers(false);
     const leftGroupId = selectedGroup.id;
     const wasPublic = !!selectedGroup.is_public;
@@ -7496,181 +7499,258 @@ function CommunityPageContent() {
                 />
               </button>
             )}
-            <button
-              onClick={() => setShowGroupActionMenu((prev) => !prev)}
-              aria-label={c("community_group_actions")}
-              style={{
-                marginLeft: "auto",
-                width: 34,
-                height: 34,
-                border: "none",
-                background: "transparent",
-                color: "var(--text3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                padding: 0,
-                flexShrink: 0,
-              }}
-            >
-              <MoreHorizontal size={22} />
-            </button>
-            {showGroupActionMenu && (
-              <div
+            {selectedGroup.isMember && (
+              <>
+                <button
+                  onClick={() =>
+                    setOpenGroupHeaderMenu((current) =>
+                      current === "settings" ? null : "settings",
+                    )
+                  }
+                  aria-label={c("community_group_actions")}
+                  aria-expanded={openGroupHeaderMenu === "settings"}
+                  aria-haspopup="menu"
+                  style={{
+                    marginLeft: "auto",
+                    width: 44,
+                    height: 44,
+                    border: "none",
+                    borderRadius: 999,
+                    background: "transparent",
+                    color: "var(--text3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  <Settings size={21} />
+                </button>
+                {openGroupHeaderMenu === "settings" && (
+                  <div
+                    role="menu"
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: 48,
+                      zIndex: 80,
+                      minWidth: viewerIsGroupLeader ? 250 : 180,
+                      borderRadius: 18,
+                      border: "1px solid var(--community-card-border)",
+                      background: "var(--community-popover-surface)",
+                      boxShadow: "var(--shadow-popover)",
+                      padding: 8,
+                    }}
+                  >
+                    {viewerIsGroupLeader ? (
+                      <>
+                        <p
+                          style={{
+                            padding: "6px 10px 3px",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            color: "var(--text3)",
+                          }}
+                        >
+                          {groupLeaderText.groupManagement}
+                        </p>
+                        <button
+                          role="menuitem"
+                          onClick={openGroupEditModal}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 9,
+                            padding: "11px 10px",
+                            border: "none",
+                            background: "transparent",
+                            color: "var(--text2)",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <Edit3 size={15} />
+                          {groupLeaderText.editGroup}
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={openLeadershipTransferModal}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 9,
+                            padding: "11px 10px",
+                            border: "none",
+                            background: "transparent",
+                            color: "var(--text2)",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <Crown size={15} />
+                          {groupLeaderText.transferLeadership}
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={openDeleteGroupConfirm}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 9,
+                            padding: "11px 10px",
+                            border: "none",
+                            background: "transparent",
+                            color: "var(--community-danger-text)",
+                            fontSize: 13,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <Trash2 size={15} />
+                          {groupLeaderText.deleteGroup}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenGroupHeaderMenu(null);
+                          setShowLeaveConfirm(true);
+                        }}
+                        disabled={leavingGroup}
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 9,
+                          padding: "11px 10px",
+                          border: "none",
+                          background: "transparent",
+                          color: "var(--community-danger-text)",
+                          fontSize: 13,
+                          fontWeight: 800,
+                          cursor: leavingGroup ? "default" : "pointer",
+                          textAlign: "left",
+                          opacity: leavingGroup ? 0.65 : 1,
+                        }}
+                      >
+                        {leavingGroup ? (
+                          <Loader2 size={15} className="spin" />
+                        ) : (
+                          <LogOut size={15} />
+                        )}
+                        {c("community_leave_group")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              alignItems: "center",
+              columnGap: 10,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              {selectedGroup.description && (
+                <p style={{ fontSize: 13, color: "var(--text3)" }}>
+                  {selectedGroup.description}
+                </p>
+              )}
+              <button
+                onClick={() => {
+                  setOpenGroupHeaderMenu(null);
+                  openGroupMembers(selectedGroup);
+                }}
                 style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 38,
-                  zIndex: 80,
-                  minWidth: viewerIsGroupLeader ? 250 : 180,
-                  borderRadius: 18,
-                  border: "1px solid var(--community-card-border)",
-                  background: "var(--community-popover-surface)",
-                  boxShadow: "var(--shadow-popover)",
-                  padding: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: 12,
+                  color: "var(--sage-dark)",
+                  marginTop: selectedGroup.description ? 6 : 0,
+                  fontWeight: 700,
+                  cursor: "pointer",
                 }}
               >
-                <button
-                  onClick={() => {
-                    setShowGroupActionMenu(false);
-                    shareInvite(selectedGroup);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                    padding: "11px 10px",
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--sage-dark)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <Share2 size={15} />
-                  {c("community_invite")}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowGroupActionMenu(false);
-                    copyInviteLink(selectedGroup.id);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                    padding: "11px 10px",
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--text2)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  {copiedId === selectedGroup.id ? (
-                    <Check size={15} />
-                  ) : (
-                    <Copy size={15} />
-                  )}
-                  {copiedId === selectedGroup.id
-                    ? c("community_copied")
-                    : c("community_copy_link")}
-                </button>
-                {viewerIsGroupLeader && (
-                  <>
-                    <div
-                      style={{
-                        height: 1,
-                        background: "var(--community-card-border)",
-                        margin: "4px 6px",
-                      }}
-                    />
-                    <p
-                      style={{
-                        padding: "6px 10px 3px",
-                        fontSize: 10,
-                        fontWeight: 800,
-                        color: "var(--text3)",
-                      }}
-                    >
-                      {groupLeaderText.groupManagement}
-                    </p>
-                    <button
-                      onClick={openGroupEditModal}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 9,
-                        padding: "11px 10px",
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text2)",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <Edit3 size={15} />
-                      {groupLeaderText.editGroup}
-                    </button>
-                    <button
-                      onClick={openLeadershipTransferModal}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 9,
-                        padding: "11px 10px",
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text2)",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <Crown size={15} />
-                      {groupLeaderText.transferLeadership}
-                    </button>
-                    <button
-                      onClick={openDeleteGroupConfirm}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 9,
-                        padding: "11px 10px",
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--community-danger-text)",
-                        fontSize: 13,
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <Trash2 size={15} />
-                      {groupLeaderText.deleteGroup}
-                    </button>
-                  </>
+                <span>{memberCountText(selectedGroup.member_count ?? 0)}</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() =>
+                  setOpenGroupHeaderMenu((current) =>
+                    current === "invite" ? null : "invite",
+                  )
+                }
+                aria-label={c("community_invite")}
+                aria-expanded={openGroupHeaderMenu === "invite"}
+                aria-haspopup="menu"
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 20,
+                  border: "1px solid var(--community-sage-border)",
+                  background: "var(--sage-light)",
+                  color: "var(--sage-dark)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {copiedId === selectedGroup.id ? (
+                  <Check size={13} />
+                ) : (
+                  <UserPlus size={13} />
                 )}
-                {selectedGroup.isMember && !viewerIsGroupLeader && (
+                {copiedId === selectedGroup.id
+                  ? c("community_copied")
+                  : c("community_invite")}
+              </button>
+              {openGroupHeaderMenu === "invite" && (
+                <div
+                  role="menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 6px)",
+                    zIndex: 80,
+                    minWidth: 180,
+                    borderRadius: 18,
+                    border: "1px solid var(--community-card-border)",
+                    background: "var(--community-popover-surface)",
+                    boxShadow: "var(--shadow-popover)",
+                    padding: 8,
+                  }}
+                >
                   <button
+                    role="menuitem"
                     onClick={() => {
-                      setShowGroupActionMenu(false);
-                      setShowLeaveConfirm(true);
+                      setOpenGroupHeaderMenu(null);
+                      shareInvite(selectedGroup);
                     }}
-                    disabled={leavingGroup}
                     style={{
                       width: "100%",
                       display: "flex",
@@ -7679,49 +7759,44 @@ function CommunityPageContent() {
                       padding: "11px 10px",
                       border: "none",
                       background: "transparent",
-                      color: "var(--community-danger-text)",
+                      color: "var(--sage-dark)",
                       fontSize: 13,
-                      fontWeight: 800,
-                      cursor: leavingGroup ? "default" : "pointer",
+                      fontWeight: 700,
+                      cursor: "pointer",
                       textAlign: "left",
-                      opacity: leavingGroup ? 0.65 : 1,
                     }}
                   >
-                    {leavingGroup ? (
-                      <Loader2 size={15} className="spin" />
-                    ) : (
-                      <LogOut size={15} />
-                    )}
-                    {c("community_leave_group")}
+                    <Share2 size={15} />
+                    {c("community_invite")}
                   </button>
-                )}
-              </div>
-            )}
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenGroupHeaderMenu(null);
+                      copyInviteLink(selectedGroup.id);
+                    }}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      padding: "11px 10px",
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--text2)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <Copy size={15} />
+                    {c("community_copy_link")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-          {selectedGroup.description && (
-            <p style={{ fontSize: 13, color: "var(--text3)" }}>
-              {selectedGroup.description}
-            </p>
-          )}
-          <button
-            onClick={() => openGroupMembers(selectedGroup)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              background: "none",
-              border: "none",
-              padding: 0,
-              fontSize: 12,
-              color: "var(--sage-dark)",
-              marginTop: 6,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            <span>{memberCountText(selectedGroup.member_count ?? 0)}</span>
-            <ChevronRight size={14} />
-          </button>
         </div>
 
         <div
