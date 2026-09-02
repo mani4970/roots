@@ -1042,6 +1042,9 @@ function CommunityPageContent() {
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
   const qtDetailScrollRef = useRef<HTMLDivElement | null>(null);
+  const groupSettingsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const groupSettingsMenuRef = useRef<HTMLDivElement | null>(null);
+  const groupInvitePopoverRef = useRef<HTMLDivElement | null>(null);
   const handledNotificationRouteRef = useRef<string | null>(null);
   const directPrayerFocusRef = useRef<string | null>(null);
   const directPrayerHighlightTimerRef = useRef<number | null>(null);
@@ -1497,6 +1500,31 @@ function CommunityPageContent() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!openGroupHeaderMenu) return;
+
+    function closeGroupHeaderMenuOnOutsidePress(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      const pressedInsideOpenMenu =
+        openGroupHeaderMenu === "settings"
+          ? groupSettingsTriggerRef.current?.contains(target) ||
+            groupSettingsMenuRef.current?.contains(target)
+          : groupInvitePopoverRef.current?.contains(target);
+
+      if (!pressedInsideOpenMenu) setOpenGroupHeaderMenu(null);
+    }
+
+    document.addEventListener("pointerdown", closeGroupHeaderMenuOnOutsidePress);
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        closeGroupHeaderMenuOnOutsidePress,
+      );
+    };
+  }, [openGroupHeaderMenu]);
 
   function normalizeCommunitySection(
     value: string | null,
@@ -7502,6 +7530,7 @@ function CommunityPageContent() {
             {selectedGroup.isMember && (
               <>
                 <button
+                  ref={groupSettingsTriggerRef}
                   onClick={() =>
                     setOpenGroupHeaderMenu((current) =>
                       current === "settings" ? null : "settings",
@@ -7530,6 +7559,7 @@ function CommunityPageContent() {
                 </button>
                 {openGroupHeaderMenu === "settings" && (
                   <div
+                    ref={groupSettingsMenuRef}
                     role="menu"
                     style={{
                       position: "absolute",
@@ -7694,7 +7724,7 @@ function CommunityPageContent() {
                 <ChevronRight size={14} />
               </button>
             </div>
-            <div style={{ position: "relative" }}>
+            <div ref={groupInvitePopoverRef} style={{ position: "relative" }}>
               <button
                 onClick={() =>
                   setOpenGroupHeaderMenu((current) =>
