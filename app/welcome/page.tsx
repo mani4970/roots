@@ -4,20 +4,25 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveLangLocally } from "@/lib/useLang";
 import { storageGet } from "@/lib/clientStorage";
-import { LANG_META, isLang, type Lang } from "@/lib/i18n";
-import styles from "./page.module.css";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+import styles from "./page.module.css";
 
 // ── Types & constants ──────────────────────────────────────────────
 
-type WelcomeCopyLang = Lang;
+type WelcomeCopyLang = "ko" | "en" | "de" | "fr" | "es";
 
-const WELCOME_LANG_ORDER = ["ko", "en", "de", "fr", "es"] as const satisfies readonly Lang[];
-const LANG_LIST: { code: Lang; flag: string; name: string }[] = WELCOME_LANG_ORDER.map((code) => ({
-  code,
-  flag: LANG_META[code].flag,
-  name: LANG_META[code].nativeName,
-}));
+const WELCOME_LANG_ORDER = ["ko", "en", "de", "fr", "es"] as const satisfies readonly WelcomeCopyLang[];
+const LANG_LIST: readonly { code: WelcomeCopyLang; flag: string; name: string }[] = [
+  { code: "ko", flag: "🇰🇷", name: "한국어" },
+  { code: "en", flag: "🇺🇸", name: "English" },
+  { code: "de", flag: "🇩🇪", name: "Deutsch" },
+  { code: "fr", flag: "🇫🇷", name: "Français" },
+  { code: "es", flag: "🇪🇸", name: "Español" },
+];
+
+function isWelcomeCopyLang(value: unknown): value is WelcomeCopyLang {
+  return typeof value === "string" && WELCOME_LANG_ORDER.includes(value as WelcomeCopyLang);
+}
 
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
@@ -25,8 +30,9 @@ const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.roots
 // ── Translations ───────────────────────────────────────────────────
 
 const TEXTS: Record<WelcomeCopyLang, {
-  tagline: string;
-  descParts: string[];
+  languageLabel: string;
+  heroHeadline: string;
+  heroDescription: string;
   growthEyebrow: string;
   growthTitle: string;
   growthSub: string;
@@ -46,27 +52,25 @@ const TEXTS: Record<WelcomeCopyLang, {
   footer: string; footer2: string;
 }> = {
   ko: {
-    tagline: "말씀에 뿌리를 내려요",
-    descParts: [
-      "말씀 묵상을 통해 매일 말씀과 동행하고",
-      "기도로 하나님께 찾고 구해보세요.",
-    ],
-    growthEyebrow: "나의 정원",
-    growthTitle: "100일 동안 자라는\n나의 정원",
-    growthSub: "말씀 묵상을 완료할 때마다 겨자씨 한 알이 자라요.\n100일 후에는 공중의 새들이 깃들이는 나무들이\n풍성한 말씀의 정원이 완성됩니다.",
+    languageLabel: "언어 선택",
+    heroHeadline: "매일의 영적 습관,\n루츠와 함께 만들어가요",
+    heroDescription: "말씀 묵상하고, 기도하고, 공동체와 함께 나누며\n하나님과 동행하는 하루를 살아가요.",
+    growthEyebrow: "꾸준함이 보이는 여정",
+    growthTitle: "매일의 묵상이 눈에 보이는\n여정으로 자라요",
+    growthSub: "매일 말씀 묵상을 완료할 때마다 성경 이야기 맵이 자라나요.\n100일 단위로 새로운 맵을 만날 수 있어요!",
     growthStart: "시작",
     growthEnd: "100일 후",
-    badgeLabel: "성령의 열매와 신앙의 결실",
-    badgeSub: "성령의 열매뿐 아니라 신앙의 결실을 이룰 때마다 배지를 받으며\n즐겁게 영적 습관을 형성해 나가요.",
+    badgeLabel: "영적 습관의 결실을 배지로 간직해요",
+    badgeSub: "신앙의 여정에서 얻은 배지를 모으고 100일마다 성령의 열매를 모으며\n받은 은혜를 기억해요.",
     badgeNames: ["사랑", "희락", "화평", "오래 참음", "자비", "양선", "충성", "온유", "절제"],
     faithBadgeNames: ["모세", "다윗", "요셉", "말씀 배달부", "말씀의 평안"],
-    featuresLabel: "기능",
+    featuresLabel: "루츠의 기능",
     f1t: "말씀 묵상",
-    f1s: "6단계, 자유형식, 사진 기록, 주일예배 묵상 등\n상황에 맞게 기록합니다.",
+    f1s: "하나님이 오늘 내게 주시는 말씀을 묵상하고 삶에 적용해요.",
     f2t: "기도",
-    f2s: "기도 제목을 기록하고, 중보하고,\n응답의 순간을 간증으로 남깁니다.",
+    f2s: "기도 제목과 응답을 기록하며 하나님께 나아가요.",
     f3t: "공동체",
-    f3s: "동역자 맺기와 그룹 생성을 통해\n서로를 위해 기도하고 묵상을 나누며\n신앙의 여정을 함께 나아갑니다.",
+    f3s: "동역자, 그룹과 서로 묵상을 나누고, 기도하고 받은 은혜를 나눠요.",
     verseRef: "시편 1:1–2",
     verse: "복 있는 사람은 오직 여호와의\n율법을 즐거워하여 그의 율법을\n주야로 묵상하는도다",
     btnStart: "시작하기",
@@ -78,27 +82,25 @@ const TEXTS: Record<WelcomeCopyLang, {
     footer2: "광고 없이 사용",
   },
   en: {
-    tagline: "Root yourself in the Word",
-    descParts: [
-      "Walk with God’s Word each day through Bible Reflection,",
-      "and seek Him in prayer.",
-    ],
-    growthEyebrow: "My Garden",
-    growthTitle: "A garden that grows\nfor 100 days",
-    growthSub: "Every completed Bible Reflection helps a mustard seed grow.\nAfter 100 days, trees where birds can nest\ncomplete a flourishing garden of the Word.",
+    languageLabel: "Choose language",
+    heroHeadline: "Build daily spiritual habits\nwith Roots",
+    heroDescription: "Reflect on the Word, pray, and share the grace you receive in community\nas you walk with God each day.",
+    growthEyebrow: "A visible journey",
+    growthTitle: "See your journey grow\nwith each Bible Reflection",
+    growthSub: "Each day you complete a Bible Reflection, a Bible story grows within the map.\nDiscover a new map every 100 days!",
     growthStart: "Start",
     growthEnd: "After 100 days",
-    badgeLabel: "Fruits of the Spirit and faith milestones",
-    badgeSub: "As your faith bears fruit, you collect badges and build a joyful spiritual habit step by step.",
+    badgeLabel: "Keep the fruit of your spiritual habits as badges",
+    badgeSub: "Collect badges earned along your faith journey and a Fruit of the Spirit every 100 days,\nand remember the grace God has given you.",
     badgeNames: ["Love", "Joy", "Peace", "Patience", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"],
     faithBadgeNames: ["Moses", "David", "Joseph", "Word Carrier", "Peace in the Word"],
-    featuresLabel: "Features",
+    featuresLabel: "Roots Features",
     f1t: "Bible Reflection",
-    f1s: "Record a Bible Reflection in 6 steps, in free form,\nwith a photo, or for Sunday worship.",
+    f1s: "Reflect on the Word God has for you today and put it into practice.",
     f2t: "Prayer",
-    f2s: "Record prayer requests, intercede for others,\nand keep answered prayers as testimonies.",
+    f2s: "Record prayer requests and answers as you draw near to God.",
     f3t: "Community",
-    f3s: "Connect with faith partners and create groups\nto pray for one another, share Bible Reflections,\nand walk the journey of faith together.",
+    f3s: "Share Bible Reflections with faith partners and groups, pray together, and share the grace you receive.",
     verseRef: "Psalm 1:1–2",
     verse: "Blessed is the one whose delight\nis in the law of the LORD,\nand who meditates on his law day and night.",
     btnStart: "Get Started",
@@ -110,27 +112,25 @@ const TEXTS: Record<WelcomeCopyLang, {
     footer2: "No ads",
   },
   de: {
-    tagline: "Im Wort Wurzeln schlagen",
-    descParts: [
-      "Gehen Sie durch Stille Zeit täglich mit dem Wort,",
-      "und suchen und bitten Sie Gott im Gebet.",
-    ],
-    growthEyebrow: "Mein Garten",
-    growthTitle: "Ein Garten, der\n100 Tage wächst",
-    growthSub: "Mit jeder abgeschlossenen Stillen Zeit wächst ein Senfkorn.\nNach 100 Tagen entstehen Bäume, in denen die Vögel nisten,\nund ein reicher Garten des Wortes wird vollendet.",
+    languageLabel: "Sprache auswählen",
+    heroHeadline: "Bauen Sie mit Roots tägliche\ngeistliche Gewohnheiten auf",
+    heroDescription: "Denken Sie über Gottes Wort nach, beten Sie und teilen Sie die empfangene Gnade in der Gemeinschaft.\nSo leben Sie jeden Tag mit Gott.",
+    growthEyebrow: "Ein sichtbarer Weg",
+    growthTitle: "Mit jeder Stillen Zeit\nwird Ihr Weg sichtbar",
+    growthSub: "Mit jeder abgeschlossenen Stillen Zeit wächst eine biblische Geschichte auf Ihrer Karte weiter.\nAlle 100 Tage entdecken Sie eine neue Karte!",
     growthStart: "Start",
     growthEnd: "Nach 100 Tagen",
-    badgeLabel: "Früchte des Geistes und Glaubensschritte",
-    badgeSub: "Wenn Ihr Glaube Frucht trägt, sammeln Sie Abzeichen und formen Schritt für Schritt eine Freude an geistlichen Gewohnheiten.",
+    badgeLabel: "Bewahren Sie die Früchte Ihrer geistlichen Gewohnheiten als Abzeichen",
+    badgeSub: "Sammeln Sie Abzeichen aus Ihrem Glaubensweg und alle 100 Tage eine Frucht des Geistes,\num sich an die Gnade zu erinnern, die Gott Ihnen geschenkt hat.",
     badgeNames: ["Liebe", "Freude", "Friede", "Geduld", "Freundlichkeit", "Güte", "Treue", "Sanftmut", "Selbstbeherrschung"],
     faithBadgeNames: ["Mose", "David", "Josef", "Wortüberbringer", "Ruhe im Wort"],
-    featuresLabel: "Funktionen",
+    featuresLabel: "Funktionen von Roots",
     f1t: "Stille Zeit",
-    f1s: "Halten Sie Ihre Stille Zeit in 6 Schritten, im freien Format,\nmit einem Foto oder zum Sonntagsgottesdienst fest.",
+    f1s: "Denken Sie über das Wort nach, das Gott Ihnen heute schenkt, und setzen Sie es im Alltag um.",
     f2t: "Gebet",
-    f2s: "Gebetsanliegen festhalten, Fürbitte leisten\nund Erhörungen als Zeugnis bewahren.",
+    f2s: "Halten Sie Gebetsanliegen und Gebetserhörungen fest und kommen Sie damit zu Gott.",
     f3t: "Gemeinschaft",
-    f3s: "Finden Sie Glaubenspartner und erstellen Sie Gruppen,\num füreinander zu beten, Stille Zeiten zu teilen\nund gemeinsam im Glauben weiterzugehen.",
+    f3s: "Teilen Sie Ihre Stille Zeit mit Glaubenspartnern und Gruppen, beten Sie miteinander und teilen Sie die empfangene Gnade.",
     verseRef: "Psalm 1,1–2",
     verse: "Wohl dem, der Lust hat am Gesetz\ndes HERRN und über sein Gesetz\nnachsinnt Tag und Nacht.",
     btnStart: "Jetzt starten",
@@ -142,27 +142,25 @@ const TEXTS: Record<WelcomeCopyLang, {
     footer2: "Ohne Werbung",
   },
   fr: {
-    tagline: "Enracinez-vous dans la Parole",
-    descParts: [
-      "Marchez chaque jour avec la Parole par la méditation biblique,",
-      "et cherchez Dieu dans la prière.",
-    ],
-    growthEyebrow: "Mon jardin",
-    growthTitle: "Un jardin qui grandit\npendant 100 jours",
-    growthSub: "À chaque méditation biblique terminée, un grain de moutarde grandit.\nAprès 100 jours, des arbres où les oiseaux peuvent se poser\ncomplètent un jardin abondant de la Parole.",
+    languageLabel: "Choisir la langue",
+    heroHeadline: "Avec Roots, construisez chaque jour\nvos habitudes spirituelles",
+    heroDescription: "Méditez la Parole, priez et partagez en communauté la grâce reçue\npour vivre chaque jour avec Dieu.",
+    growthEyebrow: "Un chemin visible",
+    growthTitle: "Voyez votre chemin grandir\nà chaque méditation",
+    growthSub: "À chaque méditation biblique terminée, une histoire biblique grandit sur la carte.\nDécouvrez une nouvelle carte tous les 100 jours !",
     growthStart: "Début",
     growthEnd: "Après 100 jours",
-    badgeLabel: "Fruits de l’Esprit et étapes de foi",
-    badgeSub: "À chaque fruit porté dans la foi, vous recevez des badges et construisez avec joie une habitude spirituelle.",
+    badgeLabel: "Gardez les fruits de vos habitudes spirituelles sous forme de badges",
+    badgeSub: "Collectionnez les badges obtenus sur votre chemin de foi et un fruit de l’Esprit tous les 100 jours,\npour vous souvenir de la grâce reçue de Dieu.",
     badgeNames: ["Amour", "Joie", "Paix", "Patience", "Bienveillance", "Bonté", "Fidélité", "Douceur", "Maîtrise"],
     faithBadgeNames: ["Moïse", "David", "Joseph", "Porteur de la Parole", "Paix dans la Parole"],
-    featuresLabel: "Fonctions",
+    featuresLabel: "Fonctionnalités de Roots",
     f1t: "Méditation biblique",
-    f1s: "Notez votre méditation biblique en 6 étapes, au format libre,\navec une photo ou pour le culte dominical.",
+    f1s: "Méditez la Parole que Dieu vous donne aujourd’hui et mettez-la en pratique.",
     f2t: "Prière",
-    f2s: "Notez vos sujets de prière, intercédez,\net gardez les réponses comme témoignages.",
+    f2s: "Notez vos sujets de prière et les réponses reçues en vous approchant de Dieu.",
     f3t: "Communauté",
-    f3s: "Créez des liens avec des partenaires de foi et des groupes\npour prier les uns pour les autres, partager des méditations bibliques\net avancer ensemble dans la foi.",
+    f3s: "Partagez vos méditations avec vos partenaires de foi et vos groupes, priez ensemble et partagez la grâce reçue.",
     verseRef: "Psaume 1:1–2",
     verse: "Heureux l'homme qui trouve son plaisir\ndans la loi de l'Éternel,\net qui la médite jour et nuit !",
     btnStart: "Commencer",
@@ -174,27 +172,25 @@ const TEXTS: Record<WelcomeCopyLang, {
     footer2: "Sans publicité",
   },
   es: {
-    tagline: "Echa raíces en la Palabra",
-    descParts: [
-      "Camina cada día con la Palabra mediante la meditación bíblica,",
-      "y busca a Dios en oración.",
-    ],
-    growthEyebrow: "Mi jardín",
-    growthTitle: "Un jardín que crece\ndurante 100 días",
-    growthSub: "Cada meditación bíblica completada hace crecer una semilla de mostaza.\nDespués de 100 días, los árboles donde anidan las aves\ncompletan un jardín floreciente de la Palabra.",
+    languageLabel: "Elegir idioma",
+    heroHeadline: "Crea hábitos espirituales cada día\ncon Roots",
+    heroDescription: "Medita en la Palabra, ora y comparte en comunidad la gracia recibida\npara vivir cada día caminando con Dios.",
+    growthEyebrow: "Un camino visible",
+    growthTitle: "Mira cómo crece tu camino\ncon cada meditación",
+    growthSub: "Cada día que completas una meditación bíblica, una historia bíblica crece en el mapa.\n¡Descubre un mapa nuevo cada 100 días!",
     growthStart: "Inicio",
     growthEnd: "Después de 100 días",
-    badgeLabel: "Frutos del Espíritu y frutos de la fe",
-    badgeSub: "Cada vez que tu fe da fruto, recibes insignias y formas con alegría un hábito espiritual paso a paso.",
+    badgeLabel: "Guarda en insignias el fruto de tus hábitos espirituales",
+    badgeSub: "Reúne las insignias ganadas en tu camino de fe y un fruto del Espíritu cada 100 días,\ny recuerda la gracia que Dios te ha dado.",
     badgeNames: ["Amor", "Alegría", "Paz", "Paciencia", "Amabilidad", "Bondad", "Fidelidad", "Mansedumbre", "Dominio propio"],
     faithBadgeNames: ["Moisés", "David", "José", "Mensajero de la Palabra", "Paz en la Palabra"],
-    featuresLabel: "Funciones",
+    featuresLabel: "Funciones de Roots",
     f1t: "Meditación bíblica",
-    f1s: "Registra tu meditación bíblica en 6 pasos, en formato libre,\ncon una foto o para el culto dominical.",
+    f1s: "Medita en la Palabra que Dios tiene hoy para ti y ponla en práctica.",
     f2t: "Oración",
-    f2s: "Registra tus peticiones, intercede por otros\ny guarda las respuestas como testimonios.",
+    f2s: "Registra tus peticiones y respuestas de oración mientras te acercas a Dios.",
     f3t: "Comunidad",
-    f3s: "Conecta con compañeros de fe y crea grupos\npara orar unos por otros, compartir meditaciones bíblicas\ny avanzar juntos en el camino de la fe.",
+    f3s: "Comparte tus meditaciones con compañeros de fe y grupos, ora junto a ellos y comparte la gracia recibida.",
     verseRef: "Salmo 1:2",
     verse: "sino que en la Ley del SEÑOR se deleita\ny día y noche medita en ella.",
     btnStart: "Comenzar",
@@ -250,6 +246,36 @@ function IconArrow() {
   );
 }
 
+function IconGlobe() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 0 18" />
+      <path d="M12 3a14 14 0 0 0 0 18" />
+    </svg>
+  );
+}
+
+function IconChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`${styles.langChevron} ${open ? styles.langChevronOpen : ""}`}
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function getWelcomeRedirect() {
   if (typeof window === "undefined") return "";
   const redirect = new URLSearchParams(window.location.search).get("redirect");
@@ -294,7 +320,7 @@ function BadgeImage({ src, label }: { src: string; label: string }) {
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<WelcomeCopyLang>("en");
   const [showDropdown, setShowDropdown] = useState(false);
 
   useAndroidBackHandler(() => {
@@ -309,12 +335,12 @@ export default function WelcomePage() {
   // Restore saved lang
   useEffect(() => {
     const stored = storageGet("roots_lang");
-    if (isLang(stored)) {
+    if (isWelcomeCopyLang(stored)) {
       setLang(stored);
     }
   }, []);
 
-  function selectLang(code: Lang) {
+  function selectLang(code: WelcomeCopyLang) {
     setLang(code);
     setShowDropdown(false);
     saveLangLocally(code);
@@ -337,9 +363,17 @@ export default function WelcomePage() {
 
         {/* ── Lang bar ── */}
         <div className={styles.langBar}>
-          <button className={styles.langBtn} onClick={() => setShowDropdown((v) => !v)}>
-            <span>{currentLangMeta.flag}</span>
-            <span>{lang.toUpperCase()}</span>
+          <button
+            type="button"
+            className={styles.langBtn}
+            onClick={() => setShowDropdown((v) => !v)}
+            aria-label={tx.languageLabel}
+            aria-expanded={showDropdown}
+            aria-haspopup="menu"
+          >
+            <IconGlobe />
+            <span>{currentLangMeta.name}</span>
+            <IconChevronDown open={showDropdown} />
           </button>
           {showDropdown && (
             <>
@@ -350,6 +384,7 @@ export default function WelcomePage() {
               <div className={styles.langDropdown} style={{ zIndex: 21 }}>
                 {LANG_LIST.map((opt) => (
                   <button
+                    type="button"
                     key={opt.code}
                     className={`${styles.langOpt} ${opt.code === lang ? styles.langOptActive : ""}`}
                     onClick={() => selectLang(opt.code)}
@@ -381,15 +416,8 @@ export default function WelcomePage() {
               />
             </span>
           </h1>
-          <p className={styles.heroTitleSub}>{tx.tagline}</p>
-          <p className={styles.heroDesc}>
-            {tx.descParts.map((part, index) => (
-              <span key={`${part}-${index}`} className={index === tx.descParts.length - 1 ? styles.heroDescStrong : undefined}>
-                {part}
-                {index < tx.descParts.length - 1 && <br />}
-              </span>
-            ))}
-          </p>
+          <p className={styles.heroTitleSub}>{tx.heroHeadline}</p>
+          <p className={styles.heroDesc}>{tx.heroDescription}</p>
         </div>
 
         {/* ── Tree growth section ── */}
@@ -457,12 +485,11 @@ export default function WelcomePage() {
           </div>
         </div>
 
-        {/* ── Features ── */}
-        <div className={styles.sectionLabel} style={{ marginTop: 28 }}>
+        {/* ── Roots Features ── */}
+        <div className={`${styles.sectionLabel} ${styles.featuresSectionLabel}`}>
           {tx.featuresLabel}
         </div>
         <div className={styles.features}>
-          {/* Big: Quiet Time */}
           <div className={styles.featBig}>
             <svg className={styles.featBigBg} width="120" height="120" viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="55" fill="currentColor" />
@@ -474,7 +501,6 @@ export default function WelcomePage() {
             <div className={styles.featSub}>{tx.f1s}</div>
           </div>
 
-          {/* Row: Prayer + Community */}
           <div className={styles.featRow}>
             <div className={`${styles.featSm} ${styles.featSmTerra}`}>
               <div className={styles.featIcon} style={{ color: "var(--terra)" }}>

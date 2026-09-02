@@ -31,9 +31,9 @@
 .langBtn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
+  gap: 7px;
+  height: 36px;
+  padding: 0 11px;
   border-radius: 999px;
   border: 1.5px solid var(--auth-card-border);
   background: var(--auth-language-trigger-surface);
@@ -41,10 +41,19 @@
   color: var(--auth-sage-text);
   font-family: 'Pretendard', sans-serif;
   font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.2s;
 }
+.langBtn svg { flex-shrink: 0; }
 .langBtn:hover { border-color: var(--sage); }
+.langChevron {
+  transition: transform 0.18s ease;
+}
+.langChevronOpen {
+  transform: rotate(180deg);
+}
 .langDropdown {
   position: absolute;
   right: 0;
@@ -80,7 +89,7 @@
 
 /* ── HERO ── */
 .hero {
-  padding: 58px 28px 32px;
+  padding: 58px 28px 20px;
   position: relative;
   overflow: hidden;
 }
@@ -108,12 +117,15 @@
   animation: fadeUp 0.5s ease both;
 }
 .heroTitleSub {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text2);
-  letter-spacing: 0.3px;
-  margin-bottom: 20px;
-  line-height: 1.7;
+  max-width: 320px;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.45px;
+  line-height: 1.45;
+  white-space: pre-line;
+  word-break: keep-all;
   animation: fadeUp 0.55s 0.07s ease both;
 }
 .sproutInline {
@@ -125,18 +137,16 @@
 .heroDesc {
   font-size: 13px;
   color: var(--text2);
-  line-height: 2;
-  max-width: 300px;
+  line-height: 1.8;
+  max-width: 330px;
+  white-space: pre-line;
+  word-break: keep-all;
   animation: fadeUp 0.55s 0.14s ease both;
-}
-.heroDescStrong {
-  color: var(--text);
-  font-weight: 700;
 }
 
 /* ── TREE GROWTH ── */
 .growthSection {
-  margin: 28px 20px 0;
+  margin: 12px 20px 0;
   border-radius: 22px;
   background: var(--auth-welcome-deep-surface);
   overflow: hidden;
@@ -218,12 +228,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 28px 28px 16px;
-  color: var(--text3);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  margin: 30px 28px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  line-height: 1.45;
+  word-break: keep-all;
 }
 .sectionLabel::after {
   content: '';
@@ -273,6 +284,16 @@
 }
 
 /* ── FEATURES ── */
+.featuresSectionLabel {
+  margin: 28px 28px 16px;
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  line-height: normal;
+  text-transform: uppercase;
+  word-break: normal;
+}
 .features {
   padding: 0 20px;
   display: flex;
@@ -469,15 +490,16 @@
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .langBtn { font-size: 15px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .langOpt { font-size: 16px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroTitle { font-size: 55px; }
-  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroTitleSub { font-size: 17px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroTitleSub { font-size: 22px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .heroDesc { font-size: 16px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthEyebrow { font-size: 13px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthTitle { font-size: 21px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthSub { font-size: 15px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthTreeLabel { font-size: 14px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .growthArrow { font-size: 20px; }
-  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .sectionLabel { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .sectionLabel { font-size: 17px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .sectionSub { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featuresSectionLabel { font-size: 14px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featTitle { font-size: 20px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featSub { font-size: 15px; }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .featSmTitle { font-size: 17px; }
