@@ -50,6 +50,10 @@ const ROOTSWOMAN_SHOES_GROUND_Y: Readonly<Record<string, number>> = {
   rootswoman_shoes_06: 1303,
   rootswoman_shoes_07: 1331,
   rootswoman_shoes_08: 1322,
+  rootswoman_shoes_09: 1339,
+  rootswoman_shoes_10: 1338,
+  rootswoman_shoes_11: 1334,
+  rootswoman_shoes_12: 1304,
 };
 
 function getCharacterGroundY(

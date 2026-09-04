@@ -227,6 +227,7 @@ export const HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION = "20260718_v2";
 export const HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION = "20260726_travel_v1";
 export const HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION = "20260825_v4";
 export const HEART_SHOP_ROOTSWOMAN_FW_TOP_ASSET_VERSION = "20260904_fw_v1";
+export const HEART_SHOP_ROOTSWOMAN_FW_SHOES_ASSET_VERSION = "20260904_fw_v1";
 export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 
@@ -262,16 +263,18 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isNewestRootsmanTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 15 && itemNumber <= 18;
   const isNewestRootswomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 19 && itemNumber <= 22;
   const isNewestRootswomanFwTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 23 && itemNumber <= 27;
+  const isNewestRootswomanFwShoes = avatarType === "rootswoman" && slot === "shoes" && itemNumber >= 9 && itemNumber <= 12;
   const isNewestTop = isNewestRootsmanTop || isNewestRootswomanTop;
   const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
   const isNewestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 15 && itemNumber <= 18;
   const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
   const isNewestRootsWomanDress = isNewestRootswomanFwTop && (itemNumber === 23 || itemNumber === 25);
+  const isRootswomanFwBoot = isNewestRootswomanFwShoes && (itemNumber === 9 || itemNumber === 10);
   const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 20;
   const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
-  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom;
-  const isNew = isLatestProfileBackground || isLatestPet || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom;
+  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom || isNewestRootswomanFwShoes;
+  const isNew = isLatestProfileBackground || isLatestPet || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom || isNewestRootswomanFwShoes;
   const latestBackgroundPriority = itemId === "shared_background_15"
     ? 1400
     : itemId === "shared_background_20"
@@ -285,7 +288,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
             : itemId === "shared_background_16"
               ? 1130
               : 0;
-  const newPriority = isNewestRootswomanFwTop
+  const newPriority = isNewestRootswomanFwShoes
+    ? 4000 - itemNumber
+    : isNewestRootswomanFwTop
     ? 3000 - itemNumber
     : isNewestRootsWomanBottom
     ? 2100 - itemNumber
@@ -303,9 +308,11 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     : HEART_SHOP_LATEST_PROFILE_ASSET_VERSION;
   const sharedLayerPath = `/images/heart-shop/character/shared/${sharedDirectory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
   const characterLayerPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${String(itemNumber).padStart(2, "0")}.${assetExtension}`;
-  const clothingAssetVersion = isNewestRootswomanFwTop
-    ? HEART_SHOP_ROOTSWOMAN_FW_TOP_ASSET_VERSION
-    : HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION;
+  const clothingAssetVersion = isNewestRootswomanFwShoes
+    ? HEART_SHOP_ROOTSWOMAN_FW_SHOES_ASSET_VERSION
+    : isNewestRootswomanFwTop
+      ? HEART_SHOP_ROOTSWOMAN_FW_TOP_ASSET_VERSION
+      : HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION;
   const layerPath = avatarType === "shared"
     ? slot === "background"
       ? `${sharedLayerPath}?v=${isLatestProfileBackground ? profileBackgroundAssetVersion : isTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
@@ -319,7 +326,9 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     category: "character",
     avatarType,
     slot,
-    price: isNewestRootswomanFwTop
+    price: isNewestRootswomanFwShoes
+      ? isRootswomanFwBoot ? 40 : 30
+      : isNewestRootswomanFwTop
       ? isNewestRootsWomanDress ? 70 : 50
       : isNewestTop
       ? 50
