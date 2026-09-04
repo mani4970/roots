@@ -1856,8 +1856,9 @@ export default function HomePage() {
       return true;
     }
     if (showOnboarding) {
-      closeOnboarding();
-      return true;
+      // Onboarding owns Android back navigation: previous slide, or stay on
+      // the first slide. It must only be completed via its final action.
+      return false;
     }
     if (celebration.show) {
       closeCelebration();
