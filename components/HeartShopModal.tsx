@@ -34,6 +34,7 @@ import {
   isHeartShopCharacterItemId,
   isHeartShopMapItemId,
   isHeartShopPeaceArkStaticItemId,
+  isHeartShopRootsWomanDressItemId,
   type HeartShopMapItemId,
 } from "@/lib/heartShopItems";
 import {
@@ -67,6 +68,7 @@ type HeartShopOwnedSection = "map" | "character";
 type HeartShopOwnedCharacterCategory =
   | "tops"
   | "bottoms"
+  | "dresses"
   | "shoes"
   | "accessories"
   | "backgrounds"
@@ -76,8 +78,10 @@ function isOwnedCharacterItemInCategory(
   item: HeartShopCharacterCatalogItem,
   category: HeartShopOwnedCharacterCategory,
 ) {
-  if (category === "tops") return item.slot === "top";
+  const isDress = isHeartShopRootsWomanDressItemId(item.id);
+  if (category === "tops") return item.slot === "top" && !isDress;
   if (category === "bottoms") return item.slot === "bottom";
+  if (category === "dresses") return isDress;
   if (category === "shoes") return item.slot === "shoes";
   if (category === "backgrounds") return item.slot === "background";
   if (category === "pets") return item.slot === "pet";
@@ -122,6 +126,18 @@ const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartSho
   accessories: "hair_accessory",
   bags: "bag",
 };
+
+function isCharacterItemInCategory(
+  item: HeartShopCharacterCatalogItem,
+  category: ProfileCharacterCategory,
+) {
+  if (category === "all") return true;
+  const isDress = isHeartShopRootsWomanDressItemId(item.id);
+  if (category === "tops") return item.slot === "top" && !isDress;
+  if (category === "dresses") return isDress;
+  const slot = CHARACTER_CATEGORY_SLOT[category];
+  return Boolean(slot && item.slot === slot);
+}
 
 function getLargeSpriteWidth(itemId: HeartShopMapItemId) {
   if (itemId === "hindungi") return 112;
@@ -379,9 +395,11 @@ export default function HeartShopModal({
     [activeMapSection],
   );
   const visibleCharacterItems = useMemo(() => {
-    const slot = CHARACTER_CATEGORY_SLOT[activeCharacterCategory];
     return HEART_SHOP_CHARACTER_CATALOG
-      .filter(item => (item.avatarType === "shared" || item.avatarType === avatarType) && (!slot || item.slot === slot))
+      .filter(item =>
+        (item.avatarType === "shared" || item.avatarType === avatarType)
+        && isCharacterItemInCategory(item, activeCharacterCategory),
+      )
       .sort((a, b) =>
         Number(Boolean(b.isNew)) - Number(Boolean(a.isNew))
         || (b.newPriority ?? 0) - (a.newPriority ?? 0)
@@ -822,10 +840,15 @@ export default function HeartShopModal({
     { id: "pets", label: profileText.categories.pets },
     { id: "tops", label: profileText.categories.tops },
     { id: "bottoms", label: profileText.categories.bottoms },
+  ];
+  if (avatarType === "rootswoman") {
+    characterCategories.push({ id: "dresses", label: profileText.categories.dresses });
+  }
+  characterCategories.push(
     { id: "shoes", label: profileText.categories.shoes },
     { id: "eyewear", label: profileText.categories.eyewear },
     { id: "headwear", label: profileText.categories.headwear },
-  ];
+  );
   if (avatarType === "rootswoman") {
     characterCategories.push(
       { id: "accessories", label: profileText.categories.accessories },
@@ -835,11 +858,16 @@ export default function HeartShopModal({
   const ownedCharacterCategories: { id: HeartShopOwnedCharacterCategory; label: string }[] = [
     { id: "tops", label: profileText.categories.tops },
     { id: "bottoms", label: profileText.categories.bottoms },
+  ];
+  if (avatarType === "rootswoman") {
+    ownedCharacterCategories.push({ id: "dresses", label: profileText.categories.dresses });
+  }
+  ownedCharacterCategories.push(
     { id: "shoes", label: profileText.categories.shoes },
     { id: "accessories", label: text.ownedAccessoriesCategoryLabel },
     { id: "backgrounds", label: profileText.categories.backgrounds },
     { id: "pets", label: profileText.categories.pets },
-  ];
+  );
   function renderCharacterPreview(item: HeartShopCharacterCatalogItem, width: string | number) {
     return (
       <ProfileCharacterPreview

@@ -189,6 +189,15 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
 
 export type HeartShopCharacterItemId = (typeof HEART_SHOP_CHARACTER_ITEM_IDS)[number];
 export type HeartShopCharacterAvatarType = RootsAvatarType | "shared";
+
+export const HEART_SHOP_ROOTSWOMAN_DRESS_ITEM_IDS = [
+  "rootswoman_top_11",
+  "rootswoman_top_12",
+  "rootswoman_top_23",
+  "rootswoman_top_25",
+] as const satisfies readonly HeartShopCharacterItemId[];
+
+export type HeartShopRootsWomanDressItemId = (typeof HEART_SHOP_ROOTSWOMAN_DRESS_ITEM_IDS)[number];
 export type HeartShopItemId = HeartShopMapItemId | HeartShopCharacterItemId;
 
 export const HEART_SHOP_ITEM_IDS = [
@@ -200,6 +209,7 @@ const ITEM_ID_SET = new Set<string>(HEART_SHOP_ITEM_IDS);
 const MAP_ITEM_ID_SET = new Set<string>(HEART_SHOP_MAP_ITEM_IDS);
 const PEACE_ARK_STATIC_ITEM_ID_SET = new Set<string>(HEART_SHOP_PEACE_ARK_STATIC_ITEM_IDS);
 const CHARACTER_ITEM_ID_SET = new Set<string>(HEART_SHOP_CHARACTER_ITEM_IDS);
+const ROOTSWOMAN_DRESS_ITEM_ID_SET = new Set<string>(HEART_SHOP_ROOTSWOMAN_DRESS_ITEM_IDS);
 
 export function isHeartShopItemId(value: unknown): value is HeartShopItemId {
   return ITEM_ID_SET.has(String(value ?? ""));
@@ -215,6 +225,12 @@ export function isHeartShopPeaceArkStaticItemId(value: unknown): value is HeartS
 
 export function isHeartShopCharacterItemId(value: unknown): value is HeartShopCharacterItemId {
   return CHARACTER_ITEM_ID_SET.has(String(value ?? ""));
+}
+
+export function isHeartShopRootsWomanDressItemId(
+  itemId: HeartShopCharacterItemId,
+): itemId is HeartShopRootsWomanDressItemId {
+  return ROOTSWOMAN_DRESS_ITEM_ID_SET.has(itemId);
 }
 
 export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): HeartShopCharacterAvatarType {

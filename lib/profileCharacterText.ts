@@ -2,6 +2,7 @@ import type { Lang } from "@/lib/i18n";
 import {
   getCharacterItemAvatarType,
   getCharacterItemSlot,
+  isHeartShopRootsWomanDressItemId,
   type HeartShopCharacterItemId,
   type HeartShopCharacterSlot,
 } from "@/lib/heartShopItems";
@@ -13,6 +14,7 @@ export type ProfileCharacterCategory =
   | "pets"
   | "tops"
   | "bottoms"
+  | "dresses"
   | "shoes"
   | "eyewear"
   | "headwear"
@@ -48,6 +50,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       pets: "반려동물",
       tops: "상의",
       bottoms: "하의",
+      dresses: "원피스",
       shoes: "신발",
       eyewear: "안경·선글라스",
       headwear: "모자",
@@ -68,6 +71,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       pets: "Pets",
       tops: "Tops",
       bottoms: "Bottoms",
+      dresses: "Dresses",
       shoes: "Shoes",
       eyewear: "Glasses & shades",
       headwear: "Hats",
@@ -88,6 +92,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       pets: "Haustiere",
       tops: "Oberteile",
       bottoms: "Unterteile",
+      dresses: "Kleider",
       shoes: "Schuhe",
       eyewear: "Brillen & Sonnenbrillen",
       headwear: "Mützen & Hüte",
@@ -108,6 +113,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       pets: "Animaux",
       tops: "Hauts",
       bottoms: "Bas",
+      dresses: "Robes",
       shoes: "Chaussures",
       eyewear: "Lunettes",
       headwear: "Chapeaux",
@@ -129,6 +135,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       pets: "Mascotas",
       tops: "Prendas superiores",
       bottoms: "Prendas inferiores",
+      dresses: "Vestidos",
       shoes: "Calzado",
       eyewear: "Gafas y lentes de sol",
       headwear: "Sombreros",
@@ -293,7 +300,9 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
     hair_accessory: "accessories",
     headwear: "headwear",
   };
-  const category = categoryBySlot[slot];
+  const category = isHeartShopRootsWomanDressItemId(itemId)
+    ? "dresses"
+    : categoryBySlot[slot];
   const wearableAvatarType: RootsAvatarType = avatarType === "rootswoman" ? "rootswoman" : "rootsman";
   return {
     name: ITEM_NAMES[normalizedLang][wearableAvatarType][slot][itemIndex] || `${TEXT[normalizedLang].categories[category]} ${itemIndex + 1}`,
