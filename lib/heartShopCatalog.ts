@@ -262,12 +262,13 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isNewestRootswomanTop = avatarType === "rootswoman" && slot === "top" && itemNumber >= 19 && itemNumber <= 22;
   const isNewestTop = isNewestRootsmanTop || isNewestRootswomanTop;
   const isLatestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 11 && itemNumber <= 14;
+  const isNewestRootsWomanBottom = avatarType === "rootswoman" && slot === "bottom" && itemNumber >= 15 && itemNumber <= 18;
   const isRootsWomanDress = isExistingNewRootsWomanTop && itemNumber <= 12;
   const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 20;
   const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
-  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop;
-  const isNew = isLatestProfileBackground || isLatestPet || isNewestTop;
+  const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop || isNewestRootsWomanBottom;
+  const isNew = isLatestProfileBackground || isLatestPet || isNewestTop || isNewestRootsWomanBottom;
   const latestBackgroundPriority = itemId === "shared_background_15"
     ? 1400
     : itemId === "shared_background_20"
@@ -281,13 +282,15 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
             : itemId === "shared_background_16"
               ? 1130
               : 0;
-  const newPriority = isNewestTop
-    ? 2000 - itemNumber
-    : isLatestProfileBackground
-      ? latestBackgroundPriority
-      : isLatestPet
-        ? 1000
-        : 0;
+  const newPriority = isNewestRootsWomanBottom
+    ? 2100 - itemNumber
+    : isNewestTop
+      ? 2000 - itemNumber
+      : isLatestProfileBackground
+        ? latestBackgroundPriority
+        : isLatestPet
+          ? 1000
+          : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const assetExtension = HEART_SHOP_CHARACTER_ASSET_EXTENSION;
   const profileBackgroundAssetVersion = itemId === "shared_background_20"
