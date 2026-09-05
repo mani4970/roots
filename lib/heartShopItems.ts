@@ -55,7 +55,6 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "shared_background_18",
   "shared_background_19",
   "shared_background_20",
-  "shared_background_21",
   "shared_background_22",
   "shared_background_23",
   "shared_background_24",

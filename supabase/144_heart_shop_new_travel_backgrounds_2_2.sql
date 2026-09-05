@@ -1,15 +1,14 @@
 -- 144_heart_shop_new_travel_backgrounds_2_2.sql
--- Adds four shared, free profile backgrounds to the Love Shop.
+-- Adds three shared, free profile backgrounds to the Love Shop.
 --
 -- Approved catalog:
--- - shared_background_21: Hollywood, free
 -- - shared_background_22: Jeju Island, free
 -- - shared_background_23: Norway Aurora, free
 -- - shared_background_24: Swiss Winter Village, free
 --
 -- Display order intent:
 -- - shared_background_15: Photo with Jesus, always first
--- - shared_background_21..24: the four newest backgrounds, immediately after
+-- - shared_background_22..24: the three newest backgrounds, immediately after
 --
 -- Safety scope:
 -- - Catalog rows and background sort order only.
@@ -52,10 +51,9 @@ insert into public.heart_shop_items (
   updated_at
 )
 values
-  ('shared_background_21', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-21.webp?v=20260904_travel_v1', null, 1, 'ground', 881, true, 'shared', 'background', now()),
-  ('shared_background_22', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-22.webp?v=20260904_travel_v1', null, 1, 'ground', 882, true, 'shared', 'background', now()),
-  ('shared_background_23', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-23.webp?v=20260904_travel_v1', null, 1, 'ground', 883, true, 'shared', 'background', now()),
-  ('shared_background_24', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-24.webp?v=20260904_travel_v1', null, 1, 'ground', 884, true, 'shared', 'background', now())
+  ('shared_background_22', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-22.webp?v=20260904_travel_v1', null, 1, 'ground', 881, true, 'shared', 'background', now()),
+  ('shared_background_23', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-23.webp?v=20260904_travel_v1', null, 1, 'ground', 882, true, 'shared', 'background', now()),
+  ('shared_background_24', 'character', 0, '/images/heart-shop/character/shared/profile-backgrounds/background-24.webp?v=20260904_travel_v1', null, 1, 'ground', 883, true, 'shared', 'background', now())
 on conflict (item_key) do update
 set
   category = excluded.category,
@@ -78,7 +76,7 @@ set
 where item_key = 'shared_background_15'
   and sort_order is distinct from 880;
 
--- Transaction safety stop: all five rows must have the exact requested state.
+-- Transaction safety stop: all four rows must have the exact requested state.
 do $$
 begin
   if exists (
@@ -86,10 +84,9 @@ begin
     from (
       values
         ('shared_background_15'::text, 300, 880, null::text),
-        ('shared_background_21'::text,   0, 881, '/images/heart-shop/character/shared/profile-backgrounds/background-21.webp?v=20260904_travel_v1'::text),
-        ('shared_background_22'::text,   0, 882, '/images/heart-shop/character/shared/profile-backgrounds/background-22.webp?v=20260904_travel_v1'::text),
-        ('shared_background_23'::text,   0, 883, '/images/heart-shop/character/shared/profile-backgrounds/background-23.webp?v=20260904_travel_v1'::text),
-        ('shared_background_24'::text,   0, 884, '/images/heart-shop/character/shared/profile-backgrounds/background-24.webp?v=20260904_travel_v1'::text)
+        ('shared_background_22'::text,   0, 881, '/images/heart-shop/character/shared/profile-backgrounds/background-22.webp?v=20260904_travel_v1'::text),
+        ('shared_background_23'::text,   0, 882, '/images/heart-shop/character/shared/profile-backgrounds/background-23.webp?v=20260904_travel_v1'::text),
+        ('shared_background_24'::text,   0, 883, '/images/heart-shop/character/shared/profile-backgrounds/background-24.webp?v=20260904_travel_v1'::text)
     ) as expected(item_key, price, sort_order, preview_path)
     left join public.heart_shop_items item
       on item.item_key = expected.item_key
@@ -133,7 +130,7 @@ $$;
 
 commit;
 
--- Read-only postcheck: Jesus first, followed by the four new free backgrounds.
+-- Read-only postcheck: Jesus first, followed by the three new free backgrounds.
 select
   item_key,
   price,
@@ -145,7 +142,6 @@ select
 from public.heart_shop_items
 where item_key in (
   'shared_background_15',
-  'shared_background_21',
   'shared_background_22',
   'shared_background_23',
   'shared_background_24'
