@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -26,6 +27,7 @@ import com.getcapacitor.BridgeActivity;
 import android.os.LocaleList;
 
 import java.util.Locale;
+import java.util.Objects;
 
 public class MainActivity extends BridgeActivity {
     private ConnectivityManager connectivityManager;
@@ -40,7 +42,9 @@ public class MainActivity extends BridgeActivity {
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         isConnected = hasInternetConnection();
         if (!isConnected) {
+            // Initial offline launches may not have a JavaScript context yet.
             showOfflineView();
+            updateOfflineView();
         }
         registerNetworkCallback();
     }
@@ -71,8 +75,7 @@ public class MainActivity extends BridgeActivity {
             public void onAvailable(@NonNull Network network) {
                 runOnUiThread(() -> {
                     isConnected = hasInternetConnection();
-                    // Keep the offline screen visible until the user explicitly retries.
-                    // This avoids exposing a blank WebView while the remote app is still loading.
+                    updateOfflineView();
                 });
             }
 
@@ -81,13 +84,85 @@ public class MainActivity extends BridgeActivity {
                 runOnUiThread(() -> {
                     isConnected = hasInternetConnection();
                     if (!isConnected) {
-                        showOfflineView();
+                        updateOfflineView();
                     }
+                });
+            }
+
+            @Override
+            public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities capabilities) {
+                runOnUiThread(() -> {
+                    // onAvailable may precede validation; report the current active connection.
+                    isConnected = hasInternetConnection();
+                    updateOfflineView();
                 });
             }
         };
 
         connectivityManager.registerNetworkCallback(request, networkCallback);
+    }
+
+    private void updateOfflineView() {
+        hasActiveReflectionEditor(editorReady -> {
+            if (Boolean.TRUE.equals(editorReady)) {
+                // A hydrated editor owns its network notice. Keep its current document and input.
+                hideOfflineView();
+                notifyReflectionConnectivity();
+            } else if (Boolean.FALSE.equals(editorReady) && !hasInternetConnection()) {
+                showOfflineView();
+            }
+            // A cold-start overlay stays visible after reconnect until the user retries.
+        });
+    }
+
+    private void hasActiveReflectionEditor(ValueCallback<Boolean> callback) {
+        WebView webView = findWebView(findViewById(android.R.id.content));
+        if (webView == null) {
+            callback.onReceiveValue(false);
+            return;
+        }
+        String documentUrl = webView.getUrl();
+        if (documentUrl == null || documentUrl.isEmpty() || "about:blank".equals(documentUrl)) {
+            callback.onReceiveValue(false);
+            return;
+        }
+        // Set and removed by the mounted reflection UI; an error/blank document has no marker.
+        webView.evaluateJavascript(
+                "document.documentElement.getAttribute('data-roots-editor-ready') === 'true'",
+                result -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    if (webView != findWebView(findViewById(android.R.id.content))
+                            || !Objects.equals(documentUrl, webView.getUrl())) {
+                        // This answer belongs to an earlier document; it cannot authorize a reload.
+                        callback.onReceiveValue(null);
+                        return;
+                    }
+                    if ("true".equals(result)) {
+                        callback.onReceiveValue(true);
+                    } else if ("false".equals(result)) {
+                        callback.onReceiveValue(false);
+                    } else {
+                        // An unavailable JS context does not authorize discarding a document.
+                        callback.onReceiveValue(null);
+                    }
+                }
+        );
+    }
+
+    private void notifyReflectionConnectivity() {
+        WebView webView = findWebView(findViewById(android.R.id.content));
+        if (webView == null) {
+            return;
+        }
+        boolean online = hasInternetConnection();
+        webView.evaluateJavascript(
+                "if (document.documentElement.getAttribute('data-roots-editor-ready') === 'true') {"
+                        + "window.dispatchEvent(new CustomEvent('roots-qt-connectivity', {detail: {online: "
+                        + online + "}}));}",
+                null
+        );
     }
 
     private boolean hasInternetConnection() {
@@ -236,20 +311,31 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void retryLoadingRoots() {
-        isConnected = hasInternetConnection();
-        if (isConnected) {
-            reloadRootWebView();
-            if (offlineView != null) {
-                offlineView.postDelayed(this::hideOfflineView, 2500);
+        hasActiveReflectionEditor(editorReady -> {
+            if (Boolean.TRUE.equals(editorReady)) {
+                hideOfflineView();
+                notifyReflectionConnectivity();
+                return;
             }
-        } else if (offlineView != null) {
-            offlineView.animate()
-                    .scaleX(0.985f)
-                    .scaleY(0.985f)
-                    .setDuration(80)
-                    .withEndAction(() -> offlineView.animate().scaleX(1f).scaleY(1f).setDuration(120).start())
-                    .start();
-        }
+            if (!Boolean.FALSE.equals(editorReady)) {
+                return;
+            }
+            isConnected = hasInternetConnection();
+            if (isConnected) {
+                reloadRootWebView();
+                if (offlineView != null) {
+                    offlineView.postDelayed(this::hideOfflineView, 2500);
+                }
+            } else if (offlineView != null) {
+                View currentOfflineView = offlineView;
+                currentOfflineView.animate()
+                        .scaleX(0.985f)
+                        .scaleY(0.985f)
+                        .setDuration(80)
+                        .withEndAction(() -> currentOfflineView.animate().scaleX(1f).scaleY(1f).setDuration(120).start())
+                        .start();
+            }
+        });
     }
 
     private void hideOfflineView() {

@@ -23,6 +23,9 @@ import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, get
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
+import QTConnectionNotice from "@/components/QTConnectionNotice";
+import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
+import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -469,6 +472,9 @@ function PhotoReflectionContent() {
   const [showPhotoSourceModal, setShowPhotoSourceModal] = useState(false);
   const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [caption, setCaption] = useState("");
+  const [originalCaption, setOriginalCaption] = useState("");
+  const [originalTranslation, setOriginalTranslation] = useState<number | null>(null);
+  const [translationTouched, setTranslationTouched] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -488,7 +494,8 @@ function PhotoReflectionContent() {
       if (!preparingPhoto && !saving) setShowPhotoSourceModal(false);
       return true;
     }
-    return false;
+    requestPhotoPageLeave();
+    return true;
   });
 
   // A fresh photo reflection follows the current app-language preference.
@@ -537,6 +544,36 @@ function PhotoReflectionContent() {
   const effectiveBibleRef = isEditMode && !passageTouched && originalBibleRef
     ? originalBibleRef
     : bibleRef;
+  const hasUnsavedPhotoChanges = !editLoading && !editLoadError && Boolean(
+    preparedPhoto
+    || existingPhotoRemoved
+    || caption !== originalCaption
+    || (isEditMode
+      ? (passageTouched && effectiveBibleRef !== originalBibleRef)
+        || (originalTranslation !== null && selectedTranslation !== originalTranslation)
+      : passageTouched || translationTouched),
+  );
+  const leaveGuard = useQTLeaveGuard({
+    dirty: hasUnsavedPhotoChanges,
+    busy: saving || preparingPhoto,
+    lang,
+  });
+
+  function requestPhotoPageLeave() {
+    return leaveGuard.requestLeave(() => router.push(isEditMode && editId ? `/qt/record?id=${editId}` : "/qt"));
+  }
+
+  function navigateAfterPhotoSave(href: string) {
+    leaveGuard.leaveAfterSave(() => router.push(href));
+  }
+
+  function requestDuplicatePhotoExit(href: string) {
+    // A completed record may belong to an earlier session. The current photo
+    // and caption have not necessarily been saved, so never discard them just
+    // because that date already has a completed reflection.
+    if (!window.confirm(`${qtFlowCopy("existingRecordTitle", lang)}\n${qtFlowCopy("leaveUnsaved", lang)}`)) return;
+    leaveGuard.leaveAfterSave(() => router.push(href));
+  }
 
   useEffect(() => {
     if (skipBookResetRef.current === book) {
@@ -705,13 +742,17 @@ function PhotoReflectionContent() {
         const parsedStoredRef = parseStoredPhotoBibleRef(record.bible_ref);
         const isSundayRecord = record.qt_mode === "sunday" || parsedStoredRef.sunday;
         setEditSundayContext(isSundayRecord);
-        setCaption(String(record.photo_caption ?? record.meditation ?? ""));
+        const loadedCaption = String(record.photo_caption ?? record.meditation ?? "");
+        setCaption(loadedCaption);
+        setOriginalCaption(loadedCaption);
         setExistingPhotoPath(record.photo_path ?? null);
         setExistingPhotoRemoved(false);
         setPhotoSource("existing");
 
         const versionId = Number(record.bible_version ?? "");
         if (Number.isFinite(versionId) && versionId > 0) setSelectedTranslation(versionId);
+        setOriginalTranslation(Number.isFinite(versionId) && versionId > 0 ? versionId : selectedTranslation);
+        setTranslationTouched(false);
 
         if (isSundayRecord) setSermonTitle(parsedStoredRef.title);
         if (parsedStoredRef.refs.length > 0) {
@@ -968,7 +1009,7 @@ function PhotoReflectionContent() {
   }
 
   function markPassageTouched() {
-    if (isEditMode) setPassageTouched(true);
+    setPassageTouched(true);
   }
 
   function addCurrentPassage() {
@@ -1082,7 +1123,7 @@ function PhotoReflectionContent() {
                 console.warn("photo reflection notification completion update failed", notificationError);
               }
               setShowShareModal(false);
-              router.push("/qt/complete");
+              requestDuplicatePhotoExit("/qt/complete");
               return;
             }
           } catch (progressError) {
@@ -1091,8 +1132,9 @@ function PhotoReflectionContent() {
             return;
           }
         }
+        setShowShareModal(false);
         showNotice(pc("alreadyDone", lang));
-        router.push("/qt");
+        requestDuplicatePhotoExit("/qt");
         return;
       }
 
@@ -1268,7 +1310,7 @@ function PhotoReflectionContent() {
           console.warn("photo reflection progress failed; record preserved", progressError);
           setShowShareModal(false);
           showNotice(pc("savedFollowupWarning", lang));
-          window.setTimeout(() => router.push(`/qt/record?id=${recordId}`), 1400);
+          window.setTimeout(() => navigateAfterPhotoSave(`/qt/record?id=${recordId}`), 1400);
           return;
         }
 
@@ -1307,9 +1349,9 @@ function PhotoReflectionContent() {
         setShowShareModal(false);
         if (sharingFailed) {
           showNotice(pc("savedShareWarning", lang));
-          window.setTimeout(() => router.push("/qt/complete"), 1400);
+          window.setTimeout(() => navigateAfterPhotoSave("/qt/complete"), 1400);
         } else {
-          router.push("/qt/complete");
+          navigateAfterPhotoSave("/qt/complete");
         }
         return;
       }
@@ -1343,9 +1385,9 @@ function PhotoReflectionContent() {
       setShowShareModal(false);
       if (sharingFailed) {
         showNotice(pc("savedShareWarning", lang));
-        window.setTimeout(() => router.push(`/qt/record?id=${recordId}`), 1400);
+        window.setTimeout(() => navigateAfterPhotoSave(`/qt/record?id=${recordId}`), 1400);
       } else {
-        router.push(`/qt/record?id=${recordId}`);
+        navigateAfterPhotoSave(`/qt/record?id=${recordId}`);
       }
     } catch (error) {
       const diagnostic = getQTPhotoDiagnosticError(error);
@@ -1392,12 +1434,12 @@ function PhotoReflectionContent() {
         if (uploadedPath) await removeQTPhotoBestEffort(supabase, uploadedPath);
         setShowShareModal(false);
         showNotice(pc("alreadyDone", lang));
-        router.push("/qt");
+        requestDuplicatePhotoExit("/qt");
       } else if (insertedRecordId) {
         setShowShareModal(false);
         showNotice(pc("savedFollowupWarning", lang));
         window.setTimeout(() => {
-          router.push(targetDate === today ? "/qt/complete" : `/qt/record?id=${insertedRecordId}`);
+          navigateAfterPhotoSave(targetDate === today ? "/qt/complete" : `/qt/record?id=${insertedRecordId}`);
         }, 1400);
       } else {
         showNotice(getPhotoSaveNotice(stage, lang));
@@ -1525,7 +1567,7 @@ function PhotoReflectionContent() {
         storagePath: updated.photo_path,
         qtRecordId: editId,
       });
-      router.push(`/qt/record?id=${editId}`);
+      navigateAfterPhotoSave(`/qt/record?id=${editId}`);
     } catch (error) {
       const diagnostic = getQTPhotoDiagnosticError(error);
       recordQTPhotoDiagnostic({
@@ -1555,7 +1597,7 @@ function PhotoReflectionContent() {
               if (oldPhotoPath && oldPhotoPath !== newUploadedPath) {
                 await removeQTPhotoBestEffort(supabase, oldPhotoPath);
               }
-              router.push(`/qt/record?id=${editId}`);
+              navigateAfterPhotoSave(`/qt/record?id=${editId}`);
               return;
             }
             await removeQTPhotoBestEffort(supabase, newUploadedPath);
@@ -1595,7 +1637,7 @@ function PhotoReflectionContent() {
   if (isEditMode && editLoadError) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 40px" }}>
-        <button onClick={() => router.push(editId ? `/qt/record?id=${editId}` : "/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 24, cursor: "pointer" }}>
+        <button onClick={requestPhotoPageLeave} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 24, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
         <div className="card" style={{ textAlign: "center" }}>
@@ -1615,7 +1657,7 @@ function PhotoReflectionContent() {
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <button
-          onClick={() => router.push(isEditMode && editId ? `/qt/record?id=${editId}` : "/qt")}
+          onClick={requestPhotoPageLeave}
           style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}
         >
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
@@ -1632,6 +1674,7 @@ function PhotoReflectionContent() {
       </div>
 
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <QTConnectionNotice lang={lang} />
         <div className="card-sage">
           <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
           <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
@@ -1652,6 +1695,7 @@ function PhotoReflectionContent() {
                   value={selectedTranslation}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     const next = Number(e.target.value);
+                    setTranslationTouched(true);
                     setSelectedTranslation(next);
                     savePreferredTranslationLocally(getStoredLang() ?? lang, next);
                   }}
@@ -1858,9 +1902,7 @@ function PhotoReflectionContent() {
           allSubLabel={t("qt_record_share_all_sub", lang)}
           partnersLabel={t("share_prompt_partners", lang)}
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
-          noPartnersLabel={t("share_prompt_no_partners", lang)}
-          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
-          onInvitePartners={() => router.push("/community")}
+          noPartnersLabel={qtFlowCopy("noPartners", lang)}
           groupsLabel={t("qt_record_my_groups", lang)}
           publicGroupLabel={t("qt_record_public_group", lang)}
           privateGroupLabel={t("qt_record_private_group", lang)}

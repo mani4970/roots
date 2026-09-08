@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
+import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
@@ -492,9 +493,7 @@ function RecordContent() {
           allSubLabel={trR("모든 Roots 사용자에게 공개", lang)}
           partnersLabel={t("share_prompt_partners", lang)}
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
-          noPartnersLabel={t("share_prompt_no_partners", lang)}
-          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
-          onInvitePartners={() => router.push("/community")}
+          noPartnersLabel={qtFlowCopy("noPartners", lang)}
           groupsLabel={trR("내 그룹", lang)}
           publicGroupLabel={trR("공개 그룹", lang)}
           privateGroupLabel={trR("비공개 그룹", lang)}

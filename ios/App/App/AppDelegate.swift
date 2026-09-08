@@ -24,16 +24,65 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isNetworkAvailable = path.status == .satisfied
-                if self.isNetworkAvailable {
-                    // Keep the offline screen visible until the user explicitly retries.
-                    // This avoids exposing a blank WebView while the remote app is still loading.
-                    return
-                } else {
-                    self.showOfflineView()
-                }
+                self.updateOfflineView()
             }
         }
         networkMonitor.start(queue: networkQueue)
+    }
+
+    private func updateOfflineView() {
+        hasActiveReflectionEditor { [weak self] editorReady in
+            guard let self = self else { return }
+            if editorReady == true {
+                // A hydrated editor owns its network notice. Keep its current document and input.
+                self.hideOfflineView()
+                self.notifyReflectionConnectivity()
+            } else if editorReady == false && self.networkMonitor.currentPath.status != .satisfied {
+                self.showOfflineView()
+            }
+            // A cold-start overlay stays visible after reconnect until the user retries.
+        }
+    }
+
+    private func notifyReflectionConnectivity() {
+        guard let rootViewController = window?.rootViewController,
+              let webView = findWebView(in: rootViewController.view) else {
+            return
+        }
+        let online = networkMonitor.currentPath.status == .satisfied ? "true" : "false"
+        webView.evaluateJavaScript(
+            "if (document.documentElement.getAttribute('data-roots-editor-ready') === 'true') {"
+                + "window.dispatchEvent(new CustomEvent('roots-qt-connectivity', {detail: {online: "
+                + online + "}}));}",
+            completionHandler: nil
+        )
+    }
+
+    private func hasActiveReflectionEditor(_ completion: @escaping (Bool?) -> Void) {
+        guard let rootViewController = window?.rootViewController,
+              let webView = findWebView(in: rootViewController.view) else {
+            completion(false)
+            return
+        }
+        let documentURL = webView.url
+        if documentURL == nil || documentURL?.absoluteString.isEmpty == true || documentURL?.absoluteString == "about:blank" {
+            completion(false)
+            return
+        }
+        // Set and removed by the mounted reflection UI; an error/blank document has no marker.
+        webView.evaluateJavaScript(
+            "document.documentElement.getAttribute('data-roots-editor-ready') === 'true'"
+        ) { [weak self, weak webView] result, error in
+            guard let self = self, let webView = webView,
+                  webView === self.findWebView(in: self.window?.rootViewController?.view),
+                  webView.url == documentURL else {
+                // This answer belongs to an earlier document; it cannot authorize a reload.
+                completion(nil)
+                return
+            }
+            // An unavailable JS context does not authorize discarding a document.
+            completion(error == nil ? result as? Bool : nil)
+        }
     }
 
     private func localizedOfflineCopy() -> (title: String, message: String, button: String) {
@@ -162,20 +211,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     @objc private func retryLoadingRoots() {
-        isNetworkAvailable = networkMonitor.currentPath.status == .satisfied
-        if isNetworkAvailable {
-            reloadRootWebView()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-                self?.hideOfflineView()
+        hasActiveReflectionEditor { [weak self] editorReady in
+            guard let self = self else { return }
+            if editorReady == true {
+                self.hideOfflineView()
+                self.notifyReflectionConnectivity()
+                return
             }
-        } else {
-            UIView.animate(withDuration: 0.08, animations: {
-                self.offlineView?.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
-            }, completion: { _ in
-                UIView.animate(withDuration: 0.12) {
-                    self.offlineView?.transform = .identity
+            guard editorReady == false else { return }
+            self.isNetworkAvailable = self.networkMonitor.currentPath.status == .satisfied
+            if self.isNetworkAvailable {
+                self.reloadRootWebView()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                    self?.hideOfflineView()
                 }
-            })
+            } else {
+                UIView.animate(withDuration: 0.08, animations: {
+                    self.offlineView?.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
+                }, completion: { _ in
+                    UIView.animate(withDuration: 0.12) {
+                        self.offlineView?.transform = .identity
+                    }
+                })
+            }
         }
     }
 

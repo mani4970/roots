@@ -43,6 +43,9 @@ import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import QTFreePassageChoice from "@/components/QTFreePassageChoice";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
+import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
+import QTConnectionNotice from "@/components/QTConnectionNotice";
+import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import {
   loadYesterdayFreePassageContinuation,
   type YesterdayFreePassageContinuation,
@@ -235,6 +238,17 @@ type SaveDraftOptions = {
 type CompleteSaveOptions = {
   visibility?: string;
   partnerRecipientIds?: string[];
+};
+
+type PendingCompletion = {
+  recordId: string;
+  userId: string;
+  options: CompleteSaveOptions;
+  existingRecord: boolean;
+  visibilitySaved: boolean;
+  recipientsSaved: boolean;
+  progressSaved: boolean;
+  failed: boolean;
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
@@ -469,6 +483,9 @@ function QTWriteContent() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
+  const completionSavingRef = useRef(false);
+  const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
+  const pendingCompletionRef = useRef<PendingCompletion | null>(null);
   const [freeText, setFreeText] = useState("");
   // Auto-save feedback is isolated from the writer tree so visual status updates
   // cannot re-render an active textarea during Korean IME composition.
@@ -494,8 +511,42 @@ function QTWriteContent() {
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
   const [sermonRef, setSermonRef] = useState("");
+  const initialWriterContentRef = useRef<string | null>(null);
+  // Step navigation is not an edit. Compare saved content only, after the
+  // existing record / scheduled passage has finished loading.
+  const writerContentSignature = JSON.stringify({
+    selectedDate, mode, selectedTranslation, bibleRef, keyVerse, answers,
+    decisions, freeText, sermonTitle, passageRefs: passages.map(p => p.ref),
+  });
+  useEffect(() => {
+    if (pageReady && initialWriterContentRef.current === null) {
+      initialWriterContentRef.current = writerContentSignature;
+    }
+  }, [pageReady, writerContentSignature]);
+  const { requestLeave, leaveAfterSave } = useQTLeaveGuard({
+    dirty: pageReady
+      && (pendingCompletion?.existingRecord
+        ? Boolean(freeText.trim() || keyVerse.trim() || sermonTitle.trim()
+          || decisions.some(value => value.trim())
+          || Object.values(answers).some(value => value.trim()))
+        : !pendingCompletion
+          && (isEditMode || selectedDate !== todayStr)
+          && initialWriterContentRef.current !== null
+          && writerContentSignature !== initialWriterContentRef.current),
+    busy: saving,
+    lang,
+  });
+
+  function leaveWriter() {
+    requestLeave(() => router.push("/qt"));
+  }
 
   useAndroidBackHandler(() => {
+    if (saving || completionSavingRef.current) return true;
+    if (pendingCompletion) {
+      leaveWriter();
+      return true;
+    }
     if (showCompleteSharePrompt) {
       if (!saving) closeCompleteSharePrompt();
       return true;
@@ -516,7 +567,8 @@ function QTWriteContent() {
       setCur(current => Math.max(0, current - 1));
       return true;
     }
-    return false;
+    leaveWriter();
+    return true;
   });
 
   useEffect(() => {
@@ -1316,6 +1368,9 @@ function QTWriteContent() {
   }
 
   function resetFreePassageSelection() {
+    // Returning to passage selection must not erase the reflection or decisions.
+    // Only source-dependent verse selections are cleared when replacing a passage.
+    if (saving || pendingCompletionRef.current) return;
     setBibleStep("select");
     setPassageVerses([]);
     setBibleRef("");
@@ -1324,8 +1379,6 @@ function QTWriteContent() {
     setSelectedVerseNums([]);
     setPassageExpanded(false);
     setVersePreviewExpanded(false);
-    setFreeText("");
-    setDecisions([""]);
     setBibleError("");
   }
 
@@ -1821,6 +1874,9 @@ function QTWriteContent() {
   }
 
   function persistDraftBackup(snapshot: DraftSnapshot = getDraftSnapshot()) {
+    // Once the record is committed, retry only the unfinished completion work.
+    // Do not recreate a draft from the now-locked writer on pagehide/online.
+    if (pendingCompletionRef.current) return false;
     latestDraftSnapshotRef.current = snapshot;
     if (!draftBackupUserId || snapshot.selectedDate !== todayStr || isEditMode) return false;
 
@@ -1954,7 +2010,7 @@ function QTWriteContent() {
   });
 
   async function saveDraft(options: SaveDraftOptions = {}) {
-    if (isEditMode) return false;
+    if (isEditMode || pendingCompletionRef.current || completionSavingRef.current) return false;
     const silent = options.silent ?? false;
     const markSaving = options.markSaving ?? true;
 
@@ -2067,14 +2123,14 @@ function QTWriteContent() {
   }
 
   useEffect(() => {
-    if (isEditMode || !pageReady || selectedDate !== todayStr || !draftBackupUserId) return;
+    if (isEditMode || pendingCompletion || !pageReady || selectedDate !== todayStr || !draftBackupUserId) return;
     const snapshot = getDraftSnapshot();
     latestDraftSnapshotRef.current = snapshot;
     persistDraftBackup(snapshot);
-  }, [draftBackupUserId, isEditMode, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [draftBackupUserId, isEditMode, pendingCompletion, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
-    if (isEditMode || !draftBackupUserId) return;
+    if (isEditMode || pendingCompletion || !draftBackupUserId) return;
 
     const persistLatestBeforeLeave = () => {
       const snapshot = latestDraftSnapshotRef.current ?? getDraftSnapshot();
@@ -2118,10 +2174,10 @@ function QTWriteContent() {
       window.removeEventListener("pagehide", persistLatestBeforeLeave);
       window.removeEventListener("beforeunload", persistLatestBeforeLeave);
     };
-  }, [draftBackupUserId, isEditMode, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [draftBackupUserId, isEditMode, pendingCompletion, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
-    if (isEditMode || !pageReady || selectedDate !== todayStr) return;
+    if (isEditMode || pendingCompletion || !pageReady || selectedDate !== todayStr) return;
 
     const snapshot = getDraftSnapshot();
     if (!hasDraftContent(snapshot)) {
@@ -2147,7 +2203,7 @@ function QTWriteContent() {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [isEditMode, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
+  }, [isEditMode, pendingCompletion, pageReady, selectedDate, todayStr, mode, selectedTranslation, cur, bibleRef, keyVerse, answers, decisions, freeText, sermonTitle, passages]);
 
   useEffect(() => {
     return () => {
@@ -2237,9 +2293,7 @@ function QTWriteContent() {
         allSubLabel={t("qt_record_share_all_sub", lang)}
         partnersLabel={t("share_prompt_partners", lang)}
         partnerSubLabel={t("share_prompt_partner_sub", lang)}
-        noPartnersLabel={t("share_prompt_no_partners", lang)}
-          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
-          onInvitePartners={() => router.push("/community")}
+        noPartnersLabel={qtFlowCopy("noPartners", lang)}
         groupsLabel={t("qt_record_my_groups", lang)}
         publicGroupLabel={t("qt_record_public_group", lang)}
         privateGroupLabel={t("qt_record_private_group", lang)}
@@ -2334,7 +2388,81 @@ function QTWriteContent() {
     }
   }
 
+  function rememberPendingCompletion(pending: PendingCompletion) {
+    pendingCompletionRef.current = pending;
+    setPendingCompletion(pending);
+    // The record exists now. Keep its original sharing targets and display a
+    // recovery screen instead of an editable form that no longer gets saved.
+    setShowCompleteSharePrompt(false);
+    return pending;
+  }
+
+  async function finishPendingCompletion(
+    supabase: ReturnType<typeof createClient>,
+    initialPending: PendingCompletion,
+  ) {
+    let pending = rememberPendingCompletion({ ...initialPending, failed: false });
+    const { recordId, userId, options } = pending;
+
+    if (!pending.visibilitySaved && typeof options.visibility === "string") {
+      const sharedAt = options.visibility === "private" ? null : new Date().toISOString();
+      let { error: visibilityError } = await supabase.from("qt_records")
+        .update({ visibility: options.visibility, shared_at: sharedAt })
+        .eq("id", recordId)
+        .eq("user_id", userId);
+      if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
+        console.warn("qt_records.shared_at column is not available yet. Retrying visibility update without shared_at:", visibilityError.message);
+        const retry = await supabase.from("qt_records")
+          .update({ visibility: options.visibility })
+          .eq("id", recordId)
+          .eq("user_id", userId);
+        visibilityError = retry.error;
+      }
+      if (visibilityError) throw visibilityError;
+      pending = rememberPendingCompletion({ ...pending, visibilitySaved: true });
+    }
+
+    if (!pending.recipientsSaved && Array.isArray(options.partnerRecipientIds)) {
+      await replaceQtRecordRecipients(supabase, recordId, userId, options.partnerRecipientIds);
+      pending = rememberPendingCompletion({ ...pending, recipientsSaved: true });
+    }
+
+    // Preserve the same progress gate and date policy: never reach completion
+    // (or offer editing the saved record) before this existing gate succeeds.
+    if (!pending.progressSaved) {
+      const progressSaved = await recordProgressBeforeCompletion(supabase, userId, recordId);
+      if (!progressSaved) {
+        rememberPendingCompletion({ ...pending, failed: true });
+        return;
+      }
+      pending = rememberPendingCompletion({ ...pending, progressSaved: true });
+    }
+
+    if (selectedDate === getLocalDateString()) {
+      try {
+        await markBibleReflectionCompletedForNotifications(selectedDate, lang);
+      } catch (notificationError) {
+        console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
+      }
+    }
+    await createBibleReflectionShareNotificationsBestEffort({
+      qtRecordId: recordId,
+      visibility: options.visibility,
+      partnerRecipientIds: options.partnerRecipientIds,
+    });
+    // A collision can mean another tab saved, or the first response was lost.
+    // Never imply the current form was saved: retain its backup and the notice
+    // until the user explicitly chooses to open the existing record.
+    if (pending.existingRecord) return;
+    removeQTDraftBackup(userId, selectedDate);
+    setShowCompleteSharePrompt(false);
+    setCompleteShareTargets([]);
+    leaveAfterSave(() => router.push("/qt/complete"));
+  }
+
   async function save(options: CompleteSaveOptions = {}) {
+    if (completionSavingRef.current || saving) return;
+    completionSavingRef.current = true;
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = null;
@@ -2350,6 +2478,17 @@ function QTWriteContent() {
       const user = await getQtDraftSessionUser(supabase);
       if (!user) { router.push("/login"); return; }
 
+      if (pendingCompletionRef.current) {
+        // A retry uses the confirmed record and its original target snapshot;
+        // it never builds new body data or looks for/creates another record.
+        if (pendingCompletionRef.current.userId !== user.id) {
+          showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
+          return;
+        }
+        await finishPendingCompletion(supabase, pendingCompletionRef.current);
+        return;
+      }
+
       const recordData = buildCompleteRecordData(user.id, options);
 
       if (isEditMode && editId) {
@@ -2364,7 +2503,7 @@ function QTWriteContent() {
         }
         setShowCompleteSharePrompt(false);
         setCompleteShareTargets([]);
-        router.push(`/qt/record?id=${editId}`);
+        leaveAfterSave(() => router.push(`/qt/record?id=${editId}`));
         return;
       }
 
@@ -2382,56 +2521,19 @@ function QTWriteContent() {
       // 저장 성공 후 progress 반영이 실패했던 사용자가 다시 완료 버튼을 눌렀을 때 조용히 막히지 않게 합니다.
       if (completedRecord) {
         if (selectedDate === getLocalDateString()) {
-          if (typeof options.visibility === "string") {
-            const sharedAt = options.visibility === "private" ? null : new Date().toISOString();
-            let { error: visibilityError } = await supabase.from("qt_records")
-              .update({ visibility: options.visibility, shared_at: sharedAt })
-              .eq("id", completedRecord.id)
-              .eq("user_id", user.id);
-            if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
-              console.warn("qt_records.shared_at column is not available yet. Retrying visibility update without shared_at:", visibilityError.message);
-              const retry = await supabase.from("qt_records")
-                .update({ visibility: options.visibility })
-                .eq("id", completedRecord.id)
-                .eq("user_id", user.id);
-              visibilityError = retry.error;
-            }
-            if (visibilityError) {
-              console.warn("말씀 묵상 그룹/전체 공유 저장 실패:", visibilityError);
-              showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
-              return;
-            }
-          }
-
-          if (Array.isArray(options.partnerRecipientIds)) {
-            try {
-              await replaceQtRecordRecipients(supabase, completedRecord.id, user.id, options.partnerRecipientIds);
-            } catch (recipientError) {
-              console.warn("말씀 묵상 동역자 공유 저장 실패:", recipientError);
-              showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
-              return;
-            }
-          }
-
-          const progressSaved = await recordProgressBeforeCompletion(supabase, user.id, completedRecord.id);
-          if (!progressSaved) return;
-
-          try {
-            await markBibleReflectionCompletedForNotifications(selectedDate, lang);
-          } catch (notificationError) {
-            console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
-          }
-
-          await createBibleReflectionShareNotificationsBestEffort({
-            qtRecordId: String(completedRecord.id),
-            visibility: options.visibility,
-            partnerRecipientIds: options.partnerRecipientIds,
+          rememberPendingCompletion({
+            recordId: String(completedRecord.id),
+            userId: user.id,
+            options: {
+              ...options,
+              partnerRecipientIds: options.partnerRecipientIds?.slice(),
+            },
+            existingRecord: true,
+            visibilitySaved: typeof options.visibility !== "string",
+            recipientsSaved: !Array.isArray(options.partnerRecipientIds),
+            progressSaved: false,
+            failed: false,
           });
-
-          removeQTDraftBackup(user.id, selectedDate);
-          setShowCompleteSharePrompt(false);
-          setCompleteShareTargets([]);
-          router.push("/qt/complete");
           return;
         }
 
@@ -2468,43 +2570,30 @@ function QTWriteContent() {
         }
       }
 
-      if (completedRecordId && Array.isArray(options.partnerRecipientIds)) {
-        try {
-          await replaceQtRecordRecipients(supabase, completedRecordId, user.id, options.partnerRecipientIds);
-        } catch (recipientError) {
-          console.warn("말씀 묵상 동역자 공유 저장 실패:", recipientError);
-          showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
-          return;
-        }
+      await finishPendingCompletion(supabase, rememberPendingCompletion({
+        recordId: completedRecordId,
+        userId: user.id,
+        options: {
+          ...options,
+          partnerRecipientIds: options.partnerRecipientIds?.slice(),
+        },
+        existingRecord: false,
+        visibilitySaved: true,
+        recipientsSaved: !Array.isArray(options.partnerRecipientIds),
+        progressSaved: false,
+        failed: false,
+      }));
+    } catch (error) {
+      console.warn("말씀 묵상 저장/완료 재시도 필요:", error);
+      if (pendingCompletionRef.current) {
+        rememberPendingCompletion({ ...pendingCompletionRef.current, failed: true });
+      } else {
+        showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
       }
-
-      // 오늘 말씀 묵상 완료는 홈/물주기 UI에 도달하기 전에도 progress가 먼저 저장되어야 합니다.
-      // progress 저장 실패를 조용히 넘기면 사용자의 말씀동행이 누락될 수 있으므로,
-      // 완료 화면으로 넘어가기 전에 반드시 저장 성공을 확인합니다.
-      const progressSaved = await recordProgressBeforeCompletion(supabase, user.id, completedRecordId);
-      if (!progressSaved) return;
-
-      // 알림 상태 업데이트는 progress 저장 성공 후 처리합니다.
-      // 실패해도 말씀 묵상 완료 자체를 막지는 않습니다.
-      if (selectedDate === getLocalDateString()) {
-        try {
-          await markBibleReflectionCompletedForNotifications(selectedDate, lang);
-        } catch (notificationError) {
-          console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
-        }
-      }
-      if (completedRecordId) {
-        await createBibleReflectionShareNotificationsBestEffort({
-          qtRecordId: completedRecordId,
-          visibility: options.visibility,
-          partnerRecipientIds: options.partnerRecipientIds,
-        });
-      }
-      removeQTDraftBackup(user.id, selectedDate);
-      setShowCompleteSharePrompt(false);
-      setCompleteShareTargets([]);
-      router.push("/qt/complete");
-    } finally { setSaving(false); }
+    } finally {
+      completionSavingRef.current = false;
+      setSaving(false);
+    }
   }
 
   // ─── 말씀 선택 화면 (6step & free) ───
@@ -2513,7 +2602,7 @@ function QTWriteContent() {
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 24px" }}>
         <button
           type="button"
-          onClick={() => router.push("/qt")}
+          onClick={leaveWriter}
           style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer", padding: 0 }}
         >
           <ChevronLeft size={18} />
@@ -2536,6 +2625,74 @@ function QTWriteContent() {
 
   if (!pageReady) return <QTWriteLoadingState lang={lang} />;
 
+  if (pendingCompletion) {
+    // Keep a newly saved record in a neutral waiting state during completion,
+    // retries and the route handoff after saving becomes false. Show recovery
+    // copy only after failure; preserve the existing-record collision notice.
+    if (!pendingCompletion.existingRecord && (saving || !pendingCompletion.failed)) {
+      return (
+        <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 32px" }}>
+          <QTConnectionNotice lang={lang} />
+          <div role="status" aria-live="polite" aria-busy="true" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <Loader2 size={28} className="spin" aria-hidden="true" style={{ color: "var(--sage)" }} />
+            <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.6 }}>{trQT("저장 중...", lang)}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 32px" }}>
+        <QTConnectionNotice lang={lang} />
+        <button type="button" onClick={leaveWriter} disabled={saving} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: saving ? "wait" : "pointer", marginBottom: 24 }}>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
+        </button>
+        <div className="card" role="status" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 14, padding: 24 }}>
+          <Check size={30} style={{ color: "var(--sage)" }} />
+          <h1 style={{ color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 750 }}>
+            {qtFlowCopy(pendingCompletion.existingRecord ? "existingRecordTitle" : "savedPendingTitle", lang)}
+          </h1>
+          <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>
+            {qtFlowCopy(pendingCompletion.existingRecord ? "existingRecordDescription" : "savedPendingDescription", lang)}
+          </p>
+          {pendingCompletion.existingRecord && (
+            <details open style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+              <summary style={{ cursor: "pointer", color: "var(--text)", fontSize: 13, fontWeight: 700 }}>
+                {qtFlowCopy("currentUnsavedText", lang)}
+              </summary>
+              <div style={{ marginTop: 10, color: "var(--text2)", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", overflowWrap: "anywhere", userSelect: "text" }}>
+                {[
+                  sermonTitle, bibleRef, keyVerse, answers.opening_prayer, answers.summary,
+                  mode === "free" ? freeText : answers.meditation,
+                  answers.application, decisions.filter(value => value.trim()).join("\n"), answers.closing_prayer,
+                ].filter(value => value?.trim()).join("\n\n")}
+              </div>
+            </details>
+          )}
+          {pendingCompletion.failed && (
+            <p role="alert" style={{ color: "var(--qt-danger-text)", fontSize: 13, lineHeight: 1.65 }}>
+              {qtFlowCopy(pendingCompletion.visibilitySaved && pendingCompletion.recipientsSaved && !pendingCompletion.progressSaved ? "pendingProgress" : "pendingShare", lang)}
+            </p>
+          )}
+          {(!pendingCompletion.existingRecord || !pendingCompletion.visibilitySaved || !pendingCompletion.recipientsSaved || !pendingCompletion.progressSaved) && (
+            <button type="button" onClick={() => { void save(); }} disabled={saving} className="btn-sage">
+              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : qtFlowCopy("retryCompletion", lang)}
+            </button>
+          )}
+          {pendingCompletion.progressSaved && (
+            <button type="button" disabled={saving} onClick={() => {
+              const navigate = () => router.push(`/qt/record?id=${pendingCompletion.recordId}`);
+              if (pendingCompletion.existingRecord) requestLeave(navigate);
+              else leaveAfterSave(navigate);
+            }} className="btn-outline">
+              {qtFlowCopy("viewSavedRecord", lang)}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if ((mode === "6step" || mode === "free") && bibleStep === "select") {
     const continuationPreviousReference = freePassageContinuation
       ? translateBibleRef(freePassageContinuation.previousReference, lang)
@@ -2546,6 +2703,7 @@ function QTWriteContent() {
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <QTConnectionNotice lang={lang} />
       {mode === "free" && freePassageContinuation && (
         <QTFreePassageChoice
           lang={lang}
@@ -2594,7 +2752,7 @@ function QTWriteContent() {
       )}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
@@ -2715,6 +2873,7 @@ function QTWriteContent() {
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2755,7 +2914,7 @@ function QTWriteContent() {
       )}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={hasPassage ? resetFreePassageSelection : () => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+            <button onClick={hasPassage ? resetFreePassageSelection : leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{hasPassage ? trQT("이전", lang) : trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
@@ -2818,6 +2977,7 @@ function QTWriteContent() {
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -2858,7 +3018,7 @@ function QTWriteContent() {
       )}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
@@ -3069,6 +3229,7 @@ function QTWriteContent() {
   const step6 = STEPS_6[cur];
   return (
     <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
         <div
@@ -3109,7 +3270,7 @@ function QTWriteContent() {
       )}
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+          <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
           </button>
           <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
