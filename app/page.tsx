@@ -73,14 +73,19 @@ import {
   type MonthlyBadgeDefinition,
 } from "@/lib/monthlyBadges";
 import {
-  COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
   SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
   getUserCampaignLocalStorageKey,
-  isCompanionChallenge2AnnouncementWindow,
   isEligibleForSpanishLanguageLaunchAnnouncement,
   loadUserCampaignSeen,
   markUserCampaignSeen,
 } from "@/lib/userCampaignImpressions";
+import {
+  COMPANION_CHALLENGE_3_ID,
+  COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
+  COMPANION_CHALLENGE_3_END_DATE,
+  isCompanionChallenge3AnnouncementWindow,
+} from "@/lib/companionChallengeCampaign";
+import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -378,8 +383,10 @@ export default function HomePage() {
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
-  const challengeRewardCheckStartedRef = useRef(false);
+  const challengeRewardCheckStartedRef = useRef<string | null>(null);
+  const challengeLocalDate = useChallengeLocalDate();
   const challengeRewardActionInFlightRef = useRef(false);
+  const [openingChallengeProfile, setOpeningChallengeProfile] = useState(false);
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
   const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
   const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
@@ -403,7 +410,7 @@ export default function HomePage() {
     if (userId) {
       storageSet(
         getUserCampaignLocalStorageKey(
-          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+          COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
           userId,
         ),
         "true",
@@ -419,7 +426,7 @@ export default function HomePage() {
         await markUserCampaignSeen(
           supabase,
           userId,
-          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
+          COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
         );
       }
     } catch (error) {
@@ -549,8 +556,8 @@ export default function HomePage() {
     supabase: ReturnType<typeof createClient>,
     today: string,
   ) {
-    if (challengeRewardCheckStartedRef.current) return;
-    challengeRewardCheckStartedRef.current = true;
+    if (challengeRewardCheckStartedRef.current === today) return;
+    challengeRewardCheckStartedRef.current = today;
 
     const rewardsByAwardId = new Map<string, ChallengeReward>();
 
@@ -576,7 +583,19 @@ export default function HomePage() {
       console.warn("미확인 챌린지 보상 조회 실패:", error);
     }
 
-    const rewards = Array.from(rewardsByAwardId.values());
+    const rewards = Array.from(rewardsByAwardId.values()).filter((reward) => {
+      if (reward.kind !== "companion" || reward.challengeId !== COMPANION_CHALLENGE_3_ID || !companionChallengeAnnouncementUserIdRef.current) return true;
+      const key = getUserCampaignLocalStorageKey(
+        `companion_challenge_3_reward_${reward.awardId}`,
+        companionChallengeAnnouncementUserIdRef.current,
+      );
+      if (!storageGet(key)) return true;
+      // Retry a failed acknowledgement without showing or paying the reward again.
+      void markChallengeRewardSeen(supabase, reward).catch((error) => {
+        console.warn("동역자 챌린지 보상 확인 재시도 실패:", error);
+      });
+      return false;
+    });
     if (rewards.length === 0) return;
 
     setChallengeRewardQueue((current) => {
@@ -593,12 +612,26 @@ export default function HomePage() {
     if (!reward || challengeRewardActionInFlightRef.current) return;
 
     challengeRewardActionInFlightRef.current = true;
+    const isTapeChallenge = reward.kind === "companion" && reward.challengeId === COMPANION_CHALLENGE_3_ID;
+    const userId = companionChallengeAnnouncementUserIdRef.current;
+    if (isTapeChallenge && userId) {
+      storageSet(getUserCampaignLocalStorageKey(
+        `companion_challenge_3_reward_${reward.awardId}`, userId,
+      ), "true");
+    }
     const hasAnotherReward = challengeRewardQueue.some(
       (candidate) => candidate.awardId !== reward.awardId,
     );
     setChallengeRewardQueue((current) =>
       current.filter((candidate) => candidate.awardId !== reward.awardId),
     );
+
+    if (isTapeChallenge && openProfile) {
+      // Leave remaining rewards unacknowledged for the next Home visit; do not
+      // flash the next popup while navigating to the requested badge screen.
+      setOpeningChallengeProfile(true);
+      router.push("/profile#special-badges");
+    }
 
     try {
       await markChallengeRewardSeen(createClient(), reward);
@@ -608,7 +641,7 @@ export default function HomePage() {
       console.warn("챌린지 보상 팝업 확인 저장 실패:", error);
     } finally {
       challengeRewardActionInFlightRef.current = false;
-      if (openProfile && !hasAnotherReward) {
+      if (openProfile && !isTapeChallenge && !hasAnotherReward) {
         router.push("/profile#special-badges");
       }
     }
@@ -646,6 +679,39 @@ export default function HomePage() {
   ).filter(layer => layer.slot !== "background");
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!isCompanionChallenge3AnnouncementWindow(challengeLocalDate)) {
+      setShowCompanionChallengeAnnouncement(false);
+      return;
+    }
+    if (loading || !userId) return;
+    let cancelled = false;
+    const localKey = getUserCampaignLocalStorageKey(
+      COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY, userId,
+    );
+    if (storageGet(localKey)) return;
+    void loadUserCampaignSeen(createClient(), userId, COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY)
+      .then((seen) => {
+        if (cancelled) return;
+        if (seen === true) {
+          storageSet(localKey, "true");
+          return;
+        }
+        // An in-flight lookup must not open the announcement after Sep 10.
+        if (isCompanionChallenge3AnnouncementWindow(getLocalDateString()) && !storageGet(localKey)) {
+          setShowCompanionChallengeAnnouncement(true);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [loading, profile?.id, challengeLocalDate]);
+
+  useEffect(() => {
+    if (loading || !profile?.id || challengeLocalDate <= COMPANION_CHALLENGE_3_END_DATE) return;
+    // Also checks on a new local day when an already-mounted native Home resumes.
+    void checkPendingChallengeRewards(createClient(), challengeLocalDate);
+  }, [loading, profile?.id, challengeLocalDate]);
 
   // A language change resets only the translation for a new Bible Reflection.
   // An existing draft keeps its own bible_version and is resumed unchanged.
@@ -849,28 +915,6 @@ export default function HomePage() {
     void checkMonthlyBadgeAwardAnnouncement(supabase, user.id);
     void checkPendingChallengeRewards(supabase, today);
 
-    if (isCompanionChallenge2AnnouncementWindow(today)) {
-      const localCampaignKey = getUserCampaignLocalStorageKey(
-        COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
-        user.id,
-      );
-
-      if (!storageGet(localCampaignKey)) {
-        void loadUserCampaignSeen(
-          supabase,
-          user.id,
-          COMPANION_CHALLENGE_2_ANNOUNCEMENT_KEY,
-        ).then((seen) => {
-          if (seen === true) {
-            storageSet(localCampaignKey, "true");
-            return;
-          }
-          if (!storageGet(localCampaignKey)) {
-            setShowCompanionChallengeAnnouncement(true);
-          }
-        });
-      }
-    }
     const pendingAwardedBadges = consumePendingAwardedBadges(user.id, today);
     pendingAwardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
 
@@ -1781,9 +1825,11 @@ export default function HomePage() {
     showHomePrayerSharePrompt ||
     chapterPopup.show;
   const visibleCompanionChallengeAnnouncement =
-    showCompanionChallengeAnnouncement && !homePopupBlocked;
+    showCompanionChallengeAnnouncement &&
+    isCompanionChallenge3AnnouncementWindow(challengeLocalDate) &&
+    !homePopupBlocked;
   const visibleChallengeReward =
-    homePopupBlocked || showCompanionChallengeAnnouncement
+    homePopupBlocked || visibleCompanionChallengeAnnouncement || handlingCompanionChallengeAnnouncement || openingChallengeProfile
       ? null
       : challengeRewardQueue[0] ?? null;
 

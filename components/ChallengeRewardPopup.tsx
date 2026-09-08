@@ -1,5 +1,6 @@
 "use client";
 
+import { COMPANION_CHALLENGE_3_ID, COMPANION_CHALLENGE_3_COPY } from "@/lib/companionChallengeCampaign";
 import { Star } from "lucide-react";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import {
@@ -34,6 +35,8 @@ export default function ChallengeRewardPopup({
   if (!reward) return null;
 
   const isCompanion = reward.kind === "companion";
+  const isTapeChallenge = isCompanion && reward.challengeId === COMPANION_CHALLENGE_3_ID;
+  const tapeCopy = COMPANION_CHALLENGE_3_COPY[lang] ?? COMPANION_CHALLENGE_3_COPY.ko;
   const companionText = getCompanionChallengeText(lang);
   const title = isCompanion
     ? companionText.popupTitle
@@ -63,7 +66,9 @@ export default function ChallengeRewardPopup({
           ? `\n💛 +${reward.rewardHearts} ${companionText.heartsLabel}`
           : ""
       }`;
-  const button = isCompanion
+  const button = isTapeChallenge
+    ? tapeCopy.viewBadge
+    : isCompanion
     ? companionText.popupButton
     : t("group_challenge_award_popup_btn", lang);
   const badgeSrc = isCompanion
@@ -97,6 +102,8 @@ export default function ChallengeRewardPopup({
         style={{
           width: "100%",
           maxWidth: 340,
+          maxHeight: "100%",
+          overflowY: "auto",
           borderRadius: 28,
           background: "var(--bg2)",
           border: "1px solid rgba(232,197,71,0.4)",
@@ -107,8 +114,8 @@ export default function ChallengeRewardPopup({
       >
         <div
           style={{
-            width: 116,
-            height: 116,
+            width: isTapeChallenge ? 196 : 116,
+            height: isTapeChallenge ? 132 : 116,
             margin: "0 auto 16px",
             display: "flex",
             alignItems: "center",
@@ -207,6 +214,15 @@ export default function ChallengeRewardPopup({
         >
           {button}
         </button>
+        {isTapeChallenge && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            style={{ width: "100%", minHeight: 44, marginTop: 8, border: 0, background: "transparent", color: "var(--text3)", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+          >
+            {tapeCopy.close}
+          </button>
+        )}
       </div>
     </div>
   );
