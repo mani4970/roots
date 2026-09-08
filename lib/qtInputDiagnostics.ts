@@ -1,7 +1,16 @@
 import { Capacitor } from "@capacitor/core";
 
-const BUILD_ID = "roots-ime-check-20260908-v1";
+const BUILD_ID = "roots-ime-check-20260908-v2";
 const MAX_EVENTS = 200;
+const FIELD_EVENTS = ["beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focus", "blur"];
+
+export type QTInputDiagnosticPhase = "sync-scheduled" | "sync-fired" | "value-forwarded" | "react-commit" | "inactive-value-write";
+export type QTInputDiagnosticDetails = { compositionActive?: boolean; delayMs?: number; forwardedValueLength?: number; propValueLength?: number };
+const DIAGNOSTIC_PHASES = new Set<QTInputDiagnosticPhase>([
+  "sync-scheduled", "sync-fired", "value-forwarded", "react-commit", "inactive-value-write",
+]);
+type DiagnosticSubscriber = (phase: QTInputDiagnosticPhase, details: QTInputDiagnosticDetails) => void;
+const diagnosticSubscribers = new WeakMap<HTMLInputElement | HTMLTextAreaElement, Set<DiagnosticSubscriber>>();
 const INPUT_TYPES = new Set([
   "insertText", "insertCompositionText", "insertFromComposition", "insertReplacementText",
   "insertLineBreak", "insertParagraph", "insertFromPaste", "insertFromPasteAsQuotation",
@@ -34,6 +43,10 @@ export type QTInputDiagnosticEvent = {
   childListMutations?: number;
   characterDataMutations?: number;
   valueAttributeMutations?: number;
+  compositionActive?: boolean;
+  delayMs?: number;
+  forwardedValueLength?: number;
+  propValueLength?: number;
 };
 
 export type QTInputDiagnosticReport = {
@@ -42,9 +55,24 @@ export type QTInputDiagnosticReport = {
   durationMs: number;
   totalEvents: number;
   droppedEvents: number;
+  eventCounts: Record<string, number>;
   mutations: { childList: number; characterData: number; valueAttribute: number };
   events: QTInputDiagnosticEvent[];
 };
+
+/** No field properties are read unless this field has an explicitly active capture. */
+export function noteQTInputDiagnostic(field: HTMLInputElement | HTMLTextAreaElement, phase: QTInputDiagnosticPhase, details?: QTInputDiagnosticDetails): void {
+  const subscribers = diagnosticSubscribers.get(field);
+  if (!subscribers || !DIAGNOSTIC_PHASES.has(phase)) return;
+  const safeDetails: QTInputDiagnosticDetails = {};
+  if (typeof details?.compositionActive === "boolean") safeDetails.compositionActive = details.compositionActive;
+  if (typeof details?.delayMs === "number" && Number.isFinite(details.delayMs) && details.delayMs >= 0) safeDetails.delayMs = details.delayMs;
+  for (const key of ["forwardedValueLength", "propValueLength"] as const) {
+    const length = details?.[key];
+    if (typeof length === "number" && Number.isInteger(length) && length >= 0) safeDetails[key] = length;
+  }
+  for (const subscriber of subscribers) subscriber(phase, safeDetails);
+}
 
 /** Runtime metadata only. This does not read URLs, storage, or reflection text. */
 export function captureQTInputEnvironment(): QTInputDiagnosticEnvironment {
@@ -93,11 +121,13 @@ export function startQTInputDiagnostics(field: HTMLInputElement | HTMLTextAreaEl
     cursorStability: marker === "apple-isolated" ? marker : marker === null ? null : "unrecognized",
   };
   const events: QTInputDiagnosticEvent[] = [];
+  const eventCounts: Record<string, number> = {};
+  for (const type of [...FIELD_EVENTS, ...DIAGNOSTIC_PHASES, "window-focus", "window-blur", "dom-mutation"]) eventCounts[type] = 0;
   const mutations = { childList: 0, characterData: 0, valueAttribute: 0 };
   let totalEvents = 0;
   let stoppedReport: QTInputDiagnosticReport | null = null;
 
-  const record = (type: string, event?: Event, changes?: { childListMutations: number; characterDataMutations: number; valueAttributeMutations: number }) => {
+  const record = (type: string, event?: Event, changes?: { childListMutations: number; characterDataMutations: number; valueAttributeMutations: number }, details?: QTInputDiagnosticDetails) => {
     if (stoppedReport) return;
     const input = event as InputEvent | undefined;
     const inputType = input?.inputType;
@@ -111,12 +141,14 @@ export function startQTInputDiagnostics(field: HTMLInputElement | HTMLTextAreaEl
       selectionEnd: field.selectionEnd,
       focused: doc.activeElement === field,
       ...changes,
+      ...details,
     });
     totalEvents += 1;
+    eventCounts[type] = (eventCounts[type] ?? 0) + 1;
     if (events.length > MAX_EVENTS) events.shift();
   };
-  const fieldEvents = ["beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focus", "blur"];
   const onFieldEvent = (event: Event) => record(event.type, event);
+  const onDiagnostic: DiagnosticSubscriber = (phase, details) => record(phase, undefined, undefined, details);
   const onWindowFocus = (event: Event) => record("window-focus", event);
   const onWindowBlur = (event: Event) => record("window-blur", event);
   const onMutations = (records: MutationRecord[]) => {
@@ -137,16 +169,21 @@ export function startQTInputDiagnostics(field: HTMLInputElement | HTMLTextAreaEl
   };
   const observer = new MutationObserver(onMutations);
   observer.observe(field, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["value"] });
-  for (const type of fieldEvents) field.addEventListener(type, onFieldEvent);
+  for (const type of FIELD_EVENTS) field.addEventListener(type, onFieldEvent);
   win.addEventListener("focus", onWindowFocus);
   win.addEventListener("blur", onWindowBlur);
+  const subscribers = diagnosticSubscribers.get(field) ?? new Set<DiagnosticSubscriber>();
+  diagnosticSubscribers.set(field, subscribers);
+  subscribers.add(onDiagnostic);
 
   return {
     stop() {
       if (stoppedReport) return stoppedReport;
+      subscribers.delete(onDiagnostic);
+      if (subscribers.size === 0) diagnosticSubscribers.delete(field);
       onMutations(observer.takeRecords());
       observer.disconnect();
-      for (const type of fieldEvents) field.removeEventListener(type, onFieldEvent);
+      for (const type of FIELD_EVENTS) field.removeEventListener(type, onFieldEvent);
       win.removeEventListener("focus", onWindowFocus);
       win.removeEventListener("blur", onWindowBlur);
       stoppedReport = {
@@ -155,6 +192,7 @@ export function startQTInputDiagnostics(field: HTMLInputElement | HTMLTextAreaEl
         durationMs: elapsed(),
         totalEvents,
         droppedEvents: totalEvents - events.length,
+        eventCounts: { ...eventCounts },
         mutations: { ...mutations },
         events: events.slice(),
       };

@@ -8,6 +8,7 @@ import {
   type InputHTMLAttributes,
 } from "react";
 import { Capacitor } from "@capacitor/core";
+import { noteQTInputDiagnostic } from "@/lib/qtInputDiagnostics";
 
 type CursorStableInputProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -102,6 +103,13 @@ export default function CursorStableInput({
     }
   }, []);
 
+  // Observation only: the helper is a no-op unless this field's diagnostic
+  // recording was explicitly started. No input state is changed here.
+  useLayoutEffect(() => {
+    const element = inputRef.current;
+    if (element) noteQTInputDiagnostic(element, "react-commit", { propValueLength: value.length });
+  });
+
   const emitValue = (element: HTMLInputElement) => {
     const nextValue = element.value;
     if (nextValue === lastEmittedValueRef.current) return;
@@ -121,7 +129,10 @@ export default function CursorStableInput({
     // owns the active editor.
     if (isActive) return;
 
-    if (element.value !== value) element.value = value;
+    if (element.value !== value) {
+      noteQTInputDiagnostic(element, "inactive-value-write");
+      element.value = value;
+    }
     lastEmittedValueRef.current = value;
     pendingAppleValueRef.current = null;
   }, [value]);
@@ -151,6 +162,9 @@ export default function CursorStableInput({
       }
 
       lastEmittedValueRef.current = pendingValue.value;
+      noteQTInputDiagnostic(element, "value-forwarded", {
+        compositionActive: isComposing, forwardedValueLength: pendingValue.value.length,
+      });
       pendingValue.onValueChange(pendingValue.value);
     };
 
@@ -166,10 +180,14 @@ export default function CursorStableInput({
 
     const scheduleValueSync = () => {
       cancelScheduledSync();
-      syncTimer = window.setTimeout(
-        flushPendingValue,
-        APPLE_EDITOR_STATE_SYNC_DELAY_MS,
-      );
+      noteQTInputDiagnostic(element, "sync-scheduled", {
+        compositionActive: isComposing,
+        delayMs: APPLE_EDITOR_STATE_SYNC_DELAY_MS,
+      });
+      syncTimer = window.setTimeout(() => {
+        noteQTInputDiagnostic(element, "sync-fired", { compositionActive: isComposing });
+        flushPendingValue();
+      }, APPLE_EDITOR_STATE_SYNC_DELAY_MS);
     };
 
     const handleNativeInput = (event: Event) => {
