@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/nativeShare";
 import {
   startQTInputDiagnostics,
+  isQTInputDiagnosticEditor,
   type QTInputDiagnosticReport,
 } from "@/lib/qtInputDiagnostics";
 
@@ -20,14 +21,8 @@ export default function QTInputDiagnosticPanel() {
   const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
-    const isEditor = (element: Element | null): element is Editor =>
-      (element instanceof HTMLTextAreaElement ||
-        (element instanceof HTMLInputElement && element.type === "text")) &&
-      element.matches(".textarea-field, .input-field") &&
-      !element.readOnly && !element.disabled;
-
     const rememberEditor = () => {
-      if (isEditor(document.activeElement)) lastEditorRef.current = document.activeElement;
+      if (isQTInputDiagnosticEditor(document.activeElement)) lastEditorRef.current = document.activeElement;
     };
     const toggle = () => {
       if (recordingRef.current) {
@@ -40,7 +35,7 @@ export default function QTInputDiagnosticPanel() {
       }
       rememberEditor();
       const field = lastEditorRef.current;
-      if (!field?.isConnected) {
+      if (!isQTInputDiagnosticEditor(field)) {
         setMessage("묵상 입력칸을 한 번 누른 뒤 다시 시작해주세요.");
         return;
       }
@@ -89,7 +84,7 @@ export default function QTInputDiagnosticPanel() {
   if (recording) {
     return (
       <aside aria-label="입력 점검" style={{ position: "fixed", bottom: 8, right: 8, zIndex: 1000, padding: "8px 12px", borderRadius: 12, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", boxShadow: "0 2px 12px #0002", fontSize: 12 }}>
-        <span>입력 점검 중 · </span>
+        <div style={{ marginBottom: 4 }}>입력 점검 중 · 작성 단계가 바뀌어도 계속 기록합니다.</div>
         <button type="button" onPointerDown={stop} onClick={stop} style={{ font: "inherit", color: "inherit", background: "none", border: 0, textDecoration: "underline", cursor: "pointer" }}>종료하고 결과 보기</button>
       </aside>
     );
@@ -104,6 +99,10 @@ export default function QTInputDiagnosticPanel() {
         <button type="button" onClick={() => { setReport(null); setMessage(""); }} style={{ padding: "8px 12px", font: "inherit", cursor: "pointer" }}>닫기</button>
       </div>
       <p style={{ fontSize: 13, lineHeight: 1.6 }}>{message || "입력 상태와 이벤트 순서만 담았습니다. 묵상 문장은 포함하지 않습니다. 결과를 복사해 보내주세요."}</p>
+      {report && <p style={{ fontSize: 13, lineHeight: 1.6 }}>
+        점검 시간 {Math.floor(report.durationMs / 60000)}분 {Math.floor(report.durationMs / 1000) % 60}초 · 입력칸 {report.fields.length}개<br />
+        최근 {report.events.length.toLocaleString()}건과 전체 누적 횟수를 담았습니다.
+      </p>}
       {report && <button type="button" onClick={async () => {
         const copied = await copyText(JSON.stringify(report, null, 2));
         setCopyStatus(copied ? "복사했습니다." : "아래 결과를 직접 선택해 복사해주세요.");

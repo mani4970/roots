@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 
-const BUILD_ID = "roots-ime-check-20260908-v2";
-const MAX_EVENTS = 200;
+const BUILD_ID = "roots-ime-check-20260909-v3";
+const MAX_EVENTS = 2000;
 const FIELD_EVENTS = ["beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focus", "blur"];
 
 export type QTInputDiagnosticPhase = "sync-scheduled" | "sync-fired" | "value-forwarded" | "react-commit" | "inactive-value-write";
@@ -34,12 +34,19 @@ export type QTInputDiagnosticEnvironment = {
 export type QTInputDiagnosticEvent = {
   type: string;
   elapsedMs: number;
+  fieldId: number | null;
   inputType: string | null;
   isComposing: boolean | null;
-  valueLength: number;
+  valueLength: number | null;
   selectionStart: number | null;
   selectionEnd: number | null;
   focused: boolean;
+  deleteKey?: "backspace" | "delete";
+  repeat?: boolean;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
   childListMutations?: number;
   characterDataMutations?: number;
   valueAttributeMutations?: number;
@@ -49,16 +56,42 @@ export type QTInputDiagnosticEvent = {
   propValueLength?: number;
 };
 
+type Editor = HTMLInputElement | HTMLTextAreaElement;
+type FieldInfo = {
+  fieldId: number;
+  tag: "input" | "textarea";
+  cursorStability: "apple-isolated" | "unrecognized" | null;
+  firstObservedMs: number;
+  lastEventElapsedMs: number;
+  lastInputElapsedMs: number | null;
+  lastDetachObservedMs: number | null;
+  connectedAtStop: boolean;
+  totalEvents: number;
+  eventCounts: Record<string, number>;
+};
+
 export type QTInputDiagnosticReport = {
   environment: QTInputDiagnosticEnvironment;
-  field: { tag: "input" | "textarea"; cursorStability: "apple-isolated" | "unrecognized" | null; connectedAtStop: boolean };
+  trackingScope: "visited-writer-fields";
+  eventPhase: "document-capture";
+  retention: { maxEvents: number; retainedFromElapsedMs: number | null };
+  fields: FieldInfo[];
   durationMs: number;
+  lastInputElapsedMs: number | null;
   totalEvents: number;
   droppedEvents: number;
   eventCounts: Record<string, number>;
   mutations: { childList: number; characterData: number; valueAttribute: number };
   events: QTInputDiagnosticEvent[];
 };
+
+/** Match only writable reflection fields; never collect other forms or dialog inputs. */
+export function isQTInputDiagnosticEditor(element: Element | null): element is Editor {
+  return (element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLInputElement && element.type === "text")) &&
+    element.isConnected && element.matches(".textarea-field, .input-field") &&
+    element.closest(".roots-qt-phase2a") !== null && !element.readOnly && !element.disabled;
+}
 
 /** No field properties are read unless this field has an explicitly active capture. */
 export function noteQTInputDiagnostic(field: HTMLInputElement | HTMLTextAreaElement, phase: QTInputDiagnosticPhase, details?: QTInputDiagnosticDetails): void {
@@ -108,93 +141,185 @@ export function captureQTInputEnvironment(): QTInputDiagnosticEnvironment {
   };
 }
 
-/** Local, metadata-only observation. No setters, React updates, persistence, or network calls. */
-export function startQTInputDiagnostics(field: HTMLInputElement | HTMLTextAreaElement): { stop(): QTInputDiagnosticReport } {
+/** Local observation only. No input setters, React updates, persistence, or network calls. */
+export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnosticReport } {
   const doc = field.ownerDocument;
   const win = doc.defaultView ?? window;
   const startedAt = win.performance.now();
   const elapsed = () => Math.round((win.performance.now() - startedAt) * 10) / 10;
   const environment = captureQTInputEnvironment();
-  const marker = field.getAttribute("data-cursor-stability");
-  const fieldInfo: Omit<QTInputDiagnosticReport["field"], "connectedAtStop"> = {
-    tag: field.tagName.toLowerCase() === "textarea" ? "textarea" : "input",
-    cursorStability: marker === "apple-isolated" ? marker : marker === null ? null : "unrecognized",
-  };
-  const events: QTInputDiagnosticEvent[] = [];
+  const fields: FieldInfo[] = [];
+  const knownFields = new WeakMap<Editor, FieldInfo>();
+  const bindings = new Map<Editor, { info: FieldInfo; subscriber: DiagnosticSubscriber }>();
+  // A bounded ring keeps the recent trace without shifting an array on every keystroke.
+  const events = new Array<QTInputDiagnosticEvent>(MAX_EVENTS);
   const eventCounts: Record<string, number> = {};
-  for (const type of [...FIELD_EVENTS, ...DIAGNOSTIC_PHASES, "window-focus", "window-blur", "dom-mutation"]) eventCounts[type] = 0;
+  for (const type of [...FIELD_EVENTS, ...DIAGNOSTIC_PHASES, "keydown", "keyup", "field-registered", "field-activated", "field-detached-observed", "window-focus", "window-blur", "document-hidden", "document-visible", "dom-mutation"]) eventCounts[type] = 0;
   const mutations = { childList: 0, characterData: 0, valueAttribute: 0 };
   let totalEvents = 0;
+  let lastFieldId: number | null = null;
+  let lastInputElapsedMs: number | null = null;
   let stoppedReport: QTInputDiagnosticReport | null = null;
 
-  const record = (type: string, event?: Event, changes?: { childListMutations: number; characterDataMutations: number; valueAttributeMutations: number }, details?: QTInputDiagnosticDetails) => {
+  const record = (type: string, editor: Editor | null, event?: Event, extra?: Partial<QTInputDiagnosticEvent>) => {
     if (stoppedReport) return;
+    const info = editor ? bindings.get(editor)?.info : undefined;
     const input = event as InputEvent | undefined;
     const inputType = input?.inputType;
-    events.push({
+    const time = elapsed();
+    events[totalEvents % MAX_EVENTS] = {
       type,
-      elapsedMs: elapsed(),
+      elapsedMs: time,
+      fieldId: info?.fieldId ?? null,
       inputType: typeof inputType === "string" && inputType !== "" ? INPUT_TYPES.has(inputType) ? inputType : "unrecognized" : null,
       isComposing: typeof input?.isComposing === "boolean" ? input.isComposing : null,
-      valueLength: field.value.length,
-      selectionStart: field.selectionStart,
-      selectionEnd: field.selectionEnd,
-      focused: doc.activeElement === field,
-      ...changes,
-      ...details,
-    });
+      valueLength: editor ? editor.value.length : null,
+      selectionStart: editor?.selectionStart ?? null,
+      selectionEnd: editor?.selectionEnd ?? null,
+      focused: editor !== null && doc.activeElement === editor,
+      ...extra,
+    };
     totalEvents += 1;
     eventCounts[type] = (eventCounts[type] ?? 0) + 1;
-    if (events.length > MAX_EVENTS) events.shift();
+    if (type === "input") lastInputElapsedMs = time;
+    if (info) {
+      info.lastEventElapsedMs = time;
+      info.totalEvents += 1;
+      info.eventCounts[type] = (info.eventCounts[type] ?? 0) + 1;
+      if (type === "input") info.lastInputElapsedMs = time;
+    }
   };
-  const onFieldEvent = (event: Event) => record(event.type, event);
-  const onDiagnostic: DiagnosticSubscriber = (phase, details) => record(phase, undefined, undefined, details);
-  const onWindowFocus = (event: Event) => record("window-focus", event);
-  const onWindowBlur = (event: Event) => record("window-blur", event);
+
+  const attach = (editor: Editor) => {
+    if (bindings.has(editor)) return;
+    let info = knownFields.get(editor);
+    if (!info) {
+      const marker = editor.getAttribute("data-cursor-stability");
+      info = {
+        fieldId: fields.length + 1,
+        tag: editor.tagName.toLowerCase() === "textarea" ? "textarea" : "input",
+        cursorStability: marker === "apple-isolated" ? marker : marker === null ? null : "unrecognized",
+        firstObservedMs: elapsed(), lastEventElapsedMs: elapsed(), lastInputElapsedMs: null,
+        lastDetachObservedMs: null, connectedAtStop: true, totalEvents: 0, eventCounts: {},
+      };
+      knownFields.set(editor, info);
+      fields.push(info);
+    }
+    info.connectedAtStop = true;
+    const subscriber: DiagnosticSubscriber = (phase, details) => {
+      if (isQTInputDiagnosticEditor(editor)) record(phase, editor, undefined, details);
+    };
+    const subscribers = diagnosticSubscribers.get(editor) ?? new Set<DiagnosticSubscriber>();
+    diagnosticSubscribers.set(editor, subscribers);
+    subscribers.add(subscriber);
+    bindings.set(editor, { info, subscriber });
+    record("field-registered", editor);
+  };
+  const activate = (editor: Editor) => {
+    attach(editor);
+    const id = bindings.get(editor)!.info.fieldId;
+    if (id !== lastFieldId) {
+      lastFieldId = id;
+      record("field-activated", editor);
+    }
+  };
+  const unsubscribe = (editor: Editor, subscriber: DiagnosticSubscriber) => {
+    const subscribers = diagnosticSubscribers.get(editor);
+    subscribers?.delete(subscriber);
+    if (subscribers?.size === 0) diagnosticSubscribers.delete(editor);
+  };
+  const releaseDetached = () => {
+    for (const [editor, binding] of bindings) {
+      binding.info.connectedAtStop = editor.isConnected;
+      if (editor.isConnected) continue;
+      // This is when removal was observed, not an exact native removal timestamp.
+      binding.info.lastDetachObservedMs = elapsed();
+      record("field-detached-observed", editor);
+      unsubscribe(editor, binding.subscriber);
+      bindings.delete(editor);
+    }
+  };
+
+  const onFieldEvent = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || !isQTInputDiagnosticEditor(target)) return;
+    let keyDetails: Partial<QTInputDiagnosticEvent> | undefined;
+    if (event.type === "keydown" || event.type === "keyup") {
+      const key = event as KeyboardEvent;
+      // Never retain ordinary typed keys, event.data, or clipboard contents.
+      if (key.key !== "Backspace" && key.key !== "Delete") return;
+      keyDetails = {
+        deleteKey: key.key === "Backspace" ? "backspace" : "delete",
+        repeat: key.repeat, altKey: key.altKey, ctrlKey: key.ctrlKey,
+        metaKey: key.metaKey, shiftKey: key.shiftKey,
+      };
+    }
+    // Capture runs before editor input/blur handlers, including their sync notes.
+    if (event.type === "blur") attach(target);
+    else activate(target);
+    record(event.type, target, event, keyDetails);
+  };
+  const activeEditor = () => {
+    const active = doc.activeElement;
+    if (!isQTInputDiagnosticEditor(active)) return null;
+    attach(active);
+    return active;
+  };
+  const onWindowFocus = () => record("window-focus", activeEditor());
+  const onWindowBlur = () => record("window-blur", activeEditor());
+  const onVisibility = () => record(doc.visibilityState === "hidden" ? "document-hidden" : "document-visible", activeEditor());
   const onMutations = (records: MutationRecord[]) => {
     if (stoppedReport) return;
-    let childListMutations = 0;
-    let characterDataMutations = 0;
-    let valueAttributeMutations = 0;
-    for (const mutation of records) {
-      if (mutation.type === "childList") childListMutations += 1;
-      if (mutation.type === "characterData") characterDataMutations += 1;
-      if (mutation.type === "attributes" && mutation.attributeName === "value") valueAttributeMutations += 1;
+    // Inspect only already visited fields. Never copy DOM text or enumerate new inputs.
+    for (const [editor] of bindings) {
+      let childListMutations = 0;
+      let characterDataMutations = 0;
+      let valueAttributeMutations = 0;
+      for (const mutation of records) {
+        if (mutation.target !== editor && !editor.contains(mutation.target)) continue;
+        if (mutation.type === "childList") childListMutations += 1;
+        if (mutation.type === "characterData") characterDataMutations += 1;
+        if (mutation.type === "attributes" && mutation.attributeName === "value") valueAttributeMutations += 1;
+      }
+      if (!childListMutations && !characterDataMutations && !valueAttributeMutations) continue;
+      mutations.childList += childListMutations;
+      mutations.characterData += characterDataMutations;
+      mutations.valueAttribute += valueAttributeMutations;
+      record("dom-mutation", editor, undefined, { childListMutations, characterDataMutations, valueAttributeMutations });
     }
-    if (!childListMutations && !characterDataMutations && !valueAttributeMutations) return;
-    mutations.childList += childListMutations;
-    mutations.characterData += characterDataMutations;
-    mutations.valueAttribute += valueAttributeMutations;
-    record("dom-mutation", undefined, { childListMutations, characterDataMutations, valueAttributeMutations });
+    releaseDetached();
   };
   const observer = new MutationObserver(onMutations);
-  observer.observe(field, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["value"] });
-  for (const type of FIELD_EVENTS) field.addEventListener(type, onFieldEvent);
+  observer.observe(doc.body, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["value"] });
+  const observedEvents = [...FIELD_EVENTS, "keydown", "keyup"];
+  for (const type of observedEvents) doc.addEventListener(type, onFieldEvent, true);
   win.addEventListener("focus", onWindowFocus);
   win.addEventListener("blur", onWindowBlur);
-  const subscribers = diagnosticSubscribers.get(field) ?? new Set<DiagnosticSubscriber>();
-  diagnosticSubscribers.set(field, subscribers);
-  subscribers.add(onDiagnostic);
+  doc.addEventListener("visibilitychange", onVisibility, true);
+  if (isQTInputDiagnosticEditor(field)) activate(field);
 
   return {
     stop() {
       if (stoppedReport) return stoppedReport;
-      subscribers.delete(onDiagnostic);
-      if (subscribers.size === 0) diagnosticSubscribers.delete(field);
       onMutations(observer.takeRecords());
       observer.disconnect();
-      for (const type of FIELD_EVENTS) field.removeEventListener(type, onFieldEvent);
+      for (const type of observedEvents) doc.removeEventListener(type, onFieldEvent, true);
       win.removeEventListener("focus", onWindowFocus);
       win.removeEventListener("blur", onWindowBlur);
+      doc.removeEventListener("visibilitychange", onVisibility, true);
+      for (const [editor, binding] of bindings) unsubscribe(editor, binding.subscriber);
+      bindings.clear();
+      const count = Math.min(totalEvents, MAX_EVENTS);
+      const retainedEvents = Array.from({ length: count }, (_, i) => events[(totalEvents - count + i) % MAX_EVENTS]);
       stoppedReport = {
         environment,
-        field: { ...fieldInfo, connectedAtStop: field.isConnected },
-        durationMs: elapsed(),
-        totalEvents,
-        droppedEvents: totalEvents - events.length,
-        eventCounts: { ...eventCounts },
-        mutations: { ...mutations },
-        events: events.slice(),
+        trackingScope: "visited-writer-fields",
+        eventPhase: "document-capture",
+        retention: { maxEvents: MAX_EVENTS, retainedFromElapsedMs: retainedEvents[0]?.elapsedMs ?? null },
+        fields: fields.map((info) => ({ ...info, eventCounts: { ...info.eventCounts } })),
+        durationMs: elapsed(), lastInputElapsedMs,
+        totalEvents, droppedEvents: totalEvents - count,
+        eventCounts: { ...eventCounts }, mutations: { ...mutations }, events: retainedEvents,
       };
       return stoppedReport;
     },
