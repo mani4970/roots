@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/nativeShare";
+import QTInputComparisonPanel from "@/components/QTInputComparisonPanel";
 import {
   startQTInputDiagnostics,
   isQTInputDiagnosticEditor,
@@ -19,12 +20,15 @@ export default function QTInputDiagnosticPanel() {
   const [report, setReport] = useState<QTInputDiagnosticReport | null>(null);
   const [message, setMessage] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [comparing, setComparing] = useState(false);
+  const comparingRef = useRef(false);
 
   useEffect(() => {
     const rememberEditor = () => {
       if (isQTInputDiagnosticEditor(document.activeElement)) lastEditorRef.current = document.activeElement;
     };
     const toggle = () => {
+      if (comparingRef.current) return;
       if (recordingRef.current) {
         const result = recordingRef.current.stop();
         recordingRef.current = null;
@@ -81,6 +85,11 @@ export default function QTInputDiagnosticPanel() {
     setCopyStatus("");
   };
 
+  if (comparing) return <QTInputComparisonPanel onClose={() => {
+    comparingRef.current = false;
+    setComparing(false);
+  }} />;
+
   if (recording) {
     return (
       <aside aria-label="입력 점검" style={{ position: "fixed", bottom: 8, right: 8, zIndex: 1000, padding: "8px 12px", borderRadius: 12, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", boxShadow: "0 2px 12px #0002", fontSize: 12 }}>
@@ -99,6 +108,10 @@ export default function QTInputDiagnosticPanel() {
         <button type="button" onClick={() => { setReport(null); setMessage(""); }} style={{ padding: "8px 12px", font: "inherit", cursor: "pointer" }}>닫기</button>
       </div>
       <p style={{ fontSize: 13, lineHeight: 1.6 }}>{message || "입력 상태와 이벤트 순서만 담았습니다. 묵상 문장은 포함하지 않습니다. 결과를 복사해 보내주세요."}</p>
+      <button type="button" onClick={() => {
+        comparingRef.current = true;
+        setComparing(true);
+      }} style={{ padding: "10px 16px", font: "inherit", cursor: "pointer", marginBottom: 8 }}>예문으로 비교 점검</button>
       {report && <p style={{ fontSize: 13, lineHeight: 1.6 }}>
         점검 시간 {Math.floor(report.durationMs / 60000)}분 {Math.floor(report.durationMs / 1000) % 60}초 · 입력칸 {report.fields.length}개<br />
         최근 {report.events.length.toLocaleString()}건과 전체 누적 횟수를 담았습니다.

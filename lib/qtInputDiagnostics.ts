@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
-const BUILD_ID = "roots-ime-check-20260909-v3";
+const BUILD_ID = "roots-ime-check-20260909-v4";
 const MAX_EVENTS = 2000;
 const FIELD_EVENTS = ["beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focus", "blur"];
 
@@ -37,6 +37,8 @@ export type QTInputDiagnosticEvent = {
   fieldId: number | null;
   inputType: string | null;
   isComposing: boolean | null;
+  isTrusted: boolean | null;
+  keyKind?: "ordinary" | "delete" | "navigation" | "modifier" | "other";
   valueLength: number | null;
   selectionStart: number | null;
   selectionEnd: number | null;
@@ -72,7 +74,7 @@ type FieldInfo = {
 
 export type QTInputDiagnosticReport = {
   environment: QTInputDiagnosticEnvironment;
-  trackingScope: "visited-writer-fields";
+  trackingScope: "visited-writer-fields" | "explicit-test-scope";
   eventPhase: "document-capture";
   retention: { maxEvents: number; retainedFromElapsedMs: number | null };
   fields: FieldInfo[];
@@ -85,12 +87,16 @@ export type QTInputDiagnosticReport = {
   events: QTInputDiagnosticEvent[];
 };
 
-/** Match only writable reflection fields; never collect other forms or dialog inputs. */
-export function isQTInputDiagnosticEditor(element: Element | null): element is Editor {
+function isWritableDiagnosticField(element: Element | null): element is Editor {
   return (element instanceof HTMLTextAreaElement ||
     (element instanceof HTMLInputElement && element.type === "text")) &&
     element.isConnected && element.matches(".textarea-field, .input-field") &&
-    element.closest(".roots-qt-phase2a") !== null && !element.readOnly && !element.disabled;
+    !element.readOnly && !element.disabled;
+}
+
+/** Match only writable reflection fields; never collect other forms or dialog inputs. */
+export function isQTInputDiagnosticEditor(element: Element | null): element is Editor {
+  return isWritableDiagnosticField(element) && element.closest(".roots-qt-phase2a") !== null;
 }
 
 /** No field properties are read unless this field has an explicitly active capture. */
@@ -142,7 +148,10 @@ export function captureQTInputEnvironment(): QTInputDiagnosticEnvironment {
 }
 
 /** Local observation only. No input setters, React updates, persistence, or network calls. */
-export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnosticReport } {
+export function startQTInputDiagnostics(field: Editor, options?: { scope?: HTMLElement }): { stop(): QTInputDiagnosticReport } {
+  const scope = options?.scope;
+  const eligible = (element: Element | null): element is Editor =>
+    isWritableDiagnosticField(element) && (scope ? scope.contains(element) : element.closest(".roots-qt-phase2a") !== null);
   const doc = field.ownerDocument;
   const win = doc.defaultView ?? window;
   const startedAt = win.performance.now();
@@ -164,6 +173,12 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
   const record = (type: string, editor: Editor | null, event?: Event, extra?: Partial<QTInputDiagnosticEvent>) => {
     if (stoppedReport) return;
     const info = editor ? bindings.get(editor)?.info : undefined;
+    // A comparison field can enable Apple isolation just after initial mount.
+    // Refresh the allowlisted marker when the actual editor processes input/commits.
+    if (info && editor && (type === "input" || type === "react-commit")) {
+      const marker = editor.getAttribute("data-cursor-stability");
+      info.cursorStability = marker === "apple-isolated" ? marker : marker === null ? null : "unrecognized";
+    }
     const input = event as InputEvent | undefined;
     const inputType = input?.inputType;
     const time = elapsed();
@@ -173,6 +188,7 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
       fieldId: info?.fieldId ?? null,
       inputType: typeof inputType === "string" && inputType !== "" ? INPUT_TYPES.has(inputType) ? inputType : "unrecognized" : null,
       isComposing: typeof input?.isComposing === "boolean" ? input.isComposing : null,
+      isTrusted: event ? event.isTrusted : null,
       valueLength: editor ? editor.value.length : null,
       selectionStart: editor?.selectionStart ?? null,
       selectionEnd: editor?.selectionEnd ?? null,
@@ -207,7 +223,7 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
     }
     info.connectedAtStop = true;
     const subscriber: DiagnosticSubscriber = (phase, details) => {
-      if (isQTInputDiagnosticEditor(editor)) record(phase, editor, undefined, details);
+      if (eligible(editor)) record(phase, editor, undefined, details);
     };
     const subscribers = diagnosticSubscribers.get(editor) ?? new Set<DiagnosticSubscriber>();
     diagnosticSubscribers.set(editor, subscribers);
@@ -242,17 +258,22 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
 
   const onFieldEvent = (event: Event) => {
     const target = event.target;
-    if (!(target instanceof Element) || !isQTInputDiagnosticEditor(target)) return;
+    if (!(target instanceof Element) || !eligible(target)) return;
     let keyDetails: Partial<QTInputDiagnosticEvent> | undefined;
     if (event.type === "keydown" || event.type === "keyup") {
       const key = event as KeyboardEvent;
-      // Never retain ordinary typed keys, event.data, or clipboard contents.
-      if (key.key !== "Backspace" && key.key !== "Delete") return;
+      // Keep only a category/count for ordinary keys, never key/code/data text.
+      // Keydown can arrive after input with native Korean IMEs; do not infer ordering.
+      const deletion = key.key === "Backspace" || key.key === "Delete";
+      const navigation = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(key.key);
+      const modifier = ["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(key.key);
       keyDetails = {
-        deleteKey: key.key === "Backspace" ? "backspace" : "delete",
+        keyKind: deletion ? "delete" : navigation ? "navigation" : modifier ? "modifier" :
+          key.key.length === 1 || key.key === "Process" || key.key === "Unidentified" ? "ordinary" : "other",
         repeat: key.repeat, altKey: key.altKey, ctrlKey: key.ctrlKey,
         metaKey: key.metaKey, shiftKey: key.shiftKey,
       };
+      if (deletion) keyDetails.deleteKey = key.key === "Backspace" ? "backspace" : "delete";
     }
     // Capture runs before editor input/blur handlers, including their sync notes.
     if (event.type === "blur") attach(target);
@@ -261,7 +282,7 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
   };
   const activeEditor = () => {
     const active = doc.activeElement;
-    if (!isQTInputDiagnosticEditor(active)) return null;
+    if (!eligible(active)) return null;
     attach(active);
     return active;
   };
@@ -296,7 +317,7 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
   win.addEventListener("focus", onWindowFocus);
   win.addEventListener("blur", onWindowBlur);
   doc.addEventListener("visibilitychange", onVisibility, true);
-  if (isQTInputDiagnosticEditor(field)) activate(field);
+  if (eligible(field)) activate(field);
 
   return {
     stop() {
@@ -313,7 +334,7 @@ export function startQTInputDiagnostics(field: Editor): { stop(): QTInputDiagnos
       const retainedEvents = Array.from({ length: count }, (_, i) => events[(totalEvents - count + i) % MAX_EVENTS]);
       stoppedReport = {
         environment,
-        trackingScope: "visited-writer-fields",
+        trackingScope: scope ? "explicit-test-scope" : "visited-writer-fields",
         eventPhase: "document-capture",
         retention: { maxEvents: MAX_EVENTS, retainedFromElapsedMs: retainedEvents[0]?.elapsedMs ?? null },
         fields: fields.map((info) => ({ ...info, eventCounts: { ...info.eventCounts } })),
