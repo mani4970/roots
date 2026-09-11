@@ -6,6 +6,7 @@ import {
   PROFILE_CHARACTER_CANVAS,
   filterProfileCharacterLayers,
   getProfileCharacterBaseImageSrc,
+  getProfileCharacterPetLayout,
   type ProfileCharacterLayer,
 } from "@/lib/profileCharacter";
 
@@ -27,9 +28,7 @@ const SQUARE_CHARACTER_RENDER_LEFT_PERCENT =
   (100 - SQUARE_CHARACTER_RENDER_WIDTH_PERCENT) / 2;
 const JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT = -8;
 
-const PET_LAYER_SCALE = 1.2;
-const PET_LAYER_SHIFT_X = 65;
-const PET_LAYER_ORIGIN = { x: 700, y: 1268 } as const;
+const PET_LAYER_ORIGIN_X = 700;
 const BASE_CHARACTER_GROUND_Y: Record<RootsAvatarType, number> = {
   rootsman: 1329,
   rootswoman: 1260,
@@ -61,13 +60,15 @@ function getCharacterGroundY(
 }
 
 function getPetLayerStyle(
+  layerId: string,
   avatarType: RootsAvatarType,
   layers: readonly ProfileCharacterLayer[],
 ): CSSProperties {
-  const groundShiftY = getCharacterGroundY(avatarType, layers) - PET_LAYER_ORIGIN.y;
+  const { scale, shiftX, groundY } = getProfileCharacterPetLayout(layerId);
+  const groundShiftY = getCharacterGroundY(avatarType, layers) - groundY;
   return {
-    transformOrigin: `${(PET_LAYER_ORIGIN.x / PROFILE_CHARACTER_CANVAS.width) * 100}% ${(PET_LAYER_ORIGIN.y / PROFILE_CHARACTER_CANVAS.height) * 100}%`,
-    transform: `translate(${(PET_LAYER_SHIFT_X / PROFILE_CHARACTER_CANVAS.width) * 100}%, ${(groundShiftY / PROFILE_CHARACTER_CANVAS.height) * 100}%) scale(${PET_LAYER_SCALE})`,
+    transformOrigin: `${(PET_LAYER_ORIGIN_X / PROFILE_CHARACTER_CANVAS.width) * 100}% ${(groundY / PROFILE_CHARACTER_CANVAS.height) * 100}%`,
+    transform: `translate(${(shiftX / PROFILE_CHARACTER_CANVAS.width) * 100}%, ${(groundShiftY / PROFILE_CHARACTER_CANVAS.height) * 100}%) scale(${scale})`,
   };
 }
 
@@ -84,7 +85,10 @@ export default function ProfileCharacterPreview({
   const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const hasSquareBackground = backgroundLayers.some(layer => layer.slot === "background");
   const hasJesusPhotoBackground = backgroundLayers.some(layer => layer.id === "shared_background_15");
-  const useSquareCanvas = hasSquareBackground || forceSquareCanvas;
+  const hasWidePet = foregroundLayers.some(layer =>
+    layer.slot === "pet" && getProfileCharacterPetLayout(layer.id).requiresSquareCanvas,
+  );
+  const useSquareCanvas = hasSquareBackground || forceSquareCanvas || hasWidePet;
   const characterLayerStyle: CSSProperties = useSquareCanvas
     ? {
       left: `${hasJesusPhotoBackground ? JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT : SQUARE_CHARACTER_RENDER_LEFT_PERCENT}%`,
@@ -157,9 +161,11 @@ export default function ProfileCharacterPreview({
             position: "absolute",
             ...characterLayerStyle,
             ...(layer.slot === "pet"
-              ? getPetLayerStyle(normalizedAvatarType, foregroundLayers)
+              ? getPetLayerStyle(layer.id, normalizedAvatarType, foregroundLayers)
               : {}),
-            zIndex: layer.zIndex ?? 10,
+            zIndex: layer.slot === "pet" && getProfileCharacterPetLayout(layer.id).behindCharacter
+              ? -1
+              : layer.zIndex ?? 10,
             objectFit: "contain",
             imageRendering: "pixelated",
             userSelect: "none",

@@ -11,6 +11,7 @@ import type { HeartShopItemId } from "@/lib/heartShopItems";
 import {
   PROFILE_CHARACTER_CANVAS,
   getProfileCharacterBaseImageSrc,
+  getProfileCharacterPetLayout,
   type ProfileCharacterLayer,
 } from "@/lib/profileCharacter";
 
@@ -25,7 +26,6 @@ type SaveProfileAvatarDisplayOptions = {
 };
 
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260722_v1";
-const PROFILE_CHARACTER_PET_LAYOUT_VERSION = "20260808_v1";
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
 const PROFILE_CHARACTER_AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
@@ -34,9 +34,7 @@ const JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT = -8;
 
 // Keep these values aligned with ProfileCharacterPreview so the saved square
 // avatar matches the live character preview exactly.
-const PET_LAYER_SCALE = 1.2;
-const PET_LAYER_SHIFT_X = 65;
-const PET_LAYER_ORIGIN = { x: 700, y: 1268 } as const;
+const PET_LAYER_ORIGIN_X = 700;
 const BASE_CHARACTER_GROUND_Y: Record<RootsAvatarType, number> = {
   rootsman: 1329,
   rootswoman: 1260,
@@ -76,11 +74,12 @@ function drawCharacterLayer(
 ) {
   context.save();
   if (layer.slot === "pet") {
-    const groundShiftY = getCharacterGroundY(avatarType, layers) - PET_LAYER_ORIGIN.y;
-    context.translate(PET_LAYER_SHIFT_X, groundShiftY);
-    context.translate(PET_LAYER_ORIGIN.x, PET_LAYER_ORIGIN.y);
-    context.scale(PET_LAYER_SCALE, PET_LAYER_SCALE);
-    context.translate(-PET_LAYER_ORIGIN.x, -PET_LAYER_ORIGIN.y);
+    const { scale, shiftX, groundY } = getProfileCharacterPetLayout(layer.id);
+    const groundShiftY = getCharacterGroundY(avatarType, layers) - groundY;
+    context.translate(shiftX, groundShiftY);
+    context.translate(PET_LAYER_ORIGIN_X, groundY);
+    context.scale(scale, scale);
+    context.translate(-PET_LAYER_ORIGIN_X, -groundY);
   }
   context.drawImage(
     image,
@@ -150,11 +149,11 @@ export function getProfileCharacterAvatarSignature(
     .map(layer => getSquareProfileBackgroundAsset(layer.id))
     .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
     .at(-1) ?? null;
-  const hasPetLayer = layers.some(layer => layer.slot === "pet");
+  const petLayer = layers.find(layer => layer.slot === "pet");
   const assetVersion = [
     PROFILE_CHARACTER_AVATAR_ASSET_VERSION,
     ...(squareBackgroundAsset ? [squareBackgroundAsset.version] : []),
-    ...(hasPetLayer ? [PROFILE_CHARACTER_PET_LAYOUT_VERSION] : []),
+    ...(petLayer ? [getProfileCharacterPetLayout(petLayer.id).version] : []),
   ].join(":");
   return [assetVersion, normalizedAvatarType, ...layerIds].join(":");
 }
@@ -185,12 +184,36 @@ export async function createProfileCharacterAvatarBlob(
   ]);
 
   const characterCanvas = document.createElement("canvas");
-  characterCanvas.width = PROFILE_CHARACTER_CANVAS.width;
+  const hasWidePet = foregroundLayers.some(layer =>
+    layer.slot === "pet" && getProfileCharacterPetLayout(layer.id).requiresSquareCanvas,
+  );
+  // Retain the native character scale and leave drawable space on the right
+  // for larger pets; the final square canvas remains the clipping boundary.
+  characterCanvas.width = hasWidePet
+    ? PROFILE_CHARACTER_CANVAS.height
+    : PROFILE_CHARACTER_CANVAS.width;
   characterCanvas.height = PROFILE_CHARACTER_CANVAS.height;
   const characterContext = characterCanvas.getContext("2d");
   if (!characterContext) throw new Error("Could not prepare the profile character canvas.");
   characterContext.imageSmoothingEnabled = false;
   const [baseCharacterImage, ...foregroundImages] = characterImages;
+  const drawLayers = (behindCharacter: boolean) => {
+    foregroundLayers.forEach((layer, index) => {
+      const isBehindCharacter = layer.slot === "pet"
+        && getProfileCharacterPetLayout(layer.id).behindCharacter;
+      if (isBehindCharacter !== behindCharacter) return;
+      const image = foregroundImages[index];
+      if (!image) return;
+      drawCharacterLayer(
+        characterContext,
+        image,
+        layer,
+        normalizedAvatarType,
+        foregroundLayers,
+      );
+    });
+  };
+  drawLayers(true);
   characterContext.drawImage(
     baseCharacterImage,
     0,
@@ -198,17 +221,7 @@ export async function createProfileCharacterAvatarBlob(
     PROFILE_CHARACTER_CANVAS.width,
     PROFILE_CHARACTER_CANVAS.height,
   );
-  foregroundLayers.forEach((layer, index) => {
-    const image = foregroundImages[index];
-    if (!image) return;
-    drawCharacterLayer(
-      characterContext,
-      image,
-      layer,
-      normalizedAvatarType,
-      foregroundLayers,
-    );
-  });
+  drawLayers(false);
 
   const outputCanvas = document.createElement("canvas");
   outputCanvas.width = PROFILE_AVATAR_OUTPUT_SIZE;
@@ -243,7 +256,7 @@ export async function createProfileCharacterAvatarBlob(
     characterCanvas,
     renderLeft,
     10,
-    renderWidth,
+    renderHeight * (characterCanvas.width / characterCanvas.height),
     renderHeight,
   );
 
