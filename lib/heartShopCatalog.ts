@@ -236,6 +236,7 @@ export const HEART_SHOP_ROOTSMAN_FW_SHOES_ASSET_VERSION = "20260905_fw_v1";
 export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 export const HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION = "20260904_travel_v1";
+export const HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION = "20260911_travel_v1";
 
 // Every current Love Shop character asset has a lossless WebP counterpart.
 // Legacy PNG files remain deployed temporarily for older app tabs and caches.
@@ -293,9 +294,11 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
   const isTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 11 && itemNumber <= 14;
   const isLatestProfileBackground = avatarType === "shared" && slot === "background" && itemNumber >= 15 && itemNumber <= 20;
   const isNewestTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 21 && itemNumber <= 24;
+  const isAdditionalTravelBackground = avatarType === "shared" && slot === "background" && itemNumber >= 25 && itemNumber <= 28;
   const isLatestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 5 && itemNumber <= 7;
+  const isNewestPet = avatarType === "shared" && slot === "pet" && itemNumber >= 8 && itemNumber <= 9;
   const isLatestClothingAsset = isNewRootsmanClothing || isLatestRootsWomanTop || isLatestRootsWomanBottom || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom || isNewestRootswomanFwShoes || isRootsmanFwBottomAsset || isNewestRootsmanBottom || isNewestRootsmanFwTop || isNewestRootsmanTopRefresh || isNewestRootsmanFwShoes;
-  const isNew = isLatestProfileBackground || isNewestTravelBackground || isLatestPet || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom || isNewestRootswomanFwShoes || isNewestRootsmanBottom || isNewestRootsmanFwTop || isNewestRootsmanTopRefresh || isNewestRootsmanFwShoes;
+  const isNew = isLatestProfileBackground || isNewestTravelBackground || isAdditionalTravelBackground || isLatestPet || isNewestPet || isNewestTop || isNewestRootswomanFwTop || isNewestRootsWomanBottom || isNewestRootswomanFwShoes || isNewestRootsmanBottom || isNewestRootsmanFwTop || isNewestRootsmanTopRefresh || isNewestRootsmanFwShoes;
   const latestBackgroundPriority = itemId === "shared_background_15"
     ? 1400
     : itemId === "shared_background_20"
@@ -311,6 +314,10 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
               : 0;
   const newPriority = itemId === "shared_background_15"
     ? 10000
+    : isAdditionalTravelBackground
+      ? 9500 - itemNumber
+    : isNewestPet
+      ? 9100 - itemNumber
     : isNewestTravelBackground
       ? 9000 - itemNumber
       : isNewestRootsmanTopRefresh
@@ -336,8 +343,10 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
                   : 0;
   const sharedDirectory = slot === "background" ? "profile-backgrounds" : config.directory;
   const assetExtension = HEART_SHOP_CHARACTER_ASSET_EXTENSION;
-  const profileBackgroundAssetVersion = isNewestTravelBackground
-    ? HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION
+  const profileBackgroundAssetVersion = isAdditionalTravelBackground
+    ? HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION
+    : isNewestTravelBackground
+      ? HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION
     : itemId === "shared_background_20"
       ? HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION
       : HEART_SHOP_LATEST_PROFILE_ASSET_VERSION;
@@ -360,7 +369,7 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
       : HEART_SHOP_LATEST_CLOTHING_ASSET_VERSION;
   const layerPath = avatarType === "shared"
     ? slot === "background"
-      ? `${sharedLayerPath}?v=${isLatestProfileBackground || isNewestTravelBackground ? profileBackgroundAssetVersion : isTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
+      ? `${sharedLayerPath}?v=${isLatestProfileBackground || isNewestTravelBackground || isAdditionalTravelBackground ? profileBackgroundAssetVersion : isTravelBackground ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION}`
       : sharedLayerPath
     : isLatestClothingAsset
       ? `${characterLayerPath}?v=${clothingAssetVersion}`
@@ -398,7 +407,11 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     newPriority,
     layerPath,
     zIndex: config.zIndex,
-    sortOrder: avatarType === "rootsman" && slot === "bottom" && rootsmanBottomDisplayIndex >= 0
+    sortOrder: isAdditionalTravelBackground
+      ? 877 + (itemNumber - 25)
+      : isNewestPet
+        ? 798 + (itemNumber - 8)
+      : avatarType === "rootsman" && slot === "bottom" && rootsmanBottomDisplayIndex >= 0
       ? avatarSortOffset + config.sortOffset + rootsmanBottomDisplayIndex + 1
       : isRootsmanSummerTop
       ? avatarSortOffset + config.sortOffset - 10 + (itemNumber - 7)

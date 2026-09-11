@@ -1,5 +1,6 @@
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import {
+  HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION,
   HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION,
   HEART_SHOP_LATEST_PROFILE_ASSET_VERSION,
   HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION,
@@ -117,11 +118,14 @@ function getSquareProfileBackgroundAsset(layerId: string) {
   const itemNumber = Number(match[1]);
   const isBusanBackground = itemNumber === 20;
   const isNewestTravelBackground = itemNumber >= 21 && itemNumber <= 24;
-  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 24;
+  const isAdditionalTravelBackground = itemNumber >= 25 && itemNumber <= 28;
+  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 28;
   const isTravelBackground = itemNumber >= 11 && itemNumber <= 14;
   const extension = isLatestWebpBackground ? "webp" : "png";
-  const version = isNewestTravelBackground
-    ? HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION
+  const version = isAdditionalTravelBackground
+    ? HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION
+    : isNewestTravelBackground
+      ? HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION
     : isBusanBackground
       ? HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION
       : isLatestWebpBackground
