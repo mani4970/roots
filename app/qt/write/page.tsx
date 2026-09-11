@@ -43,7 +43,6 @@ import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import QTFreePassageChoice from "@/components/QTFreePassageChoice";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
-import QTInputDiagnosticPanel from "@/components/QTInputDiagnosticPanel";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
@@ -3517,7 +3516,6 @@ export default function QTWritePage() {
   return (
     <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <QTWriteContent />
-      <QTInputDiagnosticPanel />
     </Suspense>
   );
 }
