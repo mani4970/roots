@@ -91,6 +91,8 @@ export default function CursorStableInput({
   const onInputRef = useRef(onInput);
   const [protectAppleDesktopOrTabletCaret, setProtectAppleDesktopOrTabletCaret] =
     useState(false);
+  const [disableNativeWritingSuggestions, setDisableNativeWritingSuggestions] =
+    useState(false);
 
   onValueChangeRef.current = onValueChange;
   onInputRef.current = onInput;
@@ -100,6 +102,13 @@ export default function CursorStableInput({
   useLayoutEffect(() => {
     if (isAppleDesktopOrTabletRuntime()) {
       setProtectAppleDesktopOrTabletCaret(true);
+      try {
+        setDisableNativeWritingSuggestions(
+          Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios",
+        );
+      } catch {
+        // Keep the current editor behavior if native runtime detection fails.
+      }
     }
   }, []);
 
@@ -244,7 +253,13 @@ export default function CursorStableInput({
   };
 
   const editorProps = protectAppleDesktopOrTabletCaret
-    ? { autoCorrect: "off", spellCheck: false }
+    ? {
+        autoCorrect: "off",
+        spellCheck: false,
+        // Separate from autocorrect/spellcheck. Native Mac/iPad trial only;
+        // do not intercept IME events, rewrite text, or change sync timing.
+        ...(disableNativeWritingSuggestions ? { writingsuggestions: "false" } : {}),
+      }
     : { defaultValue: value, onInput: handleInput };
 
   return (
