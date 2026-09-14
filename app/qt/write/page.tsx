@@ -40,6 +40,7 @@ import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import QTWriteLoadingState from "@/components/QTWriteLoadingState";
+import QTCompletionScreen from "@/components/QTCompletionScreen";
 import QTFreePassageChoice from "@/components/QTFreePassageChoice";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -483,6 +484,7 @@ function QTWriteContent() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
+  const [completionReady, setCompletionReady] = useState(false);
   const completionSavingRef = useRef(false);
   const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
   const pendingCompletionRef = useRef<PendingCompletion | null>(null);
@@ -542,6 +544,10 @@ function QTWriteContent() {
   }
 
   useAndroidBackHandler(() => {
+    if (completionReady) {
+      leaveAfterSave(() => router.replace("/"));
+      return true;
+    }
     if (saving || completionSavingRef.current) return true;
     if (pendingCompletion) {
       leaveWriter();
@@ -856,6 +862,9 @@ function QTWriteContent() {
 
   // 임시저장 데이터 로드
   useEffect(() => {
+    // A completed writer now keeps the celebration mounted locally. A late
+    // initial-load rerun (for example across midnight) must not replace it.
+    if (pendingCompletionRef.current) return;
     setDraftLoadError(false);
     setDraftProbeDone(false);
     setPageReady(false);
@@ -1072,6 +1081,7 @@ function QTWriteContent() {
         updateAutoSaveStatus("local");
       }
 
+      if (pendingCompletionRef.current) return;
       const completedRecord = sameDateRows?.find((row: any) => row.is_draft === false) ?? null;
       if (completedRecord?.id) {
         removeQTDraftBackup(user.id, initialDate);
@@ -2374,12 +2384,19 @@ function QTWriteContent() {
     if (selectedDate !== getLocalDateString()) return true;
 
     try {
-      const progress = await recordBibleReflectionProgress(supabase, userId, selectedDate);
+      const progress = await withQtDraftTimeout(
+        recordBibleReflectionProgress(supabase, userId, selectedDate),
+        20_000,
+        "record_bible_reflection_progress",
+      );
       if (progress.awardedBadges.length > 0) {
         storageSet(getPendingAwardedBadgesKey(userId, selectedDate), JSON.stringify(progress.awardedBadges));
       }
-      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, selectedDate, qtRecordId);
       storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
+      // The core progress RPC has succeeded. The independent challenge ledger
+      // can retry in the background and must not hold completion open.
+      void recordCompanionChallengeReflectionCompletedBestEffort(supabase, selectedDate, qtRecordId)
+        .catch(error => console.warn("동역자 챌린지 완료일 기록 실패:", error));
       return true;
     } catch (progressError) {
       console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
@@ -2439,17 +2456,14 @@ function QTWriteContent() {
     }
 
     if (selectedDate === getLocalDateString()) {
-      try {
-        await markBibleReflectionCompletedForNotifications(selectedDate, lang);
-      } catch (notificationError) {
-        console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError);
-      }
+      void markBibleReflectionCompletedForNotifications(selectedDate, lang)
+        .catch(notificationError => console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError));
     }
-    await createBibleReflectionShareNotificationsBestEffort({
+    void createBibleReflectionShareNotificationsBestEffort({
       qtRecordId: recordId,
       visibility: options.visibility,
       partnerRecipientIds: options.partnerRecipientIds,
-    });
+    }).catch(notificationError => console.warn("말씀 묵상 나눔 알림 생성 실패:", notificationError));
     // A collision can mean another tab saved, or the first response was lost.
     // Never imply the current form was saved: retain its backup and the notice
     // until the user explicitly chooses to open the existing record.
@@ -2457,7 +2471,9 @@ function QTWriteContent() {
     removeQTDraftBackup(userId, selectedDate);
     setShowCompleteSharePrompt(false);
     setCompleteShareTargets([]);
-    leaveAfterSave(() => router.push("/qt/complete"));
+    // This screen is already in the writer bundle: a slow/missing route chunk
+    // cannot hide a successfully completed reflection behind a blank page.
+    setCompletionReady(true);
   }
 
   async function save(options: CompleteSaveOptions = {}) {
@@ -2597,6 +2613,10 @@ function QTWriteContent() {
   }
 
   // ─── 말씀 선택 화면 (6step & free) ───
+  if (completionReady) {
+    return <QTCompletionScreen lang={lang} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
+  }
+
   if (draftLoadError) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 24px" }}>

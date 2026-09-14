@@ -1,0 +1,173 @@
+.deck {
+  --prayer-paper: #fff9eb;
+  --prayer-sage: #eaf1e3;
+  --prayer-ink: #344332;
+  --prayer-muted: #65705e;
+  --prayer-line: #d5ddca;
+  width: 100%;
+  min-width: 0;
+  color: var(--prayer-ink);
+}
+
+:global([data-theme="dark"]) .deck {
+  --prayer-paper: #383629;
+  --prayer-sage: #293c30;
+  --prayer-ink: #edf0e7;
+  --prayer-muted: #bdc7b5;
+  --prayer-line: #53604c;
+}
+
+.rail {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 6px 12px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 32px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.rail::before,
+.rail::after {
+  content: "";
+  flex: 0 0 20px;
+}
+
+.rail:focus-visible {
+  outline: 2px solid var(--sage, #617d59);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+.dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card {
+  flex: 0 0 calc(100% - 64px);
+  min-width: 0;
+  height: var(--prayer-card-height, 25rem);
+  min-height: 15rem;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: var(--prayer-paper);
+  border: 1px solid var(--prayer-line);
+  border-radius: 20px;
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgb(47 62 39 / 5%);
+}
+
+.card[data-prayer-kind="intercession"] {
+  background: var(--prayer-sage);
+}
+
+.head {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--prayer-muted);
+  font-size: .8em;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  color: var(--prayer-ink);
+  font-weight: 600;
+}
+
+.headerSlot {
+  min-width: 0;
+}
+
+.body {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  overflow: clip;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--prayer-line) transparent;
+  padding-right: 6px;
+}
+
+.scrollableBody {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.body:focus-visible {
+  outline: 2px solid var(--sage, #617d59);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.body p {
+  margin: 0;
+  color: var(--prayer-ink);
+  font-size: 1em;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding-top: 16px;
+}
+
+.actions button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.position {
+  margin: 2px 0 0;
+  text-align: center;
+  color: var(--prayer-muted);
+  font-size: .8em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+@media (max-width: 359px) {
+  .card {
+    padding: 18px 14px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail {
+    scroll-behavior: auto;
+  }
+}

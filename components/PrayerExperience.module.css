@@ -1,0 +1,476 @@
+.page {
+  min-width: 0;
+}
+
+.pageShell {
+  min-width: 0;
+  padding-bottom: 100px;
+}
+
+.header {
+  padding: var(--roots-page-top-padding) 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.headingRow h1 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.content {
+  padding: 18px 16px 24px;
+  min-width: 0;
+}
+
+.popup {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--prayer-visible-top, 0px);
+  height: var(--prayer-visible-height, 100dvh);
+  z-index: 180;
+  box-sizing: border-box;
+  padding: max(14px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgb(51 62 47 / 28%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.popup:focus {
+  outline: none;
+}
+
+.popupShell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  height: min(650px, 100%);
+  max-height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  border-radius: 26px;
+  border: 1px solid rgb(255 255 255 / 65%);
+  background: rgb(250 249 241 / 90%);
+  box-shadow: 0 18px 60px rgb(27 40 26 / 18%);
+}
+
+:global([data-theme="dark"]) .popupShell {
+  background: rgb(31 39 32 / 93%);
+  border-color: rgb(213 225 204 / 20%);
+}
+
+.popupShell .header {
+  padding: 18px 16px 0;
+  flex: 0 0 auto;
+}
+
+.popupShell .headingRow {
+  margin-bottom: 12px;
+}
+
+.popupShell .headingRow h1 {
+  font-size: 19px;
+}
+
+.popupShell .content {
+  padding: 12px 0 8px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.popupShell .answeredList {
+  margin-inline: 16px;
+}
+
+.iconButton {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 11px;
+  color: var(--prayer-muted-text);
+  overflow-wrap: anywhere;
+}
+
+.cardMenu {
+  position: relative;
+  flex: 0 0 auto;
+  margin-right: -10px;
+}
+
+.cardAuthor {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+.cardDate {
+  flex: 0 0 auto;
+  font-size: 0.9em;
+}
+
+.menuPopover {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: 190px;
+  padding: 6px;
+  background: var(--prayer-popover-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-popover);
+}
+
+.menuPopover button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuPopover .deleteAction {
+  color: var(--prayer-danger-text);
+}
+
+.answerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--prayer-sage-border);
+  border-radius: 14px;
+  background: var(--prayer-sage-action);
+  color: var(--prayer-on-sage-action);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addPrayer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--prayer-sage-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.intercedingStatus {
+  cursor: default;
+  background: var(--prayer-sage-surface);
+  color: var(--prayer-sage-text);
+}
+
+.answeredHeading {
+  margin: 24px 16px 14px;
+  color: var(--text2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.loadError {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text2);
+}
+
+.formOverlay {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--prayer-visible-top, 0px);
+  height: var(--prayer-visible-height, 100dvh);
+  z-index: 190;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(14px, env(safe-area-inset-top)) 20px max(14px, env(safe-area-inset-bottom));
+  background: var(--overlay-modal);
+}
+
+.formOverlay > div {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.iconButton:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .headingRow h1 { font-size: 24px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .popupShell .headingRow h1 { font-size: 22px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .cardMeta { font-size: 14px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .menuPopover button { font-size: 15px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .answerButton,
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .addPrayer { font-size: 16px; }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .answeredHeading { font-size: 18px; }
+}
+
+
+.statusTabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--prayer-tab-muted-surface);
+}
+
+.statusTabs button,
+.categoryTabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  color: var(--prayer-muted-text);
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+
+.statusTabs button {
+  padding: 10px 8px;
+  border-radius: 11px;
+}
+
+.statusTabs button[aria-pressed="true"] {
+  background: var(--prayer-tab-sage-fill);
+  color: var(--prayer-on-tab-fill);
+  font-weight: 700;
+}
+
+.categoryTabs {
+  display: flex;
+}
+
+.categoryTabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px 12px;
+  border-bottom: 2px solid transparent;
+}
+
+.categoryTabs button[aria-pressed="true"] {
+  color: var(--prayer-sage-text);
+  font-weight: 700;
+  border-bottom-color: var(--prayer-sage-text);
+}
+
+.tabCount {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--prayer-tab-muted-surface);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.categoryTabs button[aria-pressed="true"] .tabCount {
+  background: var(--prayer-tab-sage-fill);
+  color: var(--prayer-on-tab-fill);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 52px 16px;
+}
+
+.popupFooter {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 16px;
+  padding-bottom: 8px;
+}
+
+.popupShell .loading,
+.popupShell .loadError,
+.popupShell .emptyState {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+.popupShell .cardDeck {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.popupShell .cardDeck > [role="region"] {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.popupShell .cardDeck > [role="status"] {
+  flex: 0 0 auto;
+}
+
+.popupShell .cardDeck [data-prayer-card-id] {
+  height: auto;
+  min-height: 0;
+  padding: 16px;
+}
+
+.popupShell .cardDeck [data-prayer-card-id] > div:first-child {
+  margin-bottom: 10px;
+}
+
+.answeredIntercessionMenu {
+  position: absolute;
+  top: 2px;
+  right: 12px;
+  z-index: 3;
+}
+
+.removalOverlay {
+  z-index: 255;
+}
+
+.removalDialog {
+  background: var(--prayer-modal-surface);
+  width: 100%;
+  max-width: 370px;
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-modal);
+}
+
+.removalDialog h2 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.removalDialog p {
+  font-size: 13px;
+  color: var(--prayer-muted-text);
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+
+.removalDialog .removalError {
+  color: var(--prayer-danger-text);
+}
+
+.removalActions {
+  display: flex;
+  gap: 8px;
+}
+
+.removalActions button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.confirmRemoval {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 0;
+  background: var(--prayer-danger-action);
+  color: var(--prayer-on-danger-action);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirmRemoval:disabled {
+  cursor: default;
+  opacity: .6;
+}

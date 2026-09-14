@@ -64,6 +64,21 @@ export function createQTLeaveGuard({
     }
   }
 
+  function navigateAfterSave(action: () => void) {
+    // The caller has confirmed its save. Native WebViews can delay a
+    // history.back()/popstate round trip; completion must not wait for it.
+    // Remove only this editor's guard marker and let the caller navigate.
+    bypass = true;
+    armed = false;
+    pendingNavigation = null;
+    if (ownsTopEntry()) {
+      const state = { ...win.history.state };
+      delete state[HISTORY_KEY];
+      win.history.replaceState(state, "", win.location.href);
+    }
+    action();
+  }
+
   function onPopState(event: PopStateEvent) {
     if (pendingNavigation) {
       const action = pendingNavigation;
@@ -115,7 +130,7 @@ export function createQTLeaveGuard({
       navigate(action);
       return true;
     },
-    leaveAfterSave: navigate,
+    leaveAfterSave: navigateAfterSave,
     dispose() {
       disposed = true;
       win.removeEventListener("popstate", onPopState, true);

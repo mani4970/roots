@@ -24,6 +24,7 @@ import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
+import QTCompletionScreen from "@/components/QTCompletionScreen";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -477,6 +478,8 @@ function PhotoReflectionContent() {
   const [translationTouched, setTranslationTouched] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [completionReady, setCompletionReady] = useState(false);
+  const [completionNotice, setCompletionNotice] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargets, setShareTargets] = useState<string[]>([]);
   const [groups, setGroups] = useState<ShareTargetGroup[]>([]);
@@ -486,6 +489,10 @@ function PhotoReflectionContent() {
   const [editLoadError, setEditLoadError] = useState(false);
 
   useAndroidBackHandler(() => {
+    if (completionReady) {
+      leaveGuard.leaveAfterSave(() => router.replace("/"));
+      return true;
+    }
     if (showShareModal) {
       if (!saving && !loadingShareOptions) setShowShareModal(false);
       return true;
@@ -554,7 +561,7 @@ function PhotoReflectionContent() {
       : passageTouched || translationTouched),
   );
   const leaveGuard = useQTLeaveGuard({
-    dirty: hasUnsavedPhotoChanges,
+    dirty: !completionReady && hasUnsavedPhotoChanges,
     busy: saving || preparingPhoto,
     lang,
   });
@@ -564,6 +571,13 @@ function PhotoReflectionContent() {
   }
 
   function navigateAfterPhotoSave(href: string) {
+    if (href === "/qt/complete") {
+      // Successful completion remains in the loaded photo route until the
+      // user confirms; it does not need another page/chunk to show confetti.
+      setShowShareModal(false);
+      setCompletionReady(true);
+      return;
+    }
     leaveGuard.leaveAfterSave(() => router.push(href));
   }
 
@@ -572,7 +586,7 @@ function PhotoReflectionContent() {
     // and caption have not necessarily been saved, so never discard them just
     // because that date already has a completed reflection.
     if (!window.confirm(`${qtFlowCopy("existingRecordTitle", lang)}\n${qtFlowCopy("leaveUnsaved", lang)}`)) return;
-    leaveGuard.leaveAfterSave(() => router.push(href));
+    navigateAfterPhotoSave(href);
   }
 
   useEffect(() => {
@@ -1056,7 +1070,8 @@ function PhotoReflectionContent() {
     // Keep the companion challenge as an independent reward layer. Even when
     // streak/progress was already recorded, retry the same-day companion ledger
     // so a prior transient failure cannot leave photo reflections behind.
-    await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, qtRecordId);
+    void recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, qtRecordId)
+      .catch(error => console.warn("photo reflection companion challenge recording failed", error));
     return progress.updated;
   }
 
@@ -1117,11 +1132,8 @@ function PhotoReflectionContent() {
               "photo progress recovery",
             );
             if (recoveredProgress) {
-              try {
-                await markBibleReflectionCompletedForNotifications(today, lang);
-              } catch (notificationError) {
-                console.warn("photo reflection notification completion update failed", notificationError);
-              }
+              void markBibleReflectionCompletedForNotifications(today, lang)
+                .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
               setShowShareModal(false);
               requestDuplicatePhotoExit("/qt/complete");
               return;
@@ -1314,26 +1326,15 @@ function PhotoReflectionContent() {
           return;
         }
 
-        try {
-          await markBibleReflectionCompletedForNotifications(today, lang);
-        } catch (notificationError) {
-          console.warn("photo reflection notification completion update failed", notificationError);
-        }
+        void markBibleReflectionCompletedForNotifications(today, lang)
+          .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
 
         stage = "notifications";
-        try {
-          await withPhotoStageTimeout(
-            createBibleReflectionShareNotificationsBestEffort({
-              qtRecordId: recordId,
-              visibility: effectiveVisibility,
-              partnerRecipientIds: effectivePartnerRecipientIds,
-            }),
-            "photo share notifications",
-            NOTIFICATION_STAGE_TIMEOUT_MS,
-          );
-        } catch (notificationError) {
-          console.warn("photo reflection share notification creation failed", notificationError);
-        }
+        void createBibleReflectionShareNotificationsBestEffort({
+          qtRecordId: recordId,
+          visibility: effectiveVisibility,
+          partnerRecipientIds: effectivePartnerRecipientIds,
+        }).catch(notificationError => console.warn("photo reflection share notification creation failed", notificationError));
 
         recordQTPhotoDiagnostic({
           attemptId,
@@ -1348,11 +1349,11 @@ function PhotoReflectionContent() {
         });
         setShowShareModal(false);
         if (sharingFailed) {
-          showNotice(pc("savedShareWarning", lang));
-          window.setTimeout(() => navigateAfterPhotoSave("/qt/complete"), 1400);
-        } else {
-          navigateAfterPhotoSave("/qt/complete");
+          // Keep the existing warning visible with the saved completion, so
+          // the just-saved photo never reappears as an editable form.
+          setCompletionNotice(pc("savedShareWarning", lang));
         }
+        navigateAfterPhotoSave("/qt/complete");
         return;
       }
 
@@ -1439,7 +1440,9 @@ function PhotoReflectionContent() {
         setShowShareModal(false);
         showNotice(pc("savedFollowupWarning", lang));
         window.setTimeout(() => {
-          navigateAfterPhotoSave(targetDate === today ? "/qt/complete" : `/qt/record?id=${insertedRecordId}`);
+          // A known record alone is not proof that the required progress work
+          // succeeded. Preserve/open it without displaying false completion.
+          navigateAfterPhotoSave(`/qt/record?id=${insertedRecordId}`);
         }, 1400);
       } else {
         showNotice(getPhotoSaveNotice(stage, lang));
@@ -1622,6 +1625,10 @@ function PhotoReflectionContent() {
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
   const displayedPhotoUrl = previewUrl || (!existingPhotoRemoved ? existingPhotoUrl : null);
   const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
+
+  if (completionReady) {
+    return <QTCompletionScreen lang={lang} notice={completionNotice} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
+  }
 
   if (isEditMode && editLoading) {
     return (

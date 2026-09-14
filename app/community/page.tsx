@@ -10,6 +10,11 @@ import {
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
+import PrayerExperience from "@/components/PrayerExperience";
+import PrayerAddedFeedback, { type PrayerAddedEntry } from "@/components/PrayerAddedFeedback";
+import prayerFeedbackStyles from "@/components/PrayerAddedFeedback.module.css";
+import { getPrayerCardText } from "@/lib/prayerCardText";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import NotificationDirectOpenOverlay from "@/components/notifications/NotificationDirectOpenOverlay";
@@ -834,7 +839,7 @@ const SECTIONS: {
   { key: "closing_prayer", labelKey: "community_qt_section_closing_prayer" },
 ];
 
-type CommunityModalHistoryKind = "qt-detail" | "photo-viewer";
+type CommunityModalHistoryKind = "qt-detail" | "photo-viewer" | "prayer-added" | "prayer-answer";
 type CommunityMainTab = "partner" | "group" | "all";
 
 function CommunityPageContent() {
@@ -888,6 +893,11 @@ function CommunityPageContent() {
 
   // 중보기도
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
+  const [prayerAdded, setPrayerAdded] = useState<PrayerAddedEntry | null>(null);
+  const [prayerJoinError, setPrayerJoinError] = useState<string | null>(null);
+  const [prayerJoiningIds, setPrayerJoiningIds] = useState<string[]>([]);
+  const [answerPrayerId, setAnswerPrayerId] = useState<string | null>(null);
+  const prayerCardText = getPrayerCardText(lang);
 
   // 기도 응답 좋아요: user_id + prayer_id 기준으로 1회만 허용
   const [likedPrayerIds, setLikedPrayerIds] = useState<string[]>([]);
@@ -1053,11 +1063,22 @@ function CommunityPageContent() {
   const [directPrayerTargetId, setDirectPrayerTargetId] = useState<
     string | null
   >(null);
+  const prayerAnswerBackRef = useRef<(() => boolean) | null>(null);
+  const communityPrayerContextRef = useRef({ userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id, prayers, answeredPrayers });
+  communityPrayerContextRef.current = { userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id, prayers, answeredPrayers };
 
   useAndroidBackHandler(() => {
     if (notificationDirectOpenPending) return true;
     if (badgePopup) {
       setBadgePopup(null);
+      return true;
+    }
+    if (prayerAdded) {
+      closePrayerFeedback();
+      return true;
+    }
+    if (prayerJoinError) {
+      setPrayerJoinError(null);
       return true;
     }
     if (safetyConfirm) {
@@ -1628,6 +1649,28 @@ function CommunityPageContent() {
     return activeModal;
   }
 
+  function closePrayerFeedback() {
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === "prayer-added") {
+      window.history.back();
+    } else {
+      setPrayerAdded(null);
+    }
+  }
+
+  function closePrayerAnswer() {
+    const stack = communityModalHistoryStackRef.current;
+    if (stack[stack.length - 1] === "prayer-answer") {
+      window.history.back();
+    } else {
+      setAnswerPrayerId(null);
+    }
+  }
+
+  useEffect(() => {
+    if (prayerAdded && !badgePopup) pushCommunityModalHistory("prayer-added");
+  }, [prayerAdded, badgePopup]);
+
   function clearCommunityModalHistory(kind?: CommunityModalHistoryKind) {
     if (!kind) {
       communityModalHistoryStackRef.current = [];
@@ -1698,6 +1741,18 @@ function CommunityPageContent() {
   useEffect(() => {
     function handleCommunityPopState(event: PopStateEvent) {
       const activeModal = popCommunityModalHistory();
+      if (activeModal === "prayer-added") {
+        setPrayerAdded(null);
+        return;
+      }
+      if (activeModal === "prayer-answer") {
+        if (prayerAnswerBackRef.current?.()) {
+          pushCommunityModalHistory("prayer-answer");
+          return;
+        }
+        setAnswerPrayerId(null);
+        return;
+      }
       if (activeModal === "photo-viewer") {
         setPhotoViewer(null);
         return;
@@ -3363,20 +3418,10 @@ function CommunityPageContent() {
     );
   }
 
-  function prayerActionText(prayer: any, alreadyPrayed: boolean) {
-    const count = prayer.prayer_count ?? 0;
-    if (alreadyPrayed) {
-      return count > 0
-        ? c("community_prayed_with_count", { count })
-        : c("community_prayed");
-    }
-    return count > 0
-      ? c("community_pray_together_with_count", { count })
+  function prayerActionText(alreadyPrayed: boolean) {
+    return alreadyPrayed
+      ? prayerCardText.interceding
       : c("community_pray_together");
-  }
-
-  function answeredPrayerCountText(count: number) {
-    return c("community_answered_prayer_count", { count });
   }
 
   async function fetchPrayerLikeMeta(
@@ -5074,26 +5119,36 @@ function CommunityPageContent() {
     }
   }
 
-  async function prayTogether(id: string) {
+  async function prayTogether(
+    id: string,
+    source?: HTMLElement | null,
+    mode: "spin" | "fly" = "fly",
+  ) {
     if (!userId || prayedIds.includes(id)) return;
 
     const hapticKey = beginLoveHeartTapHaptic("prayer_intercession", id);
     if (!hapticKey) return;
+    const prayer = [...prayers, ...partnerPrayers, ...groupPrayers].find((row) => row.id === id);
+    const sourceElement = source?.closest<HTMLElement>("[data-prayer-card-id], .card") ?? source;
+    setPrayerJoinError(null);
+    setPrayerJoiningIds((current) => [...current, id]);
 
     try {
       const supabase = createClient();
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (authError || !user) throw authError ?? new Error("Sign-in required");
 
       // 중복 체크
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("user_prayer_logs")
         .select("id")
         .eq("user_id", user.id)
         .eq("prayer_id", id)
         .maybeSingle();
+      if (existingError) throw existingError;
       if (existing) {
         setPrayedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
         return;
@@ -5104,8 +5159,11 @@ function CommunityPageContent() {
         .from("user_prayer_logs")
         .insert({ user_id: user.id, prayer_id: id });
       if (logError) {
-        if (logError.code === "23505") setPrayedIds((prev) => [...prev, id]);
-        return;
+        if (logError.code === "23505") {
+          setPrayedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+          return;
+        }
+        throw logError;
       }
 
       // 카운트 증가: DB 함수가 실제 로그 개수 기준으로 prayer_count를 동기화합니다.
@@ -5114,15 +5172,18 @@ function CommunityPageContent() {
         prayer_id: id,
       });
       if (rpcError) console.error("기도 카운트 동기화 실패:", rpcError);
-      const { data: cur } = await supabase
+      const { data: cur, error: countError } = await supabase
         .from("prayer_items")
         .select("prayer_count")
         .eq("id", id)
         .single();
-      const newCount = cur?.prayer_count ?? 1;
+      const newCount = cur?.prayer_count ?? prayer?.prayer_count ?? 0;
 
-      setPrayedIds((prev) => [...prev, id]);
-      storageSetJson(`comm_prayed_${user.id}`, [...prayedIds, id]);
+      setPrayedIds((prev) => {
+        const next = prev.includes(id) ? prev : [...prev, id];
+        storageSetJson(`comm_prayed_${user.id}`, next);
+        return next;
+      });
       setPrayers((prev) =>
         prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
       );
@@ -5164,7 +5225,25 @@ function CommunityPageContent() {
       } catch (error) {
         console.warn("함께 기도 보상 배지 확인 실패:", error);
       }
+      // The log is already persisted. Keep the existing heart/badge paths above
+      // intact and queue visual feedback behind any badge popup they awarded.
+      // A failed count sync/read must never be presented as a complete success.
+      if (rpcError || countError) {
+        setPrayerJoinError(prayerCardText.addedRefreshError);
+      } else if (prayer) {
+        setPrayerAdded({
+          id,
+          content: prayer.content ?? "",
+          authorName: prayer.is_anonymous ? c("prayer_intercession_anonymous") : prayer.profiles?.name ?? c("community_unknown"),
+          mode,
+          sourceElement,
+        });
+      }
+    } catch (error) {
+      console.error("중보 기도 추가 실패:", error);
+      setPrayerJoinError(prayerCardText.addError);
     } finally {
+      setPrayerJoiningIds((current) => current.filter((pendingId) => pendingId !== id));
       finishLoveHeartTapHaptic(hapticKey);
     }
   }
@@ -6641,9 +6720,203 @@ function CommunityPageContent() {
     );
   }
 
+  async function refreshCommunityPrayerRows() {
+    // Refresh only records already admitted by the existing feed/share filters.
+    // Testimony entry must not reload QT data or widen any community visibility.
+    const context = communityPrayerContextRef.current;
+    if (!context.userId) return;
+    const publicRows = mergeRowsById([prayers, answeredPrayers]);
+    const ids = Array.from(new Set([...publicRows, ...partnerPrayers, ...groupPrayers].map((row) => String(row.id))));
+    if (!ids.length) return;
+    try {
+      const supabase = createClient();
+      const [rows, recipients, prayerLogs] = await Promise.all([
+        fetchContentRowsByIds(supabase, "prayer_items", ids),
+        context.partnerId
+          ? supabase.from("prayer_item_recipients").select("prayer_item_id")
+              .or(`and(owner_id.eq.${context.userId},recipient_id.eq.${context.partnerId}),and(owner_id.eq.${context.partnerId},recipient_id.eq.${context.userId})`)
+              .order("created_at", { ascending: false }).limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT)
+          : Promise.resolve({ data: [], error: null }),
+        supabase.from("user_prayer_logs").select("prayer_id").eq("user_id", context.userId),
+      ]);
+      if (recipients.error) throw recipients.error;
+      if (prayerLogs.error) throw prayerLogs.error;
+      const current = communityPrayerContextRef.current;
+      if (current.userId !== context.userId || current.tab !== context.tab || current.partnerId !== context.partnerId || current.groupId !== context.groupId) return;
+      const refreshedPrayedIds = (prayerLogs.data ?? []).map((row) => String(row.prayer_id));
+      setPrayedIds(refreshedPrayedIds);
+      storageSetJson(`comm_prayed_${context.userId}`, refreshedPrayedIds);
+      const byId = new Map(rows.map((row) => [String(row.id), row]));
+      const requestedIds = new Set(ids);
+      const partnerIds = new Set((recipients.data ?? []).map((row) => String(row.prayer_item_id)));
+      const hasScope = (row: any, scope: string) => String(row.visibility ?? "").split(",").map((part) => part.trim()).includes(scope);
+      const refresh = (items: any[]) => items.flatMap((row) => {
+        if (!requestedIds.has(String(row.id))) return [row];
+        const updated = byId.get(String(row.id));
+        return updated ? [{ ...row, ...updated }] : [];
+      });
+      const updatedPublic = refresh(mergeRowsById([current.prayers, current.answeredPrayers])).filter((row) => hasScope(row, "all"));
+      setPrayers(sortPrayerRequestRows(updatedPublic.filter((row) => !row.is_answered)));
+      setAnsweredPrayers(sortAnsweredPrayerRows(updatedPublic.filter((row) => !!row.is_answered)));
+      if (context.partnerId) setPartnerPrayers((items) => sortPrayerFeedRows(refresh(items).filter((row) => partnerIds.has(String(row.id)))));
+      if (context.groupId) setGroupPrayers((items) => sortPrayerFeedRows(refresh(items).filter((row) => hasScope(row, `group_${context.groupId}`))));
+    } catch (error) {
+      console.warn("기도 응답 화면 갱신 실패:", error);
+      setPrayerJoinError(prayerCardText.error);
+    }
+  }
+
+  function renderDetailPrayerCards(rows: any[], scope: "partner" | "group", scopeId: string) {
+    const items: PrayerCardEntry[] = rows.map((prayer) => {
+      const mine = prayer.user_id === userId;
+      const alreadyPrayed = prayedIds.includes(prayer.id);
+      const joining = prayerJoiningIds.includes(prayer.id);
+      return {
+        id: String(prayer.id),
+        domId: `community-prayer-${prayer.id}`,
+        kind: mine ? "mine" : "intercession",
+        content: prayer.content ?? "",
+        header: (
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, justifyContent: "space-between", width: "100%" }}>
+            {prayer.is_anonymous
+              ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
+              : <AuthorIdentity profile={prayer.profiles} authorId={prayer.user_id} />}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+              <span style={{ fontSize: 10, color: "var(--text3)", whiteSpace: "nowrap" }}>{new Date(prayer.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</span>
+              <CardMenu kind="prayer" item={prayer} scope={scope}
+                partnerId={scope === "partner" ? scopeId : undefined}
+                groupId={scope === "group" ? scopeId : undefined} />
+            </div>
+          </div>
+        ),
+        actions: mine ? (
+          <button type="button" className="btn-sage" style={{ width: "100%", minHeight: 44 }} onClick={() => {
+            pushCommunityModalHistory("prayer-answer");
+            setAnswerPrayerId(String(prayer.id));
+          }}>
+            {t("prayer_answered_cta", lang)}
+          </button>
+        ) : (
+          <button type="button" disabled={alreadyPrayed || joining}
+            onClick={(event) => void prayTogether(prayer.id, event.currentTarget, "fly")}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", minHeight: 44, padding: "10px", borderRadius: 12, border: `1px solid ${alreadyPrayed ? "var(--sage)" : "var(--border)"}`, background: alreadyPrayed ? "var(--sage-light)" : "var(--bg2)", color: alreadyPrayed ? "var(--sage-dark)" : "var(--text2)", cursor: alreadyPrayed || joining ? "default" : "pointer", fontSize: 12, fontWeight: 600 }}>
+            {joining ? <Loader2 size={15} className="spin" /> : alreadyPrayed ? <CheckCircle2 size={15} /> : <HandHeart size={15} />}
+            {alreadyPrayed ? prayerCardText.interceding : c("community_pray_together")}
+          </button>
+        ),
+      };
+    });
+    return <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId} ariaLabel={c("community_prayer_tab_praying")} />;
+  }
+
   function renderSharedOverlayModals() {
     return (
       <>
+      {badgePopup && (
+        <div
+          onClick={() => setBadgePopup(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            background: "var(--community-reward-overlay)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 28px",
+          }}
+        >
+          <ConfettiBurst variant="fixed" zIndex={201} />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--community-modal-surface)",
+              borderRadius: 28,
+              border: "1px solid var(--community-gold-border)",
+              width: "100%",
+              maxWidth: 340,
+              padding: "32px 24px 28px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
+              <img
+                src={badgePopup.img}
+                alt={badgePopup.title}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <h2
+              style={{
+                fontSize: 20,
+                fontWeight: 800,
+                color: "var(--community-gold-text)",
+                marginBottom: 10,
+                lineHeight: 1.3,
+              }}
+            >
+              {badgePopup.title}
+            </h2>
+            <div
+              style={{
+                padding: "14px 16px",
+                background: "var(--community-gold-surface)",
+                borderRadius: 14,
+                border: "1px solid var(--community-gold-border)",
+                marginBottom: 20,
+              }}
+            >
+              <p
+                style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}
+              >
+                {badgePopup.msg}
+              </p>
+            </div>
+            <button
+              onClick={() => setBadgePopup(null)}
+              style={{
+                width: "100%",
+                padding: "13px",
+                background: "var(--community-gold-action)",
+                color: "var(--community-on-gold-action)",
+                border: "none",
+                borderRadius: 14,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {c("community_thanks")}
+            </button>
+          </div>
+        </div>
+      )}
+        {prayerAdded && !badgePopup && (
+          <PrayerAddedFeedback
+            key={prayerAdded.id}
+            entry={prayerAdded}
+            lang={lang}
+            onClose={closePrayerFeedback}
+            onView={(id) => {
+              clearCommunityModalHistory("prayer-added");
+              setPrayerAdded(null);
+              router.replace(`/prayer?tab=intercession&prayerId=${encodeURIComponent(id)}`);
+            }}
+          />
+        )}
+        {prayerJoinError && (
+          <div className={prayerFeedbackStyles.error} role="alert">
+            <span>{prayerJoinError}</span>
+            <button type="button" onClick={() => setPrayerJoinError(null)} aria-label={prayerCardText.close}><X size={18} /></button>
+          </div>
+        )}
+        {answerPrayerId && (
+          <Suspense fallback={null}>
+            <PrayerExperience variant="popup" initialAnswerId={answerPrayerId}
+              onClose={closePrayerAnswer} nestedBackRef={prayerAnswerBackRef} onDataChanged={() => void refreshCommunityPrayerRows()} />
+          </Suspense>
+        )}
         {photoViewer && (
           <PhotoViewerModal
             src={photoViewer.src}
@@ -7184,7 +7457,9 @@ function CommunityPageContent() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {visiblePartnerPrayers.map((p) => (
+              {partnerDetailTab === "praying"
+                ? renderDetailPrayerCards(visiblePartnerPrayers, "partner", selectedPartner.partner_id)
+                : visiblePartnerPrayers.map((p) => (
                 <div
                   key={p.id}
                   id={`community-prayer-${p.id}`}
@@ -7210,7 +7485,9 @@ function CommunityPageContent() {
                       marginBottom: 8,
                     }}
                   >
-                    <AuthorIdentity profile={p.profiles} authorId={p.user_id} />
+                    {p.is_anonymous
+                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
+                      : <AuthorIdentity profile={p.profiles} authorId={p.user_id} />}
                     <div
                       style={{
                         display: "flex",
@@ -7280,11 +7557,6 @@ function CommunityPageContent() {
                       >
                         {c("community_answered")}
                       </span>
-                      {(p.prayer_count ?? 0) > 0 && (
-                        <span style={{ fontSize: 11, color: "var(--text3)" }}>
-                          {answeredPrayerCountText(p.prayer_count ?? 0)}
-                        </span>
-                      )}
                     </div>
                   )}
 
@@ -7389,7 +7661,7 @@ function CommunityPageContent() {
                             : "var(--text2)",
                         }}
                       >
-                        {prayerActionText(p, prayedIds.includes(p.id))}
+                        {prayerActionText(prayedIds.includes(p.id))}
                       </span>
                     </button>
                   )}
@@ -8521,7 +8793,9 @@ function CommunityPageContent() {
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
-                {visibleGroupPrayers.map((p) => (
+                {groupDetailTab === "praying"
+                  ? renderDetailPrayerCards(visibleGroupPrayers, "group", selectedGroup.id)
+                  : visibleGroupPrayers.map((p) => (
                   <div
                     key={p.id}
                     id={`community-prayer-${p.id}`}
@@ -8547,10 +8821,12 @@ function CommunityPageContent() {
                         marginBottom: 8,
                       }}
                     >
-                      <AuthorIdentity
+                      {p.is_anonymous
+                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
+                      : <AuthorIdentity
                         profile={p.profiles}
                         authorId={p.user_id}
-                      />
+                      />}
                       <div
                         style={{
                           display: "flex",
@@ -8621,11 +8897,6 @@ function CommunityPageContent() {
                         >
                           {c("community_answered")}
                         </span>
-                        {(p.prayer_count ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, color: "var(--text3)" }}>
-                            {answeredPrayerCountText(p.prayer_count ?? 0)}
-                          </span>
-                        )}
                       </div>
                     )}
 
@@ -8730,7 +9001,7 @@ function CommunityPageContent() {
                               : "var(--text2)",
                           }}
                         >
-                          {prayerActionText(p, prayedIds.includes(p.id))}
+                          {prayerActionText(prayedIds.includes(p.id))}
                         </span>
                       </button>
                     )}
@@ -9729,86 +10000,6 @@ function CommunityPageContent() {
       {renderLoveHeartToast()}
       {renderReflectionNudgeToast()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
-      {badgePopup && (
-        <div
-          onClick={() => setBadgePopup(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            background: "var(--community-reward-overlay)",
-            backdropFilter: "blur(10px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 28px",
-          }}
-        >
-          <ConfettiBurst variant="fixed" zIndex={201} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--community-modal-surface)",
-              borderRadius: 28,
-              border: "1px solid var(--community-gold-border)",
-              width: "100%",
-              maxWidth: 340,
-              padding: "32px 24px 28px",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img
-                src={badgePopup.img}
-                alt={badgePopup.title}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
-            <h2
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: "var(--community-gold-text)",
-                marginBottom: 10,
-                lineHeight: 1.3,
-              }}
-            >
-              {badgePopup.title}
-            </h2>
-            <div
-              style={{
-                padding: "14px 16px",
-                background: "var(--community-gold-surface)",
-                borderRadius: 14,
-                border: "1px solid var(--community-gold-border)",
-                marginBottom: 20,
-              }}
-            >
-              <p
-                style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}
-              >
-                {badgePopup.msg}
-              </p>
-            </div>
-            <button
-              onClick={() => setBadgePopup(null)}
-              style={{
-                width: "100%",
-                padding: "13px",
-                background: "var(--community-gold-action)",
-                color: "var(--community-on-gold-action)",
-                border: "none",
-                borderRadius: 14,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {c("community_thanks")}
-            </button>
-          </div>
-        </div>
-      )}
       <div
         style={{
           background: "var(--bg)",
@@ -10414,10 +10605,12 @@ function CommunityPageContent() {
                           marginBottom: 8,
                         }}
                       >
-                        <AuthorIdentity
+                        {p.is_anonymous
+                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
+                      : <AuthorIdentity
                           profile={p.profiles}
                           authorId={p.user_id}
-                        />
+                        />}
                         <div
                           style={{
                             display: "flex",
@@ -10448,8 +10641,8 @@ function CommunityPageContent() {
                         {p.content}
                       </p>
                       <button
-                        onClick={() => prayTogether(p.id)}
-                        disabled={prayedIds.includes(p.id)}
+                        onClick={(event) => void prayTogether(p.id, event.currentTarget, "spin")}
+                        disabled={prayedIds.includes(p.id) || prayerJoiningIds.includes(p.id)}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -10483,7 +10676,7 @@ function CommunityPageContent() {
                               : "var(--text2)",
                           }}
                         >
-                          {prayerActionText(p, prayedIds.includes(p.id))}
+                          {prayerActionText(prayedIds.includes(p.id))}
                         </span>
                       </button>
                     </div>
@@ -10517,10 +10710,12 @@ function CommunityPageContent() {
                         marginBottom: 8,
                       }}
                     >
-                      <AuthorIdentity
+                      {p.is_anonymous
+                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
+                      : <AuthorIdentity
                         profile={p.profiles}
                         authorId={p.user_id}
-                      />
+                      />}
                       <div
                         style={{
                           display: "flex",
@@ -10609,11 +10804,6 @@ function CommunityPageContent() {
                         >
                           {c("community_answered")}
                         </span>
-                        {(p.prayer_count ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, color: "var(--text3)" }}>
-                            {answeredPrayerCountText(p.prayer_count ?? 0)}
-                          </span>
-                        )}
                       </div>
                       <PrayerLikeButton prayer={p} />
                     </div>

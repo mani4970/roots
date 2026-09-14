@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { Suspense, useEffect, useState, useRef, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
@@ -86,6 +87,9 @@ import {
   isCompanionChallenge3AnnouncementWindow,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
+import { getPrayerCardText } from "@/lib/prayerCardText";
+
+const PrayerExperience = dynamic(() => import("@/components/PrayerExperience"), { ssr: false });
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -147,11 +151,10 @@ function getLegacyStorageKey(prefix: string, date: string) {
   return `${prefix}${date}`;
 }
 
-function consumePendingAwardedBadges(userId: string, date: string): string[] {
+function readPendingAwardedBadges(userId: string, date: string): string[] {
   const key = getPendingAwardedBadgesKey(userId, date);
   const raw = storageGet(key);
   if (!raw) return [];
-  storageRemove(key);
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
@@ -323,6 +326,11 @@ export default function HomePage() {
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
+  const homeLoadGenerationRef = useRef(0);
+  const homeDataDateRef = useRef<string | null>(null);
+  const [homeDetailsReady, setHomeDetailsReady] = useState({ verse: false, prayer: false, schedule: false, decisions: false });
+  const [progressRetryToken, setProgressRetryToken] = useState(0);
+  const pendingRewardPresentationRef = useRef<{ userId: string; date: string } | null>(null);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
@@ -335,7 +343,7 @@ export default function HomePage() {
   const [showHomeQTPhotoPassageChoice, setShowHomeQTPhotoPassageChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
   const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
-  const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number}>({
+  const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number; badgeKey?:string; stageKey?:string}>({
     show: false, type: "garden", badgeIndex: 0,
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
@@ -345,10 +353,12 @@ export default function HomePage() {
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string}|null>(null);
   const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
+  const queuedStageNoticesRef = useRef<Set<string>>(new Set());
   const celebrationShownRef = useRef(false);
   const progressUpdateInFlightRef = useRef(false);
+  const progressRetryRequestedRef = useRef(false);
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
@@ -364,6 +374,7 @@ export default function HomePage() {
   const [homeDecisionInput, setHomeDecisionInput] = useState("");
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
+  const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
   const [showHomePrayerSharePrompt, setShowHomePrayerSharePrompt] = useState(false);
@@ -672,13 +683,29 @@ export default function HomePage() {
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
+  const rewardDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || !!requiredUpdatePlatform
+    || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
+    || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
+    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const homeProfileCharacterLayers = getProfileCharacterLayersForItemIds(
     enabledProfileCharacterItemIds,
     currentAvatarType,
   ).filter(layer => layer.slot !== "background");
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+    return () => { homeLoadGenerationRef.current += 1; };
+  }, []);
+
+  useEffect(() => {
+    const retryProgress = () => {
+      if (progressUpdateInFlightRef.current) progressRetryRequestedRef.current = true;
+      else setProgressRetryToken(token => token + 1);
+    };
+    window.addEventListener("online", retryProgress);
+    return () => window.removeEventListener("online", retryProgress);
+  }, []);
 
   useEffect(() => {
     const userId = profile?.id;
@@ -799,301 +826,273 @@ export default function HomePage() {
   }, [loading, profile?.id, completedQtRecordId]);
 
   async function load() {
+    const generation = ++homeLoadGenerationRef.current;
+    const isCurrentLoad = () => homeLoadGenerationRef.current === generation;
     setLoading(true);
     setHomeLoadFailed(false);
-    if (typeof window !== "undefined") {
-      const saved = storageGet("roots_theme");
-      if (saved === "dark") {
-        document.documentElement.setAttribute("data-theme", "dark");
-        setTheme("dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-        setTheme("light");
+    setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
+    try {
+      if (typeof window !== "undefined") {
+        const saved = storageGet("roots_theme");
+        if (saved === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+          setTheme("dark");
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+          setTheme("light");
+        }
       }
-    }
-    const supabase = createClient();
-    let { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      await new Promise(resolve => setTimeout(resolve, 350));
-      const retry = await supabase.auth.getSession();
-      session = retry.data.session;
-    }
-    const user = session?.user ?? null;
-    if (!user) { router.push("/welcome"); return; }
-    companionChallengeAnnouncementUserIdRef.current = user.id;
-    spanishLanguageLaunchAnnouncementUserIdRef.current = user.id;
-    monthlyBadgeAwardUserIdRef.current = user.id;
+      const supabase = createClient();
+      let sessionResponse = await withQtDraftTimeout(supabase.auth.getSession(), 6_000, "home session");
+      if (sessionResponse.error) throw sessionResponse.error;
+      let session = sessionResponse.data.session;
+      if (!session) {
+        await new Promise(resolve => setTimeout(resolve, 350));
+        sessionResponse = await withQtDraftTimeout(supabase.auth.getSession(), 6_000, "home session retry");
+        if (sessionResponse.error) throw sessionResponse.error;
+        session = sessionResponse.data.session;
+      }
+      if (!isCurrentLoad()) return;
+      const user = session?.user ?? null;
+      if (!user) { router.push("/welcome"); return; }
+      const today = getLocalDateString();
 
-    void loadOwnedHeartShopItems(supabase)
-      .then(items => {
-        const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
-        setEnabledHeartShopItemIds(
-          enabledItemIds.filter(isHeartShopMapItemId),
+      // Only this confirmed snapshot gates Home and the post-reflection reward.
+      // Optional verse, schedule and community requests must not hold it back.
+      const loadProfile = async () => {
+        let response = await withQtDraftTimeout(
+          supabase.from("profiles").select("*").eq("id", user.id).single(),
+          8_000, "home profile",
         );
-        setEnabledProfileCharacterItemIds(
-          enabledItemIds.filter(isHeartShopCharacterItemId),
-        );
-      })
-      .catch(error => {
-        // Heart Shop friends and clothing are decoration layers only. A loading failure must never
-        // block Home, Bible Reflection progress, rewards, or watering.
-        console.warn("홈 사랑 상점 아이템 조회 실패:", error);
-        setEnabledHeartShopItemIds([]);
-        setEnabledProfileCharacterItemIds([]);
-      });
-
-    let profileResponse = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    for (const delayMs of HOME_PROFILE_RETRY_DELAYS_MS) {
-      if (profileResponse.data) break;
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      profileResponse = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    }
-    const p = profileResponse.data;
-    if (!p) {
-      console.error("홈 프로필 조회 실패:", profileResponse.error);
-      setHomeLoadFailed(true);
-      setLoading(false);
-      return;
-    }
-    if (p) {
+        for (const delayMs of HOME_PROFILE_RETRY_DELAYS_MS) {
+          if (response.data) break;
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          response = await withQtDraftTimeout(
+            supabase.from("profiles").select("*").eq("id", user.id).single(),
+            8_000, "home profile retry",
+          );
+        }
+        if (!response.data) throw response.error ?? new Error("Home profile unavailable");
+        return response.data;
+      };
+      const [p, qtResponse] = await Promise.all([
+        loadProfile(),
+        withQtDraftTimeout(
+          supabase.from("qt_records").select("id,is_draft,decision").eq("user_id", user.id).eq("date", today),
+          8_000, "home reflection status",
+        ),
+      ]);
+      if (qtResponse.error) throw qtResponse.error;
+      if (!isCurrentLoad()) return;
+      if (getLocalDateString() !== today) { void load(); return; }
+      const qtRecords = qtResponse.data ?? [];
+      const completedQt = qtRecords.find((record: any) => !record.is_draft) ?? null;
+      const remoteDraftExists = qtRecords.some((record: any) => record.is_draft);
+      const hasDraft = !completedQt && (remoteDraftExists || !!loadQTDraftBackup(user.id, today));
+      homeDataDateRef.current = today;
+      companionChallengeAnnouncementUserIdRef.current = user.id;
+      spanishLanguageLaunchAnnouncementUserIdRef.current = user.id;
+      monthlyBadgeAwardUserIdRef.current = user.id;
       setProfile(p);
       if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
         setShowAvatarChoiceModal(true);
       }
       const profileLang = isLang(p.preferred_language) ? p.preferred_language : null;
       const activeLang = getStoredLang() ?? profileLang ?? lang;
-      const preferredTranslation = getPreferredTranslationForLang(
-        activeLang,
-        p.preferred_translation,
-        profileLang,
-      );
+      const preferredTranslation = getPreferredTranslationForLang(activeLang, p.preferred_translation, profileLang);
       savePreferredTranslationLocally(activeLang, preferredTranslation);
-      setHomeQTState(prev => ({
-        ...prev,
-        preferredTranslation,
-      }));
+      setHomeQTState({ hasDraft, preferredTranslation, todaySchedule: null });
+      setCompletedQtRecordId(completedQt?.id ?? null);
+      setTodayDone({ qt: !!completedQt, prayer: false });
+      setMyDecisions([]);
+
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       if (lastCheckin) {
         const lastDate = parseLocalDateString(lastCheckin);
-        lastDate.setHours(0,0,0,0);
-        const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+        lastDate.setHours(0, 0, 0, 0);
+        const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
         const missedDays = Math.max(0, diffDays - 1);
-        const welcomeKey = `welcome_back_${getLocalDateString()}`;
+        const welcomeKey = `welcome_back_${today}`;
         if (missedDays >= 1 && !storageGet(welcomeKey)) {
           storageSet(welcomeKey, "true");
           setWelcomeBackDays(missedDays);
           setShowWelcomeBack(true);
         }
       }
-    }
+      readPendingAwardedBadges(user.id, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
+      const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, user.id, today);
+      const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
+      const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, user.id, today);
+      const profileLastCheckinToday = lastCheckin === today;
+      const hasCompletionWateringRequest = !!storageGet(completionWateringKey)
+        || (!!storageGet(legacyCompletionWateringKey) && !profileLastCheckinToday);
+      if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
+        celebrationShownRef.current = true;
+        if (profileLastCheckinToday && !storageGet(celebratedKey)) storageSet(celebratedKey, "true");
+      }
+      if (isFirstLaunch()) setShowFirstLangPicker(true);
+      const onboardingDoneKey = getOnboardingDoneKey(user.id);
+      const scopedOnboardingDone = storageGet(onboardingDoneKey);
+      const legacyOnboardingDone = storageGet(ONBOARDING_DONE_KEY);
+      const existingUserMissingLocalMarker = !scopedOnboardingDone && !isRecentSignup(user.created_at) && hasEstablishedProfileActivity(p);
+      const shouldMigrateLegacyOnboarding = !!legacyOnboardingDone && !scopedOnboardingDone && !isRecentSignup(user.created_at);
+      if (shouldMigrateLegacyOnboarding || existingUserMissingLocalMarker) {
+        storageSet(onboardingDoneKey, "true");
+      } else if (!scopedOnboardingDone) {
+        setShowOnboarding(true);
+      }
+      setLoading(false);
 
-    if (isEligibleForSpanishLanguageLaunchAnnouncement(user.created_at)) {
-      const localCampaignKey = getUserCampaignLocalStorageKey(
-        SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
-        user.id,
-      );
-
-      if (!storageGet(localCampaignKey)) {
-        void loadUserCampaignSeen(
-          supabase,
-          user.id,
-          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
-        ).then((seen) => {
-          if (seen === true) {
-            storageSet(localCampaignKey, "true");
-            return;
-          }
-          if (!storageGet(localCampaignKey)) {
-            setShowSpanishLanguageLaunchAnnouncement(true);
-          }
+      const background = (label: string, task: () => Promise<void>) => {
+        void task().catch(error => { if (isCurrentLoad()) console.warn(label, error); });
+      };
+      const ready = (key: keyof typeof homeDetailsReady) => {
+        if (isCurrentLoad()) setHomeDetailsReady(previous => ({ ...previous, [key]: true }));
+      };
+      background("홈 사랑 상점 아이템 조회 실패:", async () => {
+        const items = await loadOwnedHeartShopItems(supabase);
+        if (!isCurrentLoad()) return;
+        const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
+        setEnabledHeartShopItemIds(enabledItemIds.filter(isHeartShopMapItemId));
+        setEnabledProfileCharacterItemIds(enabledItemIds.filter(isHeartShopCharacterItemId));
+      });
+      if (isEligibleForSpanishLanguageLaunchAnnouncement(user.created_at)) {
+        const localCampaignKey = getUserCampaignLocalStorageKey(SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY, user.id);
+        if (!storageGet(localCampaignKey)) background("스페인어 출시 안내 조회 실패:", async () => {
+          const seen = await loadUserCampaignSeen(supabase, user.id, SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY);
+          if (!isCurrentLoad()) return;
+          if (seen === true) storageSet(localCampaignKey, "true");
+          else if (!storageGet(localCampaignKey)) setShowSpanishLanguageLaunchAnnouncement(true);
         });
       }
-    }
-
-    const today = getLocalDateString();
-    void checkMonthlyBadgeAwardAnnouncement(supabase, user.id);
-    void checkPendingChallengeRewards(supabase, today);
-
-    const pendingAwardedBadges = consumePendingAwardedBadges(user.id, today);
-    pendingAwardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
-
-    const { data: ci } = await supabase.from("daily_checkins")
-      .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
-      .eq("user_id", user.id).eq("date", today).maybeSingle();
-    if (ci) {
-      const storedVerse = ci.verse_text ?? ci.verse;
-      const baseTodayVerse = {
-        ...ci,
-        verse: storedVerse,
-        reference: ci.verse_reference ?? ci.reference,
-      };
-      setTodayVerse(baseTodayVerse);
-
-      if (!storedVerse && Number(ci.verse_translation_id) === ESV_TRANSLATION_ID) {
-        try {
+      background("월별 배지 축하 안내 조회 실패:", () => checkMonthlyBadgeAwardAnnouncement(supabase, user.id));
+      background("챌린지 보상 조회 실패:", () => checkPendingChallengeRewards(supabase, today));
+      background("홈 오늘의 말씀 조회 실패:", async () => {
+        const { data: ci, error } = await withQtDraftTimeout(supabase.from("daily_checkins")
+          .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
+          .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home daily verse");
+        if (error) throw error;
+        if (!isCurrentLoad()) return;
+        const storedVerse = ci?.verse_text ?? ci?.verse;
+        const baseTodayVerse = ci ? { ...ci, verse: storedVerse, reference: ci.verse_reference ?? ci.reference } : null;
+        setTodayVerse(baseTodayVerse);
+        ready("verse");
+        if (ci && !storedVerse && Number(ci.verse_translation_id) === ESV_TRANSLATION_ID) {
           const reloadedVerse = await fetchStoredDailyVerseText(ci);
-          if (reloadedVerse) {
-            setTodayVerse({ ...baseTodayVerse, verse: reloadedVerse });
-          }
-        } catch (error) {
-          console.warn("ESV 오늘의 말씀 다시 불러오기 실패:", error);
+          if (reloadedVerse && isCurrentLoad()) setTodayVerse({ ...baseTodayVerse, verse: reloadedVerse });
         }
-      }
+      });
+      background("동역자 신청 조회 실패:", async () => {
+        const { data, error } = await withQtDraftTimeout(supabase.from("companions").select("id")
+          .eq("receiver_id", user.id).eq("status", "pending"), 8_000, "home companion requests");
+        if (error) throw error;
+        if (isCurrentLoad()) setPendingCompanionRequestCount((data ?? []).length);
+      });
+      background("홈 기도 상태 조회 실패:", async () => {
+        const { data, error } = await withQtDraftTimeout(supabase.from("daily_prayer_completions").select("id")
+          .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home prayer status");
+        if (error) throw error;
+        if (!isCurrentLoad()) return;
+        setTodayDone(previous => ({ ...previous, prayer: previous.prayer || !!data }));
+        ready("prayer");
+      });
+      background("홈 묵상 본문 일정 조회 실패:", async () => {
+        let todaySchedule: QTSchedule | null = null;
+        if (!isSunday()) {
+          const { data, error } = await withQtDraftTimeout(supabase.from("qt_schedule")
+            .select("book,chapter,start_verse,end_verse,end_chapter,title").eq("date", today).maybeSingle(), 8_000, "home reflection schedule");
+          if (error) throw error;
+          todaySchedule = data ?? null;
+        }
+        if (!isCurrentLoad()) return;
+        setHomeQTState(previous => ({ ...previous, todaySchedule }));
+        ready("schedule");
+      });
+      background("홈 결단 상태 조회 실패:", async () => {
+        if (completedQt?.decision) {
+          const decisions = completedQt.decision.split("\n").filter((value: string) => value.trim());
+          const { data: dc, error } = await withQtDraftTimeout(supabase.from("daily_checkins").select("decisions_done")
+            .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home decision status");
+          if (error) throw error;
+          if (!isCurrentLoad()) return;
+          const doneList = parseDecisionDoneList(dc?.decisions_done, decisions.map(() => false));
+          setMyDecisions(decisions.map((text: string, index: number) => ({ text, done: doneList[index] ?? false })));
+        } else if (isCurrentLoad()) setMyDecisions([]);
+        ready("decisions");
+      });
+    } catch (error) {
+      if (!isCurrentLoad()) return;
+      console.error("홈 정보 조회 실패:", error);
+      setHomeLoadFailed(true);
+      setLoading(false);
     }
-
-    const { data: qtRecords } = await supabase.from("qt_records")
-      .select("id,is_draft,decision")
-      .eq("user_id", user.id)
-      .eq("date", today);
-
-    const { data: pendingCompanionRequests, error: pendingCompanionRequestsError } = await supabase
-      .from("companions")
-      .select("id")
-      .eq("receiver_id", user.id)
-      .eq("status", "pending");
-    if (pendingCompanionRequestsError) {
-      console.error("동역자 신청 조회 실패:", pendingCompanionRequestsError);
-      setPendingCompanionRequestCount(0);
-    } else {
-      setPendingCompanionRequestCount((pendingCompanionRequests ?? []).length);
-    }
-
-    const { data: prayerCompletion } = await supabase
-      .from("daily_prayer_completions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("date", today)
-      .maybeSingle();
-    const prayerChecked = !!prayerCompletion;
-
-    const completedQt = qtRecords?.find((record: any) => !record.is_draft) ?? null;
-    const remoteDraftExists = qtRecords?.some((record: any) => record.is_draft) ?? false;
-    const localDraftExists = !!loadQTDraftBackup(user.id, today);
-    const hasDraft = !completedQt && (remoteDraftExists || localDraftExists);
-    setCompletedQtRecordId(completedQt?.id ?? null);
-
-    let todaySchedule: QTSchedule | null = null;
-    if (!isSunday()) {
-      const { data: sched } = await supabase
-        .from("qt_schedule")
-        .select("book,chapter,start_verse,end_verse,end_chapter,title")
-        .eq("date", today)
-        .maybeSingle();
-      todaySchedule = sched ?? null;
-    }
-
-    setHomeQTState(prev => ({
-      ...prev,
-      hasDraft,
-      todaySchedule,
-    }));
-
-    if (completedQt?.decision) {
-      const decisions = completedQt.decision.split("\n").filter((d: string) => d.trim());
-      const { data: dc } = await supabase.from("daily_checkins")
-        .select("decisions_done").eq("user_id", user.id).eq("date", today).maybeSingle();
-      const defaultDoneList = decisions.map(() => false);
-      const doneList = parseDecisionDoneList(dc?.decisions_done, defaultDoneList);
-      setMyDecisions(decisions.map((text: string, i: number) => ({ text, done: doneList[i] ?? false })));
-    } else {
-      setMyDecisions([]);
-    }
-
-    setTodayDone({ qt: !!completedQt, prayer: prayerChecked });
-
-    const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, user.id, today);
-    const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
-    const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, user.id, today);
-    const profileLastCheckinToday = p?.last_checkin ? String(p.last_checkin).slice(0, 10) === today : false;
-    const hasScopedCompletionWateringRequest = !!storageGet(completionWateringKey);
-    const hasLegacyCompletionWateringRequest = !!storageGet(legacyCompletionWateringKey);
-    const hasCompletionWateringRequest =
-      hasScopedCompletionWateringRequest || (hasLegacyCompletionWateringRequest && !profileLastCheckinToday);
-    if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
-      celebrationShownRef.current = true;
-      if (profileLastCheckinToday && !storageGet(celebratedKey)) {
-        storageSet(celebratedKey, "true");
-      }
-    }
-    if (isFirstLaunch()) {
-      setShowFirstLangPicker(true);
-    }
-
-    const onboardingDoneKey = getOnboardingDoneKey(user.id);
-    const scopedOnboardingDone = storageGet(onboardingDoneKey);
-    const legacyOnboardingDone = storageGet(ONBOARDING_DONE_KEY);
-    const existingUserMissingLocalMarker =
-      !scopedOnboardingDone &&
-      !isRecentSignup(user.created_at) &&
-      hasEstablishedProfileActivity(p);
-    const shouldMigrateLegacyOnboarding =
-      !!legacyOnboardingDone &&
-      !scopedOnboardingDone &&
-      !isRecentSignup(user.created_at);
-
-    if (shouldMigrateLegacyOnboarding || existingUserMissingLocalMarker) {
-      // Recover established accounts whose device marker was removed (for
-      // example when another test account was deleted on the same device).
-      storageSet(onboardingDoneKey, "true");
-    } else if (!scopedOnboardingDone) {
-      setShowOnboarding(true);
-    }
-
-
-    setLoading(false);
   }
 
   useEffect(() => {
     const userId = profile?.id;
     const onboardingDone = userId ? storageGet(getOnboardingDoneKey(userId)) : null;
-    if (loading || !wordWalkDone || !onboardingDone || celebrationShownRef.current || progressUpdateInFlightRef.current) return;
-
+    if (loading || homeLoadFailed || !wordWalkDone || !onboardingDone || celebrationShownRef.current || progressUpdateInFlightRef.current) return;
     const today = getLocalDateString();
-    if (!userId) return;
+    if (!userId || homeDataDateRef.current !== today) return;
     const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, userId, today);
     const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
     const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, userId, today);
     const profileLastCheckinToday = profile?.last_checkin ? String(profile.last_checkin).slice(0, 10) === today : false;
-    const hasScopedCompletionWateringRequest = !!storageGet(completionWateringKey);
-    const hasLegacyCompletionWateringRequest = !!storageGet(legacyCompletionWateringKey);
-    const hasCompletionWateringRequest =
-      hasScopedCompletionWateringRequest || (hasLegacyCompletionWateringRequest && !profileLastCheckinToday);
+    const hasCompletionWateringRequest = !!storageGet(completionWateringKey)
+      || (!!storageGet(legacyCompletionWateringKey) && !profileLastCheckinToday);
     if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
       celebrationShownRef.current = true;
-      if (profileLastCheckinToday && !storageGet(celebratedKey)) {
-        storageSet(celebratedKey, "true");
-      }
+      if (profileLastCheckinToday && !storageGet(celebratedKey)) storageSet(celebratedKey, "true");
       return;
     }
-
+    const generation = homeLoadGenerationRef.current;
     progressUpdateInFlightRef.current = true;
     void (async () => {
-      const pendingBadgeKeys = consumePendingAwardedBadges(userId, today);
-      pendingBadgeKeys.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
-
-      const nextStreakDays = await updateStreak(today);
-      if (nextStreakDays === null) return;
+      readPendingAwardedBadges(userId, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
+      // This is a freshly read, server-confirmed profile, not a locally
+      // calculated increment. Keep the original idempotent RPC for recovery.
+      const confirmedDays = Number(profile?.streak_days ?? 0);
+      const nextStreakDays = profileLastCheckinToday && Number.isFinite(confirmedDays) && confirmedDays > 0
+        ? confirmedDays
+        : await updateStreak(today, userId, generation);
+      if (nextStreakDays === null || homeLoadGenerationRef.current !== generation || getLocalDateString() !== today) return;
       celebrationShownRef.current = true;
-      storageSet(celebratedKey, "true");
-      storageRemove(completionWateringKey);
-      storageRemove(legacyCompletionWateringKey);
+      pendingRewardPresentationRef.current = { userId, date: today };
+      const map = getCurrentRewardMapCycle(nextStreakDays);
+      if (map.kind === "futureJourney" || map.kind === "futureMap") {
+        // Preserve the existing boundary: there is no fourth reward UI yet.
+        acknowledgePostReflectionReward();
+        return;
+      }
       requestPostReflectionRewardExperience(nextStreakDays);
-    })().finally(() => {
+    })().catch(error => {
+      console.warn("말씀 묵상 보상 화면 준비 실패:", error);
+    }).finally(() => {
       progressUpdateInFlightRef.current = false;
+      if (progressRetryRequestedRef.current) {
+        progressRetryRequestedRef.current = false;
+        if (homeLoadGenerationRef.current === generation) setProgressRetryToken(token => token + 1);
+      }
     });
-  }, [wordWalkDone, loading, profile?.id, profile?.last_checkin]);
+  }, [wordWalkDone, loading, homeLoadFailed, profile?.id, profile?.last_checkin, profile?.streak_days, progressRetryToken, showOnboarding]);
 
-  async function updateStreak(today: string): Promise<number | null> {
+  async function updateStreak(today: string, userId: string, generation: number): Promise<number | null> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
     try {
-      const result = await recordBibleReflectionProgress(supabase, user.id, today);
-      await recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, completedQtRecordId);
-      result.awardedBadges.forEach((badgeKey) => newlyAwardedBadgesRef.current.add(badgeKey));
-      if (result.profile) setProfile((prev: any) => ({ ...(prev ?? {}), ...result.profile }));
+      const { data: { user }, error } = await withQtDraftTimeout(supabase.auth.getUser(), 6_000, "home progress user");
+      if (error) throw error;
+      if (!user || user.id !== userId) return null;
+      const result = await withQtDraftTimeout(recordBibleReflectionProgress(supabase, userId, today), 10_000, "home reflection progress");
+      if (homeLoadGenerationRef.current !== generation) return null;
+      // A failed presentation must not consume an already-earned badge receipt.
+      const pendingBadges = Array.from(new Set([...readPendingAwardedBadges(userId, today), ...result.awardedBadges]));
+      if (pendingBadges.length > 0) storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(pendingBadges));
+      result.awardedBadges.forEach(key => newlyAwardedBadgesRef.current.add(key));
+      if (result.profile) setProfile((previous: any) => ({ ...(previous ?? {}), ...result.profile }));
+      // Reward ledger recovery is independent from the already committed core
+      // progress; Home also retries it on online and native resume.
+      void recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, completedQtRecordId);
       const nextDays = Number(result.profile?.streak_days ?? 0);
       return Number.isFinite(nextDays) && nextDays > 0 ? nextDays : null;
     } catch (error) {
@@ -1101,6 +1100,38 @@ export default function HomePage() {
       return null;
     }
   }
+
+  function acknowledgePostReflectionReward() {
+    const pending = pendingRewardPresentationRef.current;
+    if (!pending) return;
+    storageSet(getScopedStorageKey(CELEBRATED_KEY_PREFIX, pending.userId, pending.date), "true");
+    storageRemove(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, pending.userId, pending.date));
+    storageRemove(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, pending.date));
+    pendingRewardPresentationRef.current = null;
+  }
+
+  useEffect(() => {
+    if (loading || homeLoadFailed || rewardDialogBlocked || !profile || celebration.show || badgePopup || gardenPopup.show) return;
+    // Acknowledge only after the actual reward UI has mounted. Start notices
+    // still lead to the avatar popup; completion notices are the final UI.
+    if ((showRootsManPopup && !rewardMapNotice && !showWelcomeBack) || (rewardMapNotice?.type === "complete" && !showRootsManPopup)) {
+      acknowledgePostReflectionReward();
+    }
+  }, [loading, homeLoadFailed, rewardDialogBlocked, profile, celebration.show, badgePopup, gardenPopup.show, showRootsManPopup, rewardMapNotice, showWelcomeBack]);
+
+  useEffect(() => {
+    if (loading || homeLoadFailed || rewardDialogBlocked || !profile?.id || !homeDataDateRef.current) return;
+    const gardenVisible = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack;
+    if (gardenVisible && gardenPopup.stageKey) storageSet(gardenPopup.stageKey, "true");
+    const visibleBadgeKey = badgePopup?.badgeKey
+      ?? (gardenVisible && gardenPopup.type === "badge" ? gardenPopup.badgeKey : undefined);
+    if (!visibleBadgeKey) return;
+    const date = homeDataDateRef.current;
+    const remaining = readPendingAwardedBadges(profile.id, date).filter(key => key !== visibleBadgeKey);
+    const key = getPendingAwardedBadgesKey(profile.id, date);
+    if (remaining.length > 0) storageSet(key, JSON.stringify(remaining));
+    else storageRemove(key);
+  }, [loading, homeLoadFailed, rewardDialogBlocked, profile?.id, badgePopup, gardenPopup, celebration.show, rewardMapNotice, showRootsManPopup, showWelcomeBack]);
 
   function requestPostReflectionRewardExperience(streakDays: number) {
     const currentMap = getCurrentRewardMapCycle(streakDays);
@@ -1136,35 +1167,35 @@ export default function HomePage() {
     // 이번 세션에서 새로 획득한 뱃지만 팝업 (newlyAwardedBadgesRef에 있는 것만)
     if (newly.has("badge_rootsman")) {
       newly.delete("badge_rootsman");
-      setBadgePopup({ img: "/badge_rootsman.webp", title: t("badge_popup_rootsman", lang), msg: t("badge_rootsman_msg", lang) });
+      setBadgePopup({ badgeKey: "badge_rootsman", img: "/badge_rootsman.webp", title: t("badge_popup_rootsman", lang), msg: t("badge_rootsman_msg", lang) });
       return true;
     }
     if (newly.has("badge_mose")) {
       newly.delete("badge_mose");
-      setBadgePopup({ img: "/badge_mose.webp", title: t("badge_popup_mose", lang), msg: t("badge_mose_msg", lang) });
+      setBadgePopup({ badgeKey: "badge_mose", img: "/badge_mose.webp", title: t("badge_popup_mose", lang), msg: t("badge_mose_msg", lang) });
       return true;
     }
     if (newly.has("badge_rootsman_bible")) {
       newly.delete("badge_rootsman_bible");
-      setBadgePopup({ img: "/badge_rootsman_bible.webp", title: t("badge_popup_rootsman_bible", lang), msg: t("badge_rootsman_bible_msg", lang) });
+      setBadgePopup({ badgeKey: "badge_rootsman_bible", img: "/badge_rootsman_bible.webp", title: t("badge_popup_rootsman_bible", lang), msg: t("badge_rootsman_bible_msg", lang) });
       return true;
     }
     if (newly.has("badge_david")) {
       newly.delete("badge_david");
-      setBadgePopup({ img: "/badge_david.webp", title: t("badge_popup_david", lang), msg: t("badge_david_msg", lang) });
+      setBadgePopup({ badgeKey: "badge_david", img: "/badge_david.webp", title: t("badge_popup_david", lang), msg: t("badge_david_msg", lang) });
       return true;
     }
     for (let i = 0; i < 9; i++) {
       const key = `fruit_badge_${i}`;
       if (newly.has(key)) {
         newly.delete(key);
-        setGardenPopup({ show: true, type: "badge", badgeIndex: i });
+        setGardenPopup({ show: true, type: "badge", badgeIndex: i, badgeKey: key });
         return true;
       }
     }
     if (newly.has("badge_angel")) {
       newly.delete("badge_angel");
-      setBadgePopup({ img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
+      setBadgePopup({ badgeKey: "badge_angel", img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return true;
     }
 
@@ -1180,9 +1211,9 @@ export default function HomePage() {
         && currentRewardMap.progressDay < 100;
       if (isStageStart) {
         const stageKey = `nehemiah_stage_shown_${streak}`;
-        if (!storageGet(stageKey)) {
-          storageSet(stageKey, "true");
-          setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+        if (!storageGet(stageKey) && !queuedStageNoticesRef.current.has(stageKey)) {
+          queuedStageNoticesRef.current.add(stageKey);
+          setGardenPopup({ show: true, type: "garden", badgeIndex: 0, stageKey });
           return true;
         }
       }
@@ -1190,9 +1221,9 @@ export default function HomePage() {
       const cycleDay = streak > 0 ? (streak % 100) : 0;
       if (cycleDay % 10 === 1 && cycleDay > 1) {
         const gardenKey = `garden_shown_${streak}`;
-        if (!storageGet(gardenKey)) {
-          storageSet(gardenKey, "true");
-          setGardenPopup({ show: true, type: "garden", badgeIndex: 0 });
+        if (!storageGet(gardenKey) && !queuedStageNoticesRef.current.has(gardenKey)) {
+          queuedStageNoticesRef.current.add(gardenKey);
+          setGardenPopup({ show: true, type: "garden", badgeIndex: 0, stageKey: gardenKey });
           return true;
         }
       }
@@ -1202,7 +1233,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (!profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
+    if (loading || homeLoadFailed || !profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
 
     const openedProgressPopup = showNextProgressPopup();
     if (openedProgressPopup) return;
@@ -1218,7 +1249,7 @@ export default function HomePage() {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
+  }, [loading, homeLoadFailed, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -1321,6 +1352,7 @@ export default function HomePage() {
   }
 
   async function markQuietPrayer() {
+    if (!homeDetailsReady.prayer) { void load(); return; }
     if (todayDone.prayer) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -1344,6 +1376,23 @@ export default function HomePage() {
 
   function openPrayerRequest() {
     setShowHomePrayerCompose(true);
+  }
+
+  async function refreshHomePrayerStatus() {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("daily_prayer_completions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", getLocalDateString())
+        .maybeSingle();
+      if (!error) setTodayDone(previous => ({ ...previous, prayer: !!data }));
+    } catch (error) {
+      console.warn("홈 기도 상태를 갱신하지 못했어요:", error);
+    }
   }
 
   function splitHomePrayerShareTargets(targets: string[]) {
@@ -1453,6 +1502,7 @@ export default function HomePage() {
   }
 
   async function saveHomeDecision() {
+    if (!homeDetailsReady.decisions) return;
     const decisionText = homeDecisionInput.trim();
     if (!decisionText || savingHomeDecision) return;
 
@@ -1510,7 +1560,7 @@ export default function HomePage() {
   }
 
   async function toggleMyDecision(i: number) {
-    if (!myDecisions[i]) return;
+    if (!homeDetailsReady.decisions || !myDecisions[i]) return;
     const today = getLocalDateString();
     const previous = myDecisions;
     const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
@@ -1593,6 +1643,7 @@ export default function HomePage() {
   }
 
   function startHomeQT(mode: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
+    if (mode === "6step" && passageSource === "scheduled" && !homeDetailsReady.schedule) { void load(); return; }
     router.push(buildQTWriteHref({
       mode,
       preferredTranslation: homeQTState.preferredTranslation,
@@ -1603,6 +1654,7 @@ export default function HomePage() {
   }
 
   function startHomePhotoQT(passageSource: "scheduled" | "custom" = "scheduled") {
+    if (passageSource === "scheduled" && !homeDetailsReady.schedule) { void load(); return; }
     setShowHomeQTChoice(false);
     setShowHomeQTPassageChoice(false);
     setShowHomeQTPhotoPassageChoice(false);
@@ -1788,6 +1840,7 @@ export default function HomePage() {
     showHomeQTGuide ||
     showHomeSundayQT ||
     showNotificationSettingsModal ||
+    showHomePrayerCards ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -1821,6 +1874,7 @@ export default function HomePage() {
     showHomeQTPhotoPassageChoice ||
     showHomeSundayQT ||
     showNotificationSettingsModal ||
+    showHomePrayerCards ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -2093,6 +2147,16 @@ export default function HomePage() {
             )}
           </div>
         </div>
+      )}
+
+      {showHomePrayerCards && (
+        <Suspense fallback={null}>
+          <PrayerExperience
+            variant="popup"
+            onClose={() => setShowHomePrayerCards(false)}
+            onDataChanged={() => { void refreshHomePrayerStatus(); }}
+          />
+        </Suspense>
       )}
 
       {showHomePrayerCompose && (
@@ -2567,7 +2631,7 @@ export default function HomePage() {
 
             <button
               type="button"
-              onClick={() => router.push("/prayer")}
+              onClick={() => setShowHomePrayerCards(true)}
               className="roots-elevation-card"
               style={{
                 width: "100%",
@@ -2588,7 +2652,7 @@ export default function HomePage() {
                 <img src="/icon-pray.webp" alt="" width={30} height={30} style={{ objectFit: "contain" }} />
               </div>
               <div style={{ minWidth: 0, flex: 1, fontSize: 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
-                {t("home_action_prayer", lang)}
+                {getPrayerCardText(lang).openCards}
               </div>
             </button>
           </div>
@@ -2665,7 +2729,9 @@ export default function HomePage() {
       <div style={{ padding: "0 16px 14px" }}>
         <div className="sec-label">{t("home_verse_section", lang)}</div>
         <div className="card-sage roots-elevation-card-sage" style={{ borderRadius: 22, padding: 18, background: "var(--surface-sage-subtle)", border: "1px solid var(--border-sage-soft)" }}>
-          {todayVerse?.verse ? (
+          {!homeDetailsReady.verse ? (
+            <button type="button" onClick={() => void load()} className="btn-outline">{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
+          ) : todayVerse?.verse ? (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.4px" }}>{todayVerse.reference}</div>
@@ -2717,7 +2783,9 @@ export default function HomePage() {
         <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
           <div className="sec-label">{t("home_apply_my", lang)}</div>
           <div className="card" style={{ borderRadius: 22, padding: 18 }}>
-            {myDecisions.length > 0 ? (
+            {!homeDetailsReady.decisions ? (
+              <button type="button" onClick={() => void load()} className="btn-outline">{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
+            ) : myDecisions.length > 0 ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
                   <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
