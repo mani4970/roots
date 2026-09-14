@@ -29,6 +29,18 @@
   overflow-wrap: anywhere;
 }
 
+.pageIntro {
+  margin: -10px 0 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text2);
+  overflow-wrap: anywhere;
+}
+
+.pageIntro span {
+  display: block;
+}
+
 .content {
   padding: 18px 16px 24px;
   min-width: 0;

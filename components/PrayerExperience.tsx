@@ -1084,9 +1084,14 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
       <div className={isPopup ? styles.popupShell : styles.pageShell}>
       <header className={styles.header}>
         <div className={styles.headingRow}>
-          <h1>{cardText.heading}</h1>
+          <h1>{isPopup ? cardText.heading : c("prayer_title")}</h1>
           {isPopup && <button type="button" className={styles.iconButton} onClick={closeTopLayer} disabled={saving || savingTestimony || sharingIntercession || deletingPrayer || savingEdit || removingIntercession} aria-label={c("close")}><X size={22} /></button>}
         </div>
+
+        {!isPopup && <p className={styles.pageIntro}>
+          <span>{c("prayer_sub_line1")}</span>
+          <span>{c("prayer_sub_line2")}</span>
+        </p>}
 
         {!isPopup && <div className={styles.statusTabs} role="group" aria-label={cardText.statusLabel}>
           {(["ongoing", "answered"] as const).map(nextStatus => (
