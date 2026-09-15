@@ -7,7 +7,7 @@ import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacit
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCcw, X, Check, UploadCloud, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -1061,9 +1061,6 @@ function PhotoReflectionContent() {
   ) {
     const progress = await recordBibleReflectionProgress(supabase, userId, today);
     if (progress.updated) {
-      if (progress.awardedBadges.length > 0) {
-        storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(progress.awardedBadges));
-      }
       storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
     }
 

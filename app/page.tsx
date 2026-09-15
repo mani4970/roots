@@ -46,7 +46,7 @@ import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTM
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
-import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { acknowledgePendingAwardedBadge, QT_PENDING_AWARDED_BADGES_EVENT, readPendingAwardedBadges, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 import { getNehemiahWallStage } from "@/lib/nehemiahWall";
 import { getNehemiahWallCopy } from "@/lib/nehemiahWallText";
@@ -149,18 +149,6 @@ function hasEstablishedProfileActivity(profile: any) {
 
 function getLegacyStorageKey(prefix: string, date: string) {
   return `${prefix}${date}`;
-}
-
-function readPendingAwardedBadges(userId: string, date: string): string[] {
-  const key = getPendingAwardedBadgesKey(userId, date);
-  const raw = storageGet(key);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
 }
 
 const gardenTopRef_scroll = () => {
@@ -1086,9 +1074,7 @@ export default function HomePage() {
       const result = await withQtDraftTimeout(recordBibleReflectionProgress(supabase, userId, today), 10_000, "home reflection progress");
       if (homeLoadGenerationRef.current !== generation) return null;
       // A failed presentation must not consume an already-earned badge receipt.
-      const pendingBadges = Array.from(new Set([...readPendingAwardedBadges(userId, today), ...result.awardedBadges]));
-      if (pendingBadges.length > 0) storageSet(getPendingAwardedBadgesKey(userId, today), JSON.stringify(pendingBadges));
-      result.awardedBadges.forEach(key => newlyAwardedBadgesRef.current.add(key));
+      readPendingAwardedBadges(userId, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
       if (result.profile) setProfile((previous: any) => ({ ...(previous ?? {}), ...result.profile }));
       // Reward ledger recovery is independent from the already committed core
       // progress; Home also retries it on online and native resume.
@@ -1100,6 +1086,41 @@ export default function HomePage() {
       return null;
     }
   }
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const userId = profile.id;
+    const receivePendingBadges = (event?: Event) => {
+      const date = homeDataDateRef.current;
+      if (!date || date !== getLocalDateString()) return;
+      if (event) {
+        const detail = (event as CustomEvent<{ userId?: string; date?: string }>).detail;
+        if (detail?.userId !== userId || detail?.date !== date) return;
+        if (String(profile.last_checkin ?? "").slice(0, 10) !== date) {
+          // A Home recovery request may itself have timed out. Use the same
+          // idempotent recovery gate to refresh confirmed growth before its UI.
+          if (!celebrationShownRef.current) {
+            if (progressUpdateInFlightRef.current) progressRetryRequestedRef.current = true;
+            else setProgressRetryToken(token => token + 1);
+          }
+          return;
+        }
+      }
+      // A first response can arrive after its retry has already reached Home.
+      // Feed only its unseen receipt into the existing sequential popup queue.
+      let added = false;
+      for (const key of readPendingAwardedBadges(userId, date)) {
+        if (!newlyAwardedBadgesRef.current.has(key)) {
+          newlyAwardedBadgesRef.current.add(key);
+          added = true;
+        }
+      }
+      if (added) setRootsManRequestToken(token => token + 1);
+    };
+    window.addEventListener(QT_PENDING_AWARDED_BADGES_EVENT, receivePendingBadges);
+    receivePendingBadges();
+    return () => window.removeEventListener(QT_PENDING_AWARDED_BADGES_EVENT, receivePendingBadges);
+  }, [profile?.id, profile?.last_checkin]);
 
   function acknowledgePostReflectionReward() {
     const pending = pendingRewardPresentationRef.current;
@@ -1127,10 +1148,8 @@ export default function HomePage() {
       ?? (gardenVisible && gardenPopup.type === "badge" ? gardenPopup.badgeKey : undefined);
     if (!visibleBadgeKey) return;
     const date = homeDataDateRef.current;
-    const remaining = readPendingAwardedBadges(profile.id, date).filter(key => key !== visibleBadgeKey);
-    const key = getPendingAwardedBadgesKey(profile.id, date);
-    if (remaining.length > 0) storageSet(key, JSON.stringify(remaining));
-    else storageRemove(key);
+    acknowledgePendingAwardedBadge(profile.id, date, visibleBadgeKey);
+    newlyAwardedBadgesRef.current.delete(visibleBadgeKey);
   }, [loading, homeLoadFailed, rewardDialogBlocked, profile?.id, badgePopup, gardenPopup, celebration.show, rewardMapNotice, showRootsManPopup, showWelcomeBack]);
 
   function requestPostReflectionRewardExperience(streakDays: number) {

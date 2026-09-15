@@ -71,7 +71,7 @@ const COPY = {
     fr: "Le texte de cet écran n’a pas remplacé l’entrée existante. Consultez l’entrée enregistrée avant de la modifier.",
     es: "El texto de esta pantalla no ha sobrescrito el registro existente. Revisa el registro guardado antes de editarlo.",
   },
-  retryCompletion: { ko: "남은 처리 다시 시도", en: "Retry remaining steps", de: "Verbleibende Schritte erneut versuchen", fr: "Réessayer les étapes restantes", es: "Reintentar los pasos pendientes" },
+  retryCompletion: { ko: "다시 시도", en: "Retry remaining steps", de: "Verbleibende Schritte erneut versuchen", fr: "Réessayer les étapes restantes", es: "Reintentar los pasos pendientes" },
   currentUnsavedText: { ko: "현재 화면에서 작성한 내용", en: "Text written on this screen", de: "Auf diesem Bildschirm geschriebener Text", fr: "Texte rédigé sur cet écran", es: "Texto escrito en esta pantalla" },
   editSavedRecord: { ko: "저장된 묵상 수정하기", en: "Edit saved reflection", de: "Gespeicherte Stille Zeit bearbeiten", fr: "Modifier la méditation enregistrée", es: "Editar la meditación guardada" },
   viewSavedRecord: { ko: "저장된 묵상 확인하기", en: "View saved reflection", de: "Gespeicherte Stille Zeit ansehen", fr: "Voir la méditation enregistrée", es: "Ver la meditación guardada" },

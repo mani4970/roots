@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase";
 import { storageGet, storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
-import { getPendingAwardedBadgesKey, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { syncQtCompletionRecipients } from "@/lib/qtCompletionRecipients";
 import {
   getPreferredTranslationForLang,
   getStoredLang,
@@ -2270,26 +2271,6 @@ function QTWriteContent() {
     setCompleteShareTargets([]);
   }
 
-  async function replaceQtRecordRecipients(supabase: ReturnType<typeof createClient>, recordId: string, ownerId: string, recipientIds: string[]) {
-    const { error: deleteError } = await supabase
-      .from("qt_record_recipients")
-      .delete()
-      .eq("qt_record_id", recordId)
-      .eq("owner_id", ownerId);
-    if (deleteError) throw deleteError;
-
-    if (recipientIds.length === 0) return;
-
-    const { error: insertError } = await supabase
-      .from("qt_record_recipients")
-      .insert(recipientIds.map(recipientId => ({
-        qt_record_id: recordId,
-        owner_id: ownerId,
-        recipient_id: recipientId,
-      })));
-    if (insertError) throw insertError;
-  }
-
   function renderCompleteSharePrompt() {
     if (!showCompleteSharePrompt || isEditMode) return null;
     const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
@@ -2384,14 +2365,11 @@ function QTWriteContent() {
     if (selectedDate !== getLocalDateString()) return true;
 
     try {
-      const progress = await withQtDraftTimeout(
+      await withQtDraftTimeout(
         recordBibleReflectionProgress(supabase, userId, selectedDate),
         20_000,
         "record_bible_reflection_progress",
       );
-      if (progress.awardedBadges.length > 0) {
-        storageSet(getPendingAwardedBadgesKey(userId, selectedDate), JSON.stringify(progress.awardedBadges));
-      }
       storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
       // The core progress RPC has succeeded. The independent challenge ledger
       // can retry in the background and must not hold completion open.
@@ -2440,7 +2418,7 @@ function QTWriteContent() {
     }
 
     if (!pending.recipientsSaved && Array.isArray(options.partnerRecipientIds)) {
-      await replaceQtRecordRecipients(supabase, recordId, userId, options.partnerRecipientIds);
+      await syncQtCompletionRecipients(supabase, recordId, userId, options.partnerRecipientIds);
       pending = rememberPendingCompletion({ ...pending, recipientsSaved: true });
     }
 
