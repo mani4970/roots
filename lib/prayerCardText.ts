@@ -4,6 +4,7 @@ type PrayerCardText = {
   heading: string;
   openCards: string;
   addPrayer: string;
+  addPrayerRequest: string;
   interceding: string;
   added: string;
   viewIntercession: string;
@@ -43,6 +44,7 @@ const TEXT: Record<Lang, PrayerCardText> = {
     heading: "하나님께 찾고 구해요",
     openCards: "기도 카드 보기",
     addPrayer: "기도 소원 추가하기",
+    addPrayerRequest: "기도 제목 추가하기",
     interceding: "중보 기도 중이에요",
     added: "중보 기도에 추가됐어요!",
     viewIntercession: "중보 기도 보기",
@@ -80,6 +82,7 @@ const TEXT: Record<Lang, PrayerCardText> = {
     heading: "Gott suchen und ihn bitten",
     openCards: "Gebetskarten ansehen",
     addPrayer: "Gebetsanliegen hinzufügen",
+    addPrayerRequest: "Gebetsanliegen hinzufügen",
     interceding: "Ich bete dafür",
     added: "Zur Fürbitte hinzugefügt!",
     viewIntercession: "Fürbitten ansehen",
@@ -117,6 +120,7 @@ const TEXT: Record<Lang, PrayerCardText> = {
     heading: "Seek God and ask in prayer",
     openCards: "View prayer cards",
     addPrayer: "Add a prayer request",
+    addPrayerRequest: "Add a prayer request",
     interceding: "Praying for this request",
     added: "Added to your intercessions!",
     viewIntercession: "View intercessions",
@@ -154,6 +158,7 @@ const TEXT: Record<Lang, PrayerCardText> = {
     heading: "Cherchons Dieu dans la prière",
     openCards: "Voir les cartes de prière",
     addPrayer: "Ajouter un sujet de prière",
+    addPrayerRequest: "Ajouter un sujet de prière",
     interceding: "Je prie pour ce sujet",
     added: "Ajoutée à vos intercessions !",
     viewIntercession: "Voir les intercessions",
@@ -191,6 +196,7 @@ const TEXT: Record<Lang, PrayerCardText> = {
     heading: "Busquemos a Dios en oración",
     openCards: "Ver tarjetas de oración",
     addPrayer: "Añadir una petición de oración",
+    addPrayerRequest: "Añadir una petición de oración",
     interceding: "Estoy orando por esta petición",
     added: "¡Añadida a tus intercesiones!",
     viewIntercession: "Ver intercesiones",

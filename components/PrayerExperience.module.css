@@ -30,15 +30,28 @@
 }
 
 .pageIntro {
-  margin: -10px 0 18px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text2);
+  margin: 4px 0 0;
+  line-height: normal;
+  color: var(--text-muted-readable);
   overflow-wrap: anywhere;
 }
 
 .pageIntro span {
   display: block;
+}
+
+.pageShell .headingRow {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.pageHeadingCopy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pageHeadingCopy h1 {
+  line-height: normal;
 }
 
 .content {
@@ -227,6 +240,16 @@
   color: var(--prayer-sage-text);
   font-size: 13px;
   cursor: pointer;
+}
+
+.pageAddPrayerRow {
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.pageAddPrayerRow .addPrayer:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
 }
 
 .intercedingStatus {

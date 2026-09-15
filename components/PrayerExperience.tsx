@@ -1135,14 +1135,15 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
       <div className={isPopup ? styles.popupShell : styles.pageShell}>
       <header className={styles.header}>
         <div className={styles.headingRow}>
-          <h1>{isPopup ? cardText.heading : c("prayer_title")}</h1>
+          {isPopup ? <h1>{cardText.heading}</h1> : <div className={styles.pageHeadingCopy}>
+            <h1 style={{ fontSize: 24, fontWeight: 700 }}>{c("prayer_title")}</h1>
+            <p className={styles.pageIntro} style={{ fontSize: 12 }}>
+              <span>{c("prayer_sub_line1")}</span>
+              <span>{c("prayer_sub_line2")}</span>
+            </p>
+          </div>}
           {isPopup && <button type="button" className={styles.iconButton} onClick={closeTopLayer} disabled={saving || savingTestimony || sharingIntercession || deletingPrayer || savingEdit || removingIntercession} aria-label={c("close")}><X size={22} /></button>}
         </div>
-
-        {!isPopup && <p className={styles.pageIntro}>
-          <span>{c("prayer_sub_line1")}</span>
-          <span>{c("prayer_sub_line2")}</span>
-        </p>}
 
         {!isPopup && <div className={styles.statusTabs} role="group" aria-label={cardText.statusLabel}>
           {(["ongoing", "answered"] as const).map(nextStatus => (
@@ -1165,6 +1166,11 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
       {/* Active prayers use cards; answered prayers keep the existing list and testimony markup. */}
       <div className={styles.content}>
+        {!isPopup && status === "ongoing" && <div className={styles.pageAddPrayerRow}>
+          {category === "mine" && <button type="button" className={styles.addPrayer} onClick={() => setShowForm(true)}>
+            <Plus size={16} aria-hidden="true" />{cardText.addPrayerRequest}
+          </button>}
+        </div>}
         {loading ? (
           <div className={styles.loading}>
             <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
@@ -1472,21 +1478,6 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* + 버튼 (나의 기도 탭에서만) */}
-      {!isPopup && status === "ongoing" && category === "mine" && (
-        <div className="roots-prayer-fab-frame">
-          <button
-            type="button"
-            className="roots-prayer-fab"
-            onClick={() => setShowForm(true)}
-            aria-label={c("prayer_write_title")}
-            style={{ position: "fixed", bottom: "calc(82px + var(--bottom-nav-safe-extra))", right: 16, width: 52, height: 52, background: "var(--prayer-sage-action)", border: "none", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, cursor: "pointer", boxShadow: "var(--prayer-fab-shadow)" }}
-          >
-            <Plus size={22} aria-hidden="true" style={{ color: "var(--prayer-on-sage-action)" }} />
-          </button>
         </div>
       )}
 
