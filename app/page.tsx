@@ -88,6 +88,7 @@ import {
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import { getPrayerCardText } from "@/lib/prayerCardText";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
+import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
 const PrayerExperience = lazy(() => import("@/components/PrayerExperience"));
 
@@ -363,6 +364,7 @@ export default function HomePage() {
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
+  const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
   const [showHomePrayerSharePrompt, setShowHomePrayerSharePrompt] = useState(false);
@@ -1473,6 +1475,7 @@ export default function HomePage() {
     if (!user) return;
 
     setSavingHomePrayer(true);
+    homePrayerSnapshotRef.current = null;
     try {
       const today = getLocalDateString();
       const { data: insertedPrayer, error: insertError } = await supabase.from("prayer_items").insert({
@@ -2172,6 +2175,8 @@ export default function HomePage() {
         <Suspense fallback={<PrayerCardsLoading lang={lang} onClose={() => setShowHomePrayerCards(false)} />}>
           <PrayerExperience
             variant="popup"
+            lang={lang}
+            snapshotRef={homePrayerSnapshotRef}
             onClose={() => setShowHomePrayerCards(false)}
             onDataChanged={() => { void refreshHomePrayerStatus(); }}
           />

@@ -10,7 +10,7 @@ import Celebration from "@/components/Celebration";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t, type TKey } from "@/lib/i18n";
+import { t, type TKey, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2 } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -45,29 +45,55 @@ function prayerViewFromHistory(state: any): PrayerView | null {
   return null;
 }
 
+export type PrayerCardSnapshot = {
+  userId: string;
+  scope: "ongoing";
+  prayers: any[];
+  intercessionPrayers: any[];
+  partnerSharedPrayerIds: string[];
+  loadedAt: number;
+};
+
+type PrayerLoadState = "loading" | "ready" | "error";
+const PRAYER_SNAPSHOT_MAX_AGE = 30_000;
+
 export type PrayerExperienceProps = {
   variant?: "page" | "popup";
+  lang?: Lang;
+  snapshotRef?: MutableRefObject<PrayerCardSnapshot | null>;
   onClose?: () => void;
   initialAnswerId?: string | null;
   onDataChanged?: () => void;
   nestedBackRef?: MutableRefObject<(() => boolean) | null>;
 };
 
-export default function PrayerExperience({ variant = "page", onClose, initialAnswerId, onDataChanged, nestedBackRef }: PrayerExperienceProps) {
+export default function PrayerExperience(props: PrayerExperienceProps) {
+  return props.lang !== undefined
+    ? <PrayerExperienceContent {...props} lang={props.lang} />
+    : <PrayerExperienceWithLang {...props} />;
+}
+
+function PrayerExperienceWithLang(props: PrayerExperienceProps) {
+  const lang = useLang();
+  return <PrayerExperienceContent {...props} lang={lang} />;
+}
+
+function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, nestedBackRef, snapshotRef, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
   const rootRef = useRef<HTMLDivElement>(null);
   const handledAnswerId = useRef<string | null>(null);
   const handledLink = useRef<string | null>(null);
+  const appliedLinkView = useRef<string | null>(null);
   const [activeCardIds, setActiveCardIds] = useState<Partial<Record<PrayerCategory, string>>>({});
   const cardIndexes = useRef<Record<PrayerCategory, number>>({ mine: 0, intercession: 0 });
   const selectionTouched = useRef(false);
   const [historyReady, setHistoryReady] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const [categoryLoad, setCategoryLoad] = useState<Record<PrayerCategory, PrayerLoadState>>({ mine: "loading", intercession: "loading" });
+  const [freshCategories, setFreshCategories] = useState<Record<PrayerCategory, boolean>>({ mine: false, intercession: false });
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewportStyle, setViewportStyle] = useState<CSSProperties>({});
   const router = useRouter();
   const searchParams = useSearchParams();
-  const lang = useLang();
   const cardText = getPrayerCardText(lang);
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
@@ -75,7 +101,6 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   const [intercessionPrayers, setIntercessionPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState(false);
@@ -84,6 +109,8 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   const [view, setView] = useState<PrayerView>({ status: "ongoing", category: "mine" });
   const status = isPopup ? "ongoing" : view.status;
   const category = view.category;
+  const loading = categoryLoad[category] === "loading";
+  const loadError = categoryLoad[category] === "error";
   const [notice, setNotice] = useState<string | null>(null);
   const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
   const [testimonyText, setTestimonyText] = useState("");
@@ -93,6 +120,9 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
   const mountedRef = useRef(false);
   const prayerLoadRequest = useRef(0);
+  const authUserRef = useRef<string | null>(null);
+  const authResolvedRef = useRef(false);
+  const initialSnapshotChecked = useRef(false);
   const shareOptionsRequest = useRef(0);
   const shareOptionsReady = useRef(false);
   const [partnerSharedPrayerIds, setPartnerSharedPrayerIds] = useState<Set<string>>(new Set());
@@ -313,12 +343,32 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   useEffect(() => {
     mountedRef.current = true;
-    void loadPrayers();
+    const supabase = createClient();
+    let authReloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current || event === "INITIAL_SESSION") return;
+      const nextUserId = session?.user?.id ?? null;
+      if (event !== "SIGNED_OUT" && nextUserId === authUserRef.current) return;
+      // Never await Supabase from its auth callback. Invalidate synchronously,
+      // then re-check the session outside the auth lock before fetching again.
+      discardAccountData();
+      authUserRef.current = nextUserId;
+      authResolvedRef.current = true;
+      if (authReloadTimer) clearTimeout(authReloadTimer);
+      authReloadTimer = setTimeout(() => {
+        if (!mountedRef.current) return;
+        if (nextUserId) void loadPrayers();
+        else router.push("/login");
+      }, 0);
+    });
+    void loadPrayers(true);
     return () => {
       mountedRef.current = false;
       prayerLoadRequest.current += 1;
       shareOptionsRequest.current += 1;
       shareOptionsReady.current = false;
+      if (authReloadTimer) clearTimeout(authReloadTimer);
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -493,80 +543,203 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     return mapProfileCards(await loadProfileCards(supabase, userIds));
   }
 
-  async function loadPrayers() {
+  function discardAccountData() {
+    prayerLoadRequest.current += 1;
+    shareOptionsRequest.current += 1;
+    shareOptionsReady.current = false;
+    if (snapshotRef) snapshotRef.current = null;
+    setUserId(null);
+    setPrayers([]);
+    setIntercessionPrayers([]);
+    setPartnerSharedPrayerIds(new Set());
+    setCategoryLoad({ mine: "loading", intercession: "loading" });
+    setFreshCategories({ mine: false, intercession: false });
+    setActiveCardIds({});
+    cardIndexes.current = { mine: 0, intercession: 0 };
+    initialDeckSelected.current = false;
+    handledAnswerId.current = null;
+    handledLink.current = null;
+    appliedLinkView.current = null;
+    setMyGroups([]);
+    setMyPartners([]);
+    setLoadingShareOptions(false);
+    setShowShareModal(false);
+    setShowCreateSharePrompt(false);
+    setSharePrayerId(null);
+    setSelectedTargets([]);
+    setCreateShareTargets([]);
+    setShowForm(false);
+    setNewPrayer("");
+    setEditId(null);
+    setEditText("");
+    setTestimonyPrayerId(null);
+    setTestimonyText("");
+    setPendingDeletePrayerId(null);
+    setPendingRemovalId(null);
+    setActionMenuPrayerId(null);
+    setBadgePopup(null);
+    setCelebration(false);
+    setNotice(null);
+  }
+
+  function invalidatePrayerSnapshot() {
+    if (snapshotRef) snapshotRef.current = null;
+    prayerLoadRequest.current += 1;
+    setFreshCategories({ mine: false, intercession: false });
+    // An in-flight read discarded before a failed mutation must remain
+    // retryable, rather than leaving its category on an endless spinner.
+    setCategoryLoad(previous => ({
+      mine: previous.mine === "loading" ? "error" : previous.mine,
+      intercession: previous.intercession === "loading" ? "error" : previous.intercession,
+    }));
+  }
+
+  async function loadPrayers(allowInitialSnapshot = false) {
     if (!mountedRef.current) return;
     const request = ++prayerLoadRequest.current;
     const isCurrentRequest = () => mountedRef.current && request === prayerLoadRequest.current;
-    setLoading(true);
-    setLoadError(false);
+    setCategoryLoad({ mine: "loading", intercession: "loading" });
+    setFreshCategories({ mine: false, intercession: false });
     const supabase = createClient();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // This only chooses account-scoped UI/cache data. Database access still
+      // uses the existing authenticated JWT and unchanged RLS policies.
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!isCurrentRequest()) return;
-      if (!user) { router.push("/login"); return; }
+      if (sessionError) throw sessionError;
+      const user = session?.user;
+      if (!user) {
+        discardAccountData();
+        authUserRef.current = null;
+        authResolvedRef.current = true;
+        router.push("/login");
+        return;
+      }
+      if (authResolvedRef.current && authUserRef.current !== user.id) {
+        discardAccountData();
+        authUserRef.current = user.id;
+        authResolvedRef.current = true;
+        await loadPrayers();
+        return;
+      }
+      authUserRef.current = user.id;
+      authResolvedRef.current = true;
       setUserId(user.id);
 
-      let ownQuery = supabase.from("prayer_items").select("*")
-        .eq("user_id", user.id).order("created_at", { ascending: false });
-      // Home never displays answered prayers. Include nullable legacy rows,
-      // which the existing !is_answered rendering also treats as ongoing.
-      if (isPopup) ownQuery = ownQuery.or("is_answered.eq.false,is_answered.is.null");
+      const snapshot = snapshotRef?.current;
+      const age = snapshot ? Date.now() - snapshot.loadedAt : Infinity;
+      const canUseSnapshot = isPopup && allowInitialSnapshot && !initialSnapshotChecked.current
+        && snapshot?.scope === "ongoing" && snapshot.userId === user.id
+        && age >= 0 && age <= PRAYER_SNAPSHOT_MAX_AGE;
+      initialSnapshotChecked.current = true;
+      if (canUseSnapshot && snapshot) {
+        setPrayers(snapshot.prayers);
+        setIntercessionPrayers(snapshot.intercessionPrayers);
+        setPartnerSharedPrayerIds(new Set(snapshot.partnerSharedPrayerIds));
+        setCategoryLoad({ mine: "ready", intercession: "ready" });
+        if (!selectionTouched.current && !initialAnswerId
+          && !snapshot.prayers.some(prayer => !prayer.is_answered)
+          && snapshot.intercessionPrayers.some(prayer => !prayer.is_answered)) {
+          setView({ status: "ongoing", category: "intercession" });
+        }
+      } else {
+        if (snapshotRef) snapshotRef.current = null;
+      }
 
-      const intercessionRowsPromise = (async () => {
-        const { data: logs, error: logLoadError } = await supabase
-          .from("user_prayer_logs").select("prayer_id").eq("user_id", user.id);
-        if (logLoadError) throw logLoadError;
-        if (!isCurrentRequest()) return [];
-        const prayerIds = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
-        if (prayerIds.length === 0) return [];
-        let query = supabase.from("prayer_items").select("*").in("id", prayerIds)
-          .order("is_answered", { ascending: true }).order("created_at", { ascending: false });
-        if (isPopup) query = query.or("is_answered.eq.false,is_answered.is.null");
-        const { data, error } = await query;
-        if (error) throw error;
-        return data ?? [];
-      })();
-
-      const [ownResult, recipientResult, intercessionRows] = await Promise.all([
-        ownQuery,
-        supabase.from("prayer_item_recipients").select("prayer_item_id").eq("owner_id", user.id),
-        intercessionRowsPromise,
-      ]);
-      if (!isCurrentRequest()) return;
-      if (ownResult.error) throw ownResult.error;
-      if (recipientResult.error) throw recipientResult.error;
-      const ownRows = ownResult.data ?? [];
-      setPrayers(ownRows);
-      setIntercessionPrayers(intercessionRows);
-      setPartnerSharedPrayerIds(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
-
-      // Names/avatars enrich cards after their content is available. A slow or
-      // failed profile RPC cannot hold the cards behind the loading screen.
-      const enrichProfiles = (rows: any[], setRows: typeof setPrayers) => {
+      let ownRows: any[] = [];
+      let intercessionRows: any[] = [];
+      let sharedPrayerIds: string[] = [];
+      let publishedSnapshot: PrayerCardSnapshot | null = null;
+      const updatePublishedSnapshot = () => {
+        if (!isCurrentRequest() || !publishedSnapshot || snapshotRef?.current !== publishedSnapshot) return;
+        publishedSnapshot = { ...publishedSnapshot, prayers: ownRows, intercessionPrayers: intercessionRows };
+        snapshotRef.current = publishedSnapshot;
+      };
+      const enrichProfiles = (rows: any[], kind: PrayerCategory) => {
         void fetchProfiles(supabase, rows).then(profileMap => {
           if (!isCurrentRequest()) return;
-          setRows(current => current.map(row => ({
-            ...row,
-            profiles: profileMap[row.user_id] ?? row.profiles ?? null,
-          })));
+          const enriched = rows.map(row => ({ ...row, profiles: profileMap[row.user_id] ?? row.profiles ?? null }));
+          if (kind === "mine") { ownRows = enriched; setPrayers(enriched); }
+          else { intercessionRows = enriched; setIntercessionPrayers(enriched); }
+          updatePublishedSnapshot();
         }).catch(error => {
           if (isCurrentRequest()) console.warn("prayer author name load failed", error);
         });
       };
-      enrichProfiles(ownRows, setPrayers);
-      enrichProfiles(intercessionRows, setIntercessionPrayers);
+      const failCategory = (kind: PrayerCategory, error: unknown) => {
+        if (!isCurrentRequest()) return;
+        console.error(`prayer ${kind} load failed`, error);
+        if (snapshotRef) snapshotRef.current = null;
+        if (kind === "mine") { setPrayers([]); setPartnerSharedPrayerIds(new Set()); }
+        else setIntercessionPrayers([]);
+        setCategoryLoad(previous => ({ ...previous, [kind]: "error" }));
+      };
+
+      const ownPromise = (async () => {
+        try {
+          let query = supabase.from("prayer_items").select("*").eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+          if (isPopup) query = query.or("is_answered.eq.false,is_answered.is.null");
+          const [ownResult, recipientResult] = await Promise.all([
+            query,
+            supabase.from("prayer_item_recipients").select("prayer_item_id").eq("owner_id", user.id),
+          ]);
+          if (!isCurrentRequest()) return false;
+          if (ownResult.error) throw ownResult.error;
+          if (recipientResult.error) throw recipientResult.error;
+          ownRows = ownResult.data ?? [];
+          sharedPrayerIds = Array.from(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
+          setPrayers(ownRows);
+          setPartnerSharedPrayerIds(new Set(sharedPrayerIds));
+          setCategoryLoad(previous => ({ ...previous, mine: "ready" }));
+          setFreshCategories(previous => ({ ...previous, mine: true }));
+          enrichProfiles(ownRows, "mine");
+          return true;
+        } catch (error) { failCategory("mine", error); return false; }
+      })();
+      const intercessionPromise = (async () => {
+        try {
+          const { data: logs, error: logError } = await supabase.from("user_prayer_logs")
+            .select("prayer_id").eq("user_id", user.id);
+          if (logError) throw logError;
+          if (!isCurrentRequest()) return false;
+          const ids = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
+          if (ids.length > 0) {
+            let query = supabase.from("prayer_items").select("*").in("id", ids)
+              .order("is_answered", { ascending: true }).order("created_at", { ascending: false });
+            if (isPopup) query = query.or("is_answered.eq.false,is_answered.is.null");
+            const { data, error } = await query;
+            if (error) throw error;
+            if (!isCurrentRequest()) return false;
+            intercessionRows = data ?? [];
+          }
+          setIntercessionPrayers(intercessionRows);
+          setCategoryLoad(previous => ({ ...previous, intercession: "ready" }));
+          setFreshCategories(previous => ({ ...previous, intercession: true }));
+          enrichProfiles(intercessionRows, "intercession");
+          return true;
+        } catch (error) { failCategory("intercession", error); return false; }
+      })();
+      // Mutation callers still wait for both fresh category results.
+      const [ownLoaded, intercessionLoaded] = await Promise.all([ownPromise, intercessionPromise]);
+      if (isCurrentRequest() && ownLoaded && intercessionLoaded && isPopup && snapshotRef) {
+        publishedSnapshot = { userId: user.id, scope: "ongoing", prayers: ownRows, intercessionPrayers: intercessionRows, partnerSharedPrayerIds: sharedPrayerIds, loadedAt: Date.now() };
+        snapshotRef.current = publishedSnapshot;
+      }
     } catch (error) {
       if (!isCurrentRequest()) return;
-      console.error("prayer load failed", error);
-      setLoadError(true);
-      setNotice(c("network_error_retry"));
-    } finally {
-      if (isCurrentRequest()) setLoading(false);
+      console.error("prayer session load failed", error);
+      if (snapshotRef) snapshotRef.current = null;
+      setPrayers([]);
+      setIntercessionPrayers([]);
+      setPartnerSharedPrayerIds(new Set());
+      setCategoryLoad({ mine: "error", intercession: "error" });
     }
   }
 
   async function submit(visibility = "private", partnerRecipientIds: string[] = []) {
     if (!newPrayer.trim() || !userId || saving || !shareOptionsReady.current) return;
+    invalidatePrayerSnapshot();
     setSaving(true);
     const supabase = createClient();
     try {
@@ -626,6 +799,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   async function saveEdit() {
     if (!editText.trim() || !editId || savingEdit) return;
+    invalidatePrayerSnapshot();
     setSavingEdit(true);
     const supabase = createClient();
     try {
@@ -657,6 +831,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   async function deletePrayer() {
     if (!pendingDeletePrayerId || deletingPrayer) return;
+    invalidatePrayerSnapshot();
     setDeletingPrayer(true);
     const supabase = createClient();
     try {
@@ -704,6 +879,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   async function removeIntercession() {
     if (!pendingRemovalId || !userId || removalInFlight.current) return;
+    invalidatePrayerSnapshot();
     const prayerId = pendingRemovalId;
     removalInFlight.current = true;
     setRemovingIntercession(true);
@@ -727,6 +903,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   async function saveIntercessionTargets(privateOnly = false) {
     if (!sharePrayerId || (!privateOnly && selectedTargets.length === 0) || sharingIntercession || !shareOptionsReady.current) return;
+    invalidatePrayerSnapshot();
     setSharingIntercession(true);
     const supabase = createClient();
     try {
@@ -819,6 +996,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   async function saveAnsweredPrayer() {
     if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
+    invalidatePrayerSnapshot();
     setSavingTestimony(true);
     const supabase = createClient();
     try {
@@ -928,9 +1106,10 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     : category === "mine" ? c("prayer_empty_mine_sub") : c("prayer_empty_intercession_sub");
 
   useEffect(() => {
-    if (loading || loadError) return;
-    // A reload or deletion keeps this category and its surviving card (or nearest index).
+    // Each ready category keeps its surviving card (or nearest index), even
+    // while the other category is still loading.
     for (const nextCategory of ["mine", "intercession"] as const) {
+      if (categoryLoad[nextCategory] !== "ready") continue;
       const rows = nextCategory === "mine" ? myPrayingList : intercessionPrayingList;
       const savedId = activeCardIds[nextCategory];
       const savedIndex = rows.findIndex(prayer => String(prayer.id) === savedId);
@@ -941,7 +1120,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
         setActiveCardFor(nextCategory, String(rows[index].id));
       }
     }
-  }, [loading, loadError, prayers, intercessionPrayers, activeCardIds]);
+  }, [categoryLoad, prayers, intercessionPrayers, activeCardIds]);
 
   function profileName(prayer: any) {
     if (prayer.is_anonymous) return c("prayer_intercession_anonymous");
@@ -949,7 +1128,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   }
 
   useEffect(() => {
-    if (loading || loadError || !initialAnswerId || handledAnswerId.current === initialAnswerId) return;
+    if (!freshCategories.mine || categoryLoad.mine !== "ready" || !initialAnswerId || handledAnswerId.current === initialAnswerId) return;
     handledAnswerId.current = initialAnswerId;
     const ownedPrayer = prayers.find(prayer => String(prayer.id) === initialAnswerId && String(prayer.user_id) === userId && !prayer.is_answered);
     if (!ownedPrayer) {
@@ -961,40 +1140,61 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     setActiveCardFor("mine", initialAnswerId);
     setTestimonyPrayerId(initialAnswerId);
     setTestimonyText("");
-  }, [loading, loadError, initialAnswerId, prayers, userId]);
+  }, [freshCategories.mine, categoryLoad.mine, initialAnswerId, prayers, userId]);
 
   useEffect(() => {
-    if (isPopup || loading || loadError) return;
+    if (isPopup) return;
     const query = searchParams.toString();
     if (handledLink.current === query) return;
-    handledLink.current = query;
     const requestedTab = searchParams.get("tab");
     const requestedId = searchParams.get("prayerId");
     if (requestedTab === "answered" || isPrayerCategory(requestedTab)) {
-      selectionTouched.current = true;
       const requestedCategory = isPrayerCategory(searchParams.get("category"))
         ? searchParams.get("category") as PrayerCategory
         : requestedTab === "intercession" ? "intercession" : "mine";
+      if (appliedLinkView.current !== query) {
+        appliedLinkView.current = query;
+        selectionTouched.current = true;
+        setView({
+          status: requestedTab === "answered" || searchParams.get("status") === "answered" ? "answered" : "ongoing",
+          category: requestedCategory,
+        });
+      }
+      if (!freshCategories[requestedCategory] || categoryLoad[requestedCategory] !== "ready") return;
+      handledLink.current = query;
       const rows = requestedCategory === "intercession" ? intercessionPrayers : prayers;
       const selected = requestedId ? rows.find(prayer => String(prayer.id) === requestedId) : null;
-      const requestedStatus = selected
-        ? selected.is_answered ? "answered" : "ongoing"
-        : requestedTab === "answered" || searchParams.get("status") === "answered" ? "answered" : "ongoing";
-      setView({ status: requestedStatus, category: requestedCategory });
+      if (selected) setView(previous => previous.category === requestedCategory
+        ? { ...previous, status: selected.is_answered ? "answered" : "ongoing" }
+        : previous);
       if (selected && !selected.is_answered) setActiveCardFor(requestedCategory, String(selected.id));
       if (requestedId && !selected) setNotice(c("network_error_retry"));
     }
-  }, [isPopup, loading, loadError, searchParams, prayers, intercessionPrayers]);
+  }, [isPopup, freshCategories, categoryLoad, searchParams, prayers, intercessionPrayers]);
 
   const initialDeckSelected = useRef(false);
+  const waitingForInitialIntercession = !initialDeckSelected.current && !selectionTouched.current && !initialAnswerId
+    && status === "ongoing" && category === "mine" && categoryLoad.mine === "ready"
+    && myPrayingList.length === 0
+    && (categoryLoad.intercession === "loading"
+      || (categoryLoad.intercession === "ready" && intercessionPrayingList.length > 0));
   useEffect(() => {
-    if (loading || loadError || initialDeckSelected.current) return;
+    if (initialDeckSelected.current) return;
+    if (selectionTouched.current || initialAnswerId || (!isPopup && searchParams.get("tab"))) {
+      initialDeckSelected.current = true;
+      return;
+    }
+    if (!freshCategories.mine || categoryLoad.mine !== "ready") return;
+    if (myPrayingList.length > 0) { initialDeckSelected.current = true; return; }
+    // An empty owned list is not a completed deck decision until the other
+    // category has actually returned. Never move a card the user has selected.
+    if (!freshCategories.intercession || categoryLoad.intercession !== "ready") return;
     initialDeckSelected.current = true;
-    if (!selectionTouched.current && !initialAnswerId && (isPopup || !searchParams.get("tab")) && myPrayingList.length === 0 && intercessionPrayingList.length > 0) {
+    if (intercessionPrayingList.length > 0) {
       setView({ status: "ongoing", category: "intercession" });
       setActiveCardFor("intercession", String(intercessionPrayingList[0].id));
     }
-  }, [loading, loadError, initialAnswerId, isPopup, searchParams, myPrayingList, intercessionPrayingList]);
+  }, [freshCategories, categoryLoad, initialAnswerId, isPopup, searchParams, myPrayingList, intercessionPrayingList]);
 
   function handleActiveCard(id: string) {
     const nextCategory = id.startsWith("mine:") ? "mine" : id.startsWith("intercession:") ? "intercession" : null;
@@ -1086,14 +1286,14 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
           {notice}
         </div>
       )}
-      <Celebration
+      {celebration && <Celebration
         show={celebration}
         message={c("prayer_saved_message")}
         subMessage={c("prayer_saved_sub")}
         iconSrc="/icon-pray.webp"
         iconAlt={c("nav_prayer")}
         onClose={() => setCelebration(false)}
-      />
+      />}
 
       {showCreateSharePrompt && (
         <SharePromptModal
@@ -1161,7 +1361,11 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
             { key: "intercession", label: cardText.intercession, count: status === "ongoing" ? intercessionPrayingList.length : intercessionAnsweredList.length },
           ] as const).map(({ key, label, count }) => (
             <button key={key} type="button" aria-pressed={category === key} onClick={() => selectPrayerView({ status, category: key })}>
-              <span>{label}</span><span className={styles.tabCount}>{count}</span>
+              <span>{label}</span><span className={styles.tabCount}>
+                {categoryLoad[key] === "loading"
+                  ? <Loader2 size={12} className="spin" aria-label={c("loading")} />
+                  : categoryLoad[key] === "error" ? "–" : count}
+              </span>
             </button>
           ))}
         </div>
@@ -1174,7 +1378,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
             <Plus size={16} aria-hidden="true" />{cardText.addPrayerRequest}
           </button>}
         </div>}
-        {loading ? (
+        {loading || waitingForInitialIntercession ? (
           <div className={styles.loading}>
             <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
           </div>
