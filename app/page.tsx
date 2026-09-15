@@ -17,7 +17,7 @@ import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
-import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
+import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
@@ -381,6 +381,7 @@ export default function HomePage() {
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopMapItemId[]>([]);
   const [enabledProfileCharacterItemIds, setEnabledProfileCharacterItemIds] = useState<HeartShopCharacterItemId[]>([]);
+  const [homeCharacterItemsOwner, setHomeCharacterItemsOwner] = useState<string | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
@@ -818,6 +819,7 @@ export default function HomePage() {
   async function load() {
     const generation = ++homeLoadGenerationRef.current;
     const isCurrentLoad = () => homeLoadGenerationRef.current === generation;
+    setHomeCharacterItemsOwner(null);
     setLoading(true);
     setHomeLoadFailed(false);
     setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
@@ -946,6 +948,7 @@ export default function HomePage() {
         const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
         setEnabledHeartShopItemIds(enabledItemIds.filter(isHeartShopMapItemId));
         setEnabledProfileCharacterItemIds(enabledItemIds.filter(isHeartShopCharacterItemId));
+        setHomeCharacterItemsOwner(user.id);
       });
       if (isEligibleForSpanishLanguageLaunchAnnouncement(user.created_at)) {
         const localCampaignKey = getUserCampaignLocalStorageKey(SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY, user.id);
@@ -2597,11 +2600,12 @@ export default function HomePage() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <ProfileCharacterPreview
+            <HomeCharacterPreview
+              ownerId={profile.id}
               avatarType={currentAvatarType}
               alt={getRootsAvatarLabel(currentAvatarType, lang)}
               layers={homeProfileCharacterLayers}
-              style={{ width: "clamp(72px, 20vw, 88px)" }}
+              itemsReady={homeCharacterItemsOwner === profile.id}
             />
             <span
               style={{
