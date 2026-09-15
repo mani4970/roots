@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/communityContentOrder";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
+import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 
 type PrayerCategory = "mine" | "intercession";
 type PrayerStatus = "ongoing" | "answered";
@@ -106,7 +107,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const [categoryLoad, setCategoryLoad] = useState<Record<PrayerCategory, PrayerLoadState>>({ mine: "loading", intercession: "loading" });
   const [freshCategories, setFreshCategories] = useState<Record<PrayerCategory, boolean>>({ mine: false, intercession: false });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [viewportStyle, setViewportStyle] = useState<CSSProperties>({});
   const router = useRouter();
   const searchParams = useSearchParams();
   const cardText = getPrayerCardText(lang);
@@ -228,26 +228,11 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const closeRef = useRef(closeTopLayer);
   closeRef.current = closeTopLayer;
   const modalOpen = isPopup || !!testimonyPrayerId || !!editId || showForm || showShareModal || showCreateSharePrompt || !!pendingDeletePrayerId || !!pendingRemovalId || !!badgePopup || celebration;
+  usePrayerModalViewport(rootRef, modalOpen);
 
   useEffect(() => {
     if (!modalOpen) return;
-    const bodyOverflow = document.body.style.overflow;
-    const htmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const updateViewport = () => {
-      const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1;
-      const viewport = window.visualViewport;
-      setViewportStyle({
-        "--prayer-visible-height": `${(viewport?.height ?? window.innerHeight) / zoom}px`,
-        "--prayer-visible-top": `${(viewport?.offsetTop ?? 0) / zoom}px`,
-      } as CSSProperties);
-    };
-    updateViewport();
-    window.addEventListener("resize", updateViewport);
-    window.visualViewport?.addEventListener("resize", updateViewport);
-    window.visualViewport?.addEventListener("scroll", updateViewport);
     function keydown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         if (closeRef.current()) { event.preventDefault(); event.stopPropagation(); }
@@ -268,11 +253,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     document.addEventListener("keydown", keydown);
     if (isPopup) rootRef.current?.focus({ preventScroll: true });
     return () => {
-      document.body.style.overflow = bodyOverflow;
-      document.documentElement.style.overflow = htmlOverflow;
-      window.removeEventListener("resize", updateViewport);
-      window.visualViewport?.removeEventListener("resize", updateViewport);
-      window.visualViewport?.removeEventListener("scroll", updateViewport);
       document.removeEventListener("keydown", keydown);
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
@@ -1287,7 +1267,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   ];
 
   return (
-    <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} style={viewportStyle} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
+    <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
       {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
