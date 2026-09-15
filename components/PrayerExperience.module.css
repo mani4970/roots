@@ -42,7 +42,7 @@
 
 .pageShell .headingRow {
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .pageHeadingCopy {
@@ -59,6 +59,10 @@
   min-width: 0;
 }
 
+.pageShell .content {
+  padding-top: 4px;
+}
+
 .popup {
   position: fixed;
   inset-inline: 0;
@@ -72,11 +76,15 @@
   justify-content: center;
 }
 
-.popup::before {
-  content: "";
+.popupBackdrop {
   position: absolute;
   inset: 0;
   z-index: -1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
   background: rgb(51 62 47 / 28%);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -244,7 +252,11 @@
 
 .pageAddPrayerRow {
   min-height: 44px;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
+}
+
+.pageAddPrayerRow .addPrayer {
+  padding-block: 6px;
 }
 
 .pageAddPrayerRow .addPrayer:focus-visible {
@@ -312,9 +324,9 @@
 .statusTabs {
   display: flex;
   gap: 6px;
-  padding: 4px;
-  margin-bottom: 12px;
-  border-radius: 14px;
+  padding: 2px;
+  margin-bottom: 2px;
+  border-radius: 12px;
   background: var(--prayer-tab-muted-surface);
 }
 
@@ -333,8 +345,8 @@
 }
 
 .statusTabs button {
-  padding: 10px 8px;
-  border-radius: 11px;
+  padding: 6px 8px;
+  border-radius: 10px;
 }
 
 .statusTabs button[aria-pressed="true"] {
@@ -354,6 +366,10 @@
   gap: 6px;
   padding: 10px 4px 12px;
   border-bottom: 2px solid transparent;
+}
+
+.pageShell .categoryTabs button {
+  padding-block: 6px;
 }
 
 .categoryTabs button[aria-pressed="true"] {

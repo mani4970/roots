@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { type Lang } from "@/lib/i18n";
 import { getPrayerCardText } from "@/lib/prayerCardText";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
 import styles from "./PrayerExperience.module.css";
 
 // This small shell is available before the prayer feature's chunk finishes loading.
@@ -16,6 +17,7 @@ export default function PrayerCardsLoading({ lang, onClose }: { lang: Lang; onCl
   const [viewportStyle, setViewportStyle] = useState<CSSProperties>({});
 
   useAndroidBackHandler(() => { closeRef.current(); return true; });
+  const backdropHandlers = usePrayerPopupBackdrop(onClose);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -60,6 +62,7 @@ export default function PrayerCardsLoading({ lang, onClose }: { lang: Lang; onCl
 
   return (
     <div className={`roots-prayer-phase2c ${styles.popup}`} style={viewportStyle} role="dialog" aria-modal="true" aria-label={text.heading} data-prayer-loading-shell>
+      <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />
       <div className={styles.popupShell}>
         <header className={styles.header}>
           <div className={styles.headingRow}>

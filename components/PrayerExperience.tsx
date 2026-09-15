@@ -23,6 +23,7 @@ import {
   sortPrayerRequestRows,
 } from "@/lib/communityContentOrder";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
 
 type PrayerCategory = "mine" | "intercession";
 type PrayerStatus = "ongoing" | "answered";
@@ -177,6 +178,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   }
 
   useAndroidBackHandler(closeTopLayer);
+  const backdropHandlers = usePrayerPopupBackdrop(closeTopLayer);
 
   const closeRef = useRef(closeTopLayer);
   closeRef.current = closeTopLayer;
@@ -1061,6 +1063,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
   return (
     <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} style={viewportStyle} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
+      {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
       {badgePopup && (
         <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
