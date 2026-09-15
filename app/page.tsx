@@ -1,6 +1,5 @@
 "use client";
-import { Suspense, useEffect, useState, useRef, type ReactNode } from "react";
-import dynamic from "next/dynamic";
+import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
@@ -88,8 +87,9 @@ import {
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import { getPrayerCardText } from "@/lib/prayerCardText";
+import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 
-const PrayerExperience = dynamic(() => import("@/components/PrayerExperience"), { ssr: false });
+const PrayerExperience = lazy(() => import("@/components/PrayerExperience"));
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -2169,7 +2169,7 @@ export default function HomePage() {
       )}
 
       {showHomePrayerCards && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<PrayerCardsLoading lang={lang} onClose={() => setShowHomePrayerCards(false)} />}>
           <PrayerExperience
             variant="popup"
             onClose={() => setShowHomePrayerCards(false)}

@@ -89,6 +89,11 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   const [savingTestimony, setSavingTestimony] = useState(false);
   const [myGroups, setMyGroups] = useState<any[]>([]);
   const [myPartners, setMyPartners] = useState<ShareTargetPartner[]>([]);
+  const [loadingShareOptions, setLoadingShareOptions] = useState(false);
+  const mountedRef = useRef(false);
+  const prayerLoadRequest = useRef(0);
+  const shareOptionsRequest = useRef(0);
+  const shareOptionsReady = useRef(false);
   const [partnerSharedPrayerIds, setPartnerSharedPrayerIds] = useState<Set<string>>(new Set());
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePrayerId, setSharePrayerId] = useState<string | null>(null);
@@ -304,7 +309,16 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     return () => window.removeEventListener("popstate", handlePrayerPopState);
   }, [isPopup]);
 
-  useEffect(() => { loadPrayers(); }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    void loadPrayers();
+    return () => {
+      mountedRef.current = false;
+      prayerLoadRequest.current += 1;
+      shareOptionsRequest.current += 1;
+      shareOptionsReady.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isPopup && searchParams.get("compose") === "1") {
@@ -348,12 +362,14 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   }
 
   function toggleTarget(target: string) {
+    if (!shareOptionsReady.current) return;
     setSelectedTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
   }
 
   function toggleCreateShareTarget(target: string) {
+    if (!shareOptionsReady.current) return;
     setCreateShareTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
@@ -363,16 +379,25 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     if (!newPrayer.trim() || saving) return;
     setCreateShareTargets([]);
     setShowCreateSharePrompt(true);
+    void loadShareOptions();
+  }
+
+  function cancelShareOptionsLoad() {
+    shareOptionsRequest.current += 1;
+    shareOptionsReady.current = false;
+    setLoadingShareOptions(false);
   }
 
   function closeCreateSharePrompt() {
     if (saving) return;
+    cancelShareOptionsLoad();
     setShowCreateSharePrompt(false);
     setCreateShareTargets([]);
   }
 
   function closeIntercessionShareModal() {
     if (sharingIntercession) return;
+    cancelShareOptionsLoad();
     setShowShareModal(false);
     setSharePrayerId(null);
     setSelectedTargets([]);
@@ -407,17 +432,48 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     if (insertError) throw insertError;
   }
 
-  async function loadPrayerRecipientTargets(prayerId: string) {
+  async function loadShareOptions(prayer?: any) {
+    const request = ++shareOptionsRequest.current;
+    const isCurrentRequest = () => mountedRef.current && request === shareOptionsRequest.current;
+    shareOptionsReady.current = false;
+    setLoadingShareOptions(true);
+    setMyGroups([]);
+    setMyPartners([]);
     const supabase = createClient();
     try {
-      const { data } = await supabase
-        .from("prayer_item_recipients")
-        .select("recipient_id")
-        .eq("prayer_item_id", prayerId);
-      const partnerTargets = (data ?? []).map((row: any) => `partner_${row.recipient_id}`).filter(Boolean);
-      setSelectedTargets(prev => Array.from(new Set([...prev, ...partnerTargets])));
+      // Sharing is optional while reading cards. Fetch a fresh target list only
+      // when opening a share prompt, and wait for existing selections as well.
+      const [options, recipientResult] = await Promise.all([
+        loadSharePromptOptions(c("profile_default_name"), { force: true }),
+        prayer
+          ? supabase.from("prayer_item_recipients").select("recipient_id")
+            .eq("prayer_item_id", prayer.id).eq("owner_id", userId)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (!isCurrentRequest()) return;
+      if (recipientResult.error) throw recipientResult.error;
+      setMyGroups(options.groups);
+      setMyPartners(options.partners);
+      if (prayer) {
+        const partnerTargets = (recipientResult.data ?? [])
+          .filter((row: any) => row.recipient_id)
+          .map((row: any) => `partner_${row.recipient_id}`);
+        setSelectedTargets(Array.from(new Set([...visibilityTargets(prayer.visibility), ...partnerTargets])));
+      }
+      shareOptionsReady.current = true;
     } catch (error) {
-      console.warn("기도 동역자 공유 대상 조회 실패:", error);
+      if (!isCurrentRequest()) return;
+      console.warn("prayer share options load failed", error);
+      // Keep the unsaved form/existing prayer intact. A failed target lookup
+      // must never look like an empty target list or enable a private fallback.
+      setShowCreateSharePrompt(false);
+      setShowShareModal(false);
+      setSharePrayerId(null);
+      setSelectedTargets([]);
+      setCreateShareTargets([]);
+      setNotice(c("network_error_retry"));
+    } finally {
+      if (isCurrentRequest()) setLoadingShareOptions(false);
     }
   }
 
@@ -425,7 +481,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
     setSharePrayerId(prayer.id);
     setSelectedTargets(visibilityTargets(prayer.visibility));
     setShowShareModal(true);
-    void loadPrayerRecipientTargets(prayer.id);
+    void loadShareOptions(prayer);
   }
 
   async function fetchProfiles(supabase: any, rows: any[]) {
@@ -436,87 +492,79 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
   }
 
   async function loadPrayers() {
+    if (!mountedRef.current) return;
+    const request = ++prayerLoadRequest.current;
+    const isCurrentRequest = () => mountedRef.current && request === prayerLoadRequest.current;
     setLoading(true);
     setLoadError(false);
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!isCurrentRequest()) return;
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
 
-      try {
-        const shareOptions = await loadSharePromptOptions(
-          c("profile_default_name"),
-          { force: true },
-        );
-        setMyGroups(shareOptions.groups);
-        setMyPartners(shareOptions.partners);
-      } catch (shareOptionsError) {
-        console.error("prayer share options load failed", shareOptionsError);
-        setMyPartners([]);
-        setMyGroups([]);
-      }
+      let ownQuery = supabase.from("prayer_items").select("*")
+        .eq("user_id", user.id).order("created_at", { ascending: false });
+      // Home never displays answered prayers. Include nullable legacy rows,
+      // which the existing !is_answered rendering also treats as ongoing.
+      if (isPopup) ownQuery = ownQuery.or("is_answered.eq.false,is_answered.is.null");
 
-      const { data: partnerRecipientRows, error: recipientLoadError } = await supabase
-        .from("prayer_item_recipients")
-        .select("prayer_item_id")
-        .eq("owner_id", user.id);
-      if (recipientLoadError) throw recipientLoadError;
-      setPartnerSharedPrayerIds(new Set((partnerRecipientRows ?? []).map((row: any) => String(row.prayer_item_id))));
+      const intercessionRowsPromise = (async () => {
+        const { data: logs, error: logLoadError } = await supabase
+          .from("user_prayer_logs").select("prayer_id").eq("user_id", user.id);
+        if (logLoadError) throw logLoadError;
+        if (!isCurrentRequest()) return [];
+        const prayerIds = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
+        if (prayerIds.length === 0) return [];
+        let query = supabase.from("prayer_items").select("*").in("id", prayerIds)
+          .order("is_answered", { ascending: true }).order("created_at", { ascending: false });
+        if (isPopup) query = query.or("is_answered.eq.false,is_answered.is.null");
+        const { data, error } = await query;
+        if (error) throw error;
+        return data ?? [];
+      })();
 
-      const { data, error: ownLoadError } = await supabase
-        .from("prayer_items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (ownLoadError) throw ownLoadError;
-      if (data) {
-        setPrayers(data);
-        // Display-name enrichment must not block otherwise available prayers.
-        void fetchProfiles(supabase, data).then(profileMap => {
-          setPrayers(current => current.map(row => row.user_id === user.id
-            ? { ...row, profiles: profileMap[row.user_id] ?? row.profiles ?? null }
-            : row));
-        }).catch(error => console.warn("prayer author name load failed", error));
-      }
+      const [ownResult, recipientResult, intercessionRows] = await Promise.all([
+        ownQuery,
+        supabase.from("prayer_item_recipients").select("prayer_item_id").eq("owner_id", user.id),
+        intercessionRowsPromise,
+      ]);
+      if (!isCurrentRequest()) return;
+      if (ownResult.error) throw ownResult.error;
+      if (recipientResult.error) throw recipientResult.error;
+      const ownRows = ownResult.data ?? [];
+      setPrayers(ownRows);
+      setIntercessionPrayers(intercessionRows);
+      setPartnerSharedPrayerIds(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
 
-      const { data: logs, error: logLoadError } = await supabase
-        .from("user_prayer_logs")
-        .select("prayer_id")
-        .eq("user_id", user.id);
-
-      if (logLoadError) throw logLoadError;
-      const prayerIds = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
-      if (prayerIds.length === 0) {
-        setIntercessionPrayers([]);
-      } else {
-        const { data: intercessionData, error: intercessionLoadError } = await supabase
-          .from("prayer_items")
-          .select("*")
-          .in("id", prayerIds)
-          .order("is_answered", { ascending: true })
-          .order("created_at", { ascending: false });
-
-        if (intercessionLoadError) throw intercessionLoadError;
-        if (intercessionData) {
-          const profileMap = await fetchProfiles(supabase, intercessionData);
-          setIntercessionPrayers(intercessionData.map((row: any) => ({
+      // Names/avatars enrich cards after their content is available. A slow or
+      // failed profile RPC cannot hold the cards behind the loading screen.
+      const enrichProfiles = (rows: any[], setRows: typeof setPrayers) => {
+        void fetchProfiles(supabase, rows).then(profileMap => {
+          if (!isCurrentRequest()) return;
+          setRows(current => current.map(row => ({
             ...row,
-            profiles: profileMap[row.user_id] ?? null,
+            profiles: profileMap[row.user_id] ?? row.profiles ?? null,
           })));
-        }
-      }
+        }).catch(error => {
+          if (isCurrentRequest()) console.warn("prayer author name load failed", error);
+        });
+      };
+      enrichProfiles(ownRows, setPrayers);
+      enrichProfiles(intercessionRows, setIntercessionPrayers);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error("prayer load failed", error);
       setLoadError(true);
       setNotice(c("network_error_retry"));
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) setLoading(false);
     }
   }
 
   async function submit(visibility = "private", partnerRecipientIds: string[] = []) {
-    if (!newPrayer.trim() || !userId || saving) return;
+    if (!newPrayer.trim() || !userId || saving || !shareOptionsReady.current) return;
     setSaving(true);
     const supabase = createClient();
     try {
@@ -676,7 +724,7 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
 
 
   async function saveIntercessionTargets(privateOnly = false) {
-    if (!sharePrayerId || (!privateOnly && selectedTargets.length === 0) || sharingIntercession) return;
+    if (!sharePrayerId || (!privateOnly && selectedTargets.length === 0) || sharingIntercession || !shareOptionsReady.current) return;
     setSharingIntercession(true);
     const supabase = createClient();
     try {
@@ -1073,8 +1121,11 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
           partners={myPartners}
           selectedTargets={createShareTargets}
           saving={saving}
+          actionsDisabled={loadingShareOptions}
+          loadingGroups={loadingShareOptions}
+          loadingPartners={loadingShareOptions}
           onToggleTarget={toggleCreateShareTarget}
-          onChangeTargets={setCreateShareTargets}
+          onChangeTargets={targets => { if (shareOptionsReady.current) setCreateShareTargets(targets); }}
           onClose={closeCreateSharePrompt}
           onPrivate={() => { void submit("private", []); }}
           onShare={() => { if (createShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitShareTargets(createShareTargets); void submit(visibility, partnerRecipientIds); } }}
@@ -1353,8 +1404,11 @@ export default function PrayerExperience({ variant = "page", onClose, initialAns
           partners={myPartners}
           selectedTargets={selectedTargets}
           saving={sharingIntercession}
+          actionsDisabled={loadingShareOptions}
+          loadingGroups={loadingShareOptions}
+          loadingPartners={loadingShareOptions}
           onToggleTarget={toggleTarget}
-          onChangeTargets={setSelectedTargets}
+          onChangeTargets={targets => { if (shareOptionsReady.current) setSelectedTargets(targets); }}
           onClose={closeIntercessionShareModal}
           onPrivate={() => { void saveIntercessionTargets(true); }}
           onShare={() => { void saveIntercessionTargets(false); }}

@@ -46,6 +46,7 @@ type SharePromptModalProps = {
   partners?: ShareTargetPartner[];
   selectedTargets: string[];
   saving?: boolean;
+  actionsDisabled?: boolean;
   loadingGroups?: boolean;
   loadingPartners?: boolean;
   onInvitePartners?: () => void;
@@ -83,6 +84,7 @@ export default function SharePromptModal({
   partners = [],
   selectedTargets,
   saving = false,
+  actionsDisabled = false,
   loadingGroups = false,
   loadingPartners = false,
   onInvitePartners,
@@ -382,10 +384,10 @@ export default function SharePromptModal({
             <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 700 }}>{selectedCountLabel}</p>
           )}
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={onPrivate} disabled={saving} className="btn-outline" style={{ flex: 1, opacity: saving ? 0.55 : 1 }}>
+            <button type="button" onClick={onPrivate} disabled={saving || actionsDisabled} className="btn-outline" style={{ flex: 1, opacity: saving || actionsDisabled ? 0.55 : 1 }}>
               {privateActionLabel}
             </button>
-            <button type="button" onClick={onShare} disabled={saving || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1, opacity: saving || selectedTargets.length === 0 ? 0.55 : 1 }}>
+            <button type="button" onClick={onShare} disabled={saving || actionsDisabled || selectedTargets.length === 0} className="btn-sage" style={{ flex: 1, opacity: saving || actionsDisabled || selectedTargets.length === 0 ? 0.55 : 1 }}>
               {saving ? <Loader2 size={16} className="spin" /> : `${shareActionLabel}${selectedTargets.length > 0 ? ` (${selectedTargets.length})` : ""}`}
             </button>
           </div>
