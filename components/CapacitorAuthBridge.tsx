@@ -114,6 +114,17 @@ function safeJson(value: Record<string, unknown>) {
   }
 }
 
+function restoreIPhoneViewportAfterBrowser() {
+  if (
+    Capacitor.getPlatform() === "ios" &&
+    document.documentElement.dataset.nativeFormFactor === "phone"
+  ) {
+    // Browser.close resolves after native dismissal. The status-bar plugin can
+    // restore its initial overlay setting as the underlying view reappears.
+    window.dispatchEvent(new Event("roots:native-viewport-refresh"));
+  }
+}
+
 const DEBUG_OAUTH = process.env.NODE_ENV !== "production";
 
 function debugOAuth(message: string, details?: Record<string, unknown>) {
@@ -174,6 +185,8 @@ export default function CapacitorAuthBridge() {
             await Browser.close();
           } catch {
             // Browser may not be open. Ignore and route inside the app.
+          } finally {
+            restoreIPhoneViewportAfterBrowser();
           }
           router.replace(inAppPath);
           router.refresh();
@@ -218,6 +231,8 @@ export default function CapacitorAuthBridge() {
           message:
             closeError instanceof Error ? closeError.message : String(closeError),
         });
+      } finally {
+        restoreIPhoneViewportAfterBrowser();
       }
 
       const supabase = createClient();

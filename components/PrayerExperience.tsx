@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
-import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2, UserRound } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
 import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
@@ -56,6 +56,21 @@ export type PrayerCardSnapshot = {
 
 type PrayerLoadState = "loading" | "ready" | "error";
 const PRAYER_SNAPSHOT_MAX_AGE = 30_000;
+
+function PrayerCardAvatar({ url, name, anonymous, nearActive }: { url?: string | null; name: string; anonymous: boolean; nearActive: boolean }) {
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  // The profile lookup already includes this URL. Only the current card and
+  // its neighbours may request a photo; neither metadata nor images gate text.
+  const src = !anonymous && nearActive && url && url !== failedUrl ? url : undefined;
+  const loaded = Boolean(src && loadedUrl === src);
+  return <span className={styles.cardAvatar} aria-hidden="true" data-prayer-card-avatar>
+    {!loaded && (anonymous ? <UserRound size={16} /> : Array.from(name.trim())[0] || <UserRound size={16} />)}
+    {src && <img key={src} src={src} alt="" width={28} height={28} loading="lazy" decoding="async" fetchPriority="low" draggable={false}
+      style={{ opacity: loaded ? 1 : 0 }}
+      onLoad={() => setLoadedUrl(src)} onError={() => setFailedUrl(src)} />}
+  </span>;
+}
 
 export type PrayerExperienceProps = {
   variant?: "page" | "popup";
@@ -1234,9 +1249,19 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     );
   }
 
+  const avatarCardIds = [
+    ...myPrayingList.map(prayer => `mine:${prayer.id}`),
+    ...intercessionPrayingList.map(prayer => `intercession:${prayer.id}`),
+  ];
+  const avatarIndex = Math.max(0, avatarCardIds.indexOf(activeCardId ?? ""));
+  const nearbyAvatarIds = new Set(avatarCardIds.slice(Math.max(0, avatarIndex - 1), avatarIndex + 2));
+
   function cardHeader(prayer: any, kind: PrayerCategory) {
     return <div className={styles.cardMeta}>
-      <span className={styles.cardAuthor}>{profileName(prayer)}</span>
+      <span className={styles.cardAuthor}>
+        <PrayerCardAvatar url={prayer.is_anonymous ? undefined : prayer.profiles?.avatar_url} name={profileName(prayer)} anonymous={Boolean(prayer.is_anonymous)} nearActive={nearbyAvatarIds.has(`${kind}:${prayer.id}`)} />
+        <span className={styles.cardAuthorName}>{profileName(prayer)}</span>
+      </span>
       <time className={styles.cardDate} dateTime={prayer.created_at}>{new Date(prayer.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</time>
       {kind === "mine" ? cardMenu(prayer) : intercessionMenu(prayer)}
     </div>;

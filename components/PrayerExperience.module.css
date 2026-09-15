@@ -173,10 +173,45 @@
 }
 
 .cardAuthor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   flex: 1 1 auto;
   font-weight: 700;
   color: var(--text2);
+}
+
+.cardAuthorName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardAvatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--prayer-sage-surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cardAvatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .cardDate {

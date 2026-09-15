@@ -70,6 +70,14 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(t("login_error", lang)); setLoading(false); return; }
     await setPreferredLang(lang);
+    if (
+      document.documentElement.dataset.nativePlatform === "ios" &&
+      document.documentElement.dataset.nativeFormFactor === "phone"
+    ) {
+      // Release the login keyboard before the authenticated page takes over.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement) focused.blur();
+    }
     router.push(getSafeRedirectFromLocation()); router.refresh();
   }
 
