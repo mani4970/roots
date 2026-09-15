@@ -236,9 +236,9 @@ export const HEART_SHOP_ROOTSMAN_FW_SHOES_ASSET_VERSION = "20260905_fw_v1";
 export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 export const HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION = "20260904_travel_v1";
-export const HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION = "20260911_travel_v1";
+export const HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION = "20260915_travel_compressed_v1";
 
-// Every current Love Shop character asset has a lossless WebP counterpart.
+// Every current Love Shop character asset has a WebP counterpart.
 // Legacy PNG files remain deployed temporarily for older app tabs and caches.
 const HEART_SHOP_CHARACTER_ASSET_EXTENSION = "webp";
 
@@ -312,10 +312,8 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
             : itemId === "shared_background_16"
               ? 1130
               : 0;
-  const newPriority = itemId === "shared_background_15"
-    ? 10000
-    : isAdditionalTravelBackground
-      ? 9500 - itemNumber
+  const newPriority = isAdditionalTravelBackground
+    ? 9500 - itemNumber
     : isNewestPet
       ? 9100 - itemNumber
     : isNewestTravelBackground
