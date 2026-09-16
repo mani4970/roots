@@ -5,6 +5,7 @@ import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 import NativeStatusBar from "@/components/NativeStatusBar";
 import NotificationBridge from "@/components/NotificationBridge";
 import AndroidBackButtonBridge from "@/components/AndroidBackButtonBridge";
+import AppObservationBridge from "@/components/AppObservationBridge";
 import { FALLBACK_LANG, SUPPORTED_LANGS } from "@/lib/i18n";
 
 export const metadata: Metadata = {
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CapacitorAuthBridge />
         <NotificationBridge />
         <AndroidBackButtonBridge />
+        <AppObservationBridge />
         {children}
         <Analytics />
       </body>

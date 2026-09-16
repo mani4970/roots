@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { reportObservationClientError } from "@/lib/appObservation";
 
 type ErrorLang = "ko" | "de" | "en" | "fr" | "es";
 
@@ -92,12 +93,14 @@ function readErrorPreferences(): ErrorPreferences {
 }
 
 export default function GlobalError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   const [preferences, setPreferences] = useState<ErrorPreferences>({ lang: "ko", dark: false });
+  useEffect(() => { reportObservationClientError("global_boundary", error); }, [error]);
 
   useEffect(() => {
     setPreferences(readErrorPreferences());

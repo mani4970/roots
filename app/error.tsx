@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { reportObservationClientError } from "@/lib/appObservation";
 
 type ErrorLang = "ko" | "de" | "en" | "fr" | "es";
 
@@ -63,12 +64,14 @@ function readErrorLang(): ErrorLang {
 }
 
 export default function AppError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   const [lang, setLang] = useState<ErrorLang>("ko");
+  useEffect(() => { reportObservationClientError("react_boundary", error); }, [error]);
 
   useEffect(() => {
     setLang(readErrorLang());

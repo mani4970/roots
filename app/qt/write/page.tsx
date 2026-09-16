@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { storageGet, storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
@@ -489,6 +490,11 @@ function QTWriteContent() {
   const completionSavingRef = useRef(false);
   const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
   const pendingCompletionRef = useRef<PendingCompletion | null>(null);
+  const completionObservationRef = useRef<ObservationFlow | null>(null);
+  const completionRetryRef = useRef(false);
+  const draftObservationRef = useRef<ObservationFlow | null>(null);
+  const draftObservationRetryRef = useRef(false);
+  const retryToastObservationRef = useRef<{ flow: ObservationFlow | null; phase: string } | null>(null);
   const [freeText, setFreeText] = useState("");
   // Auto-save feedback is isolated from the writer tree so visual status updates
   // cannot re-render an active textarea during Korean IME composition.
@@ -510,6 +516,88 @@ function QTWriteContent() {
   const lastLocalBackupSignatureRef = useRef("");
   const localSyncRetryRef = useRef(false);
   const lastDraftClientTimestampRef = useRef(0);
+
+  function getCompletionObservation(userId = draftBackupUserId) {
+    if (!completionObservationRef.current || (userId && completionObservationRef.current.userId !== userId)) {
+      completionObservationRef.current = beginObservation("qt_write", userId, {
+        mode, source: isEditMode ? "edit" : "create", past_date: selectedDate !== todayStr,
+      });
+    }
+    return completionObservationRef.current;
+  }
+
+  function observeSaveFailure(error: unknown, phase: string) {
+    completionRetryRef.current = true;
+    observe(completionObservationRef.current, "save_error", { phase, ...observationError(error) });
+    retryToastObservationRef.current = { flow: completionObservationRef.current, phase };
+  }
+
+  useEffect(() => {
+    try {
+      if (!pendingCompletion || saving || completionReady) return;
+      if (!pendingCompletion.existingRecord && !pendingCompletion.failed) return;
+      const retryAvailable = !pendingCompletion.existingRecord || !pendingCompletion.visibilitySaved
+        || !pendingCompletion.recipientsSaved || !pendingCompletion.progressSaved;
+      if (!retryAvailable) return;
+      let frame = 0;
+      let recorded = false;
+      const recordVisible = () => {
+        if (recorded || document.visibilityState !== "visible") return;
+        window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(() => {
+          frame = window.requestAnimationFrame(() => {
+            if (recorded || document.visibilityState !== "visible") return;
+            recorded = true;
+            observe(completionObservationRef.current, "retry_shown", {
+              phase: "completion", source: "button", recovery: pendingCompletion.existingRecord,
+            }, pendingCompletion.recordId);
+          });
+        });
+      };
+      recordVisible();
+      document.addEventListener("visibilitychange", recordVisible);
+      return () => { window.cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", recordVisible); };
+    } catch { /* Observation setup never blocks completion recovery. */ }
+  }, [pendingCompletion, saving, completionReady]);
+
+  useEffect(() => {
+    try {
+      const pendingNotice = retryToastObservationRef.current;
+      if (!pendingNotice || !toast || !pageReady || pendingCompletion || draftLoadError || completionReady) return;
+      let frame = 0;
+      let recorded = false;
+      const recordVisible = () => {
+        if (recorded || document.visibilityState !== "visible") return;
+        window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(() => {
+          frame = window.requestAnimationFrame(() => {
+            if (recorded || document.visibilityState !== "visible") return;
+            recorded = true;
+            retryToastObservationRef.current = null;
+            observe(pendingNotice.flow, "retry_shown", { phase: pendingNotice.phase, source: "toast" });
+          });
+        });
+      };
+      recordVisible();
+      document.addEventListener("visibilitychange", recordVisible);
+      return () => {
+        window.cancelAnimationFrame(frame);
+        document.removeEventListener("visibilitychange", recordVisible);
+        if (retryToastObservationRef.current === pendingNotice) retryToastObservationRef.current = null;
+      };
+    } catch { /* Observation setup never blocks the existing toast. */ }
+  }, [toast, pageReady, pendingCompletion, draftLoadError, completionReady]);
+
+  useEffect(() => {
+    try {
+      if (!draftLoadError || !draftBackupUserId) return;
+      if (!draftObservationRef.current) {
+        draftObservationRef.current = beginObservation("qt_write", draftBackupUserId, { phase: "draft_load" });
+      }
+      observe(draftObservationRef.current, "draft_error", { phase: "draft_load", reason: "load_failed" });
+      observe(draftObservationRef.current, "retry_shown", { phase: "draft_load", source: "button" });
+    } catch { /* Observation setup never blocks draft recovery. */ }
+  }, [draftLoadError, draftBackupUserId]);
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
@@ -1983,6 +2071,7 @@ function QTWriteContent() {
   }
 
   function retryDraftLoad() {
+    observe(draftObservationRef.current, "retry_clicked", { phase: "draft_load", source: "manual" });
     setDraftLoadError(false);
     setDraftRetryNonce(value => value + 1);
   }
@@ -2048,6 +2137,15 @@ function QTWriteContent() {
     // client snapshot timestamp so a delayed older HTTP request cannot replace
     // newer text.
     const localBackupSaved = persistDraftBackup(snapshot);
+    if (!draftObservationRef.current || draftObservationRef.current.userId !== draftBackupUserId) {
+      draftObservationRef.current = beginObservation("qt_write", draftBackupUserId, { phase: "draft", mode: snapshot.mode });
+    }
+    const draftFlow = draftObservationRef.current;
+    const draftSource = silent ? "auto" : "manual";
+    if (!silent && draftObservationRetryRef.current) {
+      observe(draftFlow, "retry_clicked", { phase: "draft", source: "manual" });
+    }
+    observe(draftFlow, "draft_requested", { source: draftSource, retry: draftObservationRetryRef.current, local_backup: localBackupSaved });
     if (markSaving) setSaving(true);
 
     const executeSave = async () => {
@@ -2055,6 +2153,9 @@ function QTWriteContent() {
 
       try {
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          draftObservationRetryRef.current = true;
+          observe(draftFlow, localBackupSaved ? "draft_local_only" : "draft_error", { source: draftSource, reason: "offline", local_backup: localBackupSaved });
+          if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
           if (silent) {
             updateAutoSaveStatus(localBackupSaved ? "local" : "error");
           } else if (localBackupSaved) {
@@ -2070,6 +2171,8 @@ function QTWriteContent() {
         const supabase = createClient();
         const user = await getQtDraftSessionUser(supabase);
         if (!user) {
+          draftObservationRetryRef.current = true;
+          observe(draftFlow, "draft_error", { source: draftSource, reason: "auth_missing", local_backup: localBackupSaved });
           if (!silent) router.push("/login");
           else updateAutoSaveStatus(localBackupSaved ? "local" : "error");
           return false;
@@ -2087,7 +2190,10 @@ function QTWriteContent() {
           && Number.isFinite(storedTimestamp)
           && storedTimestamp > submittedTimestamp;
         if (newerServerSnapshotExists) {
+          draftObservationRetryRef.current = true;
+          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "newer_server_snapshot", local_backup: localBackupSaved });
           if (!silent && localBackupSaved) {
+            retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
             showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
           }
           updateAutoSaveStatus(localBackupSaved ? "local" : "error");
@@ -2095,6 +2201,8 @@ function QTWriteContent() {
         }
 
         if (result.status === "completed_exists") {
+          draftObservationRetryRef.current = false;
+          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "completed_exists" });
           removeQTDraftBackup(user.id, snapshot.selectedDate);
           lastLocalBackupSignatureRef.current = "";
           lastAutoSaveSignatureRef.current = signature;
@@ -2104,12 +2212,17 @@ function QTWriteContent() {
 
         lastAutoSaveSignatureRef.current = signature;
         const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        observe(draftFlow, "draft_saved", { source: draftSource, recovery: draftObservationRetryRef.current });
+        draftObservationRetryRef.current = false;
         updateAutoSaveStatus("saved", savedAt);
         if (!silent) {
           showToast(trQT("임시저장됐어요! 나중에 이어쓸 수 있어요", lang), "success");
         }
         return true;
       } catch (error) {
+        draftObservationRetryRef.current = true;
+        observe(draftFlow, "draft_error", { source: draftSource, local_backup: localBackupSaved, ...observationError(error) });
+        if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
         console.error("[saveDraft] failed:", error);
         if (silent) {
           updateAutoSaveStatus(localBackupSaved ? "local" : "error");
@@ -2242,6 +2355,7 @@ function QTWriteContent() {
       setCompleteSharePartners(options.partners);
     } catch (error) {
       console.error("qt complete share options load failed", error);
+      observe(completionObservationRef.current, "recipients_error", { phase: "share_options", ...observationError(error) });
       setCompleteShareGroups([]);
       setCompleteSharePartners([]);
     } finally {
@@ -2256,6 +2370,7 @@ function QTWriteContent() {
   }
 
   function openCompleteSharePrompt() {
+    observe(getCompletionObservation(), "complete_clicked", { mode, source: isEditMode ? "edit" : "create" });
     if (isEditMode) {
       void save();
       return;
@@ -2362,14 +2477,19 @@ function QTWriteContent() {
     userId: string,
     qtRecordId?: string | null,
   ): Promise<boolean> {
-    if (selectedDate !== getLocalDateString()) return true;
+    if (selectedDate !== getLocalDateString()) {
+      observe(completionObservationRef.current, "progress_skipped", { reason: "past_date" }, qtRecordId);
+      return true;
+    }
 
+    observe(completionObservationRef.current, "progress_requested", undefined, qtRecordId);
     try {
       await withQtDraftTimeout(
         recordBibleReflectionProgress(supabase, userId, selectedDate),
         20_000,
         "record_bible_reflection_progress",
       );
+      observe(completionObservationRef.current, "progress_ok", undefined, qtRecordId);
       storageSet(`qt_completion_pending_watering_${userId}_${selectedDate}`, "true");
       // The core progress RPC has succeeded. The independent challenge ledger
       // can retry in the background and must not hold completion open.
@@ -2377,6 +2497,8 @@ function QTWriteContent() {
         .catch(error => console.warn("동역자 챌린지 완료일 기록 실패:", error));
       return true;
     } catch (progressError) {
+      completionRetryRef.current = true;
+      observe(completionObservationRef.current, "progress_error", observationError(progressError), qtRecordId);
       console.warn("말씀 묵상 progress 업데이트 실패:", progressError);
       showToast(trQT("말씀동행 반영에 실패했어요. 다시 완료해주세요.", lang), "error");
       return false;
@@ -2400,12 +2522,14 @@ function QTWriteContent() {
     const { recordId, userId, options } = pending;
 
     if (!pending.visibilitySaved && typeof options.visibility === "string") {
+      observe(completionObservationRef.current, "recipients_requested", { phase: "visibility" }, recordId);
       const sharedAt = options.visibility === "private" ? null : new Date().toISOString();
       let { error: visibilityError } = await supabase.from("qt_records")
         .update({ visibility: options.visibility, shared_at: sharedAt })
         .eq("id", recordId)
         .eq("user_id", userId);
       if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
+        observe(completionObservationRef.current, "automatic_retry", { phase: "visibility", reason: "schema_fallback" }, recordId);
         console.warn("qt_records.shared_at column is not available yet. Retrying visibility update without shared_at:", visibilityError.message);
         const retry = await supabase.from("qt_records")
           .update({ visibility: options.visibility })
@@ -2413,12 +2537,23 @@ function QTWriteContent() {
           .eq("user_id", userId);
         visibilityError = retry.error;
       }
-      if (visibilityError) throw visibilityError;
+      if (visibilityError) {
+        observe(completionObservationRef.current, "recipients_error", { phase: "visibility", ...observationError(visibilityError) }, recordId);
+        throw visibilityError;
+      }
+      observe(completionObservationRef.current, "recipients_ok", { phase: "visibility" }, recordId);
       pending = rememberPendingCompletion({ ...pending, visibilitySaved: true });
     }
 
     if (!pending.recipientsSaved && Array.isArray(options.partnerRecipientIds)) {
-      await syncQtCompletionRecipients(supabase, recordId, userId, options.partnerRecipientIds);
+      observe(completionObservationRef.current, "recipients_requested", { phase: "recipients" }, recordId);
+      try {
+        await syncQtCompletionRecipients(supabase, recordId, userId, options.partnerRecipientIds);
+      } catch (error) {
+        observe(completionObservationRef.current, "recipients_error", { phase: "recipients", ...observationError(error) }, recordId);
+        throw error;
+      }
+      observe(completionObservationRef.current, "recipients_ok", { phase: "recipients" }, recordId);
       pending = rememberPendingCompletion({ ...pending, recipientsSaved: true });
     }
 
@@ -2445,17 +2580,30 @@ function QTWriteContent() {
     // A collision can mean another tab saved, or the first response was lost.
     // Never imply the current form was saved: retain its backup and the notice
     // until the user explicitly chooses to open the existing record.
-    if (pending.existingRecord) return;
+    if (pending.existingRecord) {
+      observe(completionObservationRef.current, "save_ok", { recovery: true, existing_record: true }, recordId);
+      completionRetryRef.current = false;
+      return;
+    }
     removeQTDraftBackup(userId, selectedDate);
     setShowCompleteSharePrompt(false);
     setCompleteShareTargets([]);
     // This screen is already in the writer bundle: a slow/missing route chunk
     // cannot hide a successfully completed reflection behind a blank page.
+    observe(completionObservationRef.current, "save_ok", { recovery: completionRetryRef.current }, recordId);
+    observe(completionObservationRef.current, "completion_ready", undefined, recordId);
+    rememberObservationFlow(completionObservationRef.current, "qt_completion");
+    completionRetryRef.current = false;
     setCompletionReady(true);
   }
 
   async function save(options: CompleteSaveOptions = {}) {
     if (completionSavingRef.current || saving) return;
+    const observationFlow = getCompletionObservation();
+    if (completionRetryRef.current || pendingCompletionRef.current) {
+      observe(observationFlow, "retry_clicked", { phase: "completion", source: "manual" });
+    }
+    observe(observationFlow, "save_requested", { source: isEditMode ? "edit" : "create", retry: completionRetryRef.current || Boolean(pendingCompletionRef.current) });
     completionSavingRef.current = true;
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
@@ -2470,12 +2618,19 @@ function QTWriteContent() {
 
       const supabase = createClient();
       const user = await getQtDraftSessionUser(supabase);
-      if (!user) { router.push("/login"); return; }
+      if (!user) {
+        observe(completionObservationRef.current, "save_error", { phase: "auth", reason: "auth_missing" });
+        router.push("/login"); return;
+      }
+      if (!observationFlow) {
+        observe(getCompletionObservation(user.id), "save_requested", { source: isEditMode ? "edit" : "create", retry: completionRetryRef.current });
+      }
 
       if (pendingCompletionRef.current) {
         // A retry uses the confirmed record and its original target snapshot;
         // it never builds new body data or looks for/creates another record.
         if (pendingCompletionRef.current.userId !== user.id) {
+          observeSaveFailure({ code: "auth_changed" }, "auth");
           showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
           return;
         }
@@ -2492,11 +2647,15 @@ function QTWriteContent() {
           .eq("user_id", user.id)
           .eq("is_draft", false);
         if (error) {
+          observeSaveFailure(error, "edit_record");
           showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
           return;
         }
         setShowCompleteSharePrompt(false);
         setCompleteShareTargets([]);
+        observe(completionObservationRef.current, "body_saved", { source: "edit" }, editId);
+        observe(completionObservationRef.current, "save_ok", { source: "edit", recovery: completionRetryRef.current }, editId);
+        completionRetryRef.current = false;
         leaveAfterSave(() => router.push(`/qt/record?id=${editId}`));
         return;
       }
@@ -2506,7 +2665,7 @@ function QTWriteContent() {
         .eq("user_id", user.id)
         .eq("date", selectedDate)
         .order("created_at", { ascending: false });
-      if (rowsError) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
+      if (rowsError) { observeSaveFailure(rowsError, "record_lookup"); showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
 
       const completedRecord = rows?.find((row: any) => row.is_draft === false);
       const draftRecord = rows?.find((row: any) => row.is_draft === true);
@@ -2514,6 +2673,7 @@ function QTWriteContent() {
       // 완료된 기록이 이미 있더라도, 오늘 progress가 누락된 상태라면 먼저 복구를 시도합니다.
       // 저장 성공 후 progress 반영이 실패했던 사용자가 다시 완료 버튼을 눌렀을 때 조용히 막히지 않게 합니다.
       if (completedRecord) {
+        observe(completionObservationRef.current, "save_skipped", { reason: "existing_record" }, String(completedRecord.id));
         if (selectedDate === getLocalDateString()) {
           rememberPendingCompletion({
             recordId: String(completedRecord.id),
@@ -2544,7 +2704,7 @@ function QTWriteContent() {
           .eq("id", draftRecord.id)
           .select("id")
           .single();
-        if (error) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
+        if (error) { observeSaveFailure(error, "record_update"); showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
         completedRecordId = updatedRecord?.id ?? draftRecord.id;
       } else {
         const { data: insertedRecord, error } = await supabase.from("qt_records")
@@ -2552,18 +2712,20 @@ function QTWriteContent() {
           .select("id")
           .single();
         if (error) {
+          observe(completionObservationRef.current, "automatic_retry", { phase: "record_insert", reason: "schema_fallback", ...observationError(error) });
           const { qt_mode, ...withoutMode } = recordData;
           const { data: fallbackInsertedRecord, error: e2 } = await supabase.from("qt_records")
             .insert({ ...withoutMode, is_draft: false })
             .select("id")
             .single();
-          if (e2) { showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
+          if (e2) { observeSaveFailure(e2, "record_insert"); showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
           completedRecordId = fallbackInsertedRecord?.id ?? "";
         } else {
           completedRecordId = insertedRecord?.id ?? "";
         }
       }
 
+      observe(completionObservationRef.current, "body_saved", { source: draftRecord ? "draft_conversion" : "create" }, completedRecordId);
       await finishPendingCompletion(supabase, rememberPendingCompletion({
         recordId: completedRecordId,
         userId: user.id,
@@ -2579,9 +2741,12 @@ function QTWriteContent() {
       }));
     } catch (error) {
       console.warn("말씀 묵상 저장/완료 재시도 필요:", error);
+      completionRetryRef.current = true;
+      observe(completionObservationRef.current, "save_error", { phase: pendingCompletionRef.current ? "completion" : "record", ...observationError(error) });
       if (pendingCompletionRef.current) {
         rememberPendingCompletion({ ...pendingCompletionRef.current, failed: true });
       } else {
+        retryToastObservationRef.current = { flow: completionObservationRef.current, phase: "record" };
         showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
       }
     } finally {
@@ -2592,7 +2757,7 @@ function QTWriteContent() {
 
   // ─── 말씀 선택 화면 (6step & free) ───
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
   }
 
   if (draftLoadError) {

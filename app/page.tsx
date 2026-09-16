@@ -21,6 +21,8 @@ import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
+import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
+import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -299,6 +301,15 @@ function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardM
   );
 }
 
+type HomePrayerObservationAttempt = {
+  flow: ReturnType<typeof beginObservation>;
+  mode: "create" | "quiet";
+  attempt: number;
+  failed: boolean;
+  day: string;
+  recordId?: string;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -372,6 +383,11 @@ export default function HomePage() {
   const [homePrayerShareGroups, setHomePrayerShareGroups] = useState<ShareTargetGroup[]>([]);
   const [homePrayerSharePartners, setHomePrayerSharePartners] = useState<ShareTargetPartner[]>([]);
   const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
+  const homePrayerObservationRef = useRef<Partial<Record<"create" | "quiet", HomePrayerObservationAttempt>>>({});
+  useEffect(() => { homePrayerObservationRef.current = {}; }, [profile?.id]);
+  useEffect(() => {
+    if (!showHomePrayerCompose) delete homePrayerObservationRef.current.create;
+  }, [showHomePrayerCompose]);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [requiredUpdatePlatform, setRequiredUpdatePlatform] = useState<RequiredUpdatePlatform | null>(null);
@@ -406,6 +422,7 @@ export default function HomePage() {
 
   async function completeCompanionChallengeAnnouncement(openCompanions: boolean) {
     if (handlingCompanionChallengeAnnouncement) return;
+    acknowledgeObservedPopup(profile?.id, "companion_announcement", openCompanions ? "manage" : "close");
 
     const userId =
       companionChallengeAnnouncementUserIdRef.current ?? profile?.id ?? "";
@@ -443,6 +460,7 @@ export default function HomePage() {
 
   async function completeSpanishLanguageLaunchAnnouncement(invite: boolean) {
     if (spanishLanguageLaunchAnnouncementHandledRef.current) return;
+    acknowledgeObservedPopup(profile?.id, "spanish_announcement", invite ? "invite" : "close");
     spanishLanguageLaunchAnnouncementHandledRef.current = true;
 
     const userId =
@@ -486,6 +504,7 @@ export default function HomePage() {
 
   async function completeMonthlyBadgeAward(openProfile: boolean) {
     if (monthlyBadgeAwardHandledRef.current || !monthlyBadgeAward) return;
+    acknowledgeObservedPopup(profile?.id, "monthly_badge", openProfile ? "profile" : "close");
     monthlyBadgeAwardHandledRef.current = true;
 
     const badge = monthlyBadgeAward;
@@ -516,15 +535,23 @@ export default function HomePage() {
     userId: string,
     now: Date = new Date(),
   ) {
+    const eligibilityFlow = beginObservation("home_popup", userId, { reward_kind: "monthly_badge" });
     const badge = getPreviousMonthlyBadgeForAwardPopup(now);
-    if (!badge) return;
+    if (!badge) {
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: "ineligible" });
+      return;
+    }
 
     const campaignKey = getMonthlyBadgeAwardCampaignKey(badge);
     const localCampaignKey = getUserCampaignLocalStorageKey(campaignKey, userId);
-    if (storageGet(localCampaignKey)) return;
+    if (storageGet(localCampaignKey)) {
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: "already_seen" });
+      return;
+    }
 
     const seen = await loadUserCampaignSeen(supabase, userId, campaignKey);
     if (seen === true) {
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: "already_seen" });
       storageSet(localCampaignKey, "true");
       return;
     }
@@ -539,6 +566,7 @@ export default function HomePage() {
       .lt("date", endDateExclusive);
 
     if (error) {
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: "error", ...observationError(error) });
       console.warn("월별 배지 축하 대상 조회 실패:", error);
       return;
     }
@@ -548,7 +576,12 @@ export default function HomePage() {
       (data ?? []) as MonthlyBadgeCompletionRecord[],
       now,
     );
-    if (status !== "earned" || storageGet(localCampaignKey)) return;
+    if (status !== "earned" || storageGet(localCampaignKey)) {
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: status !== "earned" ? "ineligible" : "already_seen" });
+      return;
+    }
+
+    observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "monthly_badge", outcome: "eligible" });
 
     monthlyBadgeAwardHandledRef.current = false;
     setMonthlyBadgeAward(badge);
@@ -561,6 +594,8 @@ export default function HomePage() {
     if (challengeRewardCheckStartedRef.current === today) return;
     challengeRewardCheckStartedRef.current = today;
 
+    const eligibilityFlow = beginObservation("home_popup", companionChallengeAnnouncementUserIdRef.current ?? profile?.id, { reward_kind: "challenge_reward" });
+    let eligibilityCheckFailed = false;
     const rewardsByAwardId = new Map<string, ChallengeReward>();
 
     try {
@@ -572,6 +607,8 @@ export default function HomePage() {
       // Challenge rewards are independent from Home and the core Bible Reflection flow.
       // A temporary reward check failure must never block Home, progress, or watering.
       console.warn("챌린지 미지급 보상 확인 실패:", error);
+      eligibilityCheckFailed = true;
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "challenge_reward", outcome: "error", ...observationError(error) });
     }
 
     try {
@@ -583,6 +620,8 @@ export default function HomePage() {
       // Keep newly claimed rewards visible even if the recovery RPC has not
       // been deployed yet or is temporarily unavailable.
       console.warn("미확인 챌린지 보상 조회 실패:", error);
+      eligibilityCheckFailed = true;
+      observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "challenge_reward", outcome: "error", ...observationError(error) });
     }
 
     const rewards = Array.from(rewardsByAwardId.values()).filter((reward) => {
@@ -598,7 +637,12 @@ export default function HomePage() {
       });
       return false;
     });
-    if (rewards.length === 0) return;
+    if (rewards.length === 0) {
+      if (!eligibilityCheckFailed) observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "challenge_reward", outcome: "empty", count: 0 });
+      return;
+    }
+
+    observe(eligibilityFlow, "popup_eligibility_checked", { reward_kind: "challenge_reward", outcome: "eligible", count: rewards.length });
 
     setChallengeRewardQueue((current) => {
       const existingAwardIds = new Set(current.map((reward) => reward.awardId));
@@ -612,6 +656,7 @@ export default function HomePage() {
   async function completeChallengeReward(openProfile: boolean) {
     const reward = challengeRewardQueue[0] ?? null;
     if (!reward || challengeRewardActionInFlightRef.current) return;
+    acknowledgeObservedPopup(profile?.id, "challenge_reward", openProfile ? "profile" : "close");
 
     challengeRewardActionInFlightRef.current = true;
     const isTapeChallenge = reward.kind === "companion" && reward.challengeId === COMPANION_CHALLENGE_3_ID;
@@ -659,6 +704,7 @@ export default function HomePage() {
         avatarChoiceSeen: markSeen,
       });
       setProfile((prev: any) => prev ? { ...prev, avatar_type: avatarType, avatar_choice_seen: markSeen } : prev);
+      acknowledgeObservedPopup(profile?.id, "avatar_choice", "select");
       setShowAvatarChoiceModal(false);
     } catch (error) {
       console.error("캐릭터 선택 저장 실패:", error);
@@ -1301,6 +1347,7 @@ export default function HomePage() {
   }
 
   function closeRewardMapNotice() {
+    acknowledgeObservedPopup(profile?.id, rewardMapNotice?.type === "complete" ? "map_complete" : "map_start");
     const notice = rewardMapNotice;
     setRewardMapNotice(null);
 
@@ -1333,6 +1380,7 @@ export default function HomePage() {
   }
 
   function closeGardenUpdatePopup() {
+    acknowledgeObservedPopup(profile?.id, gardenPopup.type === "badge" ? "garden_badge" : "garden_stage");
     setGardenPopup(previous => ({ ...previous, show: false }));
     if (pendingRootsManRef.current) {
       pendingRootsManRef.current = false;
@@ -1344,10 +1392,12 @@ export default function HomePage() {
 
   function openRequiredUpdate() {
     if (!requiredUpdatePlatform) return;
+    acknowledgeObservedPopup(profile?.id, "required_update", "update");
     openRequiredUpdateStore(requiredUpdatePlatform);
   }
 
   function closeOnboarding() {
+    acknowledgeObservedPopup(profile?.id, "onboarding", "confirm");
     if (profile?.id) {
       storageSet(getOnboardingDoneKey(profile.id), "true");
     }
@@ -1355,6 +1405,7 @@ export default function HomePage() {
   }
 
   function closeCelebration() {
+    acknowledgeObservedPopup(profile?.id, "celebration");
     const launchRootsMan = celebration.launchRootsMan;
     const next = celebrationQueueRef.current.shift();
 
@@ -1375,6 +1426,34 @@ export default function HomePage() {
     }
   }
 
+  function homePrayerObservationEvent(observation: HomePrayerObservationAttempt, event: string, phase: string, details: Record<string, string | number | boolean | null> = {}) {
+    observe(observation.flow, event, {
+      mode: observation.mode,
+      source: "home_prayer",
+      attempt: observation.attempt,
+      phase,
+      ...details,
+    }, observation.recordId);
+  }
+
+  function startHomePrayerObservation(mode: "create" | "quiet", userId: string) {
+    const day = getLocalDateString();
+    const previous = homePrayerObservationRef.current[mode];
+    const retry = previous?.failed === true && previous.flow?.userId === userId && previous.day === day;
+    const observation: HomePrayerObservationAttempt = {
+      flow: retry ? previous.flow : beginObservation("prayer", userId, { mode, source: "home_prayer" }),
+      mode,
+      attempt: retry ? previous.attempt + 1 : 1,
+      failed: false,
+      day,
+    };
+    homePrayerObservationRef.current[mode] = observation;
+    const phase = mode === "quiet" ? "daily_completion" : "body";
+    if (retry) homePrayerObservationEvent(observation, "retry_clicked", phase);
+    homePrayerObservationEvent(observation, "action_started", phase);
+    return observation;
+  }
+
   async function markQuietPrayer() {
     if (!homeDetailsReady.prayer) { void load(); return; }
     if (todayDone.prayer) return;
@@ -1382,20 +1461,34 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = getLocalDateString();
-    const { error } = await supabase.from("daily_prayer_completions").upsert({
-      user_id: user.id,
-      date: today,
-      source: "quiet",
-    }, { onConflict: "user_id,date" });
-    if (error) {
-      showToast(t("home_prayer_save_error", lang));
-      return;
+    const observation = startHomePrayerObservation("quiet", user.id);
+    let persisted = false;
+    try {
+      const { error } = await supabase.from("daily_prayer_completions").upsert({
+        user_id: user.id,
+        date: today,
+        source: "quiet",
+      }, { onConflict: "user_id,date" });
+      if (error) {
+        observation.failed = true;
+        homePrayerObservationEvent(observation, "action_failed", "daily_completion", { ...observationError(error), persisted });
+        showToast(t("home_prayer_save_error", lang));
+        return;
+      }
+      persisted = true;
+      homePrayerObservationEvent(observation, "stage_succeeded", "daily_completion", { persisted });
+      setTodayDone(p => ({ ...p, prayer: true }));
+      enqueueCelebration({
+        message: t("home_prayer_quiet_celeb", lang),
+        subMessage: t("home_prayer_quiet_celeb_sub", lang),
+      });
+      homePrayerObservationEvent(observation, "action_completed", "completion", { persisted });
+    } catch (error) {
+      observation.failed = true;
+      homePrayerObservationEvent(observation, "action_failed", "daily_completion", { ...observationError(error), persisted });
+      // Preserve the existing rejected promise; monitoring does not change UI handling.
+      throw error;
     }
-    setTodayDone(p => ({ ...p, prayer: true }));
-    enqueueCelebration({
-      message: t("home_prayer_quiet_celeb", lang),
-      subMessage: t("home_prayer_quiet_celeb_sub", lang),
-    });
   }
 
   function openPrayerRequest() {
@@ -1436,12 +1529,16 @@ export default function HomePage() {
   }
 
   async function loadHomePrayerShareOptions() {
+    const observation = beginObservation("prayer", profile?.id, { mode: "create", source: "home_prayer" });
+    observe(observation, "stage_started", { mode: "create", source: "home_prayer", phase: "share_options" });
     setLoadingHomePrayerShareOptions(true);
     try {
       const options = await loadSharePromptOptions(t("profile_default_name", lang));
       setHomePrayerShareGroups(options.groups);
       setHomePrayerSharePartners(options.partners);
+      observe(observation, "stage_succeeded", { mode: "create", source: "home_prayer", phase: "share_options" });
     } catch (error) {
+      observe(observation, "stage_failed", { mode: "create", source: "home_prayer", phase: "share_options", ...observationError(error) });
       console.error("home prayer share options load failed", error);
       setHomePrayerShareGroups([]);
       setHomePrayerSharePartners([]);
@@ -1477,6 +1574,9 @@ export default function HomePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const observation = startHomePrayerObservation("create", user.id);
+    let observationPhase = "body";
+    let persisted = false;
     setSavingHomePrayer(true);
     homePrayerSnapshotRef.current = null;
     try {
@@ -1488,8 +1588,13 @@ export default function HomePage() {
         visibility,
       }).select("id").single();
       if (insertError) throw insertError;
+      observation.recordId = insertedPrayer?.id ? String(insertedPrayer.id) : undefined;
+      persisted = !!insertedPrayer?.id;
+      homePrayerObservationEvent(observation, "stage_succeeded", "body", { persisted });
 
       if (insertedPrayer?.id && partnerRecipientIds.length > 0) {
+        observationPhase = "recipients";
+        homePrayerObservationEvent(observation, "stage_started", observationPhase);
         const { error: recipientError } = await supabase
           .from("prayer_item_recipients")
           .insert(partnerRecipientIds.map(recipientId => ({
@@ -1498,17 +1603,32 @@ export default function HomePage() {
             recipient_id: recipientId,
           })));
         if (recipientError) {
-          await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          homePrayerObservationEvent(observation, "stage_failed", observationPhase, observationError(recipientError));
+          observationPhase = "rollback";
+          homePrayerObservationEvent(observation, "stage_started", observationPhase, { reason: "recipient_failure" });
+          const rollback = await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          if (!rollback.error) persisted = false;
+          homePrayerObservationEvent(observation, rollback.error ? "stage_failed" : "stage_succeeded", observationPhase,
+            rollback.error ? { reason: "recipient_failure", ...observationError(rollback.error) } : { reason: "recipient_failure" });
+          observationPhase = "recipients";
           throw recipientError;
         }
+        homePrayerObservationEvent(observation, "stage_succeeded", observationPhase);
       }
 
-      await supabase.from("daily_prayer_completions").upsert({
+      observationPhase = "daily_completion";
+      homePrayerObservationEvent(observation, "stage_started", observationPhase);
+      const { error: completionError } = await supabase.from("daily_prayer_completions").upsert({
         user_id: user.id,
         date: today,
         source: "written",
       }, { onConflict: "user_id,date" });
+      // This existing path still shows completion when the upsert returns an
+      // error. Record that mismatch without changing the current save flow.
+      homePrayerObservationEvent(observation, completionError ? "stage_failed" : "stage_succeeded", observationPhase,
+        completionError ? { ...observationError(completionError), persisted } : { persisted });
 
+      observationPhase = "completion";
       setHomePrayerInput("");
       setShowHomePrayerCompose(false);
       setShowHomePrayerSharePrompt(false);
@@ -1518,7 +1638,11 @@ export default function HomePage() {
         message: t("prayer_saved_message", lang),
         subMessage: t("prayer_saved_sub", lang),
       });
+      homePrayerObservationEvent(observation, "action_completed", "completion",
+        completionError ? { persisted, reason: "daily_completion_failure" } : { persisted });
     } catch (error) {
+      observation.failed = true;
+      homePrayerObservationEvent(observation, "action_failed", observationPhase, { ...observationError(error), persisted });
       console.error(error);
       showToast(t("home_prayer_save_error", lang));
     } finally {
@@ -1990,6 +2114,7 @@ export default function HomePage() {
       return true;
     }
     if (badgePopup) {
+      acknowledgeObservedPopup(profile?.id, "progress_badge", "back");
       setBadgePopup(null);
       return true;
     }
@@ -2002,6 +2127,7 @@ export default function HomePage() {
       return true;
     }
     if (showWelcomeBack) {
+      acknowledgeObservedPopup(profile?.id, "welcome_back", "back");
       setShowWelcomeBack(false);
       return true;
     }
@@ -2062,6 +2188,7 @@ export default function HomePage() {
         </div>
       )}
 
+      <ObservationPopup userId={profile?.id} kind="qt_draft_choice" queued={showHomeQTDraftChoice}>
       {showHomeQTDraftChoice && (
         <HomeQTDraftChoice
           lang={lang}
@@ -2071,7 +2198,9 @@ export default function HomePage() {
           onClose={() => { if (!deletingHomeQTDraft) setShowHomeQTDraftChoice(false); }}
         />
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="qt_choice" queued={showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice}>
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
           <div className="roots-elevation-sheet" style={{ width: "100%", maxWidth: 420, background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, position: "relative" }}>
@@ -2173,7 +2302,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="prayer_cards" queued={showHomePrayerCards}>
       {showHomePrayerCards && (
         <Suspense fallback={<PrayerCardsLoading lang={lang} onClose={() => setShowHomePrayerCards(false)} />}>
           <PrayerExperience
@@ -2185,7 +2316,9 @@ export default function HomePage() {
           />
         </Suspense>
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="prayer_compose" queued={showHomePrayerCompose}>
       {showHomePrayerCompose && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
           <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", boxShadow: "0 18px 52px rgba(0,0,0,0.28)" }}>
@@ -2230,6 +2363,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      </ObservationPopup>
+
+      <ObservationPopup userId={profile?.id} kind="chapter" queued={chapterPopup.show}>
       {chapterPopup.show && (
         <div
           onClick={() => setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" })}
@@ -2289,23 +2425,32 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
           await setPreferredLang(l);
+          acknowledgeObservedPopup(profile?.id, "language_picker", "select");
           setShowFirstLangPicker(false);
         }} />
       )}
-      {showOnboarding && <Onboarding onClose={closeOnboarding} />}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="onboarding" queued={showOnboarding}>
+      {showOnboarding && <Onboarding onClose={closeOnboarding} />}
+      </ObservationPopup>
+
+      <ObservationPopup userId={profile?.id} kind="required_update" queued={!!requiredUpdatePlatform}>
       {requiredUpdatePlatform && (
         <RequiredUpdatePopup
           platform={requiredUpdatePlatform}
           onUpdate={openRequiredUpdate}
         />
       )}
+      </ObservationPopup>
 
-
+      <ObservationPopup userId={profile?.id} kind="spanish_announcement" queued={showSpanishLanguageLaunchAnnouncement}>
       <SpanishLanguageLaunchAnnouncementPopup
         show={visibleSpanishLanguageLaunchAnnouncement}
         onInvite={() => {
@@ -2315,7 +2460,9 @@ export default function HomePage() {
           void completeSpanishLanguageLaunchAnnouncement(false);
         }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="monthly_badge" queued={!!monthlyBadgeAward} instanceKey={monthlyBadgeAward}>
       <MonthlyBadgeAwardPopup
         badge={monthlyBadgeAward}
         show={visibleMonthlyBadgeAward}
@@ -2326,7 +2473,9 @@ export default function HomePage() {
           void completeMonthlyBadgeAward(false);
         }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="companion_announcement" queued={showCompanionChallengeAnnouncement}>
       <CompanionChallengeAnnouncementPopup
         show={visibleCompanionChallengeAnnouncement}
         busy={handlingCompanionChallengeAnnouncement}
@@ -2337,7 +2486,9 @@ export default function HomePage() {
           void completeCompanionChallengeAnnouncement(false);
         }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="challenge_reward" queued={challengeRewardQueue.length > 0} instanceKey={challengeRewardQueue[0]?.awardId}>
       <ChallengeRewardPopup
         reward={visibleChallengeReward}
         onDismiss={() => {
@@ -2347,15 +2498,19 @@ export default function HomePage() {
           void completeChallengeReward(true);
         }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="welcome_back" queued={showWelcomeBack}>
       <WelcomeBackPopup
         show={showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward}
         daysSince={welcomeBackDays}
-        onClose={() => setShowWelcomeBack(false)}
+        onClose={() => { acknowledgeObservedPopup(profile?.id, "welcome_back"); setShowWelcomeBack(false); }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={profile?.streak_days}>
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
@@ -2365,13 +2520,15 @@ export default function HomePage() {
             <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("home_badge_thanks", lang)}
             </button>
           </div>
         </div>
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="celebration" queued={celebration.show} instanceKey={celebration} progressDays={profile?.streak_days}>
       <Celebration
         show={celebration.show}
         message={celebration.message}
@@ -2380,15 +2537,19 @@ export default function HomePage() {
         iconAlt={t("qt_complete_title", lang)}
         onClose={closeCelebration}
       />
+      </ObservationPopup>
 
 
+      <ObservationPopup userId={profile?.id} kind="notification_settings" queued={showNotificationSettingsModal}>
       {showNotificationSettingsModal && (
         <NotificationSettingsModal
           onClose={() => setShowNotificationSettingsModal(false)}
           onSaved={(message) => showToast(message)}
         />
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="prayer_share" queued={showHomePrayerSharePrompt}>
       {showHomePrayerSharePrompt && (
         <SharePromptModal
           title={t("prayer_complete_share_title", lang)}
@@ -2427,7 +2588,9 @@ export default function HomePage() {
           onShare={() => { if (homePrayerShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitHomePrayerShareTargets(homePrayerShareTargets); void saveHomePrayerRequest(visibility, partnerRecipientIds); } }}
         />
       )}
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="avatar_choice" queued={showAvatarChoiceModal}>
       <AvatarChoiceModal
         show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward && !showFirstLangPicker && !showLangPicker && !showHomeQTDraftChoice && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
         selectedAvatar={currentAvatarType}
@@ -2435,14 +2598,19 @@ export default function HomePage() {
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
         onLater={() => void saveAvatarChoice("rootsman")}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice || !!pendingRewardMapNoticeRef.current} instanceKey={rewardMapNotice ?? pendingRewardMapNoticeRef.current} progressDays={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.days}>
       <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardMapDisplayDays}>
       <RootsManPopup
         show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
         streakDays={rewardMapDisplayDays}
         avatarType={currentAvatarType}
         onGoGarden={() => {
+          acknowledgeObservedPopup(profile?.id, "character_reward", "confirm");
           setShowRootsMan(true);
           setShowRootsManPopup(false);
           requestAnimationFrame(() => {
@@ -2454,7 +2622,9 @@ export default function HomePage() {
           });
         }}
       />
+      </ObservationPopup>
 
+      <ObservationPopup userId={profile?.id} kind={gardenPopup.type === "badge" ? "garden_badge" : "garden_stage"} queued={gardenPopup.show} instanceKey={gardenPopup} progressDays={rewardMapDisplayDays}>
       <GardenUpdatePopup
         show={showGardenUpdatePopup}
         type={gardenPopup.type}
@@ -2462,6 +2632,7 @@ export default function HomePage() {
         badgeIndex={gardenPopup.badgeIndex}
         onClose={closeGardenUpdatePopup}
       />
+      </ObservationPopup>
 
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
@@ -2502,6 +2673,7 @@ export default function HomePage() {
             <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
             </button>
+            <ObservationPopup userId={profile?.id} kind="language_picker" queued={showLangPicker} instanceKey="home_menu">
             {showLangPicker && (
               <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
             )}
@@ -2519,6 +2691,7 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+            </ObservationPopup>
           </div>
         </div>
       </div>

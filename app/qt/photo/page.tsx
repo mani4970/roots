@@ -7,6 +7,7 @@ import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacit
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCcw, X, Check, UploadCloud, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
@@ -431,6 +432,10 @@ function PhotoReflectionContent() {
   const skipBookResetRef = useRef<string | null>(null);
   const photoAttemptIdRef = useRef(createQTPhotoAttemptId());
   const pendingPhotoSourceRef = useRef<QTPhotoSource>("unknown");
+  const observationUserIdRef = useRef<string | null>(null);
+  const observationRef = useRef<ObservationFlow | null>(null);
+  const observationRetryRef = useRef(false);
+  const retryNoticeObservationRef = useRef<{ phase: string; recordId?: string | null } | null>(null);
 
   const editId = searchParams.get("editId");
   const isEditMode = Boolean(editId);
@@ -487,6 +492,61 @@ function PhotoReflectionContent() {
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
   const [editLoading, setEditLoading] = useState(isEditMode);
   const [editLoadError, setEditLoadError] = useState(false);
+
+  useEffect(() => {
+    try {
+      let cancelled = false;
+      // The observation identity lookup runs independently of editing/saving.
+      void createClient().auth.getSession().then(({ data }) => {
+        if (!cancelled) observationUserIdRef.current = data.session?.user.id ?? null;
+      }).catch(() => undefined);
+      return () => { cancelled = true; };
+    } catch { /* Observation identity lookup never blocks photo writing. */ }
+  }, []);
+
+  function getPhotoObservation(userId = observationUserIdRef.current) {
+    if (!observationRef.current || (userId && observationRef.current.userId !== userId)) {
+      observationRef.current = beginObservation("qt_photo", userId, {
+        mode: "photo", source: isEditMode ? "edit" : "create", past_date: targetDate !== today,
+      });
+    }
+    return observationRef.current;
+  }
+
+  function observePhotoSaveRequested() {
+    const flow = getPhotoObservation();
+    if (observationRetryRef.current) observe(flow, "retry_clicked", { phase: "completion", source: "manual" });
+    observe(flow, "save_requested", { source: isEditMode ? "edit" : "create", retry: observationRetryRef.current });
+    return flow;
+  }
+
+  useEffect(() => {
+    try {
+      const pendingNotice = retryNoticeObservationRef.current;
+      if (!pendingNotice || !notice || completionReady || (isEditMode && (editLoading || editLoadError))) return;
+      let frame = 0;
+      let recorded = false;
+      const recordVisible = () => {
+        if (recorded || document.visibilityState !== "visible") return;
+        window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(() => {
+          frame = window.requestAnimationFrame(() => {
+            if (recorded || document.visibilityState !== "visible") return;
+            recorded = true;
+            retryNoticeObservationRef.current = null;
+            observe(observationRef.current, "retry_shown", { phase: pendingNotice.phase, source: "toast" }, pendingNotice.recordId);
+          });
+        });
+      };
+      recordVisible();
+      document.addEventListener("visibilitychange", recordVisible);
+      return () => {
+        window.cancelAnimationFrame(frame);
+        document.removeEventListener("visibilitychange", recordVisible);
+        if (retryNoticeObservationRef.current === pendingNotice) retryNoticeObservationRef.current = null;
+      };
+    } catch { /* Observation setup never blocks the existing notice. */ }
+  }, [notice, completionReady, isEditMode, editLoading, editLoadError]);
 
   useAndroidBackHandler(() => {
     if (completionReady) {
@@ -575,6 +635,8 @@ function PhotoReflectionContent() {
       // Successful completion remains in the loaded photo route until the
       // user confirms; it does not need another page/chunk to show confetti.
       setShowShareModal(false);
+      observe(observationRef.current, "completion_ready");
+      rememberObservationFlow(observationRef.current, "qt_completion");
       setCompletionReady(true);
       return;
     }
@@ -1015,6 +1077,7 @@ function PhotoReflectionContent() {
       setPartners(options.partners);
     } catch (error) {
       console.error("photo reflection share options load failed", error);
+      observe(observationRef.current, "recipients_error", { phase: "share_options", ...observationError(error) });
       setGroups([]);
       setPartners([]);
     } finally {
@@ -1045,6 +1108,7 @@ function PhotoReflectionContent() {
       showNotice(pc("needPhoto", lang));
       return;
     }
+    observe(getPhotoObservation(), "complete_clicked", { mode: "photo", source: "create" });
     setShareTargets([]);
     setShowShareModal(true);
     void loadShareOptions();
@@ -1059,6 +1123,7 @@ function PhotoReflectionContent() {
     userId: string,
     qtRecordId?: string | null,
   ) {
+    observe(observationRef.current, "progress_requested", undefined, qtRecordId);
     const progress = await recordBibleReflectionProgress(supabase, userId, today);
     if (progress.updated) {
       storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
@@ -1084,6 +1149,7 @@ function PhotoReflectionContent() {
     }
     if (saveLockRef.current || saving) return;
 
+    const observationFlow = observePhotoSaveRequested();
     const photoToSave = preparedPhoto;
     const attemptId = photoAttemptIdRef.current || createQTPhotoAttemptId();
     photoAttemptIdRef.current = attemptId;
@@ -1110,6 +1176,9 @@ function PhotoReflectionContent() {
 
     try {
       const user = await getQTPhotoAuthenticatedUser(supabase);
+      if (!observationFlow) {
+        observe(getPhotoObservation(user.id), "save_requested", { source: "create", retry: observationRetryRef.current });
+      }
       recordQTPhotoDiagnostic({
         attemptId,
         targetDate,
@@ -1122,13 +1191,17 @@ function PhotoReflectionContent() {
       stage = "duplicate-check";
       const existingRecord = await findCompletedQTRecordForDate(supabase, user.id, targetDate);
       if (existingRecord) {
+        observe(observationRef.current, "save_skipped", { reason: "existing_record" }, existingRecord.id);
         if (targetDate === today) {
           try {
             const recoveredProgress = await withPhotoStageTimeout(
               recordTodayPhotoProgress(supabase, user.id, existingRecord.id),
               "photo progress recovery",
             );
+            observe(observationRef.current, "progress_ok", { updated: recoveredProgress, recovery: true }, existingRecord.id);
             if (recoveredProgress) {
+              observe(observationRef.current, "save_ok", { recovery: true, existing_record: true }, existingRecord.id);
+              observationRetryRef.current = false;
               void markBibleReflectionCompletedForNotifications(today, lang)
                 .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
               setShowShareModal(false);
@@ -1136,6 +1209,9 @@ function PhotoReflectionContent() {
               return;
             }
           } catch (progressError) {
+            observationRetryRef.current = true;
+            observe(observationRef.current, "progress_error", { recovery: true, ...observationError(progressError) }, existingRecord.id);
+            retryNoticeObservationRef.current = { phase: "progress", recordId: existingRecord.id };
             console.warn("photo reflection progress recovery failed", progressError);
             showNotice(pc("progressError", lang));
             return;
@@ -1151,6 +1227,7 @@ function PhotoReflectionContent() {
 
       stage = "upload";
       await uploadQTPhotoDurably(supabase, uploadedPath, photoToSave, attempt => {
+        if (attempt > 1) observe(observationRef.current, "automatic_retry", { phase: "upload", upload_attempt: attempt });
         recordQTPhotoDiagnostic({
           attemptId,
           targetDate,
@@ -1201,6 +1278,7 @@ function PhotoReflectionContent() {
       });
       insertedRecordId = insertedRecord.id;
       const recordId = insertedRecord.id;
+      observe(observationRef.current, "body_saved", { source: "create" }, recordId);
       recordQTPhotoDiagnostic({
         attemptId,
         targetDate,
@@ -1221,6 +1299,7 @@ function PhotoReflectionContent() {
       let sharingFailed = false;
 
       stage = "recipients";
+      observe(observationRef.current, "recipients_requested", { phase: "recipients" }, recordId);
       try {
         if (requestedPartnerRecipientIds.length > 0) {
           await withPhotoStageTimeout(
@@ -1239,6 +1318,7 @@ function PhotoReflectionContent() {
           );
           if (visibilityError) throw visibilityError;
         }
+        observe(observationRef.current, "recipients_ok", { phase: "recipients" }, recordId);
         recordQTPhotoDiagnostic({
           attemptId,
           targetDate,
@@ -1250,6 +1330,7 @@ function PhotoReflectionContent() {
           qtRecordId: recordId,
         });
       } catch (sharingError) {
+        observe(observationRef.current, "recipients_error", { phase: "recipients", ...observationError(sharingError) }, recordId);
         sharingFailed = true;
         effectiveVisibility = "private";
         effectivePartnerRecipientIds = [];
@@ -1299,11 +1380,13 @@ function PhotoReflectionContent() {
       if (targetDate === today) {
         stage = "progress";
         try {
-          await withPhotoStageTimeout(
+          const updated = await withPhotoStageTimeout(
             recordTodayPhotoProgress(supabase, user.id, recordId),
             "photo progress save",
           );
+          observe(observationRef.current, "progress_ok", { updated }, recordId);
         } catch (progressError) {
+          observe(observationRef.current, "progress_error", observationError(progressError), recordId);
           const diagnostic = getQTPhotoDiagnosticError(progressError);
           recordQTPhotoDiagnostic({
             attemptId,
@@ -1350,10 +1433,13 @@ function PhotoReflectionContent() {
           // the just-saved photo never reappears as an editable form.
           setCompletionNotice(pc("savedShareWarning", lang));
         }
+        observe(observationRef.current, "save_ok", { recovery: observationRetryRef.current, sharing_failed: sharingFailed }, recordId);
+        observationRetryRef.current = false;
         navigateAfterPhotoSave("/qt/complete");
         return;
       }
 
+      observe(observationRef.current, "progress_skipped", { reason: "past_date" }, recordId);
       stage = "notifications";
       try {
         await withPhotoStageTimeout(
@@ -1381,6 +1467,8 @@ function PhotoReflectionContent() {
         metadata: { sharingFailed },
       });
       setShowShareModal(false);
+      observe(observationRef.current, "save_ok", { recovery: observationRetryRef.current, sharing_failed: sharingFailed }, recordId);
+      observationRetryRef.current = false;
       if (sharingFailed) {
         showNotice(pc("savedShareWarning", lang));
         window.setTimeout(() => navigateAfterPhotoSave(`/qt/record?id=${recordId}`), 1400);
@@ -1388,6 +1476,7 @@ function PhotoReflectionContent() {
         navigateAfterPhotoSave(`/qt/record?id=${recordId}`);
       }
     } catch (error) {
+      observe(observationRef.current, "save_error", { phase: stage.replaceAll("-", "_"), ...observationError(error) }, insertedRecordId);
       const diagnostic = getQTPhotoDiagnosticError(error);
       recordQTPhotoDiagnostic({
         attemptId,
@@ -1429,6 +1518,7 @@ function PhotoReflectionContent() {
       const duplicateCompleted = errorCode === "23505"
         || (error instanceof QTPhotoRecordError && error.code === "duplicate_completed");
       if (duplicateCompleted) {
+        observe(observationRef.current, "save_skipped", { reason: "duplicate_completed" });
         if (uploadedPath) await removeQTPhotoBestEffort(supabase, uploadedPath);
         setShowShareModal(false);
         showNotice(pc("alreadyDone", lang));
@@ -1442,6 +1532,8 @@ function PhotoReflectionContent() {
           navigateAfterPhotoSave(`/qt/record?id=${insertedRecordId}`);
         }, 1400);
       } else {
+        observationRetryRef.current = true;
+        retryNoticeObservationRef.current = { phase: stage.replaceAll("-", "_") };
         showNotice(getPhotoSaveNotice(stage, lang));
       }
     } finally {
@@ -1464,6 +1556,7 @@ function PhotoReflectionContent() {
     }
     if (saveLockRef.current || saving) return;
 
+    const observationFlow = observePhotoSaveRequested();
     const attemptId = photoAttemptIdRef.current || createQTPhotoAttemptId();
     const sourceForEdit: QTPhotoSource = preparedPhoto ? photoSource : "existing";
     const supabase = createClient();
@@ -1483,6 +1576,9 @@ function PhotoReflectionContent() {
         photoSource: sourceForEdit,
       });
       const user = await getQTPhotoAuthenticatedUser(supabase);
+      if (!observationFlow) {
+        observe(getPhotoObservation(user.id), "save_requested", { source: "edit", retry: observationRetryRef.current });
+      }
       const currentRecord = await loadOwnedQTPhotoRecord(supabase, editId, user.id);
       oldPhotoPath = currentRecord.photo_path;
       recordQTPhotoDiagnostic({
@@ -1499,6 +1595,7 @@ function PhotoReflectionContent() {
         newUploadedPath = `${user.id}/${currentRecord.date}/${attemptId}.${preparedPhoto.extension}`;
         stage = "upload";
         await uploadQTPhotoDurably(supabase, newUploadedPath, preparedPhoto, attempt => {
+          if (attempt > 1) observe(observationRef.current, "automatic_retry", { phase: "upload", upload_attempt: attempt }, editId);
           recordQTPhotoDiagnostic({
             attemptId,
             targetDate: currentRecord.date,
@@ -1542,6 +1639,7 @@ function PhotoReflectionContent() {
       }
 
       const updated = await updateQTPhotoRecordDurably(supabase, editId, user.id, patch);
+      observe(observationRef.current, "body_saved", { source: "edit" }, editId);
       recordQTPhotoDiagnostic({
         attemptId,
         targetDate: currentRecord.date,
@@ -1567,8 +1665,11 @@ function PhotoReflectionContent() {
         storagePath: updated.photo_path,
         qtRecordId: editId,
       });
+      observe(observationRef.current, "save_ok", { source: "edit", recovery: observationRetryRef.current }, editId);
+      observationRetryRef.current = false;
       navigateAfterPhotoSave(`/qt/record?id=${editId}`);
     } catch (error) {
+      observe(observationRef.current, "save_error", { phase: stage.replaceAll("-", "_"), ...observationError(error) }, editId);
       const diagnostic = getQTPhotoDiagnosticError(error);
       recordQTPhotoDiagnostic({
         attemptId,
@@ -1597,16 +1698,22 @@ function PhotoReflectionContent() {
               if (oldPhotoPath && oldPhotoPath !== newUploadedPath) {
                 await removeQTPhotoBestEffort(supabase, oldPhotoPath);
               }
+              observe(observationRef.current, "body_saved", { source: "edit", recovery: true }, editId);
+              observe(observationRef.current, "save_ok", { source: "edit", recovery: true }, editId);
+              observationRetryRef.current = false;
               navigateAfterPhotoSave(`/qt/record?id=${editId}`);
               return;
             }
             await removeQTPhotoBestEffort(supabase, newUploadedPath);
           }
         } catch (recoveryError) {
+          observe(observationRef.current, "save_error", { phase: "edit_recovery", ...observationError(recoveryError) }, editId);
           console.warn("photo reflection edit recovery check failed; uploaded photo kept", recoveryError);
         }
       }
 
+      observationRetryRef.current = true;
+      retryNoticeObservationRef.current = { phase: stage.replaceAll("-", "_"), recordId: editId };
       if (error instanceof QTPhotoRecordError && error.code === "auth_failed") {
         showNotice(pc("authError", lang));
       } else {
@@ -1624,7 +1731,7 @@ function PhotoReflectionContent() {
   const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
 
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} notice={completionNotice} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
   }
 
   if (isEditMode && editLoading) {

@@ -25,10 +25,20 @@ import {
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
 import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
+import { beginObservation, observe, observationError, type ObservationFlow } from "@/lib/appObservation";
 
 type PrayerCategory = "mine" | "intercession";
 type PrayerStatus = "ongoing" | "answered";
 type PrayerView = { status: PrayerStatus; category: PrayerCategory };
+type PrayerObservationMode = "create" | "edit" | "answer" | "share";
+type PrayerObservationAttempt = {
+  flow: ObservationFlow | null;
+  mode: PrayerObservationMode;
+  attempt: number;
+  targetId?: string;
+  recordId?: string;
+  failed: boolean;
+};
 
 function isPrayerCategory(value: unknown): value is PrayerCategory {
   return value === "mine" || value === "intercession";
@@ -154,6 +164,72 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const [removingIntercession, setRemovingIntercession] = useState(false);
   const [removalError, setRemovalError] = useState<string | null>(null);
   const removalInFlight = useRef(false);
+  const observationAttempts = useRef<Partial<Record<PrayerObservationMode, PrayerObservationAttempt>>>({});
+
+  // A retry belongs to the same still-open form and follows a known failure.
+  // Closing a form or changing accounts starts a new observation session.
+  useEffect(() => {
+    observationAttempts.current = {};
+  }, [userId]);
+  useEffect(() => {
+    if (!showForm) delete observationAttempts.current.create;
+  }, [showForm]);
+  useEffect(() => {
+    delete observationAttempts.current.edit;
+  }, [editId]);
+  useEffect(() => {
+    delete observationAttempts.current.answer;
+  }, [testimonyPrayerId]);
+  useEffect(() => {
+    delete observationAttempts.current.share;
+  }, [sharePrayerId]);
+
+  function prayerObservationEvent(
+    attempt: PrayerObservationAttempt,
+    event: string,
+    phase: string,
+    details: Record<string, string | number | boolean | null> = {},
+  ) {
+    observe(attempt.flow, event, {
+      mode: attempt.mode,
+      source: isPopup ? "prayer_popup" : "prayer_page",
+      phase,
+      attempt: attempt.attempt,
+      ...details,
+    }, attempt.recordId);
+  }
+
+  function startPrayerObservation(mode: PrayerObservationMode, recordId?: string) {
+    const previous = observationAttempts.current[mode];
+    const retry = previous?.failed === true
+      && previous.targetId === recordId
+      && previous.flow?.userId === userId;
+    const attempt: PrayerObservationAttempt = {
+      flow: retry ? previous.flow : beginObservation("prayer", userId, {
+        mode,
+        source: isPopup ? "prayer_popup" : "prayer_page",
+      }),
+      mode,
+      attempt: retry ? previous.attempt + 1 : 1,
+      targetId: recordId,
+      recordId,
+      failed: false,
+    };
+    observationAttempts.current[mode] = attempt;
+    const phase = mode === "share" || mode === "answer" ? "auth" : "body";
+    if (retry) prayerObservationEvent(attempt, "retry_clicked", phase);
+    prayerObservationEvent(attempt, "action_started", phase);
+    return attempt;
+  }
+
+  function failPrayerObservation(attempt: PrayerObservationAttempt, phase: string, error: unknown, persisted = false, reason?: string) {
+    attempt.failed = true;
+    prayerObservationEvent(attempt, "action_failed", phase, {
+      ...observationError(error),
+      persisted,
+      ...(reason ? { reason } : {}),
+    });
+  }
 
   const c = (key: TKey, vars?: Record<string, string | number>) => t(key, lang, vars);
 
@@ -480,6 +556,19 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   }
 
   async function loadShareOptions(prayer?: any) {
+    // Target lookup can fail before a save button is enabled. It is a stage
+    // event, not a save attempt or a counted user retry.
+    const observation: PrayerObservationAttempt = {
+      flow: beginObservation("prayer", userId, {
+        mode: prayer ? "share" : "create",
+        source: isPopup ? "prayer_popup" : "prayer_page",
+      }),
+      mode: prayer ? "share" : "create",
+      attempt: 1,
+      recordId: prayer?.id ? String(prayer.id) : undefined,
+      failed: false,
+    };
+    prayerObservationEvent(observation, "stage_started", "share_options");
     const request = ++shareOptionsRequest.current;
     const isCurrentRequest = () => mountedRef.current && request === shareOptionsRequest.current;
     shareOptionsReady.current = false;
@@ -508,8 +597,10 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         setSelectedTargets(Array.from(new Set([...visibilityTargets(prayer.visibility), ...partnerTargets])));
       }
       shareOptionsReady.current = true;
+      prayerObservationEvent(observation, "stage_succeeded", "share_options");
     } catch (error) {
       if (!isCurrentRequest()) return;
+      prayerObservationEvent(observation, "stage_failed", "share_options", observationError(error));
       console.warn("prayer share options load failed", error);
       // Keep the unsaved form/existing prayer intact. A failed target lookup
       // must never look like an empty target list or enable a private fallback.
@@ -589,8 +680,9 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     }));
   }
 
-  async function loadPrayers(allowInitialSnapshot = false) {
+  async function loadPrayers(allowInitialSnapshot = false, observation?: PrayerObservationAttempt) {
     if (!mountedRef.current) return;
+    if (observation) prayerObservationEvent(observation, "stage_started", "refresh");
     const request = ++prayerLoadRequest.current;
     const isCurrentRequest = () => mountedRef.current && request === prayerLoadRequest.current;
     setCategoryLoad({ mine: "loading", intercession: "loading" });
@@ -604,6 +696,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       if (sessionError) throw sessionError;
       const user = session?.user;
       if (!user) {
+        if (observation) prayerObservationEvent(observation, "stage_failed", "refresh", { reason: "missing_user" });
         discardAccountData();
         authUserRef.current = null;
         authResolvedRef.current = true;
@@ -663,6 +756,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       };
       const failCategory = (kind: PrayerCategory, error: unknown) => {
         if (!isCurrentRequest()) return;
+        if (observation) prayerObservationEvent(observation, "stage_failed", "refresh", observationError(error));
         console.error(`prayer ${kind} load failed`, error);
         if (snapshotRef) snapshotRef.current = null;
         if (kind === "mine") { setPrayers([]); setPartnerSharedPrayerIds(new Set()); }
@@ -717,12 +811,16 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       })();
       // Mutation callers still wait for both fresh category results.
       const [ownLoaded, intercessionLoaded] = await Promise.all([ownPromise, intercessionPromise]);
+      if (isCurrentRequest() && ownLoaded && intercessionLoaded && observation) {
+        prayerObservationEvent(observation, "stage_succeeded", "refresh");
+      }
       if (isCurrentRequest() && ownLoaded && intercessionLoaded && isPopup && snapshotRef) {
         publishedSnapshot = { userId: user.id, scope: "ongoing", prayers: ownRows, intercessionPrayers: intercessionRows, partnerSharedPrayerIds: sharedPrayerIds, loadedAt: Date.now() };
         snapshotRef.current = publishedSnapshot;
       }
     } catch (error) {
       if (!isCurrentRequest()) return;
+      if (observation) prayerObservationEvent(observation, "stage_failed", "refresh", observationError(error));
       console.error("prayer session load failed", error);
       if (snapshotRef) snapshotRef.current = null;
       setPrayers([]);
@@ -734,6 +832,9 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function submit(visibility = "private", partnerRecipientIds: string[] = []) {
     if (!newPrayer.trim() || !userId || saving || !shareOptionsReady.current) return;
+    const observation = startPrayerObservation("create");
+    let observationPhase = "body";
+    let persisted = false;
     invalidatePrayerSnapshot();
     setSaving(true);
     const supabase = createClient();
@@ -745,30 +846,54 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         visibility,
       }).select("id").single();
       if (insertError) throw insertError;
+      observation.recordId = insertedPrayer?.id ? String(insertedPrayer.id) : undefined;
+      persisted = !!insertedPrayer?.id;
+      prayerObservationEvent(observation, "stage_succeeded", "body", { persisted });
 
+      observationPhase = "recipients";
+      prayerObservationEvent(observation, "stage_started", observationPhase);
       try {
         if (insertedPrayer?.id) {
           await replacePrayerRecipients(supabase, insertedPrayer.id, userId, partnerRecipientIds);
         }
+        prayerObservationEvent(observation, "stage_succeeded", observationPhase);
       } catch (recipientError) {
+        prayerObservationEvent(observation, "stage_failed", "recipients", observationError(recipientError));
         if (insertedPrayer?.id) {
-          await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          observationPhase = "rollback";
+          prayerObservationEvent(observation, "stage_started", observationPhase, { reason: "recipient_failure" });
+          const rollback = await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          if (!rollback.error) persisted = false;
+          prayerObservationEvent(observation, rollback.error ? "stage_failed" : "stage_succeeded", observationPhase,
+            rollback.error ? { reason: "recipient_failure", ...observationError(rollback.error) } : { reason: "recipient_failure" });
         }
+        observationPhase = "recipients";
         throw recipientError;
       }
 
+      observationPhase = "daily_completion";
+      prayerObservationEvent(observation, "stage_started", observationPhase);
       const { error: prayerCompletionError } = await supabase.from("daily_prayer_completions").upsert({
         user_id: userId,
         date: getLocalDateString(),
         source: "written",
       }, { onConflict: "user_id,date" });
       if (prayerCompletionError) {
+        prayerObservationEvent(observation, "stage_failed", "daily_completion", observationError(prayerCompletionError));
         if (insertedPrayer?.id) {
-          await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          observationPhase = "rollback";
+          prayerObservationEvent(observation, "stage_started", observationPhase, { reason: "daily_completion_failure" });
+          const rollback = await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
+          if (!rollback.error) persisted = false;
+          prayerObservationEvent(observation, rollback.error ? "stage_failed" : "stage_succeeded", observationPhase,
+            rollback.error ? { reason: "daily_completion_failure", ...observationError(rollback.error) } : { reason: "daily_completion_failure" });
         }
+        observationPhase = "daily_completion";
         throw prayerCompletionError;
       }
+      prayerObservationEvent(observation, "stage_succeeded", observationPhase);
 
+      observationPhase = "notifications";
       if (insertedPrayer?.id) {
         await createPrayerShareNotificationsBestEffort({
           prayerItemId: String(insertedPrayer.id),
@@ -782,9 +907,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       setShowCreateSharePrompt(false);
       setCreateShareTargets([]);
       setCelebration(true);
-      await loadPrayers();
+      observationPhase = "refresh";
+      await loadPrayers(false, observation);
       onDataChanged?.();
+      prayerObservationEvent(observation, "action_completed", "daily_completion", { persisted });
     } catch (error) {
+      failPrayerObservation(observation, observationPhase, error, persisted);
       console.error("prayer submit failed", error);
       setNotice(c("prayer_error_save"));
     } finally {
@@ -794,19 +922,28 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function saveEdit() {
     if (!editText.trim() || !editId || savingEdit) return;
+    const observation = startPrayerObservation("edit", String(editId));
+    let observationPhase = "body";
+    let persisted = false;
     invalidatePrayerSnapshot();
     setSavingEdit(true);
     const supabase = createClient();
     try {
       const { error } = await supabase.from("prayer_items").update({ content: editText.trim() }).eq("id", editId);
       if (error) {
+        failPrayerObservation(observation, observationPhase, error);
         setNotice(c("prayer_error_edit"));
         return;
       }
+      persisted = true;
+      prayerObservationEvent(observation, "stage_succeeded", "body", { persisted });
       setEditId(null); setEditText("");
-      await loadPrayers();
+      observationPhase = "refresh";
+      await loadPrayers(false, observation);
       onDataChanged?.();
+      prayerObservationEvent(observation, "action_completed", "body", { persisted });
     } catch (error) {
+      failPrayerObservation(observation, observationPhase, error, persisted);
       console.error("prayer edit failed", error);
       setNotice(c("prayer_error_edit"));
     } finally {
@@ -898,23 +1035,35 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function saveIntercessionTargets(privateOnly = false) {
     if (!sharePrayerId || (!privateOnly && selectedTargets.length === 0) || sharingIntercession || !shareOptionsReady.current) return;
+    const observation = startPrayerObservation("share", String(sharePrayerId));
+    let observationPhase = "auth";
+    let persisted = false;
     invalidatePrayerSnapshot();
     setSharingIntercession(true);
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        failPrayerObservation(observation, observationPhase, null, false, "missing_user");
+        return;
+      }
 
       const { visibility: newVisibility, partnerRecipientIds } = privateOnly
         ? { visibility: "private", partnerRecipientIds: [] as string[] }
         : splitShareTargets(selectedTargets);
       const sharedAt = new Date().toISOString();
+      observationPhase = "visibility";
+      prayerObservationEvent(observation, "stage_started", observationPhase);
       let { error: visibilityError } = await supabase
         .from("prayer_items")
         .update({ visibility: newVisibility, shared_at: sharedAt })
         .eq("id", sharePrayerId)
         .eq("user_id", user.id);
       if (visibilityError && /shared_at/i.test(visibilityError.message ?? "")) {
+        prayerObservationEvent(observation, "automatic_retry", observationPhase, {
+          reason: "shared_at_unavailable",
+          ...observationError(visibilityError),
+        });
         console.warn("prayer_items.shared_at column is not available yet. Retrying without shared_at:", visibilityError.message);
         const retry = await supabase
           .from("prayer_items")
@@ -924,18 +1073,26 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         visibilityError = retry.error;
       }
       if (visibilityError) {
+        failPrayerObservation(observation, observationPhase, visibilityError);
         setNotice(c("prayer_error_intercession"));
         return;
       }
+      persisted = true;
+      prayerObservationEvent(observation, "stage_succeeded", observationPhase, { persisted });
 
+      observationPhase = "recipients";
+      prayerObservationEvent(observation, "stage_started", observationPhase);
       try {
         await replacePrayerRecipients(supabase, sharePrayerId, user.id, partnerRecipientIds);
+        prayerObservationEvent(observation, "stage_succeeded", observationPhase);
       } catch (recipientError) {
+        failPrayerObservation(observation, observationPhase, recipientError, persisted);
         console.warn("기도 동역자 공유 저장 실패:", recipientError);
         setNotice(c("prayer_error_intercession"));
         return;
       }
 
+      observationPhase = "notifications";
       if (!privateOnly) {
         await createPrayerShareNotificationsBestEffort({
           prayerItemId: sharePrayerId,
@@ -946,6 +1103,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
       // 중보기도 요청 배지는 서버가 실제 공개/그룹/동역자 공유 기록을
       // 다시 확인한 뒤 현재 사용자에게만 원자적으로 지급합니다.
+      observationPhase = "badge";
       const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
         "award_own_prayer_share_badges",
         {
@@ -954,8 +1112,10 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         },
       );
       if (prayerBadgeAwardError) {
+        prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(prayerBadgeAwardError));
         console.warn("기도 공유 배지를 저장하지 못했어요:", prayerBadgeAwardError.message);
       } else {
+        prayerObservationEvent(observation, "stage_succeeded", observationPhase);
         const awardedBadges = new Set(
           Array.isArray(prayerBadgeAward?.awarded_badges)
             ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
@@ -979,9 +1139,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       setShowShareModal(false);
       setSharePrayerId(null);
       setSelectedTargets([]);
-      await loadPrayers();
+      observationPhase = "refresh";
+      await loadPrayers(false, observation);
       onDataChanged?.();
+      prayerObservationEvent(observation, "action_completed", "recipients", { persisted });
     } catch (error) {
+      failPrayerObservation(observation, observationPhase, error, persisted);
       console.error("intercession request failed", error);
       setNotice(c("prayer_error_intercession"));
     } finally {
@@ -991,6 +1154,9 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function saveAnsweredPrayer() {
     if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
+    const observation = startPrayerObservation("answer", String(testimonyPrayerId));
+    let observationPhase = "auth";
+    let persisted = false;
     invalidatePrayerSnapshot();
     setSavingTestimony(true);
     const supabase = createClient();
@@ -998,19 +1164,26 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       const { data: { user } } = await supabase.auth.getUser();
       const currentPrayer = prayers.find((prayer: any) => String(prayer.id) === String(testimonyPrayerId));
       if (!user || !currentPrayer || String(currentPrayer.user_id) !== user.id || currentPrayer.is_answered) {
+        failPrayerObservation(observation, observationPhase, null, false, "validation_failed");
         setNotice(c("prayer_error_answered"));
         return;
       }
+      observationPhase = "body";
+      prayerObservationEvent(observation, "stage_started", observationPhase);
       const { data: savedAnswer, error } = await supabase.from("prayer_items").update({
         is_answered: true,
         testimony: testimonyText.trim(),
         answered_at: new Date().toISOString(),
       }).eq("id", testimonyPrayerId).eq("user_id", user.id).or("is_answered.eq.false,is_answered.is.null").select("id").single();
       if (error || !savedAnswer) {
+        failPrayerObservation(observation, observationPhase, error, false, error ? undefined : "missing_saved_row");
         setNotice(c("prayer_error_answered"));
         return;
       }
+      persisted = true;
+      prayerObservationEvent(observation, "stage_succeeded", observationPhase, { persisted });
 
+      observationPhase = "notifications";
       if (user) {
         try {
           const { data: recipientRows } = await supabase
@@ -1024,10 +1197,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             partnerRecipientIds: (recipientRows ?? []).map((row: any) => String(row.recipient_id)).filter(Boolean),
           });
         } catch (notificationError) {
+          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(notificationError));
           console.warn("기도 응답 알림 생성 실패:", notificationError);
         }
       }
       // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
+      observationPhase = "badge";
       let existingAnsweredBadgeAwarded = false;
       if (user) {
         const { data: noahAward, error: noahAwardError } = await supabase.rpc("award_own_noah_badge", {
@@ -1035,6 +1210,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           p_prayer_item_id: testimonyPrayerId,
         });
         if (noahAwardError) {
+          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(noahAwardError));
           console.warn("노아 배지를 저장하지 못했어요:", noahAwardError.message);
         } else if (noahAward?.awarded === true) {
           existingAnsweredBadgeAwarded = true;
@@ -1048,15 +1224,19 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             setBadgePopup(popup);
           }
         } catch (badgeError) {
+          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(badgeError));
           console.warn("기도 응답 보상 배지 확인 실패:", badgeError);
         }
       }
       setTestimonyPrayerId(null);
       setTestimonyText("");
-      await loadPrayers();
+      observationPhase = "refresh";
+      await loadPrayers(false, observation);
       onDataChanged?.();
       setView({ status: isPopup ? "ongoing" : "answered", category: "mine" });
+      prayerObservationEvent(observation, "action_completed", "body", { persisted });
     } catch (error) {
+      failPrayerObservation(observation, observationPhase, error, persisted);
       console.error("answered prayer save failed", error);
       setNotice(c("prayer_error_answered"));
     } finally {
