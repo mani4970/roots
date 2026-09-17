@@ -36,7 +36,7 @@ function harness(options = {}) {
   const document = { visibilityState: 'visible', addEventListener: addListener, removeEventListener: removeListener };
   function addListener(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); }
   function removeListener(name, fn) { listeners.get(name)?.delete(fn); }
-  const window = { addEventListener: addListener, removeEventListener: removeListener };
+  const window = { location: { origin: 'https://roots.test', pathname: '/qt/write' }, addEventListener: addListener, removeEventListener: removeListener };
   const context = {
     Date: Clock, console, URL, TextEncoder, TextDecoder, Blob, AbortController,
     navigator: { userAgent: options.ua || 'Mozilla/5.0 Macintosh', maxTouchPoints: options.touch || 0, onLine: options.online !== false },
@@ -60,6 +60,10 @@ function harness(options = {}) {
         if (name === '@capacitor/core') return { Capacitor: { isNativePlatform: () => !!options.native, getPlatform: () => options.native || 'web' } };
         if (name === '@/lib/observationSchema') {
           if (!moduleCache.has(name)) moduleCache.set(name, exportsFor('lib/observationSchema.ts'));
+          return moduleCache.get(name);
+        }
+        if (name === '@/lib/observationErrorDetails') {
+          if (!moduleCache.has(name)) moduleCache.set(name, exportsFor('lib/observationErrorDetails.ts'));
           return moduleCache.get(name);
         }
         throw new Error(`Unexpected test import: ${name}`);
@@ -99,7 +103,10 @@ test('delivery exceptions stay out of business callers and methods remain synchr
   });
   assert.equal(businessCompleted, true);
   await assert.doesNotReject(h.sdk.flushObservations());
-  assert.deepEqual(JSON.parse(JSON.stringify(h.sdk.observationError(new Error(PRIVATE)))), { error_code: 'unknown' });
+  const diagnostic = h.sdk.observationError(new Error(PRIVATE));
+  assert.equal(diagnostic.error_code, 'unknown');
+  assert.equal(diagnostic.error_name, 'Error');
+  assert.ok(!JSON.stringify(diagnostic).includes(PRIVATE));
   const badError = Object.defineProperty({}, 'code', { get() { throw new Error(PRIVATE); } });
   assert.doesNotThrow(() => h.sdk.observationError(badError));
 });
@@ -342,7 +349,7 @@ function bridgeHarness(options = {}) {
   });
   assert.equal(bridge.default(), null);
   const cleanup = effects[0]();
-  return { ...h, session, users, cleanup, get unsubscribed(){return unsubscribed;}, auth:(user)=>authCallback('SIGNED_IN',user?{user:{id:user}}:null) };
+  return { ...h, session, users, errors, cleanup, get unsubscribed(){return unsubscribed;}, auth:(user)=>authCallback('SIGNED_IN',user?{user:{id:user}}:null) };
 }
 
 test('bridge ignores initial getSession after a newer auth event', async () => {
@@ -364,6 +371,135 @@ test('bridge startup/disposal failures and late session results do not affect th
   h.session.resolve({data:{session:{user:{id:USER_A}}}});
   await Promise.resolve(); await Promise.resolve();
   assert.equal(h.users.length, 0);
+});
+
+test('abort, native timeout, application draft timeout and programming errors stay distinct', () => {
+  const {sdk} = harness();
+  for (const [input, code, kind] of [
+    [{name:'AbortError', message:'The operation was aborted'}, 'aborted', 'request_aborted'],
+    [{name:'TimeoutError'}, 'timeout', 'request_timeout'],
+    [new Error('[qt draft timeout] save_own_qt_draft (10000ms)'), 'timeout', 'draft_timeout'],
+    [new Error('completed photo record lookup timed out'), 'timeout', 'photo_record_timeout'],
+    [new TypeError('Load failed'), 'network', 'network_fetch'],
+    [new TypeError(PRIVATE), 'unknown', 'js_type'],
+    [new ReferenceError(PRIVATE), 'unknown', 'js_reference'],
+    [{code:'42501'}, '42501', 'database'],
+    [{message:'TypeError: Failed to fetch',code:''}, 'network', 'network_fetch'],
+  ]) {
+    const d=sdk.observationError(input);
+    assert.equal(d.error_code,code); assert.equal(d.error_kind,kind);
+    assert.equal(d.diagnostic_version,2); assert.equal(d.route,'qt_write');
+    assert.ok(!JSON.stringify(d).includes(PRIVATE));
+  }
+});
+
+test('photo wrapper retains the underlying database or network failure', () => {
+  const {sdk}=harness();
+  for (const cause of [{code:'42501',message:PRIVATE}, new TypeError('Load failed')]) {
+    const d=sdk.observationError({name:'QTPhotoRecordError',code:'load_failed',message:PRIVATE,causeValue:cause});
+    assert.equal(d.wrapper_code,'load_failed');
+    assert.equal(d.error_name,'QTPhotoRecordError');
+    assert.ok(['42501','network'].includes(d.error_code));
+    assert.ok(!JSON.stringify(d).includes(PRIVATE));
+  }
+});
+
+test('photo storage upload and verification deadlines retain timeout diagnostics through wrappers', () => {
+  const {sdk}=harness();
+  for (const label of ['photo upload timed out','photo download verification timed out']) {
+    const cause=new Error(label);
+    for (const input of [cause,{name:'QTPhotoStorageError',code:'upload_failed',message:PRIVATE,causeValue:cause}]) {
+      const d=sdk.observationError(input);
+      assert.equal(d.error_code,'timeout');assert.equal(d.error_kind,'photo_storage_timeout');
+      if(input!==cause) {
+        assert.equal(d.error_name,'QTPhotoStorageError');assert.equal(d.wrapper_code,'upload_failed');
+        assert.equal(d.cause_name,'Error');
+      }
+      assert.ok(!JSON.stringify(d).includes(PRIVATE));assert.ok(!JSON.stringify(d).includes(label));
+    }
+  }
+});
+
+test('syntax diagnostics distinguish JavaScript source errors from explicit JSON parser errors', () => {
+  const {sdk}=harness();
+  for (const [message,kind] of [
+    ["Unexpected token ')'",'js_syntax'],
+    ["Identifier 'JSON' has already been declared",'js_syntax'],
+    ['JSON.parse: unexpected character at line 1 column 1 of the JSON data','json_parse'],
+    ['JSON Parse error: Unexpected identifier "bad"','json_parse'],
+    ['Unexpected end of JSON input','json_parse'],
+    ['Expected property name or \'}\' in JSON at position 1 (line 1 column 2)','json_parse'],
+    ['Unexpected token \'b\', "bad" is not valid JSON','json_parse'],
+  ]) {
+    assert.equal(sdk.observationError({name:'SyntaxError',message}).error_kind,kind);
+    // Browser ErrorEvents may contain a message without an error object.
+    const eventDetails=sdk.observationError(null,{message:'Uncaught SyntaxError: '+message});
+    assert.equal(eventDetails.error_kind,kind);assert.equal(eventDetails.error_present,false);
+    assert.ok(!JSON.stringify(eventDetails).includes(message));
+  }
+});
+
+test('actual photo error names and fixed storage wrapper codes survive without arbitrary error text', () => {
+  const {sdk}=harness();
+  assert.equal(sdk.observationError({name:'QTPhotoPreparationError',message:PRIVATE}).error_name,'QTPhotoPreparationError');
+  assert.equal(sdk.observationError({name:'QTPhotoStorageError',code:'upload_verification_failed',message:PRIVATE}).wrapper_code,'upload_verification_failed');
+  const privateCode=sdk.observationError({name:'QTPhotoStorageError',code:PRIVATE,message:PRIVATE});
+  assert.equal(privateCode.wrapper_code,undefined);assert.ok(!JSON.stringify(privateCode).includes(PRIVATE));
+  assert.equal(sdk.observationError({name:'Error',code:'upload_failed'}).wrapper_code,undefined);
+});
+
+test('ErrorEvent without error keeps a safe category and exact asset position', async () => {
+  const h=harness();h.sdk.setObservationUser(USER_A);
+  h.sdk.reportObservationClientError('unhandled_error',null,{
+    message:'ResizeObserver loop completed with undelivered notifications.',
+    filename:'https://roots.test/_next/static/chunks/app/profile/page-0123456789abcdef.js?token='+PRIVATE,
+    lineno:1,colno:19312,
+  });
+  const d=h.queue().find(row=>row.event.event_name==='client_error').event.details;
+  assert.equal(d.error_kind,'resize_observer'); assert.equal(d.error_present,false);
+  assert.equal(d.error_script,'page-0123456789abcdef.js');assert.equal(d.error_column,19312);
+  assert.ok(!JSON.stringify(d).includes(PRIVATE));assert.ok(!JSON.stringify(d).includes('https'));
+  await h.sdk.flushObservations();
+  assert.equal(h.posts.flatMap(p=>p.events).find(e=>e.event_name==='client_error').details.error_column,19312);
+});
+
+test('bridge forwards browser location metadata even when event.error is absent', () => {
+  const h=bridgeHarness();
+  const event={error:null,message:'Script error.',filename:'https://roots.test/_next/static/chunks/1801-3121bf33b19d6848.js',lineno:1,colno:99};
+  for(const fn of h.listeners.get('error')) fn(event);
+  assert.equal(h.errors[0][1],null);assert.equal(h.errors[0][2].filename,event.filename);
+  assert.equal(h.errors[0][2].message,'Script error.');h.cleanup();
+});
+
+test('only same-origin hashed bundle positions survive V8 and WebKit stacks', () => {
+  const {sdk}=harness();
+  for(const stack of [
+    'Error: '+PRIVATE+'\n    at secret (https://roots.test/_next/static/chunks/1801-3121bf33b19d6848.js:1:420)\n    at other (https://roots.test/_next/static/chunks/2775.83b08f832fc1f708.js:2:550)',
+    'secret@https://roots.test/_next/static/chunks/1801-3121bf33b19d6848.js:1:420\nother@https://roots.test/_next/static/chunks/2775.83b08f832fc1f708.js:2:550',
+  ]) {
+    const d=sdk.observationError({name:'Error',message:PRIVATE,stack});
+    assert.equal(d.error_script,'1801-3121bf33b19d6848.js'); assert.equal(d.error_column,420);
+    assert.equal(d.caller_script,'2775.83b08f832fc1f708.js');
+    assert.ok(!JSON.stringify(d).includes(PRIVATE)); assert.ok(!JSON.stringify(d).includes('secret'));
+  }
+  for(const filename of ['https://other.test/_next/static/chunks/page-0123456789abcdef.js','https://roots.test/'+PRIVATE+'.js','https://roots.test/_next/static/chunks/'+PRIVATE+'.js']) {
+    assert.equal(sdk.observationError(null,{filename,lineno:1,colno:2}).error_script,undefined);
+  }
+});
+
+test('cyclic causes, throwing getters and private rejection strings cannot break callers or leak', () => {
+  const {sdk}=harness();const cyclic={name:'Error',message:PRIVATE};cyclic.cause=cyclic;
+  const bad=new Proxy({}, {get(){throw new Error(PRIVATE);}});
+  for(const input of [cyclic,bad,PRIVATE,null,42]) {
+    let d;assert.doesNotThrow(()=>{d=sdk.observationError(input);});
+    assert.ok(!JSON.stringify(d).includes(PRIVATE));
+  }
+});
+
+test('server schema rejects raw messages, source URLs, unknown names and invalid diagnostic positions', () => {
+  const h=harness(),schema=h.exportsFor('lib/observationSchema.ts');
+  const d=schema.sanitizeObservationDetails({diagnostic_version:2,error_name:PRIVATE,cause_name:PRIVATE,error_kind:PRIVATE,route:'/qt/record?body='+PRIVATE,error_script:'https://roots.test/'+PRIVATE,caller_script:PRIVATE,error_line:-1,error_column:Infinity,http_status:999,message:PRIVATE,stack:PRIVATE,online:true});
+  assert.deepEqual(JSON.parse(JSON.stringify(d)),{diagnostic_version:2,online:true});
 });
 
 (async () => {

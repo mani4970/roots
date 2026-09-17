@@ -2169,10 +2169,18 @@ function QTWriteContent() {
         }
 
         const supabase = createClient();
-        const user = await getQtDraftSessionUser(supabase);
+        let authFailure: unknown;
+        let authStage: "cached_session" | "user_check" | undefined;
+        const user = await getQtDraftSessionUser(supabase, (stage, error) => {
+          authFailure = error;
+          authStage = stage;
+        });
         if (!user) {
           draftObservationRetryRef.current = true;
-          observe(draftFlow, "draft_error", { source: draftSource, reason: "auth_missing", local_backup: localBackupSaved });
+          observe(draftFlow, "draft_error", {
+            source: draftSource, reason: "auth_missing", phase: "auth", local_backup: localBackupSaved,
+            ...observationError(authFailure), ...(authStage ? { auth_stage: authStage } : {}),
+          });
           if (!silent) router.push("/login");
           else updateAutoSaveStatus(localBackupSaved ? "local" : "error");
           return false;

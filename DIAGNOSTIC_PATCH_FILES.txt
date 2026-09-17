@@ -1,0 +1,12 @@
+lib/observationSchema.ts
+lib/observationErrorDetails.ts
+lib/appObservation.ts
+lib/qtDraftSync.ts
+components/AppObservationBridge.tsx
+app/qt/write/page.tsx
+scripts/test-observation-client.cjs
+scripts/test-observation-ingestion.cjs
+scripts/test-observation-draft-auth.cjs
+docs/observation-diagnostics-20260917.sql
+docs/observation-diagnostics-20260917.md
+DIAGNOSTIC_PATCH_FILES.txt

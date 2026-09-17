@@ -1,5 +1,5 @@
-// Shared telemetry contract. Do not add writing content, error messages, URLs,
-// recipient identifiers, or arbitrary strings to this allowlist.
+// Shared telemetry contract. Do not add writing content, raw error messages,
+// URLs, recipient identifiers, or arbitrary strings to this allowlist.
 export const OBSERVATION_BUILD = "obs-20260916-v1";
 export const OBSERVATION_CAMPAIGN = "roots-observation-20260916";
 export const OBSERVATION_MAX_BATCH = 30;
@@ -40,6 +40,12 @@ export function isObservationUuid(value: unknown): value is string {
 }
 
 const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
+  error_name: new Set(["Error", "TypeError", "ReferenceError", "SyntaxError", "RangeError", "URIError", "EvalError", "DOMException", "AbortError", "TimeoutError", "NetworkError", "SecurityError", "QuotaExceededError", "NotAllowedError", "InvalidStateError", "ChunkLoadError", "AuthApiError", "AuthRetryableFetchError", "AuthSessionMissingError", "NavigatorLockAcquireTimeoutError", "ProcessLockAcquireTimeoutError", "QTPhotoRecordError", "QTPhotoStorageError", "QTPhotoPreparationError", "unknown"]),
+  cause_name: new Set(["Error", "TypeError", "ReferenceError", "SyntaxError", "RangeError", "URIError", "EvalError", "DOMException", "AbortError", "TimeoutError", "NetworkError", "SecurityError", "QuotaExceededError", "NotAllowedError", "InvalidStateError", "ChunkLoadError", "AuthApiError", "AuthRetryableFetchError", "AuthSessionMissingError", "NavigatorLockAcquireTimeoutError", "ProcessLockAcquireTimeoutError", "QTPhotoRecordError", "QTPhotoStorageError", "QTPhotoPreparationError", "unknown"]),
+  error_kind: new Set(["unknown", "draft_timeout", "photo_record_timeout", "photo_stage_timeout", "photo_storage_timeout", "request_timeout", "request_aborted", "network_fetch", "auth_lock", "auth_session", "auth_refresh", "resize_observer", "script_redacted", "chunk_load", "js_reference", "js_type", "js_syntax", "json_parse", "storage_quota", "database", "http_error"]),
+  wrapper_code: new Set(["auth_failed", "load_failed", "not_owned_photo_record", "duplicate_completed", "insert_failed", "insert_verification_failed", "update_failed", "update_verification_failed", "upload_failed", "upload_verification_failed"]),
+  route: new Set(["home", "qt", "qt_write", "qt_photo", "qt_complete", "qt_record", "prayer", "profile", "community", "login", "other"]),
+  auth_stage: new Set(["cached_session", "user_check"]),
   mode: new Set(["create", "quiet", "edit", "answer", "share", "6step", "sunday", "free", "photo"]),
   phase: new Set(["body", "recipients", "daily_completion", "rollback", "refresh", "auth", "badge", "notifications", "visibility", "share_options", "draft_load", "draft", "completion", "edit_record", "record_lookup", "record_update", "record_insert", "record", "progress", "upload", "upload_verify", "duplicate_check", "edit_load", "edit_recovery"]),
   source: new Set(["prayer_page", "prayer_popup", "home_prayer", "edit", "create", "toast", "button", "manual", "auto", "draft_conversion", "completion_screen", "app"]),
@@ -49,8 +55,14 @@ const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
   measurement: new Set(["dom_layout"]),
   outcome: new Set(["eligible", "ineligible", "already_seen", "empty", "error"]),
 };
-const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed"]);
+const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present"]);
 const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days"]);
+const SOURCE_POSITION_DETAILS = new Set(["error_line", "error_column", "caller_line", "caller_column"]);
+// Only build-generated asset basenames; never a complete URL, path or message.
+export function sanitizeObservationScript(input: unknown): string | null {
+  if (typeof input !== "string" || input.length > 100) return null;
+  return /^(?:[0-9]+|[a-f0-9]{8}|main-app|framework|webpack|polyfills|main|page|layout|error|global-error|not-found|_app|_error)[.-][a-f0-9]{8,32}\.js$/.test(input) ? input : null;
+}
 const FIXED_ERROR_CODES = new Set(["unknown", "network", "network_or_type", "timeout", "aborted", "offline", "auth", "storage", "unexpected", "UNKNOWN", "NETWORK", "TIMEOUT", "ABORTED", "OFFLINE", "AUTH", "STORAGE", "UNEXPECTED", "AbortError", "TypeError", "NetworkError", "TimeoutError"]);
 export function sanitizeObservationErrorCode(input: unknown): string | null {
   if (typeof input !== "string") return null;
@@ -65,6 +77,15 @@ export function sanitizeObservationDetails(input: unknown): ObservationDetails {
     if (key === "error_code") {
       const code = sanitizeObservationErrorCode(value);
       if (code) clean[key] = code;
+    } else if (key === "error_script" || key === "caller_script") {
+      const script = sanitizeObservationScript(value);
+      if (script) clean[key] = script;
+    } else if (key === "diagnostic_version" && value === 2) {
+      clean[key] = 2;
+    } else if (key === "http_status" && typeof value === "number" && Number.isInteger(value) && value >= 400 && value <= 599) {
+      clean[key] = value;
+    } else if (SOURCE_POSITION_DETAILS.has(key) && typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 10000000) {
+      clean[key] = value;
     } else if (allowedStrings?.has(typeof value === "string" ? value : "")) {
       clean[key] = value as string;
     } else if (BOOLEAN_DETAILS.has(key) && typeof value === "boolean") {

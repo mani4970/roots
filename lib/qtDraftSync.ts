@@ -67,7 +67,11 @@ export function withQtDraftTimeout<T>(
  */
 export async function getQtDraftSessionUser(
   supabase: SupabaseClient,
+  onFailure?: (stage: "cached_session" | "user_check", error: unknown) => void,
 ): Promise<User | null> {
+  const reportFailure = (stage: "cached_session" | "user_check", error: unknown) => {
+    try { onFailure?.(stage, error); } catch { /* Diagnostics cannot affect auth fallback. */ }
+  };
   try {
     const { data, error } = await withQtDraftTimeout(
       supabase.auth.getSession(),
@@ -75,7 +79,9 @@ export async function getQtDraftSessionUser(
       "auth.getSession",
     );
     if (!error && data.session?.user) return data.session.user;
-  } catch {
+    if (error) reportFailure("cached_session", error);
+  } catch (error) {
+    reportFailure("cached_session", error);
     // Fall through to a server-backed user check below.
   }
 
@@ -86,7 +92,9 @@ export async function getQtDraftSessionUser(
       "auth.getUser",
     );
     if (!error && data.user) return data.user;
-  } catch {
+    reportFailure("user_check", error ?? { name: "AuthSessionMissingError" });
+  } catch (error) {
+    reportFailure("user_check", error);
     // The caller decides whether it can continue from a local backup.
   }
 

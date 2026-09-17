@@ -114,6 +114,22 @@ async function check(name, run) { reset(); await run(); checks++; console.log(`P
     assert.equal(state.rows.size, 1);
     assert.equal(state.rows.get(eventId).event_name, "retry_clicked");
   });
+  await check("v2 diagnostics reach storage with safe positions and without private text", async () => {
+    const result = await route.POST(request(batch({ details: {
+      diagnostic_version: 2, error_name: 'QTPhotoRecordError', cause_name: 'TypeError',
+      error_kind: 'network_fetch', error_code: 'network', wrapper_code: 'load_failed',
+      route: 'qt_photo', online: true, error_present: true, message_present: true,
+      error_script: 'page-0123456789abcdef.js', error_line: 1, error_column: 19312,
+      caller_script: '1801-3121bf33b19d6848.js', caller_line: 1, caller_column: 888,
+      message: 'private reflection', stack: 'private path', url: 'https://private.invalid',
+    } })));
+    assert.equal(result.status, 200);
+    const d = state.rows.get(eventId).details;
+    assert.equal(d.error_kind, 'network_fetch'); assert.equal(d.error_column, 19312);
+    assert.equal(d.diagnostic_version, 2); assert.equal(d.wrapper_code, 'load_failed');
+    assert.ok(!JSON.stringify(d).includes('private'));
+    assert.ok(Buffer.byteLength(JSON.stringify(d)) <= 2048);
+  });
   await check("database failures and per-user receive rate fail closed", async () => {
     state.dbError = true;
     assert.equal((await route.POST(request(batch()))).status, 503);

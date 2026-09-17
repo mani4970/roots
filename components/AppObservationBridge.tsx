@@ -9,7 +9,9 @@ export default function AppObservationBridge() {
     let disposed = false;
     let authVersion = 0;
     let unsubscribe: (() => void) | undefined;
-    const onError = (event: ErrorEvent) => reportObservationClientError("unhandled_error", event.error);
+    const onError = (event: ErrorEvent) => reportObservationClientError("unhandled_error", event.error, {
+      message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno,
+    });
     const onRejection = (event: PromiseRejectionEvent) => reportObservationClientError("unhandled_rejection", event.reason);
     const onOnline = () => { void flushObservations(); };
     const onPageHide = () => { void flushObservations(true); };

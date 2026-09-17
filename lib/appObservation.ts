@@ -3,6 +3,7 @@
 import { Capacitor } from "@capacitor/core";
 import { OBSERVATION_BUILD, normalizeObservationEvent, sanitizeObservationDetails } from "@/lib/observationSchema";
 import type { ObservationScope, ObservationEventInput } from "@/lib/observationSchema";
+import { observationErrorDetails, type ObservationErrorContext } from "@/lib/observationErrorDetails";
 
 export type ObservationFlow = {
   id: string;
@@ -197,17 +198,7 @@ export function observe(flow: ObservationFlow | null | undefined, eventName: str
   } catch { /* Telemetry must not interfere with writing, rewards, or UI. */ }
 }
 
-export function observationError(error: unknown): { error_code: string } {
-  try {
-    if (error && typeof error === "object") {
-      const value = error as { code?: unknown; name?: unknown };
-      if (typeof value.code === "string" && /^(?:[0-9][0-9A-Z]{4}|PGRST[0-9]{3})$/.test(value.code)) return { error_code: value.code };
-      if (value.name === "AbortError" || value.name === "TimeoutError") return { error_code: "timeout" };
-      if (value.name === "TypeError") return { error_code: "network_or_type" };
-    }
-  } catch {}
-  return { error_code: "unknown" };
-}
+export const observationError = observationErrorDetails;
 
 export function rememberObservationFlow(flow: ObservationFlow | null | undefined, key: string): void {
   try { if (flow && /^[a-z_]{1,40}$/.test(key)) sessionStorage.setItem(FLOW_KEY + key, JSON.stringify(flow)); } catch {}
@@ -266,8 +257,8 @@ function reportDroppedObservations(): void {
   } catch { /* Reporting delivery loss is itself best-effort. */ }
 }
 
-export function reportObservationClientError(reason: "unhandled_error" | "unhandled_rejection" | "react_boundary" | "global_boundary", error?: unknown): void {
-  observe(currentAppFlow(), "client_error", { reason, ...observationError(error) });
+export function reportObservationClientError(reason: "unhandled_error" | "unhandled_rejection" | "react_boundary" | "global_boundary", error?: unknown, context?: ObservationErrorContext): void {
+  observe(currentAppFlow(), "client_error", { reason, ...observationError(error, context) });
 }
 
 export function observationVisibilityChanged(): void {
