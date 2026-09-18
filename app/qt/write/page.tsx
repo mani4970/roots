@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, Suspense, type PointerEvent as ReactPointerEvent } from "react";
+import { useState, useEffect, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
@@ -1922,19 +1922,37 @@ function QTWriteContent() {
     persistDraftBackup({ ...getDraftSnapshot(), sermonTitle: val });
   }
 
-  function handleWriterPointerDownCapture(event: ReactPointerEvent<HTMLDivElement>) {
-    const target = event.target;
-    if (!(target instanceof Element) || !target.closest("button")) return;
-
+  function blurActiveAppleIsolatedEditor() {
     const activeElement = document.activeElement;
     const isAppleIsolatedEditor =
       (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) &&
       activeElement.dataset.cursorStability === "apple-isolated";
 
+    if (isAppleIsolatedEditor) activeElement.blur();
+  }
+
+  function handleWriterPointerDownCapture(event: ReactPointerEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest("button")) return;
+
+    // A finger drag can start on a verse button inside the independently
+    // scrollable passage card. Wait for a real click there so iPad scrolling
+    // does not dismiss the writing keyboard.
+    if (target.closest("#qt-six-reading-passage")) return;
+
     // WebKit can keep a textarea focused when a button is tapped. Blur first
     // so the editor commits its IME text and delayed value before the button
     // changes steps, saves a draft, or completes the reflection.
-    if (isAppleIsolatedEditor) activeElement.blur();
+    blurActiveAppleIsolatedEditor();
+  }
+
+  function handleReadingPassageClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest("button")) return;
+
+    // Capture only a confirmed tap/click. This still commits an Apple-isolated
+    // editor before verse selection while leaving scroll gestures focused.
+    blurActiveAppleIsolatedEditor();
   }
 
   function rememberDraftClientUpdatedAt(value: unknown) {
@@ -3507,6 +3525,7 @@ function QTWriteContent() {
                   role="region"
                   aria-label={translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
                   tabIndex={0}
+                  onClickCapture={handleReadingPassageClickCapture}
                   style={{
                     height: readingView === "compact" ? 320 : "auto",
                     overflowY: readingView === "compact" ? "auto" : "visible",
