@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useLayoutEffect, useRef, Suspense, type PointerEvent as ReactPointerEvent } from "react";
+import { useState, useEffect, useRef, Suspense, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
@@ -44,13 +44,11 @@ import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusVal
 import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
 import QTFreePassageChoice from "@/components/QTFreePassageChoice";
-import QTSixStepReadingFrame from "@/components/QTSixStepReadingFrame";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
-import { compareKeyVerseIds, toggleKeyVerseText, type KeyVerseSource } from "@/lib/qtKeyVerseSelection";
 import {
   loadYesterdayFreePassageContinuation,
   type YesterdayFreePassageContinuation,
@@ -150,11 +148,6 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "나가기": { de: "Zurück", en: "Exit", fr: "Sortir", es: "Salir" },
   "이전": { de: "Zurück", en: "Back", fr: "Retour", es: "Atrás" },
   "더보기": { de: "Mehr", en: "More", fr: "Voir plus", es: "Ver más" },
-  "접어서 보기": { de: "Kompaktansicht", en: "Compact view", fr: "Vue compacte", es: "Vista compacta" },
-  "본문 보기": { de: "Bibeltext anzeigen", en: "Show passage", fr: "Afficher le passage", es: "Mostrar pasaje" },
-  "전체 보기": { de: "Vollansicht", en: "Full view", fr: "Vue complète", es: "Vista completa" },
-  "펼쳐 보기": { de: "Ansicht vergrößern", en: "Expand view", fr: "Agrandir", es: "Ampliar vista" },
-  "작게 보기": { de: "Ansicht verkleinern", en: "Reduce view", fr: "Réduire", es: "Reducir vista" },
   "접기": { de: "Weniger", en: "Less", fr: "Réduire", es: "Ver menos" },
   "다음 단계 →": { de: "Nächster Schritt →", en: "Next Step →", fr: "Étape suivante →", es: "Siguiente paso →" },
   "← 이전": { de: "← Zurück", en: "← Back", fr: "← Retour", es: "← Atrás" },
@@ -282,13 +275,18 @@ function QTWriteContent() {
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" | "info" } | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const BIBLE_TEXT_SIZES = [16, 18, 20, 22] as const;
-  // Each writer visit starts at the smallest size; A+/A- still work for this visit.
-  const [bibleTextSizeIndex, setBibleTextSizeIndex] = useState(0);
+  const [bibleTextSizeIndex, setBibleTextSizeIndex] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = storageGet("roots_qt_bible_text_size_index");
+    const parsed = saved ? Number.parseInt(saved, 10) : 1;
+    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), BIBLE_TEXT_SIZES.length - 1) : 1;
+  });
   const bibleTextFontSize = BIBLE_TEXT_SIZES[bibleTextSizeIndex];
 
   function changeBibleTextSize(delta: number) {
     setBibleTextSizeIndex(prev => {
       const next = Math.min(Math.max(prev + delta, 0), BIBLE_TEXT_SIZES.length - 1);
+      storageSet("roots_qt_bible_text_size_index", String(next));
       return next;
     });
   }
@@ -459,37 +457,6 @@ function QTWriteContent() {
   const [draftRetryNonce, setDraftRetryNonce] = useState(0);
   const draftRestoredRef = useRef(false);
   const scheduleLoadStartedRef = useRef(false);
-  const [readingView, setReadingView] = useState<"normal" | "expanded">("expanded");
-  const readingScrollRef = useRef<HTMLDivElement>(null);
-  const readingEditorRef = useRef<HTMLDivElement>(null);
-  const readingScrollTopRef = useRef(0);
-  function changeReadingView(view: "normal" | "expanded") {
-    const passage = readingScrollRef.current;
-    const editor = readingEditorRef.current;
-    if (passage && editor) {
-      if (readingView === "normal") {
-        readingScrollTopRef.current = passage.scrollTop;
-      } else {
-        // Convert the main scroll position to passage-local pixels (including native zoom).
-        const editorRect = editor.getBoundingClientRect();
-        const scale = editor.offsetWidth ? editorRect.width / editor.offsetWidth : 1;
-        readingScrollTopRef.current = Math.max(0, (editorRect.top - passage.getBoundingClientRect().top) / (scale || 1));
-      }
-    }
-    setReadingView(view);
-  }
-  useLayoutEffect(() => {
-    const editor = readingEditorRef.current;
-    const passage = readingScrollRef.current;
-    if (!editor || !passage) return;
-    if (readingView === "normal") {
-      // Clear the full-view scroll before restoring the independent passage scroll.
-      editor.scrollTop = 0;
-      passage.scrollTop = readingScrollTopRef.current;
-    } else {
-      editor.scrollTop = readingScrollTopRef.current;
-    }
-  }, [readingView]);
   const [passageOpen, setPassageOpen] = useState(false);
 
   // 장 변경 시 절 범위 초과 자동 조정
@@ -511,14 +478,6 @@ function QTWriteContent() {
   const [bibleRef, setBibleRef] = useState("");
   const [keyVerse, setKeyVerse] = useState("");
   const [selectedVerseNums, setSelectedVerseNums] = useState<string[]>([]);
-  const keyVerseSourcesRef = useRef(new Map<string, KeyVerseSource>());
-  useEffect(() => {
-    // Retain exact source text across translation changes for safe deselection.
-    for (const verse of [...passageVerses, ...passages.flatMap(item => item.verses)]) {
-      const source = { num: String(verse.num).trim(), text: String(verse.text) };
-      keyVerseSourcesRef.current.set(`${source.num}\u0000${source.text}`, source);
-    }
-  }, [passageVerses, passages]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
   const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
 
@@ -1009,7 +968,6 @@ function QTWriteContent() {
       else setMode(isSunday(initialDate) ? "sunday" : "6step");
       setBibleRef("");
       setKeyVerse("");
-      keyVerseSourcesRef.current.clear();
       setPassageVerses([]);
       setSelectedVerseNums([]);
       setAnswers({});
@@ -1068,7 +1026,7 @@ function QTWriteContent() {
           const restoredNums = String(record.key_verse)
             .split("\n")
             .map((line: string) => {
-              const m = line.match(/^\s*(\d+(?::\d+)?(?:[-–]\d+)?)\s/);
+              const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
               return m ? m[1] : null;
             })
             .filter((n: string | null): n is string => Boolean(n));
@@ -1297,7 +1255,7 @@ function QTWriteContent() {
         const restoredNums = String(draft.key_verse)
           .split("\n")
           .map((line: string) => {
-            const m = line.match(/^\s*(\d+(?::\d+)?(?:[-–]\d+)?)\s/);
+            const m = line.match(/^\s*(\d+(?::\d+)?)\s/);
             return m ? m[1] : null;
           })
           .filter((n: string | null): n is string => Boolean(n));
@@ -1904,17 +1862,21 @@ function QTWriteContent() {
   function selectVerse(verseText: string, num: VerseNum) {
     const verseId = normalizeVerseNum(num);
     if (!verseId) return;
-    const clicked = { num: verseId, text: verseText };
-    keyVerseSourcesRef.current.set(`${verseId}\u0000${verseText}`, clicked);
-    const sources = [...keyVerseSourcesRef.current.values()];
-    const deselecting = selectedVerseNums.includes(verseId);
 
-    // Use the latest input value, including Apple IME text committed on blur.
-    setKeyVerse(prev => toggleKeyVerseText(prev, selectedVerseNums, clicked, sources));
-    setSelectedVerseNums(prev => deselecting
-      ? prev.filter(id => id !== verseId)
-      : [...new Set([...prev, verseId])].sort(compareKeyVerseIds));
-    if (!deselecting && typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
+    if (selectedVerseNums.includes(verseId)) {
+      setSelectedVerseNums(prev => prev.filter(n => n !== verseId));
+      setKeyVerse(prev => prev.split("\n").filter(l => !l.startsWith(`${verseId} `)).join("\n").trim());
+    } else {
+      // 안전장치: keyVerse에 이미 같은 절 번호로 시작하는 줄이 있다면 중복 방지.
+      // 장이 넘어가는 본문은 "20:41"처럼 장:절을 고유 ID로 사용합니다.
+      const alreadyInKeyVerse = keyVerse.split("\n").some(l => l.startsWith(`${verseId} `));
+      setSelectedVerseNums(prev => prev.includes(verseId) ? prev : [...prev, verseId]);
+      if (!alreadyInKeyVerse) {
+        const line = `${verseId} ${verseText}`;
+        setKeyVerse(prev => prev ? prev + "\n" + line : line);
+      }
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
+    }
   }
 
   function set(key: string, val: string) {
@@ -3437,7 +3399,7 @@ function QTWriteContent() {
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
   return (
-    <QTSixStepReadingFrame active={Boolean(step6.isPassageStep)} className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3477,8 +3439,8 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-      <div className="qt-reading-header" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <div className="qt-reading-header-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
             <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
           </button>
@@ -3493,7 +3455,7 @@ function QTWriteContent() {
         )}
 
         {/* 진행바 — 6칸, 본문요약+붙잡은말씀 동시 활성 */}
-        <div className="qt-reading-progress" style={{ display: "flex", gap: 3, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
           {BAR_LABELS_6.map((label, i) => {
             const state = getBarState(i);
             return (
@@ -3526,7 +3488,7 @@ function QTWriteContent() {
 
       {/* 본문 요약 & 붙잡은 말씀 단계 */}
       {step6.isPassageStep && (
-        <div ref={readingEditorRef} data-reading-view={readingView} className="qt-six-step-editor qt-reading-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* 본문 전체 보기 */}
           {getDisplayPassages().length > 0 && (() => {
@@ -3537,9 +3499,8 @@ function QTWriteContent() {
             const hasMultiplePassages = displayPassages.length > 1;
             const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
             return (
-              <div className="qt-reading-passage roots-elevation-card-sage" data-view={readingView} style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, border: "1px solid var(--qt-sage-border-soft)" }}>
-                <div id="qt-six-reading-passage" ref={readingScrollRef} className="qt-reading-scroll" role="region" aria-label={translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)} tabIndex={0}>
-                  <div style={{ padding: "12px 14px" }}>
+              <div>
+                <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}</p>
                     <BibleTranslationSelect compact />
@@ -3590,23 +3551,11 @@ function QTWriteContent() {
                     </p>
                   )}
                   <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
-                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="qt-reading-toggle"
-                  aria-controls="qt-six-reading-passage"
-                  aria-expanded={readingView === "expanded"}
-                  onClick={() => changeReadingView(readingView === "expanded" ? "normal" : "expanded")}
-                >
-                  {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-                  {trQT(readingView === "expanded" ? "접어서 보기" : "전체 보기", lang)}
-                </button>
               </div>
             );
           })()}
 
-          <div className="qt-reading-fields">
           {/* 2단계: 본문 요약 */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
@@ -3621,7 +3570,6 @@ function QTWriteContent() {
               {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
             </label>
             <CursorStableTextarea key="six-step-key-verse" className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
-          </div>
           </div>
         </div>
       )}
@@ -3731,7 +3679,7 @@ function QTWriteContent() {
         )}
         {renderAutoSaveStatus()}
       </div>
-    </QTSixStepReadingFrame>
+    </div>
   );
 }
 
