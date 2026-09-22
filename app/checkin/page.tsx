@@ -1,11 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 import BottomNav from "@/components/BottomNav";
 import { t, type TKey } from "@/lib/i18n";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+
+import { createClient } from "@/lib/supabase";
+import { getLocalDateString } from "@/lib/date";
+import { readDailyWordRecord } from "@/lib/dailyWordCardRecord";
+import { getWordCardText } from "@/lib/wordCardText";
+import { withQtDraftTimeout } from "@/lib/qtDraftSync";
 
 const EMOTION_GROUPS = [
   {
@@ -39,6 +45,31 @@ export default function CheckinPage() {
   const router = useRouter();
   const lang = useLang();
   const [selected, setSelected] = useState<string | null>(null);
+  const [entryStatus, setEntryStatus] = useState<"checking" | "empty" | "redirecting" | "error">("checking");
+  const [retryNonce, setRetryNonce] = useState(0);
+  const wordText = getWordCardText(lang);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    setEntryStatus("checking");
+    void (async () => {
+      try {
+        const client = createClient();
+        const { data: { user }, error } = await withQtDraftTimeout(client.auth.getUser(), 6_000, "daily Word entry user");
+        if (cancelled) return;
+        if (error) throw error;
+        if (!user) { router.replace("/welcome"); return; }
+        const row = await readDailyWordRecord(client, user.id, getLocalDateString(), controller.signal);
+        if (cancelled) return;
+        // Also protect direct links/browser Back, not only the Home button.
+        if (row) { setEntryStatus("redirecting"); router.replace("/checkin/result"); }
+        else setEntryStatus("empty");
+      } catch { if (!cancelled) setEntryStatus("error"); }
+      finally { clearTimeout(timeout); }
+    })();
+    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); };
+  }, [retryNonce, router]);
 
   const EMOTIONS = EMOTION_GROUPS.map(g => ({
     ...g,
@@ -58,6 +89,10 @@ export default function CheckinPage() {
     return true;
   });
 
+  // Never replace the emotion list with an intermediate received-word loader.
+  // Check direct links/Back in the background. ResultContent also rechecks the
+  // authenticated owner and date before any draw/write, including fast taps.
+
   return (
     <div className="roots-daily-word-phase2e" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: selected ? "calc(210px + var(--bottom-nav-bottom-padding))" : "calc(104px + var(--bottom-nav-bottom-padding))", position: "relative" }}>
       <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)" }}>
@@ -69,6 +104,10 @@ export default function CheckinPage() {
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
+        {entryStatus === "error" && <div role="alert" style={{ marginBottom: 16, color: "var(--text2)", fontSize: 13, lineHeight: 1.6 }}>
+          <p>{wordText.entryCheckError}</p>
+          <button type="button" className="btn-outline" onClick={() => setRetryNonce(n => n + 1)}>{wordText.retry}</button>
+        </div>}
         {EMOTIONS.map(group => (
           <div key={group.category} style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -116,7 +155,8 @@ export default function CheckinPage() {
             <img src={selectedItem.img} alt={selectedItem.label} style={{ width: 32, height: 32, objectFit: "contain" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{selectedItem.label}</span>
           </div>
-          <button className="btn-sage" onClick={() => router.push(`/checkin/result?emotions=${selected}`)}>
+          <button className="btn-sage" disabled={entryStatus === "error" || entryStatus === "redirecting"}
+            onClick={() => router.push(`/checkin/result?emotions=${selected}`)}>
             {t("checkin_receive", lang)}
           </button>
         </div>

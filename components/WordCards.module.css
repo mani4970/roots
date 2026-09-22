@@ -1,0 +1,217 @@
+/* Scoped to the two new word-card experiences; no global font/scale changes. */
+.homeButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.homeButton {
+  min-width: 0;
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 13px;
+  border: 1px solid var(--border-sage-soft);
+  border-radius: 15px;
+  background: var(--surface-card);
+  color: var(--text);
+  box-shadow: var(--shadow-card-sage);
+  text-align: center;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color .16s, transform .16s;
+}
+@media (hover: hover) { .homeButton:hover { border-color: var(--sage); } }
+.homeButton:active { transform: translateY(1px); }
+.homeButton:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.homeButton:disabled { cursor: default; opacity: .65; }
+.buttonIcon { flex: 0 0 auto; color: var(--sage-dark); }
+.buttonLabel { min-width: 0; font-size: 13px; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; word-break: normal; }
+.buttonLabel:lang(ko) { word-break: keep-all; }
+
+.card {
+  --word-paper: #fffdf8;
+  --word-ink: #303a32;
+  --word-muted: #657267;
+  --word-line: #9cae9c;
+  --word-action: #526e55;
+  --word-on-action: #ffffff;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--word-paper);
+  color: var(--word-ink);
+  border: 1px solid var(--word-line);
+  border-radius: 15px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* A real inset frame, not the barely visible outline of the modal shell.
+   Keep the existing 1px border transparent so content dimensions do not change.
+   Only ready Scripture cards are framed; notices/loading shells stay simple.
+   The matching PNG geometry is documented in drawWordCardFrame(). */
+.card[data-word-card] { border-color: transparent; }
+.card[data-word-card]::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 1.5px solid #72836f;
+  border-radius: 9px;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+:global([data-theme="dark"]) .card[data-word-card]::before { border-color: #72836f; }
+:global([data-theme="dark"]) .card {
+  --word-paper: #222c24;
+  --word-ink: #f2f2e9;
+  --word-muted: #bec9bd;
+  --word-line: #8b9f87;
+  --word-action: #b2c6ad;
+  --word-on-action: #223025;
+}
+/* Word cards are collectible/shareable objects: keep their paper palette identical
+   to the downloaded image even while the surrounding app uses dark mode. */
+:global([data-theme="dark"]) .card[data-word-card] {
+  --word-paper: #fffdf8;
+  --word-ink: #303a32;
+  --word-muted: #657267;
+  --word-line: #9cae9c;
+  --word-action: #526e55;
+  --word-on-action: #ffffff;
+}
+:global([data-theme="dark"]) .card[data-word-card] .brand { filter: none; }
+.header { position: relative; flex: 0 0 auto; }
+.header .contentHeading { padding: 8px 20px 0; }
+.contentHeading { margin-bottom: 26px; flex: 0 0 auto; }
+.brandRow { flex: 0 0 auto; min-height: 31px; padding: 15px 20px 5px; display: flex; justify-content: space-between; align-items: center; gap: 9px; }
+.brand { display: block; width: 113px; height: 30px; object-fit: contain; }
+:global([data-theme="dark"]) .brand { filter: brightness(1.8); }
+.title { margin: 0; text-align: center; font-size: 17px; font-weight: 650; line-height: 1.4; letter-spacing: -.025em; overflow-wrap: anywhere; word-break: normal; }
+.title:lang(ko) { word-break: keep-all; }
+.todayTitle { font-size: 16px; font-weight: 600; }
+.description { margin: 8px 0 0; text-align: center; color: var(--word-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.scrollBody { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; flex: 1 1 auto; padding: 20px 22px 24px; scrollbar-width: thin; scrollbar-color: var(--word-line) transparent; }
+/* Auto margins center short content; on overflow they resolve to zero, so
+   the FIRST line remains reachable. Do not use justify-content:center here. */
+.bodyContent { flex: 0 0 auto; min-width: 0; width: 100%; margin-block: auto; }
+.verseBlock + .verseBlock { margin-top: 18px; }
+.reference { color: var(--word-muted); font-size: 12px; line-height: 1.5; margin: 0 0 9px; text-align: center; overflow-wrap: anywhere; }
+.verse { margin: 0; font-family: ui-serif, Georgia, "AppleMyungjo", "Batang", serif; font-weight: 400; font-size: 18px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; text-align: center; }
+.verse:lang(ko), .decision:lang(ko), .description:lang(ko), .encouragement:lang(ko), .sourceNote:lang(ko) { word-break: keep-all; }
+.longText { text-align: center; font-size: 17px; line-height: 1.8; }
+.recallVerse { font-size: 14px; line-height: 1.75; }
+.recallLongText { font-size: 13px; line-height: 1.7; }
+.todayReference { margin: 18px 0 0; }
+.rule { border: 0; height: 1px; width: 34px; background: var(--word-line); margin: 24px auto; }
+.decisionTitle { text-align: center; margin: 0 0 11px; color: var(--word-muted); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.decisionList { width: 100%; margin: 0 auto; padding-left: 1.6em; list-style-type: decimal; list-style-position: outside; text-align: left; }
+.decision { font-size: 16px; line-height: 1.8; margin: 0; padding-left: .25em; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
+.decision + .decision { margin-top: 9px; }
+.decision::marker { color: var(--word-muted); font-variant-numeric: tabular-nums; }
+.encouragement { margin: 0; font-size: 13px; line-height: 1.7; color: var(--word-muted); text-align: center; overflow-wrap: anywhere; }
+.copyright { flex: 0 0 auto; margin: 18px 0 0; font-size: 9px; line-height: 1.45; color: var(--word-muted); overflow-wrap: anywhere; text-align: right; }
+.copyright a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.sourceNote { text-align: center; font-size: 11px; line-height: 1.6; color: var(--word-muted); margin: 12px 0 0; }
+.footer { flex: 0 0 auto; padding: 14px 18px 18px; }
+.action { width: 100%; min-width: 0; min-height: 46px; border: 1px solid var(--word-action, var(--sage-dark)); border-radius: 12px; background: var(--word-action, var(--sage-dark)); color: var(--word-on-action, #fff); display: flex; gap: 8px; align-items: center; justify-content: center; padding: 11px 12px; font: inherit; font-size: 13px; font-weight: 650; line-height: 1.4; cursor: pointer; text-align: center; }
+.action span { min-width: 0; overflow-wrap: anywhere; }
+.action svg { flex: 0 0 auto; }
+.action:disabled { opacity: .55; cursor: default; }
+.secondaryAction { background: var(--word-paper); border-color: var(--word-line); color: var(--word-ink); }
+.action:focus-visible, .homeButton:focus-visible, .close:focus-visible, .scrollBody:focus-visible { outline: 2px solid var(--sage-dark); outline-offset: 3px; }
+.close { flex: 0 0 36px; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; color: var(--word-muted); border: 0; border-radius: 50%; cursor: pointer; margin: -4px -7px -4px 0; }
+
+.overlay { position: fixed; inset-inline: 0; top: var(--prayer-visible-top, 0px); height: var(--prayer-visible-height, 100dvh); z-index: 200; display: flex; align-items: center; justify-content: center; padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); box-sizing: border-box; isolation: isolate; }
+.backdrop { position: absolute; inset: 0; z-index: -1; border: 0; padding: 0; background: rgb(33 42 35 / 36%); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modalCard { max-width: 430px; max-height: 100%; height: min(610px, 100%); box-shadow: 0 10px 38px rgb(24 35 26 / 12%); }
+.modalCard:focus, .noticeCard:focus { outline: none; }
+.noticeCard { max-width: 330px; max-height: 100%; height: auto; box-shadow: 0 10px 38px rgb(24 35 26 / 12%); }
+.loadingCard { max-width: 116px; height: 92px; border-color: var(--word-line); box-shadow: 0 10px 38px rgb(24 35 26 / 12%); }
+.loadingOnly { min-height: 90px; display: flex; align-items: center; justify-content: center; color: var(--word-muted); }
+.recallScrollFrame { position: relative; display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.recallScrollFrame .scrollBody { flex: 1 1 auto; }
+.scrollHint {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--word-muted);
+  background: var(--word-paper);
+  box-shadow: 0 -7px 14px 7px var(--word-paper);
+  pointer-events: none;
+  z-index: 4;
+}
+.noticeBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 22px 8px; text-align: center; }
+.noticeBody p { margin: 0; color: var(--word-ink); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.noticeBody p:lang(ko) { word-break: keep-all; }
+.noticeBody p + p { margin-top: 10px; color: var(--word-muted); }
+.noticeBody svg { display: block; margin: 0 auto 12px; color: var(--word-muted); }
+.noticeFooter { flex: 0 0 auto; padding: 14px 18px 18px; display: flex; gap: 8px; }
+.state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 160px; padding: 12px 0; text-align: center; }
+.state p { font-size: 14px; line-height: 1.7; color: var(--word-muted); }
+.state button { width: auto; min-width: 110px; }
+
+.todayWrap { padding: 6px 16px 20px; }
+.todayCard { height: min(480px, calc(100svh - 225px)); min-height: 250px; max-height: 660px; }
+.todayCard .scrollBody { padding-top: 18px; padding-bottom: 20px; }
+
+.exportActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.modalFooter .exportActions { margin-top: 0; }
+.modalFooter .exportNotice { max-height: 72px; overflow-y: auto; overscroll-behavior: contain; }
+.exportNotice { font-size: 12px; color: var(--text-muted-readable); text-align: center; line-height: 1.6; margin: 10px 0 0; }
+.card[data-word-card] .exportNotice { color: var(--word-muted); }
+.card[data-word-card] .exportRetry { color: var(--word-action); }
+.exportRetry { font: inherit; color: var(--sage-dark); border: 0; padding: 6px 10px; background: transparent; text-decoration: underline; cursor: pointer; }
+.homeLink { display: flex; align-items: center; justify-content: center; padding: 14px 8px; gap: 4px; margin: 8px auto 0; border: 0; background: transparent; color: var(--text3); font: inherit; font-size: 13px; line-height: 1.5; cursor: pointer; }
+@media (max-width: 350px) {
+  .homeButton { padding-inline: 10px; }
+  .brandRow { padding-inline: 16px; }
+  .scrollBody { padding-inline: 17px; }
+  .title { font-size: 16px; }
+  .todayTitle { font-size: 15px; }
+}
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .todayCard {
+    height: min(440px, calc(66.6667dvh - 180px));
+  }
+}
+@media (prefers-reduced-motion: reduce) { .homeButton { transition: none; } }
+
+/* Scoped new-word effect: coordinates and clipping are local to the actual card.
+   No viewport portal, window dimensions, vw/vh travel or interaction hit targets. */
+.cardBurst { position: absolute; inset: 0; z-index: 3; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.cardHeart { position: absolute; opacity: 0; pointer-events: none; animation: cardHeartFloat 1.8s cubic-bezier(.2, .6, .3, 1) var(--heart-delay) both; }
+@keyframes cardHeartFloat {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  15% { transform: translate(-50%, -50%) scale(1); opacity: .9; }
+  100% { transform: translate(calc(-50% + var(--heart-x)), calc(-50% + var(--heart-y))) scale(.65) rotate(var(--heart-turn)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .cardBurst { display: none; } .cardHeart { animation: none; } }
+
+/* Recall-only format support: keep the approved card frame/home/today styles. */
+.noticeCloseRow { flex: 0 0 auto; display: flex; justify-content: flex-end; padding: 12px 18px 0; }
+.noticeCloseRow + .noticeBody { padding-top: 8px; }
+.recallLayer { display: contents; }
+.photoContent { position: relative; width: 100%; min-width: 0; }
+.photoButton { display: block; width: 100%; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: zoom-in; line-height: 0; }
+.photoButton:focus-visible, .photoRetry:focus-visible { outline: 2px solid var(--sage-dark); outline-offset: 3px; }
+.photoImage { display: block; width: 100%; height: auto; max-height: min(320px, calc(var(--prayer-visible-height, 100dvh) * .42)); object-fit: contain; border-radius: 8px; }
+.photoState { min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.photoState p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--word-muted); overflow-wrap: anywhere; }
+.photoState p:lang(ko) { word-break: keep-all; }
+.photoRetry { min-height: 44px; padding: 8px 14px; background: transparent; border: 1px solid var(--word-line); border-radius: 10px; color: var(--word-ink); font: inherit; font-size: 13px; cursor: pointer; }

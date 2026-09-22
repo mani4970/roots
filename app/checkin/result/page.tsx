@@ -1,16 +1,18 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { ChevronLeft, Loader2, Heart } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
+import { readDailyWordRecord, resolveDailyWordContent } from "@/lib/dailyWordCardRecord";
+import { withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
-import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
+import DailyWordCard from "@/components/DailyWordCard";
+import wordCardStyles from "@/components/WordCards.module.css";
 import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { storageGet } from "@/lib/clientStorage";
-import HeartBurst from "@/components/HeartBurst";
 import BottomNav from "@/components/BottomNav";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
@@ -28,12 +30,14 @@ function ResultContent() {
   const params = useSearchParams();
   const router = useRouter();
   const lang = useLang();
-  const emotions = params.get("emotions")?.split(",") ?? [];
+  const emotionsKey = params.get("emotions") ?? "";
+  const emotions = emotionsKey.split(",").filter(Boolean);
   const selectedEmotion = emotions[0] ?? "tired";
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [celebrateNewWord, setCelebrateNewWord] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
 
   useAndroidBackHandler(() => {
@@ -57,124 +61,84 @@ function ResultContent() {
 
   useEffect(() => {
     if (!langReady) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     async function loadVerse() {
-      setLoading(true);
-      setLoadError(false);
+      setLoading(true); setLoadError(false); setResult(null); setCelebrateNewWord(false); setBadgePopup(null);
       try {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
+        const { data: { user }, error: authError } = await withQtDraftTimeout(supabase.auth.getUser(), 6_000, "daily Word user");
+        if (cancelled) return;
+        if (authError) throw authError;
+        if (!user) { router.replace("/welcome"); return; }
         const today = getLocalDateString();
-        // Today's Word always uses the fixed default for the current UI language.
-        // A translation chosen inside a normal Bible Reflection must not affect it.
         const translationId = getDefaultTranslationId(lang);
-
-        // 오늘 이미 같은 언어/번역본의 말씀이 있으면 API 호출 없이 기존 말씀 사용
-        const { data: existing } = await supabase
-          .from("daily_checkins")
-          .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id")
-          .eq("user_id", user.id)
-          .eq("date", today)
-          .maybeSingle();
-
-        const existingVerse = existing?.verse_text ?? existing?.verse;
-        const existingReference = existing?.verse_reference ?? existing?.reference;
-        const legacyKoreanMismatch =
-          !existing?.verse_lang &&
-          lang !== "ko" &&
-          /[가-힣]/.test(String(existingVerse ?? ""));
-        const sameLang = !legacyKoreanMismatch && (!existing?.verse_lang || existing.verse_lang === lang);
-        const sameTranslation = Number(existing?.verse_translation_id) === translationId;
-
-        if (existingVerse && sameLang && sameTranslation) {
-          setResult({
-            ...existing,
-            verse: existingVerse,
-            reference: existingReference,
+        const existing = await readDailyWordRecord(supabase, user.id, today, controller.signal);
+        if (cancelled) return;
+        if (existing) {
+          // Includes metadata-only ESV records. Reopening never reselects a verse,
+          // even if the UI language or the query-string emotion has changed.
+          const saved = await resolveDailyWordContent(existing, controller.signal);
+          if (cancelled) return;
+          setResult({ ...existing, verse: saved.verse, reference: saved.reference, translation_id: saved.translationId });
+        } else {
+          const yesterday = getShiftedLocalDateString(-1);
+          const { data: prevDay } = await supabase.from("daily_checkins")
+            .select("verse,reference,verse_reference,verse_ref_id").eq("user_id", user.id).eq("date", yesterday)
+            .abortSignal(controller.signal).maybeSingle();
+          if (cancelled) return;
+          if (controller.signal.aborted) throw new Error("Daily Word request timed out");
+          const res = await fetch("/api/verse", {
+            method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emotions, emotionKey: selectedEmotion, userId: user.id, date: today, lang,
+              prevVerseRefId: prevDay?.verse_ref_id ?? null, prevReference: prevDay?.verse_reference ?? prevDay?.reference ?? null }),
           });
-          try {
-            const awarded = await checkAndAwardDailyWordBadge(supabase, user.id);
-            if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
-          } catch (badgeError) {
-            console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
+          if (!res.ok) throw new Error("Verse API failed");
+          const data = await res.json();
+          if (cancelled) return;
+          if (typeof data.verse !== "string" || !data.verse.trim() || typeof data.reference !== "string" || !data.reference.trim()) {
+            throw new Error("Empty daily Word");
           }
-          setLoading(false);
-          return;
+          if (getLocalDateString() !== today) throw new Error("Daily Word date changed; retry for today");
+          const resolvedTranslationId = Number(data.translation_id ?? translationId);
+          const persistVerseText = resolvedTranslationId !== ESV_TRANSLATION_ID;
+          // Preserve the existing upsert and all unrelated decisions/progress.
+          // A write failure is not a successfully received card.
+          const { error: saveError } = await supabase.from("daily_checkins").upsert({
+            user_id: user.id, date: today, emotions, emotion_key: data.emotion_key ?? selectedEmotion,
+            verse_ref_id: data.verse_id ?? data.verseRefId, verse_book: data.book,
+            verse_start_chapter: data.start_chapter, verse_start_verse: data.start_verse,
+            verse_end_chapter: data.end_chapter, verse_end_verse: data.end_verse,
+            verse_translation_id: resolvedTranslationId, verse_lang: data.verse_lang ?? lang,
+            verse_reference: data.reference, reference: data.reference,
+            verse_text: persistVerseText ? data.verse : null, verse: persistVerseText ? data.verse : null,
+          }, { onConflict: "user_id,date" }).abortSignal(controller.signal);
+          if (cancelled) return;
+          if (saveError) throw saveError;
+          setResult(data); setCelebrateNewWord(true);
         }
-
-        // 어제 말씀 참고용 (중복 방지)
-        const yesterday = getShiftedLocalDateString(-1);
-        const { data: prevDay } = await supabase
-          .from("daily_checkins")
-          .select("verse,reference,verse_reference,verse_ref_id")
-          .eq("user_id", user.id)
-          .eq("date", yesterday)
-          .maybeSingle();
-
-        const res = await fetch("/api/verse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            emotions,
-            emotionKey: selectedEmotion,
-            userId: user.id,
-            date: today,
-            lang,
-            prevVerseRefId: prevDay?.verse_ref_id ?? null,
-            prevReference: prevDay?.verse_reference ?? prevDay?.reference ?? null,
-          }),
-        });
-
-        if (!res.ok) throw new Error("Verse API failed");
-        const data = await res.json();
-        setResult(data);
-
-        const reference = data.reference;
-        const verse = data.verse;
-
-        const resolvedTranslationId = Number(data.translation_id ?? translationId);
-        const persistVerseText = resolvedTranslationId !== ESV_TRANSLATION_ID;
-
-        await supabase.from("daily_checkins").upsert({
-          user_id: user.id,
-          date: today,
-          emotions,
-          emotion_key: data.emotion_key ?? selectedEmotion,
-          verse_ref_id: data.verse_id ?? data.verseRefId,
-          verse_book: data.book,
-          verse_start_chapter: data.start_chapter,
-          verse_start_verse: data.start_verse,
-          verse_end_chapter: data.end_chapter,
-          verse_end_verse: data.end_verse,
-          verse_translation_id: resolvedTranslationId,
-          verse_lang: data.verse_lang ?? lang,
-          verse_reference: reference,
-          // Crossway permits ESV API display but limits local storage. Keep only
-          // the reference metadata for Today's Word and re-fetch ESV on demand.
-          verse_text: persistVerseText ? verse : null,
-          // 기존 화면/쿼리 호환용
-          verse: persistVerseText ? verse : null,
-          reference,
-        }, { onConflict: "user_id,date" });
-
         try {
-          const awarded = await checkAndAwardDailyWordBadge(supabase, user.id);
-          if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+          const awarded = await withQtDraftTimeout(checkAndAwardDailyWordBadge(supabase, user.id), 8_000, "daily Word badge");
+          if (!cancelled && awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
         } catch (badgeError) {
           console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
         }
-
       } catch (error) {
-        console.error("오늘의 말씀 로드 실패:", error);
-        setResult(null);
-        setLoadError(true);
+        if (!cancelled) {
+          console.error("오늘의 말씀 로드 실패:", error);
+          setResult(null); setLoadError(true); setCelebrateNewWord(false);
+        }
       } finally {
-        setLoading(false);
+        clearTimeout(timeout);
+        if (!cancelled) setLoading(false);
       }
     }
-    loadVerse();
-  }, [langReady, lang, selectedEmotion, retryNonce]);
+    void loadVerse();
+    // StrictMode's cancelled first setup must never run a second write or update
+    // the next account/language's UI when its asynchronous work finishes.
+    return () => { cancelled = true; clearTimeout(timeout); controller.abort(); };
+  }, [langReady, lang, emotionsKey, selectedEmotion, retryNonce, router]);
 
   if (loading) return (
     <div className="roots-daily-word-phase2e roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}>
@@ -204,66 +168,22 @@ function ResultContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(120px + var(--bottom-nav-bottom-padding))", position: "relative" }} className="fade-in roots-daily-word-phase2e">
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 6px" }}>
         <button onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", fontFamily: "'Fraunces', serif" }}>{t('result_title', lang)}</h1>
-        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 4 }}>{t('result_sub', lang)}</p>
       </div>
 
-      <div style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* 축복 메시지 카드 */}
-        <div style={{ background: "var(--daily-word-blessing-surface)", border: "1px solid var(--daily-word-blessing-border)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <Heart size={16} style={{ color: "var(--daily-word-sage-text)", flexShrink: 0, marginTop: 2 }} fill="var(--daily-word-sage-text)" />
-          <p style={{ fontSize: 13, color: "var(--daily-word-sage-text)", lineHeight: 1.55, margin: 0, fontWeight: 500 }}>
-            {t('result_blessing', lang)}
-          </p>
-        </div>
-
-        {/* 말씀 카드 */}
-        <div className="card-sage">
-          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--daily-word-sage-text)", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 10 }}>
-            {result?.reference}
-          </p>
-          <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
-            "{result?.verse}"
-          </p>
-          {(() => {
-            const rawTranslationId = result?.translation_id ?? result?.verse_translation_id;
-            const copyrightInfo = rawTranslationId != null
-              ? getBibleCopyrightInfo(Number(rawTranslationId))
-              : null;
-            if (!copyrightInfo) return null;
-            return (
-              <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 10 }}>
-                {copyrightInfo.notice}
-                {copyrightInfo.url && (
-                  <>
-                    {" "}
-                    <a
-                      href={copyrightInfo.url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
-                    >
-                      {copyrightInfo.linkLabel ?? copyrightInfo.url}
-                    </a>
-                  </>
-                )}
-              </p>
-            );
-          })()}
-        </div>
-
-        {/* 홈으로만 */}
-        <button onClick={() => router.push("/")} className="btn-primary" style={{ marginTop: 4 }}>
-          {t('result_home_btn', lang)}
-        </button>
-        <p style={{ textAlign: "center", fontSize: 11, color: "var(--text3)" }}>
-          {t('result_home_sub', lang)}
-        </p>
-      </div>
+      <DailyWordCard
+        celebrate={celebrateNewWord && !badgePopup}
+        lang={lang}
+        verse={String(result.verse ?? "")}
+        reference={String(result.reference ?? "")}
+        translationId={Number(result.translation_id ?? result.verse_translation_id) || null}
+      />
+      <button type="button" onClick={() => router.push("/")} className={wordCardStyles.homeLink}>
+        {t("result_home_btn", lang)}
+      </button>
 
       {badgePopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--daily-word-reward-overlay)", backdropFilter: "blur(4px)", padding: 20 }}>
@@ -279,8 +199,6 @@ function ResultContent() {
         </div>
       )}
 
-      {/* 하트 콘페티 - 오늘의 말씀 결과 진입 시 항상 한 번 재생 */}
-      <HeartBurst zIndex={80} />
       <BottomNav />
     </div>
   );

@@ -65,6 +65,6 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Roots uses your photo library so you can choose a profile or Bible Reflection photo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Roots may save selected profile images when needed.</string>
+	<string>Roots saves images such as word cards to Photos when you choose Save.</string>
 </dict>
 </plist>

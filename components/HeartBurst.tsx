@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type HeartBurstProps = {
   /** zIndex (default 5) */
@@ -21,13 +22,12 @@ const HEART_COLORS = ["#E8889A", "#F4A6B4", "#7A9D7A", "#9AB89A", "#E8C547", "#F
  */
 export default function HeartBurst({ zIndex = 5, perBurst = 14 }: HeartBurstProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playedRef = useRef(false);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // StrictMode에서도 한 번만 실행되도록 가드
-    if (playedRef.current) return;
-    playedRef.current = true;
-
+    // Timers are cancelled and rebuilt on setup → cleanup → setup. A persistent
+    // "played" ref would suppress the real run in React development StrictMode.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -76,48 +76,44 @@ export default function HeartBurst({ zIndex = 5, perBurst = 14 }: HeartBurstProp
       }
     }
 
-    // 컨테이너 크기 측정 후 4곳 위치 계산 (좌상 → 우상 → 좌하 → 우하)
-    const rect = container.getBoundingClientRect();
-    const w = rect.width;
-    const h = rect.height;
-    const positions: [number, number][] = [
-      [w * 0.25, h * 0.3],
-      [w * 0.75, h * 0.35],
-      [w * 0.3, h * 0.7],
-      [w * 0.72, h * 0.72],
-    ];
-
-    // 각 폭발 220ms 간격으로 예약
     const timers: number[] = [];
-    positions.forEach((pos, idx) => {
-      const t = window.setTimeout(() => spawnBurst(pos[0], pos[1]), idx * 220);
-      timers.push(t);
+    const frame = requestAnimationFrame(() => {
+      const shell = shellRef.current;
+      if (!shell) return;
+      const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1;
+      shell.style.width = `${window.innerWidth / zoom}px`;
+      shell.style.height = `${window.innerHeight / zoom}px`;
+      const w = container.clientWidth, h = container.clientHeight;
+      const positions = [[w * .25, h * .3], [w * .75, h * .35], [w * .3, h * .7], [w * .72, h * .72]];
+      positions.forEach(([x, y], index) => {
+        // Wait until the card has painted before showing the first burst.
+        timers.push(window.setTimeout(() => spawnBurst(x, y), 120 + index * 220));
+      });
+      timers.push(window.setTimeout(() => container.replaceChildren(), 3_500));
     });
-
-    // 마지막 폭발 후 1.5초 뒤 DOM 정리 (애니메이션 끝남)
-    const cleanupTimer = window.setTimeout(() => {
-      if (container) container.innerHTML = "";
-    }, positions.length * 220 + 2200);
-
     return () => {
-      timers.forEach((t) => window.clearTimeout(t));
-      window.clearTimeout(cleanupTimer);
-      if (container) container.innerHTML = "";
+      cancelAnimationFrame(frame);
+      timers.forEach(timer => window.clearTimeout(timer));
+      container.replaceChildren(); // Do not remove the sibling <style> keyframes.
     };
   }, [perBurst]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      ref={containerRef}
+      ref={shellRef}
+      data-heart-burst
       aria-hidden="true"
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         zIndex,
         pointerEvents: "none",
         overflow: "hidden",
       }}
     >
+      <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
       <style>{`
         @keyframes rootsHeartFloat {
           0% {
@@ -134,6 +130,6 @@ export default function HeartBurst({ zIndex = 5, perBurst = 14 }: HeartBurstProp
           }
         }
       `}</style>
-    </div>
+    </div>, document.body
   );
 }
