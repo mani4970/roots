@@ -24,6 +24,7 @@ import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
+import HomeWordCardButtons from "@/components/HomeWordCardButtons";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -375,6 +376,8 @@ export default function HomePage() {
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
+  const [showLastWeekWordCard, setShowLastWeekWordCard] = useState(false);
+  const [showTodayWordCard, setShowTodayWordCard] = useState(false);
   const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
@@ -723,7 +726,7 @@ export default function HomePage() {
   const rewardDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || !!requiredUpdatePlatform
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
-    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt;
+    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || showLastWeekWordCard || showTodayWordCard;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const homeProfileCharacterLayers = getProfileCharacterLayersForItemIds(
     enabledProfileCharacterItemIds,
@@ -1009,7 +1012,7 @@ export default function HomePage() {
       background("챌린지 보상 조회 실패:", () => checkPendingChallengeRewards(supabase, today));
       background("홈 오늘의 말씀 조회 실패:", async () => {
         const { data: ci, error } = await withQtDraftTimeout(supabase.from("daily_checkins")
-          .select("verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
+          .select("user_id,date,verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
           .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home daily verse");
         if (error) throw error;
         if (!isCurrentLoad()) return;
@@ -1990,6 +1993,8 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
+    showLastWeekWordCard ||
+    showTodayWordCard ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -2024,6 +2029,8 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
+    showLastWeekWordCard ||
+    showTodayWordCard ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -2058,6 +2065,14 @@ export default function HomePage() {
     }
     if (visibleSpanishLanguageLaunchAnnouncement) {
       void completeSpanishLanguageLaunchAnnouncement(false);
+      return true;
+    }
+    if (showTodayWordCard) {
+      setShowTodayWordCard(false);
+      return true;
+    }
+    if (showLastWeekWordCard) {
+      setShowLastWeekWordCard(false);
       return true;
     }
     if (showHomePrayerSharePrompt) {
@@ -2928,57 +2943,18 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <div className="sec-label">{t("home_verse_section", lang)}</div>
-        <div className="card-sage roots-elevation-card-sage" style={{ borderRadius: 22, padding: 18, background: "var(--surface-sage-subtle)", border: "1px solid var(--border-sage-soft)" }}>
-          {!homeDetailsReady.verse ? (
-            <button type="button" onClick={() => void load()} className="btn-outline">{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
-          ) : todayVerse?.verse ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.4px" }}>{todayVerse.reference}</div>
-                {todayVerse?.verse_book && todayVerse?.verse_start_chapter && (
-                  <button
-                    onClick={openChapterPopup}
-                    style={{ border: "1px solid var(--border-sage-soft)", background: "var(--surface-card)", color: "var(--sage-dark)", borderRadius: 999, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
-                  >
-                    {homeChapterText("open", lang)}
-                  </button>
-                )}
-              </div>
-              <p className="verse-text">"{todayVerse.verse}"</p>
-              {todayVerse?.verse_translation_id != null && (() => {
-                const copyrightInfo = getBibleCopyrightInfo(Number(todayVerse.verse_translation_id));
-                if (!copyrightInfo) return null;
-                return (
-                  <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 10 }}>
-                    {copyrightInfo.notice}
-                    {copyrightInfo.url && (
-                      <>
-                        {" "}
-                        <a
-                          href={copyrightInfo.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
-                        >
-                          {copyrightInfo.linkLabel ?? copyrightInfo.url}
-                        </a>
-                      </>
-                    )}
-                  </p>
-                );
-              })()}
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 14, color: "var(--text3)", lineHeight: 1.7, marginBottom: 14 }}>{t("home_verse_empty", lang)}</div>
-              <Link href="/checkin"><button className="btn-sage">{t("home_verse_btn", lang)} <ChevronRight size={16} /></button></Link>
-            </>
-          )}
-        </div>
+        <HomeWordCardButtons
+          userId={profile.id}
+          lang={lang}
+          today={challengeLocalDate}
+          open={showLastWeekWordCard}
+          onOpenChange={setShowLastWeekWordCard}
+          dailyRecord={todayVerse}
+          dailyReady={homeDetailsReady.verse && homeDataDateRef.current === challengeLocalDate}
+          todayOpen={showTodayWordCard}
+          onTodayOpenChange={setShowTodayWordCard}
+        />
       </div>
-
-
 
       {(todayDone.qt || myDecisions.length > 0) && (
         <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
