@@ -128,6 +128,7 @@ function CompanionsContent() {
   const [userId, setUserId] = useState("");
   const [myProfile, setMyProfile] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busyIds, setBusyIds] = useState<string[]>([]);
   const [rows, setRows] = useState<CompanionRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
@@ -226,6 +227,7 @@ function CompanionsContent() {
 
   async function loadAll() {
     setLoading(true);
+    setLoadError(false);
     const supabase = createClient();
     const {
       data: { user },
@@ -264,8 +266,7 @@ function CompanionsContent() {
 
     if (error) {
       console.error("동행 목록 조회 실패:", error);
-      setRows([]);
-      setProfiles({});
+      setLoadError(true);
       setLoading(false);
       return;
     }
@@ -284,15 +285,22 @@ function CompanionsContent() {
     const uniqueIds = Array.from(new Set(ids));
 
     if (uniqueIds.length > 0) {
-      const profileMap = mapProfileCards(
-        await loadProfileCards(supabase, uniqueIds),
-      ) as Record<string, ProfileRow>;
-      setProfiles(profileMap);
-      setInviteProfile(
-        inviteUserId && inviteUserId !== user.id
-          ? (profileMap[inviteUserId] ?? null)
-          : null,
-      );
+      try {
+        const profileMap = mapProfileCards(
+          await loadProfileCards(supabase, uniqueIds),
+        ) as Record<string, ProfileRow>;
+        setProfiles(profileMap);
+        setInviteProfile(
+          inviteUserId && inviteUserId !== user.id
+            ? (profileMap[inviteUserId] ?? null)
+            : null,
+        );
+      } catch (profileError) {
+        console.error("동행 프로필 조회 실패:", profileError);
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
     } else {
       setProfiles({});
       setInviteProfile(null);
@@ -507,6 +515,30 @@ function CompanionsContent() {
         }}
       >
         <Loader2 className="spin" size={22} style={{ color: "var(--companions-sage-text)" }} />
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main
+        className="page-wrap roots-companions-phase2f roots-native-companions-loader"
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px 20px",
+        }}
+      >
+        <div className="card" style={{ width: "100%", maxWidth: 360, textAlign: "center", padding: 22 }}>
+          <p style={{ fontSize: 14, color: "var(--text2)", lineHeight: 1.65, marginBottom: 14 }}>
+            {c("common_load_error")}
+          </p>
+          <button type="button" onClick={() => void loadAll()} className="btn-sage" style={{ width: "100%" }}>
+            {c("common_retry")}
+          </button>
+        </div>
       </main>
     );
   }

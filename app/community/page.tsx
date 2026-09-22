@@ -889,6 +889,9 @@ function CommunityPageContent() {
   const [loadingPartnerQts, setLoadingPartnerQts] = useState(false);
   const [loadingPartnerPrayers, setLoadingPartnerPrayers] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [partnerQtLoadError, setPartnerQtLoadError] = useState(false);
+  const [partnerPrayerLoadError, setPartnerPrayerLoadError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   // 중보기도
@@ -958,6 +961,8 @@ function CommunityPageContent() {
   >("qt");
   const [loadingGroupQts, setLoadingGroupQts] = useState(false);
   const [loadingGroupPrayers, setLoadingGroupPrayers] = useState(false);
+  const [groupQtLoadError, setGroupQtLoadError] = useState(false);
+  const [groupPrayerLoadError, setGroupPrayerLoadError] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [openGroupHeaderMenu, setOpenGroupHeaderMenu] = useState<
@@ -968,6 +973,7 @@ function CommunityPageContent() {
     GroupMemberProfile[]
   >([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState(false);
+  const [groupMembersLoadError, setGroupMembersLoadError] = useState(false);
   const [showGroupEdit, setShowGroupEdit] = useState(false);
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupDesc, setEditGroupDesc] = useState("");
@@ -1560,6 +1566,10 @@ function CommunityPageContent() {
 
   function selectCommunityMainTab(nextTab: CommunityMainTab) {
     if (nextTab === tab) return;
+    // Set the visual state before React paints the new tab so an old empty
+    // array can never flash as "no partners/groups" while the request starts.
+    setLoadError(false);
+    setLoading(true);
 
     if (typeof window !== "undefined") {
       try {
@@ -1578,6 +1588,28 @@ function CommunityPageContent() {
     }
 
     setTab(nextTab);
+  }
+
+  function renderLoadFailure(onRetry: () => void, compact = false) {
+    return (
+      <div
+        role="alert"
+        style={{
+          textAlign: "center",
+          padding: compact ? "22px 16px" : "30px 18px",
+          background: "var(--community-card-surface)",
+          borderRadius: 16,
+          border: "1px solid var(--community-card-border)",
+        }}
+      >
+        <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.65, marginBottom: 14 }}>
+          {c("common_load_error")}
+        </p>
+        <button type="button" onClick={onRetry} className="btn-outline" style={{ width: "100%", maxWidth: 260, margin: "0 auto" }}>
+          {c("common_retry")}
+        </button>
+      </div>
+    );
   }
 
   useEffect(() => {
@@ -4056,8 +4088,11 @@ function CommunityPageContent() {
     partner: any,
     preferredSection?: CommunitySectionKey,
     directTarget?: CommunityNotificationDirectTarget,
+    options?: { skipHistory?: boolean },
   ) {
-    pushCommunityDetailHistory("partner");
+    if (!options?.skipHistory) pushCommunityDetailHistory("partner");
+    setPartnerQtLoadError(false);
+    setPartnerPrayerLoadError(false);
     const openedAt = new Date().toISOString();
     const previousSeenAt = partner.last_seen_shared_at ?? null;
     setSelectedPartner({
@@ -4219,7 +4254,7 @@ function CommunityPageContent() {
       }
     } catch (error) {
       console.warn("동역자 묵상 나눔 조회 실패:", error);
-      if (directTarget?.contentKind !== "qt") setPartnerQts([]);
+      setPartnerQtLoadError(true);
     } finally {
       setLoadingPartnerQts(false);
     }
@@ -4300,7 +4335,7 @@ function CommunityPageContent() {
       }
     } catch (error) {
       console.warn("동역자 기도 나눔 조회 실패:", error);
-      if (directTarget?.contentKind !== "prayer") setPartnerPrayers([]);
+      setPartnerPrayerLoadError(true);
     } finally {
       setLoadingPartnerPrayers(false);
     }
@@ -4308,6 +4343,7 @@ function CommunityPageContent() {
 
   async function loadGroupMemberProfiles(group: any) {
     setLoadingGroupMembers(true);
+    setGroupMembersLoadError(false);
     const supabase = createClient();
     try {
       const { data: rows, error } = await supabase
@@ -4364,7 +4400,7 @@ function CommunityPageContent() {
       return profiles;
     } catch (error) {
       console.warn("그룹 참여자 조회 실패:", error);
-      setGroupMemberProfiles([]);
+      setGroupMembersLoadError(true);
       return [] as GroupMemberProfile[];
     } finally {
       setLoadingGroupMembers(false);
@@ -4407,6 +4443,8 @@ function CommunityPageContent() {
 
   async function loadData() {
     setLoading(true);
+    setLoadError(false);
+    try {
     const supabase = createClient();
     const {
       data: { user },
@@ -4449,8 +4487,7 @@ function CommunityPageContent() {
         .order("created_at", { ascending: false });
 
       if (companionError) {
-        console.error("동역자 목록 조회 실패:", companionError);
-        setPartners([]);
+        throw companionError;
       } else {
         const rows = companionRows ?? [];
         const partnerIds = Array.from(
@@ -4538,6 +4575,9 @@ function CommunityPageContent() {
         fetchQtFeedRows(supabase, "%all%", COMMUNITY_ALL_QT_LIMIT),
       ]);
 
+      if (prayingResult.error) throw prayingResult.error;
+      if (answeredResult.error) throw answeredResult.error;
+
       const prayingRows = prayingResult.data ?? [];
       const answeredRows = answeredResult.data ?? [];
       const answeredIds = answeredRows.map((row: any) => row.id);
@@ -4557,6 +4597,8 @@ function CommunityPageContent() {
           : Promise.resolve({ data: [], error: null }),
         fetchQtReactions(supabase, qtIds, user.id),
       ]);
+
+      if (likesResult.error) throw likesResult.error;
 
       const likeCounts: Record<string, number> = {};
       const myLikedIds: string[] = [];
@@ -4630,10 +4672,11 @@ function CommunityPageContent() {
             "group_members preference columns are not available yet:",
             fullMemberError.message,
           );
-          const { data: fallbackRows } = await supabase
+          const { data: fallbackRows, error: fallbackRowsError } = await supabase
             .from("group_members")
             .select("group_id")
             .eq("user_id", user.id);
+          if (fallbackRowsError) throw fallbackRowsError;
           memberRows = fallbackRows ?? [];
         } else {
           memberRows = fullMemberRows ?? [];
@@ -4666,6 +4709,9 @@ function CommunityPageContent() {
               .in("id", myGroupIds)
           : Promise.resolve({ data: [], error: null }),
       ]);
+
+      if (publicGroupsResult.error) throw publicGroupsResult.error;
+      if (privateGroupsResult.error) throw privateGroupsResult.error;
 
       const all = [
         ...(publicGroupsResult.data ?? []),
@@ -4741,7 +4787,12 @@ function CommunityPageContent() {
       });
       setGroups(sortGroupsForDisplay(withMeta));
     }
-    setLoading(false);
+    } catch (error) {
+      console.error("커뮤니티 목록 조회 실패:", error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadGroupDetail(
@@ -4770,6 +4821,8 @@ function CommunityPageContent() {
     setLoadingGroupChallenges(!!group.isMember);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
+    setGroupQtLoadError(false);
+    setGroupPrayerLoadError(false);
     const supabase = createClient();
     const {
       data: { user },
@@ -4925,67 +4978,73 @@ function CommunityPageContent() {
     }
     setLoadingGroupChallenges(false);
 
-    const data = await fetchQtFeedRows(
-      supabase,
-      `%group_${group.id}%`,
-      COMMUNITY_RELATION_QT_LIMIT,
-    );
-    if (data && user) {
-      const profMap = await fetchProfiles(supabase, data);
-      const withProfs = filterHiddenItems(
-        "qt",
-        data.map((r: any) => ({
-          ...r,
-          profiles: profMap[r.user_id] ?? null,
-          isUnreadInGroup: isLaterThan(
-            qtUnreadActivityTime(r),
-            previousSeenAt,
-          ),
-        })),
-        currentHiddenKeys,
-        currentHiddenUserIds,
+    try {
+      const data = await fetchQtFeedRows(
+        supabase,
+        `%group_${group.id}%`,
+        COMMUNITY_RELATION_QT_LIMIT,
       );
-      setGroupQts(sortQtFeedRows(withProfs));
-      // 반응 카운트 로드
-      const qtIds = data.map((r: any) => r.id);
-      const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
-      setQtReactionCounts((prev) => ({ ...prev, ...counts }));
-      setMyQtReactions((prev) => ({ ...prev, ...mine }));
-
-      if (group.isMember) {
-        const { data: seenRows, error } = await supabase.rpc(
-          "mark_group_qt_seen_v2",
-          { p_group_id: group.id },
-        );
-        if (error) {
-          console.warn("그룹 큐티 읽음 처리 실패:", error.message);
-          const { error: oldError } = await supabase.rpc("mark_group_qt_seen", {
-            p_group_id: group.id,
-          });
-          if (oldError)
-            console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
-        }
-        const persistedSeenAt =
-          Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
-            ? seenRows[0].last_seen_qt_at
-            : openedAt;
-        setGroups((prev) =>
-          sortGroupsForDisplay(
-            prev.map((g) =>
-              g.id === group.id
-                ? {
-                    ...g,
-                    hasNewQt: false,
-                    hasNewQtShare: false,
-                    hasNewPrayer: false,
-                    hasNewContent: false,
-                    last_seen_qt_at: persistedSeenAt,
-                  }
-                : g,
+      if (data && user) {
+        const profMap = await fetchProfiles(supabase, data);
+        const withProfs = filterHiddenItems(
+          "qt",
+          data.map((r: any) => ({
+            ...r,
+            profiles: profMap[r.user_id] ?? null,
+            isUnreadInGroup: isLaterThan(
+              qtUnreadActivityTime(r),
+              previousSeenAt,
             ),
-          ),
+          })),
+          currentHiddenKeys,
+          currentHiddenUserIds,
         );
+        setGroupQts(sortQtFeedRows(withProfs));
+        const qtIds = data.map((r: any) => r.id);
+        const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
+        setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+        setMyQtReactions((prev) => ({ ...prev, ...mine }));
+
+        if (group.isMember) {
+          const { data: seenRows, error } = await supabase.rpc(
+            "mark_group_qt_seen_v2",
+            { p_group_id: group.id },
+          );
+          if (error) {
+            console.warn("그룹 큐티 읽음 처리 실패:", error.message);
+            const { error: oldError } = await supabase.rpc("mark_group_qt_seen", {
+              p_group_id: group.id,
+            });
+            if (oldError)
+              console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
+          }
+          const persistedSeenAt =
+            Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
+              ? seenRows[0].last_seen_qt_at
+              : openedAt;
+          setGroups((prev) =>
+            sortGroupsForDisplay(
+              prev.map((g) =>
+                g.id === group.id
+                  ? {
+                      ...g,
+                      hasNewQt: false,
+                      hasNewQtShare: false,
+                      hasNewPrayer: false,
+                      hasNewContent: false,
+                      last_seen_qt_at: persistedSeenAt,
+                    }
+                  : g,
+              ),
+            ),
+          );
+        }
       }
+    } catch (qtError) {
+      console.warn("그룹 묵상 조회 실패:", qtError);
+      setGroupQtLoadError(true);
+    } finally {
+      setLoadingGroupQts(false);
     }
 
     if (user) {
@@ -5025,13 +5084,13 @@ function CommunityPageContent() {
         );
       } catch (prayerError) {
         console.warn("그룹 기도 조회 실패:", prayerError);
-        if (directTarget?.contentKind !== "prayer") setGroupPrayers([]);
+        setGroupPrayerLoadError(true);
+      } finally {
+        setLoadingGroupPrayers(false);
       }
-    } else if (directTarget?.contentKind !== "prayer") {
-      setGroupPrayers([]);
+    } else {
+      setLoadingGroupPrayers(false);
     }
-    setLoadingGroupPrayers(false);
-    setLoadingGroupQts(false);
   }
 
   // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
@@ -7171,6 +7230,10 @@ function CommunityPageContent() {
                   className="spin"
                 />
               </div>
+            ) : partnerQtLoadError && partnerQts.length === 0 ? (
+              renderLoadFailure(() => {
+                if (selectedPartner) void openPartnerDetail(selectedPartner, partnerDetailTab, undefined, { skipHistory: true });
+              }, true)
             ) : partnerQts.length === 0 ? (
               <div
                 style={{
@@ -7394,6 +7457,10 @@ function CommunityPageContent() {
                 className="spin"
               />
             </div>
+          ) : partnerPrayerLoadError && partnerPrayersForCurrentTab.length === 0 ? (
+            renderLoadFailure(() => {
+              if (selectedPartner) void openPartnerDetail(selectedPartner, partnerDetailTab, undefined, { skipHistory: true });
+            }, true)
           ) : partnerPrayersForCurrentTab.length === 0 ? (
             <div
               style={{
@@ -8589,6 +8656,10 @@ function CommunityPageContent() {
                     className="spin"
                   />
                 </div>
+              ) : groupQtLoadError && groupQts.length === 0 ? (
+                renderLoadFailure(() => {
+                  if (selectedGroup) void loadGroupDetail(selectedGroup, groupDetailTab, undefined, { skipHistory: true });
+                }, true)
               ) : groupQts.length === 0 ? (
                 <div
                   style={{
@@ -8769,6 +8840,10 @@ function CommunityPageContent() {
                   className="spin"
                 />
               </div>
+            ) : groupPrayerLoadError && groupPrayersForCurrentTab.length === 0 ? (
+              renderLoadFailure(() => {
+                if (selectedGroup) void loadGroupDetail(selectedGroup, groupDetailTab, undefined, { skipHistory: true });
+              }, true)
             ) : groupPrayersForCurrentTab.length === 0 ? (
               <div
                 style={{
@@ -9112,6 +9187,10 @@ function CommunityPageContent() {
                     <Loader2 size={16} className="spin" />
                     {c("community_members_loading")}
                   </div>
+                ) : groupMembersLoadError ? (
+                  renderLoadFailure(() => {
+                    if (selectedGroup) void loadGroupMemberProfiles(selectedGroup);
+                  }, true)
                 ) : groupMemberProfiles.length > 0 ? (
                   groupMemberProfiles.map((member) => (
                     <div
@@ -9602,6 +9681,10 @@ function CommunityPageContent() {
                       <Loader2 size={15} className="spin" />
                       {c("community_members_loading")}
                     </div>
+                  ) : groupMembersLoadError ? (
+                    renderLoadFailure(() => {
+                      if (selectedGroup) void loadGroupMemberProfiles(selectedGroup);
+                    }, true)
                   ) : leadershipTransferCandidates.length === 0 ? (
                     <p
                       style={{
@@ -10092,6 +10175,8 @@ function CommunityPageContent() {
               className="spin"
             />
           </div>
+        ) : loadError ? (
+          renderLoadFailure(() => { void loadData(); })
         ) : tab === "partner" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <button
