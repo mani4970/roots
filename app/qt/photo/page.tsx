@@ -167,6 +167,9 @@ const PHOTO_COPY = {
   editSaveError: { ko: "사진 묵상 수정 내용을 저장하지 못했어요. 기존 기록은 그대로 유지됩니다.", de: "Die Änderungen konnten nicht gespeichert werden. Der bisherige Eintrag bleibt erhalten.", en: "Could not save the changes. The existing record remains unchanged.", fr: "Impossible d’enregistrer les modifications. L’entrée existante reste inchangée.", es: "No pudimos guardar los cambios. El registro existente se conservará sin cambios." },
   editSaved: { ko: "사진 묵상 수정 내용을 저장했어요.", de: "Die Änderungen wurden gespeichert.", en: "Photo Bible Reflection changes saved.", fr: "Les modifications ont été enregistrées.", es: "Se guardaron los cambios de la meditación bíblica con foto." },
   customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage", es: "Elegir pasaje" },
+  reselectPassage: { ko: "본문 다시 선택", de: "Bibeltext erneut wählen", en: "Reselect passage", fr: "Rechoisir le passage", es: "Volver a seleccionar el pasaje" },
+  finishPassage: { ko: "본문 선택 완료", de: "Bibeltext-Auswahl abschließen", en: "Finish passage selection", fr: "Terminer la sélection du passage", es: "Finalizar selección del pasaje" },
+  exit: { ko: "나가기", de: "Verlassen", en: "Exit", fr: "Quitter", es: "Salir" },
   translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique", es: "Traducción bíblica" },
   sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon", es: "Título del sermón" },
   sermonTitlePlaceholder: { ko: "예: 두려워하지 말라", de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. N’aie pas peur", es: "Ej.: No temas" },
@@ -460,6 +463,7 @@ function PhotoReflectionContent() {
   const [startVerse, setStartVerse] = useState(scheduledStart || 1);
   const [endChapter, setEndChapter] = useState(scheduledEndChapter || scheduledChapter || 1);
   const [endVerse, setEndVerse] = useState(scheduledEnd || 1);
+  const [passageEditing, setPassageEditing] = useState(source === "custom" && !isEditMode);
   const [selectedTranslation, setSelectedTranslation] = useState<number>(() => {
     const activeLang = getStoredLang() ?? lang;
     const preferredTranslation = getPreferredTranslationForLang(activeLang);
@@ -559,6 +563,10 @@ function PhotoReflectionContent() {
     }
     if (showPhotoSourceModal) {
       if (!preparingPhoto && !saving) setShowPhotoSourceModal(false);
+      return true;
+    }
+    if (source === "custom" && !passageEditing) {
+      setPassageEditing(true);
       return true;
     }
     requestPhotoPageLeave();
@@ -1749,7 +1757,7 @@ function PhotoReflectionContent() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 40px" }}>
         <button onClick={requestPhotoPageLeave} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 24, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{pc("exit", lang)}</span>
         </button>
         <div className="card" style={{ textAlign: "center" }}>
           <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.65 }}>{pc("editLoadError", lang)}</p>
@@ -1771,7 +1779,7 @@ function PhotoReflectionContent() {
           onClick={requestPhotoPageLeave}
           style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}
         >
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{t("back", lang)}</span>
+          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{pc("exit", lang)}</span>
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="roots-elevation-card-sage" style={{ width: 42, height: 42, borderRadius: 16, background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", border: "1px solid var(--qt-sage-border-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1795,7 +1803,7 @@ function PhotoReflectionContent() {
           <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
         </div>
 
-        {source === "custom" && (
+        {source === "custom" && passageEditing && (
           <div className="card">
             <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>{pc("customPassage", lang)}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
@@ -1826,26 +1834,43 @@ function PhotoReflectionContent() {
               )}
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("book", lang)}</span>
-                <select className="input-field" value={book} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setBook(e.target.value); }}>
+                <select className="input-field" value={book} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                  markPassageTouched();
+                  const nextBook = e.target.value;
+                  setBook(nextBook);
+                  setChapter(1);
+                  setStartVerse(1);
+                  setEndChapter(1);
+                  setEndVerse(1);
+                }}>
                   {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, bibleDisplayLang)}</option>)}
                 </select>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("chapter", lang)}</span>
-                  <select className="input-field" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setChapter(next); setEndChapter(prev => Math.max(prev, next)); }}>
+                  <select className="input-field" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                    markPassageTouched();
+                    const next = Number(e.target.value);
+                    const nextVerses = getBibleVerseNumbers(book, next, selectedTranslation);
+                    const nextStart = getNearestAvailableVerse(nextVerses, startVerse);
+                    setChapter(next);
+                    setStartVerse(nextStart);
+                    setEndChapter(next);
+                    setEndVerse(nextStart);
+                  }}>
                     {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <select className="input-field" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter && next > safeEndVerse) setEndVerse(next); }}>
+                  <select className="input-field" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter) setEndVerse(next); }}>
                     {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter && safeStartVerse > safeEndVerse) setEndVerse(safeStartVerse); }}>
+                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter) setEndVerse(safeStartVerse); }}>
                     {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
@@ -1872,8 +1897,17 @@ function PhotoReflectionContent() {
                   ))}
                 </div>
               )}
+              <button type="button" onClick={() => setPassageEditing(false)} className="btn-sage" style={{ width: "100%" }}>
+                {pc("finishPassage", lang)}
+              </button>
             </div>
           </div>
+        )}
+
+        {source === "custom" && !passageEditing && (
+          <button type="button" onClick={() => setPassageEditing(true)} className="btn-outline" style={{ width: "100%" }}>
+            {pc("reselectPassage", lang)}
+          </button>
         )}
 
         <div className="card" style={{ textAlign: "center" }}>

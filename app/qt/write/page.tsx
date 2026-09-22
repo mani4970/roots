@@ -146,7 +146,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "목": { de: "Do", en: "Thu", fr: "Jeu", es: "Jue" }, "금": { de: "Fr", en: "Fri", fr: "Ven", es: "Vie" }, "토": { de: "Sa", en: "Sat", fr: "Sam", es: "Sáb" },
   "· 오늘": { de: "· Heute", en: "· Today", fr: "· Aujourd’hui", es: "· Hoy" },
   // 버튼 / 라벨
-  "나가기": { de: "Zurück", en: "Exit", fr: "Sortir", es: "Salir" },
+  "나가기": { de: "Verlassen", en: "Exit", fr: "Quitter", es: "Salir" },
   "이전": { de: "Zurück", en: "Back", fr: "Retour", es: "Atrás" },
   "더보기": { de: "Mehr", en: "More", fr: "Voir plus", es: "Ver más" },
   "접어서 보기": { de: "Kompaktansicht", en: "Compact view", fr: "Vue compacte", es: "Vista compacta" },
@@ -179,6 +179,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "말씀 없이 자유롭게 작성하기": { de: "Ohne Abschnitt frei schreiben", en: "Write freely without a passage", fr: "Écrire librement sans passage", es: "Escribir libremente sin un pasaje" },
   "큐티할 말씀을 먼저 선택해요": { ko: "묵상할 말씀을 먼저 선택해요", de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage", es: "Primero selecciona el pasaje para tu meditación bíblica" },
   "다시 선택": { de: "Neu wählen", en: "Reselect", fr: "Choisir à nouveau", es: "Seleccionar de nuevo" },
+  "본문 다시 선택": { ko: "본문 다시 선택", de: "Bibeltext erneut wählen", en: "Reselect passage", fr: "Rechoisir le passage", es: "Volver a seleccionar el pasaje" },
   "설교 제목": { ko: "제목", de: "Titel", en: "Title", fr: "Titre", es: "Título" },
   "본문 말씀": { de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique", es: "Pasaje bíblico" },
   "깨달음 (말씀이 내게 주는 것)": { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)", fr: "Compréhension (ce que la Parole me donne)", es: "Aprendizaje (lo que la Palabra me enseña)" },
@@ -460,7 +461,18 @@ function QTWriteContent() {
   const [readingView, setReadingView] = useState<"compact" | "expanded">("expanded");
   const [passageOpen, setPassageOpen] = useState(false);
 
-  // 장 변경 시 절 범위 초과 자동 조정
+  function resetPassageCoordinates(nextBook: string) {
+    setBook(nextBook);
+    setChapter("1");
+    setStartV("1");
+    setEndChapter("1");
+    setEndV("1");
+    setCrossChapter(false);
+    setBibleError("");
+  }
+
+  // 시작 장을 바꾸면 끝 장도 같은 장으로 맞추고, 현재 시작 절이
+  // 새 장의 범위를 벗어나면 안전한 절로 조정합니다.
   function handleChapterChange(newChapter: string) {
     setChapter(newChapter);
     setEndChapter(newChapter);
@@ -471,13 +483,8 @@ function QTWriteContent() {
     const koBook = idx >= 0 ? allKoBooks[idx] : book;
     const maxV = getBibleChapterMaxVerse(koBook, newChapter, selectedTranslation);
     const nextStartVerse = String(Math.min(parseInt(startV) || 1, maxV));
-    if (mode === "6step") {
-      setStartV(nextStartVerse);
-      setEndV(nextStartVerse);
-      return;
-    }
-    if (parseInt(startV) > maxV) setStartV(String(maxV));
-    if (parseInt(endV) > maxV) setEndV(String(maxV));
+    setStartV(nextStartVerse);
+    setEndV(nextStartVerse);
   }
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [loadingBible, setLoadingBible] = useState(false);
@@ -672,6 +679,15 @@ function QTWriteContent() {
     }
     if (showDatePicker) {
       setShowDatePicker(false);
+      return true;
+    }
+    if (mode === "free" && bibleStep === "done") {
+      setBibleError("");
+      setBibleStep("select");
+      return true;
+    }
+    if (mode === "6step" && bibleStep === "done" && cur === 0 && sixStepPassageReselectEnabled) {
+      beginSixStepPassageReselect();
       return true;
     }
     if ((mode === "6step" || mode === "sunday") && cur > 0) {
@@ -1566,19 +1582,13 @@ function QTWriteContent() {
     return true;
   }
 
-  function resetFreePassageSelection() {
-    // Returning to passage selection must not erase the reflection or decisions.
-    // Only source-dependent verse selections are cleared when replacing a passage.
-    if (saving || pendingCompletionRef.current) return;
-    setBibleStep("select");
-    setPassageVerses([]);
-    setBibleRef("");
-    setPassages([]);
-    setKeyVerse("");
-    setSelectedVerseNums([]);
-    setPassageExpanded(false);
-    setVersePreviewExpanded(false);
+  function beginFreePassageReselect() {
+    // Re-enter passage selection without erasing the free-form reflection,
+    // decisions, or the current passage. The existing selection stays visible
+    // until the user finishes a new selection.
+    if (saving || pendingCompletionRef.current || mode !== "free") return;
     setBibleError("");
+    setBibleStep("select");
   }
 
   async function loadPassage() {
@@ -1862,19 +1872,15 @@ function QTWriteContent() {
             <select value={startV} onChange={e => {
               const nextStartVerse = e.target.value;
               setStartV(nextStartVerse);
-              if (mode === "6step") {
-                setEndV(nextStartVerse);
-              } else if (effectiveEndChapter === chapter && parseInt(nextStartVerse) > parseInt(endV)) {
-                setEndV(nextStartVerse);
-              }
+              if (effectiveEndChapter === chapter) setEndV(nextStartVerse);
             }} className="input-field" style={{ padding: "12px 8px" }}>
               {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
-            <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter && parseInt(startV) > parseInt(endV)) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
-              {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).map(v => <option key={v} value={v}>{v}</option>)}
+            <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
+              {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div>
@@ -3112,7 +3118,7 @@ function QTWriteContent() {
                     <div style={{ padding: "10px 20px 4px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px" }}>{label}</p></div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "6px 16px" }}>
                       {books.map(b => (
-                        <button className="qt-option-card" key={b} onClick={() => { setBook(b); setShowBookPicker(false); }} style={{ padding: "8px 4px", borderRadius: 10, border: `1px solid ${book === b ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: book === b ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", color: book === b ? "var(--qt-sage-text)" : "var(--text2)", fontSize: 11, cursor: "pointer", fontWeight: book === b ? 600 : 400 }}>
+                        <button className="qt-option-card" key={b} onClick={() => { resetPassageCoordinates(b); setShowBookPicker(false); }} style={{ padding: "8px 4px", borderRadius: 10, border: `1px solid ${book === b ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: book === b ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", color: book === b ? "var(--qt-sage-text)" : "var(--text2)", fontSize: 11, cursor: "pointer", fontWeight: book === b ? 600 : 400 }}>
                           {b}
                         </button>
                       ))}
@@ -3142,7 +3148,7 @@ function QTWriteContent() {
                 if (!changed) return;
                 const newLang = TRANSLATION_LANG[t.id] ?? "KO";
                 const newBooks = BOOK_NAMES[newLang] ?? BOOK_NAMES["KO"];
-                setBook(newBooks[0]); // 기존 UX 유지: 번역 언어 변경 시 첫 번째 책으로 리셋
+                resetPassageCoordinates(newBooks[0]);
                 setShowTranslationPicker(false);
               }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedTranslation === t.id ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: selectedTranslation === t.id ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", cursor: "pointer" }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: selectedTranslation === t.id ? "var(--qt-sage-text)" : "var(--text)" }}>{t.name}</span>
@@ -3227,8 +3233,8 @@ function QTWriteContent() {
       )}
         <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={hasPassage ? resetFreePassageSelection : leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{hasPassage ? trQT("이전", lang) : trQT("나가기", lang)}</span>
+            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
             </button>
             <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
           </div>
@@ -3238,8 +3244,11 @@ function QTWriteContent() {
         <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
-            <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {renderSelectedPassageViewer({ showTextSizeButtons: true })}
+              <button type="button" onClick={beginFreePassageReselect} className="btn-outline" style={{ width: "100%" }}>
+                {trQT("본문 다시 선택", lang)}
+              </button>
             </div>
           )}
 
@@ -3384,7 +3393,7 @@ function QTWriteContent() {
                   <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("번역본", lang)}</label>
                   <BibleTranslationSelect />
                   {/* 성경 책 선택 */}
-                  <select className="input-field" value={book} onChange={e => { setBook(e.target.value); setChapter("1"); setStartV("1"); setEndV("1"); setEndChapter("1"); setCrossChapter(false); }} style={{ marginBottom: 8 }}>
+                  <select className="input-field" value={book} onChange={e => resetPassageCoordinates(e.target.value)} style={{ marginBottom: 8 }}>
                     {[{ label: trQT("구약", lang), books: OT_BOOKS_LOCAL }, { label: trQT("신약", lang), books: NT_BOOKS_LOCAL }].map(({ label, books }) => (
                       <optgroup key={label} label={label}>
                         {books.map(b => <option key={b} value={b}>{b}</option>)}
@@ -3403,20 +3412,20 @@ function QTWriteContent() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("시작 장", lang)}</label>
-                          <select className="input-field" value={chapter} onChange={e => { handleChapterChange(e.target.value); setStartV("1"); setEndV("1"); }} style={{ padding: "12px 8px" }}>
+                          <select className="input-field" value={chapter} onChange={e => handleChapterChange(e.target.value)} style={{ padding: "12px 8px" }}>
                             {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </div>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("시작 절", lang)}</label>
-                          <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter && parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
+                          <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
                             {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </div>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("끝 장", lang)}</label>
-                          <select className="input-field" value={endChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); }} style={{ padding: "12px 8px" }}>
-                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                          <select className="input-field" value={endChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} style={{ padding: "12px 8px" }}>
+                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
                         </div>
                         <div>
@@ -3844,7 +3853,7 @@ function QTWriteContent() {
               className="btn-outline"
               style={{ flex: 1 }}
             >
-              {trQT("← 이전", lang)}
+              {cur === 0 ? trQT("본문 다시 선택", lang) : trQT("← 이전", lang)}
             </button>
           )}
           {step6.isLast ? (
