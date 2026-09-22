@@ -2918,7 +2918,7 @@ function QTWriteContent() {
 
   if (draftLoadError) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 24px" }}>
+      <div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 24px" }}>
         <button
           type="button"
           onClick={leaveWriter}
@@ -2950,7 +2950,7 @@ function QTWriteContent() {
     // copy only after failure; preserve the existing-record collision notice.
     if (!pendingCompletion.existingRecord && (saving || !pendingCompletion.failed)) {
       return (
-        <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 32px" }}>
+        <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column", padding: "var(--roots-page-top-padding) 20px 32px" }}>
           <QTConnectionNotice lang={lang} />
           <div role="status" aria-live="polite" aria-busy="true" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <Loader2 size={28} className="spin" aria-hidden="true" style={{ color: "var(--sage)" }} />
@@ -2961,7 +2961,7 @@ function QTWriteContent() {
     }
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 32px" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 32px" }}>
         <QTConnectionNotice lang={lang} />
         <button type="button" onClick={leaveWriter} disabled={saving} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: saving ? "wait" : "pointer", marginBottom: 24 }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
@@ -3021,7 +3021,7 @@ function QTWriteContent() {
       : "";
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {mode === "free" && freePassageContinuation && (
         <QTFreePassageChoice
@@ -3191,7 +3191,7 @@ function QTWriteContent() {
     const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3298,7 +3298,7 @@ function QTWriteContent() {
     const step = STEPS_SUNDAY[cur] as any;
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3882,7 +3882,7 @@ function QTWriteContent() {
 
 export default function QTWritePage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense fallback={<div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <QTWriteContent />
     </Suspense>
   );

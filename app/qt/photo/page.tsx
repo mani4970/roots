@@ -1744,7 +1744,7 @@ function PhotoReflectionContent() {
 
   if (isEditMode && editLoading) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div className="card" style={{ width: "100%", maxWidth: 360, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <Loader2 size={30} className="spin" style={{ color: "var(--qt-sage-text)" }} />
           <p style={{ color: "var(--text2)", fontSize: 14, fontWeight: 750 }}>{pc("editLoading", lang)}</p>
@@ -1755,7 +1755,7 @@ function PhotoReflectionContent() {
 
   if (isEditMode && editLoadError) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 40px" }}>
+      <div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", padding: "var(--roots-page-top-padding) 20px 40px" }}>
         <button onClick={requestPhotoPageLeave} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 24, cursor: "pointer" }}>
           <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{pc("exit", lang)}</span>
         </button>
@@ -1767,7 +1767,7 @@ function PhotoReflectionContent() {
   }
 
   return (
-    <div className="roots-qt-phase2a roots-qt-phase2h" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
       {notice && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--qt-toast-surface)", color: "var(--text)", border: "1px solid var(--qt-toast-border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
@@ -2080,7 +2080,7 @@ function PhotoReflectionContent() {
 
 export default function PhotoReflectionPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
+    <Suspense fallback={<div className="roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <PhotoReflectionContent />
     </Suspense>
   );
