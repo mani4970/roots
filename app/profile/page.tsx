@@ -89,6 +89,7 @@ const PROFILE_LOCAL_TEXT = {
     nextBadges: "다음 배지",
     loveHearts: "사랑 하트",
     spiritFruitLocked: "{days}일 말씀동행을 채우면 {fruit}의 열매를 받을 수 있어요.",
+    completedCompanions: "함께 완주한 동역자",
   },
   de: {
     characterUpdated: "Der Charakter wurde geändert.",
@@ -98,6 +99,7 @@ const PROFILE_LOCAL_TEXT = {
     nextBadges: "Nächste Abzeichen",
     loveHearts: "Liebesherzen",
     spiritFruitLocked: "Nach {days} Tagen im Wortweg können Sie die Frucht {fruit} erhalten.",
+    completedCompanions: "Gemeinsam erfolgreiche Partner",
   },
   en: {
     characterUpdated: "Character updated.",
@@ -107,6 +109,7 @@ const PROFILE_LOCAL_TEXT = {
     nextBadges: "Next badges",
     loveHearts: "Love Hearts",
     spiritFruitLocked: "Complete {days} Word-walk days to receive the fruit of {fruit}.",
+    completedCompanions: "Companions who completed together",
   },
   fr: {
     characterUpdated: "Le personnage a été modifié.",
@@ -116,6 +119,7 @@ const PROFILE_LOCAL_TEXT = {
     nextBadges: "Badges suivants",
     loveHearts: "Cœurs d’amour",
     spiritFruitLocked: "Après {days} jours de chemin avec la Parole, vous pourrez recevoir le fruit {fruit}.",
+    completedCompanions: "Partenaires ayant terminé ensemble",
   },
   es: {
     characterUpdated: "Personaje actualizado.",
@@ -125,6 +129,7 @@ const PROFILE_LOCAL_TEXT = {
     nextBadges: "Insignias siguientes",
     loveHearts: "Corazones",
     spiritFruitLocked: "Al completar {days} días caminando con la Palabra, podrás recibir el fruto «{fruit}».",
+    completedCompanions: "Compañeros que completaron juntos",
   },
 } as const;
 
@@ -196,7 +201,7 @@ type CompanionChallengeProfileBadge = {
   challengeId: string;
   companionUserId: string | null;
   title: string;
-  companionName: string;
+  companionNames: string[];
   badgeName: string;
   badgeImagePath: string | null;
   heartsAwarded: number;
@@ -669,23 +674,51 @@ export default function ProfilePage() {
 
     const challengeTitleMap = new Map(challengeRows.map(row => [row.id, row.title]));
     const companionNameMap = new Map(companionRows.map(row => [row.id, row.name]));
-    const text = getCompanionChallengeText(lang);
+    const completedCompanionNamesByChallenge = new Map<string, string[]>();
 
-    setCompanionChallengeBadges(awardRows.map(row => ({
-      id: row.id,
-      challengeId: row.challenge_id,
-      companionUserId: row.companion_user_id ?? null,
-      title: getCompanionChallengeDisplayTitle({
+    await Promise.all(challengeIds.map(async (challengeId) => {
+      const { data, error: completedCompanionsError } = await supabase.rpc(
+        "get_my_companion_challenge_completion_partners",
+        { p_challenge_id: challengeId },
+      );
+      if (completedCompanionsError) {
+        console.warn("동역자 챌린지 함께 완주한 동역자 조회 실패:", completedCompanionsError);
+        return;
+      }
+
+      const names = Array.from(new Set(
+        (Array.isArray(data) ? data : [])
+          .map((row: any) => String(row?.partner_name ?? "").trim())
+          .filter(Boolean),
+      ));
+      completedCompanionNamesByChallenge.set(challengeId, names);
+    }));
+
+    setCompanionChallengeBadges(awardRows.map(row => {
+      const legacyCompanionName = row.companion_user_id
+        ? (companionNameMap.get(row.companion_user_id) || t("profile_default_name", lang))
+        : "";
+      const completedCompanionNames = completedCompanionNamesByChallenge.get(row.challenge_id) ?? [];
+      const companionNames = completedCompanionNames.length > 0
+        ? completedCompanionNames
+        : (legacyCompanionName ? [legacyCompanionName] : []);
+
+      return {
+        id: row.id,
         challengeId: row.challenge_id,
-        title: challengeTitleMap.get(row.challenge_id),
-        badgeName: row.badge_name,
-      }, lang),
-      companionName: row.companion_user_id ? (companionNameMap.get(row.companion_user_id) || t("profile_default_name", lang)) : t("profile_default_name", lang),
-      badgeName: row.badge_name || "",
-      badgeImagePath: row.badge_image_path ?? null,
-      heartsAwarded: Number(row.hearts_awarded ?? 0),
-      awardedAt: row.awarded_at,
-    })));
+        companionUserId: row.companion_user_id ?? null,
+        title: getCompanionChallengeDisplayTitle({
+          challengeId: row.challenge_id,
+          title: challengeTitleMap.get(row.challenge_id),
+          badgeName: row.badge_name,
+        }, lang),
+        companionNames,
+        badgeName: row.badge_name || "",
+        badgeImagePath: row.badge_image_path ?? null,
+        heartsAwarded: Number(row.hearts_awarded ?? 0),
+        awardedAt: row.awarded_at,
+      };
+    }));
   }
 
   async function loadMonthlyBadgeRecords(userId: string) {
@@ -1255,7 +1288,7 @@ export default function ProfilePage() {
       kind: "companion",
       id: `companion_${badge.id}`,
       title: badge.title,
-      subtitle: badge.companionName,
+      subtitle: "",
       badgeName: badge.badgeName,
       badgeImagePath: badge.badgeImagePath,
       badge,
@@ -1547,9 +1580,11 @@ export default function ProfilePage() {
                   <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                     {item.title}
                   </div>
-                  <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {item.subtitle}
-                  </div>
+                  {item.subtitle && (
+                    <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.subtitle}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -1676,8 +1711,12 @@ export default function ProfilePage() {
                 <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.title}</div>
               </div>
               <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{companionChallengeText.partnerStatusLabel}</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{selectedCompanionChallengeBadge.companionName}</div>
+                <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{PROFILE_LOCAL_TEXT[lang].completedCompanions}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.5, whiteSpace: "normal", overflowWrap: "anywhere" }}>
+                  {selectedCompanionChallengeBadge.companionNames.length > 0
+                    ? selectedCompanionChallengeBadge.companionNames.join(" · ")
+                    : t("profile_default_name", lang)}
+                </div>
               </div>
               <div style={{ padding: "10px 12px", borderRadius: 14, background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)" }}>
                 <div style={{ fontSize: 10, fontWeight: 850, color: "var(--profile-muted-text)", marginBottom: 3 }}>{companionChallengeText.heartsLabel}</div>
@@ -1965,9 +2004,11 @@ export default function ProfilePage() {
                   <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                     {item.title}
                   </div>
-                  <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {item.subtitle}
-                  </div>
+                  {item.subtitle && (
+                    <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.subtitle}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
