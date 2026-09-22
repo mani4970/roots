@@ -186,6 +186,12 @@
   .todayTitle { font-size: 15px; }
 }
 @media (min-width: 600px) {
+  /* Match the existing Roots iPad/Mac home-action typography. The shared
+     native tablet rules enlarge 13.5px home labels to 16.5px; this CSS-module
+     label is not covered by that inline-size mapping, so mirror it here. */
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .buttonLabel {
+    font-size: 16.5px;
+  }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .todayCard {
     height: min(440px, calc(66.6667dvh - 180px));
   }
