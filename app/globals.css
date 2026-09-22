@@ -885,6 +885,35 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-footer {
     padding-bottom: calc(32px + var(--safe-area-bottom)) !important;
   }
+
+  /* Free-form and Sunday writers use the same tablet viewport as six-step,
+     but their short editors must also consume the remaining writing space.
+     Keep this native-tablet only so phone/web sizing stays unchanged. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.qt-free-editor, .qt-sunday-editor) {
+    min-height: 0;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-free-reflection-section {
+    display: flex;
+    flex: 1 0 280px;
+    min-height: 280px;
+    flex-direction: column;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-free-reflection-field {
+    flex: 1 1 auto;
+    min-height: 260px;
+    height: auto !important;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-sunday-simple-editor {
+    min-height: 0;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-sunday-simple-field {
+    flex: 1 1 auto;
+    min-height: 280px;
+    height: auto !important;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.qt-free-footer, .qt-sunday-footer) {
+    padding-bottom: calc(32px + var(--safe-area-bottom)) !important;
+  }
 }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }

@@ -3191,7 +3191,7 @@ function QTWriteContent() {
     const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-free roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3241,7 +3241,7 @@ function QTWriteContent() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT("자유 큐티", lang)}</h1>
         </div>
 
-        <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+        <div className="qt-free-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
           {/* 본문 표시 (선택사항) */}
           {hasPassage && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -3252,9 +3252,9 @@ function QTWriteContent() {
             </div>
           )}
 
-          <div>
+          <div className="qt-free-reflection-section">
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
-            <CursorStableTextarea key="free-reflection" className="textarea-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
+            <CursorStableTextarea key="free-reflection" className="textarea-field qt-free-reflection-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
           </div>
 
           <div>
@@ -3278,7 +3278,7 @@ function QTWriteContent() {
           </div>
         </div>
 
-        <div style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="qt-free-footer" style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
           <button onClick={openCompleteSharePrompt} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
             {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
           </button>
@@ -3298,7 +3298,7 @@ function QTWriteContent() {
     const step = STEPS_SUNDAY[cur] as any;
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-sunday roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3374,7 +3374,7 @@ function QTWriteContent() {
           })}
         </div>
 
-        <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className={`qt-sunday-editor ${!step.isSermonInfo && !step.isDecision ? "qt-sunday-simple-editor" : ""}`} style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* 0단계: 설교 정보 + 말씀 선택 */}
           {step.isSermonInfo && (
@@ -3504,12 +3504,12 @@ function QTWriteContent() {
           {!step.isSermonInfo && !step.isDecision && (
             <>
               <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
-              <CursorStableTextarea key={`sunday-${step.id}`} className="textarea-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
+              <CursorStableTextarea key={`sunday-${step.id}`} className="textarea-field qt-sunday-simple-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
             </>
           )}
         </div>
 
-        <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+        <div className="qt-sunday-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
           <div style={{ display: "flex", gap: 8 }}>
             {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
             {step.isLast ? (
