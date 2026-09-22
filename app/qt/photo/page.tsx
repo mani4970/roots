@@ -1852,12 +1852,10 @@ function PhotoReflectionContent() {
                   <select className="input-field" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     markPassageTouched();
                     const next = Number(e.target.value);
-                    const nextVerses = getBibleVerseNumbers(book, next, selectedTranslation);
-                    const nextStart = getNearestAvailableVerse(nextVerses, startVerse);
                     setChapter(next);
-                    setStartVerse(nextStart);
+                    setStartVerse(1);
                     setEndChapter(next);
-                    setEndVerse(nextStart);
+                    setEndVerse(1);
                   }}>
                     {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
                   </select>

@@ -471,20 +471,15 @@ function QTWriteContent() {
     setBibleError("");
   }
 
-  // 시작 장을 바꾸면 끝 장도 같은 장으로 맞추고, 현재 시작 절이
-  // 새 장의 범위를 벗어나면 안전한 절로 조정합니다.
+  // 새 시작 장은 새 본문 선택으로 취급합니다. 이전 장의 절 번호를
+  // 이어받지 않고 1절부터 시작하며, 끝 위치도 같은 장 1절로 맞춥니다.
   function handleChapterChange(newChapter: string) {
     setChapter(newChapter);
+    setStartV("1");
     setEndChapter(newChapter);
+    setEndV("1");
     setCrossChapter(false);
-    const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
-    const allLocalBooks = [...(BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"])];
-    const idx = allLocalBooks.indexOf(book);
-    const koBook = idx >= 0 ? allKoBooks[idx] : book;
-    const maxV = getBibleChapterMaxVerse(koBook, newChapter, selectedTranslation);
-    const nextStartVerse = String(Math.min(parseInt(startV) || 1, maxV));
-    setStartV(nextStartVerse);
-    setEndV(nextStartVerse);
+    setBibleError("");
   }
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [loadingBible, setLoadingBible] = useState(false);
