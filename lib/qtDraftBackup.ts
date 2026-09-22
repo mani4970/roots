@@ -64,6 +64,18 @@ function parseTimestamp(value: unknown) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function buildStandardBibleRef(backup: QTDraftBackup) {
+  const seen = new Set<string>();
+  const refs: string[] = [];
+  for (const rawRef of [backup.bibleRef, ...backup.passageRefs]) {
+    const ref = String(rawRef ?? "").replace(/\s+/g, " ").trim();
+    if (!ref || seen.has(ref)) continue;
+    seen.add(ref);
+    refs.push(ref);
+  }
+  return refs.join(", ");
+}
+
 function buildSundayBibleRef(backup: QTDraftBackup) {
   const title = backup.sermonTitle.trim();
   const refs = Array.from(new Set(
@@ -155,7 +167,9 @@ export function mergeQtDraftRowWithBackup<T extends Record<string, unknown>>(
   if (backup.translationId) merged.bible_version = String(backup.translationId);
   merged.bible_ref = backup.mode === "sunday"
     ? buildSundayBibleRef(backup)
-    : backup.bibleRef;
+    : backup.mode === "6step"
+      ? buildStandardBibleRef(backup)
+      : backup.bibleRef;
   merged.key_verse = backup.keyVerse;
   merged.opening_prayer = isFree ? "" : (backup.answers.opening_prayer ?? "");
   merged.summary = isFree ? "" : (backup.answers.summary ?? "");

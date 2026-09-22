@@ -445,6 +445,8 @@ function QTWriteContent() {
   type PassageItem = { book: string; chapter: string; startV: string; endV: string; endChapter: string; cross: boolean; verses: PassageVerse[]; ref: string };
   const [passages, setPassages] = useState<PassageItem[]>([]);
   const [activePassageIndex, setActivePassageIndex] = useState(0);
+  const [sixStepPassageReselectEnabled, setSixStepPassageReselectEnabled] = useState(!hasSchedule);
+  const passageSelectionBaselineRef = useRef("");
 
   // 주일예배 말씀 선택 step
   const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
@@ -462,11 +464,18 @@ function QTWriteContent() {
   function handleChapterChange(newChapter: string) {
     setChapter(newChapter);
     setEndChapter(newChapter);
+    setCrossChapter(false);
     const allKoBooks = [...OT_BOOKS, ...NT_BOOKS];
     const allLocalBooks = [...(BOOK_NAMES[currentLang] ?? BOOK_NAMES["KO"])];
     const idx = allLocalBooks.indexOf(book);
     const koBook = idx >= 0 ? allKoBooks[idx] : book;
     const maxV = getBibleChapterMaxVerse(koBook, newChapter, selectedTranslation);
+    const nextStartVerse = String(Math.min(parseInt(startV) || 1, maxV));
+    if (mode === "6step") {
+      setStartV(nextStartVerse);
+      setEndV(nextStartVerse);
+      return;
+    }
     if (parseInt(startV) > maxV) setStartV(String(maxV));
     if (parseInt(endV) > maxV) setEndV(String(maxV));
   }
@@ -748,6 +757,32 @@ function QTWriteContent() {
     return { bookName, chap, sv, finalEndChapter, finalEndVerse, cross: finalEndChapter !== chap };
   }
 
+  function splitStandardBibleRefs(raw?: string | null) {
+    return String(raw ?? "")
+      .split(/\s*,\s*/g)
+      .map(ref => ref.trim())
+      .filter(Boolean);
+  }
+
+  function buildStandardBibleRef(primaryRef: string, extraRefs: string[]) {
+    const seen = new Set<string>();
+    const refs: string[] = [];
+    for (const rawRef of [primaryRef, ...extraRefs]) {
+      const ref = String(rawRef ?? "").replace(/\s+/g, " ").trim();
+      if (!ref || seen.has(ref)) continue;
+      seen.add(ref);
+      refs.push(ref);
+    }
+    return refs.join(", ");
+  }
+
+  function bibleRefSelectionKey(refs: string[]) {
+    return refs
+      .map(ref => String(ref ?? "").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join("\u001f");
+  }
+
   async function loadPassageItemFromRef(ref: string, translationId = selectedTranslation): Promise<PassageItem | null> {
     const parts = parseBibleRefParts(ref);
     if (!parts) return null;
@@ -786,6 +821,51 @@ function QTWriteContent() {
       throw new Error(data.error || "Restored passage was empty");
     }
     return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: false, verses: data.verses ?? [], ref: data.reference || ref };
+  }
+
+  async function restoreStandardPassages(rawRef?: string | null, translationId = selectedTranslation) {
+    const refs = splitStandardBibleRefs(rawRef);
+    if (refs.length === 0) return false;
+
+    const loaded = await Promise.all(refs.map(async ref => {
+      try {
+        return await loadPassageItemFromRef(ref, translationId);
+      } catch {
+        return null;
+      }
+    }));
+    if (loaded.every(item => item == null)) return false;
+    if (loaded.some(item => item == null)) {
+      setBibleError(trQT("본문을 불러오지 못했어요.", lang));
+    }
+
+    const items = loaded.map((item, idx) => item ?? {
+      book: "",
+      chapter: "",
+      startV: "",
+      endV: "",
+      endChapter: "",
+      cross: false,
+      verses: [],
+      ref: refs[idx],
+    });
+    const firstLoaded = loaded[0] ?? loaded.find((item): item is PassageItem => Boolean(item));
+    const first = firstLoaded ?? items[0];
+    if (!first) return false;
+
+    setBibleRef(refs[0]);
+    setBook(first.book || book);
+    setChapter(first.chapter || chapter);
+    setStartV(first.startV || startV);
+    setEndChapter(first.endChapter || first.chapter || endChapter);
+    setEndV(first.endV || endV);
+    setCrossChapter(Boolean(first.cross));
+    setPassageVerses(loaded[0]?.verses ?? first.verses ?? []);
+    setPassages(items.length > 1 ? items : []);
+    setActivePassageIndex(0);
+    setBibleStep("done");
+    setSundayBibleStep("done");
+    return true;
   }
 
   async function restoreSermonPassages(rawRef?: string | null, options: { restoreTitle?: boolean; translationId?: number } = {}) {
@@ -901,10 +981,12 @@ function QTWriteContent() {
       }
 
       if (!schedule) {
+        setSixStepPassageReselectEnabled(true);
         setPageReady(true);
         return;
       }
 
+      setSixStepPassageReselectEnabled(false);
       try {
         const bookName = schedule.book;
         const chap = schedule.chapter;
@@ -987,6 +1069,8 @@ function QTWriteContent() {
       setCrossChapter(false);
       setBibleStep("select");
       setSundayBibleStep("select");
+      setSixStepPassageReselectEnabled(!hasSchedule);
+      passageSelectionBaselineRef.current = "";
       setSermonTitle("");
       setSermonRef("");
     };
@@ -1023,7 +1107,11 @@ function QTWriteContent() {
         const restoredSermonPassages = (record.qt_mode === "sunday" || isLegacyFreeSermonRef)
           ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday", translationId: recordTranslationId })
           : false;
-        if (!restoredSermonPassages && record.bible_ref && !isLegacyFreeSermonRef) {
+        const restoredStandardPassages = record.qt_mode === "6step" && record.bible_ref && !isSermonRef
+          ? await restoreStandardPassages(record.bible_ref, recordTranslationId)
+          : false;
+        if (record.qt_mode === "6step") setSixStepPassageReselectEnabled(true);
+        if (!restoredSermonPassages && !restoredStandardPassages && record.bible_ref && !isLegacyFreeSermonRef) {
           setBibleRef(record.bible_ref);
           setBibleStep("done");
         }
@@ -1053,7 +1141,7 @@ function QTWriteContent() {
           if (dList.length > 0) setDecisions(dList);
         }
 
-        const refForReload = restoredSermonPassages || isLegacyFreeSermonRef ? null : record.bible_ref;
+        const refForReload = restoredSermonPassages || restoredStandardPassages || isLegacyFreeSermonRef ? null : record.bible_ref;
         if (refForReload) {
           try {
             const SHORT_TO_FULL: Record<string, string> = {
@@ -1251,7 +1339,11 @@ function QTWriteContent() {
       const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || isLegacyFreeDraftSermonRef)
         ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday", translationId: restoreTranslationId })
         : false;
-      if (!restoredDraftSermonPassages && draft.bible_ref && !isLegacyFreeDraftSermonRef) {
+      const restoredDraftStandardPassages = draft.qt_mode === "6step" && draft.bible_ref && !isDraftSermonRef
+        ? await restoreStandardPassages(draft.bible_ref, restoreTranslationId)
+        : false;
+      if (draft.qt_mode === "6step") setSixStepPassageReselectEnabled(true);
+      if (!restoredDraftSermonPassages && !restoredDraftStandardPassages && draft.bible_ref && !isLegacyFreeDraftSermonRef) {
         setBibleRef(draft.bible_ref);
       }
       if (draft.key_verse) {
@@ -1283,7 +1375,7 @@ function QTWriteContent() {
       }
 
       // 말씀 본문 재로드 (bible_ref가 있으면)
-      const refForReload = restoredDraftSermonPassages || isLegacyFreeDraftSermonRef ? null : draft.bible_ref;
+      const refForReload = restoredDraftSermonPassages || restoredDraftStandardPassages || isLegacyFreeDraftSermonRef ? null : draft.bible_ref;
       if (refForReload) {
         try {
           // 약어 → 전체 이름 역변환 맵
@@ -1665,6 +1757,15 @@ function QTWriteContent() {
     }
   }
 
+  function beginSixStepPassageReselect() {
+    if (saving || pendingCompletionRef.current || mode !== "6step") return;
+    passageSelectionBaselineRef.current = bibleRefSelectionKey(
+      splitStandardBibleRefs(buildStandardBibleRef(bibleRef, passages.map(p => p.ref))),
+    );
+    setBibleError("");
+    setBibleStep("select");
+  }
+
   // 본문 선택 완료: 단일 본문은 현재 선택을 바로 불러오고,
   // 여러 본문을 추가한 경우에는 마지막 현재 선택까지 자동으로 포함한다.
   async function completePassageSelection() {
@@ -1674,11 +1775,14 @@ function QTWriteContent() {
       const current = await fetchCurrentSelectedPassageItem();
       if (!current) return;
 
+      let nextRefs: string[] = [];
+
       if (passages.length === 0) {
         setPassages([]);
         setActivePassageIndex(0);
         setPassageVerses(current.verses);
         setBibleRef(current.ref);
+        nextRefs = [current.ref];
       } else {
         const currentKey = normalizePassageRef(current.ref);
         const existingIndex = passages.findIndex(p => normalizePassageRef(p.ref) === currentKey);
@@ -1690,12 +1794,20 @@ function QTWriteContent() {
         setActivePassageIndex(Math.max(0, finalActiveIndex));
         setPassageVerses(firstPassage.verses);
         setBibleRef(firstPassage.ref);
+        nextRefs = finalPassages.map(item => item.ref);
       }
 
+      const nextSelectionKey = bibleRefSelectionKey(nextRefs);
+      const baselineSelectionKey = passageSelectionBaselineRef.current;
+      const passageChanged = !baselineSelectionKey || baselineSelectionKey !== nextSelectionKey;
+      if (passageChanged) {
+        setSelectedVerseNums([]);
+        setKeyVerse("");
+      }
+      passageSelectionBaselineRef.current = "";
+      if (mode === "6step") setSixStepPassageReselectEnabled(true);
       setBibleStep("done");
       setSundayBibleStep("done");
-      setSelectedVerseNums([]);
-      setKeyVerse("");
     } catch {
       setBibleError(trQT("본문을 불러오지 못했어요.", lang));
     } finally {
@@ -1747,7 +1859,15 @@ function QTWriteContent() {
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
-            <select value={startV} onChange={e => { setStartV(e.target.value); if (effectiveEndChapter === chapter && parseInt(e.target.value) > parseInt(endV)) setEndV(e.target.value); }} className="input-field" style={{ padding: "12px 8px" }}>
+            <select value={startV} onChange={e => {
+              const nextStartVerse = e.target.value;
+              setStartV(nextStartVerse);
+              if (mode === "6step") {
+                setEndV(nextStartVerse);
+              } else if (effectiveEndChapter === chapter && parseInt(nextStartVerse) > parseInt(endV)) {
+                setEndV(nextStartVerse);
+              }
+            }} className="input-field" style={{ padding: "12px 8px" }}>
               {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
@@ -2046,7 +2166,9 @@ function QTWriteContent() {
     const sundayRefs = [snapshot.bibleRef, ...snapshot.passageRefs].filter(Boolean);
     const draftBibleRef = snapshot.mode === "sunday"
       ? buildSundayBibleRef(snapshot.sermonTitle, sundayRefs)
-      : snapshot.bibleRef;
+      : snapshot.mode === "6step"
+        ? buildStandardBibleRef(snapshot.bibleRef, snapshot.passageRefs)
+        : snapshot.bibleRef;
 
     return {
       date: snapshot.selectedDate,
@@ -2483,7 +2605,7 @@ function QTWriteContent() {
     } else {
       recordData = {
         ...recordData,
-        bible_ref: bibleRef,
+        bible_ref: buildStandardBibleRef(bibleRef, passages.map(p => p.ref)),
         key_verse: keyVerse,
         opening_prayer: answers.opening_prayer ?? "",
         summary: answers.summary ?? "",
@@ -3616,7 +3738,7 @@ function QTWriteContent() {
             <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
               {trQT("2단계 · 본문 요약", lang)}
             </label>
-            <CursorStableTextarea key="six-step-summary" className="textarea-field" rows={4} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
+            <CursorStableTextarea key="six-step-summary" className="textarea-field" rows={7} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
           </div>
 
           {/* 3단계: 붙잡은 말씀 */}
@@ -3713,13 +3835,24 @@ function QTWriteContent() {
       {/* 하단 버튼 */}
       <div className="qt-six-step-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 8 }}>
-          {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
+          {(cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) && (
+            <button
+              onClick={() => {
+                if (cur > 0) setCur(c => c - 1);
+                else beginSixStepPassageReselect();
+              }}
+              className="btn-outline"
+              style={{ flex: 1 }}
+            >
+              {trQT("← 이전", lang)}
+            </button>
+          )}
           {step6.isLast ? (
-            <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+            <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>
               {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
             </button>
           ) : (
-            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
+            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
           )}
         </div>
         {/* 임시저장 버튼 */}

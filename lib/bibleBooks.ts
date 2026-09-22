@@ -56,7 +56,7 @@ export function translateBookName(koName: string, lang: BibleDisplayLang): strin
  * "누가복음 10:1-24" → "Lukas 10:1-24"
  * "창 1:1-10" (약어) → 그대로 (약어는 변환 안 함)
  */
-export function translateBibleRef(ref: string, lang: BibleDisplayLang): string {
+function translateSingleBibleRef(ref: string, lang: BibleDisplayLang): string {
   if (!ref) return ref;
 
   const targetLangCode = LANG_TO_BIBLE[lang] ?? "KO";
@@ -76,4 +76,17 @@ export function translateBibleRef(ref: string, lang: BibleDisplayLang): string {
   }
 
   return ref; // 매칭 안 되면 원본 반환
+}
+
+export function translateBibleRef(ref: string, lang: BibleDisplayLang): string {
+  if (!ref) return ref;
+
+  // 6단계에서 여러 본문은 "본문1, 본문2, ..." 형태로 저장한다.
+  // 각 본문을 따로 번역해야 두 번째 이후 책 이름도 현재 언어에 맞게 표시된다.
+  const parts = ref.split(/\s*,\s*/g).map(part => part.trim()).filter(Boolean);
+  if (parts.length > 1 && parts.every(part => /\d+\s*:\s*\d+/.test(part))) {
+    return parts.map(part => translateSingleBibleRef(part, lang)).join(", ");
+  }
+
+  return translateSingleBibleRef(ref, lang);
 }
