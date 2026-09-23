@@ -914,7 +914,62 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(.qt-free-footer, .qt-sunday-footer) {
     padding-bottom: calc(32px + var(--safe-area-bottom)) !important;
   }
+
+  /* The iPhone/iPad app running on Apple-silicon Mac can give native <select>
+     controls a smaller effective mouse hit target after the shared 1.5x zoom.
+     Keep the real select over the full painted coordinate box on Mac only. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .qt-passage-coordinate-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    background: var(--qt-field-surface);
+    border: 1px solid var(--qt-field-border);
+    border-radius: 14px;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .qt-passage-coordinate-control::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--text-muted-readable);
+    border-bottom: 1.5px solid var(--text-muted-readable);
+    transform: translateY(-65%) rotate(45deg);
+    pointer-events: none;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .qt-passage-coordinate-value {
+    display: block;
+    width: 100%;
+    padding: 0 36px 0 12px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 46px;
+    pointer-events: none;
+  }
+  html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .qt-passage-coordinate-select {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 48px;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 14px;
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: auto;
+  }
 }
+.qt-passage-coordinate-control { display: contents; }
+.qt-passage-coordinate-value { display: none; }
+
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 button { cursor: pointer; font-family: 'Pretendard', sans-serif; }

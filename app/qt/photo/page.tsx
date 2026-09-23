@@ -1867,34 +1867,46 @@ function PhotoReflectionContent() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("chapter", lang)}</span>
-                  <select className="input-field" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    markPassageTouched();
-                    const next = Number(e.target.value);
-                    setChapter(next);
-                    setStartVerse(1);
-                    setEndChapter(next);
-                    setEndVerse(1);
-                  }}>
-                    {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <div className="qt-passage-coordinate-control">
+                    <span className="qt-passage-coordinate-value" aria-hidden="true">{chapter}</span>
+                    <select className="input-field qt-passage-coordinate-select" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                      markPassageTouched();
+                      const next = Number(e.target.value);
+                      setChapter(next);
+                      setStartVerse(1);
+                      setEndChapter(next);
+                      setEndVerse(1);
+                    }}>
+                      {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </div>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <select className="input-field" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter) setEndVerse(next); }}>
-                    {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <div className="qt-passage-coordinate-control">
+                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeStartVerse}</span>
+                    <select className="input-field qt-passage-coordinate-select" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter) setEndVerse(next); }}>
+                      {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </div>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <select className="input-field" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter) setEndVerse(safeStartVerse); }}>
-                    {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <div className="qt-passage-coordinate-control">
+                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeEndChapter}</span>
+                    <select className="input-field qt-passage-coordinate-select" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter) setEndVerse(safeStartVerse); }}>
+                      {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </div>
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
-                  <select className="input-field" value={safeEndVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
-                    {endVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <div className="qt-passage-coordinate-control">
+                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeEndVerse}</span>
+                    <select className="input-field qt-passage-coordinate-select" value={safeEndVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
+                      {endVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </div>
                 </label>
               </div>
               <button type="button" onClick={addCurrentPassage} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>

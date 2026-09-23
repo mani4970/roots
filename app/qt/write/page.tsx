@@ -1875,31 +1875,43 @@ function QTWriteContent() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("시작 장", lang)}</label>
-            <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-              {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <div className="qt-passage-coordinate-control">
+              <span className="qt-passage-coordinate-value" aria-hidden="true">{chapter}</span>
+              <select value={chapter} onChange={e => handleChapterChange(e.target.value)} className="input-field qt-passage-coordinate-select" style={{ padding: "12px 8px" }}>
+                {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("시작 절", lang)}</label>
-            <select value={startV} onChange={e => {
-              const nextStartVerse = e.target.value;
-              setStartV(nextStartVerse);
-              if (effectiveEndChapter === chapter) setEndV(nextStartVerse);
-            }} className="input-field" style={{ padding: "12px 8px" }}>
-              {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <div className="qt-passage-coordinate-control">
+              <span className="qt-passage-coordinate-value" aria-hidden="true">{startV}</span>
+              <select value={startV} onChange={e => {
+                const nextStartVerse = e.target.value;
+                setStartV(nextStartVerse);
+                if (effectiveEndChapter === chapter) setEndV(nextStartVerse);
+              }} className="input-field qt-passage-coordinate-select" style={{ padding: "12px 8px" }}>
+                {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("끝 장", lang)}</label>
-            <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} className="input-field" style={{ padding: "12px 8px" }}>
-              {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <div className="qt-passage-coordinate-control">
+              <span className="qt-passage-coordinate-value" aria-hidden="true">{effectiveEndChapter}</span>
+              <select value={effectiveEndChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} className="input-field qt-passage-coordinate-select" style={{ padding: "12px 8px" }}>
+                {Array.from({ length: maxChapter }, (_, i) => String(i + 1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("끝 절", lang)}</label>
-            <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field" style={{ padding: "12px 8px" }}>
-              {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <div className="qt-passage-coordinate-control">
+              <span className="qt-passage-coordinate-value" aria-hidden="true">{endV}</span>
+              <select value={endV} onChange={e => setEndV(e.target.value)} className="input-field qt-passage-coordinate-select" style={{ padding: "12px 8px" }}>
+                {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -3424,27 +3436,39 @@ function QTWriteContent() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("시작 장", lang)}</label>
-                          <select className="input-field" value={chapter} onChange={e => handleChapterChange(e.target.value)} style={{ padding: "12px 8px" }}>
-                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
+                          <div className="qt-passage-coordinate-control">
+                            <span className="qt-passage-coordinate-value" aria-hidden="true">{chapter}</span>
+                            <select className="input-field qt-passage-coordinate-select" value={chapter} onChange={e => handleChapterChange(e.target.value)} style={{ padding: "12px 8px" }}>
+                              {Array.from({ length: maxChapter }, (_, i) => String(i+1)).map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("시작 절", lang)}</label>
-                          <select className="input-field" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
-                            {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
+                          <div className="qt-passage-coordinate-control">
+                            <span className="qt-passage-coordinate-value" aria-hidden="true">{startV}</span>
+                            <select className="input-field qt-passage-coordinate-select" value={startV} onChange={e => { setStartV(e.target.value); if (endChapter === chapter) setEndV(e.target.value); }} style={{ padding: "12px 8px" }}>
+                              {startVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("끝 장", lang)}</label>
-                          <select className="input-field" value={endChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} style={{ padding: "12px 8px" }}>
-                            {Array.from({ length: maxChapter }, (_, i) => String(i+1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
+                          <div className="qt-passage-coordinate-control">
+                            <span className="qt-passage-coordinate-value" aria-hidden="true">{endChapter}</span>
+                            <select className="input-field qt-passage-coordinate-select" value={endChapter} onChange={e => { setEndChapter(e.target.value); setCrossChapter(e.target.value !== chapter); if (e.target.value === chapter) setEndV(startV); }} style={{ padding: "12px 8px" }}>
+                              {Array.from({ length: maxChapter }, (_, i) => String(i+1)).filter(v => parseInt(v, 10) >= parseInt(chapter, 10)).map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 4 }}>{trQT("끝 절", lang)}</label>
-                          <select className="input-field" value={endV} onChange={e => setEndV(e.target.value)} style={{ padding: "12px 8px" }}>
-                            {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
+                          <div className="qt-passage-coordinate-control">
+                            <span className="qt-passage-coordinate-value" aria-hidden="true">{endV}</span>
+                            <select className="input-field qt-passage-coordinate-select" value={endV} onChange={e => setEndV(e.target.value)} style={{ padding: "12px 8px" }}>
+                              {endVerseNumbers.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     );
