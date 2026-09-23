@@ -37,7 +37,8 @@ function loadSignature(): Promise<HTMLImageElement> {
  * CSS: shell radius 15px, 1px transparent shell border, inset 9px,
  * frame border 1.5px, frame radius 9px. Canvas strokes are centered on their
  * path, so use the middle of the CSS border (1 + 9 + 1.5 / 2).
- * Rounded transparent outer corners export the card, never the modal backdrop.
+ * Export uses an opaque paper background across the full PNG so social apps
+ * cannot render the rounded outer corners as black transparency.
  */
 export function drawWordCardFrame(context: CanvasRenderingContext2D, width: number, height: number): void {
   const scale = width / 430;
@@ -46,6 +47,9 @@ export function drawWordCardFrame(context: CanvasRenderingContext2D, width: numb
   const framePathRadius = 9 * scale - lineWidth / 2;
   context.save();
   context.fillStyle = "#fffdf8";
+  // Keep every exported pixel opaque. Instagram and other share targets may
+  // display transparent PNG corners against a black surface.
+  context.fillRect(0, 0, width, height);
   context.beginPath();
   context.roundRect(0, 0, width, height, 15 * scale);
   context.fill();
