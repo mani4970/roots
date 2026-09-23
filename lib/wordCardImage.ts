@@ -1,4 +1,4 @@
-export type WordCardImageContent = { title: string; verse: string; reference: string; copyright: string; attributionUrl?: string };
+export type WordCardImageContent = { title: string; verse: string; reference: string };
 
 /** Shared with offline tests. Whole words wrap naturally; long tokens use Unicode code points. */
 export function wrapCardText(text: string, maxWidth: number, measure: (value: string) => number): string[] {
@@ -80,16 +80,12 @@ export async function createWordCardImage(content: WordCardImageContent): Promis
   const titleFont = "600 43px 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif";
   const verseFont = "50px Georgia, 'AppleMyungjo', 'Batang', serif";
   const smallFont = "32px 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif";
-  const copyrightFont = "23px 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif";
   const lines = (text: string, font: string) => { context.font = font; return wrapCardText(text, textWidth, value => context.measureText(value).width); };
   const titleLines = lines(content.title, titleFont);
   const verseLines = lines(content.verse, verseFont);
   const refLines = lines(content.reference, smallFont);
-  const copyrightText = [content.copyright, content.attributionUrl].filter(Boolean).join("\n");
-  const copyrightLines = copyrightText ? lines(copyrightText, copyrightFont) : [];
   const bodyHeight = titleLines.length * 63 + 92 + verseLines.length * 82 + 44 + refLines.length * 47;
-  const copyrightHeight = copyrightLines.length ? 76 + copyrightLines.length * 35 : 0;
-  const height = Math.ceil(Math.max(1350, 245 + bodyHeight + copyrightHeight + 105));
+  const height = Math.ceil(Math.max(1350, 245 + bodyHeight + 105));
   // Fail explicitly rather than truncating a very long text or exhausting mobile memory.
   if (height > 14000) throw new Error("Card exceeds safe image dimensions");
   canvas.width = width; canvas.height = height;
@@ -101,11 +97,10 @@ export async function createWordCardImage(content: WordCardImageContent): Promis
     block.forEach((line, index) => context.fillText(line, align === "center" ? width / 2 : align === "right" ? width - inset : inset, top + index * lineHeight));
     return top + block.length * lineHeight;
   }
-  let y = 236 + Math.max(0, (height - 245 - bodyHeight - copyrightHeight - 105) * .5);
+  let y = 236 + Math.max(0, (height - 245 - bodyHeight - 105) * .5);
   y = draw(titleLines, titleFont, y, 63, "#303a32") + 92;
   y = draw(verseLines, verseFont, y, 82, "#303a32", "center") + 44;
-  y = draw(refLines, smallFont, y, 47, "#657267");
-  if (copyrightLines.length) draw(copyrightLines, copyrightFont, Math.max(y + 76, height - 100 - copyrightLines.length * 35), 35, "#657267", "right");
+  draw(refLines, smallFont, y, 47, "#657267");
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(value => value ? resolve(value) : reject(new Error("Image encoding failed")), "image/png");
   });

@@ -1,7 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { ArrowRight, BookOpen, ChevronDown, History, Loader2, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
-import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { getWordCardText, getRecallDescription } from "@/lib/wordCardText";
 import { canShowRecallWord, getRecallMode, isDisplayableRecall, getRecallDecisionItems, type HeldWordBlock, type RecallRecord } from "@/lib/wordCardRecord";
 import styles from "./WordCards.module.css";
@@ -36,35 +35,27 @@ export function WordCardHeader({ lang, kind, description, closeButton }: {
   </div>;
 }
 
-export function WordCardCopyright({ translationId }: { translationId: number | null }) {
-  const info = translationId ? getBibleCopyrightInfo(translationId) : null;
-  if (!info) return null;
-  return <p className={styles.copyright}>
-    {info.notice}
-    {info.url && <> <a href={info.url} target="_blank" rel="noreferrer noopener">{info.linkLabel ?? info.url}</a></>}
-  </p>;
-}
-
-export function TodayWordCard({ lang, verse, reference, translationId, variant = "page", cardRef, onClose, footer, celebration }: {
-  lang: Lang; verse: string; reference: string; translationId: number | null;
+export function TodayWordCard({ lang, verse, reference, variant = "page", cardRef, onClose, footer, celebration }: {
+  lang: Lang; verse: string; reference: string;
   variant?: "page" | "popup"; cardRef?: RefObject<HTMLDivElement>; onClose?: () => void; footer?: ReactNode; celebration?: ReactNode;
 }) {
   const popup = variant === "popup";
   return <div ref={cardRef} lang={lang} className={`${styles.card} ${popup ? styles.modalCard : styles.todayCard}`}
     role={popup ? "dialog" : undefined} aria-modal={popup ? true : undefined} aria-labelledby="roots-today-word-title"
     tabIndex={popup ? -1 : undefined} data-word-card="today">
-    <WordCardBrandRow closeButton={onClose && <button type="button" className={styles.close}
-      onClick={onClose} aria-label={getWordCardText(lang).close}><X size={20} /></button>} />
-    <div className={styles.scrollBody} tabIndex={0} role="region" aria-label={getWordCardText(lang).todayTitle} data-today-word-scroll>
-      <div className={styles.bodyContent} data-word-card-content>
-        <WordCardHeading lang={lang} kind="today" />
-        <p className={`${styles.verse} ${verse.length > 180 ? styles.longText : ""}`}>{verse}</p>
-        <p className={`${styles.reference} ${styles.todayReference}`}>{reference}</p>
+    <div className={styles.wordCardFrame}>
+      <WordCardBrandRow closeButton={onClose && <button type="button" className={styles.close}
+        onClick={onClose} aria-label={getWordCardText(lang).close}><X size={20} /></button>} />
+      <div className={styles.scrollBody} tabIndex={0} role="region" aria-label={getWordCardText(lang).todayTitle} data-today-word-scroll>
+        <div className={styles.bodyContent} data-word-card-content>
+          <WordCardHeading lang={lang} kind="today" />
+          <p className={`${styles.verse} ${verse.length > 180 ? styles.longText : ""}`}>{verse}</p>
+          <p className={`${styles.reference} ${styles.todayReference}`}>{reference}</p>
+        </div>
       </div>
-      <WordCardCopyright translationId={translationId} />
+      {celebration}
     </div>
     {footer && <footer className={`${styles.footer} ${styles.modalFooter}`}>{footer}</footer>}
-    {celebration}
   </div>;
 }
 
@@ -169,18 +160,19 @@ export function RecallWordCardView({ lang, date, today, record, status, blocks, 
     ? (record.decision?.trim() ? "wordAndDecision" : "word") : "decision";
   return <div ref={cardRef} lang={lang} className={`${styles.card} ${styles.modalCard}`} tabIndex={-1}
     role="dialog" aria-modal="true" aria-labelledby="roots-recall-title" data-word-card="recall">
-    <WordCardBrandRow closeButton={<button type="button" className={styles.close} onClick={onClose} aria-label={text.close}><X size={20} /></button>} />
-    <div className={styles.recallScrollFrame}>
-      <div ref={scrollRef} className={styles.scrollBody} tabIndex={0} role="region" aria-label={text.scrollLabel} data-recall-scroll>
-        <div className={styles.bodyContent} data-word-card-content>
-          <WordCardHeading lang={lang} kind="recall" description={getRecallDescription(date, lang, today, descriptionContent)} />
-          <RecallWordCardContent lang={lang} record={record} blocks={blocks} sourceNote={sourceNote} sourceContext={sourceContext} photo={photo} />
+    <div className={styles.wordCardFrame}>
+      <WordCardBrandRow closeButton={<button type="button" className={styles.close} onClick={onClose} aria-label={text.close}><X size={20} /></button>} />
+      <div className={styles.recallScrollFrame}>
+        <div ref={scrollRef} className={styles.scrollBody} tabIndex={0} role="region" aria-label={text.scrollLabel} data-recall-scroll>
+          <div className={styles.bodyContent} data-word-card-content>
+            <WordCardHeading lang={lang} kind="recall" description={getRecallDescription(date, lang, today, descriptionContent)} />
+            <RecallWordCardContent lang={lang} record={record} blocks={blocks} sourceNote={sourceNote} sourceContext={sourceContext} photo={photo} />
+          </div>
         </div>
-        {hasWord && <WordCardCopyright translationId={Number(record.bible_version) || null} />}
+        {showScrollHint && <div className={styles.scrollHint} aria-hidden="true" data-recall-scroll-hint>
+          <ChevronDown size={18} strokeWidth={1.8} />
+        </div>}
       </div>
-      {showScrollHint && <div className={styles.scrollHint} aria-hidden="true" data-recall-scroll-hint>
-        <ChevronDown size={18} strokeWidth={1.8} />
-      </div>}
     </div>
     <footer className={styles.footer}>
       <button type="button" className={styles.action} onClick={onView}>

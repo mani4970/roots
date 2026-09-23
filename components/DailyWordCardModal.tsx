@@ -11,7 +11,6 @@ import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { getWordCardText } from "@/lib/wordCardText";
 import { readDailyWordRecord, resolveDailyWordContent, type DailyWordRecord, type DailyWordContent } from "@/lib/dailyWordCardRecord";
 import DailyWordCard from "./DailyWordCard";
-import { WordCardHeader } from "./WordCard";
 import styles from "./WordCards.module.css";
 
 type Props = { userId: string; date: string; lang: Lang; onClose: () => void;
@@ -85,20 +84,24 @@ export default function DailyWordCardModal({ userId, date, lang, onClose, onReco
   if (typeof document === "undefined") return null;
   return createPortal(<div ref={rootRef} className={styles.overlay} lang={lang} data-word-card-overlay>
     <button type="button" className={styles.backdrop} tabIndex={-1} aria-hidden="true" {...backdrop} />
-    {content ? <DailyWordCard lang={lang} {...content} variant="popup" cardRef={cardRef} onClose={onClose} /> :
-      <div ref={cardRef} lang={lang} className={`${styles.card} ${styles.modalCard}`} tabIndex={-1}
-        role="dialog" aria-modal="true" aria-labelledby="roots-today-word-title">
-        <WordCardHeader lang={lang} kind="today" closeButton={<button type="button" className={styles.close}
-          onClick={onClose} aria-label={text.close}><X size={20} /></button>} />
-        <div className={styles.scrollBody}>
-          <div className={styles.bodyContent}>
-            <div className={styles.state} role={failed ? "alert" : "status"}>
-              {!failed && <Loader2 size={24} className="spin" aria-hidden="true" />}
-              <p>{failed ? text.todayLoadError : text.todayLoading}</p>
-              {failed && <button type="button" className={styles.action} onClick={() => setRetryNonce(n => n + 1)}>{text.retry}</button>}
-            </div>
-          </div>
+    {content ? <DailyWordCard lang={lang} {...content} variant="popup" cardRef={cardRef} onClose={onClose} /> : !failed ?
+      <div ref={cardRef} lang={lang} className={`${styles.card} ${styles.loadingCard}`} tabIndex={-1}
+        role="dialog" aria-modal="true" aria-label={text.todayLoading} data-word-card-notice="loading">
+        <div className={styles.loadingOnly} role="status" aria-label={text.todayLoading}>
+          <Loader2 size={24} className="spin" aria-hidden="true" />
         </div>
+      </div> :
+      <div ref={cardRef} lang={lang} className={`${styles.card} ${styles.noticeCard}`} tabIndex={-1}
+        role="dialog" aria-modal="true" aria-label={text.todayLoadError} aria-describedby="roots-today-word-error">
+        <div className={styles.noticeCloseRow}>
+          <button type="button" className={styles.close} onClick={onClose} aria-label={text.close}><X size={20} /></button>
+        </div>
+        <div id="roots-today-word-error" className={styles.noticeBody} role="alert">
+          <p>{text.todayLoadError}</p>
+        </div>
+        <footer className={styles.noticeFooter}>
+          <button type="button" className={styles.action} onClick={() => setRetryNonce(n => n + 1)}>{text.retry}</button>
+        </footer>
       </div>}
   </div>, document.body);
 }

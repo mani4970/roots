@@ -59,7 +59,8 @@
    Only ready Scripture cards are framed; notices/loading shells stay simple.
    The matching PNG geometry is documented in drawWordCardFrame(). */
 .card[data-word-card] { border-color: transparent; }
-.card[data-word-card]::before {
+.wordCardFrame { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.card[data-word-card] .wordCardFrame::before {
   content: "";
   position: absolute;
   inset: 9px;
@@ -69,7 +70,7 @@
   pointer-events: none;
   z-index: 2;
 }
-:global([data-theme="dark"]) .card[data-word-card]::before { border-color: #72836f; }
+:global([data-theme="dark"]) .card[data-word-card] .wordCardFrame::before { border-color: #72836f; }
 :global([data-theme="dark"]) .card {
   --word-paper: #222c24;
   --word-ink: #f2f2e9;
@@ -118,8 +119,6 @@
 .decision + .decision { margin-top: 9px; }
 .decision::marker { color: var(--word-muted); font-variant-numeric: tabular-nums; }
 .encouragement { margin: 0; font-size: 13px; line-height: 1.7; color: var(--word-muted); text-align: center; overflow-wrap: anywhere; }
-.copyright { flex: 0 0 auto; margin: 18px 0 0; font-size: 9px; line-height: 1.45; color: var(--word-muted); overflow-wrap: anywhere; text-align: right; }
-.copyright a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .sourceNote { text-align: center; font-size: 11px; line-height: 1.6; color: var(--word-muted); margin: 12px 0 0; }
 .footer { flex: 0 0 auto; padding: 14px 18px 18px; }
 .action { width: 100%; min-width: 0; min-height: 46px; border: 1px solid var(--word-action, var(--sage-dark)); border-radius: 12px; background: var(--word-action, var(--sage-dark)); color: var(--word-on-action, #fff); display: flex; gap: 8px; align-items: center; justify-content: center; padding: 11px 12px; font: inherit; font-size: 13px; font-weight: 650; line-height: 1.4; cursor: pointer; text-align: center; }

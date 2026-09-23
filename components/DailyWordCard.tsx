@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Download, Loader2, Share2 } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
-import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { getLocalDateString } from "@/lib/date";
 import { getWordCardText } from "@/lib/wordCardText";
 import { createWordCardImage } from "@/lib/wordCardImage";
@@ -38,8 +37,7 @@ export default function DailyWordCard({ lang, verse, reference, translationId, v
     const missingBridge = Capacitor.isNativePlatform() && !hasNativeWordCardExport();
     setNeedsAppUpdate(missingBridge);
     if (missingBridge) return () => { cancelled = true; };
-    const copyright = translationId ? getBibleCopyrightInfo(translationId) : null;
-    createWordCardImage({ title: text.todayTitle, verse, reference, copyright: copyright?.notice ?? "", attributionUrl: copyright?.url })
+    createWordCardImage({ title: text.todayTitle, verse, reference })
       .then(blob => {
         if (cancelled) return;
         setPrepared({ key: contentKey, file: new File([blob], `Christian-Roots-${getLocalDateString()}-${lang}.png`, { type: "image/png" }) });
@@ -89,10 +87,10 @@ export default function DailyWordCard({ lang, verse, reference, translationId, v
       {imageFailed && <button type="button" className={styles.exportRetry} onClick={() => setRetryNonce(value => value + 1)}>{text.retry}</button>}
     </div>}
   </>;
-  if (variant === "popup") return <TodayWordCard lang={lang} verse={verse} reference={reference} translationId={translationId}
+  if (variant === "popup") return <TodayWordCard lang={lang} verse={verse} reference={reference}
     variant="popup" cardRef={cardRef} onClose={onClose} footer={actions} celebration={celebrate ? <WordCardBurst /> : undefined} />;
   return <div className={styles.todayWrap} lang={lang}>
-    <TodayWordCard lang={lang} verse={verse} reference={reference} translationId={translationId}
+    <TodayWordCard lang={lang} verse={verse} reference={reference}
       cardRef={cardRef} celebration={celebrate ? <WordCardBurst /> : undefined} />
     {actions}
   </div>;
