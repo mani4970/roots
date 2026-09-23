@@ -28,6 +28,7 @@ import QTConnectionNotice from "@/components/QTConnectionNotice";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
+import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -442,6 +443,8 @@ function PhotoReflectionContent() {
 
   const editId = searchParams.get("editId");
   const isEditMode = Boolean(editId);
+  const entryParam = searchParams.get("entry");
+  const entryOrigin = isQTEntryOrigin(entryParam) ? entryParam : null;
   const today = getLocalDateString();
   const requestedDate = searchParams.get("date") || today;
   const initialTargetDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : today;
@@ -635,7 +638,22 @@ function PhotoReflectionContent() {
   });
 
   function requestPhotoPageLeave() {
-    return leaveGuard.requestLeave(() => router.push(isEditMode && editId ? `/qt/record?id=${editId}` : "/qt"));
+    return leaveGuard.requestLeave(() => {
+      if (isEditMode && editId) {
+        router.push(`/qt/record?id=${editId}`);
+        return;
+      }
+      if (entryOrigin) {
+        if (entryOrigin === "qt") markReturningFromQTWriter();
+        if (window.history.length > 1) {
+          router.back();
+        } else {
+          router.replace(entryOrigin === "home" ? "/" : "/qt");
+        }
+        return;
+      }
+      router.replace("/qt");
+    });
   }
 
   function navigateAfterPhotoSave(href: string) {

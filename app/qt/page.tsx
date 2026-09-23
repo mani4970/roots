@@ -12,7 +12,7 @@ import {
 } from "@/lib/useLang";
 import { isLang, t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
-import { buildQTPhotoHref, buildQTWriteHref } from "@/lib/qtEntry";
+import { buildQTPhotoHref, buildQTWriteHref, consumeReturningFromQTWriter } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -159,6 +159,14 @@ export default function QTPage() {
   const [toast, setToast] = useState<string | null>(null);
   const activeQTModalRef = useRef<QTModalHistoryKind | null>(null);
   const hasQTModalHistoryEntryRef = useRef(false);
+  const suppressDraftPopupAfterWriterReturnRef = useRef<boolean | null>(null);
+
+  function shouldSuppressDraftPopupAfterWriterReturn() {
+    if (suppressDraftPopupAfterWriterReturnRef.current === null) {
+      suppressDraftPopupAfterWriterReturnRef.current = consumeReturningFromQTWriter();
+    }
+    return suppressDraftPopupAfterWriterReturnRef.current;
+  }
 
   useAndroidBackHandler(() => {
     if (!activeQTModalRef.current) return false;
@@ -311,7 +319,7 @@ export default function QTPage() {
       setTodayDone(completedExists);
       setHasDraft(draftExists);
       setDraftCheckPending(false);
-      if (draftExists) openQTModal("draft");
+      if (draftExists && !shouldSuppressDraftPopupAfterWriterReturn()) openQTModal("draft");
       const { data } = await supabase.from("qt_records").select("*")
         .eq("user_id", user.id).eq("is_draft", false)
         .order("date", { ascending: false });
@@ -375,6 +383,7 @@ export default function QTPage() {
       todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
       sundayContext: mode === "free" && isSundayToday,
+      entry: "qt",
     }));
   }
 
@@ -384,6 +393,7 @@ export default function QTPage() {
       todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
       sundayContext: isSundayToday,
+      entry: "qt",
     }));
   }
 
@@ -419,6 +429,7 @@ export default function QTPage() {
         date: targetDate,
         catchup: true,
         sundayContext: parseLocalDateString(targetDate).getDay() === 0,
+        entry: "qt",
       }));
       return;
     }
@@ -432,6 +443,7 @@ export default function QTPage() {
     if (mode === "free" && parseLocalDateString(targetDate).getDay() === 0) {
       params.set("sundayContext", "true");
     }
+    params.set("entry", "qt");
     navigateFromQTModal(`/qt/write?${params.toString()}`);
   }
 
@@ -459,7 +471,7 @@ export default function QTPage() {
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button onClick={() => navigateFromQTModal("/qt/write?resume=true")} className="btn-primary">{t("qt_draft_continue", lang)}</button>
+              <button onClick={() => navigateFromQTModal("/qt/write?resume=true&entry=qt")} className="btn-primary">{t("qt_draft_continue", lang)}</button>
               <button onClick={deleteDraftAndStart} className="btn-outline">{t("qt_draft_new", lang)}</button>
               <button onClick={closeQTModal} style={{ background: "none", border: "none", color: "var(--text-muted-readable)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
             </div>

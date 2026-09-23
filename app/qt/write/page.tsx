@@ -49,6 +49,7 @@ import CursorStableTextarea from "@/components/CursorStableTextarea";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
+import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
 import { compareKeyVerseIds, toggleKeyVerseText, type KeyVerseSource } from "@/lib/qtKeyVerseSelection";
 import {
   loadYesterdayFreePassageContinuation,
@@ -381,6 +382,8 @@ function QTWriteContent() {
   const isEditMode = Boolean(editId);
   const isResume = params.get("resume") === "true";
   const isCatchUp = params.get("catchup") === "true";
+  const entryParam = params.get("entry");
+  const entryOrigin = isQTEntryOrigin(entryParam) ? entryParam : null;
   // 오늘 스케줄 파라미터
   const schedBook = params.get("schedBook");
   const schedChapter = params.get("schedChapter");
@@ -646,8 +649,22 @@ function QTWriteContent() {
     lang,
   });
 
+  function navigateBackToWriterEntry() {
+    if (!isEditMode && entryOrigin) {
+      if (entryOrigin === "qt") markReturningFromQTWriter();
+      if (window.history.length > 1) {
+        router.back();
+      } else {
+        router.replace(entryOrigin === "home" ? "/" : "/qt");
+      }
+      return;
+    }
+    if (isEditMode) router.push("/qt");
+    else router.replace("/qt");
+  }
+
   function leaveWriter() {
-    requestLeave(() => router.push("/qt"));
+    requestLeave(navigateBackToWriterEntry);
   }
 
   useAndroidBackHandler(() => {

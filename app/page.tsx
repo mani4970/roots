@@ -1802,6 +1802,7 @@ export default function HomePage() {
       todaySchedule: homeQTState.todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
       sundayContext: mode === "free" && isSunday(),
+      entry: "home",
     }));
   }
 
@@ -1817,6 +1818,7 @@ export default function HomePage() {
       todaySchedule: homeQTState.todaySchedule,
       useTodaySchedule: passageSource === "scheduled",
       sundayContext: isSunday(),
+      entry: "home",
     }));
   }
 
@@ -1841,7 +1843,7 @@ export default function HomePage() {
   function continueHomeQTDraft() {
     if (deletingHomeQTDraftRef.current) return;
     setShowHomeQTDraftChoice(false);
-    router.push("/qt/write?resume=true");
+    router.push("/qt/write?resume=true&entry=home");
   }
 
   async function deleteHomeQTDraftAndStartNew() {
