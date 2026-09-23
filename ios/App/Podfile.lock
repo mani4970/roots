@@ -1,5 +1,5 @@
 PODS:
-  - Capacitor (8.4.2):
+  - Capacitor (8.5.2):
     - CapacitorCordova
   - CapacitorApp (8.1.1):
     - Capacitor
@@ -10,7 +10,7 @@ PODS:
     - IONCameraLib (~> 1.0.4)
   - CapacitorClipboard (8.0.1):
     - Capacitor
-  - CapacitorCordova (8.4.2)
+  - CapacitorCordova (8.5.2)
   - CapacitorHaptics (8.0.2):
     - Capacitor
   - CapacitorLocalNotifications (8.2.1):
@@ -65,12 +65,12 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/status-bar"
 
 SPEC CHECKSUMS:
-  Capacitor: 52f999235b8bd6a7d01694753f4f4d54d182e3a3
+  Capacitor: 89067779e14fb7ea56af07b4817f45d1f0c2a269
   CapacitorApp: 305bd13c44f6f9d164e2ee66a4faa956ed8c0e06
   CapacitorBrowser: 752e0208aa07c7aa63d1f7cde895a3e9519b2656
   CapacitorCamera: 1b9dde3aaffbd1f051486f4cee2b4cdd962662ae
   CapacitorClipboard: c75fdaa6e622111119f35e7914ecfc67b05efecb
-  CapacitorCordova: 345eacdc4c8282415446aea4acd8c77d82480bd4
+  CapacitorCordova: 5bec5648cbd09a176ce34ce5e7b6cdabb2c8a327
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
   CapacitorLocalNotifications: 908a69a3cf7ae345426de3223d4980befb0103c6
   CapacitorPushNotifications: 32a7f840815f319fd9ba1c1c9b0b914be9d95237

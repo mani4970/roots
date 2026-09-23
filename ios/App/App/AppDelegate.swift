@@ -19,6 +19,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    // UIScene owns the live window on iOS 27+. Roots still has app-level
+    // offline/retry helpers, so point those helpers at the single active scene.
+    func sceneWindowDidConnect(_ sceneWindow: UIWindow) {
+        window = sceneWindow
+        updateOfflineView()
+    }
+
     private func startNetworkMonitoring() {
         networkMonitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
@@ -301,6 +308,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+
+    func application(_ application: UIApplication,
+                     configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        config.delegateClass = SceneDelegate.self
+        return config
     }
 
 }
