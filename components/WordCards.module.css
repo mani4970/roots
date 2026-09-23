@@ -60,7 +60,12 @@
    The matching PNG geometry is documented in drawWordCardFrame(). */
 .card[data-word-card] { border-color: transparent; }
 .wordCardFrame { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.card[data-word-card] .wordCardFrame::before {
+/* Today's card keeps the new split layout: the frame encloses only the
+   shareable card, while save/share actions stay outside it. */
+.card[data-word-card="today"] .wordCardFrame::before,
+/* Recall keeps its approved original layout: one frame around the complete
+   modal, so the scroll hint and footer never collide with an inner frame. */
+.card[data-word-card="recall"]::before {
   content: "";
   position: absolute;
   inset: 9px;
@@ -70,7 +75,8 @@
   pointer-events: none;
   z-index: 2;
 }
-:global([data-theme="dark"]) .card[data-word-card] .wordCardFrame::before { border-color: #72836f; }
+:global([data-theme="dark"]) .card[data-word-card="today"] .wordCardFrame::before,
+:global([data-theme="dark"]) .card[data-word-card="recall"]::before { border-color: #72836f; }
 :global([data-theme="dark"]) .card {
   --word-paper: #222c24;
   --word-ink: #f2f2e9;

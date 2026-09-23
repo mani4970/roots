@@ -160,19 +160,17 @@ export function RecallWordCardView({ lang, date, today, record, status, blocks, 
     ? (record.decision?.trim() ? "wordAndDecision" : "word") : "decision";
   return <div ref={cardRef} lang={lang} className={`${styles.card} ${styles.modalCard}`} tabIndex={-1}
     role="dialog" aria-modal="true" aria-labelledby="roots-recall-title" data-word-card="recall">
-    <div className={styles.wordCardFrame}>
-      <WordCardBrandRow closeButton={<button type="button" className={styles.close} onClick={onClose} aria-label={text.close}><X size={20} /></button>} />
-      <div className={styles.recallScrollFrame}>
-        <div ref={scrollRef} className={styles.scrollBody} tabIndex={0} role="region" aria-label={text.scrollLabel} data-recall-scroll>
-          <div className={styles.bodyContent} data-word-card-content>
-            <WordCardHeading lang={lang} kind="recall" description={getRecallDescription(date, lang, today, descriptionContent)} />
-            <RecallWordCardContent lang={lang} record={record} blocks={blocks} sourceNote={sourceNote} sourceContext={sourceContext} photo={photo} />
-          </div>
+    <WordCardBrandRow closeButton={<button type="button" className={styles.close} onClick={onClose} aria-label={text.close}><X size={20} /></button>} />
+    <div className={styles.recallScrollFrame}>
+      <div ref={scrollRef} className={styles.scrollBody} tabIndex={0} role="region" aria-label={text.scrollLabel} data-recall-scroll>
+        <div className={styles.bodyContent} data-word-card-content>
+          <WordCardHeading lang={lang} kind="recall" description={getRecallDescription(date, lang, today, descriptionContent)} />
+          <RecallWordCardContent lang={lang} record={record} blocks={blocks} sourceNote={sourceNote} sourceContext={sourceContext} photo={photo} />
         </div>
-        {showScrollHint && <div className={styles.scrollHint} aria-hidden="true" data-recall-scroll-hint>
-          <ChevronDown size={18} strokeWidth={1.8} />
-        </div>}
       </div>
+      {showScrollHint && <div className={styles.scrollHint} aria-hidden="true" data-recall-scroll-hint>
+        <ChevronDown size={18} strokeWidth={1.8} />
+      </div>}
     </div>
     <footer className={styles.footer}>
       <button type="button" className={styles.action} onClick={onView}>
