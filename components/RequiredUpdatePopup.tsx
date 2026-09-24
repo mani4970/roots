@@ -10,12 +10,14 @@ import type { RequiredUpdatePlatform } from "@/lib/requiredUpdate";
 
 type RequiredUpdatePopupProps = {
   platform: RequiredUpdatePlatform;
+  mandatory: boolean;
   onUpdate: () => void;
+  onClose: () => void;
 };
 
-export default function RequiredUpdatePopup({ platform, onUpdate }: RequiredUpdatePopupProps) {
+export default function RequiredUpdatePopup({ platform, mandatory, onUpdate, onClose }: RequiredUpdatePopupProps) {
   const lang = useLang();
-  const copy = getRequiredUpdateText(lang);
+  const copy = getRequiredUpdateText(lang, mandatory);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -31,7 +33,7 @@ export default function RequiredUpdatePopup({ platform, onUpdate }: RequiredUpda
 
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void App.addListener("backButton", () => {
-        // This is an intentional one-time mandatory update campaign.
+        if (!mandatory) onClose();
       }).then(handle => {
         if (cancelled) {
           void handle.remove();
@@ -45,7 +47,7 @@ export default function RequiredUpdatePopup({ platform, onUpdate }: RequiredUpda
       cancelled = true;
       if (listener) void listener.remove();
     };
-  }, []);
+  }, [mandatory, onClose]);
 
   return (
     <div
@@ -129,6 +131,17 @@ export default function RequiredUpdatePopup({ platform, onUpdate }: RequiredUpda
         >
           {copy.updateNow}
         </button>
+
+        {!mandatory && copy.later && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-outline"
+            style={{ width: "100%", minHeight: 46, marginTop: 10, justifyContent: "center", fontSize: 13, fontWeight: 800 }}
+          >
+            {copy.later}
+          </button>
+        )}
       </div>
     </div>
   );

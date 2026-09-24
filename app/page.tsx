@@ -59,7 +59,7 @@ import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/com
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
-import { detectOneTimeUpdatePopupPlatform, openRequiredUpdateStore, type RequiredUpdatePlatform } from "@/lib/requiredUpdate";
+import { detectOneTimeUpdatePopup, markOptionalUpdateSeen, openRequiredUpdateStore, type NativeUpdatePrompt } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import {
   claimPendingChallengeRewards,
@@ -393,7 +393,7 @@ export default function HomePage() {
   }, [showHomePrayerCompose]);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
-  const [requiredUpdatePlatform, setRequiredUpdatePlatform] = useState<RequiredUpdatePlatform | null>(null);
+  const [requiredUpdatePrompt, setRequiredUpdatePrompt] = useState<NativeUpdatePrompt | null>(null);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
@@ -723,7 +723,7 @@ export default function HomePage() {
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
-  const rewardDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || !!requiredUpdatePlatform
+  const rewardDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || !!requiredUpdatePrompt
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || showLastWeekWordCard || showTodayWordCard;
@@ -795,7 +795,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!profile?.id) {
-      setRequiredUpdatePlatform(null);
+      setRequiredUpdatePrompt(null);
       return;
     }
 
@@ -803,8 +803,8 @@ export default function HomePage() {
     let appStateListener: { remove: () => Promise<void> } | null = null;
 
     const refreshRequiredUpdate = async () => {
-      const platform = await detectOneTimeUpdatePopupPlatform();
-      if (!cancelled) setRequiredUpdatePlatform(platform);
+      const prompt = await detectOneTimeUpdatePopup(profile.id);
+      if (!cancelled) setRequiredUpdatePrompt(prompt);
     };
 
     void refreshRequiredUpdate();
@@ -1394,9 +1394,19 @@ export default function HomePage() {
   }
 
   function openRequiredUpdate() {
-    if (!requiredUpdatePlatform) return;
+    if (!requiredUpdatePrompt) return;
     acknowledgeObservedPopup(profile?.id, "required_update", "update");
-    openRequiredUpdateStore(requiredUpdatePlatform);
+    markOptionalUpdateSeen(profile?.id, requiredUpdatePrompt);
+    const platform = requiredUpdatePrompt.platform;
+    if (!requiredUpdatePrompt.mandatory) setRequiredUpdatePrompt(null);
+    openRequiredUpdateStore(platform);
+  }
+
+  function closeOptionalUpdate() {
+    if (!requiredUpdatePrompt || requiredUpdatePrompt.mandatory) return;
+    acknowledgeObservedPopup(profile?.id, "required_update", "close");
+    markOptionalUpdateSeen(profile?.id, requiredUpdatePrompt);
+    setRequiredUpdatePrompt(null);
   }
 
   function closeOnboarding() {
@@ -1979,7 +1989,7 @@ export default function HomePage() {
     loading ||
     showFirstLangPicker ||
     showOnboarding ||
-    !!requiredUpdatePlatform ||
+    !!requiredUpdatePrompt ||
     !!badgePopup ||
     celebration.show ||
     gardenPopup.show ||
@@ -2013,7 +2023,7 @@ export default function HomePage() {
     loading ||
     showFirstLangPicker ||
     showOnboarding ||
-    !!requiredUpdatePlatform ||
+    !!requiredUpdatePrompt ||
     showWelcomeBack ||
     !!badgePopup ||
     celebration.show ||
@@ -2046,7 +2056,11 @@ export default function HomePage() {
       : challengeRewardQueue[0] ?? null;
 
   useAndroidBackHandler(() => {
-    if (requiredUpdatePlatform || showFirstLangPicker || showRootsManPopup) {
+    if (requiredUpdatePrompt) {
+      if (!requiredUpdatePrompt.mandatory) closeOptionalUpdate();
+      return true;
+    }
+    if (showFirstLangPicker || showRootsManPopup) {
       return true;
     }
     if (visibleChallengeReward) {
@@ -2458,11 +2472,13 @@ export default function HomePage() {
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="required_update" queued={!!requiredUpdatePlatform}>
-      {requiredUpdatePlatform && (
+      <ObservationPopup userId={profile?.id} kind="required_update" queued={!!requiredUpdatePrompt}>
+      {requiredUpdatePrompt && (
         <RequiredUpdatePopup
-          platform={requiredUpdatePlatform}
+          platform={requiredUpdatePrompt.platform}
+          mandatory={requiredUpdatePrompt.mandatory}
           onUpdate={openRequiredUpdate}
+          onClose={closeOptionalUpdate}
         />
       )}
       </ObservationPopup>
