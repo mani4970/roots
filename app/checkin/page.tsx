@@ -17,7 +17,7 @@ const EMOTION_GROUPS = [
   {
     catKey: "checkin_cat1" as TKey,
     color: "var(--daily-word-gold-surface)", border: "var(--daily-word-gold-border)", labelColor: "var(--daily-word-gold-text)",
-    items: ["grateful","joyful","peaceful","excited","full"],
+    items: ["grateful","joyful","peaceful","excited"],
   },
   {
     catKey: "checkin_cat2" as TKey,
@@ -27,7 +27,7 @@ const EMOTION_GROUPS = [
   {
     catKey: "checkin_cat3" as TKey,
     color: "var(--daily-word-blue-surface)", border: "var(--daily-word-blue-border)", labelColor: "var(--daily-word-blue-text)",
-    items: ["tired","exhausted","lonely","sad","anxious"],
+    items: ["tired","lonely","sad","anxious"],
   },
   {
     catKey: "checkin_cat4" as TKey,
