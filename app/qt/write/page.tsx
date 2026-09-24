@@ -3696,8 +3696,18 @@ function QTWriteContent() {
                   style={{
                     height: readingView === "compact" ? 320 : "auto",
                     overflowY: readingView === "compact" ? "auto" : "visible",
+                    overflowX: "hidden",
                     padding: "12px 14px",
-                    WebkitOverflowScrolling: "touch",
+                    position: "relative",
+                    zIndex: 0,
+                    background: "var(--qt-sage-subtle-surface)",
+                    // iOS/WKWebView can paint composited descendants outside a
+                    // nested momentum scroller. In compact mode, make this box a
+                    // real paint boundary so scrolled verse buttons/copyright never
+                    // bleed behind the expand control or the editors below.
+                    contain: readingView === "compact" ? "paint" : undefined,
+                    clipPath: readingView === "compact" ? "inset(0)" : undefined,
+                    overscrollBehavior: readingView === "compact" ? "contain" : undefined,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
@@ -3769,6 +3779,8 @@ function QTWriteContent() {
                     color: "var(--sage-dark)",
                     fontSize: 12,
                     fontWeight: 600,
+                    position: "relative",
+                    zIndex: 2,
                   }}
                 >
                   {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
