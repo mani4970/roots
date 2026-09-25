@@ -260,6 +260,7 @@ type PendingCompletion = {
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
+const QT_READING_COMPACT_MAX_HEIGHT = 320;
 const DEFAULT_BIBLE_TRANSLATION_ID = 92;
 
 function getSupportedBibleTranslationId(value: unknown): number | null {
@@ -462,6 +463,8 @@ function QTWriteContent() {
   const draftRestoredRef = useRef(false);
   const scheduleLoadStartedRef = useRef(false);
   const [readingView, setReadingView] = useState<"compact" | "expanded">("expanded");
+  const readingPassageRef = useRef<HTMLDivElement | null>(null);
+  const [readingCanCollapse, setReadingCanCollapse] = useState(false);
   const [passageOpen, setPassageOpen] = useState(false);
 
   function resetPassageCoordinates(nextBook: string) {
@@ -726,6 +729,33 @@ function QTWriteContent() {
       setActivePassageIndex(Math.max(0, passages.length - 1));
     }
   }, [activePassageIndex, passages.length]);
+
+  useEffect(() => {
+    const el = readingPassageRef.current;
+    if (!el) {
+      setReadingCanCollapse(false);
+      return;
+    }
+
+    const updateReadingOverflow = () => {
+      const canCollapse = el.scrollHeight > QT_READING_COMPACT_MAX_HEIGHT + 1;
+      setReadingCanCollapse(canCollapse);
+      if (!canCollapse) setReadingView("expanded");
+    };
+
+    const frame = window.requestAnimationFrame(updateReadingOverflow);
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateReadingOverflow)
+      : null;
+    observer?.observe(el);
+    window.addEventListener("resize", updateReadingOverflow);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", updateReadingOverflow);
+    };
+  }, [activePassageIndex, bibleTextFontSize, currentLang, cur, passageVerses, passages, selectedTranslation, selectedVerseNums]);
 
   function buildSundayBibleRef(title: string, refs: string[]) {
     const cleanTitle = title.trim();
@@ -3688,14 +3718,15 @@ function QTWriteContent() {
             return (
               <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, border: "1px solid var(--qt-sage-border-soft)", overflow: "hidden" }}>
                 <div
+                  ref={readingPassageRef}
                   id="qt-six-reading-passage"
                   role="region"
                   aria-label={translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
                   tabIndex={0}
                   onClickCapture={handleReadingPassageClickCapture}
                   style={{
-                    height: readingView === "compact" ? 320 : "auto",
-                    overflowY: readingView === "compact" ? "auto" : "visible",
+                    maxHeight: readingView === "compact" && readingCanCollapse ? QT_READING_COMPACT_MAX_HEIGHT : undefined,
+                    overflowY: readingView === "compact" && readingCanCollapse ? "auto" : "visible",
                     overflowX: "hidden",
                     padding: "12px 14px",
                     position: "relative",
@@ -3705,9 +3736,9 @@ function QTWriteContent() {
                     // nested momentum scroller. In compact mode, make this box a
                     // real paint boundary so scrolled verse buttons/copyright never
                     // bleed behind the expand control or the editors below.
-                    contain: readingView === "compact" ? "paint" : undefined,
-                    clipPath: readingView === "compact" ? "inset(0)" : undefined,
-                    overscrollBehavior: readingView === "compact" ? "contain" : undefined,
+                    contain: readingView === "compact" && readingCanCollapse ? "paint" : undefined,
+                    clipPath: readingView === "compact" && readingCanCollapse ? "inset(0)" : undefined,
+                    overscrollBehavior: readingView === "compact" && readingCanCollapse ? "contain" : undefined,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
@@ -3761,31 +3792,33 @@ function QTWriteContent() {
                   )}
                   <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
                 </div>
-                <button
-                  type="button"
-                  aria-controls="qt-six-reading-passage"
-                  aria-expanded={readingView === "expanded"}
-                  onClick={() => setReadingView(view => view === "expanded" ? "compact" : "expanded")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 5,
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: 0,
-                    borderTop: "1px solid var(--qt-sage-border-soft)",
-                    background: "var(--qt-sage-subtle-surface)",
-                    color: "var(--sage-dark)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    position: "relative",
-                    zIndex: 2,
-                  }}
-                >
-                  {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-                  {trQT(readingView === "expanded" ? "접어서 보기" : "전체 보기", lang)}
-                </button>
+                {readingCanCollapse && (
+                  <button
+                    type="button"
+                    aria-controls="qt-six-reading-passage"
+                    aria-expanded={readingView === "expanded"}
+                    onClick={() => setReadingView(view => view === "expanded" ? "compact" : "expanded")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: 0,
+                      borderTop: "1px solid var(--qt-sage-border-soft)",
+                      background: "var(--qt-sage-subtle-surface)",
+                      color: "var(--sage-dark)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      position: "relative",
+                      zIndex: 2,
+                    }}
+                  >
+                    {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                    {trQT(readingView === "expanded" ? "접어서 보기" : "전체 보기", lang)}
+                  </button>
+                )}
               </div>
             );
           })()}
