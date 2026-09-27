@@ -5,6 +5,7 @@ import RewardMapSpritePlayer, { type RewardMapSpriteSheet } from "./RewardMapSpr
 import RewardMapWalkActor from "./RewardMapWalkActor";
 import NehemiahStoneCarryActor from "./NehemiahStoneCarryActor";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getRewardMapSequenceImageSources, prepareRewardMapImages } from "@/lib/rewardMapImageReady";
 import type { NehemiahWallActionKind } from "@/lib/nehemiahWall";
 
 type SpriteSheet = RewardMapSpriteSheet & {
@@ -343,6 +344,7 @@ export default function NehemiahWallAction({
   const [phase, setPhase] = useState<Phase | null>(null);
   const [positionX, setPositionX] = useState(ENTER_FROM);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const preparedImagesRef = useRef<HTMLImageElement[]>([]);
 
   function clearAnimation() {
     timersRef.current.forEach(timer => clearTimeout(timer));
@@ -361,48 +363,64 @@ export default function NehemiahWallAction({
 
     if (!trigger) return () => clearAnimation();
 
-    if (config.mode === "walkThrough") {
-      const duration = config.walkThroughMs ?? WALK_THROUGH_MS;
+    const controller = new AbortController();
+    const sources = getRewardMapSequenceImageSources(normalizedAvatarType, config.enterSprite, config.actionSprite, config.exitSprite);
+    // Preserve the approved stone-carry, walking and sprite renderers. Prepare
+    // their exact images first; no frame order, position or duration changes.
+    void prepareRewardMapImages(sources, controller.signal).then(images => {
+      if (controller.signal.aborted) return;
+      preparedImagesRef.current = images;
+      if (config.mode === "walkThrough") {
+        const duration = config.walkThroughMs ?? WALK_THROUGH_MS;
+        setPhase("enter");
+        schedule(() => setPositionX(config.exitTo ?? EXIT_LEFT), 60);
+        schedule(() => {
+          clearAnimation();
+          preparedImagesRef.current = [];
+          setPhase(null);
+        }, duration + 140);
+        return;
+      }
+
+      const actionSprite = config.actionSprite;
+      const exitSprite = config.exitSprite;
+      if (!actionSprite || !exitSprite) return;
+
+      const enterMs = config.enterMs ?? ENTER_MS;
+      const exitMs = config.exitMs ?? EXIT_MS;
+      const actionLoops = Math.max(1, config.actionLoops ?? 1);
+      const actionLoop = config.actionLoop ?? actionLoops > 1;
+      const actionMs = actionSprite.frames * actionSprite.intervalMs * actionLoops + (config.actionHoldMs ?? 0);
+
       setPhase("enter");
-      schedule(() => setPositionX(config.exitTo ?? EXIT_LEFT), 60);
+      schedule(() => setPositionX(ACTION_LEFT), 60);
+
+      schedule(() => {
+        setPhase("action");
+        setPositionX(ACTION_LEFT);
+      }, enterMs);
+
+      schedule(() => {
+        setPhase("exit");
+        setPositionX(ACTION_LEFT);
+        schedule(() => setPositionX(config.exitTo ?? EXIT_RIGHT), 60);
+      }, enterMs + actionMs);
+
       schedule(() => {
         clearAnimation();
+        preparedImagesRef.current = [];
         setPhase(null);
-      }, duration + 140);
-      return () => clearAnimation();
-    }
+        setPositionX(ENTER_FROM);
+      }, enterMs + actionMs + exitMs + 160);
+    }).catch(() => {
+      controller.abort();
+    });
 
-    const actionSprite = config.actionSprite;
-    const exitSprite = config.exitSprite;
-    if (!actionSprite || !exitSprite) return () => clearAnimation();
-
-    const enterMs = config.enterMs ?? ENTER_MS;
-    const exitMs = config.exitMs ?? EXIT_MS;
-    const actionLoops = Math.max(1, config.actionLoops ?? 1);
-    const actionLoop = config.actionLoop ?? actionLoops > 1;
-    const actionMs = actionSprite.frames * actionSprite.intervalMs * actionLoops + (config.actionHoldMs ?? 0);
-
-    setPhase("enter");
-    schedule(() => setPositionX(ACTION_LEFT), 60);
-
-    schedule(() => {
-      setPhase("action");
-      setPositionX(ACTION_LEFT);
-    }, enterMs);
-
-    schedule(() => {
-      setPhase("exit");
-      setPositionX(ACTION_LEFT);
-      schedule(() => setPositionX(config.exitTo ?? EXIT_RIGHT), 60);
-    }, enterMs + actionMs);
-
-    schedule(() => {
+    return () => {
+      controller.abort();
+      preparedImagesRef.current = [];
       clearAnimation();
-      setPhase(null);
-      setPositionX(ENTER_FROM);
-    }, enterMs + actionMs + exitMs + 160);
-
-    return () => clearAnimation();
+    };
   }, [trigger, action, normalizedAvatarType, replayToken]);
 
   if (!phase) {

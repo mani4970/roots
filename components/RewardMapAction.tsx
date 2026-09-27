@@ -7,6 +7,7 @@ import NehemiahWallAction from "./NehemiahWallAction";
 import type { RewardMapActionKind } from "@/lib/rewardMaps";
 import type { NehemiahWallActionKind } from "@/lib/nehemiahWall";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { getRewardMapSequenceImageSources, prepareRewardMapImages } from "@/lib/rewardMapImageReady";
 
 interface RewardMapActionProps {
   trigger: boolean;
@@ -243,6 +244,7 @@ function ArkSpriteAction({
   const [positionX, setPositionX] = useState(config.enterFrom);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasRunRef = useRef(false);
+  const preparedImagesRef = useRef<HTMLImageElement[]>([]);
 
   function clearAnimationTimers() {
     timersRef.current.forEach((timer) => clearTimeout(timer));
@@ -267,37 +269,53 @@ function ArkSpriteAction({
     hasRunRef.current = true;
     clearAnimationTimers();
 
-    const actionMs = config.actionPauseMs ?? config.actionSprite.frames * config.actionLoops * config.actionSprite.intervalMs;
+    const controller = new AbortController();
+    setPhase(null);
+    const sources = getRewardMapSequenceImageSources(avatarType, config.enterSprite, config.actionSprite, config.exitSprite);
+    // Preload + decode the whole sequence BEFORE starting the unchanged clocks.
+    // In particular, hammering must not run while its picture is still loading.
+    void prepareRewardMapImages(sources, controller.signal).then(images => {
+      if (controller.signal.aborted) return;
+      preparedImagesRef.current = images;
+      const actionMs = config.actionPauseMs ?? config.actionSprite.frames * config.actionLoops * config.actionSprite.intervalMs;
 
-    setPhase("enter");
-    setPositionX(config.enterFrom);
-    schedule(() => setPositionX(config.actionLeft), 40);
-
-    schedule(() => {
-      setPhase("action");
-      setPositionX(config.actionLeft);
-    }, config.enterMs);
-
-    schedule(() => {
-      setPhase("exit");
-      setPositionX(config.actionLeft);
-      schedule(() => setPositionX(config.exitTo), 40);
-    }, config.enterMs + actionMs);
-
-    schedule(() => {
-      clearAnimationTimers();
-      setPhase(null);
+      setPhase("enter");
       setPositionX(config.enterFrom);
+      schedule(() => setPositionX(config.actionLeft), 40);
+
+      schedule(() => {
+        setPhase("action");
+        setPositionX(config.actionLeft);
+      }, config.enterMs);
+
+      schedule(() => {
+        setPhase("exit");
+        setPositionX(config.actionLeft);
+        schedule(() => setPositionX(config.exitTo), 40);
+      }, config.enterMs + actionMs);
+
+      schedule(() => {
+        clearAnimationTimers();
+        preparedImagesRef.current = [];
+        setPhase(null);
+        setPositionX(config.enterFrom);
+        hasRunRef.current = false;
+      }, config.enterMs + actionMs + config.exitMs + 120);
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      controller.abort();
       hasRunRef.current = false;
-    }, config.enterMs + actionMs + config.exitMs + 120);
+    });
 
     return () => {
+      controller.abort();
+      preparedImagesRef.current = [];
       clearAnimationTimers();
       // React Strict Mode can run effect cleanup once before re-running the effect.
       // Reset this guard so replayed ark animations can start again cleanly.
       hasRunRef.current = false;
     };
-  }, [trigger, config]);
+  }, [trigger, config, avatarType]);
 
   if (!phase) return null;
 

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { prepareRewardMapImages } from "@/lib/rewardMapImageReady";
 
 // The preview/production watering animation renders individual transparent frame images.
 // Walk frames are normalized to a fixed foot baseline and center point, so the wrapper
@@ -77,13 +78,7 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  useEffect(() => {
-    // Preload individual frames so walking does not pause the first time a frame is shown.
-    getAvatarFrameSources(normalizedAvatarType).forEach(src => {
-      const image = new Image();
-      image.src = src;
-    });
-  }, [normalizedAvatarType]);
+  const preparedImagesRef = useRef<HTMLImageElement[]>([]);
 
   useEffect(() => {
     clearTimers();
@@ -97,11 +92,25 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
       };
     }
 
-    // React Strict Mode mounts, cleans up, and mounts again in development.
-    // Do not guard this with a hasRun ref, or the first cleanup can cancel the only timer.
-    scheduleTimeout(() => startAnimation(), startDelayMs);
+    const controller = new AbortController();
+    const requestedAt = performance.now();
+    setPhase("idle");
+    // Keep the original delay and all watering/walking timing. Only postpone
+    // entry if one of this avatar's frames is not ready yet.
+    void prepareRewardMapImages(getAvatarFrameSources(normalizedAvatarType), controller.signal)
+      .then(images => {
+        if (controller.signal.aborted) return;
+        preparedImagesRef.current = images;
+        scheduleTimeout(() => startAnimation(), Math.max(0, startDelayMs - (performance.now() - requestedAt)));
+      })
+      .catch(() => {
+        // An unavailable picture skips only this visual run, never QT/rewards.
+        controller.abort();
+      });
 
     return () => {
+      controller.abort();
+      preparedImagesRef.current = [];
       clearTimers();
       clearInv();
     };
@@ -191,6 +200,7 @@ export default function RootsMan({ trigger, avatarType, startDelayMs = 1200 }: R
       setFrame(EXIT_FRAMES[wf]);
       if (x >= EXIT_END_X) {
         clearInv();
+        preparedImagesRef.current = [];
         setPhase("done");
       }
     }, WALK_INTERVAL);
