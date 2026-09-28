@@ -41,9 +41,11 @@ export function withQtDraftTimeout<T>(
   promise: PromiseLike<T>,
   ms: number,
   label: string,
+  onTimeout?: () => void,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => {
+      try { onTimeout?.(); } catch { /* Keep the original timeout result. */ }
       reject(new Error(`[qt draft timeout] ${label} (${ms}ms)`));
     }, ms);
 
@@ -143,6 +145,7 @@ export async function saveQtDraftAtomically(
   supabase: SupabaseClient,
   payload: QtDraftServerPayload,
 ): Promise<QtDraftSaveResult> {
+  const controller = new AbortController();
   const { data, error } = await withQtDraftTimeout(
     supabase.rpc("save_own_qt_draft", {
       p_date: payload.date,
@@ -158,9 +161,10 @@ export async function saveQtDraftAtomically(
       p_application: payload.application,
       p_decision: payload.decision,
       p_closing_prayer: payload.closingPrayer,
-    }),
+    }).abortSignal(controller.signal),
     10_000,
     "save_own_qt_draft",
+    () => controller.abort(),
   );
 
   if (!error) return normalizeResult(data);

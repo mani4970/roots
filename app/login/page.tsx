@@ -1,5 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { authErrorNotice } from "@/lib/authErrorCopy";
+import { startAuthObservation, observeAuthRequest, observeOAuthRequest } from "@/lib/authObservation";
+import type { ObservationFlow } from "@/lib/appObservation";
+import ObservedAuthMessage from "@/components/ObservedAuthMessage";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
@@ -42,6 +46,17 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<AuthOAuthProvider | null>(null);
   const [error, setError] = useState("");
+  const passwordRequestBusy = useRef(false);
+  const authFlows = useRef<Record<string, ObservationFlow | null>>({});
+  const noticeFlow = useRef<ObservationFlow | null>(null);
+  const noticeKey = useRef("login_error");
+  function startObservation(action: "login" | "signup" | "password_reset" | "oauth", key: string) {
+    const flow = startAuthObservation(action, authFlows.current[action]);
+    authFlows.current[action] = flow;
+    noticeFlow.current = flow;
+    noticeKey.current = key;
+    return flow;
+  }
   const [resetMessage, setResetMessage] = useState("");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showBrowserGuide, setShowBrowserGuide] = useState(false);
@@ -64,11 +79,14 @@ export default function LoginPage() {
   }, []);
 
   async function handleLogin() {
-    if (!email || !password) return;
+    if (!email || !password || passwordRequestBusy.current || resetLoading || oauthLoading !== null) return;
+    const observation = startObservation("login", "login_error");
+    passwordRequestBusy.current = true;
     setLoading(true); setError(""); setResetMessage("");
+    try {
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(t("login_error", lang)); setLoading(false); return; }
+    const { error } = await observeAuthRequest(observation, () => supabase.auth.signInWithPassword({ email, password }));
+    if (error) { const notice = authErrorNotice(error, lang); noticeKey.current = notice.key; setError(notice.text); return; }
     await setPreferredLang(lang);
     if (
       document.documentElement.dataset.nativePlatform === "ios" &&
@@ -79,6 +97,14 @@ export default function LoginPage() {
       if (focused instanceof HTMLElement) focused.blur();
     }
     router.push(getSafeRedirectFromLocation()); router.refresh();
+    } catch (failure) {
+      const notice = authErrorNotice(failure, lang);
+      noticeKey.current = notice.key;
+      setError(notice.text);
+    } finally {
+      passwordRequestBusy.current = false;
+      setLoading(false);
+    }
   }
 
   async function handleOAuth(provider: AuthOAuthProvider) {
@@ -87,26 +113,31 @@ export default function LoginPage() {
       setLinkCopied(false);
       return;
     }
+    const observation = startObservation("oauth", "login_error");
     setOauthLoading(provider);
     setError("");
     setResetMessage("");
     const supabase = createClient();
     saveLangLocally(lang);
     try {
-      await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
+      await observeOAuthRequest(observation, () => signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation()));
     } catch (error) {
       console.error(`${provider} login failed`, error);
-      setError(t("login_error", lang));
+      const notice = authErrorNotice(error, lang);
+      noticeKey.current = notice.key;
+      setError(notice.text);
       setOauthLoading(null);
     }
   }
 
   async function handlePasswordReset() {
+    const observation = startObservation("password_reset", "login_reset_fail");
     const resetEmail = email.trim();
     setError("");
     setResetMessage("");
 
     if (!resetEmail) {
+      noticeKey.current = "login_reset_email_required";
       setError(t("login_reset_email_required", lang));
       return;
     }
@@ -117,12 +148,15 @@ export default function LoginPage() {
       const redirectTo = isCapacitorApp()
         ? `roots://auth/callback?next=/reset-password&lang=${encodeURIComponent(lang)}`
         : `${ROOTS_WEB_ORIGIN}/reset-password?lang=${encodeURIComponent(lang)}`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, { redirectTo });
+      const { error: resetError } = await observeAuthRequest(observation, () => supabase.auth.resetPasswordForEmail(resetEmail, { redirectTo }));
       if (resetError) throw resetError;
+      noticeKey.current = "login_reset_sent";
       setResetMessage(t("login_reset_sent", lang));
     } catch (resetError) {
       console.error("password reset request failed", resetError);
-      setError(t("login_reset_fail", lang));
+      const notice = authErrorNotice(resetError, lang);
+      noticeKey.current = notice.key;
+      setError(notice.text);
     } finally {
       setResetLoading(false);
     }
@@ -226,8 +260,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {error && <p role="alert" style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</p>}
-        {resetMessage && <p role="status" aria-live="polite" style={{ color: "var(--auth-success-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{resetMessage}</p>}
+        {error && <ObservedAuthMessage flow={noticeFlow.current} messageKey={noticeKey.current} role="alert" style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</ObservedAuthMessage>}
+        {resetMessage && <ObservedAuthMessage flow={noticeFlow.current} messageKey={noticeKey.current} role="status" aria-live="polite" style={{ color: "var(--auth-success-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{resetMessage}</ObservedAuthMessage>}
 
         <button onClick={handleLogin} disabled={loading || resetLoading || !email || !password} className="btn-primary">
           {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}

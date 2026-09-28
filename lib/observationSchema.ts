@@ -5,9 +5,10 @@ export const OBSERVATION_CAMPAIGN = "roots-observation-20260916";
 export const OBSERVATION_MAX_BATCH = 30;
 export const OBSERVATION_MAX_BYTES = 32 * 1024;
 
-export const OBSERVATION_SCOPES = ["qt_write", "qt_photo", "prayer", "home", "home_popup", "app"] as const;
+export const OBSERVATION_SCOPES = ["qt_write", "qt_photo", "prayer", "home", "home_popup", "app", "auth"] as const;
 export type ObservationScope = (typeof OBSERVATION_SCOPES)[number];
 export const OBSERVATION_EVENTS = [
+  "auth_requested", "auth_succeeded", "auth_failed", "auth_redirect_started", "notice_rendered", "app_heartbeat",
   "flow_started", "client_error", "app_ready", "app_backgrounded", "app_foregrounded", "telemetry_dropped",
   "draft_requested", "draft_saved", "draft_error", "draft_skipped", "draft_local_only",
   "complete_clicked", "save_requested", "save_error", "save_ok", "save_skipped", "body_saved",
@@ -40,6 +41,10 @@ export function isObservationUuid(value: unknown): value is string {
 }
 
 const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
+  browser_name: new Set(["chrome", "safari", "firefox", "edge", "unknown"]),
+  auth_action: new Set(["login", "signup", "password_reset", "oauth"]),
+  notice_key: new Set(["login_error", "signup_error", "signup_pw_error", "login_reset_email_required", "login_reset_fail", "login_reset_sent", "auth_credentials", "auth_duplicate", "auth_email_pending", "auth_rate", "auth_network", "auth_unavailable", "auth_password", "auth_generic"]),
+  release: new Set(["local", "unknown"]),
   error_name: new Set(["Error", "TypeError", "ReferenceError", "SyntaxError", "RangeError", "URIError", "EvalError", "DOMException", "AbortError", "TimeoutError", "NetworkError", "SecurityError", "QuotaExceededError", "NotAllowedError", "InvalidStateError", "ChunkLoadError", "AuthApiError", "AuthRetryableFetchError", "AuthSessionMissingError", "NavigatorLockAcquireTimeoutError", "ProcessLockAcquireTimeoutError", "QTPhotoRecordError", "QTPhotoStorageError", "QTPhotoPreparationError", "unknown"]),
   cause_name: new Set(["Error", "TypeError", "ReferenceError", "SyntaxError", "RangeError", "URIError", "EvalError", "DOMException", "AbortError", "TimeoutError", "NetworkError", "SecurityError", "QuotaExceededError", "NotAllowedError", "InvalidStateError", "ChunkLoadError", "AuthApiError", "AuthRetryableFetchError", "AuthSessionMissingError", "NavigatorLockAcquireTimeoutError", "ProcessLockAcquireTimeoutError", "QTPhotoRecordError", "QTPhotoStorageError", "QTPhotoPreparationError", "unknown"]),
   error_kind: new Set(["unknown", "draft_timeout", "photo_record_timeout", "photo_stage_timeout", "photo_storage_timeout", "request_timeout", "request_aborted", "network_fetch", "auth_lock", "auth_session", "auth_refresh", "resize_observer", "script_redacted", "chunk_load", "js_reference", "js_type", "js_syntax", "json_parse", "storage_quota", "database", "http_error"]),
@@ -53,7 +58,7 @@ const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
   reward_kind: new Set(["progress_badge", "garden_badge", "garden_stage", "map_start", "map_complete", "character_reward", "avatar_choice", "celebration", "monthly_badge", "challenge_reward", "welcome_back", "onboarding", "language_picker", "required_update", "spanish_announcement", "companion_announcement", "prayer_compose", "prayer_cards", "prayer_share", "qt_choice", "qt_draft_choice", "chapter", "notification_settings"]),
   action: new Set(["close", "confirm", "profile", "invite", "manage", "update", "select", "back"]),
   measurement: new Set(["dom_layout"]),
-  outcome: new Set(["eligible", "ineligible", "already_seen", "empty", "error"]),
+  outcome: new Set(["eligible", "ineligible", "already_seen", "empty", "error", "authenticated", "accepted", "redirect_started", "dom_visible"]),
 };
 const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present"]);
 const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days"]);
@@ -63,7 +68,7 @@ export function sanitizeObservationScript(input: unknown): string | null {
   if (typeof input !== "string" || input.length > 100) return null;
   return /^(?:[0-9]+|[a-f0-9]{8}|main-app|framework|webpack|polyfills|main|page|layout|error|global-error|not-found|_app|_error)[.-][a-f0-9]{8,32}\.js$/.test(input) ? input : null;
 }
-const FIXED_ERROR_CODES = new Set(["unknown", "network", "network_or_type", "timeout", "aborted", "offline", "auth", "storage", "unexpected", "UNKNOWN", "NETWORK", "TIMEOUT", "ABORTED", "OFFLINE", "AUTH", "STORAGE", "UNEXPECTED", "AbortError", "TypeError", "NetworkError", "TimeoutError"]);
+const FIXED_ERROR_CODES = new Set(["invalid_credentials", "user_already_exists", "email_exists", "email_not_confirmed", "over_request_rate_limit", "over_email_send_rate_limit", "weak_password", "validation_failed", "email_address_invalid", "refresh_token_not_found", "refresh_token_already_used", "user_not_found", "session_not_found", "bad_jwt", "unexpected_failure", "unknown", "network", "network_or_type", "timeout", "aborted", "offline", "auth", "storage", "unexpected", "UNKNOWN", "NETWORK", "TIMEOUT", "ABORTED", "OFFLINE", "AUTH", "STORAGE", "UNEXPECTED", "AbortError", "TypeError", "NetworkError", "TimeoutError"]);
 export function sanitizeObservationErrorCode(input: unknown): string | null {
   if (typeof input !== "string") return null;
   // Technical status codes only; never accept a general message/string slug.
@@ -74,7 +79,15 @@ export function sanitizeObservationDetails(input: unknown): ObservationDetails {
   const clean: ObservationDetails = {};
   for (const [key, value] of Object.entries(input)) {
     const allowedStrings = Object.prototype.hasOwnProperty.call(STRING_DETAILS, key) ? STRING_DETAILS[key] : undefined;
-    if (key === "error_code") {
+    if (key === "native_version" && typeof value === "string" && /^\d{1,5}(?:\.\d{1,5}){1,3}$/.test(value)) {
+      clean[key] = value;
+    } else if (key === "native_build" && typeof value === "string" && /^\d{1,12}$/.test(value)) {
+      clean[key] = value;
+    } else if (key === "browser_major" && typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 999) {
+      clean[key] = value;
+    } else if (key === "release" && typeof value === "string" && /^[a-f0-9]{7,40}$/.test(value)) {
+      clean[key] = value;
+    } else if (key === "error_code") {
       const code = sanitizeObservationErrorCode(value);
       if (code) clean[key] = code;
     } else if (key === "error_script" || key === "caller_script") {

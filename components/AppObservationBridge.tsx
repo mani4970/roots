@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { createClient } from "@/lib/supabase";
-import { flushObservations, observationVisibilityChanged, reportObservationClientError, setObservationUser } from "@/lib/appObservation";
+import { flushObservations, observationHeartbeat, setObservationNativeVersion, observationVisibilityChanged, reportObservationClientError, setObservationUser } from "@/lib/appObservation";
 
 export default function AppObservationBridge() {
   useEffect(() => {
@@ -16,6 +18,9 @@ export default function AppObservationBridge() {
     const onOnline = () => { void flushObservations(); };
     const onPageHide = () => { void flushObservations(true); };
     try {
+      if (Capacitor.isNativePlatform()) {
+        void App.getInfo().then(info => { if (!disposed) setObservationNativeVersion(info.version, info.build); }).catch(() => {});
+      }
       const supabase = createClient();
       const initialVersion = authVersion;
       void supabase.auth.getSession().then(({ data }) => {
@@ -32,7 +37,9 @@ export default function AppObservationBridge() {
       window.addEventListener("pagehide", onPageHide);
       document.addEventListener("visibilitychange", observationVisibilityChanged);
     } catch { /* Failure to initialize monitoring must not break the app. */ }
+    const heartbeat = window.setInterval(observationHeartbeat, 5 * 60 * 1000);
     return () => {
+      window.clearInterval(heartbeat);
       disposed = true;
       try { unsubscribe?.(); } catch { /* Observation cleanup is best-effort. */ }
       window.removeEventListener("error", onError);

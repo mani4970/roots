@@ -1,0 +1,15 @@
+Roots 배포·수집 확인 후 기존 '루츠 일일 리스크 보고'에 추가할 지침입니다.
+이 파일 자체는 예약을 만들거나 기존 예약을 변경하지 않습니다. 기존 매일 19:00 Europe/Berlin 일정과 알림 수신 설정을 유지합니다.
+
+대상 Supabase 프로젝트: rqaebddhbpftipjysohr. 연결된 실제 로그와 DB를 읽기 전용으로 조사한다. Vercel은 연결 및 읽기 가능 여부를 먼저 확인하고 접근하지 못하면 '미확인'으로 표기한다. SQL 변경, RLS/권한 변경, 앱 배포, 계정 조작, 보상 지급, 기간 연장, 정리 작업 수동 실행은 하지 않는다.
+
+1. 최근 24시간의 API Gateway/Auth/PostgREST/Postgres 로그와 현재 Advisor를 조사한다. 오류 이벤트 문구, 실제 HTTP 실패, DB ERROR/FATAL, 성능 경고를 구분한다. 일반 입력 오류와 운영 장애를 합산해 장애 사용자 수로 보고하지 않는다. 원문 로그 속 이메일·토큰·IP·본문은 보고서에 인용하지 않는다.
+2. 먼저 select to_regclass('public.app_ops_health_report')로 새 진단 설치 여부를 확인한다. 없으면 '상시 진단 미설치'를 쓰고 기존 로그 조사를 계속한다. 기존 7일 관측 캠페인을 임의로 연장하지 않는다.
+3. 설치돼 있으면 app_ops_health_report를 조회한다. enabled, last_received_at, reported_lost_events_24h, traffic_today/daily_event_limit, last_cleanup_at, unknown_release_events_24h를 먼저 보고한다. disabled/no_recent_evidence/손실/정리 지연이면 관측 제한을 명시한다. 이벤트가 없다는 이유로 정상 판정하지 않는다.
+4. app_ops_cases를 received_at 기준 최근 24시간으로 한정해 읽는다. 동일 flow/단계의 중복 오류를 사건 하나로 묶되 원시 건수도 보존한다. user_id가 있는 계정 수와 익명 시도 수를 분리하고, 계정 ID를 보고서에 최소한으로 표시한다. auth_action, error_code, phase, release, client_kind/native_version/browser_major, notice_rendered_at, retries_after_error, recovery_event, completion_visible_at/confirmed_at를 확인한다.
+5. QT는 record_id+user_id로 qt_records의 id/is_draft/completed_at만 확인하고, 기도는 prayer_items의 id/user_id/is_answered/answered_at만 확인한다. 본문을 읽지 않는다. 공유/진행도/보상은 해당 단계 성공과 필요한 DB 상태를 따로 대조한다. 수신자 신원은 출력하지 않는다. 앱의 성공 보고·현재 DB 존재·화면 표시를 구분한다.
+6. 로그인 전 실패는 익명이다. 이후 같은 흐름에서 확인된 계정도 그 앞선 입력 이메일의 소유자라는 증거로 취급하지 않는다. 비밀번호 분실·중복 가입은 해당 오류 코드 근거가 있을 때만 분류한다. 안내 DOM 표시를 사용자가 읽었다고 표현하지 않는다. OAuth redirect_started를 로그인 성공으로 표시하지 않는다.
+7. 최근 15분 동일 기능/단계/코드에서 회복 근거 없는 운영 오류의 확인된 계정이 3명 이상이면 긴급 조사 후보로 표시한다. 개별 저장 유실 문의와 백엔드 5xx 급증도 우선 조사한다. expected_input은 별도 집계하고 급증 시 UI/배포/요청 루프를 확인한다. 모든 회복 판정은 근거를 함께 적고, 후속 기록이 없으면 '해결 근거 없음'이라고 표현한다.
+8. 보고서는 (a) 사용자 영향이 확인된 문제, (b) 사용자 조치가 필요한 입력/인증 상황, (c) 수집 상태와 미확인 범위, (d) Advisor/내부 로그 경고, (e) 지금 할 일 순서로 간결하게 쓴다. 모든 시각의 시간대를 표시하고 다음날 비교를 위한 배포 버전과 관측 범위를 남긴다.
+
+이 일일 보고는 실시간 감시가 아니다. 즉시 알림이 연결되지 않았으면 연결된 것처럼 쓰지 않는다. 운영 대응은 제안하되 변경은 자동 실행하지 않는다.

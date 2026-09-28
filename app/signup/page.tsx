@@ -1,5 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { authErrorNotice } from "@/lib/authErrorCopy";
+import { startAuthObservation, observeAuthRequest, observeOAuthRequest } from "@/lib/authObservation";
+import type { ObservationFlow } from "@/lib/appObservation";
+import ObservedAuthMessage from "@/components/ObservedAuthMessage";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
@@ -38,6 +42,17 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const passwordRequestBusy = useRef(false);
+  const authFlows = useRef<Record<string, ObservationFlow | null>>({});
+  const noticeFlow = useRef<ObservationFlow | null>(null);
+  const noticeKey = useRef("signup_error");
+  function startObservation(action: "login" | "signup" | "password_reset" | "oauth", key: string) {
+    const flow = startAuthObservation(action, authFlows.current[action]);
+    authFlows.current[action] = flow;
+    noticeFlow.current = flow;
+    noticeKey.current = key;
+    return flow;
+  }
   const [oauthLoading, setOauthLoading] = useState<AuthOAuthProvider | null>(null);
   const [showBrowserGuide, setShowBrowserGuide] = useState(false);
 
@@ -54,15 +69,18 @@ export default function SignupPage() {
       setLinkCopied(false);
       return;
     }
+    const observation = startObservation("oauth", "signup_error");
     setOauthLoading(provider);
     setError("");
     const supabase = createClient();
     saveLangLocally(lang);
     try {
-      await signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation());
+      await observeOAuthRequest(observation, () => signInWithOAuthProvider(supabase, provider, lang, getSafeRedirectFromLocation()));
     } catch (error) {
       console.error(`${provider} signup failed`, error);
-      setError(t("signup_error", lang));
+      const notice = authErrorNotice(error, lang);
+      noticeKey.current = notice.key;
+      setError(notice.text);
       setOauthLoading(null);
     }
   }
@@ -76,18 +94,21 @@ export default function SignupPage() {
   }
 
   async function handleSignup() {
-    if (!nickname || !email || !password) return;
+    if (!nickname || !email || !password || passwordRequestBusy.current || oauthLoading !== null) return;
+    const observation = startObservation("signup", password.length < 6 ? "signup_pw_error" : "signup_error");
     if (password.length < 6) { setError(t("signup_pw_error", lang)); return; }
+    passwordRequestBusy.current = true;
     setLoading(true); setError("");
+    try {
     const supabase = createClient();
     // 언어 설정도 함께 저장
     const defaultTranslationId = saveLangLocally(lang);
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await observeAuthRequest(observation, () => supabase.auth.signUp({
       email,
       password,
       options: { data: { name: nickname, preferred_language: lang, preferred_translation: defaultTranslationId } },
-    });
-    if (error) { setError(t("signup_error", lang)); setLoading(false); return; }
+    }));
+    if (error) { const notice = authErrorNotice(error, lang); noticeKey.current = notice.key; setError(notice.text); return; }
     if (data.user) {
       await setPreferredLang(lang);
       try {
@@ -100,6 +121,14 @@ export default function SignupPage() {
       }
     }
     router.push(getSafeRedirectFromLocation()); router.refresh();
+    } catch (failure) {
+      const notice = authErrorNotice(failure, lang);
+      noticeKey.current = notice.key;
+      setError(notice.text);
+    } finally {
+      passwordRequestBusy.current = false;
+      setLoading(false);
+    }
   }
 
   return (
@@ -166,7 +195,7 @@ export default function SignupPage() {
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("signup_password", lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" />
         </div>
-        {error && <p style={{ color: "var(--auth-danger-text)", fontSize: 12 }}>{error}</p>}
+        {error && <ObservedAuthMessage flow={noticeFlow.current} messageKey={noticeKey.current} style={{ color: "var(--auth-danger-text)", fontSize: 12 }}>{error}</ObservedAuthMessage>}
         <button onClick={handleSignup} disabled={loading || !nickname || !email || !password} className="btn-primary" style={{ marginTop: 8 }}>
           {loading ? <><Loader2 size={18} className="spin" />{t("signup_loading", lang)}</> : t("signup_btn", lang)}
         </button>

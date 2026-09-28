@@ -541,13 +541,23 @@ function QTWriteContent() {
   const localSyncRetryRef = useRef(false);
   const lastDraftClientTimestampRef = useRef(0);
 
-  function getCompletionObservation(userId = draftBackupUserId) {
-    if (!completionObservationRef.current || (userId && completionObservationRef.current.userId !== userId)) {
-      completionObservationRef.current = beginObservation("qt_write", userId, {
-        mode, source: isEditMode ? "edit" : "create", past_date: selectedDate !== todayStr,
-      });
+  const observationContextRef = useRef("");
+  function getWriterObservation(userId: string, date = selectedDate, writeMode = mode) {
+    const context = `${userId}|${date}|${writeMode}|${editId ?? ""}`;
+    if (context !== observationContextRef.current) {
+      observationContextRef.current = context;
+      draftObservationRef.current = null;
+      completionObservationRef.current = null;
     }
-    return completionObservationRef.current;
+    const flow = draftObservationRef.current ?? completionObservationRef.current ?? beginObservation("qt_write", userId, {
+      mode: writeMode, source: isEditMode ? "edit" : "create", past_date: date !== todayStr,
+    });
+    draftObservationRef.current = flow;
+    completionObservationRef.current = flow;
+    return flow;
+  }
+  function getCompletionObservation(userId = draftBackupUserId) {
+    return getWriterObservation(userId);
   }
 
   function observeSaveFailure(error: unknown, phase: string) {
@@ -615,9 +625,7 @@ function QTWriteContent() {
   useEffect(() => {
     try {
       if (!draftLoadError || !draftBackupUserId) return;
-      if (!draftObservationRef.current) {
-        draftObservationRef.current = beginObservation("qt_write", draftBackupUserId, { phase: "draft_load" });
-      }
+      getWriterObservation(draftBackupUserId);
       observe(draftObservationRef.current, "draft_error", { phase: "draft_load", reason: "load_failed" });
       observe(draftObservationRef.current, "retry_shown", { phase: "draft_load", source: "button" });
     } catch { /* Observation setup never blocks draft recovery. */ }
@@ -2339,10 +2347,7 @@ function QTWriteContent() {
     // client snapshot timestamp so a delayed older HTTP request cannot replace
     // newer text.
     const localBackupSaved = persistDraftBackup(snapshot);
-    if (!draftObservationRef.current || draftObservationRef.current.userId !== draftBackupUserId) {
-      draftObservationRef.current = beginObservation("qt_write", draftBackupUserId, { phase: "draft", mode: snapshot.mode });
-    }
-    const draftFlow = draftObservationRef.current;
+    const draftFlow = getWriterObservation(draftBackupUserId, snapshot.selectedDate, snapshot.mode);
     const draftSource = silent ? "auto" : "manual";
     if (!silent && draftObservationRetryRef.current) {
       observe(draftFlow, "retry_clicked", { phase: "draft", source: "manual" });
@@ -2401,7 +2406,7 @@ function QTWriteContent() {
           && storedTimestamp > submittedTimestamp;
         if (newerServerSnapshotExists) {
           draftObservationRetryRef.current = true;
-          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "newer_server_snapshot", local_backup: localBackupSaved });
+          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "newer_server_snapshot", local_backup: localBackupSaved }, result.id);
           if (!silent && localBackupSaved) {
             retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
             showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
@@ -2412,7 +2417,7 @@ function QTWriteContent() {
 
         if (result.status === "completed_exists") {
           draftObservationRetryRef.current = false;
-          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "completed_exists" });
+          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "completed_exists" }, result.id);
           removeQTDraftBackup(user.id, snapshot.selectedDate);
           lastLocalBackupSignatureRef.current = "";
           lastAutoSaveSignatureRef.current = signature;
@@ -2422,7 +2427,7 @@ function QTWriteContent() {
 
         lastAutoSaveSignatureRef.current = signature;
         const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        observe(draftFlow, "draft_saved", { source: draftSource, recovery: draftObservationRetryRef.current });
+        observe(draftFlow, "draft_saved", { source: draftSource, recovery: draftObservationRetryRef.current }, result.id);
         draftObservationRetryRef.current = false;
         updateAutoSaveStatus("saved", savedAt);
         if (!silent) {

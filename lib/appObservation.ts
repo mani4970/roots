@@ -7,18 +7,20 @@ import { observationErrorDetails, type ObservationErrorContext } from "@/lib/obs
 
 export type ObservationFlow = {
   id: string;
-  userId: string;
+  userId: string | null;
   scope: ObservationScope;
   startedAt: number;
   recordId?: string;
   interrupted?: boolean;
+  attempt?: number;
+  authAction?: "login" | "signup" | "password_reset" | "oauth";
 };
 type Details = Record<string, string | number | boolean | null>;
-type Pending = { userId: string; event: ObservationEventInput; attempts: number };
-type Campaign = { enabled: boolean; ends_at: string | null; build_tag: string };
+type Pending = { userId: string | null; event: ObservationEventInput; attempts: number };
+type Campaign = { enabled: boolean; build_tag: string; detail_enabled: boolean };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const QUEUE_KEY = "roots_observation_queue_v1";
-const FLOW_KEY = "roots_observation_flow_v1_";
+const QUEUE_KEY = "roots_ops_queue_v3";
+const FLOW_KEY = "roots_ops_flow_v3_";
 const MAX_QUEUE = 120;
 const MAX_AGE = 60 * 60 * 1000;
 let queue: Pending[] = [];
@@ -30,6 +32,8 @@ let checkedAt = 0;
 let activeUser: string | null = null;
 let appFlow: ObservationFlow | null = null;
 let dropped = 0;
+let nativeDetails: Details = {};
+let browserDetails: Details | null = null;
 const flows = new Map<string, ObservationFlow>();
 
 function uuid() {
@@ -42,6 +46,18 @@ function uuid() {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
+function clientVersions(): Details {
+  if (!browserDetails) {
+    const ua = navigator.userAgent;
+    const match = /(?:Edg|EdgA|EdgiOS)\/(\d+)/.exec(ua) ?? /(?:Chrome|CriOS)\/(\d+)/.exec(ua) ?? /(?:Firefox|FxiOS)\/(\d+)/.exec(ua) ?? /Version\/(\d+).*Safari/.exec(ua);
+    const browser = /Edg/.test(ua) ? "edge" : /Chrome|CriOS/.test(ua) ? "chrome" : /Firefox|FxiOS/.test(ua) ? "firefox" : /Safari/.test(ua) ? "safari" : "unknown";
+    browserDetails = { browser_name: browser, ...(match ? { browser_major: Number(match[1]) } : {}) };
+  }
+  return { ...browserDetails, ...nativeDetails };
+}
+export function setObservationNativeVersion(version: string, build: string): void {
+  nativeDetails = sanitizeObservationDetails({ native_version: version, native_build: build });
+}
 function platform() {
   const ua = navigator.userAgent.toLowerCase();
   const ipad = /ipad/.test(ua) || (/macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -68,9 +84,9 @@ function initialize() {
     const saved: unknown = JSON.parse(sessionStorage.getItem(QUEUE_KEY) ?? "[]");
     if (Array.isArray(saved)) {
       queue = saved.slice(-MAX_QUEUE).flatMap((row: Pending) => {
-        if (!row || !UUID.test(row.userId ?? "")) return [];
+        if (!row || (row.userId !== null && !UUID.test(row.userId ?? ""))) return [];
         const event = normalizeObservationEvent(row.event);
-        if (!event || Date.now() - Date.parse(event.client_at) > MAX_AGE) return [];
+        if (!event || (row.userId === null && event.scope !== "auth") || Math.abs(Date.now() - Date.parse(event.client_at)) > MAX_AGE) return [];
         return [{ userId: row.userId, event, attempts: Math.max(0, Math.min(3, Number(row.attempts) || 0)) }];
       });
     }
@@ -91,10 +107,10 @@ async function fetchWithDeadline(url: string, init: RequestInit = {}) {
 
 async function checkConfig() {
   if (config && Date.now() - checkedAt < 60_000) return config;
-  const response = await fetchWithDeadline("/api/observations");
+  const response = await fetchWithDeadline("/api/operational-observations");
   if (!response.ok) throw new Error("observation_unavailable");
   const body = await response.json();
-  config = { enabled: body.enabled === true && body.build_tag === OBSERVATION_BUILD, ends_at: typeof body.ends_at === "string" ? body.ends_at : null, build_tag: body.build_tag };
+  config = { enabled: body.enabled === true && body.protocol === 3 && body.build_tag === OBSERVATION_BUILD, build_tag: body.build_tag, detail_enabled: body.detail_enabled === true };
   checkedAt = Date.now();
   return config;
 }
@@ -105,37 +121,39 @@ export async function flushObservations(keepalive = false): Promise<void> {
   running = true;
   let retryDelay = 5000;
   let batch: Pending[] = [];
-  const owner = activeUser;
+  const accountAtStart = activeUser;
+  let owner: string | null = activeUser;
   try {
     initialize();
     const before = queue.length;
     queue = queue.filter(row => Date.now() - Date.parse(row.event.client_at) <= MAX_AGE && row.attempts < 3);
     dropped += before - queue.length;
-    if (!queue.length || !owner) return;
+    if (!queue.length) { persist(); return; }
     // Never move an earlier account's events to a later signed-in account.
-    queue = queue.filter(row => row.userId === owner);
+    queue = queue.filter(row => row.userId === null || row.userId === activeUser);
     const campaign = await checkConfig();
-    if (owner !== activeUser) return;
-    queue = queue.filter(row => row.userId === owner);
-    if (!campaign.enabled || !campaign.ends_at || Date.parse(campaign.ends_at) <= Date.now()) {
+    if (accountAtStart !== activeUser) return;
+    queue = queue.filter(row => row.userId === null || row.userId === activeUser);
+    if (!campaign.enabled) {
       queue = [];
       persist();
       return;
     }
-    batch = queue.slice(0, 30);
+    owner = queue[0]?.userId ?? null;
+    batch = queue.filter(row => row.userId === owner).slice(0, 30);
     while (batch.length && new TextEncoder().encode(JSON.stringify({ user_id: owner, events: batch.map(row => row.event) })).byteLength > 28 * 1024) batch.pop();
     if (!batch.length) return;
     const sentIds = new Set(batch.map(row => row.event.event_id));
-    const response = await fetchWithDeadline("/api/observations", {
+    const response = await fetchWithDeadline("/api/operational-observations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: owner, events: batch.map(row => row.event) }),
       keepalive,
     });
-    if (owner !== activeUser) return;
+    if (accountAtStart !== activeUser) return;
     if (response.ok) {
       const result = await response.json();
-      if (owner !== activeUser) return;
+      if (accountAtStart !== activeUser) return;
       if (result.disabled === true) { queue = []; config = null; }
       else if (result.ok === true) {
         queue = queue.filter(row => !sentIds.has(row.event.event_id));
@@ -146,25 +164,27 @@ export async function flushObservations(keepalive = false): Promise<void> {
       dropped += batch.length;
       queue = queue.filter(row => !sentIds.has(row.event.event_id));
     } else {
+      if (response.status === 428) config = null;
       batch.forEach(row => { row.attempts += 1; });
       retryDelay = response.status === 429 ? 60_000 : 10_000;
     }
     persist();
   } catch {
-    if (owner === activeUser) (batch.length ? batch : queue.slice(0, 30)).forEach(row => { row.attempts += 1; });
+    if (accountAtStart === activeUser) (batch.length ? batch : queue.slice(0, 30)).forEach(row => { row.attempts += 1; });
     persist();
   } finally {
     running = false;
-    if (queue.length && activeUser) schedule(retryDelay);
+    if (queue.length) schedule(retryDelay);
   }
 }
 
 export function beginObservation(scope: ObservationScope, userId: string | null | undefined, details: Details = {}): ObservationFlow | null {
   try {
-    if (typeof window === "undefined" || !userId || !UUID.test(userId)) return null;
+    if (typeof window === "undefined" || (scope !== "auth" && (!userId || !UUID.test(userId)))) return null;
+    if (userId && !UUID.test(userId)) return null;
     const id = uuid();
     if (!id) return null;
-    const flow: ObservationFlow = { id, userId, scope, startedAt: Date.now(), interrupted: document.visibilityState !== "visible" };
+    const flow: ObservationFlow = { id, userId: userId ?? null, scope, startedAt: Date.now(), interrupted: document.visibilityState !== "visible" };
     flows.set(id, flow);
     if (flows.size > 32) flows.delete(flows.keys().next().value!);
     observe(flow, "flow_started", details);
@@ -175,19 +195,19 @@ export function beginObservation(scope: ObservationScope, userId: string | null 
 /** Records only allowlisted technical values and always returns synchronously. */
 export function observe(flow: ObservationFlow | null | undefined, eventName: string, details: Details = {}, recordId?: string | null): void {
   try {
-    if (!flow || typeof window === "undefined" || !UUID.test(flow.userId)) return;
-    if (activeUser && flow.userId !== activeUser) return;
+    if (!flow || typeof window === "undefined" || (flow.userId === null ? flow.scope !== "auth" : !UUID.test(flow.userId))) return;
+    if (activeUser && flow.userId !== null && flow.userId !== activeUser) return;
     initialize();
     const eventId = uuid();
     if (!eventId) return;
     if (recordId && UUID.test(recordId)) flow.recordId = recordId;
     const elapsed = Date.now() - flow.startedAt;
-    if (elapsed < 0 || elapsed > MAX_AGE) return;
+    if (elapsed < 0) return;
     const event = normalizeObservationEvent({
       event_id: eventId, flow_id: flow.id, scope: flow.scope, event_name: eventName,
       client_kind: platform(), build_tag: OBSERVATION_BUILD,
-      record_id: flow.recordId ?? null, client_at: new Date().toISOString(), elapsed_ms: elapsed,
-      details: sanitizeObservationDetails({ ...details, foreground: document.visibilityState === "visible", interrupted: flow.interrupted === true }),
+      record_id: flow.recordId ?? null, client_at: new Date().toISOString(), elapsed_ms: elapsed <= 86400000 ? elapsed : null,
+      details: sanitizeObservationDetails({ ...details, ...clientVersions(), ...(flow.authAction ? { auth_action: flow.authAction, attempt: flow.attempt ?? 1 } : {}), release: process.env.NEXT_PUBLIC_OPS_RELEASE || "unknown", foreground: document.visibilityState === "visible", interrupted: flow.interrupted === true }),
     });
     if (!event) return;
     if (["popup_closed", "popup_unshown", "popup_eligibility_checked"].includes(eventName)) flows.delete(flow.id);
@@ -224,7 +244,7 @@ export function setObservationUser(userId: string | null): void {
     if (activeUser === next) { if (next) schedule(); return; }
     activeUser = next;
     flows.clear();
-    queue = next ? queue.filter(row => row.userId === next) : [];
+    queue = queue.filter(row => row.userId === null || (next && row.userId === next));
     persist();
     appFlow = next ? beginObservation("app", next, { source: "app" }) : null;
     if (appFlow) {
@@ -269,4 +289,12 @@ export function observationVisibilityChanged(): void {
     observe(flow, hidden ? "app_backgrounded" : "app_foregrounded");
     void flushObservations(hidden);
   } catch {}
+}
+
+/** Five-minute foreground heartbeat; never authenticates or blocks an app action. */
+export function observationHeartbeat(): void {
+  if (typeof document !== "undefined" && document.visibilityState === "visible") {
+    observe(currentAppFlow(), "app_heartbeat");
+    void flushObservations();
+  }
 }

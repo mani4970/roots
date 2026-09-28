@@ -30,7 +30,11 @@ function createContext(options = {}) {
     removed: 0, bodyWrites: 0,
   };
   const context = {
-    console: { warn() {} },
+    console: { warn() {}, error() {} },
+    beginObservation: () => null, observe() {}, observationError: () => ({}), rememberObservationFlow() {},
+    getCompletionObservation: () => null, completionObservationRef: { current: null },
+    completionRetryRef: { current: false }, retryToastObservationRef: { current: null },
+    observeSaveFailure() {},
     setTimeout, clearTimeout,
     window: { clearTimeout },
     saving: false, completionSavingRef: { current: false },
@@ -56,7 +60,7 @@ function createContext(options = {}) {
     saveQTDraftBackup: snapshot => { state.savedSnapshots.push(snapshot); return true; },
     loadQTDraftBackup: () => state.savedSnapshots.at(-1),
     removeQTDraftBackup: () => { state.removed += 1; },
-    replaceQtRecordRecipients: async (_client, id, owner, recipients) => {
+    syncQtCompletionRecipients: async (_client, id, owner, recipients) => {
       state.recipients.push({ id, owner, recipients: [...recipients] });
       if (state.recipientsFailures-- > 0) throw new Error("Simulated recipient network failure");
     },
@@ -68,7 +72,8 @@ function createContext(options = {}) {
     createBibleReflectionShareNotificationsBestEffort: async () => {},
   };
   for (const [setter, name] of Object.entries({
-    setSaving: "saving", setPendingCompletion: "pendingCompletion", setShowCompleteSharePrompt: "showCompleteSharePrompt",
+    setChapter: "chapter", setStartV: "startV", setEndV: "endV", setEndChapter: "endChapter", setCrossChapter: "crossChapter",
+    setCompletionReady: "completionReady", setSaving: "saving", setPendingCompletion: "pendingCompletion", setShowCompleteSharePrompt: "showCompleteSharePrompt",
     setBibleStep: "bibleStep", setPassageVerses: "passageVerses", setBibleRef: "bibleRef",
     setPassages: "passages", setKeyVerse: "keyVerse", setSelectedVerseNums: "selectedVerseNums",
     setPassageExpanded: "passageExpanded", setVersePreviewExpanded: "versePreviewExpanded",
@@ -102,8 +107,8 @@ function createContext(options = {}) {
   const contentTree = ts.createSourceFile("content.ts", contentSource, ts.ScriptTarget.Latest, true);
   vm.runInContext(extract("hasMeaningfulQTWriteDraftContent", contentTree), context);
   for (const name of [
-    "resetFreePassageSelection", "getDraftSnapshot", "getDraftSignature", "hasDraftContent", "persistDraftBackup",
-    "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion", "save",
+    "handleChapterChange", "getDraftSnapshot", "getDraftSignature", "hasDraftContent", "persistDraftBackup",
+    "buildStandardBibleRef", "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion", "save",
   ]) vm.runInContext(extract(name), context);
   return { state, context };
 }
@@ -111,11 +116,12 @@ function createContext(options = {}) {
 async function run() {
   {
     const { context, state } = createContext();
-    context.resetFreePassageSelection();
+    context.handleChapterChange("2");
     assert.equal(context.freeText, "My saved reflection", "Previous preserves free reflection");
     assert.deepEqual(context.decisions, ["My decision"], "Previous preserves decisions");
-    assert.equal(context.bibleStep, "select");
-    assert.equal(context.keyVerse, "", "Old source selections reset with the source");
+    assert.equal(context.chapter, "2");
+    assert.equal(context.startV, "1");
+    assert.equal(context.endV, "1");
     assert.equal(context.persistDraftBackup(), true);
     assert.equal(state.removed, 0, "Returning to selection does not remove today's backup");
     assert.equal(state.savedSnapshots[0].freeText, "My saved reflection");
@@ -128,7 +134,8 @@ async function run() {
     await context.save({ visibility: "group-a", partnerRecipientIds: targets });
     assert.equal(state.rows[0].is_draft, false);
     assert(context.pendingCompletionRef.current?.failed, "Committed record enters explicit recovery state");
-    assert.equal(state.routes.length, 0, "Do not complete before progress");
+    assert.equal(state.routes.length, 0, "Do not navigate before progress");
+    assert.notEqual(context.completionReady, true, "Do not complete before progress");
     assert.equal(state.bodyWrites, 1);
     assert.equal(state.removed, 0);
     assert.equal(context.persistDraftBackup(), false, "Committed writer cannot recreate a draft");
@@ -141,7 +148,7 @@ async function run() {
     assert.equal(state.recipients.length, 2);
     assert.equal(state.recipients[1].recipients.join(","), "partner-a", "Original target snapshot survives retry");
     assert.equal(state.progress.length, 1);
-    assert.equal(state.routes.at(-1), "/qt/complete");
+    assert.equal(context.completionReady, true, "Existing in-page completion screen is ready");
   }
   {
     const { context, state } = createContext({ progressFailures: 1 });
@@ -152,7 +159,7 @@ async function run() {
     assert.equal(state.recipients.length, 1, "Successful recipient stage is not repeated");
     assert.equal(state.progress.length, 2, "Only failed progress gate retries");
     assert.equal(state.bodyWrites, 1);
-    assert.equal(state.routes.at(-1), "/qt/complete");
+    assert.equal(context.completionReady, true, "Existing in-page completion screen is ready");
   }
   {
     const { context, state } = createContext({ date: "2026-09-05", recipientsFailures: 1 });
@@ -160,7 +167,7 @@ async function run() {
     await context.save({ visibility: "private", partnerRecipientIds: [] });
     await context.save();
     assert.equal(state.bodyWrites, 1);
-    assert.equal(state.routes.at(-1), "/qt/complete", "Same saved past-date record can finish failed sharing");
+    assert.equal(context.completionReady, true, "Same saved past-date record can finish failed sharing");
     assert.equal(state.savedSnapshots.length, 0);
   }
   {
@@ -194,7 +201,7 @@ async function run() {
     assert.equal(state.bodyWrites, 1, "Double clicks are serialized by the immediate completion lock");
   }
   assert(source.indexOf("if (pendingCompletion) {\n    return (") < source.indexOf("// ─── 자유형식 작성 화면"), "Committed recovery renders before editable forms");
-  console.log("PASS writer protection: free Previous + backup, all written modes, recipient/progress retries, past date, duplicate record, edit, double click");
+  console.log("PASS writer protection: chapter change + backup, all written modes, recipient/progress retries, past date, duplicate record, edit, double click");
 }
 
 run().catch(error => { console.error(error); process.exitCode = 1; });

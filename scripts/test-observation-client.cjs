@@ -8,7 +8,7 @@ const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 const USER_A = '11111111-1111-4111-8111-111111111111';
 const USER_B = '22222222-2222-4222-8222-222222222222';
-const QUEUE_KEY = 'roots_observation_queue_v1';
+const QUEUE_KEY = 'roots_ops_queue_v3';
 const NOW = Date.parse('2026-09-16T08:00:00.000Z');
 const PRIVATE = 'DO_NOT_RECORD_PRIVATE_PRAYER_OR_TESTIMONY';
 function deferred() {
@@ -36,9 +36,9 @@ function harness(options = {}) {
   const document = { visibilityState: 'visible', addEventListener: addListener, removeEventListener: removeListener };
   function addListener(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); }
   function removeListener(name, fn) { listeners.get(name)?.delete(fn); }
-  const window = { location: { origin: 'https://roots.test', pathname: '/qt/write' }, addEventListener: addListener, removeEventListener: removeListener };
+  const window = { setInterval: () => 1, clearInterval() {}, location: { origin: 'https://roots.test', pathname: '/qt/write' }, addEventListener: addListener, removeEventListener: removeListener };
   const context = {
-    Date: Clock, console, URL, TextEncoder, TextDecoder, Blob, AbortController,
+    process: { env: {} }, Date: Clock, console, URL, TextEncoder, TextDecoder, Blob, AbortController,
     navigator: { userAgent: options.ua || 'Mozilla/5.0 Macintosh', maxTouchPoints: options.touch || 0, onLine: options.online !== false },
     document, window,
     crypto: { randomUUID: () => `aaaaaaaa-aaaa-4aaa-8aaa-${String(nextUuid++).padStart(12, '0')}` },
@@ -71,7 +71,7 @@ function harness(options = {}) {
     }, { filename: relative });
     return exports;
   };
-  const campaign = () => ({ enabled: true, build_tag: 'obs-20260916-v1', starts_at: new Date(time - 1000).toISOString(), ends_at: new Date(time + 3600000).toISOString() });
+  const campaign = () => ({ enabled: true, protocol: 3, detail_enabled: false, build_tag: 'obs-20260916-v1', starts_at: new Date(time - 1000).toISOString(), ends_at: new Date(time + 3600000).toISOString() });
   const state = { fetch: null };
   context.fetch = async (url, init = {}) => {
     const request = { url, ...init };
@@ -274,7 +274,7 @@ test('raw writing, messages, paths, recipient IDs and invalid error codes are re
   assert.ok(!serialized.includes(PRIVATE));
   assert.ok(!serialized.includes(USER_B));
   const event = h.posts.flatMap(post => post.events).find(event => event.event_name === 'action_failed');
-  assert.deepEqual(Object.keys(event.details).sort(), ['foreground','interrupted','mode','phase']);
+  assert.deepEqual(Object.keys(event.details).sort(), ['browser_name','foreground','interrupted','mode','phase','release']);
   assert.equal(h.sdk.observationError({ code:'HELLO' }).error_code, 'unknown');
 });
 
@@ -338,6 +338,7 @@ function bridgeHarness(options = {}) {
   let authCallback, unsubscribed = false;
   const bridge = h.exportsFor('components/AppObservationBridge.tsx', {
     react: { useEffect(fn) { effects.push(fn); } },
+    '@capacitor/app': { App: { getInfo: async () => ({version:'1.0.0',build:'1'}) } },
     '@/lib/supabase': { createClient() {
       if (options.createThrows) throw new Error(PRIVATE);
       return { auth: {
@@ -345,7 +346,7 @@ function bridgeHarness(options = {}) {
         onAuthStateChange(callback) { authCallback = callback; return { data: { subscription: { unsubscribe() { unsubscribed = true; if (options.unsubscribeThrows) throw new Error(PRIVATE); } } } }; },
       } };
     } },
-    '@/lib/appObservation': { setObservationUser:user=>users.push(user), flushObservations:async()=>{}, observationVisibilityChanged(){}, reportObservationClientError:(...args)=>errors.push(args) },
+    '@/lib/appObservation': { setObservationUser:user=>users.push(user), flushObservations:async()=>{}, observationVisibilityChanged(){}, observationHeartbeat(){}, setObservationNativeVersion(){}, reportObservationClientError:(...args)=>errors.push(args) },
   });
   assert.equal(bridge.default(), null);
   const cleanup = effects[0]();
@@ -500,6 +501,50 @@ test('server schema rejects raw messages, source URLs, unknown names and invalid
   const h=harness(),schema=h.exportsFor('lib/observationSchema.ts');
   const d=schema.sanitizeObservationDetails({diagnostic_version:2,error_name:PRIVATE,cause_name:PRIVATE,error_kind:PRIVATE,route:'/qt/record?body='+PRIVATE,error_script:'https://roots.test/'+PRIVATE,caller_script:PRIVATE,error_line:-1,error_column:Infinity,http_status:999,message:PRIVATE,stack:PRIVATE,online:true});
   assert.deepEqual(JSON.parse(JSON.stringify(d)),{diagnostic_version:2,online:true});
+});
+
+
+test('continuous configuration stays enabled without an end date; long writing remains observable', async () => {
+  const h = harness();
+  h.state.fetch = async request => response(request.method === 'POST' ? {ok:true} : {...h.campaign(), ends_at:null});
+  h.sdk.setObservationUser(USER_A);
+  const flow = h.sdk.beginObservation('qt_write', USER_A);
+  await h.drain();
+  h.advance(90*60*1000);
+  h.sdk.observe(flow, 'save_ok');
+  await h.drain();
+  assert.ok(h.posts.flatMap(p=>p.events).some(e=>e.flow_id===flow.id && e.event_name==='save_ok'));
+  h.advance(25*3600000);
+  h.sdk.observe(flow,'completion_ready');
+  assert.equal(h.queue().at(-1).event.elapsed_ms,null);
+});
+test('anonymous failures stay anonymous after login and verified success uses its own batch', async () => {
+  const h = harness();
+  const flow = h.sdk.beginObservation('auth',null);
+  h.sdk.observe(flow,'auth_failed',{error_code:'invalid_credentials'});
+  h.sdk.setObservationUser(USER_A);
+  h.sdk.observe({...flow,userId:USER_A},'auth_succeeded',{outcome:'authenticated'});
+  await h.drain();
+  assert.ok(h.posts.some(p=>p.user_id===null && p.events.some(e=>e.event_name==='auth_failed')));
+  assert.ok(h.posts.some(p=>p.user_id===USER_A && p.events.some(e=>e.event_name==='auth_succeeded')));
+  assert.ok(h.posts.every(p=>p.user_id===null || p.events.every(e=>e.event_name!=='auth_failed')));
+});
+test('expired tickets refresh configuration and replay identical event IDs', async () => {
+  const h = harness(); let posts=0,configs=0;
+  h.state.fetch = async request => {if(request.method==='POST') return ++posts===1 ? response({},428):response({ok:true}); configs++; return response(h.campaign());};
+  h.sdk.setObservationUser(USER_A); await h.drain(3);
+  assert.equal(configs,2);assert.deepEqual(h.posts[0],h.posts[1]);
+});
+test('disabled collection drops queued observations without blocking callers', async () => {
+  const h=harness(); h.state.fetch=async()=>response({...h.campaign(),enabled:false});
+  h.sdk.setObservationUser(USER_A); await h.drain();
+  assert.equal(h.posts.length,0);assert.equal(h.queue().length,0);
+});
+test('heartbeat is foreground-only and uses the existing authenticated session', () => {
+  const h=harness();h.sdk.setObservationUser(USER_A);h.sdk.observationHeartbeat();
+  assert.equal(h.queue().filter(r=>r.event.event_name==='app_heartbeat').length,1);
+  h.context.document.visibilityState='hidden';h.sdk.observationHeartbeat();
+  assert.equal(h.queue().filter(r=>r.event.event_name==='app_heartbeat').length,1);
 });
 
 (async () => {
