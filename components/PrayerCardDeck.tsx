@@ -24,6 +24,7 @@ type PrayerCardDeckProps = {
   countByKind?: boolean;
   ariaLabel?: string;
   className?: string;
+  beforePosition?: ReactNode;
 };
 
 type Drag = {
@@ -97,6 +98,7 @@ export default function PrayerCardDeck({
   countByKind = false,
   ariaLabel,
   className,
+  beforePosition,
 }: PrayerCardDeckProps) {
   const text = getPrayerCardText(lang);
   const railRef = useRef<HTMLDivElement>(null);
@@ -378,6 +380,11 @@ export default function PrayerCardDeck({
           );
         })}
       </div>
+      {beforePosition !== undefined && (
+        <div className={styles.beforePosition}>
+          {beforePosition}
+        </div>
+      )}
       {activePosition && (
         <p className={styles.position} role="status" aria-live="polite" aria-atomic="true" aria-label={text.cardLabel(activePosition.current, activePosition.total)}>
           {activePosition.current} / {activePosition.total}

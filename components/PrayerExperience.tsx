@@ -90,6 +90,8 @@ export type PrayerExperienceProps = {
   onClose?: () => void;
   initialAnswerId?: string | null;
   onDataChanged?: () => void;
+  dailyPrayerDone?: boolean;
+  onCompleteDailyPrayer?: () => Promise<void>;
   nestedBackRef?: MutableRefObject<(() => boolean) | null>;
 };
 
@@ -104,7 +106,7 @@ function PrayerExperienceWithLang(props: PrayerExperienceProps) {
   return <PrayerExperienceContent {...props} lang={lang} />;
 }
 
-function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, nestedBackRef, snapshotRef, lang }: PrayerExperienceProps & { lang: Lang }) {
+function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
   const rootRef = useRef<HTMLDivElement>(null);
   const handledAnswerId = useRef<string | null>(null);
@@ -117,6 +119,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const [categoryLoad, setCategoryLoad] = useState<Record<PrayerCategory, PrayerLoadState>>({ mine: "loading", intercession: "loading" });
   const [freshCategories, setFreshCategories] = useState<Record<PrayerCategory, boolean>>({ mine: false, intercession: false });
   const [savingEdit, setSavingEdit] = useState(false);
+  const [completingDailyPrayer, setCompletingDailyPrayer] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const cardText = getPrayerCardText(lang);
@@ -1446,6 +1449,18 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     })),
   ];
 
+  async function completeDailyPrayer() {
+    if (!onCompleteDailyPrayer || dailyPrayerDone || completingDailyPrayer) return;
+    setCompletingDailyPrayer(true);
+    try {
+      await onCompleteDailyPrayer();
+    } catch (error) {
+      console.warn("오늘 기도 완료를 저장하지 못했어요:", error);
+    } finally {
+      setCompletingDailyPrayer(false);
+    }
+  }
+
   return (
     <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
       {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
@@ -1586,7 +1601,24 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           </div>
         ) : (
           <>
-          {showDeck && <PrayerCardDeck countByKind className={styles.cardDeck} items={cardEntries} lang={lang} activeId={activeCardId} onActiveChange={handleActiveCard} ariaLabel={cardText.carouselLabel} />}
+          {showDeck && <PrayerCardDeck
+            countByKind
+            className={styles.cardDeck}
+            items={cardEntries}
+            lang={lang}
+            activeId={activeCardId}
+            onActiveChange={handleActiveCard}
+            ariaLabel={cardText.carouselLabel}
+            beforePosition={isPopup ? (
+              category === "mine" ? (
+                <button type="button" className={styles.addPrayer} onClick={() => setShowForm(true)}>
+                  <Plus size={16} />{cardText.addPrayer}
+                </button>
+              ) : (
+                <span className={styles.popupAddPrayerSpacer} aria-hidden="true" />
+              )
+            ) : undefined}
+          />}
           {!isPopup && status === "answered" && <div className={styles.answeredList} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {currentList.map(p => (
               <div key={p.id} className={`prayer-card ${p.is_answered ? "answered" : ""}`} style={{ position: "relative" }} data-prayer-answer-id={String(p.id)}>
@@ -1737,8 +1769,25 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           </>
         )}
       </div>
-      {isPopup && <div className={styles.popupFooter}>
-        {category === "mine" && <button type="button" className={styles.addPrayer} onClick={() => setShowForm(true)}><Plus size={16} />{isPopup ? cardText.addPrayer : c("prayer_write_title")}</button>}
+      {isPopup && <div className={`${styles.popupFooter} ${onCompleteDailyPrayer ? styles.popupFooterDaily : ""}`}>
+        {onCompleteDailyPrayer && (
+          <button
+            type="button"
+            className={`${styles.dailyPrayerButton} ${dailyPrayerDone ? styles.dailyPrayerButtonDone : ""}`}
+            onClick={() => { void completeDailyPrayer(); }}
+            disabled={dailyPrayerDone || completingDailyPrayer}
+            aria-pressed={dailyPrayerDone}
+          >
+            {completingDailyPrayer ? (
+              <Loader2 size={17} className="spin" aria-hidden="true" />
+            ) : dailyPrayerDone ? (
+              <CheckCircle size={17} aria-hidden="true" />
+            ) : (
+              <img src="/icon-pray.webp" alt="" width={20} height={20} />
+            )}
+            {t("home_prayer_daily_confirm", lang)}
+          </button>
+        )}
       </div>}
       </div>
 

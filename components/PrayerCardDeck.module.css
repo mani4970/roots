@@ -151,6 +151,14 @@
   overflow-wrap: anywhere;
 }
 
+.beforePosition {
+  flex: 0 0 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .position {
   margin: 2px 0 0;
   text-align: center;

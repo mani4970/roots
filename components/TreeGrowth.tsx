@@ -9,7 +9,7 @@ import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { getNehemiahStageProgress, getNehemiahWallStage } from "@/lib/nehemiahWall";
-import { getNehemiahWallCopy, getNehemiahWallStageDescription, getNehemiahWallStageLabel } from "@/lib/nehemiahWallText";
+import { getNehemiahWallCopy, getNehemiahWallStageLabel } from "@/lib/nehemiahWallText";
 import type { HeartShopMapItemId } from "@/lib/heartShopItems";
 import {
   getRewardMapBackground,
@@ -76,14 +76,8 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   }
 
   const selectedCycle = cycles[selectedIndex] ?? cycles[cycles.length - 1] ?? cycles[0];
-  const selectedStage = selectedCycle ? getRewardMapStage(selectedCycle) : null;
   const progressInTen = selectedCycle ? getRewardMapProgressInTen(selectedCycle) : 0;
   const periodProgress = selectedCycle ? getRewardMapProgressPercent(selectedCycle) : 0;
-  const selectedDescription = selectedCycle && selectedStage
-    ? selectedCycle.kind === "nehemiahWall"
-      ? getNehemiahWallStageDescription(lang, selectedStage.stageNumber)
-      : t(selectedStage.descKey, lang)
-    : "";
   const selectedProgressLabel = selectedCycle
     ? selectedCycle.kind === "nehemiahWall"
       ? (() => {
@@ -105,6 +99,17 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
           <img src="/roots-logo-transparent-96.png" alt="Roots" width={18} height={18} style={{ objectFit: "contain", imageRendering: "pixelated", flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: "var(--terra-dark)" }}>
             {t("tree_away_msg", lang, { n: daysSince })}
+          </span>
+        </div>
+      )}
+
+      {selectedCycle && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "0 2px" }}>
+          <div className="progress-bar" style={{ flex: "1 1 auto", width: "auto" }}>
+            <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
+          </div>
+          <span style={{ fontSize: 11, color: "var(--text3)", flex: "0 0 auto", lineHeight: 1 }}>
+            {selectedProgressLabel}
           </span>
         </div>
       )}
@@ -159,18 +164,6 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
         </div>
       )}
 
-      {selectedStage && (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 8, padding: "0 2px" }}>
-          <span style={{ fontSize: 11, color: "var(--text3)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {selectedDescription}
-          </span>
-          <span style={{ fontSize: 11, color: "var(--text3)", flexShrink: 0 }}>{selectedProgressLabel}</span>
-        </div>
-      )}
-
-      <div className="progress-bar" style={{ marginTop: 6 }}>
-        <div className="progress-fill" style={{ width: `${periodProgress}%` }} />
-      </div>
     </div>
   );
 }

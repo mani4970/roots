@@ -89,7 +89,6 @@ import {
   isCompanionChallenge3AnnouncementWindow,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
-import { getPrayerCardText } from "@/lib/prayerCardText";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
@@ -325,6 +324,7 @@ export default function HomePage() {
   });
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
+  const [prayerDayCount, setPrayerDayCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const homeLoadGenerationRef = useRef(0);
@@ -871,6 +871,7 @@ export default function HomePage() {
     setHomeCharacterItemsOwner(null);
     setLoading(true);
     setHomeLoadFailed(false);
+    setPrayerDayCount(null);
     setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
     try {
       if (typeof window !== "undefined") {
@@ -1038,6 +1039,16 @@ export default function HomePage() {
         if (!isCurrentLoad()) return;
         setTodayDone(previous => ({ ...previous, prayer: previous.prayer || !!data }));
         ready("prayer");
+      });
+      background("홈 기도 누적일 조회 실패:", async () => {
+        const { count, error } = await withQtDraftTimeout(
+          supabase.from("daily_prayer_completions").select("id", { count: "exact", head: true })
+            .eq("user_id", user.id).lte("date", today),
+          8_000,
+          "home prayer total",
+        );
+        if (error) throw error;
+        if (isCurrentLoad()) setPrayerDayCount(count ?? 0);
       });
       background("홈 묵상 본문 일정 조회 실패:", async () => {
         let todaySchedule: QTSchedule | null = null;
@@ -1491,6 +1502,7 @@ export default function HomePage() {
       persisted = true;
       homePrayerObservationEvent(observation, "stage_succeeded", "daily_completion", { persisted });
       setTodayDone(p => ({ ...p, prayer: true }));
+      void refreshHomePrayerStatus();
       enqueueCelebration({
         message: t("home_prayer_quiet_celeb", lang),
         subMessage: t("home_prayer_quiet_celeb_sub", lang),
@@ -1513,13 +1525,21 @@ export default function HomePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data, error } = await supabase
-        .from("daily_prayer_completions")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("date", getLocalDateString())
-        .maybeSingle();
-      if (!error) setTodayDone(previous => ({ ...previous, prayer: !!data }));
+      const [todayPrayerResponse, prayerCountResponse] = await Promise.all([
+        supabase
+          .from("daily_prayer_completions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("date", getLocalDateString())
+          .maybeSingle(),
+        supabase
+          .from("daily_prayer_completions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .lte("date", getLocalDateString()),
+      ]);
+      if (!todayPrayerResponse.error) setTodayDone(previous => ({ ...previous, prayer: !!todayPrayerResponse.data }));
+      if (!prayerCountResponse.error) setPrayerDayCount(prayerCountResponse.count ?? 0);
     } catch (error) {
       console.warn("홈 기도 상태를 갱신하지 못했어요:", error);
     }
@@ -2343,6 +2363,8 @@ export default function HomePage() {
             lang={lang}
             snapshotRef={homePrayerSnapshotRef}
             onClose={() => setShowHomePrayerCards(false)}
+            dailyPrayerDone={todayDone.prayer}
+            onCompleteDailyPrayer={markQuietPrayer}
             onDataChanged={() => { void refreshHomePrayerStatus(); }}
           />
         </Suspense>
@@ -2744,42 +2766,91 @@ export default function HomePage() {
       <div style={{ padding: "0 16px 14px" }}>
         <div
           style={{
-            position: "relative",
+            display: "flex",
+            alignItems: "stretch",
+            gap: 8,
             margin: "0 8px 10px",
-            padding: "11px 16px",
-            borderRadius: "18px 18px 18px 8px",
-            border: "1px solid var(--border-sage-soft)",
-            background: "var(--surface-sage-subtle)",
-            color: "var(--text)",
-            fontSize: 14,
-            fontWeight: 850,
-            lineHeight: 1.35,
-            textAlign: "center",
-            wordBreak: "keep-all",
           }}
         >
-          {t("home_routine_prompt", lang)}
-          <span
-            aria-hidden="true"
+          <div
             style={{
-              position: "absolute",
-              left: 40,
-              bottom: -7,
-              width: 13,
-              height: 13,
-              borderRight: "1px solid var(--border-sage-soft)",
-              borderBottom: "1px solid var(--border-sage-soft)",
+              position: "relative",
+              minWidth: 0,
+              flex: "0 1 60%",
+              maxWidth: "60%",
+              padding: "10px 12px",
+              borderRadius: "18px 18px 18px 8px",
+              border: "1px solid var(--border-sage-soft)",
               background: "var(--surface-sage-subtle)",
-              transform: "rotate(45deg)",
+              color: "var(--text)",
+              fontSize: 13,
+              fontWeight: 850,
+              lineHeight: 1.35,
+              textAlign: "center",
+              wordBreak: "keep-all",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            {t("home_routine_prompt", lang)}
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 28,
+                bottom: -7,
+                width: 13,
+                height: 13,
+                borderRight: "1px solid var(--border-sage-soft)",
+                borderBottom: "1px solid var(--border-sage-soft)",
+                background: "var(--surface-sage-subtle)",
+                transform: "rotate(45deg)",
+              }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 16, flex: "1 1 auto", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+            <div
+              role="img"
+              aria-label={`${t("home_routine_qt", lang)} ${Number(profile?.streak_days ?? 0)}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                flex: "0 0 auto",
+              }}
+            >
+              <img src="/icon-qt.webp" alt="" width={24} height={24} style={{ objectFit: "contain" }} />
+              <span style={{ minWidth: 16, color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
+                {Number(profile?.streak_days ?? 0)}
+              </span>
+            </div>
+            <div
+              role="img"
+              aria-label={`${t("home_routine_prayer", lang)} ${prayerDayCount ?? 0}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                flex: "0 0 auto",
+              }}
+            >
+              <img src="/icon-pray.webp" alt="" width={24} height={24} style={{ objectFit: "contain" }} />
+              <span style={{ minWidth: 16, color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
+                {prayerDayCount ?? "–"}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div
           className="card roots-elevation-card"
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(82px, 0.8fr) minmax(0, 1.6fr)",
+            gridTemplateColumns: "minmax(104px, 1.05fr) minmax(0, 1.35fr)",
             gap: 10,
             alignItems: "center",
             minHeight: 148,
@@ -2837,20 +2908,18 @@ export default function HomePage() {
                 width: "100%",
                 minHeight: 61,
                 borderRadius: 17,
-                padding: "8px 9px",
+                padding: "8px 42px",
                 border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
                 background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--bg2)",
                 display: "flex",
                 alignItems: "center",
-                gap: 9,
+                justifyContent: "center",
+                position: "relative",
                 cursor: "pointer",
                 textAlign: "center",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 13, background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img src="/icon-qt.webp" alt="" width={30} height={30} style={{ objectFit: "contain" }} />
-              </div>
               <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
                 <div style={{ fontSize: todayDone.qt ? 12.5 : 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.18, wordBreak: "keep-all" }}>
                   {reflectionActionTitle}
@@ -2861,33 +2930,47 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
+              {todayDone.qt && (
+                <CheckCircle2
+                  size={24}
+                  strokeWidth={2.5}
+                  aria-hidden="true"
+                  style={{ position: "absolute", right: 14, color: "var(--sage-dark)" }}
+                />
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setShowHomePrayerCards(true)}
-              className="roots-elevation-card"
+              className={todayDone.prayer ? "card-sage roots-elevation-card-sage" : "roots-elevation-card"}
               style={{
                 width: "100%",
                 minHeight: 61,
                 borderRadius: 17,
-                padding: "8px 9px",
-                border: "1px solid var(--border)",
-                background: "var(--bg2)",
+                padding: "8px 42px",
+                border: todayDone.prayer ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
+                background: todayDone.prayer ? "var(--surface-sage-selected)" : "var(--bg2)",
                 display: "flex",
                 alignItems: "center",
-                gap: 9,
+                justifyContent: "center",
+                position: "relative",
                 cursor: "pointer",
                 textAlign: "center",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 13, background: "var(--surface-sage-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img src="/icon-pray.webp" alt="" width={30} height={30} style={{ objectFit: "contain" }} />
+              <div style={{ minWidth: 0, flex: 1, fontSize: todayDone.prayer ? 12.5 : 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
+                {t(todayDone.prayer ? "home_action_prayer_done" : "home_action_prayer", lang)}
               </div>
-              <div style={{ minWidth: 0, flex: 1, fontSize: 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
-                {getPrayerCardText(lang).openCards}
-              </div>
+              {todayDone.prayer && (
+                <CheckCircle2
+                  size={24}
+                  strokeWidth={2.5}
+                  aria-hidden="true"
+                  style={{ position: "absolute", right: 14, color: "var(--sage-dark)" }}
+                />
+              )}
             </button>
           </div>
         </div>
