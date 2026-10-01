@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 
 import { t, type Lang } from "@/lib/i18n";
@@ -17,12 +18,32 @@ export default function HomeQTDraftChoice({
   onStartNew: () => void;
   onClose: () => void;
 }) {
+  const backdropTapStart = useRef<{ x: number; y: number } | null>(null);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="home-qt-draft-choice-title"
       aria-describedby="home-qt-draft-choice-description"
+      onPointerDown={(event) => {
+        backdropTapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
+          ? { x: event.clientX, y: event.clientY }
+          : null;
+      }}
+      onPointerCancel={() => { backdropTapStart.current = null; }}
+      onClick={(event) => {
+        const start = backdropTapStart.current;
+        backdropTapStart.current = null;
+        if (
+          deleting ||
+          !start ||
+          event.target !== event.currentTarget ||
+          Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10 ||
+          document.elementFromPoint(event.clientX, event.clientY) !== event.currentTarget
+        ) return;
+        onClose();
+      }}
       style={{
         position: "fixed",
         inset: 0,

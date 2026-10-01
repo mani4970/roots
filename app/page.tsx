@@ -337,6 +337,7 @@ export default function HomePage() {
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
   const [showHomeQTChoice, setShowHomeQTChoice] = useState(false);
+  const homeQTBackdropTapStart = useRef<{ x: number; y: number } | null>(null);
   const [showHomeQTDraftChoice, setShowHomeQTDraftChoice] = useState(false);
   const [deletingHomeQTDraft, setDeletingHomeQTDraft] = useState(false);
   const deletingHomeQTDraftRef = useRef(false);
@@ -1852,6 +1853,14 @@ export default function HomePage() {
     }));
   }
 
+  function closeHomeQTChoicePopup() {
+    setShowHomeQTChoice(false);
+    setShowHomeSundayQT(false);
+    setShowHomeQTPassageChoice(false);
+    setShowHomeQTPhotoPassageChoice(false);
+    setShowHomeQTGuide(false);
+  }
+
   function openHomeQT() {
     if (homeQTState.hasDraft) {
       setShowHomeQTDraftChoice(true);
@@ -1998,11 +2007,6 @@ export default function HomePage() {
     }
     router.push("/qt");
   }
-
-  const reflectionActionTitle = todayDone.qt
-    ? t("home_action_reflection_done", lang)
-    : t("home_action_reflection_start", lang);
-  const reflectionActionSub = todayDone.qt ? t("home_action_view_record", lang) : "";
 
   const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
   const spanishLanguageLaunchAnnouncementBlocked =
@@ -2253,7 +2257,26 @@ export default function HomePage() {
 
       <ObservationPopup userId={profile?.id} kind="qt_choice" queued={showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice}>
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
+        <div
+          onPointerDown={(event) => {
+            homeQTBackdropTapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
+              ? { x: event.clientX, y: event.clientY }
+              : null;
+          }}
+          onPointerCancel={() => { homeQTBackdropTapStart.current = null; }}
+          onClick={(event) => {
+            const start = homeQTBackdropTapStart.current;
+            homeQTBackdropTapStart.current = null;
+            if (
+              !start ||
+              event.target !== event.currentTarget ||
+              Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10 ||
+              document.elementFromPoint(event.clientX, event.clientY) !== event.currentTarget
+            ) return;
+            closeHomeQTChoicePopup();
+          }}
+          style={{ position: "fixed", inset: 0, zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}
+        >
           <div className="roots-elevation-sheet" style={{ width: "100%", maxWidth: 420, background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, paddingRight: 42 }}>
               <div style={{ width: "100%", minWidth: 0 }}>
@@ -2272,7 +2295,7 @@ export default function HomePage() {
                 )}
               </div>
               <button
-                onClick={() => { setShowHomeQTChoice(false); setShowHomeSundayQT(false); setShowHomeQTPassageChoice(false); setShowHomeQTPhotoPassageChoice(false); setShowHomeQTGuide(false); }}
+                onClick={closeHomeQTChoicePopup}
                 aria-label={t("home_qt_choice_close", lang)}
                 style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, border: "none", background: "none", color: "var(--text3)", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
@@ -2766,95 +2789,46 @@ export default function HomePage() {
       <div style={{ padding: "0 16px 14px" }}>
         <div
           style={{
-            display: "flex",
-            alignItems: "stretch",
-            gap: 8,
+            position: "relative",
             margin: "0 8px 10px",
+            padding: "10px 14px",
+            borderRadius: "18px 18px 18px 8px",
+            border: "1px solid var(--border-sage-soft)",
+            background: "var(--surface-sage-subtle)",
+            color: "var(--text)",
+            fontSize: 13,
+            fontWeight: 850,
+            lineHeight: 1.35,
+            textAlign: "center",
+            wordBreak: "keep-all",
           }}
         >
-          <div
+          {t("home_routine_prompt", lang)}
+          <span
+            aria-hidden="true"
             style={{
-              position: "relative",
-              minWidth: 0,
-              flex: "0 1 60%",
-              maxWidth: "60%",
-              padding: "10px 12px",
-              borderRadius: "18px 18px 18px 8px",
-              border: "1px solid var(--border-sage-soft)",
+              position: "absolute",
+              left: 28,
+              bottom: -7,
+              width: 13,
+              height: 13,
+              borderRight: "1px solid var(--border-sage-soft)",
+              borderBottom: "1px solid var(--border-sage-soft)",
               background: "var(--surface-sage-subtle)",
-              color: "var(--text)",
-              fontSize: 13,
-              fontWeight: 850,
-              lineHeight: 1.35,
-              textAlign: "center",
-              wordBreak: "keep-all",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              transform: "rotate(45deg)",
             }}
-          >
-            {t("home_routine_prompt", lang)}
-            <span
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                left: 28,
-                bottom: -7,
-                width: 13,
-                height: 13,
-                borderRight: "1px solid var(--border-sage-soft)",
-                borderBottom: "1px solid var(--border-sage-soft)",
-                background: "var(--surface-sage-subtle)",
-                transform: "rotate(45deg)",
-              }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 16, flex: "1 1 auto", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
-            <div
-              role="img"
-              aria-label={`${t("home_routine_qt", lang)} ${Number(profile?.streak_days ?? 0)}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                flex: "0 0 auto",
-              }}
-            >
-              <img src="/icon-qt.webp" alt="" width={24} height={24} style={{ objectFit: "contain" }} />
-              <span style={{ minWidth: 16, color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
-                {Number(profile?.streak_days ?? 0)}
-              </span>
-            </div>
-            <div
-              role="img"
-              aria-label={`${t("home_routine_prayer", lang)} ${prayerDayCount ?? 0}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                flex: "0 0 auto",
-              }}
-            >
-              <img src="/icon-pray.webp" alt="" width={24} height={24} style={{ objectFit: "contain" }} />
-              <span style={{ minWidth: 16, color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
-                {prayerDayCount ?? "–"}
-              </span>
-            </div>
-          </div>
+          />
         </div>
 
         <div
           className="card roots-elevation-card"
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(104px, 1.05fr) minmax(0, 1.35fr)",
-            gap: 10,
+            gridTemplateColumns: "minmax(104px, 0.95fr) minmax(0, 1.45fr)",
+            gap: 9,
             alignItems: "center",
-            minHeight: 148,
-            padding: "11px 12px",
+            minHeight: 132,
+            padding: "9px 10px",
             borderRadius: 22,
             border: "1px solid var(--border)",
             background: "var(--surface-card)",
@@ -2888,7 +2862,7 @@ export default function HomePage() {
               style={{
                 marginTop: 3,
                 color: "var(--text3)",
-                fontSize: 9.5,
+                fontSize: 9,
                 fontWeight: 800,
                 lineHeight: 1.2,
                 textAlign: "center",
@@ -2899,43 +2873,95 @@ export default function HomePage() {
             </span>
           </button>
 
-          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+          <div
+            style={{
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 7,
+              alignSelf: "stretch",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                minHeight: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 14,
+                padding: "0 0 1px",
+              }}
+            >
+              <div
+                role="img"
+                aria-label={`${t("home_routine_qt", lang)} ${Number(profile?.streak_days ?? 0)}`}
+                style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 auto" }}
+              >
+                <img src="/icon-qt.webp" alt="" width={22} height={22} style={{ objectFit: "contain" }} />
+                <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
+                  {Number(profile?.streak_days ?? 0)}
+                </span>
+              </div>
+              <div
+                role="img"
+                aria-label={`${t("home_routine_prayer", lang)} ${prayerDayCount ?? 0}`}
+                style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 auto" }}
+              >
+                <img src="/icon-pray.webp" alt="" width={22} height={22} style={{ objectFit: "contain" }} />
+                <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
+                  {prayerDayCount ?? "–"}
+                </span>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
               className={todayDone.qt ? "card-sage roots-elevation-card-sage" : "roots-elevation-card"}
               style={{
+                position: "relative",
                 width: "100%",
-                minHeight: 61,
-                borderRadius: 17,
-                padding: "8px 42px",
+                minWidth: 0,
+                minHeight: 46,
+                borderRadius: 16,
+                padding: "9px 38px 9px 12px",
                 border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
-                background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--bg2)",
+                background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-card)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                position: "relative",
                 cursor: "pointer",
                 textAlign: "center",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: reflectionActionSub ? 3 : 0, justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-                <div style={{ fontSize: todayDone.qt ? 12.5 : 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.18, wordBreak: "keep-all" }}>
-                  {reflectionActionTitle}
-                </div>
-                {reflectionActionSub && (
-                  <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--sage-dark)", lineHeight: 1.15, wordBreak: "keep-all" }}>
-                    {reflectionActionSub}
-                  </div>
-                )}
-              </div>
-              {todayDone.qt && (
+              <span
+                style={{
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  whiteSpace: "nowrap",
+                  fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
+                  fontWeight: 900,
+                  color: "var(--text)",
+                  lineHeight: 1.1,
+                }}
+              >
+                {t("home_routine_qt", lang)}
+              </span>
+              {todayDone.qt ? (
                 <CheckCircle2
-                  size={24}
-                  strokeWidth={2.5}
+                  size={17}
+                  strokeWidth={2.3}
                   aria-hidden="true"
-                  style={{ position: "absolute", right: 14, color: "var(--sage-dark)" }}
+                  style={{ position: "absolute", right: 13, color: "var(--sage-dark)" }}
+                />
+              ) : (
+                <ChevronRight
+                  size={17}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={{ position: "absolute", right: 13, color: "var(--text3)" }}
                 />
               )}
             </button>
@@ -2943,32 +2969,50 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setShowHomePrayerCards(true)}
-              className={todayDone.prayer ? "card-sage roots-elevation-card-sage" : "roots-elevation-card"}
+              className="roots-elevation-card"
               style={{
+                position: "relative",
                 width: "100%",
-                minHeight: 61,
-                borderRadius: 17,
-                padding: "8px 42px",
-                border: todayDone.prayer ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
-                background: todayDone.prayer ? "var(--surface-sage-selected)" : "var(--bg2)",
+                minWidth: 0,
+                minHeight: 46,
+                borderRadius: 16,
+                padding: "9px 38px 9px 12px",
+                border: todayDone.prayer ? "1px solid var(--daily-word-terra-border)" : "1px solid var(--border)",
+                background: todayDone.prayer ? "var(--daily-word-terra-surface)" : "var(--surface-card)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                position: "relative",
                 cursor: "pointer",
                 textAlign: "center",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <div style={{ minWidth: 0, flex: 1, fontSize: todayDone.prayer ? 12.5 : 13.5, fontWeight: 900, color: "var(--text)", lineHeight: 1.22, textAlign: "center", wordBreak: "keep-all" }}>
-                {t(todayDone.prayer ? "home_action_prayer_done" : "home_action_prayer", lang)}
-              </div>
-              {todayDone.prayer && (
+              <span
+                style={{
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  whiteSpace: "nowrap",
+                  fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
+                  fontWeight: 900,
+                  color: "var(--text)",
+                  lineHeight: 1.1,
+                }}
+              >
+                {t("home_routine_prayer", lang)}
+              </span>
+              {todayDone.prayer ? (
                 <CheckCircle2
-                  size={24}
-                  strokeWidth={2.5}
+                  size={17}
+                  strokeWidth={2.3}
                   aria-hidden="true"
-                  style={{ position: "absolute", right: 14, color: "var(--sage-dark)" }}
+                  style={{ position: "absolute", right: 13, color: "var(--daily-word-terra-text)" }}
+                />
+              ) : (
+                <ChevronRight
+                  size={17}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  style={{ position: "absolute", right: 13, color: "var(--text3)" }}
                 />
               )}
             </button>

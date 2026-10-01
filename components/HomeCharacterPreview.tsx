@@ -82,9 +82,9 @@ export default function HomeCharacterPreview({ ownerId, avatarType, alt, layers,
   }, [signature]);
 
   return (
-    <div style={{ position: "relative", width: "clamp(84px, 23vw, 102px)" }}>
+    <div style={{ position: "relative", width: "clamp(92px, 25vw, 112px)" }}>
       <div ref={previewRef} aria-hidden={!ready} style={{ visibility: ready ? "visible" : "hidden" }}>
-        <ProfileCharacterPreview avatarType={avatarType} alt={alt} layers={visibleLayers} />
+        <ProfileCharacterPreview avatarType={avatarType} alt={alt} layers={visibleLayers} forceSquareCanvas />
       </div>
       {!ready && (
         <div aria-hidden="true" style={{ position: "absolute", inset: "8% 12%", borderRadius: 18, background: "var(--sage-light)", opacity: 0.55, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, pointerEvents: "none" }}>
