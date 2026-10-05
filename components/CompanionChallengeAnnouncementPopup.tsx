@@ -3,7 +3,7 @@
 import { Loader2, Users } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 
-import { COMPANION_CHALLENGE_3_BADGE, COMPANION_CHALLENGE_3_COPY } from "@/lib/companionChallengeCampaign";
+import { COMPANION_CHALLENGE_4_BADGE, COMPANION_CHALLENGE_4_COPY } from "@/lib/companionChallengeCampaign";
 
 type CompanionChallengeAnnouncementPopupProps = {
   show: boolean;
@@ -20,7 +20,7 @@ export default function CompanionChallengeAnnouncementPopup({
 }: CompanionChallengeAnnouncementPopupProps) {
   const lang = useLang();
   if (!show) return null;
-  const copy = COMPANION_CHALLENGE_3_COPY[lang] ?? COMPANION_CHALLENGE_3_COPY.ko;
+  const copy = COMPANION_CHALLENGE_4_COPY[lang] ?? COMPANION_CHALLENGE_4_COPY.ko;
 
   return (
     <div
@@ -42,7 +42,7 @@ export default function CompanionChallengeAnnouncementPopup({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="companion-challenge-3-announcement-title"
+        aria-labelledby="companion-challenge-4-announcement-title"
         style={{
           width: "100%",
           maxWidth: 356,
@@ -58,25 +58,25 @@ export default function CompanionChallengeAnnouncementPopup({
       >
         <div
           style={{
-            width: 196,
-            height: 132,
-            margin: "0 auto 13px",
+            width: 112,
+            height: 112,
+            margin: "0 auto 10px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <img
-            src={COMPANION_CHALLENGE_3_BADGE}
+            src={COMPANION_CHALLENGE_4_BADGE}
             alt={copy.badgeAlt}
             style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
 
         <h2
-          id="companion-challenge-3-announcement-title"
+          id="companion-challenge-4-announcement-title"
           style={{
-            margin: "0 0 11px",
+            margin: "0 0 4px",
             color: "var(--text)",
             fontSize: 20,
             fontWeight: 950,
@@ -87,8 +87,17 @@ export default function CompanionChallengeAnnouncementPopup({
           {copy.title}
         </h2>
 
-        <p style={{ margin: "0 0 13px", color: "var(--text2)", fontSize: 14, fontWeight: 800, lineHeight: 1.6, wordBreak: "keep-all" }}>
-          {copy.lead}
+        <p
+          style={{
+            margin: "0 0 13px",
+            color: "var(--text3)",
+            fontSize: 12.5,
+            fontWeight: 800,
+            lineHeight: 1.4,
+            wordBreak: "keep-all",
+          }}
+        >
+          {copy.period}
         </p>
 
         <div
@@ -102,11 +111,11 @@ export default function CompanionChallengeAnnouncementPopup({
         >
           <p
             style={{
-              margin: "0 0 8px",
+              margin: 0,
               color: "var(--text2)",
               fontSize: 13.5,
               lineHeight: 1.65,
-              fontWeight: 700,
+              fontWeight: 800,
               wordBreak: "keep-all",
             }}
           >
@@ -114,15 +123,15 @@ export default function CompanionChallengeAnnouncementPopup({
           </p>
           <p
             style={{
-              margin: 0,
-              color: "var(--text-gold-strong)",
-              fontSize: 13.5,
-              lineHeight: 1.65,
-              fontWeight: 900,
+              margin: "11px 0 0",
+              color: "var(--text2)",
+              fontSize: 13,
+              lineHeight: 1.6,
+              fontWeight: 800,
               wordBreak: "keep-all",
             }}
           >
-            {copy.reward}
+            {copy.nudge}
           </p>
         </div>
 

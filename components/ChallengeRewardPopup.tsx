@@ -1,6 +1,11 @@
 "use client";
 
-import { COMPANION_CHALLENGE_3_ID, COMPANION_CHALLENGE_3_COPY } from "@/lib/companionChallengeCampaign";
+import {
+  COMPANION_CHALLENGE_3_ID,
+  COMPANION_CHALLENGE_3_COPY,
+  COMPANION_CHALLENGE_4_ID,
+  COMPANION_CHALLENGE_4_COPY,
+} from "@/lib/companionChallengeCampaign";
 import { Star } from "lucide-react";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import {
@@ -37,6 +42,8 @@ export default function ChallengeRewardPopup({
   const isCompanion = reward.kind === "companion";
   const isTapeChallenge = isCompanion && reward.challengeId === COMPANION_CHALLENGE_3_ID;
   const tapeCopy = COMPANION_CHALLENGE_3_COPY[lang] ?? COMPANION_CHALLENGE_3_COPY.ko;
+  const isOctoberChallenge = isCompanion && reward.challengeId === COMPANION_CHALLENGE_4_ID;
+  const octoberCopy = COMPANION_CHALLENGE_4_COPY[lang] ?? COMPANION_CHALLENGE_4_COPY.ko;
   const companionText = getCompanionChallengeText(lang);
   const title = isCompanion
     ? companionText.popupTitle
@@ -68,6 +75,8 @@ export default function ChallengeRewardPopup({
       }`;
   const button = isTapeChallenge
     ? tapeCopy.viewBadge
+    : isOctoberChallenge
+    ? octoberCopy.viewBadge
     : isCompanion
     ? companionText.popupButton
     : t("group_challenge_award_popup_btn", lang);

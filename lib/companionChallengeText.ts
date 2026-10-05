@@ -1,4 +1,9 @@
-import { COMPANION_CHALLENGE_3_ID, COMPANION_CHALLENGE_3_COPY } from "@/lib/companionChallengeCampaign";
+import {
+  COMPANION_CHALLENGE_3_ID,
+  COMPANION_CHALLENGE_3_COPY,
+  COMPANION_CHALLENGE_4_ID,
+  COMPANION_CHALLENGE_4_COPY,
+} from "@/lib/companionChallengeCampaign";
 import type { Lang } from "@/lib/i18n";
 import type { CompanionChallengeStatus } from "@/lib/companionChallenges";
 
@@ -168,32 +173,37 @@ export const COMPANION_CHALLENGE_2_ID = "f7dbeeac-d739-425b-b26e-536650e5e20f";
 
 const CHALLENGE_TITLE_TEXT: Record<
   CompanionChallengeLang,
-  { companionChallenge1: string; companionChallenge2: string; companionChallenge3: string }
+  { companionChallenge1: string; companionChallenge2: string; companionChallenge3: string; companionChallenge4: string }
 > = {
   ko: {
     companionChallenge1: "우리의 신앙 여정 Part 1",
     companionChallenge2: "우리의 신앙 여정 Part 2",
     companionChallenge3: COMPANION_CHALLENGE_3_COPY.ko.title,
+    companionChallenge4: COMPANION_CHALLENGE_4_COPY.ko.title,
   },
   en: {
     companionChallenge1: "Our Faith Journey Part 1",
     companionChallenge2: "Our Faith Journey Part 2",
     companionChallenge3: COMPANION_CHALLENGE_3_COPY.en.title,
+    companionChallenge4: COMPANION_CHALLENGE_4_COPY.en.title,
   },
   de: {
     companionChallenge1: "Unsere Glaubensreise Teil 1",
     companionChallenge2: "Unsere Glaubensreise Teil 2",
     companionChallenge3: COMPANION_CHALLENGE_3_COPY.de.title,
+    companionChallenge4: COMPANION_CHALLENGE_4_COPY.de.title,
   },
   fr: {
     companionChallenge1: "Notre chemin de foi Partie 1",
     companionChallenge2: "Notre chemin de foi Partie 2",
     companionChallenge3: COMPANION_CHALLENGE_3_COPY.fr.title,
+    companionChallenge4: COMPANION_CHALLENGE_4_COPY.fr.title,
   },
   es: {
     companionChallenge1: "Nuestro camino de fe Parte 1",
     companionChallenge2: "Nuestro camino de fe Parte 2",
     companionChallenge3: COMPANION_CHALLENGE_3_COPY.es.title,
+    companionChallenge4: COMPANION_CHALLENGE_4_COPY.es.title,
   },
 };
 
@@ -236,13 +246,21 @@ function isCompanionChallenge3Title(value?: string | null) {
   );
 }
 
+function isCompanionChallenge4Title(value?: string | null) {
+  const normalized = normalizeTitleValue(value);
+  return Object.values(COMPANION_CHALLENGE_4_COPY).some(
+    (copy) => normalizeTitleValue(copy.title) === normalized,
+  );
+}
+
 function getKnownChallengePart(
   challenge: CompanionChallengeTitleInput | string | null | undefined,
-): 1 | 2 | 3 | null {
+): 1 | 2 | 3 | 4 | null {
   if (typeof challenge === "string") {
     if (isCompanionChallenge1Title(challenge)) return 1;
     if (isCompanionChallenge2Title(challenge)) return 2;
     if (isCompanionChallenge3Title(challenge)) return 3;
+    if (isCompanionChallenge4Title(challenge)) return 4;
     return null;
   }
 
@@ -274,6 +292,14 @@ function getKnownChallengePart(
     return 3;
   }
 
+  if (
+    challengeId === COMPANION_CHALLENGE_4_ID ||
+    isCompanionChallenge4Title(title) ||
+    isCompanionChallenge4Title(badgeName)
+  ) {
+    return 4;
+  }
+
   return null;
 }
 
@@ -287,12 +313,27 @@ export function getCompanionChallengeDisplayTitle(
   if (part === 1) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge1;
   if (part === 2) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge2;
   if (part === 3) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge3;
+  if (part === 4) return CHALLENGE_TITLE_TEXT[normalizedLang].companionChallenge4;
 
   if (typeof challenge === "string") return challenge;
 
   const title = String(challenge?.title ?? "").trim();
   const badgeName = String(challenge?.badgeName ?? "").trim();
   return title || badgeName || TEXT[normalizedLang].sectionTitle;
+}
+
+
+export function getCompanionChallengeCardDescription(
+  challenge: CompanionChallengeTitleInput | string | null | undefined,
+  lang: Lang | string,
+) {
+  const normalizedLang = normalizeLang(String(lang));
+  const part = getKnownChallengePart(challenge);
+
+  if (part === 4) {
+    return COMPANION_CHALLENGE_4_COPY[normalizedLang].cardDescription;
+  }
+  return TEXT[normalizedLang].cardDescription;
 }
 
 export function getCompanionChallengeRewardTeaser(
@@ -323,7 +364,7 @@ export function getCompanionChallengeRewardPopupBody(
 ) {
   const normalizedLang = normalizeLang(String(lang));
   const part = getKnownChallengePart(challenge);
-  const days = part === 1 ? 15 : part === 2 ? 17 : part === 3 ? 9 : null;
+  const days = part === 1 ? 15 : part === 2 ? 17 : part === 3 ? 9 : part === 4 ? 10 : null;
 
   if (!days) return TEXT[normalizedLang].popupBody;
   if (normalizedLang === "ko") {

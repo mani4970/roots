@@ -91,6 +91,7 @@ import {
   type CompanionChallengeStatus,
 } from "@/lib/companionChallenges";
 import {
+  getCompanionChallengeCardDescription,
   getCompanionChallengeDisplayTitle,
   getCompanionChallengeRewardTeaser,
   getCompanionChallengeStatusLabel,
@@ -6753,7 +6754,14 @@ function CommunityPageContent() {
               </span>
             </div>
             <p style={{ fontSize: 12, color: "var(--challenge-secondary-text)", lineHeight: 1.55, margin: "9px 0 0" }}>
-              {text.cardDescription}
+              {getCompanionChallengeCardDescription(
+                {
+                  challengeId: status.challengeId,
+                  title: status.title,
+                  badgeName: status.badgeName,
+                },
+                lang,
+              )}
             </p>
           </div>
         </div>

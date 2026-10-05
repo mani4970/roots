@@ -84,9 +84,10 @@ import {
 } from "@/lib/userCampaignImpressions";
 import {
   COMPANION_CHALLENGE_3_ID,
-  COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
   COMPANION_CHALLENGE_3_END_DATE,
-  isCompanionChallenge3AnnouncementWindow,
+  COMPANION_CHALLENGE_4_ID,
+  COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
+  isCompanionChallenge4AnnouncementWindow,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
@@ -433,7 +434,7 @@ export default function HomePage() {
     if (userId) {
       storageSet(
         getUserCampaignLocalStorageKey(
-          COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
+          COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
           userId,
         ),
         "true",
@@ -449,7 +450,7 @@ export default function HomePage() {
         await markUserCampaignSeen(
           supabase,
           userId,
-          COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY,
+          COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
         );
       }
     } catch (error) {
@@ -629,9 +630,15 @@ export default function HomePage() {
     }
 
     const rewards = Array.from(rewardsByAwardId.values()).filter((reward) => {
-      if (reward.kind !== "companion" || reward.challengeId !== COMPANION_CHALLENGE_3_ID || !companionChallengeAnnouncementUserIdRef.current) return true;
+      if (reward.kind !== "companion" || !companionChallengeAnnouncementUserIdRef.current) return true;
+      const receiptPrefix = reward.challengeId === COMPANION_CHALLENGE_3_ID
+        ? "companion_challenge_3_reward_"
+        : reward.challengeId === COMPANION_CHALLENGE_4_ID
+        ? "companion_challenge_4_reward_"
+        : null;
+      if (!receiptPrefix) return true;
       const key = getUserCampaignLocalStorageKey(
-        `companion_challenge_3_reward_${reward.awardId}`,
+        `${receiptPrefix}${reward.awardId}`,
         companionChallengeAnnouncementUserIdRef.current,
       );
       if (!storageGet(key)) return true;
@@ -663,11 +670,18 @@ export default function HomePage() {
     acknowledgeObservedPopup(profile?.id, "challenge_reward", openProfile ? "profile" : "close");
 
     challengeRewardActionInFlightRef.current = true;
-    const isTapeChallenge = reward.kind === "companion" && reward.challengeId === COMPANION_CHALLENGE_3_ID;
+    const companionRewardReceiptPrefix = reward.kind === "companion"
+      ? reward.challengeId === COMPANION_CHALLENGE_3_ID
+        ? "companion_challenge_3_reward_"
+        : reward.challengeId === COMPANION_CHALLENGE_4_ID
+        ? "companion_challenge_4_reward_"
+        : null
+      : null;
+    const hasFeaturedCompanionReward = companionRewardReceiptPrefix !== null;
     const userId = companionChallengeAnnouncementUserIdRef.current;
-    if (isTapeChallenge && userId) {
+    if (companionRewardReceiptPrefix && userId) {
       storageSet(getUserCampaignLocalStorageKey(
-        `companion_challenge_3_reward_${reward.awardId}`, userId,
+        `${companionRewardReceiptPrefix}${reward.awardId}`, userId,
       ), "true");
     }
     const hasAnotherReward = challengeRewardQueue.some(
@@ -677,7 +691,7 @@ export default function HomePage() {
       current.filter((candidate) => candidate.awardId !== reward.awardId),
     );
 
-    if (isTapeChallenge && openProfile) {
+    if (hasFeaturedCompanionReward && openProfile) {
       // Leave remaining rewards unacknowledged for the next Home visit; do not
       // flash the next popup while navigating to the requested badge screen.
       setOpeningChallengeProfile(true);
@@ -692,7 +706,7 @@ export default function HomePage() {
       console.warn("챌린지 보상 팝업 확인 저장 실패:", error);
     } finally {
       challengeRewardActionInFlightRef.current = false;
-      if (openProfile && !isTapeChallenge && !hasAnotherReward) {
+      if (openProfile && !hasFeaturedCompanionReward && !hasAnotherReward) {
         router.push("/profile#special-badges");
       }
     }
@@ -750,17 +764,17 @@ export default function HomePage() {
 
   useEffect(() => {
     const userId = profile?.id;
-    if (!isCompanionChallenge3AnnouncementWindow(challengeLocalDate)) {
+    if (!isCompanionChallenge4AnnouncementWindow(challengeLocalDate)) {
       setShowCompanionChallengeAnnouncement(false);
       return;
     }
     if (loading || !userId) return;
     let cancelled = false;
     const localKey = getUserCampaignLocalStorageKey(
-      COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY, userId,
+      COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY, userId,
     );
     if (storageGet(localKey)) return;
-    void loadUserCampaignSeen(createClient(), userId, COMPANION_CHALLENGE_3_ANNOUNCEMENT_KEY)
+    void loadUserCampaignSeen(createClient(), userId, COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY)
       .then((seen) => {
         if (cancelled) return;
         if (seen === true) {
@@ -768,7 +782,7 @@ export default function HomePage() {
           return;
         }
         // An in-flight lookup must not open the announcement after Sep 10.
-        if (isCompanionChallenge3AnnouncementWindow(getLocalDateString()) && !storageGet(localKey)) {
+        if (isCompanionChallenge4AnnouncementWindow(getLocalDateString()) && !storageGet(localKey)) {
           setShowCompanionChallengeAnnouncement(true);
         }
       });
@@ -2072,7 +2086,7 @@ export default function HomePage() {
     chapterPopup.show;
   const visibleCompanionChallengeAnnouncement =
     showCompanionChallengeAnnouncement &&
-    isCompanionChallenge3AnnouncementWindow(challengeLocalDate) &&
+    isCompanionChallenge4AnnouncementWindow(challengeLocalDate) &&
     !homePopupBlocked;
   const visibleChallengeReward =
     homePopupBlocked || visibleCompanionChallengeAnnouncement || handlingCompanionChallengeAnnouncement || openingChallengeProfile
