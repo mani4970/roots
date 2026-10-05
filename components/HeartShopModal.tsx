@@ -195,6 +195,10 @@ const CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES: Partial<
   // Yeolmu is a flying pet and sits much higher on the shared 1086×1448 canvas
   // than the ground pets, so the generic pet crop would show an empty tile.
   shared_pet_07: { x: 690, y: 570, width: 330, height: 290 },
+  // Long winter coats extend below the shared top crop; keep their hems visible.
+  // Preview-only bounds: the wearable assets and character layer layout stay unchanged.
+  rootsman_top_31: { x: 230, y: 590, width: 626, height: 580 },
+  rootsman_top_32: { x: 230, y: 590, width: 626, height: 580 },
 };
 
 function CharacterItemLayerPreview({
