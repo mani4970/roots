@@ -323,16 +323,19 @@ export async function applyNotificationSettings(settings: RootsNotificationSetti
     if (normalized.morningEnabled) {
       const at = dateForTimeOnDay(normalized.morningTime, offset);
       if (at > now) {
-        notifications.push({
-          id: NOTIFICATION_IDS.morningBase + offset,
-          title: text.roots,
-          body: text.morning,
-          schedule: exactScheduleAt(at),
-          extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
-          autoCancel: true,
-          channelId: androidChannel,
-          ...androidVisuals,
-        });
+        const key = todayKey(at);
+        if (!completedDates.has(key)) {
+          notifications.push({
+            id: NOTIFICATION_IDS.morningBase + offset,
+            title: text.roots,
+            body: text.morning,
+            schedule: exactScheduleAt(at),
+            extra: { target: "reflection" satisfies NotificationTarget, kind: "morning_reflection" },
+            autoCancel: true,
+            channelId: androidChannel,
+            ...androidVisuals,
+          });
+        }
       }
     }
 
