@@ -65,29 +65,36 @@ function applyPartnerFallback(data: CachedSharePromptOptions, fallbackPartnerNam
   };
 }
 
-async function fetchSharePromptOptions(userId: string): Promise<CachedSharePromptOptions> {
+async function fetchSharePromptOptions(userId: string, signal?: AbortSignal): Promise<CachedSharePromptOptions> {
   const supabase = createClient();
 
+  const cancellable = <T extends { abortSignal: (signal: AbortSignal) => T }>(request: T): T => {
+    if (!signal) return request;
+    if (signal.aborted) throw shareOptionsAbortError(signal);
+    return request.abortSignal(signal);
+  };
+
   const [memberResult, companionResult] = await Promise.all([
-    supabase
+    cancellable(supabase
       .from("group_members")
       .select("group_id,is_favorite")
-      .eq("user_id", userId),
-    supabase
+      .eq("user_id", userId)),
+    cancellable(supabase
       .from("companions")
       .select("requester_id, receiver_id")
       .eq("status", "accepted")
-      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`),
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)),
   ]);
 
+  if (signal?.aborted) throw shareOptionsAbortError(signal);
   let memberRows: any[] = memberResult.data ?? [];
   if (memberResult.error) {
     if (/is_favorite/i.test(memberResult.error.message ?? "")) {
       console.warn("share prompt group favorite column not available. Loading groups without favorite order:", memberResult.error.message);
-      const fallbackResult = await supabase
+      const fallbackResult = await cancellable(supabase
         .from("group_members")
         .select("group_id")
-        .eq("user_id", userId);
+        .eq("user_id", userId));
       if (fallbackResult.error) throw fallbackResult.error;
       memberRows = fallbackResult.data ?? [];
     } else {
@@ -109,25 +116,26 @@ async function fetchSharePromptOptions(userId: string): Promise<CachedSharePromp
 
   const [groupsResult, profilesResult, partnerPreferencesResult] = await Promise.all([
     groupIds.length > 0
-      ? supabase
+      ? cancellable(supabase
         .from("groups")
         .select("id, name, is_public")
-        .in("id", groupIds)
+        .in("id", groupIds))
       : Promise.resolve({ data: [], error: null }),
     partnerIds.length > 0
-      ? loadProfileCards(supabase, partnerIds)
+      ? loadProfileCards(supabase, partnerIds, signal ? { signal } : undefined)
         .then(data => ({ data, error: null }))
         .catch((error: any) => ({ data: [], error }))
       : Promise.resolve({ data: [], error: null }),
     partnerIds.length > 0
-      ? supabase
+      ? cancellable(supabase
         .from("companion_preferences")
         .select("companion_user_id,is_favorite")
         .eq("user_id", userId)
-        .in("companion_user_id", partnerIds)
+        .in("companion_user_id", partnerIds))
       : Promise.resolve({ data: [], error: null }),
   ]);
 
+  if (signal?.aborted) throw shareOptionsAbortError(signal);
   if (groupsResult.error) throw groupsResult.error;
   if (profilesResult.error) throw profilesResult.error;
 
@@ -194,7 +202,71 @@ export async function loadSharePromptOptions(fallbackPartnerName: string, option
   }
 }
 
+// QT completion uses its own successful-result cache. It must not inherit an
+// unresolved legacy pending request used by prayer or existing-record sharing.
+let recoverableCache: { userId: string; fetchedAt: number; data: CachedSharePromptOptions } | null = null;
+let recoverableGeneration = 0;
+
+function shareOptionsAbortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) return signal.reason;
+  const error = new Error("Share options request cancelled");
+  error.name = "AbortError";
+  return error;
+}
+
+/**
+ * Opt-in read-only loader for QT completion. The caller owns the deadline.
+ * Auth getUser has no AbortSignal argument: abort ends the UI wait and prevents
+ * its late result from starting reads, but does not claim to cancel the SDK auth call.
+ * All cancellable database reads (including profile batches) receive the signal.
+ */
+export function loadRecoverableSharePromptOptions(
+  fallbackPartnerName: string,
+  options: { signal: AbortSignal; force?: boolean },
+): Promise<SharePromptOptions> {
+  const { signal } = options;
+  const generation = ++recoverableGeneration;
+
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(shareOptionsAbortError(signal)); return; }
+    const abort = () => reject(shareOptionsAbortError(signal));
+    signal.addEventListener("abort", abort, { once: true });
+
+    const run = async () => {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (signal.aborted) throw shareOptionsAbortError(signal);
+      if (error) throw error;
+      if (!user) {
+        const missing = new Error("Share options require a signed-in user");
+        missing.name = "AuthSessionMissingError";
+        throw missing;
+      }
+
+      if (!options.force && recoverableCache?.userId === user.id
+        && Date.now() - recoverableCache.fetchedAt < SHARE_PROMPT_OPTIONS_CACHE_MS) {
+        return applyPartnerFallback(recoverableCache.data, fallbackPartnerName);
+      }
+
+      const data = await fetchSharePromptOptions(user.id, signal);
+      if (signal.aborted) throw shareOptionsAbortError(signal);
+      if (generation === recoverableGeneration) {
+        recoverableCache = { userId: user.id, fetchedAt: Date.now(), data };
+      }
+      return applyPartnerFallback(data, fallbackPartnerName);
+    };
+
+    // Attach both handlers even after cancellation so late rejection is consumed.
+    void run().then(
+      data => { signal.removeEventListener("abort", abort); resolve(data); },
+      error => { signal.removeEventListener("abort", abort); reject(error); },
+    );
+  });
+}
+
 export function clearSharePromptOptionsCache() {
   cachedSharePromptOptions = null;
   pendingSharePromptOptions = null;
+  recoverableCache = null;
+  recoverableGeneration += 1;
 }

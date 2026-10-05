@@ -43,6 +43,7 @@ function normalizeProfileCard(row: any): ProfileCard | null {
 export async function loadProfileCards(
   supabase: any,
   userIds: unknown[],
+  options: { signal?: AbortSignal } = {},
 ): Promise<ProfileCard[]> {
   const ids = uniqueProfileIds(userIds);
   if (ids.length === 0) return [];
@@ -51,11 +52,15 @@ export async function loadProfileCards(
 
   for (let index = 0; index < ids.length; index += PROFILE_CARD_BATCH_SIZE) {
     const batch = ids.slice(index, index + PROFILE_CARD_BATCH_SIZE);
-    const { data, error } = await supabase.rpc(
+    // Only opted-in callers attach cancellation. Existing profile loads are unchanged.
+    if (options.signal?.aborted) throw options.signal.reason ?? new Error("Request aborted");
+    const request = supabase.rpc(
       "get_authenticated_profile_cards",
       { p_user_ids: batch },
     );
+    const { data, error } = await (options.signal ? request.abortSignal(options.signal) : request);
 
+    if (options.signal?.aborted) throw options.signal.reason ?? new Error("Request aborted");
     if (error) throw error;
 
     (data ?? []).forEach((row: any) => {

@@ -49,6 +49,11 @@ type SharePromptModalProps = {
   actionsDisabled?: boolean;
   loadingGroups?: boolean;
   loadingPartners?: boolean;
+  // Opt-in list recovery. Existing prayer and saved-record dialogs are unchanged.
+  loadError?: string;
+  retryLabel?: string;
+  returnToWritingLabel?: string;
+  onRetry?: () => void;
   onInvitePartners?: () => void;
   onToggleTarget: (target: string) => void;
   onChangeTargets?: (targets: string[]) => void;
@@ -87,6 +92,10 @@ export default function SharePromptModal({
   actionsDisabled = false,
   loadingGroups = false,
   loadingPartners = false,
+  loadError,
+  retryLabel,
+  returnToWritingLabel,
+  onRetry,
   onInvitePartners,
   onToggleTarget,
   onChangeTargets,
@@ -306,6 +315,18 @@ export default function SharePromptModal({
             <p style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Loader2 size={14} className="spin" /> {loadingLabel}
             </p>
+          ) : loadError ? (
+            <div role="alert" style={{ border: "1px solid var(--border)", background: "var(--surface-card-muted)", borderRadius: 14, padding: "16px 12px", textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{loadError}</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                {onRetry && retryLabel && (
+                  <button type="button" onClick={onRetry} disabled={saving} className="btn-sage" style={{ flex: "1 1 140px", minHeight: 44 }}>{retryLabel}</button>
+                )}
+                {returnToWritingLabel && (
+                  <button type="button" onClick={onClose} disabled={saving} className="btn-outline" style={{ flex: "1 1 140px", minHeight: 44 }}>{returnToWritingLabel}</button>
+                )}
+              </div>
+            </div>
           ) : (
             <>
               {canChangeAllDirectTargets && (
@@ -379,6 +400,7 @@ export default function SharePromptModal({
           )}
         </div>
 
+        {!loadError && (
         <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--surface-card)" }}>
           {selectedTargets.length > 0 && (
             <p style={{ fontSize: 11, color: "var(--sage-dark)", textAlign: "center", marginBottom: 12, fontWeight: 700 }}>{selectedCountLabel}</p>
@@ -392,6 +414,7 @@ export default function SharePromptModal({
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

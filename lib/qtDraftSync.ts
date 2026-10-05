@@ -70,11 +70,16 @@ export function withQtDraftTimeout<T>(
 export async function getQtDraftSessionUser(
   supabase: SupabaseClient,
   onFailure?: (stage: "cached_session" | "user_check", error: unknown) => void,
+  onStage?: (stage: "cached_session" | "user_check") => void,
 ): Promise<User | null> {
   const reportFailure = (stage: "cached_session" | "user_check", error: unknown) => {
     try { onFailure?.(stage, error); } catch { /* Diagnostics cannot affect auth fallback. */ }
   };
+  const reportStage = (stage: "cached_session" | "user_check") => {
+    try { onStage?.(stage); } catch { /* Diagnostics cannot affect auth or saving. */ }
+  };
   try {
+    reportStage("cached_session");
     const { data, error } = await withQtDraftTimeout(
       supabase.auth.getSession(),
       4_000,
@@ -88,6 +93,7 @@ export async function getQtDraftSessionUser(
   }
 
   try {
+    reportStage("user_check");
     const { data, error } = await withQtDraftTimeout(
       supabase.auth.getUser(),
       6_000,

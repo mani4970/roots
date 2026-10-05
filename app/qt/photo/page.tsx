@@ -23,13 +23,14 @@ import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
-import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
+import SharePromptModal from "@/components/SharePromptModal";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
-import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import { getSharePromptBulkSelectionLabels } from "@/lib/sharePromptOptions";
+import { useQTShareOptions } from "@/lib/useQTShareOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
@@ -494,9 +495,8 @@ function PhotoReflectionContent() {
   const [completionNotice, setCompletionNotice] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargets, setShareTargets] = useState<string[]>([]);
-  const [groups, setGroups] = useState<ShareTargetGroup[]>([]);
-  const [partners, setPartners] = useState<ShareTargetPartner[]>([]);
-  const [loadingShareOptions, setLoadingShareOptions] = useState(false);
+  const shareOptionsState = useQTShareOptions(showShareModal, lang, () => getPhotoObservation());
+  const { groups, partners, loading: loadingShareOptions } = shareOptionsState;
   const [editLoading, setEditLoading] = useState(isEditMode);
   const [editLoadError, setEditLoadError] = useState(false);
 
@@ -561,7 +561,7 @@ function PhotoReflectionContent() {
       return true;
     }
     if (showShareModal) {
-      if (!saving && !loadingShareOptions) setShowShareModal(false);
+      if (!saving) { shareOptionsState.cancel(); setShowShareModal(false); }
       return true;
     }
     if (showPhotoSourceModal) {
@@ -1092,23 +1092,8 @@ function PhotoReflectionContent() {
     setPhotoSource("existing");
   }
 
-  async function loadShareOptions() {
-    setLoadingShareOptions(true);
-    try {
-      const options = await withPhotoStageTimeout(
-        loadSharePromptOptions(t("profile_default_name", lang)),
-        "photo share options",
-      );
-      setGroups(options.groups);
-      setPartners(options.partners);
-    } catch (error) {
-      console.error("photo reflection share options load failed", error);
-      observe(observationRef.current, "recipients_error", { phase: "share_options", ...observationError(error) });
-      setGroups([]);
-      setPartners([]);
-    } finally {
-      setLoadingShareOptions(false);
-    }
+  async function loadShareOptions(force = false) {
+    await shareOptionsState.load(force);
   }
 
   function markPassageTouched() {
@@ -2092,12 +2077,17 @@ function PhotoReflectionContent() {
           groups={groups}
           partners={partners}
           selectedTargets={shareTargets}
-          saving={saving || loadingShareOptions}
+          saving={saving}
+          actionsDisabled={loadingShareOptions || shareOptionsState.failed}
           loadingGroups={loadingShareOptions}
           loadingPartners={loadingShareOptions}
+          loadError={shareOptionsState.failed ? qtFlowCopy("shareOptionsError", lang) : undefined}
+          retryLabel={qtFlowCopy("retryShareOptions", lang)}
+          returnToWritingLabel={qtFlowCopy("backToWriting", lang)}
+          onRetry={() => { void loadShareOptions(true); }}
           onToggleTarget={toggleTarget}
           onChangeTargets={setShareTargets}
-          onClose={() => !saving && setShowShareModal(false)}
+          onClose={() => { if (!saving) { shareOptionsState.cancel(); setShowShareModal(false); } }}
           onPrivate={() => { void savePhotoReflection({ visibility: "private", partnerRecipientIds: [] }); }}
           onShare={() => { void savePhotoReflection(splitShareTargets(shareTargets)); }}
         />

@@ -1,6 +1,15 @@
 import type { Lang } from "@/lib/i18n";
 
 const COPY = {
+  shareOptionsError: {
+    ko: "나눔 대상을 불러오지 못했어요.\n작성한 내용은 이 화면에 그대로 있어요.",
+    en: "Could not load your sharing options.\nYour work is still on this screen.",
+    de: "Die Auswahl zum Teilen konnte nicht geladen werden.\nDein Inhalt bleibt auf diesem Bildschirm erhalten.",
+    fr: "Impossible de charger les destinataires du partage.\nVotre contenu est toujours sur cet écran.",
+    es: "No se pudieron cargar los destinatarios.\nTu contenido sigue en esta pantalla.",
+  },
+  retryShareOptions: { ko: "다시 시도", en: "Try again", de: "Erneut versuchen", fr: "Réessayer", es: "Reintentar" },
+  backToWriting: { ko: "작성으로 돌아가기", en: "Back to writing", de: "Zurück zum Schreiben", fr: "Revenir à la rédaction", es: "Volver a escribir" },
   noPartners: {
     ko: "아직 동역자가 없어요.\n저장 완료 후, 홈에서 동역자를 추가해보세요!",
     en: "You don't have any partners yet.\nAfter saving, add partners from Home!",

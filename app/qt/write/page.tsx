@@ -32,8 +32,9 @@ import {
   TRANSLATIONS,
 } from "@/lib/bibleData";
 import { BAR_LABELS_6, STEPS_6, STEPS_SUNDAY } from "@/lib/qtWriteConfig";
-import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
-import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
+import SharePromptModal from "@/components/SharePromptModal";
+import { getSharePromptBulkSelectionLabels } from "@/lib/sharePromptOptions";
+import { useQTShareOptions } from "@/lib/useQTShareOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
@@ -529,11 +530,13 @@ function QTWriteContent() {
   });
   const [showCompleteSharePrompt, setShowCompleteSharePrompt] = useState(false);
   const [completeShareTargets, setCompleteShareTargets] = useState<string[]>([]);
-  const [completeShareGroups, setCompleteShareGroups] = useState<ShareTargetGroup[]>([]);
-  const [completeSharePartners, setCompleteSharePartners] = useState<ShareTargetPartner[]>([]);
-  const [loadingCompleteShareOptions, setLoadingCompleteShareOptions] = useState(false);
+  const completeShareOptionsState = useQTShareOptions(showCompleteSharePrompt, lang, () => getCompletionObservation());
+  const { groups: completeShareGroups, partners: completeSharePartners, loading: loadingCompleteShareOptions } = completeShareOptionsState;
   const autoSaveTimerRef = useRef<number | null>(null);
   const draftSaveChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  // Metadata only: these refs do not affect the queue, snapshots or writer renders.
+  const draftObservationAttemptRef = useRef(0);
+  const draftObservationDepthRef = useRef(0);
   const lastAutoSaveSignatureRef = useRef("");
   const [draftBackupUserId, setDraftBackupUserId] = useState("");
   const latestDraftSnapshotRef = useRef<DraftSnapshot | null>(null);
@@ -2349,10 +2352,14 @@ function QTWriteContent() {
     const localBackupSaved = persistDraftBackup(snapshot);
     const draftFlow = getWriterObservation(draftBackupUserId, snapshot.selectedDate, snapshot.mode);
     const draftSource = silent ? "auto" : "manual";
+    const draftAttempt = ++draftObservationAttemptRef.current;
+    const draftDepth = ++draftObservationDepthRef.current;
+    let observedDraftPhase: "auth" | "draft" = "draft";
+    let observedAuthStage: "cached_session" | "user_check" | undefined;
     if (!silent && draftObservationRetryRef.current) {
       observe(draftFlow, "retry_clicked", { phase: "draft", source: "manual" });
     }
-    observe(draftFlow, "draft_requested", { source: draftSource, retry: draftObservationRetryRef.current, local_backup: localBackupSaved });
+    observe(draftFlow, "draft_requested", { source: draftSource, attempt: draftAttempt, retry: draftObservationRetryRef.current, count: draftDepth, local_backup: localBackupSaved });
     if (markSaving) setSaving(true);
 
     const executeSave = async () => {
@@ -2361,7 +2368,7 @@ function QTWriteContent() {
       try {
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
           draftObservationRetryRef.current = true;
-          observe(draftFlow, localBackupSaved ? "draft_local_only" : "draft_error", { source: draftSource, reason: "offline", local_backup: localBackupSaved });
+          observe(draftFlow, localBackupSaved ? "draft_local_only" : "draft_error", { source: draftSource, attempt: draftAttempt, reason: "offline", local_backup: localBackupSaved });
           if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
           if (silent) {
             updateAutoSaveStatus(localBackupSaved ? "local" : "error");
@@ -2381,11 +2388,15 @@ function QTWriteContent() {
         const user = await getQtDraftSessionUser(supabase, (stage, error) => {
           authFailure = error;
           authStage = stage;
+        }, (stage) => {
+          observedDraftPhase = "auth";
+          observedAuthStage = stage;
+          observe(draftFlow, "stage_started", { phase: "auth", auth_stage: stage, source: draftSource, attempt: draftAttempt });
         });
         if (!user) {
           draftObservationRetryRef.current = true;
           observe(draftFlow, "draft_error", {
-            source: draftSource, reason: "auth_missing", phase: "auth", local_backup: localBackupSaved,
+            source: draftSource, attempt: draftAttempt, reason: "auth_missing", phase: "auth", local_backup: localBackupSaved,
             ...observationError(authFailure), ...(authStage ? { auth_stage: authStage } : {}),
           });
           if (!silent) router.push("/login");
@@ -2393,6 +2404,9 @@ function QTWriteContent() {
           return false;
         }
 
+        observedDraftPhase = "draft";
+        observedAuthStage = undefined;
+        observe(draftFlow, "stage_started", { phase: "draft", source: draftSource, attempt: draftAttempt });
         const result = await saveQtDraftAtomically(
           supabase,
           buildDraftData(snapshot),
@@ -2406,7 +2420,7 @@ function QTWriteContent() {
           && storedTimestamp > submittedTimestamp;
         if (newerServerSnapshotExists) {
           draftObservationRetryRef.current = true;
-          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "newer_server_snapshot", local_backup: localBackupSaved }, result.id);
+          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "newer_server_snapshot", local_backup: localBackupSaved }, result.id);
           if (!silent && localBackupSaved) {
             retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
             showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
@@ -2417,7 +2431,7 @@ function QTWriteContent() {
 
         if (result.status === "completed_exists") {
           draftObservationRetryRef.current = false;
-          observe(draftFlow, "draft_skipped", { source: draftSource, reason: "completed_exists" }, result.id);
+          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "completed_exists" }, result.id);
           removeQTDraftBackup(user.id, snapshot.selectedDate);
           lastLocalBackupSignatureRef.current = "";
           lastAutoSaveSignatureRef.current = signature;
@@ -2427,7 +2441,7 @@ function QTWriteContent() {
 
         lastAutoSaveSignatureRef.current = signature;
         const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        observe(draftFlow, "draft_saved", { source: draftSource, recovery: draftObservationRetryRef.current }, result.id);
+        observe(draftFlow, "draft_saved", { source: draftSource, attempt: draftAttempt, recovery: draftObservationRetryRef.current }, result.id);
         draftObservationRetryRef.current = false;
         updateAutoSaveStatus("saved", savedAt);
         if (!silent) {
@@ -2436,7 +2450,7 @@ function QTWriteContent() {
         return true;
       } catch (error) {
         draftObservationRetryRef.current = true;
-        observe(draftFlow, "draft_error", { source: draftSource, local_backup: localBackupSaved, ...observationError(error) });
+        observe(draftFlow, "draft_error", { source: draftSource, attempt: draftAttempt, local_backup: localBackupSaved, ...observationError(error), phase: observedDraftPhase, ...(observedAuthStage ? { auth_stage: observedAuthStage } : {}) });
         if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
         console.error("[saveDraft] failed:", error);
         if (silent) {
@@ -2450,6 +2464,7 @@ function QTWriteContent() {
         }
         return false;
       } finally {
+        draftObservationDepthRef.current = Math.max(0, draftObservationDepthRef.current - 1);
         if (markSaving) setSaving(false);
       }
     };
@@ -2562,20 +2577,8 @@ function QTWriteContent() {
     return { visibility, partnerRecipientIds };
   }
 
-  async function loadCompleteShareOptions() {
-    setLoadingCompleteShareOptions(true);
-    try {
-      const options = await loadSharePromptOptions(t("profile_default_name", lang));
-      setCompleteShareGroups(options.groups);
-      setCompleteSharePartners(options.partners);
-    } catch (error) {
-      console.error("qt complete share options load failed", error);
-      observe(completionObservationRef.current, "recipients_error", { phase: "share_options", ...observationError(error) });
-      setCompleteShareGroups([]);
-      setCompleteSharePartners([]);
-    } finally {
-      setLoadingCompleteShareOptions(false);
-    }
+  async function loadCompleteShareOptions(force = false) {
+    await completeShareOptionsState.load(force);
   }
 
   function toggleCompleteShareTarget(target: string) {
@@ -2597,6 +2600,7 @@ function QTWriteContent() {
 
   function closeCompleteSharePrompt() {
     if (saving) return;
+    completeShareOptionsState.cancel();
     setShowCompleteSharePrompt(false);
     setCompleteShareTargets([]);
   }
@@ -2632,8 +2636,13 @@ function QTWriteContent() {
         partners={completeSharePartners}
         selectedTargets={completeShareTargets}
         saving={saving}
+        actionsDisabled={loadingCompleteShareOptions || completeShareOptionsState.failed}
         loadingGroups={loadingCompleteShareOptions}
         loadingPartners={loadingCompleteShareOptions}
+        loadError={completeShareOptionsState.failed ? qtFlowCopy("shareOptionsError", lang) : undefined}
+        retryLabel={qtFlowCopy("retryShareOptions", lang)}
+        returnToWritingLabel={qtFlowCopy("backToWriting", lang)}
+        onRetry={() => { void loadCompleteShareOptions(true); }}
         onToggleTarget={toggleCompleteShareTarget}
         onChangeTargets={setCompleteShareTargets}
         onClose={closeCompleteSharePrompt}
