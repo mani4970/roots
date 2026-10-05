@@ -1492,6 +1492,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         subMessage={c("prayer_saved_sub")}
         iconSrc="/icon-pray.webp"
         iconAlt={c("nav_prayer")}
+        zIndex={isPopup ? 220 : undefined}
         onClose={() => setCelebration(false)}
       />}
 

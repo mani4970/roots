@@ -2613,6 +2613,7 @@ export default function HomePage() {
         subMessage={celebration.subMessage}
         iconSrc="/icon-qt.webp"
         iconAlt={t("qt_complete_title", lang)}
+        zIndex={showHomePrayerCards ? 220 : undefined}
         onClose={closeCelebration}
       />
       </ObservationPopup>

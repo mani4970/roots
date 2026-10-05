@@ -11,14 +11,15 @@ interface CelebrationProps {
   onClose: () => void;
   iconSrc?: string;
   iconAlt?: string;
+  zIndex?: number;
 }
 
-export default function Celebration({ show, message, subMessage, onClose, iconSrc, iconAlt = "" }: CelebrationProps) {
+export default function Celebration({ show, message, subMessage, onClose, iconSrc, iconAlt = "", zIndex = 100 }: CelebrationProps) {
   const lang = useLang();
   if (!show) return null;
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.88)", backdropFilter: "blur(8px)", overflow: "hidden" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(26,28,30,0.88)", backdropFilter: "blur(8px)", overflow: "hidden" }}>
       <style>{`
         @keyframes rootsConfettiPop {
           0% { opacity: 0; transform: translateY(12px) scale(0.94); }
