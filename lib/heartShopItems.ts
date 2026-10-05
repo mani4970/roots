@@ -32,6 +32,7 @@ export type HeartShopCharacterSlot =
   | "bag"
   | "eyewear"
   | "hair_accessory"
+  | "muffler"
   | "headwear";
 
 export const HEART_SHOP_CHARACTER_ITEM_IDS = [
@@ -139,6 +140,10 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootsman_headwear_02",
   "rootsman_headwear_03",
   "rootsman_headwear_04",
+  "rootsman_muffler_01",
+  "rootsman_muffler_02",
+  "rootsman_muffler_03",
+  "rootsman_muffler_04",
   "rootswoman_bottom_01",
   "rootswoman_bottom_02",
   "rootswoman_bottom_03",
@@ -216,6 +221,10 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootswoman_bag_02",
   "rootswoman_bag_03",
   "rootswoman_bag_04",
+  "rootswoman_muffler_01",
+  "rootswoman_muffler_02",
+  "rootswoman_muffler_03",
+  "rootswoman_muffler_04",
 ] as const;
 
 export type HeartShopCharacterItemId = (typeof HEART_SHOP_CHARACTER_ITEM_IDS)[number];
@@ -277,6 +286,7 @@ export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartSho
   if (itemId.includes("_bag_")) return "bag";
   if (itemId.includes("_eyewear_")) return "eyewear";
   if (itemId.includes("_hair_accessory_")) return "hair_accessory";
+  if (itemId.includes("_muffler_")) return "muffler";
   if (itemId.includes("_headwear_")) return "headwear";
   return "top";
 }

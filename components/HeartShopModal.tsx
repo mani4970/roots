@@ -88,6 +88,7 @@ function isOwnedCharacterItemInCategory(
   return item.slot === "headwear"
     || item.slot === "eyewear"
     || item.slot === "hair_accessory"
+    || item.slot === "muffler"
     || item.slot === "bag";
 }
 
@@ -123,7 +124,6 @@ const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartSho
   shoes: "shoes",
   eyewear: "eyewear",
   headwear: "headwear",
-  accessories: "hair_accessory",
   bags: "bag",
 };
 
@@ -135,6 +135,9 @@ function isCharacterItemInCategory(
   const isDress = isHeartShopRootsWomanDressItemId(item.id);
   if (category === "tops") return item.slot === "top" && !isDress;
   if (category === "dresses") return isDress;
+  if (category === "accessories") {
+    return item.slot === "hair_accessory" || item.slot === "muffler";
+  }
   const slot = CHARACTER_CATEGORY_SLOT[category];
   return Boolean(slot && item.slot === slot);
 }
@@ -169,6 +172,7 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
     shoes: { x: 310, y: 1195, width: 480, height: 200 },
     eyewear: { x: 310, y: 400, width: 500, height: 190 },
     hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
+    muffler: { x: 350, y: 520, width: 420, height: 470 },
     headwear: { x: 70, y: 0, width: 970, height: 480 },
     bag: { x: 250, y: 520, width: 650, height: 620 },
   },
@@ -179,6 +183,7 @@ const CHARACTER_ITEM_PREVIEW_CROP: Record<
     shoes: { x: 310, y: 1140, width: 480, height: 220 },
     eyewear: { x: 310, y: 400, width: 500, height: 190 },
     hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
+    muffler: { x: 350, y: 520, width: 420, height: 470 },
     headwear: { x: 70, y: 0, width: 970, height: 480 },
     bag: { x: 250, y: 520, width: 650, height: 620 },
   },
@@ -848,12 +853,10 @@ export default function HeartShopModal({
     { id: "shoes", label: profileText.categories.shoes },
     { id: "eyewear", label: profileText.categories.eyewear },
     { id: "headwear", label: profileText.categories.headwear },
+    { id: "accessories", label: profileText.categories.accessories },
   );
   if (avatarType === "rootswoman") {
-    characterCategories.push(
-      { id: "accessories", label: profileText.categories.accessories },
-      { id: "bags", label: profileText.categories.bags },
-    );
+    characterCategories.push({ id: "bags", label: profileText.categories.bags });
   }
   const ownedCharacterCategories: { id: HeartShopOwnedCharacterCategory; label: string }[] = [
     { id: "tops", label: profileText.categories.tops },
