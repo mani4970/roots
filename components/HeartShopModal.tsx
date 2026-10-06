@@ -199,6 +199,64 @@ const CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES: Partial<
   // Preview-only bounds: the wearable assets and character layer layout stay unchanged.
   rootsman_top_31: { x: 230, y: 590, width: 626, height: 580 },
   rootsman_top_32: { x: 230, y: 590, width: 626, height: 580 },
+
+  // Per-item preview bounds measured from the shipped assets. Only clipped edges expand;
+  // the shared crops, wearable files, outfit layers and purchase behavior stay unchanged.
+  // Trouser hems.
+  rootsman_bottom_07: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_09: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_10: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_11: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_12: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_14: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_16: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_17: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_19: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_20: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_21: { x: 350, y: 920, width: 397, height: 380 },
+  rootsman_bottom_22: { x: 350, y: 920, width: 397, height: 380 },
+  // Anorak and trench-coat hems.
+  rootsman_top_14: { x: 230, y: 590, width: 626, height: 430 },
+  rootsman_top_25: { x: 230, y: 590, width: 626, height: 430 },
+  rootsman_top_26: { x: 230, y: 590, width: 626, height: 440 },
+  // Full boot shafts.
+  rootswoman_shoes_09: { x: 310, y: 1070, width: 480, height: 290 },
+  // Necklines and dress hems.
+  rootswoman_top_01: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_02: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_03: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_04: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_05: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_06: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_07: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_08: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_09: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_10: { x: 230, y: 570, width: 626, height: 425 },
+  rootswoman_top_11: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_13: { x: 230, y: 570, width: 626, height: 425 },
+  rootswoman_top_15: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_16: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_17: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_18: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_19: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_20: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_21: { x: 230, y: 540, width: 626, height: 455 },
+  rootswoman_top_22: { x: 230, y: 540, width: 626, height: 455 },
+  rootswoman_top_23: { x: 230, y: 550, width: 626, height: 530 },
+  rootswoman_top_24: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_25: { x: 230, y: 550, width: 626, height: 470 },
+  rootswoman_top_26: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_27: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_28: { x: 230, y: 530, width: 626, height: 465 },
+  rootswoman_top_29: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_30: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_31: { x: 230, y: 560, width: 626, height: 435 },
+  rootswoman_top_32: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_33: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_34: { x: 230, y: 550, width: 626, height: 445 },
+  rootswoman_top_35: { x: 230, y: 540, width: 626, height: 455 },
+  // Upper glasses rim.
+  rootswoman_eyewear_02: { x: 310, y: 380, width: 500, height: 210 },
 };
 
 function CharacterItemLayerPreview({
