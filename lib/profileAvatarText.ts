@@ -5,6 +5,8 @@ type ProfileAvatarLang = Lang | "es";
 type ProfileAvatarText = {
   useCharacterButton: string;
   characterActiveLabel: string;
+  refreshCharacterButton: string;
+  retryButton: string;
   savingLabel: string;
   characterSaved: string;
   saveFailed: string;
@@ -15,6 +17,8 @@ const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   ko: {
     useCharacterButton: "프로필로 지정",
     characterActiveLabel: "캐릭터 프로필 사용 중",
+    refreshCharacterButton: "현재 코디 다시 반영",
+    retryButton: "다시 시도",
     savingLabel: "프로필 저장 중…",
     characterSaved: "현재 코디를 프로필로 지정했어요.",
     saveFailed: "프로필 표시를 변경하지 못했어요.",
@@ -23,6 +27,8 @@ const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   en: {
     useCharacterButton: "Use as profile",
     characterActiveLabel: "Character profile active",
+    refreshCharacterButton: "Refresh current look",
+    retryButton: "Try again",
     savingLabel: "Saving profile…",
     characterSaved: "Your current look is now your profile image.",
     saveFailed: "Could not change your profile image.",
@@ -31,6 +37,8 @@ const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   de: {
     useCharacterButton: "Als Profil verwenden",
     characterActiveLabel: "Charakterprofil ist aktiv",
+    refreshCharacterButton: "Aktuelles Outfit übernehmen",
+    retryButton: "Erneut versuchen",
     savingLabel: "Profil wird gespeichert…",
     characterSaved: "Dein aktuelles Outfit ist jetzt dein Profilbild.",
     saveFailed: "Das Profilbild konnte nicht geändert werden.",
@@ -39,6 +47,8 @@ const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   fr: {
     useCharacterButton: "Définir comme profil",
     characterActiveLabel: "Profil personnage actif",
+    refreshCharacterButton: "Actualiser la tenue du profil",
+    retryButton: "Réessayer",
     savingLabel: "Enregistrement du profil…",
     characterSaved: "Votre tenue actuelle est maintenant votre image de profil.",
     saveFailed: "Impossible de modifier l’image de profil.",
@@ -48,6 +58,8 @@ const TEXT: Record<ProfileAvatarLang, ProfileAvatarText> = {
   es: {
     useCharacterButton: "Usar como perfil",
     characterActiveLabel: "Perfil de personaje activo",
+    refreshCharacterButton: "Actualizar atuendo del perfil",
+    retryButton: "Reintentar",
     savingLabel: "Guardando perfil…",
     characterSaved: "Tu atuendo actual ahora es tu imagen de perfil.",
     saveFailed: "No se pudo cambiar tu imagen de perfil.",

@@ -1,13 +1,5 @@
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
-import {
-  HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION,
-  HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION,
-  HEART_SHOP_LATEST_PROFILE_ASSET_VERSION,
-  HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION,
-  HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION,
-  HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION,
-  getProfileCharacterLayersForItemIds,
-} from "@/lib/heartShopCatalog";
+import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import type { HeartShopItemId } from "@/lib/heartShopItems";
 import {
   PROFILE_CHARACTER_CANVAS,
@@ -29,8 +21,7 @@ type SaveProfileAvatarDisplayOptions = {
 const PROFILE_CHARACTER_AVATAR_ASSET_VERSION = "20260722_v1";
 const PROFILE_AVATAR_OUTPUT_SIZE = 640;
 const PROFILE_CHARACTER_AVATAR_MAX_SIZE = 2 * 1024 * 1024;
-const PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY =
-  "/images/heart-shop/character/shared/profile-backgrounds";
+const PROFILE_CHARACTER_IMAGE_TIMEOUT_MS = 15000;
 const JESUS_PHOTO_CHARACTER_RENDER_LEFT_PERCENT = -8;
 
 // Keep these values aligned with ProfileCharacterPreview so the saved square
@@ -96,8 +87,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.decoding = "async";
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(`Could not load profile character image: ${src}`));
+    const cleanup = () => {
+      clearTimeout(timer);
+      image.onload = null;
+      image.onerror = null;
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Profile character image load timed out: ${src}`));
+    }, PROFILE_CHARACTER_IMAGE_TIMEOUT_MS);
+    image.onload = () => {
+      cleanup();
+      resolve(image);
+    };
+    image.onerror = () => {
+      cleanup();
+      reject(new Error(`Could not load profile character image: ${src}`));
+    };
     image.src = src;
   });
 }
@@ -111,33 +117,14 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-function getSquareProfileBackgroundAsset(layerId: string) {
-  const match = /^shared_background_(\d{2})$/.exec(layerId);
-  if (!match) return null;
+function getSquareProfileBackgroundAsset(layer: ProfileCharacterLayer) {
+  if (layer.slot !== "background") return null;
 
-  const itemNumber = Number(match[1]);
-  const isBusanBackground = itemNumber === 20;
-  const isNewestTravelBackground = itemNumber >= 21 && itemNumber <= 24;
-  const isAdditionalTravelBackground = itemNumber >= 25 && itemNumber <= 28;
-  const isLatestWebpBackground = itemNumber >= 15 && itemNumber <= 28;
-  const isTravelBackground = itemNumber >= 11 && itemNumber <= 14;
-  const extension = isLatestWebpBackground ? "webp" : "png";
-  const version = isAdditionalTravelBackground
-    ? HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION
-    : isNewestTravelBackground
-      ? HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION
-    : isBusanBackground
-      ? HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION
-      : isLatestWebpBackground
-        ? HEART_SHOP_LATEST_PROFILE_ASSET_VERSION
-        : isTravelBackground
-          ? HEART_SHOP_TRAVEL_BACKGROUND_ASSET_VERSION
-          : HEART_SHOP_PROFILE_BACKGROUND_ASSET_VERSION;
-
-  return {
-    src: `${PROFILE_CHARACTER_SQUARE_BACKGROUND_DIRECTORY}/background-${match[1]}.${extension}?v=${version}`,
-    version,
-  };
+  // Use the same catalog asset as the live preview. The retired PNG paths for
+  // backgrounds 01–14 are not shipped; all current backgrounds use WebP.
+  const version = new URLSearchParams(layer.src.split("?")[1] ?? "").get("v")
+    ?? PROFILE_CHARACTER_AVATAR_ASSET_VERSION;
+  return { src: layer.src, version };
 }
 
 export function getProfileCharacterAvatarSignature(
@@ -150,7 +137,7 @@ export function getProfileCharacterAvatarSignature(
   const layerIds = layers.map(layer => layer.id).sort();
   const squareBackgroundAsset = layers
     .filter(layer => (layer.zIndex ?? 10) < 0)
-    .map(layer => getSquareProfileBackgroundAsset(layer.id))
+    .map(layer => getSquareProfileBackgroundAsset(layer))
     .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
     .at(-1) ?? null;
   const petLayer = layers.find(layer => layer.slot === "pet");
@@ -177,7 +164,7 @@ export async function createProfileCharacterAvatarBlob(
   const foregroundLayers = layers.filter(layer => (layer.zIndex ?? 10) >= 0);
   const selectedBackgroundLayer = backgroundLayers[backgroundLayers.length - 1] ?? null;
   const squareBackgroundAsset = selectedBackgroundLayer
-    ? getSquareProfileBackgroundAsset(selectedBackgroundLayer.id)
+    ? getSquareProfileBackgroundAsset(selectedBackgroundLayer)
     : null;
   const [squareBackgroundImage, characterImages] = await Promise.all([
     squareBackgroundAsset ? loadImage(squareBackgroundAsset.src) : Promise.resolve(null),

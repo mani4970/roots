@@ -290,6 +290,8 @@ export default function ProfilePage() {
   const calendarWheelLockRef = useRef(0);
   const profileRef = useRef<any>(null);
   const profileAvatarQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const ownedHeartShopItemsRef = useRef<OwnedHeartShopItem[]>([]);
+  const profileAvatarActionPendingRef = useRef(false);
 
   useAndroidBackHandler(() => {
     if (selectedCompanionChallengeBadge) {
@@ -362,11 +364,14 @@ export default function ProfilePage() {
   }
 
   function updateProfileState(patch: Record<string, unknown>) {
-    setProfile((current: any) => {
-      const next = { ...(current ?? {}), ...patch };
-      profileRef.current = next;
-      return next;
-    });
+    // Queued avatar tasks must see the result before React's next render.
+    profileRef.current = { ...(profileRef.current ?? {}), ...patch };
+    setProfile((current: any) => ({ ...(current ?? {}), ...patch }));
+  }
+
+  function updateOwnedHeartShopItems(items: OwnedHeartShopItem[]) {
+    ownedHeartShopItemsRef.current = items;
+    setOwnedHeartShopItems(items);
   }
 
   function enqueueProfileAvatarTask<T>(task: () => Promise<T>): Promise<T> {
@@ -416,10 +421,11 @@ export default function ProfilePage() {
       setLoveHeartBalance(0);
     }
     try {
-      setOwnedHeartShopItems(await loadOwnedHeartShopItems(supabase));
+      updateOwnedHeartShopItems(await loadOwnedHeartShopItems(supabase));
     } catch (error) {
       console.warn("프로필 캐릭터 아이템 조회 실패:", error);
-      setOwnedHeartShopItems([]);
+      // A failed read is not an empty wardrobe. Keep the last known items;
+      // avatar saving also verifies ownership again before creating an image.
     }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
     if (p) {
@@ -1115,25 +1121,45 @@ export default function ProfilePage() {
 
   async function persistCharacterProfileAvatar(
     avatarType: RootsAvatarType,
-    items: OwnedHeartShopItem[],
     extraProfileUpdates: Record<string, unknown> = {},
     force = false,
   ) {
     const currentProfile = profileRef.current;
     if (!currentProfile?.id) return false;
-
-    const enabledItemIds = items.filter(item => item.isEnabled).map(item => item.itemId);
-    const signature = getProfileCharacterAvatarSignature(avatarType, enabledItemIds);
     if (!force && currentProfile.profile_avatar_mode !== "character") return false;
-    if (!force && currentProfile.profile_character_signature === signature) return false;
 
     const supabase = createClient();
+    const itemsBeforeRead = ownedHeartShopItemsRef.current;
+    // Never export a fallback [] from a failed page/shop read. Only a successful
+    // fresh read may supply the outfit used for a saved profile image.
+    const confirmedItems = await loadOwnedHeartShopItems(supabase);
+    const latestProfile = profileRef.current;
+    if (latestProfile?.id !== currentProfile.id) return false;
+    if (!force && (
+      latestProfile.profile_avatar_mode !== "character"
+      || normalizeRootsAvatarType(latestProfile.avatar_type) !== avatarType
+    )) return false;
+
+    const enabledItemIds = confirmedItems.filter(item => item.isEnabled).map(item => item.itemId);
+    const signature = getProfileCharacterAvatarSignature(avatarType, enabledItemIds);
+    const publishConfirmedItems = () => {
+      // A newer purchase/toggle callback must not be replaced by an older read.
+      if (ownedHeartShopItemsRef.current === itemsBeforeRead) {
+        updateOwnedHeartShopItems(confirmedItems);
+      }
+    };
+    if (!force && latestProfile.profile_character_signature === signature) {
+      publishConfirmedItems();
+      return false;
+    }
+
     const { avatarUrl } = await uploadProfileCharacterAvatar(
       supabase,
       currentProfile.id,
       avatarType,
       enabledItemIds,
     );
+    if (profileRef.current?.id !== currentProfile.id) return false;
     const updates = {
       ...extraProfileUpdates,
       avatar_url: avatarUrl,
@@ -1150,28 +1176,32 @@ export default function ProfilePage() {
         ? extraProfileUpdates.avatar_type
         : null,
     });
+    if (profileRef.current?.id !== currentProfile.id) return false;
     updateProfileState(updates);
+    publishConfirmedItems();
     return true;
   }
 
   async function activateCharacterProfileAvatar() {
-    if (!profile?.id || profile.profile_avatar_mode === "character" || savingProfileAvatar) return;
+    if (!profile?.id || profileAvatarActionPendingRef.current || savingProfileAvatar
+      || uploadingPhoto || resettingPhoto || savingAvatarChoice) return;
     const text = getProfileAvatarText(lang);
+    profileAvatarActionPendingRef.current = true;
     setSavingProfileAvatar(true);
     setPhotoError("");
     try {
-      await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
-        normalizeRootsAvatarType(profile.avatar_type),
-        ownedHeartShopItems,
+      const saved = await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
+        normalizeRootsAvatarType(profileRef.current?.avatar_type),
         {},
         true,
       ));
-      showToast(text.characterSaved);
+      if (saved) showToast(text.characterSaved);
     } catch (error) {
       console.error("캐릭터 프로필 지정 실패:", error);
       setPhotoError(text.saveFailed);
       showToast(text.saveFailed);
     } finally {
+      profileAvatarActionPendingRef.current = false;
       setSavingProfileAvatar(false);
     }
   }
@@ -1183,7 +1213,6 @@ export default function ProfilePage() {
       if (profile.profile_avatar_mode === "character") {
         await enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
           avatarType,
-          ownedHeartShopItems,
           { avatar_type: avatarType, avatar_choice_seen: true },
           true,
         ));
@@ -1321,12 +1350,19 @@ export default function ProfilePage() {
 
     let cancelled = false;
     setPhotoError(current => (
-      current === profileAvatarText.autoUpdateFailed ? "" : current
+      current === profileAvatarText.autoUpdateFailed || current === profileAvatarText.saveFailed
+        ? "" : current
     ));
-    void enqueueProfileAvatarTask(() => persistCharacterProfileAvatar(
-      currentAvatarType,
-      ownedHeartShopItems,
-    )).catch(error => {
+    void enqueueProfileAvatarTask(() => cancelled
+      ? Promise.resolve(false)
+      : persistCharacterProfileAvatar(currentAvatarType)
+    ).then(() => {
+      if (cancelled) return;
+      setPhotoError(current => (
+        current === profileAvatarText.autoUpdateFailed || current === profileAvatarText.saveFailed
+          ? "" : current
+      ));
+    }).catch(error => {
       if (cancelled) return;
       console.warn("캐릭터 프로필 자동 갱신 실패:", error);
       setPhotoError(profileAvatarText.autoUpdateFailed);
@@ -1339,6 +1375,7 @@ export default function ProfilePage() {
     currentAvatarType,
     currentProfileCharacterSignature,
     profileAvatarText.autoUpdateFailed,
+    profileAvatarText.saveFailed,
   ]);
 
   function openFaithBadgeDetail(b: FaithBadge) {
@@ -1406,7 +1443,7 @@ export default function ProfilePage() {
         totalDays={Number(profile?.total_days ?? 0)}
         peaceArkStageNumber={currentPeaceArkStageNumber}
         onHeartBalanceChange={setLoveHeartBalance}
-        onOwnedItemsChange={setOwnedHeartShopItems}
+        onOwnedItemsChange={updateOwnedHeartShopItems}
         onClose={() => setShowHeartShop(false)}
       />
 
@@ -1794,7 +1831,22 @@ export default function ProfilePage() {
                 💛 +{loveHeartBalance}
               </span>
             </div>
-            {photoError && <p style={{ fontSize: 11, color: "var(--profile-danger-text)", marginTop: 4 }}>{photoError}</p>}
+            {photoError && (
+              <div style={{ marginTop: 4 }}>
+                <p role="status" style={{ fontSize: 11, color: "var(--profile-danger-text)", margin: 0 }}>{photoError}</p>
+                {isCharacterProfileAvatar
+                  && (photoError === profileAvatarText.autoUpdateFailed || photoError === profileAvatarText.saveFailed) && (
+                  <button
+                    type="button"
+                    onClick={() => void activateCharacterProfileAvatar()}
+                    disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
+                    style={{ marginTop: 4, padding: "6px 0", border: "none", background: "transparent", color: "var(--profile-sage-notice-text)", fontSize: 11, fontWeight: 800, textDecoration: "underline", cursor: "pointer" }}
+                  >
+                    {savingProfileAvatar ? profileAvatarText.savingLabel : profileAvatarText.retryButton}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1893,7 +1945,8 @@ export default function ProfilePage() {
               type="button"
               aria-pressed={isCharacterProfileAvatar}
               onClick={() => void activateCharacterProfileAvatar()}
-              disabled={isCharacterProfileAvatar || savingProfileAvatar || uploadingPhoto || resettingPhoto}
+              title={isCharacterProfileAvatar ? profileAvatarText.characterActiveLabel : undefined}
+              disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
               style={{
                 width: "100%",
                 border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid var(--profile-sage-notice-border)",
@@ -1903,9 +1956,10 @@ export default function ProfilePage() {
                 padding: "10px 12px",
                 fontSize: 12,
                 fontWeight: 900,
-                cursor: isCharacterProfileAvatar || savingProfileAvatar || uploadingPhoto || resettingPhoto ? "default" : "pointer",
+                cursor: savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? "default" : "pointer",
                 lineHeight: 1.25,
-                opacity: savingProfileAvatar || uploadingPhoto || resettingPhoto ? 0.65 : 1,
+                wordBreak: "keep-all",
+                opacity: savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? 0.65 : 1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1916,7 +1970,7 @@ export default function ProfilePage() {
               {savingProfileAvatar
                 ? profileAvatarText.savingLabel
                 : isCharacterProfileAvatar
-                  ? profileAvatarText.characterActiveLabel
+                  ? profileAvatarText.refreshCharacterButton
                   : profileAvatarText.useCharacterButton}
             </button>
           </div>
