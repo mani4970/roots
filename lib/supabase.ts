@@ -1,6 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { navigatorLock } from '@supabase/supabase-js'
 import { createQueuedAuthLock } from './queuedAuthLock'
+import { fetchWithQtDraftObservation } from './qtDraftSync'
 
 // createBrowserClient remains the existing singleton. Server rendering and
 // browsers without Web Locks retain the SDK's original fallback behavior.
@@ -10,6 +11,9 @@ export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    canUseWebLocks ? { auth: { lock: queuedBrowserLock } } : undefined,
+    {
+      ...(canUseWebLocks ? { auth: { lock: queuedBrowserLock } } : {}),
+      global: { fetch: fetchWithQtDraftObservation },
+    },
   )
 }

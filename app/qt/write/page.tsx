@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
-import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout } from "@/lib/qtDraftSync";
+import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout, type QtDraftTransportDetails } from "@/lib/qtDraftSync";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { syncQtCompletionRecipients } from "@/lib/qtCompletionRecipients";
 import {
@@ -2356,6 +2356,7 @@ function QTWriteContent() {
     const draftDepth = ++draftObservationDepthRef.current;
     let observedDraftPhase: "auth" | "draft" = "draft";
     let observedAuthStage: "cached_session" | "user_check" | undefined;
+    let draftTransportDetails: QtDraftTransportDetails | undefined;
     if (!silent && draftObservationRetryRef.current) {
       observe(draftFlow, "retry_clicked", { phase: "draft", source: "manual" });
     }
@@ -2410,6 +2411,7 @@ function QTWriteContent() {
         const result = await saveQtDraftAtomically(
           supabase,
           buildDraftData(snapshot),
+          details => { draftTransportDetails = details; },
         );
         rememberDraftClientUpdatedAt(result.clientUpdatedAt);
 
@@ -2420,7 +2422,7 @@ function QTWriteContent() {
           && storedTimestamp > submittedTimestamp;
         if (newerServerSnapshotExists) {
           draftObservationRetryRef.current = true;
-          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "newer_server_snapshot", local_backup: localBackupSaved }, result.id);
+          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "newer_server_snapshot", local_backup: localBackupSaved, ...draftTransportDetails }, result.id);
           if (!silent && localBackupSaved) {
             retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
             showToast(trQT("기기에는 안전하게 저장했어요. 인터넷 연결 후 다시 시도해주세요.", lang), "info");
@@ -2431,7 +2433,7 @@ function QTWriteContent() {
 
         if (result.status === "completed_exists") {
           draftObservationRetryRef.current = false;
-          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "completed_exists" }, result.id);
+          observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "completed_exists", ...draftTransportDetails }, result.id);
           removeQTDraftBackup(user.id, snapshot.selectedDate);
           lastLocalBackupSignatureRef.current = "";
           lastAutoSaveSignatureRef.current = signature;
@@ -2441,7 +2443,7 @@ function QTWriteContent() {
 
         lastAutoSaveSignatureRef.current = signature;
         const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        observe(draftFlow, "draft_saved", { source: draftSource, attempt: draftAttempt, recovery: draftObservationRetryRef.current }, result.id);
+        observe(draftFlow, "draft_saved", { source: draftSource, attempt: draftAttempt, recovery: draftObservationRetryRef.current, ...draftTransportDetails }, result.id);
         draftObservationRetryRef.current = false;
         updateAutoSaveStatus("saved", savedAt);
         if (!silent) {
@@ -2450,7 +2452,7 @@ function QTWriteContent() {
         return true;
       } catch (error) {
         draftObservationRetryRef.current = true;
-        observe(draftFlow, "draft_error", { source: draftSource, attempt: draftAttempt, local_backup: localBackupSaved, ...observationError(error), phase: observedDraftPhase, ...(observedAuthStage ? { auth_stage: observedAuthStage } : {}) });
+        observe(draftFlow, "draft_error", { source: draftSource, attempt: draftAttempt, local_backup: localBackupSaved, ...observationError(error), phase: observedDraftPhase, ...(observedAuthStage ? { auth_stage: observedAuthStage } : {}), ...draftTransportDetails });
         if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
         console.error("[saveDraft] failed:", error);
         if (silent) {

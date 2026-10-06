@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase";
+import type { createClient } from "@/lib/supabase";
 
 export type QtDraftMode = "6step" | "sunday" | "free";
 
@@ -29,6 +29,79 @@ export type QtDraftSaveResult = {
 };
 
 type SupabaseClient = ReturnType<typeof createClient>;
+
+export type QtDraftTransportDetails = {
+  draft_transport_version: 1;
+  draft_transport_state: "fetch_not_observed" | "fetch_pending" | "headers_received" | "fetch_rejected";
+  draft_rpc_ms: number;
+  draft_before_fetch_ms: number;
+  draft_fetch_ms?: number;
+  draft_after_headers_ms?: number;
+  draft_http_status?: number;
+  draft_signal_aborted: boolean;
+};
+
+type DraftTransportTrace = {
+  startedAt: number;
+  state: QtDraftTransportDetails["draft_transport_state"];
+  fetchAt?: number;
+  settledAt?: number;
+  status?: number;
+};
+
+// Only a draft request's existing AbortSignal can opt into this trace. No
+// request body, URL, headers, token, Response body or account data is retained.
+const draftTransportTraces = new WeakMap<AbortSignal, DraftTransportTrace>();
+function transportNow(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+function transportMs(start: number, end: number): number {
+  return Math.min(1_000_000, Math.max(0, Math.round(end - start)));
+}
+
+/** Supabase calls this after its internal access-token lookup, before fetch. */
+export const fetchWithQtDraftObservation: typeof fetch = (input, init) => {
+  const trace = init?.signal ? draftTransportTraces.get(init.signal) : undefined;
+  // Every other request passes through without tracing or a promise wrapper.
+  if (!trace) return globalThis.fetch(input, init);
+  try { trace.fetchAt = transportNow(); trace.state = "fetch_pending"; } catch { /* Best effort. */ }
+  const failed = () => {
+    try { trace.settledAt = transportNow(); trace.state = "fetch_rejected"; } catch { /* Best effort. */ }
+  };
+  try {
+    return globalThis.fetch(input, init).then(response => {
+      try {
+        trace.settledAt = transportNow();
+        trace.state = "headers_received";
+        trace.status = response.status;
+      } catch { /* Never affect the response. */ }
+      return response;
+    }, error => { failed(); throw error; });
+  } catch (error) { failed(); throw error; }
+};
+
+function startDraftTransportTrace(signal: AbortSignal, report?: (details: QtDraftTransportDetails) => void): () => void {
+  if (!report) return () => {};
+  try {
+    const trace: DraftTransportTrace = { startedAt: transportNow(), state: "fetch_not_observed" };
+    draftTransportTraces.set(signal, trace);
+    return () => {
+      draftTransportTraces.delete(signal);
+      try {
+        const end = transportNow();
+        report({
+          draft_transport_version: 1,
+          draft_transport_state: trace.state,
+          draft_rpc_ms: transportMs(trace.startedAt, end),
+          draft_before_fetch_ms: transportMs(trace.startedAt, trace.fetchAt ?? end),
+          ...(trace.fetchAt !== undefined ? { draft_fetch_ms: transportMs(trace.fetchAt, trace.settledAt ?? end) } : {}),
+          ...(trace.state === "headers_received" && trace.settledAt !== undefined ? { draft_after_headers_ms: transportMs(trace.settledAt, end), draft_http_status: trace.status } : {}),
+          draft_signal_aborted: signal.aborted,
+        });
+      } catch { /* Diagnostic failure must not change the save result. */ }
+    };
+  } catch { return () => {}; }
+}
 
 type QtDraftRpcResponse = {
   status?: unknown;
@@ -150,32 +223,38 @@ function normalizeResult(value: unknown): QtDraftSaveResult {
 export async function saveQtDraftAtomically(
   supabase: SupabaseClient,
   payload: QtDraftServerPayload,
+  onTransport?: (details: QtDraftTransportDetails) => void,
 ): Promise<QtDraftSaveResult> {
   const controller = new AbortController();
-  const { data, error } = await withQtDraftTimeout(
-    supabase.rpc("save_own_qt_draft", {
-      p_date: payload.date,
-      p_client_updated_at: payload.clientUpdatedAt,
-      p_qt_mode: payload.qtMode,
-      p_current_step: payload.currentStep,
-      p_bible_version: payload.bibleVersion,
-      p_bible_ref: payload.bibleRef,
-      p_key_verse: payload.keyVerse,
-      p_opening_prayer: payload.openingPrayer,
-      p_summary: payload.summary,
-      p_meditation: payload.meditation,
-      p_application: payload.application,
-      p_decision: payload.decision,
-      p_closing_prayer: payload.closingPrayer,
-    }).abortSignal(controller.signal),
-    10_000,
-    "save_own_qt_draft",
-    () => controller.abort(),
-  );
+  const finishTrace = startDraftTransportTrace(controller.signal, onTransport);
+  try {
+    const { data, error } = await withQtDraftTimeout(
+      supabase.rpc("save_own_qt_draft", {
+        p_date: payload.date,
+        p_client_updated_at: payload.clientUpdatedAt,
+        p_qt_mode: payload.qtMode,
+        p_current_step: payload.currentStep,
+        p_bible_version: payload.bibleVersion,
+        p_bible_ref: payload.bibleRef,
+        p_key_verse: payload.keyVerse,
+        p_opening_prayer: payload.openingPrayer,
+        p_summary: payload.summary,
+        p_meditation: payload.meditation,
+        p_application: payload.application,
+        p_decision: payload.decision,
+        p_closing_prayer: payload.closingPrayer,
+      }).abortSignal(controller.signal),
+      10_000,
+      "save_own_qt_draft",
+      () => controller.abort(),
+    );
 
-  if (!error) return normalizeResult(data);
-  if (isMissingDraftRpc(error)) {
-    throw new Error("QT draft save RPC is not ready. Apply migration 124 before deployment.");
+    if (!error) return normalizeResult(data);
+    if (isMissingDraftRpc(error)) {
+      throw new Error("QT draft save RPC is not ready. Apply migration 124 before deployment.");
+    }
+    throw error;
+  } finally {
+    finishTrace();
   }
-  throw error;
 }

@@ -41,6 +41,7 @@ export function isObservationUuid(value: unknown): value is string {
 }
 
 const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
+  draft_transport_state: new Set(["fetch_not_observed", "fetch_pending", "headers_received", "fetch_rejected"]),
   browser_name: new Set(["chrome", "safari", "firefox", "edge", "unknown"]),
   auth_action: new Set(["login", "signup", "password_reset", "oauth"]),
   notice_key: new Set(["login_error", "signup_error", "signup_pw_error", "login_reset_email_required", "login_reset_fail", "login_reset_sent", "auth_credentials", "auth_duplicate", "auth_email_pending", "auth_rate", "auth_network", "auth_unavailable", "auth_password", "auth_generic"]),
@@ -60,8 +61,8 @@ const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
   measurement: new Set(["dom_layout"]),
   outcome: new Set(["eligible", "ineligible", "already_seen", "empty", "error", "authenticated", "accepted", "redirect_started", "dom_visible"]),
 };
-const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present"]);
-const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days"]);
+const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present", "draft_signal_aborted"]);
+const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days", "draft_rpc_ms", "draft_before_fetch_ms", "draft_fetch_ms", "draft_after_headers_ms"]);
 const SOURCE_POSITION_DETAILS = new Set(["error_line", "error_column", "caller_line", "caller_column"]);
 // Only build-generated asset basenames; never a complete URL, path or message.
 export function sanitizeObservationScript(input: unknown): string | null {
@@ -93,6 +94,10 @@ export function sanitizeObservationDetails(input: unknown): ObservationDetails {
     } else if (key === "error_script" || key === "caller_script") {
       const script = sanitizeObservationScript(value);
       if (script) clean[key] = script;
+    } else if (key === "draft_transport_version" && value === 1) {
+      clean[key] = 1;
+    } else if (key === "draft_http_status" && typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599) {
+      clean[key] = value;
     } else if (key === "diagnostic_version" && value === 2) {
       clean[key] = 2;
     } else if (key === "http_status" && typeof value === "number" && Number.isInteger(value) && value >= 400 && value <= 599) {
