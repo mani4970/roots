@@ -15,81 +15,125 @@ type HomeCharacterPreviewProps = {
   alt: string;
   layers: readonly ProfileCharacterLayer[];
   itemsReady: boolean;
+  lang: string;
 };
 
-/** Home alone waits for a complete appearance; page loading and rewards do not. */
-export default function HomeCharacterPreview({ ownerId, avatarType, alt, layers, itemsReady }: HomeCharacterPreviewProps) {
+type PreviewPhase = "loading" | "ready" | "unavailable";
+const CHARACTER_PREPARATION_TIMEOUT_MS = 15_000;
+// Keep Home's fallback copy local; do not import the whole shop text catalog.
+const UNAVAILABLE_TEXT = {
+  ko: "캐릭터를 불러오지 못했어요",
+  en: "Could not load your character",
+  de: "Charakter konnte nicht geladen werden",
+  fr: "Impossible de charger le personnage",
+  es: "No se pudo cargar el personaje",
+} as const;
+
+/** Only this character waits for its outfit; Home actions and rewards do not. */
+export default function HomeCharacterPreview({ ownerId, avatarType, alt, layers, itemsReady, lang }: HomeCharacterPreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null);
-  const [preparedSignature, setPreparedSignature] = useState<string | null>(null);
+  const [preparation, setPreparation] = useState<{ signature: string; phase: PreviewPhase } | null>(null);
   const visibleLayers = itemsReady ? filterProfileCharacterLayers(layers, avatarType) : [];
   const signature = JSON.stringify([
     ownerId,
-    getProfileCharacterBaseImageSrc(avatarType),
+    itemsReady,
+    getProfileCharacterBaseImageSrc(avatarType, visibleLayers),
     visibleLayers.map(layer => [layer.id, layer.src, layer.slot, layer.zIndex]),
   ]);
-  // Compare during render, so a new avatar/outfit cannot expose the old readiness
-  // for one frame while the effect for its new image sources is starting.
-  const ready = itemsReady && preparedSignature === signature;
+  // A new owner/outfit must never inherit the old outfit's ready state.
+  const phase = preparation?.signature === signature ? preparation.phase : "loading";
+  const ready = itemsReady && phase === "ready";
+  const unavailable = phase === "unavailable";
+  const language = lang === "en" || lang === "de" || lang === "fr" || lang === "es" ? lang : "ko";
 
   useEffect(() => {
-    setPreparedSignature(null);
-    const images = Array.from(previewRef.current?.querySelectorAll("img") ?? []);
-    if (images.length === 0) return;
     let disposed = false;
-    const cleanups: Array<() => void> = [];
-    const loaded = images.map(image => {
-      image.decoding = "async";
-      return new Promise<void>((resolve, reject) => {
-        const cleanup = () => {
-          image.removeEventListener("load", onLoad);
-          image.removeEventListener("error", onError);
-        };
-        const onLoad = () => {
-          cleanup();
-          if (image.naturalWidth > 0) resolve();
-          else reject(new Error("Home character image unavailable"));
-        };
-        const onError = () => {
-          cleanup();
-          reject(new Error("Home character image unavailable"));
-        };
-        cleanups.push(cleanup);
-        image.addEventListener("load", onLoad);
-        image.addEventListener("error", onError);
-        // Covers cached images and a load that finished before listeners attached.
-        if (image.complete) image.naturalWidth > 0 ? onLoad() : onError();
-      });
-    });
-
-    // Use the real rendered elements: no second preloader, polling, image copies,
-    // or extra requests. Promise-based decoding leaves Home interactions available.
-    void Promise.all(loaded).then(async () => {
+    let revision = 0;
+    let checkTimer: number | null = null;
+    const images = Array.from(previewRef.current?.querySelectorAll("img") ?? []);
+    const publish = (next: PreviewPhase) => {
       if (disposed) return;
-      await Promise.all(images.map(image => typeof image.decode === "function" ? image.decode() : undefined));
-      if (!disposed && images.every(image => image.complete && image.naturalWidth > 0)) {
-        setPreparedSignature(signature);
-      }
-    }).catch(() => {
-      // A failed layer must not reveal an incomplete outfit. The surrounding
-      // customization button remains usable, including when the network is down.
-      cleanups.forEach(cleanup => cleanup());
-    });
+      setPreparation(previous => previous?.signature === signature && previous.phase === next
+        ? previous : { signature, phase: next });
+    };
+    publish("loading");
+    // A stalled outfit read or image must not leave an endless waiting state.
+    // This is a UI deadline, not a retry or cancellation of the original request.
+    const deadline = window.setTimeout(() => publish("unavailable"), CHARACTER_PREPARATION_TIMEOUT_MS);
 
+    const check = () => {
+      checkTimer = null;
+      if (disposed || !itemsReady || images.length === 0) return;
+      const checkedRevision = ++revision;
+      if (images.some(image => image.complete && image.naturalWidth === 0)) {
+        publish("unavailable");
+        return;
+      }
+      if (!images.every(image => image.complete && image.naturalWidth > 0)) return;
+      const sources = images.map(image => image.src);
+      const stillCurrent = () => !disposed && checkedRevision === revision
+        && images.every((image, index) => image.src === sources[index]);
+
+      // Decode the real displayed elements, not duplicate Image() preloaders.
+      void Promise.all(images.map(image => typeof image.decode === "function"
+        ? image.decode() : Promise.resolve())).then(() => {
+        if (!stillCurrent()) return;
+        if (images.every(image => image.complete && image.naturalWidth > 0
+          && (!image.currentSrc || image.currentSrc === image.src))) {
+          window.clearTimeout(deadline);
+          publish("ready");
+        }
+      }).catch(() => {
+        if (stillCurrent()) publish("unavailable");
+      });
+    };
+    const scheduleCheck = () => {
+      ++revision;
+      if (disposed || checkTimer !== null) return;
+      // Run after every handler for this event has finished. In particular,
+      // ProfileCharacterPreview may replace a failed hair src with its fallback.
+      checkTimer = window.setTimeout(check, 0);
+    };
+    images.forEach(image => {
+      image.decoding = "async";
+      image.addEventListener("load", scheduleCheck);
+      image.addEventListener("error", scheduleCheck);
+    });
+    if (itemsReady) scheduleCheck(); // Also handles images already in cache.
+
+    // Keep observing after a failed source/deadline: a successful fallback or
+    // late original response can still recover, without issuing any new request.
     return () => {
       disposed = true;
-      cleanups.forEach(cleanup => cleanup());
+      ++revision;
+      window.clearTimeout(deadline);
+      if (checkTimer !== null) window.clearTimeout(checkTimer);
+      images.forEach(image => {
+        image.removeEventListener("load", scheduleCheck);
+        image.removeEventListener("error", scheduleCheck);
+      });
     };
-  }, [signature]);
+  }, [signature, itemsReady]);
 
   return (
-    <div style={{ position: "relative", width: "clamp(92px, 25vw, 112px)" }}>
+    <div aria-busy={phase === "loading"} style={{ position: "relative", width: "clamp(92px, 25vw, 112px)", aspectRatio: "1 / 1" }}>
       <div ref={previewRef} aria-hidden={!ready} style={{ visibility: ready ? "visible" : "hidden" }}>
-        <ProfileCharacterPreview avatarType={avatarType} alt={alt} layers={visibleLayers} forceSquareCanvas />
+        {itemsReady && (
+          <ProfileCharacterPreview key={ownerId} avatarType={avatarType} alt={alt} layers={visibleLayers} forceSquareCanvas />
+        )}
       </div>
       {!ready && (
-        <div aria-hidden="true" style={{ position: "absolute", inset: "8% 12%", borderRadius: 18, background: "var(--sage-light)", opacity: 0.55, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, pointerEvents: "none" }}>
-          <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--border)" }} />
-          <span style={{ width: 34, height: 29, borderRadius: "14px 14px 8px 8px", background: "var(--border)" }} />
+        <div role={unavailable ? "status" : undefined} aria-hidden={!unavailable} style={{ position: "absolute", inset: "8% 12%", borderRadius: 18, background: "var(--sage-light)", opacity: unavailable ? 1 : 0.55, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, pointerEvents: "none" }}>
+          {unavailable ? (
+            <span style={{ color: "var(--text2)", fontSize: 11, lineHeight: 1.35, textAlign: "center", padding: "0 4px", overflowWrap: "anywhere" }}>
+              {UNAVAILABLE_TEXT[language]}
+            </span>
+          ) : (
+            <>
+              <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--border)" }} />
+              <span style={{ width: 34, height: 29, borderRadius: "14px 14px 8px 8px", background: "var(--border)" }} />
+            </>
+          )}
         </div>
       )}
     </div>

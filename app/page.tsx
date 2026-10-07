@@ -2872,6 +2872,7 @@ export default function HomePage() {
               alt={getRootsAvatarLabel(currentAvatarType, lang)}
               layers={homeProfileCharacterLayers}
               itemsReady={homeCharacterItemsOwner === profile.id}
+              lang={lang}
             />
             <span
               style={{
