@@ -70,6 +70,7 @@ type HeartShopOwnedCharacterCategory =
   | "bottoms"
   | "dresses"
   | "shoes"
+  | "hair"
   | "accessories"
   | "backgrounds"
   | "pets";
@@ -85,6 +86,7 @@ function isOwnedCharacterItemInCategory(
   if (category === "shoes") return item.slot === "shoes";
   if (category === "backgrounds") return item.slot === "background";
   if (category === "pets") return item.slot === "pet";
+  if (category === "hair") return item.slot === "hair";
   return item.slot === "headwear"
     || item.slot === "eyewear"
     || item.slot === "hair_accessory"
@@ -125,6 +127,7 @@ const CHARACTER_CATEGORY_SLOT: Partial<Record<ProfileCharacterCategory, HeartSho
   eyewear: "eyewear",
   headwear: "headwear",
   bags: "bag",
+  hair: "hair",
 };
 
 function isCharacterItemInCategory(
@@ -163,7 +166,7 @@ type CharacterItemPreviewCrop = {
 
 const CHARACTER_ITEM_PREVIEW_CROP: Record<
   RootsAvatarType,
-  Record<Exclude<HeartShopCharacterSlot, "background">, CharacterItemPreviewCrop>
+  Record<Exclude<HeartShopCharacterSlot, "background" | "hair">, CharacterItemPreviewCrop>
 > = {
   rootsman: {
     pet: { x: 665, y: 940, width: 345, height: 345 },
@@ -270,7 +273,7 @@ function CharacterItemLayerPreview({
   maxWidth?: number;
   loading?: "eager" | "lazy";
 }) {
-  if (item.slot === "background") {
+  if (item.slot === "background" || item.slot === "hair") {
     return (
       <div
         style={{
@@ -283,7 +286,7 @@ function CharacterItemLayerPreview({
         }}
       >
         <img
-          src={item.layerPath}
+          src={item.previewPath ?? item.layerPath}
           alt={alt}
           loading={loading}
           decoding="async"
@@ -914,6 +917,7 @@ export default function HeartShopModal({
   characterCategories.push(
     { id: "shoes", label: profileText.categories.shoes },
     { id: "eyewear", label: profileText.categories.eyewear },
+    { id: "hair", label: profileText.categories.hair },
     { id: "headwear", label: profileText.categories.headwear },
     { id: "accessories", label: profileText.categories.accessories },
   );
@@ -929,6 +933,7 @@ export default function HeartShopModal({
   }
   ownedCharacterCategories.push(
     { id: "shoes", label: profileText.categories.shoes },
+    { id: "hair", label: profileText.categories.hair },
     { id: "accessories", label: text.ownedAccessoriesCategoryLabel },
     { id: "backgrounds", label: profileText.categories.backgrounds },
     { id: "pets", label: profileText.categories.pets },

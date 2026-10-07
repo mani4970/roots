@@ -17,6 +17,7 @@ export type ProfileCharacterCategory =
   | "dresses"
   | "shoes"
   | "eyewear"
+  | "hair"
   | "headwear"
   | "accessories"
   | "bags";
@@ -53,6 +54,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       dresses: "원피스",
       shoes: "신발",
       eyewear: "안경·선글라스",
+      hair: "염색",
       headwear: "모자",
       accessories: "액세서리",
       bags: "가방",
@@ -74,6 +76,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       dresses: "Dresses",
       shoes: "Shoes",
       eyewear: "Glasses & shades",
+      hair: "Hair Color",
       headwear: "Hats",
       accessories: "Accessories",
       bags: "Bags",
@@ -95,6 +98,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       dresses: "Kleider",
       shoes: "Schuhe",
       eyewear: "Brillen & Sonnenbrillen",
+      hair: "Haarfarbe",
       headwear: "Mützen & Hüte",
       accessories: "Accessoires",
       bags: "Taschen",
@@ -116,6 +120,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       dresses: "Robes",
       shoes: "Chaussures",
       eyewear: "Lunettes",
+      hair: "Coloration",
       headwear: "Chapeaux",
       accessories: "Accessoires",
       bags: "Sacs",
@@ -138,6 +143,7 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
       dresses: "Vestidos",
       shoes: "Calzado",
       eyewear: "Gafas y lentes de sol",
+      hair: "Color de cabello",
       headwear: "Sombreros",
       accessories: "Accesorios",
       bags: "Bolsos",
@@ -166,6 +172,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["버건디 브로라인 안경", "네이비 라운드 안경", "브라운 스퀘어 안경", "블루 오벌 선글라스", "블랙 렉탱글 선글라스", "앰버 스퀘어 선글라스"],
       hair_accessory: [],
       muffler: ["오트밀 루프 머플러", "차콜 골지 머플러", "버건디 숏 니트 머플러", "네이비 싱글 드롭 머플러"],
+      hair: [null, null, null, null, "소프트 블랙", "초콜릿 브라운", "애쉬 브라운", "크림 블론드"],
       headwear: ["라피아 네이비 버킷햇", "워시드 차콜 볼캡", "오트밀 뉴스보이캡", "딥 포레스트 비니"],
     },
     rootswoman: {
@@ -177,6 +184,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["로즈 캣아이 안경", "라벤더 라운드 안경", "골드 라운드 스퀘어 안경", "아이보리 캣아이 선글라스", "레드 하트 선글라스", "라일락 오버사이즈 선글라스"],
       hair_accessory: ["아이보리 리본 헤어핀", "진주 플라워 헤어핀", "블랙 벨벳 리본 헤어핀", "슬림 펄 헤어밴드", "블랙 패디드 헤어밴드", "더스티 핑크 트위스트 헤어밴드"],
       muffler: ["라벤더 쁘띠 니트 머플러", "라이트 그레이 슬림 롱 머플러", "세이지 그린 프런트 랩 머플러", "스카이블루 체크 머플러"],
+      hair: [null, null, null, null, "초콜릿 브라운", "애쉬 브라운", "크림 블론드", "소프트 블랙", "체리 레드", "올리브 매트 브라운", "미드나잇 블루", "플럼 와인"],
       headwear: ["아이보리 리본 클로슈", "네이비 하트 볼캡", "차콜 플라워 베레", "라벤더 데이지 버킷햇"],
     },
   },
@@ -190,6 +198,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Burgundy Browline Glasses", "Navy Round Glasses", "Brown Square Glasses", "Blue Oval Sunglasses", "Black Rectangle Sunglasses", "Amber Square Sunglasses"],
       hair_accessory: [],
       muffler: ["Oatmeal Loop Scarf", "Charcoal Ribbed Scarf", "Burgundy Short Knit Scarf", "Navy Single-Drop Scarf"],
+      hair: [null, null, null, null, "Soft Black", "Chocolate Brown", "Ash Brown", "Cream Blonde"],
       headwear: ["Raffia Navy Bucket Hat", "Washed Charcoal Cap", "Oatmeal Newsboy Cap", "Deep Forest Beanie"],
     },
     rootswoman: {
@@ -201,6 +210,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Rose Cat-Eye Glasses", "Lavender Round Glasses", "Gold Rounded-Square Glasses", "Ivory Cat-Eye Sunglasses", "Red Heart Sunglasses", "Lilac Oversized Sunglasses"],
       hair_accessory: ["Ivory Bow Hair Clip", "Pearl Flower Barrette", "Black Velvet Bow Hair Clip", "Slim Pearl Headband", "Black Padded Headband", "Dusty Pink Twist Headband"],
       muffler: ["Lavender Petite Knit Scarf", "Light Gray Slim Long Scarf", "Sage Green Front-Wrap Scarf", "Sky Blue Check Scarf"],
+      hair: [null, null, null, null, "Chocolate Brown", "Ash Brown", "Cream Blonde", "Soft Black", "Cherry Red", "Olive Matte Brown", "Midnight Blue", "Plum Wine"],
       headwear: ["Ivory Ribbon Cloche", "Navy Heart Cap", "Charcoal Flower Beret", "Lavender Daisy Bucket Hat"],
     },
   },
@@ -214,6 +224,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Burgunder Browline-Brille", "Runde marineblaue Brille", "Braune eckige Brille", "Blaue ovale Sonnenbrille", "Schwarze rechteckige Sonnenbrille", "Bernsteinfarbene Sonnenbrille"],
       hair_accessory: [],
       muffler: ["Haferbeiger Schlaufen-Schal", "Anthrazitfarbener Rippstrick-Schal", "Kurzer bordeauxroter Strickschal", "Marineblauer Schal mit einem langen Ende"],
+      hair: [null, null, null, null, "Softschwarz", "Schokoladenbraun", "Aschbraun", "Cremeblond"],
       headwear: ["Raffia-Bucket-Hat", "Anthrazitfarbene Kappe", "Oatmeal-Schiebermütze", "Waldgrüne Beanie"],
     },
     rootswoman: {
@@ -225,6 +236,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Roséfarbene Cateye-Brille", "Runde Lavendel-Brille", "Goldene Rundquadrat-Brille", "Elfenbeinfarbene Cateye-Sonnenbrille", "Rote Herz-Sonnenbrille", "Große lilafarbene Sonnenbrille"],
       hair_accessory: ["Elfenbeinfarbene Schleifen-Haarspange", "Haarspange mit Perlenblume", "Schwarze Samt-Schleifen-Haarspange", "Schmaler Perlen-Haarreif", "Schwarzer gepolsterter Haarreif", "Altrosa Twist-Haarreif"],
       muffler: ["Kurzer lavendelfarbener Strickschal", "Hellgrauer schmaler langer Schal", "Salbeigrüner Wickelschal", "Himmelblauer Karoschal"],
+      hair: [null, null, null, null, "Schokoladenbraun", "Aschbraun", "Cremeblond", "Softschwarz", "Kirschrot", "Mattes Olivbraun", "Mitternachtsblau", "Pflaumenrot"],
       headwear: ["Elfenbeinfarbener Glockenhut", "Marineblaue Herz-Kappe", "Anthrazit-Baskenmütze mit Blume", "Lavendel-Bucket-Hat mit Gänseblümchen"],
     },
   },
@@ -238,6 +250,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Lunettes browline bordeaux", "Lunettes rondes marine", "Lunettes carrées brunes", "Lunettes de soleil ovales bleues", "Lunettes de soleil rectangulaires noires", "Lunettes de soleil carrées ambre"],
       hair_accessory: [],
       muffler: ["Écharpe boucle avoine", "Écharpe côtelée anthracite", "Écharpe courte en maille bordeaux", "Écharpe marine à pan unique"],
+      hair: [null, null, null, null, "Noir doux", "Brun chocolat", "Brun cendré", "Blond crème"],
       headwear: ["Bob raphia marine", "Casquette anthracite délavée", "Casquette gavroche avoine", "Bonnet vert forêt"],
     },
     rootswoman: {
@@ -249,6 +262,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Lunettes œil-de-chat roses", "Lunettes rondes lavande", "Lunettes carrées arrondies dorées", "Lunettes de soleil œil-de-chat ivoire", "Lunettes de soleil cœur rouges", "Lunettes de soleil lilas oversize"],
       hair_accessory: ["Barrette nœud ivoire", "Barrette fleur perlée", "Barrette nœud en velours noir", "Serre-tête fin perlé", "Serre-tête rembourré noir", "Serre-tête torsadé rose poudré"],
       muffler: ["Écharpe courte en maille lavande", "Écharpe longue fine gris clair", "Écharpe croisée sauge", "Écharpe à carreaux bleu ciel"],
+      hair: [null, null, null, null, "Brun chocolat", "Brun cendré", "Blond crème", "Noir doux", "Rouge cerise", "Brun olive mat", "Bleu nuit", "Prune"],
       headwear: ["Cloche ivoire à ruban", "Casquette cœur marine", "Béret anthracite à fleur", "Bob lavande à marguerites"],
     },
   },
@@ -263,6 +277,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Gafas browline borgoña", "Gafas redondas azul marino", "Gafas cuadradas marrones", "Lentes de sol ovalados azules", "Lentes de sol rectangulares negros", "Lentes de sol cuadrados ámbar"],
       hair_accessory: [],
       muffler: ["Bufanda de lazo avena", "Bufanda de canalé carbón", "Bufanda corta de punto borgoña", "Bufanda azul marino de caída única"],
+      hair: [null, null, null, null, "Negro suave", "Castaño chocolate", "Castaño ceniza", "Rubio crema"],
       headwear: ["Sombrero bucket de rafia azul marino", "Gorra color carbón desgastado", "Gorra newsboy color avena", "Gorro tejido verde bosque"],
     },
     rootswoman: {
@@ -274,6 +289,7 @@ const ITEM_NAMES: Record<ProfileCharacterLang, ItemNames> = {
       eyewear: ["Gafas cat-eye rosa", "Gafas redondas lavanda", "Gafas cuadradas redondeadas doradas", "Lentes de sol cat-eye marfil", "Lentes de sol rojos de corazón", "Lentes de sol lila oversize"],
       hair_accessory: ["Pasador de lazo marfil", "Pasador de flor con perlas", "Pasador de lazo de terciopelo negro", "Diadema fina de perlas", "Diadema acolchada negra", "Diadema trenzada rosa empolvado"],
       muffler: ["Bufanda corta de punto lavanda", "Bufanda larga fina gris claro", "Bufanda cruzada verde salvia", "Bufanda de cuadros azul cielo"],
+      hair: [null, null, null, null, "Castaño chocolate", "Castaño ceniza", "Rubio crema", "Negro suave", "Rojo cereza", "Castaño oliva mate", "Azul medianoche", "Ciruela vino"],
       headwear: ["Sombrero cloche marfil con lazo", "Gorra azul marino con corazón", "Boina color carbón con flor", "Sombrero bucket lavanda con margaritas"],
     },
   },
@@ -308,6 +324,7 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
     top: "tops",
     bag: "bags",
     eyewear: "eyewear",
+    hair: "hair",
     hair_accessory: "accessories",
     muffler: "accessories",
     headwear: "headwear",

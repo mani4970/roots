@@ -51,8 +51,18 @@ export function getProfileCharacterPetLayout(
   };
 }
 
-export function getProfileCharacterBaseImageSrc(avatarType: unknown): string {
-  return normalizeRootsAvatarType(avatarType) === "rootswoman"
+export function getProfileCharacterBaseImageSrc(
+  avatarType: unknown,
+  layers: readonly ProfileCharacterLayer[] = [],
+): string {
+  const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
+  // Same selection rule for the live preview and saved avatar. Hair images are
+  // complete bases generated offline, so never draw them again as foregrounds.
+  const hair = filterProfileCharacterLayers(layers, normalizedAvatarType)
+    .filter(layer => layer.slot === "hair")
+    .at(-1);
+  if (hair) return hair.src;
+  return normalizedAvatarType === "rootswoman"
     ? "/images/profile-characters/rootswoman-profile.webp"
     : "/images/profile-characters/rootsman-profile.webp";
 }

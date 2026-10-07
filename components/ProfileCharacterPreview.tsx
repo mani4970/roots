@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import { normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import {
   PROFILE_CHARACTER_CANVAS,
@@ -80,9 +80,10 @@ export default function ProfileCharacterPreview({
   forceSquareCanvas = false,
 }: ProfileCharacterPreviewProps) {
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
+  const lastLoadedBaseRef = useRef<{ avatarType: RootsAvatarType; src: string } | null>(null);
   const visibleLayers = filterProfileCharacterLayers(layers, avatarType);
   const backgroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) < 0);
-  const foregroundLayers = visibleLayers.filter(layer => (layer.zIndex ?? 10) >= 0);
+  const foregroundLayers = visibleLayers.filter(layer => layer.slot !== "hair" && (layer.zIndex ?? 10) >= 0);
   const hasSquareBackground = backgroundLayers.some(layer => layer.slot === "background");
   const hasJesusPhotoBackground = backgroundLayers.some(layer => layer.id === "shared_background_15");
   const hasWidePet = foregroundLayers.some(layer =>
@@ -137,7 +138,23 @@ export default function ProfileCharacterPreview({
         />
       ))}
       <img
-        src={getProfileCharacterBaseImageSrc(avatarType)}
+        key={normalizedAvatarType}
+        src={getProfileCharacterBaseImageSrc(avatarType, visibleLayers)}
+        onLoad={event => {
+          lastLoadedBaseRef.current = {
+            avatarType: normalizedAvatarType,
+            src: event.currentTarget.currentSrc || event.currentTarget.src,
+          };
+        }}
+        onError={event => {
+          const image = event.currentTarget;
+          const last = lastLoadedBaseRef.current;
+          const fallback = last?.avatarType === normalizedAvatarType
+            ? last.src : getProfileCharacterBaseImageSrc(normalizedAvatarType);
+          // One native <img>, no preload of all colors and no retry loop.
+          // A failed new color keeps the last complete character (or the default).
+          if (image.src !== new URL(fallback, document.baseURI).href) image.src = fallback;
+        }}
         alt={alt}
         draggable={false}
         style={{

@@ -141,10 +141,14 @@ export function getProfileCharacterAvatarSignature(
     .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
     .at(-1) ?? null;
   const petLayer = layers.find(layer => layer.slot === "pet");
+  const hairLayer = layers.find(layer => layer.slot === "hair");
+  const hairVersion = hairLayer
+    ? new URLSearchParams(hairLayer.src.split("?")[1] ?? "").get("v") : null;
   const assetVersion = [
     PROFILE_CHARACTER_AVATAR_ASSET_VERSION,
     ...(squareBackgroundAsset ? [squareBackgroundAsset.version] : []),
     ...(petLayer ? [getProfileCharacterPetLayout(petLayer.id).version] : []),
+    ...(hairVersion ? [`hair-${hairVersion}`] : []),
   ].join(":");
   return [assetVersion, normalizedAvatarType, ...layerIds].join(":");
 }
@@ -161,7 +165,7 @@ export async function createProfileCharacterAvatarBlob(
   const layers = getProfileCharacterLayersForItemIds(itemIds, normalizedAvatarType)
     .sort((a, b) => (a.zIndex ?? 10) - (b.zIndex ?? 10));
   const backgroundLayers = layers.filter(layer => (layer.zIndex ?? 10) < 0);
-  const foregroundLayers = layers.filter(layer => (layer.zIndex ?? 10) >= 0);
+  const foregroundLayers = layers.filter(layer => layer.slot !== "hair" && (layer.zIndex ?? 10) >= 0);
   const selectedBackgroundLayer = backgroundLayers[backgroundLayers.length - 1] ?? null;
   const squareBackgroundAsset = selectedBackgroundLayer
     ? getSquareProfileBackgroundAsset(selectedBackgroundLayer)
@@ -169,7 +173,7 @@ export async function createProfileCharacterAvatarBlob(
   const [squareBackgroundImage, characterImages] = await Promise.all([
     squareBackgroundAsset ? loadImage(squareBackgroundAsset.src) : Promise.resolve(null),
     Promise.all([
-      getProfileCharacterBaseImageSrc(normalizedAvatarType),
+      getProfileCharacterBaseImageSrc(normalizedAvatarType, layers),
       ...foregroundLayers.map(layer => layer.src),
     ].map(loadImage)),
   ]);

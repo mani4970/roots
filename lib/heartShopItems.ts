@@ -31,6 +31,7 @@ export type HeartShopCharacterSlot =
   | "top"
   | "bag"
   | "eyewear"
+  | "hair"
   | "hair_accessory"
   | "muffler"
   | "headwear";
@@ -144,6 +145,11 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootsman_eyewear_04",
   "rootsman_eyewear_05",
   "rootsman_eyewear_06",
+  // 01–04 are legacy database keys; these colors use fresh identities.
+  "rootsman_hair_05",
+  "rootsman_hair_06",
+  "rootsman_hair_07",
+  "rootsman_hair_08",
   "rootsman_headwear_01",
   "rootsman_headwear_02",
   "rootsman_headwear_03",
@@ -223,6 +229,15 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootswoman_eyewear_04",
   "rootswoman_eyewear_05",
   "rootswoman_eyewear_06",
+  // 01–04 are legacy database keys; these colors use fresh identities.
+  "rootswoman_hair_05",
+  "rootswoman_hair_06",
+  "rootswoman_hair_07",
+  "rootswoman_hair_08",
+  "rootswoman_hair_09",
+  "rootswoman_hair_10",
+  "rootswoman_hair_11",
+  "rootswoman_hair_12",
   "rootswoman_headwear_01",
   "rootswoman_headwear_02",
   "rootswoman_headwear_03",
@@ -302,6 +317,7 @@ export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartSho
   if (itemId.includes("_bag_")) return "bag";
   if (itemId.includes("_eyewear_")) return "eyewear";
   if (itemId.includes("_hair_accessory_")) return "hair_accessory";
+  if (itemId.includes("_hair_")) return "hair";
   if (itemId.includes("_muffler_")) return "muffler";
   if (itemId.includes("_headwear_")) return "headwear";
   return "top";

@@ -38,6 +38,8 @@ export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
   avatarType: HeartShopCharacterAvatarType;
   slot: HeartShopCharacterSlot;
   layerPath: string;
+  // Hair tiles use a small hair-only image, not the full precomposed character.
+  previewPath?: string;
   zIndex: number;
   sortOrder: number;
 };
@@ -219,6 +221,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
   bag: { price: 30, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
   eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
+  hair: { price: 100, directory: "hair", filePrefix: "hair", zIndex: 0, sortOffset: 900 },
   hair_accessory: { price: 5, directory: "hair-accessories", filePrefix: "hair-accessory", zIndex: 45, sortOffset: 600 },
   muffler: { price: 30, directory: "mufflers", filePrefix: "muffler", zIndex: 38, sortOffset: 700 },
   headwear: { price: 10, directory: "headwear", filePrefix: "headwear", zIndex: 50, sortOffset: 400 },
@@ -238,6 +241,7 @@ export const HEART_SHOP_LATEST_PROFILE_ASSET_VERSION = "20260822_v1";
 export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 export const HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION = "20260904_travel_v1";
 export const HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION = "20260915_travel_compressed_v1";
+export const HEART_SHOP_HAIR_ASSET_VERSION = "20261007_v1";
 export const HEART_SHOP_MUFFLER_ASSET_VERSION = "20261005_v1";
 export const HEART_SHOP_WINTER_TOP_ASSET_VERSION = "20261005_winter_v1";
 
@@ -260,6 +264,7 @@ function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterS
   if (itemId.includes("_bag_")) return "bag";
   if (itemId.includes("_eyewear_")) return "eyewear";
   if (itemId.includes("_hair_accessory_")) return "hair_accessory";
+  if (itemId.includes("_hair_")) return "hair";
   if (itemId.includes("_muffler_")) return "muffler";
   if (itemId.includes("_headwear_")) return "headwear";
   return "top";
@@ -277,6 +282,23 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
     && winterTopIndex >= 0
     && winterTopIndex < 8;
   const avatarSortOffset = avatarType === "shared" ? 0 : avatarType === "rootswoman" ? 2000 : 1000;
+  if (slot === "hair") {
+    const number = String(itemNumber).padStart(2, "0");
+    return {
+      id: itemId,
+      category: "character",
+      avatarType,
+      slot,
+      price: avatarType === "rootswoman" ? 150 : 100,
+      isNew: true,
+      newPriority: 12000 - itemNumber,
+      // Already composited offline: replaces the base, never an extra overlay.
+      layerPath: `/images/profile-characters/hair-colors/${avatarType}-hair-${number}.webp?v=${HEART_SHOP_HAIR_ASSET_VERSION}`,
+      previewPath: `/images/heart-shop/character/${avatarType}/hair/hair-${number}-thumb.webp?v=${HEART_SHOP_HAIR_ASSET_VERSION}`,
+      zIndex: config.zIndex,
+      sortOrder: avatarSortOffset + config.sortOffset + itemNumber,
+    };
+  }
   const rootsmanBottomDisplayIndex = ROOTSMAN_BOTTOM_DISPLAY_ORDER.indexOf(itemNumber);
   const isRootsmanSummerTop = avatarType === "rootsman" && slot === "top" && itemNumber >= 7 && itemNumber <= 10;
   const isNewRootsmanClothing = avatarType === "rootsman"
