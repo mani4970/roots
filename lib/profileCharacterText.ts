@@ -27,6 +27,9 @@ type ProfileCharacterLang = "ko" | "en" | "de" | "fr" | "es";
 export type ProfileCharacterText = {
   previewLabel: string;
   restoreOutfitLabel: string;
+  defaultHairName: string;
+  defaultHairAppliedNotice: string;
+  defaultHairApplyFailed: string;
   emptyTitle: string;
   emptyBody: string;
   openFullViewLabel: string;
@@ -41,6 +44,9 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   ko: {
     previewLabel: "미리보기",
     restoreOutfitLabel: "현재 코디로 복원",
+    defaultHairName: "기본 헤어",
+    defaultHairAppliedNotice: "기본 헤어로 돌아왔어요.",
+    defaultHairApplyFailed: "기본 헤어를 적용하지 못했어요. 현재 코디를 확인하고 다시 시도해주세요.",
     emptyTitle: "이 카테고리에는 아이템이 없어요",
     emptyBody: "다른 카테고리를 선택해보세요.",
     openFullViewLabel: "내 캐릭터 전체 보기",
@@ -63,6 +69,9 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   en: {
     previewLabel: "Preview",
     restoreOutfitLabel: "Restore current outfit",
+    defaultHairName: "Default Hair",
+    defaultHairAppliedNotice: "Default hair restored.",
+    defaultHairApplyFailed: "Could not restore the default hair. Check your current outfit and try again.",
     emptyTitle: "No items in this category",
     emptyBody: "Try another category.",
     openFullViewLabel: "View my character",
@@ -85,6 +94,9 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   de: {
     previewLabel: "Vorschau",
     restoreOutfitLabel: "Aktuelles Outfit wiederherstellen",
+    defaultHairName: "Standardfrisur",
+    defaultHairAppliedNotice: "Die Standardfrisur wurde wiederhergestellt.",
+    defaultHairApplyFailed: "Die Standardfrisur konnte nicht wiederhergestellt werden. Prüfe dein aktuelles Outfit und versuche es erneut.",
     emptyTitle: "Keine Items in dieser Kategorie",
     emptyBody: "Wähle eine andere Kategorie.",
     openFullViewLabel: "Meinen Charakter ansehen",
@@ -107,6 +119,9 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   fr: {
     previewLabel: "Aperçu",
     restoreOutfitLabel: "Restaurer la tenue actuelle",
+    defaultHairName: "Coiffure par défaut",
+    defaultHairAppliedNotice: "La coiffure par défaut a été rétablie.",
+    defaultHairApplyFailed: "Impossible de rétablir la coiffure par défaut. Vérifiez votre tenue actuelle et réessayez.",
     emptyTitle: "Aucun objet dans cette catégorie",
     emptyBody: "Choisissez une autre catégorie.",
     openFullViewLabel: "Voir mon personnage",
@@ -130,6 +145,9 @@ const TEXT: Record<ProfileCharacterLang, ProfileCharacterText> = {
   es: {
     previewLabel: "Vista previa",
     restoreOutfitLabel: "Restaurar atuendo actual",
+    defaultHairName: "Cabello predeterminado",
+    defaultHairAppliedNotice: "Se ha restaurado el cabello predeterminado.",
+    defaultHairApplyFailed: "No se pudo restaurar el cabello predeterminado. Revisa tu atuendo actual e inténtalo de nuevo.",
     emptyTitle: "No hay objetos en esta categoría",
     emptyBody: "Prueba con otra categoría.",
     openFullViewLabel: "Ver mi personaje",

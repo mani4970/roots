@@ -360,14 +360,15 @@ export default function HeartShopModal({
   const [activeOwnedSection, setActiveOwnedSection] = useState<HeartShopOwnedSection>("character");
   const [activeOwnedCharacterCategory, setActiveOwnedCharacterCategory] = useState<HeartShopOwnedCharacterCategory>("tops");
   const [mapScenePreviewItemId, setMapScenePreviewItemId] = useState<HeartShopMapItemId | null>(null);
-  const [characterShopPreviewItemIds, setCharacterShopPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
-  const [ownedCharacterPreviewItemIds, setOwnedCharacterPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId>>>({});
+  const [characterShopPreviewItemIds, setCharacterShopPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId | null>>>({});
+  const [ownedCharacterPreviewItemIds, setOwnedCharacterPreviewItemIds] = useState<Partial<Record<HeartShopCharacterSlot, HeartShopCharacterItemId | null>>>({});
   const [ownedCharacterSnapshotItemIds, setOwnedCharacterSnapshotItemIds] = useState<HeartShopCharacterItemId[] | null>(null);
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
   const [loadingOwned, setLoadingOwned] = useState(false);
   const [ownedItemsLoaded, setOwnedItemsLoaded] = useState(false);
+  const [ownedItemsLoadFailed, setOwnedItemsLoadFailed] = useState(false);
   const [previewItemId, setPreviewItemId] = useState<HeartShopItemId | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<HeartShopItemId | null>(null);
   const [completedItemId, setCompletedItemId] = useState<HeartShopItemId | null>(null);
@@ -376,6 +377,8 @@ export default function HeartShopModal({
   const [applyingFreeItemId, setApplyingFreeItemId] = useState<HeartShopCharacterItemId | null>(null);
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
   const [restoringCharacterState, setRestoringCharacterState] = useState(false);
+  const [restoringDefaultHair, setRestoringDefaultHair] = useState(false);
+  const restoringDefaultHairRef = useRef(false);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
   const tabHistoryRef = useRef<HeartShopTab[]>([]);
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -384,7 +387,7 @@ export default function HeartShopModal({
 
   useAndroidBackHandler(() => {
     if (!show) return false;
-    if (purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState) {
+    if (purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState || restoringDefaultHairRef.current) {
       return true;
     }
     const historyStack = historyStackRef.current;
@@ -437,6 +440,7 @@ export default function HeartShopModal({
     );
     const previewLayers = getProfileCharacterLayersForItemIds(previewItemIds, avatarType);
     const previewSlots = new Set(previewLayers.map(layer => layer.slot));
+    if (characterShopPreviewItemIds.hair === null) previewSlots.add("hair");
     return [
       ...currentLayers.filter(layer => !previewSlots.has(layer.slot)),
       ...previewLayers,
@@ -448,11 +452,16 @@ export default function HeartShopModal({
     );
     const previewLayers = getProfileCharacterLayersForItemIds(previewItemIds, avatarType);
     const previewSlots = new Set(previewLayers.map(layer => layer.slot));
+    if (ownedCharacterPreviewItemIds.hair === null) previewSlots.add("hair");
     return [
       ...currentLayers.filter(layer => !previewSlots.has(layer.slot)),
       ...previewLayers,
     ];
   }, [avatarType, currentLayers, ownedCharacterPreviewItemIds]);
+  const defaultHairApplied = ownedItemsLoaded && !loadingOwned && !ownedItemsLoadFailed
+    && !currentLayers.some(layer => layer.slot === "hair");
+  const defaultHairActionBusy = !ownedItemsLoaded || loadingOwned || restoringDefaultHair || purchasing
+    || Boolean(applyingFreeItemId) || Boolean(togglingItemId) || restoringCharacterState;
   const hasCharacterShopPreview = Object.keys(characterShopPreviewItemIds).length > 0;
   const hasOwnedCharacterPreview = Object.keys(ownedCharacterPreviewItemIds).length > 0;
   const visibleMapItems = useMemo(
@@ -537,6 +546,7 @@ export default function HeartShopModal({
   }
 
   function closeTopLayer() {
+    if (restoringDefaultHairRef.current) return;
     if (typeof window !== "undefined" && historyStackRef.current.length > 0) {
       window.history.back();
       return;
@@ -557,6 +567,7 @@ export default function HeartShopModal({
   }
 
   function applyCharacterShopOutfitPreview(item: HeartShopCharacterCatalogItem) {
+    if (restoringDefaultHairRef.current) return;
     setCharacterShopPreviewItemIds(current => {
       const next = { ...current };
       const currentItemId = currentLayers.find(layer => layer.slot === item.slot)?.id;
@@ -570,6 +581,7 @@ export default function HeartShopModal({
   }
 
   function applyOwnedCharacterOutfitPreview(item: HeartShopCharacterCatalogItem) {
+    if (restoringDefaultHairRef.current) return;
     setOwnedCharacterPreviewItemIds(current => {
       const next = { ...current };
       const currentItemId = currentLayers.find(layer => layer.slot === item.slot)?.id;
@@ -602,6 +614,7 @@ export default function HeartShopModal({
 
   async function reloadOwnedItems(supabase: ReturnType<typeof createClient>) {
     const items = await loadOwnedHeartShopItems(supabase);
+    setOwnedItemsLoadFailed(false);
     publishOwnedItems(items);
     return items;
   }
@@ -630,6 +643,12 @@ export default function HeartShopModal({
       const stack = historyStackRef.current;
       const activeLayer = stack[stack.length - 1] ?? null;
       if (!activeLayer) return;
+      if (activeLayer === "shop" && restoringDefaultHairRef.current) {
+        // Keep the shop open until the explicit apply operation has settled.
+        historyStackRef.current = stack.slice(0, -1);
+        pushHistory("shop");
+        return;
+      }
       historyStackRef.current = stack.slice(0, -1);
 
       if (activeLayer === "preview") setPreviewItemId(null);
@@ -701,11 +720,15 @@ export default function HeartShopModal({
     setOwnedItemsLoaded(false);
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
-        if (!cancelled) publishOwnedItems(items);
+        if (!cancelled) {
+          setOwnedItemsLoadFailed(false);
+          publishOwnedItems(items);
+        }
       })
       .catch(error => {
         console.warn("사랑 상점 구매 내역 조회 실패:", error);
         if (!cancelled) {
+          setOwnedItemsLoadFailed(true);
           publishOwnedItems([]);
           setNotice(text.shopUnavailable);
         }
@@ -723,6 +746,7 @@ export default function HeartShopModal({
     if (
       !show
       || !ownedItemsLoaded
+      || ownedItemsLoadFailed
       || activeTab !== "owned"
       || activeOwnedSection !== "character"
       || ownedCharacterSnapshotItemIds !== null
@@ -736,6 +760,7 @@ export default function HeartShopModal({
     enabledOwnedCharacterItemIds,
     ownedCharacterSnapshotItemIds,
     ownedItemsLoaded,
+    ownedItemsLoadFailed,
     show,
   ]);
 
@@ -746,7 +771,7 @@ export default function HeartShopModal({
   }, [notice]);
 
   async function confirmPurchase() {
-    if (!selectedItem || purchasing) return;
+    if (!selectedItem || purchasing || restoringDefaultHairRef.current) return;
     setPurchasing(true);
     setPurchaseError("");
     try {
@@ -784,7 +809,7 @@ export default function HeartShopModal({
   }
 
   async function applyFreeBackground(item: HeartShopCharacterCatalogItem) {
-    if (item.slot !== "background" || item.price !== 0 || applyingFreeItemId) return;
+    if (item.slot !== "background" || item.price !== 0 || applyingFreeItemId || restoringDefaultHairRef.current) return;
     setApplyingFreeItemId(item.id);
     try {
       const supabase = createClient();
@@ -806,7 +831,7 @@ export default function HeartShopModal({
   }
 
   async function toggleOwnedItem(item: OwnedHeartShopItem) {
-    if (togglingItemId || restoringCharacterState) return;
+    if (togglingItemId || restoringCharacterState || restoringDefaultHairRef.current) return;
     const nextEnabled = !item.isEnabled;
     if (
       nextEnabled
@@ -840,9 +865,132 @@ export default function HeartShopModal({
   }
 
 
+  function previewDefaultHair(context: "shop" | "owned") {
+    if (restoringDefaultHairRef.current) return;
+    const update = context === "shop" ? setCharacterShopPreviewItemIds : setOwnedCharacterPreviewItemIds;
+    // Only hair is removed. Other outfit previews remain intact.
+    update(current => ({ ...current, hair: null }));
+  }
+
+  function isEnabledHairForCurrentAvatar(item: OwnedHeartShopItem): boolean {
+    const catalogItem = getHeartShopCatalogItem(item.itemId);
+    return item.isEnabled && !!catalogItem && isHeartShopCharacterCatalogItem(catalogItem)
+      && catalogItem.avatarType === avatarType && catalogItem.slot === "hair";
+  }
+
+  async function applyDefaultHair() {
+    if (restoringDefaultHairRef.current || defaultHairActionBusy || !show) return;
+    restoringDefaultHairRef.current = true;
+    setRestoringDefaultHair(true);
+    setNotice("");
+    try {
+      const supabase = createClient();
+      // Re-read on an explicit click rather than trust a stale/failed shop read.
+      // No fake free purchase, wallet mutation or new catalog entry is needed.
+      const freshItems = await loadOwnedHeartShopItems(supabase);
+      const hairToDisable = freshItems.filter(isEnabledHairForCurrentAvatar);
+      for (const item of hairToDisable) {
+        const result = await setHeartShopItemEnabled(supabase, item.itemId, false);
+        if (!result.updated || result.itemId !== item.itemId || result.isEnabled) {
+          throw new Error(result.reason || "default_hair_disable_failed");
+        }
+      }
+      const confirmedItems = hairToDisable.length > 0
+        ? await loadOwnedHeartShopItems(supabase) : freshItems;
+      if (confirmedItems.some(isEnabledHairForCurrentAvatar)) {
+        throw new Error("default_hair_not_confirmed");
+      }
+      setOwnedItemsLoadFailed(false);
+      setOwnedItemsLoaded(true);
+      publishOwnedItems(confirmedItems);
+      setCharacterShopPreviewItemIds(current => {
+        const next = { ...current };
+        delete next.hair;
+        return next;
+      });
+      setOwnedCharacterPreviewItemIds(current => {
+        const next = { ...current };
+        delete next.hair;
+        return next;
+      });
+      setNotice(profileText.defaultHairAppliedNotice);
+    } catch (error) {
+      console.warn("Default hair apply failed:", error);
+      // A failed response can still follow a committed change. Reconcile once;
+      // never turn an unreadable ownership list into a successful default outfit.
+      try {
+        const confirmedItems = await loadOwnedHeartShopItems(createClient());
+        setOwnedItemsLoadFailed(false);
+        setOwnedItemsLoaded(true);
+        publishOwnedItems(confirmedItems);
+      } catch (reloadError) {
+        setOwnedItemsLoadFailed(true);
+        console.warn("Default hair state reload failed:", reloadError);
+      }
+      setNotice(profileText.defaultHairApplyFailed);
+    } finally {
+      restoringDefaultHairRef.current = false;
+      setRestoringDefaultHair(false);
+    }
+  }
+
+  function renderDefaultHairOption(context: "shop" | "owned") {
+    const compact = context === "owned";
+    const previewing = (compact ? ownedCharacterPreviewItemIds : characterShopPreviewItemIds).hair === null;
+    const disabled = defaultHairActionBusy || defaultHairApplied;
+    const label = restoringDefaultHair ? text.applyingLabel
+      : defaultHairApplied ? text.appliedButton : text.applyButton;
+    // Thumbnails are static crops of the original hair, not new character bases.
+    const thumbnail = `/images/heart-shop/character/${avatarType}/hair/hair-default-thumb.webp?v=20261007_v1`;
+    return (
+      <article
+        key={`${avatarType}-default-hair`}
+        data-default-hair-option={context}
+        className={compact ? undefined : "card"}
+        style={compact
+          ? { minHeight: 78, display: "grid", gridTemplateColumns: "minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border)" }
+          : { minWidth: 0, padding: "9px 9px 11px", display: "flex", flexDirection: "column", border: "1px solid var(--heart-shop-card-border)", background: "var(--heart-shop-card-surface)" }}
+      >
+        <button
+          type="button"
+          onClick={() => previewDefaultHair(context)}
+          aria-label={`${profileText.previewLabel}: ${profileText.defaultHairName}`}
+          aria-pressed={previewing}
+          disabled={restoringDefaultHair}
+          style={compact
+            ? { minWidth: 0, minHeight: 68, padding: 0, border: "none", borderRadius: 11, display: "grid", gridTemplateColumns: "52px minmax(0,1fr)", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer", background: previewing ? "rgba(122,157,122,.08)" : "transparent" }
+            : { position: "relative", width: "100%", height: 176, padding: 12, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: previewing ? "var(--heart-shop-item-preview-active)" : "var(--heart-shop-item-preview)", border: previewing ? "2px solid rgba(101,142,105,.62)" : "1px solid rgba(122,157,122,.17)", marginBottom: 9, cursor: "pointer" }}
+        >
+          <img
+            src={thumbnail}
+            alt={profileText.defaultHairName}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            style={{ width: compact ? 44 : 145, maxWidth: "100%", height: compact ? 58 : 145, objectFit: "contain", imageRendering: "pixelated" }}
+          />
+          {compact && <span style={{ minWidth: 0, color: "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{profileText.defaultHairName}<small style={{ display: "block", marginTop: 3, color: "var(--sage-dark)", fontSize: 11 }}>{text.freeLabel}</small></span>}
+        </button>
+        {!compact && <>
+          <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{profileText.defaultHairName}</h3>
+          <div style={{ color: "var(--sage-dark)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>{text.freeLabel}</div>
+        </>}
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`${profileText.defaultHairName}: ${label}`}
+          aria-busy={restoringDefaultHair}
+          onClick={() => void applyDefaultHair()}
+          style={{ width: "100%", minHeight: 38, padding: "7px 8px", border: defaultHairApplied ? "1px solid var(--border)" : "none", borderRadius: 13, background: defaultHairApplied ? "var(--bg3)" : "var(--heart-shop-action)", color: defaultHairApplied ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: disabled ? "default" : "pointer", opacity: defaultHairActionBusy ? 0.7 : 1 }}
+        >{label}</button>
+      </article>
+    );
+  }
+
   async function restoreOwnedCharacterState() {
     if (
       restoringCharacterState
+      || restoringDefaultHairRef.current
       || togglingItemId
       || ownedCharacterSnapshotItemIds === null
       || !canRestoreOwnedCharacterState
@@ -1290,6 +1438,7 @@ export default function HeartShopModal({
 
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "0 16px calc(28px + env(safe-area-inset-bottom))" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 11 }}>
+                  {activeCharacterCategory === "hair" && renderDefaultHairOption("shop")}
                   {visibleCharacterItems.map((item, index) => {
                     const itemText = getProfileCharacterItemText(item.id, lang);
                     const owned = ownedById.has(item.id);
@@ -1358,7 +1507,7 @@ export default function HeartShopModal({
                         </div>
                         <button
                           type="button"
-                          disabled={isApplying}
+                          disabled={isApplying || restoringDefaultHair}
                           onClick={() => {
                             if (isFreeBackground) {
                               void applyFreeBackground(item);
@@ -1429,7 +1578,7 @@ export default function HeartShopModal({
                     <button
                       type="button"
                       onClick={() => void restoreOwnedCharacterState()}
-                      disabled={!canRestoreOwnedCharacterState || restoringCharacterState}
+                      disabled={!canRestoreOwnedCharacterState || restoringCharacterState || restoringDefaultHair}
                       aria-label={text.restorePreviousLabel}
                       title={text.restorePreviousLabel}
                       style={{
@@ -1499,7 +1648,8 @@ export default function HeartShopModal({
                       );
                     })}
                   </div>
-                  {visibleOwnedCharacterItems.length === 0 ? (
+                  {activeOwnedCharacterCategory === "hair" && renderDefaultHairOption("owned")}
+                  {visibleOwnedCharacterItems.length === 0 && activeOwnedCharacterCategory !== "hair" ? (
                     <div style={{ minHeight: 150, padding: "26px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "var(--heart-shop-muted-text)" }}>
                       <PackageOpen size={30} style={{ marginBottom: 10, color: "var(--sage-dark)" }} />
                       <strong style={{ color: "var(--text)", fontSize: 13, marginBottom: 5 }}>{profileText.emptyTitle}</strong>
@@ -1543,7 +1693,7 @@ export default function HeartShopModal({
                         </button>
                         <HeartShopToggleSwitch
                           enabled={owned.isEnabled}
-                          loading={restoringCharacterState || togglingItemId === owned.itemId}
+                          loading={restoringDefaultHair || restoringCharacterState || togglingItemId === owned.itemId}
                           enabledLabel={text.enabledLabel}
                           disabledLabel={text.disabledLabel}
                           ariaLabel={name}
