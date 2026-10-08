@@ -351,6 +351,7 @@ export default function HomePage() {
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
+  const [welcomeBackStorageKey, setWelcomeBackStorageKey] = useState<string | null>(null);
   const lang = useLang();
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [showLangPicker, setShowLangPicker] = useState(false);
@@ -738,10 +739,28 @@ export default function HomePage() {
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
-  const rewardDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || !!requiredUpdatePrompt
+  const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || showLastWeekWordCard || showTodayWordCard;
+  const rewardDialogBlocked = homeDialogBlocked || !!requiredUpdatePrompt;
+  const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
+  // Keep queued state until its own popup is shown and dismissed. A mandatory
+  // update takes priority; otherwise welcome precedes an optional update.
+  const visibleWelcomeBack = homePopupsReady && showWelcomeBack
+    && !requiredUpdatePrompt?.mandatory && !homeDialogBlocked && !celebration.show;
+  const visibleRequiredUpdatePrompt = homePopupsReady && requiredUpdatePrompt
+    && (requiredUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked && !celebration.show))
+    ? requiredUpdatePrompt : null;
+  const canShowProgressPopups = homePopupsReady && !rewardDialogBlocked && !showWelcomeBack;
+  const visibleBadgePopup = canShowProgressPopups && !celebration.show ? badgePopup : null;
+  const showGardenUpdatePopup = canShowProgressPopups && gardenPopup.show
+    && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
+  const visibleRewardMapNotice = canShowProgressPopups
+    && !celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup
+    ? rewardMapNotice : null;
+  const visibleRootsManPopup = canShowProgressPopups && showRootsManPopup
+    && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const homeProfileCharacterLayers = getProfileCharacterLayersForItemIds(
     enabledProfileCharacterItemIds,
@@ -972,7 +991,7 @@ export default function HomePage() {
         const missedDays = Math.max(0, diffDays - 1);
         const welcomeKey = `welcome_back_${today}`;
         if (missedDays >= 1 && !storageGet(welcomeKey)) {
-          storageSet(welcomeKey, "true");
+          setWelcomeBackStorageKey(welcomeKey);
           setWelcomeBackDays(missedDays);
           setShowWelcomeBack(true);
         }
@@ -1212,25 +1231,47 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (loading || homeLoadFailed || rewardDialogBlocked || !profile || celebration.show || badgePopup || gardenPopup.show) return;
-    // Acknowledge only after the actual reward UI has mounted. Start notices
-    // still lead to the avatar popup; completion notices are the final UI.
-    if ((showRootsManPopup && !rewardMapNotice && !showWelcomeBack) || (rewardMapNotice?.type === "complete" && !showRootsManPopup)) {
-      acknowledgePostReflectionReward();
-    }
-  }, [loading, homeLoadFailed, rewardDialogBlocked, profile, celebration.show, badgePopup, gardenPopup.show, showRootsManPopup, rewardMapNotice, showWelcomeBack]);
+    if (!visibleWelcomeBack || !welcomeBackStorageKey) return;
+    const markWelcomeShown = () => {
+      if (document.visibilityState === "visible") storageSet(welcomeBackStorageKey, "true");
+    };
+    markWelcomeShown();
+    document.addEventListener("visibilitychange", markWelcomeShown);
+    return () => document.removeEventListener("visibilitychange", markWelcomeShown);
+  }, [visibleWelcomeBack, welcomeBackStorageKey]);
 
   useEffect(() => {
-    if (loading || homeLoadFailed || rewardDialogBlocked || !profile?.id || !homeDataDateRef.current) return;
-    const gardenVisible = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack;
-    if (gardenVisible && gardenPopup.stageKey) storageSet(gardenPopup.stageKey, "true");
-    const visibleBadgeKey = badgePopup?.badgeKey
-      ?? (gardenVisible && gardenPopup.type === "badge" ? gardenPopup.badgeKey : undefined);
-    if (!visibleBadgeKey) return;
+    if (!visibleRootsManPopup && visibleRewardMapNotice?.type !== "complete") return;
+    // Use the same visibility decision as rendering, including a foreground
+    // check. Start notices still lead to the avatar popup before acknowledgement.
+    const markRewardShown = () => {
+      if (document.visibilityState !== "visible") return;
+      acknowledgePostReflectionReward();
+    };
+    markRewardShown();
+    document.addEventListener("visibilitychange", markRewardShown);
+    return () => document.removeEventListener("visibilitychange", markRewardShown);
+  }, [visibleRootsManPopup, visibleRewardMapNotice, profile]);
+
+  useEffect(() => {
+    if (!profile?.id || !homeDataDateRef.current) return;
+    const stageKey = showGardenUpdatePopup ? gardenPopup.stageKey : undefined;
+    const visibleBadgeKey = visibleBadgePopup?.badgeKey
+      ?? (showGardenUpdatePopup && gardenPopup.type === "badge" ? gardenPopup.badgeKey : undefined);
+    if (!stageKey && !visibleBadgeKey) return;
     const date = homeDataDateRef.current;
-    acknowledgePendingAwardedBadge(profile.id, date, visibleBadgeKey);
-    newlyAwardedBadgesRef.current.delete(visibleBadgeKey);
-  }, [loading, homeLoadFailed, rewardDialogBlocked, profile?.id, badgePopup, gardenPopup, celebration.show, rewardMapNotice, showRootsManPopup, showWelcomeBack]);
+    const markProgressShown = () => {
+      if (document.visibilityState !== "visible") return;
+      if (stageKey) storageSet(stageKey, "true");
+      if (visibleBadgeKey) {
+        acknowledgePendingAwardedBadge(profile.id, date, visibleBadgeKey);
+        newlyAwardedBadgesRef.current.delete(visibleBadgeKey);
+      }
+    };
+    markProgressShown();
+    document.addEventListener("visibilitychange", markProgressShown);
+    return () => document.removeEventListener("visibilitychange", markProgressShown);
+  }, [profile?.id, visibleBadgePopup, showGardenUpdatePopup, gardenPopup]);
 
   function requestPostReflectionRewardExperience(streakDays: number) {
     const currentMap = getCurrentRewardMapCycle(streakDays);
@@ -1332,7 +1373,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (loading || homeLoadFailed || !profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
+    if (loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
 
     const openedProgressPopup = showNextProgressPopup();
     if (openedProgressPopup) return;
@@ -1348,7 +1389,7 @@ export default function HomePage() {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [loading, homeLoadFailed, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
+  }, [loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -1417,6 +1458,14 @@ export default function HomePage() {
       return;
     }
     gardenTopRef_scroll();
+  }
+
+  function closeWelcomeBack(action: "close" | "back" = "close") {
+    if (!visibleWelcomeBack) return;
+    // A fast dismissal can precede the visibility effect.
+    if (welcomeBackStorageKey) storageSet(welcomeBackStorageKey, "true");
+    acknowledgeObservedPopup(profile?.id, "welcome_back", action);
+    setShowWelcomeBack(false);
   }
 
   function openRequiredUpdate() {
@@ -2022,12 +2071,12 @@ export default function HomePage() {
     router.push("/qt");
   }
 
-  const showGardenUpdatePopup = gardenPopup.show && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
   const spanishLanguageLaunchAnnouncementBlocked =
     loading ||
     showFirstLangPicker ||
     showOnboarding ||
     !!requiredUpdatePrompt ||
+    showWelcomeBack ||
     !!badgePopup ||
     celebration.show ||
     gardenPopup.show ||
@@ -2092,13 +2141,20 @@ export default function HomePage() {
     homePopupBlocked || visibleCompanionChallengeAnnouncement || handlingCompanionChallengeAnnouncement || openingChallengeProfile
       ? null
       : challengeRewardQueue[0] ?? null;
+  const visibleAvatarChoiceModal = canShowProgressPopups && showAvatarChoiceModal
+    && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
+    && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward;
 
   useAndroidBackHandler(() => {
-    if (requiredUpdatePrompt) {
-      if (!requiredUpdatePrompt.mandatory) closeOptionalUpdate();
+    if (visibleRequiredUpdatePrompt) {
+      if (!visibleRequiredUpdatePrompt.mandatory) closeOptionalUpdate();
       return true;
     }
-    if (showFirstLangPicker || showRootsManPopup) {
+    if (visibleWelcomeBack) {
+      closeWelcomeBack("back");
+      return true;
+    }
+    if (showFirstLangPicker || visibleRootsManPopup) {
       return true;
     }
     if (visibleChallengeReward) {
@@ -2148,7 +2204,7 @@ export default function HomePage() {
       setShowNotificationSettingsModal(false);
       return true;
     }
-    if (showAvatarChoiceModal) {
+    if (visibleAvatarChoiceModal) {
       if (!savingAvatarChoice) setShowAvatarChoiceModal(false);
       return true;
     }
@@ -2182,22 +2238,17 @@ export default function HomePage() {
       closeCelebration();
       return true;
     }
-    if (badgePopup) {
+    if (visibleBadgePopup) {
       acknowledgeObservedPopup(profile?.id, "progress_badge", "back");
       setBadgePopup(null);
       return true;
     }
-    if (gardenPopup.show) {
+    if (showGardenUpdatePopup) {
       closeGardenUpdatePopup();
       return true;
     }
-    if (rewardMapNotice) {
+    if (visibleRewardMapNotice) {
       closeRewardMapNotice();
-      return true;
-    }
-    if (showWelcomeBack) {
-      acknowledgeObservedPopup(profile?.id, "welcome_back", "back");
-      setShowWelcomeBack(false);
       return true;
     }
     return false;
@@ -2532,10 +2583,10 @@ export default function HomePage() {
       </ObservationPopup>
 
       <ObservationPopup userId={profile?.id} kind="required_update" queued={!!requiredUpdatePrompt}>
-      {requiredUpdatePrompt && (
+      {visibleRequiredUpdatePrompt && (
         <RequiredUpdatePopup
-          platform={requiredUpdatePrompt.platform}
-          mandatory={requiredUpdatePrompt.mandatory}
+          platform={visibleRequiredUpdatePrompt.platform}
+          mandatory={visibleRequiredUpdatePrompt.mandatory}
           onUpdate={openRequiredUpdate}
           onClose={closeOptionalUpdate}
         />
@@ -2594,23 +2645,23 @@ export default function HomePage() {
 
       <ObservationPopup userId={profile?.id} kind="welcome_back" queued={showWelcomeBack}>
       <WelcomeBackPopup
-        show={showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward}
+        show={visibleWelcomeBack}
         daysSince={welcomeBackDays}
-        onClose={() => { acknowledgeObservedPopup(profile?.id, "welcome_back"); setShowWelcomeBack(false); }}
+        onClose={() => closeWelcomeBack()}
       />
       </ObservationPopup>
 
       <ObservationPopup userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={profile?.streak_days}>
-      {badgePopup && (
+      {visibleBadgePopup && (
         <div onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+              <img src={visibleBadgePopup.img} alt={visibleBadgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "rgba(232,197,71,0.95)", marginBottom: 10, lineHeight: 1.3 }}>{visibleBadgePopup.title}</h2>
             <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
-              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{visibleBadgePopup.msg}</p>
             </div>
             <button onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("home_badge_thanks", lang)}
@@ -2685,7 +2736,7 @@ export default function HomePage() {
 
       <ObservationPopup userId={profile?.id} kind="avatar_choice" queued={showAvatarChoiceModal}>
       <AvatarChoiceModal
-        show={showAvatarChoiceModal && !showOnboarding && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup && !showWelcomeBack && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward && !showFirstLangPicker && !showLangPicker && !showHomeQTDraftChoice && !showHomeQTChoice && !showHomeQTPassageChoice && !showHomeQTPhotoPassageChoice && !showHomeQTGuide && !showHomeSundayQT && !showNotificationSettingsModal}
+        show={visibleAvatarChoiceModal}
         selectedAvatar={currentAvatarType}
         saving={savingAvatarChoice}
         onSelect={(avatarType) => void saveAvatarChoice(avatarType)}
@@ -2694,12 +2745,12 @@ export default function HomePage() {
       </ObservationPopup>
 
       <ObservationPopup userId={profile?.id} kind={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice || !!pendingRewardMapNoticeRef.current} instanceKey={rewardMapNotice ?? pendingRewardMapNoticeRef.current} progressDays={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.days}>
-      <RewardMapNoticePopup notice={!celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup ? rewardMapNotice : null} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
+      <RewardMapNoticePopup notice={visibleRewardMapNotice} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
       </ObservationPopup>
 
       <ObservationPopup userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardMapDisplayDays}>
       <RootsManPopup
-        show={showRootsManPopup && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice}
+        show={visibleRootsManPopup}
         streakDays={rewardMapDisplayDays}
         avatarType={currentAvatarType}
         onGoGarden={() => {
