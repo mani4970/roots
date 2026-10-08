@@ -35,6 +35,7 @@ import {
   isHeartShopMapItemId,
   isHeartShopPeaceArkStaticItemId,
   isHeartShopRootsWomanDressItemId,
+  isHeartShopBibleItemId,
   type HeartShopMapItemId,
 } from "@/lib/heartShopItems";
 import {
@@ -91,6 +92,7 @@ function isOwnedCharacterItemInCategory(
     || item.slot === "eyewear"
     || item.slot === "hair_accessory"
     || item.slot === "muffler"
+    || item.slot === "necklace"
     || item.slot === "bag";
 }
 
@@ -139,8 +141,10 @@ function isCharacterItemInCategory(
   if (category === "tops") return item.slot === "top" && !isDress;
   if (category === "dresses") return isDress;
   if (category === "accessories") {
-    return item.slot === "hair_accessory" || item.slot === "muffler";
+    return item.slot === "hair_accessory" || item.slot === "muffler"
+      || item.slot === "necklace" || isHeartShopBibleItemId(item.id);
   }
+  if (category === "bags" && isHeartShopBibleItemId(item.id)) return false;
   const slot = CHARACTER_CATEGORY_SLOT[category];
   return Boolean(slot && item.slot === slot);
 }
@@ -166,7 +170,7 @@ type CharacterItemPreviewCrop = {
 
 const CHARACTER_ITEM_PREVIEW_CROP: Record<
   RootsAvatarType,
-  Record<Exclude<HeartShopCharacterSlot, "background" | "hair">, CharacterItemPreviewCrop>
+  Record<Exclude<HeartShopCharacterSlot, "background" | "hair" | "necklace">, CharacterItemPreviewCrop>
 > = {
   rootsman: {
     pet: { x: 665, y: 940, width: 345, height: 345 },
@@ -273,7 +277,8 @@ function CharacterItemLayerPreview({
   maxWidth?: number;
   loading?: "eager" | "lazy";
 }) {
-  if (item.slot === "background" || item.slot === "hair") {
+  if (item.slot === "background" || item.slot === "hair"
+    || item.slot === "necklace" || isHeartShopBibleItemId(item.id)) {
     return (
       <div
         style={{

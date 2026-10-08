@@ -30,6 +30,7 @@ export type HeartShopCharacterSlot =
   | "shoes"
   | "top"
   | "bag"
+  | "necklace"
   | "eyewear"
   | "hair"
   | "hair_accessory"
@@ -154,6 +155,9 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootsman_headwear_02",
   "rootsman_headwear_03",
   "rootsman_headwear_04",
+  "rootsman_bag_01",
+  "rootsman_necklace_01",
+  "rootsman_necklace_02",
   "rootsman_muffler_01",
   "rootsman_muffler_02",
   "rootsman_muffler_03",
@@ -252,6 +256,9 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootswoman_bag_02",
   "rootswoman_bag_03",
   "rootswoman_bag_04",
+  "rootswoman_bag_05",
+  "rootswoman_necklace_01",
+  "rootswoman_necklace_02",
   "rootswoman_muffler_01",
   "rootswoman_muffler_02",
   "rootswoman_muffler_03",
@@ -304,6 +311,11 @@ export function isHeartShopRootsWomanDressItemId(
   return ROOTSWOMAN_DRESS_ITEM_ID_SET.has(itemId);
 }
 
+// Crossbody Bibles share the bag slot, but appear under Accessories.
+export function isHeartShopBibleItemId(itemId: HeartShopCharacterItemId): boolean {
+  return itemId === "rootsman_bag_01" || itemId === "rootswoman_bag_05";
+}
+
 export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): HeartShopCharacterAvatarType {
   if (itemId.startsWith("shared_")) return "shared";
   return itemId.startsWith("rootswoman_") ? "rootswoman" : "rootsman";
@@ -315,6 +327,7 @@ export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartSho
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";
+  if (itemId.includes("_necklace_")) return "necklace";
   if (itemId.includes("_eyewear_")) return "eyewear";
   if (itemId.includes("_hair_accessory_")) return "hair_accessory";
   if (itemId.includes("_hair_")) return "hair";

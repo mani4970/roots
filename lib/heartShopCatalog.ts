@@ -4,6 +4,7 @@ import type { RewardMapKind } from "@/lib/rewardMaps";
 import {
   HEART_SHOP_CHARACTER_ITEM_IDS,
   getCharacterItemAvatarType,
+  isHeartShopBibleItemId,
   type HeartShopCharacterItemId,
   type HeartShopCharacterAvatarType,
   type HeartShopCharacterSlot,
@@ -38,7 +39,7 @@ export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
   avatarType: HeartShopCharacterAvatarType;
   slot: HeartShopCharacterSlot;
   layerPath: string;
-  // Hair tiles use a small hair-only image, not the full precomposed character.
+  // Dedicated small thumbnails avoid loading full wearable images in shop tiles.
   previewPath?: string;
   zIndex: number;
   sortOrder: number;
@@ -220,6 +221,7 @@ const CHARACTER_SLOT_CONFIG: Record<HeartShopCharacterSlot, {
   shoes: { price: 30, directory: "shoes", filePrefix: "shoes", zIndex: 5, sortOffset: 100 },
   top: { price: 30, directory: "tops", filePrefix: "top", zIndex: 30, sortOffset: 200 },
   bag: { price: 30, directory: "bags", filePrefix: "bag", zIndex: 35, sortOffset: 500 },
+  necklace: { price: 70, directory: "necklaces", filePrefix: "necklace", zIndex: 37, sortOffset: 950 },
   eyewear: { price: 40, directory: "eyewear", filePrefix: "eyewear", zIndex: 40, sortOffset: 300 },
   hair: { price: 100, directory: "hair", filePrefix: "hair", zIndex: 0, sortOffset: 900 },
   hair_accessory: { price: 5, directory: "hair-accessories", filePrefix: "hair-accessory", zIndex: 45, sortOffset: 600 },
@@ -242,6 +244,7 @@ export const HEART_SHOP_BUSAN_BACKGROUND_ASSET_VERSION = "20260828_busan_v1";
 export const HEART_SHOP_NEW_TRAVEL_BACKGROUND_ASSET_VERSION = "20260904_travel_v1";
 export const HEART_SHOP_ADDITIONAL_TRAVEL_BACKGROUND_ASSET_VERSION = "20260915_travel_compressed_v1";
 export const HEART_SHOP_HAIR_ASSET_VERSION = "20261007_v1";
+export const HEART_SHOP_BIBLE_NECKLACE_ASSET_VERSION = "20261008_v1";
 export const HEART_SHOP_MUFFLER_ASSET_VERSION = "20261005_v1";
 export const HEART_SHOP_WINTER_TOP_ASSET_VERSION = "20261005_winter_v1";
 
@@ -262,6 +265,7 @@ function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterS
   if (itemId.includes("_bottom_")) return "bottom";
   if (itemId.includes("_shoes_")) return "shoes";
   if (itemId.includes("_bag_")) return "bag";
+  if (itemId.includes("_necklace_")) return "necklace";
   if (itemId.includes("_eyewear_")) return "eyewear";
   if (itemId.includes("_hair_accessory_")) return "hair_accessory";
   if (itemId.includes("_hair_")) return "hair";
@@ -295,6 +299,25 @@ function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShop
       // Already composited offline: replaces the base, never an extra overlay.
       layerPath: `/images/profile-characters/hair-colors/${avatarType}-hair-${number}.webp?v=${HEART_SHOP_HAIR_ASSET_VERSION}`,
       previewPath: `/images/heart-shop/character/${avatarType}/hair/hair-${number}-thumb.webp?v=${HEART_SHOP_HAIR_ASSET_VERSION}`,
+      zIndex: config.zIndex,
+      sortOrder: avatarSortOffset + config.sortOffset + itemNumber,
+    };
+  }
+  const isBible = isHeartShopBibleItemId(itemId);
+  if (isBible || slot === "necklace") {
+    const number = String(itemNumber).padStart(2, "0");
+    const assetPath = `/images/heart-shop/character/${avatarType}/${config.directory}/${config.filePrefix}-${number}`;
+    return {
+      id: itemId,
+      category: "character",
+      avatarType,
+      slot,
+      price: isBible ? 30 : 70,
+      isNew: true,
+      newPriority: 13000 - (isBible ? 0 : itemNumber),
+      layerPath: `${assetPath}.webp?v=${HEART_SHOP_BIBLE_NECKLACE_ASSET_VERSION}`,
+      previewPath: `${assetPath}-thumb.webp?v=${HEART_SHOP_BIBLE_NECKLACE_ASSET_VERSION}`,
+      // Separate slots: a Bible and necklace coexist; a muffler stays above both.
       zIndex: config.zIndex,
       sortOrder: avatarSortOffset + config.sortOffset + itemNumber,
     };
