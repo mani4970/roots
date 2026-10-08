@@ -258,10 +258,12 @@ export default function ProfilePage() {
   const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
   const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
   const [profileUserId, setProfileUserId] = useState("");
-  const [loadingQtCalendar, setLoadingQtCalendar] = useState(false);
+  const [loadingQtCalendar, setLoadingQtCalendar] = useState(true);
+  const [loadingMonthlyBadges, setLoadingMonthlyBadges] = useState(true);
   const [monthlyBadgeRecords, setMonthlyBadgeRecords] = useState<MonthlyBadgeCompletionRecord[] | null>(null);
   const [loveHeartBalance, setLoveHeartBalance] = useState(0);
   const [ownedHeartShopItems, setOwnedHeartShopItems] = useState<OwnedHeartShopItem[]>([]);
+  const [ownedHeartShopItemsReady, setOwnedHeartShopItemsReady] = useState(false);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [showHeartShop, setShowHeartShop] = useState(false);
   const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
@@ -372,6 +374,7 @@ export default function ProfilePage() {
   function updateOwnedHeartShopItems(items: OwnedHeartShopItem[]) {
     ownedHeartShopItemsRef.current = items;
     setOwnedHeartShopItems(items);
+    setOwnedHeartShopItemsReady(true);
   }
 
   function enqueueProfileAvatarTask<T>(task: () => Promise<T>): Promise<T> {
@@ -414,30 +417,46 @@ export default function ProfilePage() {
     if (!user) { router.push("/welcome"); return; }
     setUserEmail(user.email ?? "");
     setProfileUserId(user.id);
-    try {
-      setLoveHeartBalance(await getLoveHeartBalance(supabase, user.id));
-    } catch (error) {
-      console.warn("사랑 하트 조회 실패:", error);
-      setLoveHeartBalance(0);
-    }
-    try {
-      updateOwnedHeartShopItems(await loadOwnedHeartShopItems(supabase));
-    } catch (error) {
-      console.warn("프로필 캐릭터 아이템 조회 실패:", error);
-      // A failed read is not an empty wardrobe. Keep the last known items;
-      // avatar saving also verifies ownership again before creating an image.
-    }
-    const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (p) {
-      const { data: avatarPreference, error: avatarPreferenceError } = await supabase
-        .from("profile_avatar_preferences")
-        .select("mode,photo_url,character_signature")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (avatarPreferenceError) {
-        console.warn("프로필 표시 설정 조회 실패:", avatarPreferenceError);
-      }
 
+    // The visible profile shell needs only these four independent reads. Run them
+    // together instead of serially; calendar/badge/history repair stays out of this gate.
+    const profilePromise = supabase.from("profiles").select("*").eq("id", user.id).single();
+    const avatarPreferencePromise = supabase
+      .from("profile_avatar_preferences")
+      .select("mode,photo_url,character_signature")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const heartBalancePromise = getLoveHeartBalance(supabase, user.id)
+      .then(balance => setLoveHeartBalance(balance))
+      .catch(error => {
+        console.warn("사랑 하트 조회 실패:", error);
+        setLoveHeartBalance(0);
+      });
+    const ownedItemsPromise = loadOwnedHeartShopItems(supabase)
+      .then(items => updateOwnedHeartShopItems(items))
+      .catch(error => {
+        console.warn("프로필 캐릭터 아이템 조회 실패:", error);
+        // A failed read is not an empty wardrobe. Keep the last known items and
+        // do not mark them ready, so character-avatar sync cannot export [].
+      });
+
+    const [profileResult, avatarPreferenceResult] = await Promise.all([
+      profilePromise,
+      avatarPreferencePromise,
+      heartBalancePromise,
+      ownedItemsPromise,
+    ]);
+
+    const p = profileResult.data;
+    if (profileResult.error) {
+      console.warn("프로필 조회 실패:", profileResult.error);
+    }
+    const avatarPreference = avatarPreferenceResult.data;
+    if (avatarPreferenceResult.error) {
+      console.warn("프로필 표시 설정 조회 실패:", avatarPreferenceResult.error);
+    }
+
+    if (p) {
       p.profile_avatar_mode = avatarPreference?.mode ?? "photo";
       // 캐릭터 프로필 사용 중에는 이전 사진을 복원 대상으로 보관하지 않습니다.
       // 다시 사진을 사용하려면 상단 카메라 버튼에서 새 사진을 선택합니다.
@@ -445,113 +464,140 @@ export default function ProfilePage() {
         ? (avatarPreference?.photo_url ?? p.avatar_url)
         : null;
       p.profile_character_signature = avatarPreference?.character_signature ?? null;
-      // avatar_url 캐시 방지: 타임스탬프가 없으면 추가
-      if (p.avatar_url && !p.avatar_url.includes("?t=")) {
-        p.avatar_url = `${p.avatar_url}?t=${Date.now()}`;
-      }
-      if (p.profile_photo_url && !p.profile_photo_url.includes("?t=")) {
-        p.profile_photo_url = `${p.profile_photo_url}?t=${Date.now()}`;
-      }
+      // New uploads already persist a cache-busted URL. Keep a stable stored URL
+      // on ordinary profile visits so the WebView/browser can reuse its cache.
       profileRef.current = p;
       setProfile(p);
       setNewName(p.name ?? "");
     }
-    await loadQtRecordsForMonth(user.id, calendarMonth);
-    await loadMonthlyBadgeRecords(user.id);
-    await loadGroupChallengeBadgesForProfile(user.id);
-    await loadCompanionChallengeBadgesForProfile(user.id);
+
+    // Name/photo/hearts/current outfit are enough to show the useful profile.
+    // Calendar, challenge badges and historical badge repair continue after paint.
+    setLoading(false);
+
+    const startSupplementalLoad = () => {
+      void loadProfileSupplementalData(user.id, p);
+    };
+
+    // Yield once so React can paint before lower-priority requests start competing
+    // for network/CPU in the installed WebView.
+    if (typeof window !== "undefined") {
+      window.setTimeout(startSupplementalLoad, 0);
+    } else {
+      startSupplementalLoad();
+    }
+  }
+
+  async function loadProfileSupplementalData(userId: string, baseProfile: any) {
+    setLoadingQtCalendar(true);
+    setLoadingMonthlyBadges(true);
+
+    // These sections do not depend on one another. Load them together after the
+    // visible profile shell is ready, then repair historical badges afterwards so
+    // repair traffic cannot compete with the first useful paint.
+    await Promise.allSettled([
+      loadQtRecordsForMonth(userId, calendarMonth, { showSpinner: true }),
+      loadMonthlyBadgeRecords(userId).finally(() => setLoadingMonthlyBadges(false)),
+      loadGroupChallengeBadgesForProfile(userId),
+      loadCompanionChallengeBadgesForProfile(userId),
+    ]);
+
+    if (baseProfile) {
+      await repairProfileBadges(userId, baseProfile);
+    }
+  }
+
+  async function repairProfileBadges(userId: string, baseProfile: any) {
+    const supabase = createClient();
 
     // 기존 기록이 이미 조건을 채웠는데 배지 컬럼만 false인 경우를 보정합니다.
-    if (p) {
-      try {
-        const { data: groupBadgeAward, error: groupBadgeAwardError } = await supabase.rpc(
-          "award_own_group_activity_badges",
-          {
-            p_user_id: user.id,
-            p_created_group_id: null,
-          },
-        );
-        if (groupBadgeAwardError) throw groupBadgeAwardError;
+    // This work is intentionally background-only; it must not block the profile tab.
+    try {
+      const { data: groupBadgeAward, error: groupBadgeAwardError } = await supabase.rpc(
+        "award_own_group_activity_badges",
+        {
+          p_user_id: userId,
+          p_created_group_id: null,
+        },
+      );
+      if (groupBadgeAwardError) throw groupBadgeAwardError;
 
-        const awardedBadges = new Set(
-          Array.isArray(groupBadgeAward?.awarded_badges)
-            ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
-            : [],
-        );
-        if (awardedBadges.has("badge_roots_together")) {
-          setProfile((current: any) => ({
-            ...(current ?? p),
-            badge_roots_together: true,
-          }));
-        }
-      } catch (groupBadgeRepairError) {
-        console.warn("동역 배지 보정 실패:", groupBadgeRepairError);
+      const awardedBadges = new Set(
+        Array.isArray(groupBadgeAward?.awarded_badges)
+          ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
+          : [],
+      );
+      if (awardedBadges.has("badge_roots_together")) {
+        setProfile((current: any) => ({
+          ...(current ?? baseProfile),
+          badge_roots_together: true,
+        }));
       }
-
-      try {
-        const { data: qtShareBadgeAward, error: qtShareBadgeAwardError } = await supabase.rpc(
-          "award_own_qt_share_badges",
-          {
-            p_user_id: user.id,
-            // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
-            p_include_partner_recipients: false,
-          },
-        );
-        if (qtShareBadgeAwardError) throw qtShareBadgeAwardError;
-
-        const awardedBadges = new Set(
-          Array.isArray(qtShareBadgeAward?.awarded_badges)
-            ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
-            : [],
-        );
-        const qtShareBadgeUpdates: Record<string, boolean> = {};
-        if (awardedBadges.has("badge_joseph")) qtShareBadgeUpdates.badge_joseph = true;
-        if (awardedBadges.has("badge_qt_bird")) qtShareBadgeUpdates.badge_qt_bird = true;
-        if (awardedBadges.has("badge_word_peace")) qtShareBadgeUpdates.badge_word_peace = true;
-        if (Object.keys(qtShareBadgeUpdates).length > 0) {
-          setProfile((current: any) => ({ ...(current ?? p), ...qtShareBadgeUpdates }));
-        }
-      } catch (error) {
-        console.warn("QT 나눔 배지 보정 실패:", error);
-      }
-
-      try {
-        const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
-          "award_own_prayer_share_badges",
-          {
-            p_user_id: user.id,
-            // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
-            p_include_partner_recipients: false,
-          },
-        );
-        if (prayerBadgeAwardError) throw prayerBadgeAwardError;
-
-        const awardedBadges = new Set(
-          Array.isArray(prayerBadgeAward?.awarded_badges)
-            ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
-            : [],
-        );
-        const prayerBadgeUpdates: Record<string, boolean> = {};
-        if (awardedBadges.has("badge_prayer_ember")) prayerBadgeUpdates.badge_prayer_ember = true;
-        if (awardedBadges.has("badge_prayer_warrior")) prayerBadgeUpdates.badge_prayer_warrior = true;
-        if (Object.keys(prayerBadgeUpdates).length > 0) {
-          setProfile((current: any) => ({ ...(current ?? p), ...prayerBadgeUpdates }));
-        }
-      } catch (error) {
-        console.warn("기도 공유 배지 보정 실패:", error);
-      }
-
-      try {
-        const newRewardBadgeUpdates = await repairNewRewardBadges(supabase, user.id);
-        if (Object.keys(newRewardBadgeUpdates).length > 0) {
-          setProfile((current: any) => ({ ...(current ?? p), ...newRewardBadgeUpdates }));
-        }
-      } catch (error) {
-        console.warn("새 보상 배지 보정 실패:", error);
-      }
+    } catch (groupBadgeRepairError) {
+      console.warn("동역 배지 보정 실패:", groupBadgeRepairError);
     }
 
-    setLoading(false);
+    try {
+      const { data: qtShareBadgeAward, error: qtShareBadgeAwardError } = await supabase.rpc(
+        "award_own_qt_share_badges",
+        {
+          p_user_id: userId,
+          // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
+          p_include_partner_recipients: false,
+        },
+      );
+      if (qtShareBadgeAwardError) throw qtShareBadgeAwardError;
+
+      const awardedBadges = new Set(
+        Array.isArray(qtShareBadgeAward?.awarded_badges)
+          ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
+          : [],
+      );
+      const qtShareBadgeUpdates: Record<string, boolean> = {};
+      if (awardedBadges.has("badge_joseph")) qtShareBadgeUpdates.badge_joseph = true;
+      if (awardedBadges.has("badge_qt_bird")) qtShareBadgeUpdates.badge_qt_bird = true;
+      if (awardedBadges.has("badge_word_peace")) qtShareBadgeUpdates.badge_word_peace = true;
+      if (Object.keys(qtShareBadgeUpdates).length > 0) {
+        setProfile((current: any) => ({ ...(current ?? baseProfile), ...qtShareBadgeUpdates }));
+      }
+    } catch (error) {
+      console.warn("QT 나눔 배지 보정 실패:", error);
+    }
+
+    try {
+      const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
+        "award_own_prayer_share_badges",
+        {
+          p_user_id: userId,
+          // 프로필의 기존 과거 기록 보정 기준은 visibility 공유만 셉니다.
+          p_include_partner_recipients: false,
+        },
+      );
+      if (prayerBadgeAwardError) throw prayerBadgeAwardError;
+
+      const awardedBadges = new Set(
+        Array.isArray(prayerBadgeAward?.awarded_badges)
+          ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
+          : [],
+      );
+      const prayerBadgeUpdates: Record<string, boolean> = {};
+      if (awardedBadges.has("badge_prayer_ember")) prayerBadgeUpdates.badge_prayer_ember = true;
+      if (awardedBadges.has("badge_prayer_warrior")) prayerBadgeUpdates.badge_prayer_warrior = true;
+      if (Object.keys(prayerBadgeUpdates).length > 0) {
+        setProfile((current: any) => ({ ...(current ?? baseProfile), ...prayerBadgeUpdates }));
+      }
+    } catch (error) {
+      console.warn("기도 공유 배지 보정 실패:", error);
+    }
+
+    try {
+      const newRewardBadgeUpdates = await repairNewRewardBadges(supabase, userId);
+      if (Object.keys(newRewardBadgeUpdates).length > 0) {
+        setProfile((current: any) => ({ ...(current ?? baseProfile), ...newRewardBadgeUpdates }));
+      }
+    } catch (error) {
+      console.warn("새 보상 배지 보정 실패:", error);
+    }
   }
 
   async function loadGroupChallengeBadgesForProfile(userId: string) {
@@ -1345,7 +1391,7 @@ export default function ProfilePage() {
   const canResetProfilePhoto = isCharacterProfileAvatar || Boolean(profile?.profile_photo_url ?? profile?.avatar_url);
 
   useEffect(() => {
-    if (!profile?.id || !isCharacterProfileAvatar) return;
+    if (!profile?.id || !isCharacterProfileAvatar || !ownedHeartShopItemsReady) return;
     if (profile.profile_character_signature === currentProfileCharacterSignature) return;
 
     let cancelled = false;
@@ -1372,6 +1418,7 @@ export default function ProfilePage() {
     profile?.id,
     profile?.profile_avatar_mode,
     profile?.profile_character_signature,
+    ownedHeartShopItemsReady,
     currentAvatarType,
     currentProfileCharacterSignature,
     profileAvatarText.autoUpdateFailed,
@@ -1481,7 +1528,7 @@ export default function ProfilePage() {
 
             <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
               <span>{monthlyBadgeYearLabel}</span>
-              <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 700 }}>{earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
+              <span style={{ fontSize: 11, color: "var(--sage-dark)", fontWeight: 700 }}>{loadingMonthlyBadges ? "…" : earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", columnGap: 8, rowGap: 16 }}>
@@ -1782,7 +1829,7 @@ export default function ProfilePage() {
           <div style={{ position: "relative", flexShrink: 0 }}>
             <div style={{ width: 68, height: 68, borderRadius: "50%", background: "var(--sage-light)", border: "2px solid var(--sage)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt={t("nav_profile", lang)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={profile.avatar_url} alt={t("nav_profile", lang)} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <img src="/roots-logo-transparent-96.png" alt="Roots" width={42} height={42} style={{ objectFit: "contain", imageRendering: "pixelated" }} />
               )}
@@ -1840,7 +1887,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => void activateCharacterProfileAvatar()}
-                    disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
+                    disabled={!ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
                     style={{ marginTop: 4, padding: "6px 0", border: "none", background: "transparent", color: "var(--profile-sage-notice-text)", fontSize: 11, fontWeight: 800, textDecoration: "underline", cursor: "pointer" }}
                   >
                     {savingProfileAvatar ? profileAvatarText.savingLabel : profileAvatarText.retryButton}
@@ -1857,7 +1904,7 @@ export default function ProfilePage() {
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {monthlyBadgeText.title}
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{loadingMonthlyBadges ? "…" : earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
           </span>
           <button
             type="button"
@@ -1879,6 +1926,8 @@ export default function ProfilePage() {
                     <img
                       src={isMystery ? LOCKED_SPIRIT_FRUIT_BADGE_IMG : badge.image}
                       alt={isMystery ? monthlyBadgeText.mysteryAlt : monthLabel}
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         width: "100%",
                         height: "100%",
@@ -1947,7 +1996,7 @@ export default function ProfilePage() {
               aria-pressed={isCharacterProfileAvatar}
               onClick={() => void activateCharacterProfileAvatar()}
               title={isCharacterProfileAvatar ? profileAvatarText.characterActiveLabel : undefined}
-              disabled={savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
+              disabled={!ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
               style={{
                 width: "100%",
                 border: isCharacterProfileAvatar ? "1px solid var(--border)" : "1px solid var(--profile-sage-notice-border)",
@@ -1957,10 +2006,10 @@ export default function ProfilePage() {
                 padding: "10px 12px",
                 fontSize: 12,
                 fontWeight: 900,
-                cursor: savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? "default" : "pointer",
+                cursor: !ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? "default" : "pointer",
                 lineHeight: 1.25,
                 wordBreak: "keep-all",
-                opacity: savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? 0.65 : 1,
+                opacity: !ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? 0.65 : 1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2004,7 +2053,7 @@ export default function ProfilePage() {
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
+                    <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
@@ -2048,6 +2097,8 @@ export default function ProfilePage() {
                     <img
                       src={item.kind === "group" ? getGroupChallengeBadgeImg(item.badgeImagePath) : getCompanionChallengeBadgeImg(item.badgeImagePath)}
                       alt={item.badgeName || item.title}
+                      loading="lazy"
+                      decoding="async"
                       onError={(event) => {
                         const fallback = "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
@@ -2100,7 +2151,7 @@ export default function ProfilePage() {
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flexShrink: 0, width: 76, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 68, height: 68, marginBottom: 6, transition: "transform 160ms ease, opacity 160ms ease" }}>
-                    <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY, transform: earned ? "none" : `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` }} />
+                    <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY, transform: earned ? "none" : `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
                   <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>
