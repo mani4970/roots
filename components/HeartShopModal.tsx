@@ -379,6 +379,9 @@ export default function HeartShopModal({
   const [restoringCharacterState, setRestoringCharacterState] = useState(false);
   const [restoringDefaultHair, setRestoringDefaultHair] = useState(false);
   const restoringDefaultHairRef = useRef(false);
+  // Remember only the hair removed by "Default Hair" in this mounted shop.
+  // No history means no restore action, regardless of the number of purchases.
+  const [previousHairItemId, setPreviousHairItemId] = useState<HeartShopItemId | null>(null);
   const historyStackRef = useRef<HeartShopHistoryKind[]>([]);
   const tabHistoryRef = useRef<HeartShopTab[]>([]);
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -462,6 +465,9 @@ export default function HeartShopModal({
     && !currentLayers.some(layer => layer.slot === "hair");
   const defaultHairActionBusy = !ownedItemsLoaded || loadingOwned || restoringDefaultHair || purchasing
     || Boolean(applyingFreeItemId) || Boolean(togglingItemId) || restoringCharacterState;
+  const previousHair = ownedItems.find(
+    item => item.itemId === previousHairItemId && isHairForCurrentAvatar(item),
+  ) ?? null;
   const hasCharacterShopPreview = Object.keys(characterShopPreviewItemIds).length > 0;
   const hasOwnedCharacterPreview = Object.keys(ownedCharacterPreviewItemIds).length > 0;
   const visibleMapItems = useMemo(
@@ -872,10 +878,14 @@ export default function HeartShopModal({
     update(current => ({ ...current, hair: null }));
   }
 
-  function isEnabledHairForCurrentAvatar(item: OwnedHeartShopItem): boolean {
+  function isHairForCurrentAvatar(item: OwnedHeartShopItem): boolean {
     const catalogItem = getHeartShopCatalogItem(item.itemId);
-    return item.isEnabled && !!catalogItem && isHeartShopCharacterCatalogItem(catalogItem)
+    return !!catalogItem && isHeartShopCharacterCatalogItem(catalogItem)
       && catalogItem.avatarType === avatarType && catalogItem.slot === "hair";
+  }
+
+  function isEnabledHairForCurrentAvatar(item: OwnedHeartShopItem): boolean {
+    return item.isEnabled && isHairForCurrentAvatar(item);
   }
 
   async function applyDefaultHair() {
@@ -883,12 +893,14 @@ export default function HeartShopModal({
     restoringDefaultHairRef.current = true;
     setRestoringDefaultHair(true);
     setNotice("");
+    let previousCandidate: HeartShopItemId | null = null;
     try {
       const supabase = createClient();
       // Re-read on an explicit click rather than trust a stale/failed shop read.
       // No fake free purchase, wallet mutation or new catalog entry is needed.
       const freshItems = await loadOwnedHeartShopItems(supabase);
       const hairToDisable = freshItems.filter(isEnabledHairForCurrentAvatar);
+      previousCandidate = hairToDisable.length === 1 ? hairToDisable[0].itemId : null;
       for (const item of hairToDisable) {
         const result = await setHeartShopItemEnabled(supabase, item.itemId, false);
         if (!result.updated || result.itemId !== item.itemId || result.isEnabled) {
@@ -913,6 +925,7 @@ export default function HeartShopModal({
         delete next.hair;
         return next;
       });
+      setPreviousHairItemId(previousCandidate);
       setNotice(profileText.defaultHairAppliedNotice);
     } catch (error) {
       console.warn("Default hair apply failed:", error);
@@ -923,6 +936,9 @@ export default function HeartShopModal({
         setOwnedItemsLoadFailed(false);
         setOwnedItemsLoaded(true);
         publishOwnedItems(confirmedItems);
+        if (previousCandidate && !confirmedItems.some(isEnabledHairForCurrentAvatar)) {
+          setPreviousHairItemId(previousCandidate);
+        }
       } catch (reloadError) {
         setOwnedItemsLoadFailed(true);
         console.warn("Default hair state reload failed:", reloadError);
@@ -934,14 +950,80 @@ export default function HeartShopModal({
     }
   }
 
+  async function restorePreviousHair() {
+    if (restoringDefaultHairRef.current || defaultHairActionBusy || !show || !defaultHairApplied || !previousHair) return;
+    const itemId = previousHair.itemId;
+    restoringDefaultHairRef.current = true;
+    setRestoringDefaultHair(true);
+    setNotice("");
+    try {
+      const supabase = createClient();
+      const freshItems = await loadOwnedHeartShopItems(supabase);
+      const target = freshItems.find(item => item.itemId === itemId && isHairForCurrentAvatar(item));
+      if (!target) throw new Error("previous_hair_not_owned");
+      // If a fresh read already reports another hair, keep that selection.
+      // This reuses the existing enable RPC, not a new cross-device transaction.
+      if (freshItems.some(item => isEnabledHairForCurrentAvatar(item) && item.itemId !== itemId)) {
+        throw new Error("hair_changed_before_restore");
+      }
+      if (!target.isEnabled) {
+        const result = await setHeartShopItemEnabled(supabase, itemId, true);
+        if (!result.updated || result.itemId !== itemId || !result.isEnabled) {
+          throw new Error(result.reason || "previous_hair_enable_failed");
+        }
+      }
+      const confirmedItems = target.isEnabled ? freshItems : await loadOwnedHeartShopItems(supabase);
+      const confirmedHair = confirmedItems.filter(isEnabledHairForCurrentAvatar);
+      if (confirmedHair.length !== 1 || confirmedHair[0].itemId !== itemId) {
+        throw new Error("previous_hair_not_confirmed");
+      }
+      setOwnedItemsLoadFailed(false);
+      setOwnedItemsLoaded(true);
+      publishOwnedItems(confirmedItems);
+      setCharacterShopPreviewItemIds(current => {
+        const next = { ...current };
+        delete next.hair;
+        return next;
+      });
+      setOwnedCharacterPreviewItemIds(current => {
+        const next = { ...current };
+        delete next.hair;
+        return next;
+      });
+      setPreviousHairItemId(itemId);
+      setNotice(profileText.previousHairAppliedNotice);
+    } catch (error) {
+      console.warn("Previous hair restore failed:", error);
+      // One state reconciliation only; never retry the write automatically.
+      try {
+        const confirmedItems = await loadOwnedHeartShopItems(createClient());
+        setOwnedItemsLoadFailed(false);
+        setOwnedItemsLoaded(true);
+        publishOwnedItems(confirmedItems);
+      } catch (reloadError) {
+        setOwnedItemsLoadFailed(true);
+        console.warn("Previous hair state reload failed:", reloadError);
+      }
+      setNotice(profileText.previousHairApplyFailed);
+    } finally {
+      restoringDefaultHairRef.current = false;
+      setRestoringDefaultHair(false);
+    }
+  }
+
   function renderDefaultHairOption(context: "shop" | "owned") {
     const compact = context === "owned";
     const previewing = (compact ? ownedCharacterPreviewItemIds : characterShopPreviewItemIds).hair === null;
-    const disabled = defaultHairActionBusy || defaultHairApplied;
+    const disabled = defaultHairActionBusy || (defaultHairApplied && !previousHair);
     const label = restoringDefaultHair ? text.applyingLabel
-      : defaultHairApplied ? text.appliedButton : text.applyButton;
-    // Thumbnails are static crops of the original hair, not new character bases.
-    const thumbnail = `/images/heart-shop/character/${avatarType}/hair/hair-default-thumb.webp?v=20261007_v1`;
+      : !defaultHairApplied ? text.applyButton
+      : previousHair ? profileText.previousHairButton
+      : text.appliedButton;
+    const restoreName = defaultHairApplied && previousHair
+      ? getProfileCharacterItemText(previousHair.itemId as HeartShopCharacterItemId, lang).name : "";
+    // Match the paid hair thumbnails: shared 288×320 framing and square display bounds.
+    // Preview assets only; the actual character base images are unchanged.
+    const thumbnail = `/images/heart-shop/character/${avatarType}/hair/hair-default-thumb.webp?v=20261007_v2`;
     return (
       <article
         key={`${avatarType}-default-hair`}
@@ -961,26 +1043,44 @@ export default function HeartShopModal({
             ? { minWidth: 0, minHeight: 68, padding: 0, border: "none", borderRadius: 11, display: "grid", gridTemplateColumns: "52px minmax(0,1fr)", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer", background: previewing ? "rgba(122,157,122,.08)" : "transparent" }
             : { position: "relative", width: "100%", height: 176, padding: 12, borderRadius: 18, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: previewing ? "var(--heart-shop-item-preview-active)" : "var(--heart-shop-item-preview)", border: previewing ? "2px solid rgba(101,142,105,.62)" : "1px solid rgba(122,157,122,.17)", marginBottom: 9, cursor: "pointer" }}
         >
-          <img
-            src={thumbnail}
-            alt={profileText.defaultHairName}
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            style={{ width: compact ? 44 : 145, maxWidth: "100%", height: compact ? 58 : 145, objectFit: "contain", imageRendering: "pixelated" }}
-          />
-          {compact && <span style={{ minWidth: 0, color: "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{profileText.defaultHairName}<small style={{ display: "block", marginTop: 3, color: "var(--sage-dark)", fontSize: 11 }}>{text.freeLabel}</small></span>}
+          <div
+            style={compact
+              ? { width: 50, height: 58, padding: 5, borderRadius: 10, border: previewing ? "2px solid rgba(122,157,122,.58)" : "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }
+              : { width: "100%", maxWidth: 145, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <div
+              style={{ position: "relative", width: "100%", maxWidth: compact ? 44 : 145, aspectRatio: "1 / 1", overflow: "hidden", flexShrink: 0 }}
+            >
+              <img
+                src={thumbnail}
+                alt={profileText.defaultHairName}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated", userSelect: "none", pointerEvents: "none" }}
+              />
+            </div>
+          </div>
+          {compact && <span style={{ minWidth: 0, color: "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{profileText.defaultHairName}<small style={{ display: "block", marginTop: 3, color: "var(--sage-dark)", fontSize: 11 }}>{text.freeLabel}{defaultHairApplied && <> · {text.appliedButton}</>}</small></span>}
         </button>
         {!compact && <>
-          <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{profileText.defaultHairName}</h3>
+          <h3 style={{ margin: "0 0 4px", minHeight: 34, fontSize: 12.5, lineHeight: 1.35, fontWeight: 950, color: "var(--text)" }}>{profileText.defaultHairName}{defaultHairApplied && <small style={{ display: "block", fontSize: 10, color: "var(--sage-dark)", fontWeight: 700 }}>{text.appliedButton}</small>}</h3>
           <div style={{ color: "var(--sage-dark)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>{text.freeLabel}</div>
         </>}
         <button
           type="button"
           disabled={disabled}
-          aria-label={`${profileText.defaultHairName}: ${label}`}
+          aria-label={`${profileText.defaultHairName}: ${label}${restoreName ? ` (${restoreName})` : ""}`}
+          title={restoreName ? `${label}: ${restoreName}` : undefined}
           aria-busy={restoringDefaultHair}
-          onClick={() => void applyDefaultHair()}
+          onClick={() => {
+            if (restoringDefaultHairRef.current || disabled) return;
+            if (!defaultHairApplied) {
+              void applyDefaultHair();
+            } else {
+              void restorePreviousHair();
+            }
+          }}
           style={{ width: "100%", minHeight: 38, padding: "7px 8px", border: defaultHairApplied ? "1px solid var(--border)" : "none", borderRadius: 13, background: defaultHairApplied ? "var(--bg3)" : "var(--heart-shop-action)", color: defaultHairApplied ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 10.5, lineHeight: 1.2, fontWeight: 950, cursor: disabled ? "default" : "pointer", opacity: defaultHairActionBusy ? 0.7 : 1 }}
         >{label}</button>
       </article>

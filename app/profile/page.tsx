@@ -1436,6 +1436,7 @@ export default function ProfilePage() {
       />
 
       <HeartShopModal
+        key={`${profileUserId}:${currentAvatarType}`}
         show={showHeartShop}
         lang={lang}
         heartBalance={loveHeartBalance}
