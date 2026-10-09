@@ -52,7 +52,6 @@ import {
 import {
   loadCommunityViewerMeta,
   loadHiddenGroupIds,
-  loadPartnerActivityData,
   loadPartnerCoreData,
   type CommunityViewerMeta,
 } from "@/lib/communityInitialLoad";
@@ -449,7 +448,7 @@ async function fetchGroupMemberCounts(
 
     if (error) {
       console.warn("그룹 멤버 수 일괄 조회 실패:", error.message);
-      continue;
+      throw error;
     }
 
     (data ?? []).forEach((row: any) => {
@@ -4144,10 +4143,7 @@ function CommunityPageContent() {
       hasNewPrayer: false,
       last_seen_shared_at: openedAt,
     });
-    setPartnerDetailTab(
-      preferredSection ??
-        (partner.hasNewPrayer && !partner.hasNewQtShare ? "praying" : "qt"),
-    );
+    setPartnerDetailTab(preferredSection ?? "qt");
     setPartnerQts([]);
     setPartnerPrayers([]);
     setLoadingPartnerQts(true);
@@ -4208,29 +4204,26 @@ function CommunityPageContent() {
       ),
     );
 
-    try {
-      const { error: seenError } = await supabase
-        .from("companion_preferences")
-        .upsert(
-          {
-            user_id: user.id,
-            companion_user_id: partnerId,
-            is_favorite: !!partner.isFavorite,
-            last_seen_shared_at: openedAt,
-            updated_at: openedAt,
-          },
-          { onConflict: "user_id,companion_user_id" },
-        );
-      if (seenError)
-        console.warn("동역자 읽음 상태 저장 실패:", seenError.message);
-    } catch (error) {
-      console.warn("동역자 읽음 상태 저장 중 예외:", error);
-    }
-
-    void loadCompanionChallengeForPartner(
-      supabase,
-      partnerId,
-    );
+    void (async () => {
+      try {
+        const { error: seenError } = await supabase
+          .from("companion_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              companion_user_id: partnerId,
+              is_favorite: !!partner.isFavorite,
+              last_seen_shared_at: openedAt,
+              updated_at: openedAt,
+            },
+            { onConflict: "user_id,companion_user_id" },
+          );
+        if (seenError)
+          console.warn("동역자 읽음 상태 저장 실패:", seenError.message);
+      } catch (error) {
+        console.warn("동역자 읽음 상태 저장 중 예외:", error);
+      }
+    })();
 
     try {
       const { data: qtRecipientRows, error: qtRecipientError } = await supabase
@@ -4286,14 +4279,16 @@ function CommunityPageContent() {
           currentHiddenUserIds,
         );
         setPartnerQts(visibleRows);
+        setLoadingPartnerQts(false);
 
-        const { counts, mine } = await fetchQtReactions(
-          supabase,
-          qtIds,
-          user.id,
-        );
-        setQtReactionCounts((prev) => ({ ...prev, ...counts }));
-        setMyQtReactions((prev) => ({ ...prev, ...mine }));
+        void fetchQtReactions(supabase, qtIds, user.id)
+          .then(({ counts, mine }) => {
+            setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+            setMyQtReactions((prev) => ({ ...prev, ...mine }));
+          })
+          .catch((error) =>
+            console.warn("동역자 묵상 반응 조회 실패:", error),
+          );
       } else if (directTarget?.contentKind !== "qt") {
         setPartnerQts([]);
       }
@@ -4304,6 +4299,8 @@ function CommunityPageContent() {
       setLoadingPartnerQts(false);
     }
 
+    // Prayer/answered content starts only after the meditation list has been
+    // allowed to paint. Companion challenge data is lower priority still.
     try {
       const { data: prayerRecipientRows, error: prayerRecipientError } =
         await supabase
@@ -4384,6 +4381,8 @@ function CommunityPageContent() {
     } finally {
       setLoadingPartnerPrayers(false);
     }
+
+    void loadCompanionChallengeForPartner(supabase, partnerId);
   }
 
   async function loadGroupMemberProfiles(group: any) {
@@ -4568,9 +4567,6 @@ function CommunityPageContent() {
       }
 
       setUserId(user.id);
-      if (targetTab === "partner" || targetTab === "group") {
-        void loadReflectionNudgeStatus();
-      }
       setChallengeContactEmail((prev) => prev || user.email || "");
       setAllSectionSeenAt(
         storageGetJson<Record<CommunitySectionKey, string | null>>(
@@ -4638,6 +4634,7 @@ function CommunityPageContent() {
 
         setPartners(sortPartnersForDisplay(lightweightPartners));
         if (!markMainTabReady(targetTab, requestId)) return;
+        void loadReflectionNudgeStatus();
 
         // Moderation/prayer metadata is needed by detail views, not by the
         // first companion-list paint. Start it only after the list is visible.
@@ -4645,51 +4642,8 @@ function CommunityPageContent() {
           console.warn("커뮤니티 사용자 메타데이터 보조 조회 실패:", error),
         );
 
-        // NEW/activity discovery is deliberately supplemental: the list is
-        // already interactive while these requests finish.
-        void loadPartnerActivityData(supabase, user.id, partnerIds)
-          .then(({ latestPartnerQtAt, latestPartnerPrayerAt }) => {
-            if (!isCurrentMainTabRequest(targetTab, requestId)) return;
-            const partnerIdSet = new Set(partnerIds);
-            setPartners((current) =>
-              sortPartnersForDisplay(
-                current.map((item) => {
-                  const partnerId = String(item.partner_id ?? "");
-                  if (!partnerIdSet.has(partnerId)) return item;
-                  const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
-                  const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
-                  const lastSeenPartnerAt = item.last_seen_shared_at ?? null;
-                  const latestPartnerActivityAt = latestSharedContentTime(
-                    [
-                      latestQtAt ? { created_at: latestQtAt } : null,
-                      latestPrayerAt ? { created_at: latestPrayerAt } : null,
-                    ].filter(Boolean) as any[],
-                  );
-                  const hasNewQtShare = isLaterThan(
-                    latestQtAt,
-                    lastSeenPartnerAt,
-                  );
-                  const hasNewPrayer = isLaterThan(
-                    latestPrayerAt,
-                    lastSeenPartnerAt,
-                  );
-                  return {
-                    ...item,
-                    latest_qt_at: latestQtAt,
-                    latest_prayer_at: latestPrayerAt,
-                    latest_partner_activity_at: latestPartnerActivityAt,
-                    hasNewQtShare,
-                    hasNewPrayer,
-                    hasNewContent: hasNewQtShare || hasNewPrayer,
-                    activityReady: true,
-                  };
-                }),
-              ),
-            );
-          })
-          .catch((error) =>
-            console.warn("동역자 새 활동 보조 조회 실패:", error),
-          );
+        // The companion list is intentionally complete at first paint.
+        // Shared QT/prayer content is loaded only after a companion is opened.
         return;
       }
 
@@ -4881,13 +4835,16 @@ function CommunityPageContent() {
       const uniqueGroupIds = uniqueStrings(
         unique.map((group: any) => String(group.id ?? "")),
       );
-      const joinedGroupIds = uniqueStrings(
-        unique
-          .filter((group: any) => !!memberMap[group.id])
-          .map((group: any) => String(group.id ?? "")),
+      // Member count is a small group-list field, so include it in the first
+      // complete card paint instead of waiting for QT/prayer activity metadata.
+      const memberCounts = await fetchGroupMemberCounts(
+        supabase,
+        uniqueGroupIds,
       );
+      if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
       const lightweightGroups = unique.map((group) => {
+        const groupId = String(group.id ?? "");
         const memberMeta = memberMap[group.id];
         const isMember = !!memberMeta;
         const lastSeenGroupAt =
@@ -4895,7 +4852,7 @@ function CommunityPageContent() {
         return {
           ...group,
           leaderProfile: null,
-          member_count: null,
+          member_count: memberCounts[groupId] ?? 0,
           isMember,
           isFavorite: !!memberMeta?.is_favorite,
           last_seen_qt_at: lastSeenGroupAt,
@@ -4911,62 +4868,12 @@ function CommunityPageContent() {
 
       setGroups(sortGroupsForDisplay(lightweightGroups));
       if (!markMainTabReady(targetTab, requestId)) return;
+      void loadReflectionNudgeStatus();
 
-      // The full viewer metadata does not compete with first group-card paint.
+      // Detail-only metadata stays off the critical group-list path.
       void ensureCommunityViewerMeta(supabase, user.id).catch((error) =>
         console.warn("커뮤니티 사용자 메타데이터 보조 조회 실패:", error),
       );
-
-      // Counts and NEW/activity state enrich already-visible group cards.
-      void Promise.all([
-        fetchGroupMemberCounts(supabase, uniqueGroupIds),
-        fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
-        fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
-      ])
-        .then(([memberCounts, latestQtByGroup, latestPrayerByGroup]) => {
-          if (!isCurrentMainTabRequest(targetTab, requestId)) return;
-          const groupIdSet = new Set(uniqueGroupIds);
-          setGroups((current) =>
-            sortGroupsForDisplay(
-              current.map((group) => {
-                const groupId = String(group.id ?? "");
-                if (!groupIdSet.has(groupId)) return group;
-                const latestQtAt = latestQtByGroup[groupId] ?? null;
-                const latestPrayerAt = latestPrayerByGroup[groupId] ?? null;
-                const lastSeenGroupAt = group.last_seen_qt_at ?? null;
-                const hasNewQtShare =
-                  !!group.isMember && isLaterThan(latestQtAt, lastSeenGroupAt);
-                const hasNewPrayer =
-                  !!group.isMember &&
-                  isLaterThan(latestPrayerAt, lastSeenGroupAt);
-                return {
-                  ...group,
-                  member_count: memberCounts[groupId] ?? 0,
-                  latest_qt_at: latestQtAt,
-                  latest_prayer_at: latestPrayerAt,
-                  hasNewQtShare,
-                  hasNewPrayer,
-                  hasNewContent: hasNewQtShare || hasNewPrayer,
-                  hasNewQt: hasNewQtShare || hasNewPrayer,
-                  activityReady: true,
-                };
-              }),
-            ),
-          );
-          setSelectedGroup((current: any) => {
-            if (!current) return current;
-            const groupId = String(current.id ?? "");
-            if (!groupIdSet.has(groupId)) return current;
-            return {
-              ...current,
-              member_count:
-                memberCounts[groupId] ?? current.member_count ?? 0,
-            };
-          });
-        })
-        .catch((error) =>
-          console.warn("그룹 카드 보조 정보 조회 실패:", error),
-        );
     } catch (error) {
       console.error("커뮤니티 목록 조회 실패:", error);
       if (isCurrentMainTabRequest(targetTab, requestId)) {
@@ -4983,10 +4890,7 @@ function CommunityPageContent() {
     options?: { skipHistory?: boolean },
   ) {
     if (!options?.skipHistory) pushCommunityDetailHistory("group");
-    setGroupDetailTab(
-      preferredSection ??
-        (group.hasNewPrayer && !group.hasNewQtShare ? "praying" : "qt"),
-    );
+    setGroupDetailTab(preferredSection ?? "qt");
     const openedAt = new Date().toISOString();
     const previousSeenAt = group.last_seen_qt_at ?? null;
     setSelectedGroup({
@@ -4999,7 +4903,7 @@ function CommunityPageContent() {
     });
     setGroupChallenges([]);
     setGroupChallengeProgress({});
-    setLoadingGroupChallenges(!!group.isMember);
+    setLoadingGroupChallenges(false);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
     setGroupQtLoadError(false);
@@ -5069,100 +4973,6 @@ function CommunityPageContent() {
       }
     }
 
-    if (group.isMember) {
-      if (user?.id) {
-        let latestRequest: any | null = null;
-        const { data: summaryRows, error: summaryError } = await supabase.rpc(
-          "get_group_challenge_request_summary",
-          { p_group_id: group.id },
-        );
-
-        if (summaryError) {
-          console.warn(
-            "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
-            summaryError.message,
-          );
-          const { data: requestRows, error: requestError } = await supabase
-            .from("group_challenge_requests")
-            .select(
-              "id,status,title,requested_start_date,duration_days,created_at",
-            )
-            .eq("group_id", group.id)
-            .eq("requester_id", user.id)
-            .in("status", ["pending", "contacted", "approved"])
-            .order("created_at", { ascending: false })
-            .limit(1);
-          if (requestError) {
-            console.warn(
-              "그룹 챌린지 신청 상태 조회 실패:",
-              requestError.message,
-            );
-          } else {
-            latestRequest = requestRows?.[0] ?? null;
-          }
-        } else {
-          latestRequest = Array.isArray(summaryRows)
-            ? (summaryRows[0] ?? null)
-            : null;
-        }
-
-        setGroupChallengeRequest(
-          group.id,
-          latestRequest
-            ? {
-                id: latestRequest.id,
-                status: latestRequest.status,
-                title: latestRequest.title,
-                requested_start_date: latestRequest.requested_start_date,
-                requested_end_date:
-                  latestRequest.requested_end_date ||
-                  deriveChallengeRequestEndDate(
-                    latestRequest.requested_start_date,
-                    latestRequest.duration_days,
-                  ),
-                duration_days: latestRequest.duration_days,
-                created_at: latestRequest.created_at,
-              }
-            : null,
-        );
-      } else {
-        setGroupChallengeRequestStatus(group.id, null);
-      }
-
-      const { data: challengeRows, error: challengeError } = await supabase
-        .from("group_challenges")
-        .select(
-          "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
-        )
-        .eq("group_id", group.id)
-        .in("status", ["scheduled", "active", "completed"])
-        .order("start_date", { ascending: true })
-        .limit(5);
-      if (challengeError) {
-        console.warn("그룹 챌린지 조회 실패:", challengeError.message);
-        setGroupChallenges([]);
-        setGroupChallengeProgress({});
-      } else {
-        const nextChallenges = challengeRows ?? [];
-        setGroupChallenges(nextChallenges);
-        if (user?.id && nextChallenges.length > 0) {
-          const progress = await fetchGroupChallengeProgress(
-            supabase,
-            nextChallenges,
-            user.id,
-          );
-          setGroupChallengeProgress(progress);
-        } else {
-          setGroupChallengeProgress({});
-        }
-      }
-    } else {
-      setGroupChallengeRequestStatus(group.id, null);
-      setGroupChallenges([]);
-      setGroupChallengeProgress({});
-    }
-    setLoadingGroupChallenges(false);
-
     try {
       const data = await fetchQtFeedRows(
         supabase,
@@ -5185,43 +4995,58 @@ function CommunityPageContent() {
           currentHiddenUserIds,
         );
         setGroupQts(sortQtFeedRows(withProfs));
+        setLoadingGroupQts(false);
         const qtIds = data.map((r: any) => r.id);
-        const { counts, mine } = await fetchQtReactions(supabase, qtIds, user.id);
-        setQtReactionCounts((prev) => ({ ...prev, ...counts }));
-        setMyQtReactions((prev) => ({ ...prev, ...mine }));
+
+        void fetchQtReactions(supabase, qtIds, user.id)
+          .then(({ counts, mine }) => {
+            setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+            setMyQtReactions((prev) => ({ ...prev, ...mine }));
+          })
+          .catch((error) =>
+            console.warn("그룹 묵상 반응 조회 실패:", error),
+          );
 
         if (group.isMember) {
-          const { data: seenRows, error } = await supabase.rpc(
-            "mark_group_qt_seen_v2",
-            { p_group_id: group.id },
-          );
-          if (error) {
-            console.warn("그룹 큐티 읽음 처리 실패:", error.message);
-            const { error: oldError } = await supabase.rpc("mark_group_qt_seen", {
-              p_group_id: group.id,
-            });
-            if (oldError)
-              console.warn("기존 그룹 큐티 읽음 처리도 실패:", oldError.message);
-          }
-          const persistedSeenAt =
-            Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
-              ? seenRows[0].last_seen_qt_at
-              : openedAt;
-          setGroups((prev) =>
-            sortGroupsForDisplay(
-              prev.map((g) =>
-                g.id === group.id
-                  ? {
-                      ...g,
-                      hasNewQt: false,
-                      hasNewQtShare: false,
-                      hasNewPrayer: false,
-                      hasNewContent: false,
-                      last_seen_qt_at: persistedSeenAt,
-                    }
-                  : g,
+          void (async () => {
+            const { data: seenRows, error } = await supabase.rpc(
+              "mark_group_qt_seen_v2",
+              { p_group_id: group.id },
+            );
+            if (error) {
+              console.warn("그룹 큐티 읽음 처리 실패:", error.message);
+              const { error: oldError } = await supabase.rpc(
+                "mark_group_qt_seen",
+                { p_group_id: group.id },
+              );
+              if (oldError)
+                console.warn(
+                  "기존 그룹 큐티 읽음 처리도 실패:",
+                  oldError.message,
+                );
+            }
+            const persistedSeenAt =
+              Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
+                ? seenRows[0].last_seen_qt_at
+                : openedAt;
+            setGroups((prev) =>
+              sortGroupsForDisplay(
+                prev.map((g) =>
+                  g.id === group.id
+                    ? {
+                        ...g,
+                        hasNewQt: false,
+                        hasNewQtShare: false,
+                        hasNewPrayer: false,
+                        hasNewContent: false,
+                        last_seen_qt_at: persistedSeenAt,
+                      }
+                    : g,
+                ),
               ),
-            ),
+            );
+          })().catch((error) =>
+            console.warn("그룹 큐티 읽음 상태 저장 중 예외:", error),
           );
         }
       }
@@ -5276,6 +5101,106 @@ function CommunityPageContent() {
     } else {
       setLoadingGroupPrayers(false);
     }
+
+    void (async () => {
+      if (group.isMember) {
+        if (user?.id) {
+          let latestRequest: any | null = null;
+          const { data: summaryRows, error: summaryError } = await supabase.rpc(
+            "get_group_challenge_request_summary",
+            { p_group_id: group.id },
+          );
+
+          if (summaryError) {
+            console.warn(
+              "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
+              summaryError.message,
+            );
+            const { data: requestRows, error: requestError } = await supabase
+              .from("group_challenge_requests")
+              .select(
+                "id,status,title,requested_start_date,duration_days,created_at",
+              )
+              .eq("group_id", group.id)
+              .eq("requester_id", user.id)
+              .in("status", ["pending", "contacted", "approved"])
+              .order("created_at", { ascending: false })
+              .limit(1);
+            if (requestError) {
+              console.warn(
+                "그룹 챌린지 신청 상태 조회 실패:",
+                requestError.message,
+              );
+            } else {
+              latestRequest = requestRows?.[0] ?? null;
+            }
+          } else {
+            latestRequest = Array.isArray(summaryRows)
+              ? (summaryRows[0] ?? null)
+              : null;
+          }
+
+          setGroupChallengeRequest(
+            group.id,
+            latestRequest
+              ? {
+                  id: latestRequest.id,
+                  status: latestRequest.status,
+                  title: latestRequest.title,
+                  requested_start_date: latestRequest.requested_start_date,
+                  requested_end_date:
+                    latestRequest.requested_end_date ||
+                    deriveChallengeRequestEndDate(
+                      latestRequest.requested_start_date,
+                      latestRequest.duration_days,
+                    ),
+                  duration_days: latestRequest.duration_days,
+                  created_at: latestRequest.created_at,
+                }
+              : null,
+          );
+        } else {
+          setGroupChallengeRequestStatus(group.id, null);
+        }
+
+        const { data: challengeRows, error: challengeError } = await supabase
+          .from("group_challenges")
+          .select(
+            "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
+          )
+          .eq("group_id", group.id)
+          .in("status", ["scheduled", "active", "completed"])
+          .order("start_date", { ascending: true })
+          .limit(5);
+        if (challengeError) {
+          console.warn("그룹 챌린지 조회 실패:", challengeError.message);
+          setGroupChallenges([]);
+          setGroupChallengeProgress({});
+        } else {
+          const nextChallenges = challengeRows ?? [];
+          setGroupChallenges(nextChallenges);
+          if (user?.id && nextChallenges.length > 0) {
+            const progress = await fetchGroupChallengeProgress(
+              supabase,
+              nextChallenges,
+              user.id,
+            );
+            setGroupChallengeProgress(progress);
+          } else {
+            setGroupChallengeProgress({});
+          }
+        }
+      } else {
+        setGroupChallengeRequestStatus(group.id, null);
+        setGroupChallenges([]);
+        setGroupChallengeProgress({});
+      }
+      setLoadingGroupChallenges(false);
+    })().catch((error) => {
+      console.warn("그룹 챌린지 보조 조회 실패:", error);
+      setLoadingGroupChallenges(false);
+    });
+
   }
 
   // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
