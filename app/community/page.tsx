@@ -50,9 +50,11 @@ import {
   type ProfileCard,
 } from "@/lib/profileCards";
 import {
-  loadCommunityViewerMeta,
+  loadCommunityModerationMeta,
+  loadCommunityPrayedIds,
   loadHiddenGroupIds,
   loadPartnerCoreData,
+  type CommunityModerationMeta,
   type CommunityViewerMeta,
 } from "@/lib/communityInitialLoad";
 import {
@@ -845,6 +847,7 @@ const SECTIONS: {
 type CommunityModalHistoryKind = "qt-detail" | "photo-viewer" | "prayer-added" | "prayer-answer";
 type CommunityMainTab = "partner" | "group" | "all";
 type CommunityMainLoadState = "idle" | "loading" | "ready" | "error";
+type CommunitySectionLoadState = "idle" | "loading" | "ready" | "error";
 
 function CommunityPageContent() {
   const router = useRouter();
@@ -855,6 +858,15 @@ function CommunityPageContent() {
     return "partner";
   });
   const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
+  const [allSectionLoadState, setAllSectionLoadState] = useState<
+    Record<CommunitySectionKey, CommunitySectionLoadState>
+  >({ qt: "idle", praying: "idle", answered: "idle" });
+  const allSectionRequestSeqRef = useRef<Record<CommunitySectionKey, number>>({
+    qt: 0,
+    praying: 0,
+    answered: 0,
+  });
+  const allSectionInFlightRef = useRef<Set<CommunitySectionKey>>(new Set());
   const lang = useLang();
   const [badgePopup, setBadgePopup] = useState<{
     img: string;
@@ -901,6 +913,10 @@ function CommunityPageContent() {
     all: 0,
   });
   const loadedMainTabsRef = useRef<Set<CommunityMainTab>>(new Set());
+  const communityModerationMetaPromiseRef = useRef<{
+    userId: string;
+    promise: Promise<CommunityModerationMeta>;
+  } | null>(null);
   const communityViewerMetaPromiseRef = useRef<{
     userId: string;
     promise: Promise<CommunityViewerMeta>;
@@ -968,6 +984,7 @@ function CommunityPageContent() {
     Record<string, GroupChallengeRequestSummary>
   >({});
   const [loadingGroupChallenges, setLoadingGroupChallenges] = useState(false);
+  const [groupChallengeLoadError, setGroupChallengeLoadError] = useState(false);
   const [companionChallengeStatus, setCompanionChallengeStatus] =
     useState<CompanionChallengeStatus | null>(null);
   const [loadingCompanionChallenge, setLoadingCompanionChallenge] =
@@ -2621,6 +2638,7 @@ function CommunityPageContent() {
     setSelectedGroup(null);
     setGroupChallenges([]);
     setLoadingGroupChallenges(false);
+    setGroupChallengeLoadError(false);
     setGroupQts([]);
     setGroupPrayers([]);
     setGroupDetailTab("qt");
@@ -3818,6 +3836,22 @@ function CommunityPageContent() {
   function selectAllSection(section: CommunitySectionKey) {
     setAllTab(section);
     markAllSectionSeen(section);
+
+    if (section === "qt") {
+      if (allSectionLoadState.qt === "error") {
+        void loadData({ targetTab: "all", force: true });
+      }
+      return;
+    }
+
+    if (
+      allSectionLoadState[section] === "idle" ||
+      allSectionLoadState[section] === "error"
+    ) {
+      void loadAllPrayerSection(section, {
+        force: allSectionLoadState[section] === "error",
+      });
+    }
   }
 
   function hasUnreadPartnerSection(section: CommunitySectionKey) {
@@ -4146,11 +4180,14 @@ function CommunityPageContent() {
     setPartnerDetailTab(preferredSection ?? "qt");
     setPartnerQts([]);
     setPartnerPrayers([]);
+    setCompanionChallengeStatus(null);
+    setLoadingCompanionChallenge(true);
     setLoadingPartnerQts(true);
     setLoadingPartnerPrayers(true);
 
     const partnerId = partner?.partner_id;
     if (!partnerId) {
+      setLoadingCompanionChallenge(false);
       setLoadingPartnerQts(false);
       setLoadingPartnerPrayers(false);
       return;
@@ -4161,15 +4198,27 @@ function CommunityPageContent() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
+      setLoadingCompanionChallenge(false);
       setLoadingPartnerQts(false);
       setLoadingPartnerPrayers(false);
       setNotificationDirectOpenPending(false);
       return;
     }
 
-    const viewerMeta = await ensureCommunityViewerMeta(supabase, user.id);
-    const currentHiddenKeys = viewerMeta.hiddenKeys;
-    const currentHiddenUserIds = viewerMeta.hiddenUserIds;
+    // The challenge belongs to the first detail screen. Start it in parallel
+    // with meditation so the header/challenge area is settled before QT cards
+    // are released. Prayer tabs remain background-prefetched afterwards.
+    const companionChallengePromise = loadCompanionChallengeForPartner(
+      supabase,
+      partnerId,
+    );
+
+    const moderationMeta = await ensureCommunityModerationMeta(
+      supabase,
+      user.id,
+    );
+    const currentHiddenKeys = moderationMeta.hiddenKeys;
+    const currentHiddenUserIds = moderationMeta.hiddenUserIds;
 
     if (directTarget) {
       const opened = await openDirectNotificationContent(directTarget, {
@@ -4299,18 +4348,26 @@ function CommunityPageContent() {
       setLoadingPartnerQts(false);
     }
 
-    // Prayer/answered content starts only after the meditation list has been
-    // allowed to paint. Companion challenge data is lower priority still.
+    // The first detail screen is complete only after both challenge state and
+    // meditation are resolved. Prayer/answered content starts after that and is
+    // prefetched in the background for quick tab switches.
+    await companionChallengePromise;
+
     try {
+      const prayerRecipientQuery = supabase
+        .from("prayer_item_recipients")
+        .select("prayer_item_id,owner_id,recipient_id,created_at")
+        .or(
+          `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
+        )
+        .order("created_at", { ascending: false })
+        .limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT);
+      const [, prayerRecipientResult] = await Promise.all([
+        ensureCommunityViewerMeta(supabase, user.id),
+        prayerRecipientQuery,
+      ]);
       const { data: prayerRecipientRows, error: prayerRecipientError } =
-        await supabase
-          .from("prayer_item_recipients")
-          .select("prayer_item_id,owner_id,recipient_id,created_at")
-          .or(
-            `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
-          )
-          .order("created_at", { ascending: false })
-          .limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT);
+        prayerRecipientResult;
 
       if (prayerRecipientError) throw prayerRecipientError;
       const prayerIds = Array.from(
@@ -4336,13 +4393,6 @@ function CommunityPageContent() {
         const answeredIds = prayerRows
           .filter((row: any) => !!row.is_answered)
           .map((row: any) => row.id);
-        const { counts: likeCounts, mine: myLikedIds } =
-          await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
-        if (myLikedIds.length > 0) {
-          setLikedPrayerIds((prev) =>
-            Array.from(new Set([...prev, ...myLikedIds])),
-          );
-        }
         const rowsWithProfiles = sortPrayerFeedRows(
           prayerRows.map((row: any) => {
             const recipient = recipientMap[row.id] ?? null;
@@ -4352,7 +4402,7 @@ function CommunityPageContent() {
               : partnerSharedAt;
             return {
               ...row,
-              like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+              like_count: row.like_count ?? 0,
               profiles: profMap[row.user_id] ?? null,
               partnerSharedAt,
               partnerActivityAt,
@@ -4372,6 +4422,31 @@ function CommunityPageContent() {
             currentHiddenUserIds,
           ),
         );
+        setLoadingPartnerPrayers(false);
+
+        if (answeredIds.length > 0) {
+          void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+            .then(({ counts, mine }) => {
+              setPartnerPrayers((current) =>
+                current.map((row: any) =>
+                  answeredIds.includes(row.id)
+                    ? {
+                        ...row,
+                        like_count: counts[row.id] ?? row.like_count ?? 0,
+                      }
+                    : row,
+                ),
+              );
+              if (mine.length > 0) {
+                setLikedPrayerIds((current) =>
+                  Array.from(new Set([...current, ...mine])),
+                );
+              }
+            })
+            .catch((error) =>
+              console.warn("동역자 기도 응답 좋아요 보조 조회 실패:", error),
+            );
+        }
       } else if (directTarget?.contentKind !== "prayer") {
         setPartnerPrayers([]);
       }
@@ -4382,7 +4457,6 @@ function CommunityPageContent() {
       setLoadingPartnerPrayers(false);
     }
 
-    void loadCompanionChallengeForPartner(supabase, partnerId);
   }
 
   async function loadGroupMemberProfiles(group: any) {
@@ -4510,6 +4584,37 @@ function CommunityPageContent() {
     return true;
   }
 
+  function ensureCommunityModerationMeta(
+    supabase: ReturnType<typeof createClient>,
+    currentUserId: string,
+  ): Promise<CommunityModerationMeta> {
+    const cached = communityModerationMetaPromiseRef.current;
+    if (cached?.userId === currentUserId) return cached.promise;
+
+    const promise = loadCommunityModerationMeta(supabase, currentUserId)
+      .then((meta) => {
+        const current = communityModerationMetaPromiseRef.current;
+        if (current?.userId === currentUserId && current.promise === promise) {
+          setHiddenKeys(meta.hiddenKeys);
+          setHiddenUserIds(meta.hiddenUserIds);
+        }
+        return meta;
+      })
+      .catch((error) => {
+        const current = communityModerationMetaPromiseRef.current;
+        if (current?.userId === currentUserId && current.promise === promise) {
+          communityModerationMetaPromiseRef.current = null;
+        }
+        throw error;
+      });
+
+    communityModerationMetaPromiseRef.current = {
+      userId: currentUserId,
+      promise,
+    };
+    return promise;
+  }
+
   function ensureCommunityViewerMeta(
     supabase: ReturnType<typeof createClient>,
     currentUserId: string,
@@ -4517,12 +4622,14 @@ function CommunityPageContent() {
     const cached = communityViewerMetaPromiseRef.current;
     if (cached?.userId === currentUserId) return cached.promise;
 
-    const promise = loadCommunityViewerMeta(supabase, currentUserId)
-      .then((meta) => {
+    const promise = Promise.all([
+      ensureCommunityModerationMeta(supabase, currentUserId),
+      loadCommunityPrayedIds(supabase, currentUserId),
+    ])
+      .then(([moderation, prayedIds]) => {
+        const meta: CommunityViewerMeta = { ...moderation, prayedIds };
         const current = communityViewerMetaPromiseRef.current;
         if (current?.userId === currentUserId && current.promise === promise) {
-          setHiddenKeys(meta.hiddenKeys);
-          setHiddenUserIds(meta.hiddenUserIds);
           setPrayedIds(meta.prayedIds);
           storageSetJson(`comm_prayed_${currentUserId}`, meta.prayedIds);
         }
@@ -4541,6 +4648,174 @@ function CommunityPageContent() {
       promise,
     };
     return promise;
+  }
+
+  function setAllSectionState(
+    section: CommunitySectionKey,
+    state: CommunitySectionLoadState,
+  ) {
+    setAllSectionLoadState((current) =>
+      current[section] === state
+        ? current
+        : { ...current, [section]: state },
+    );
+  }
+
+  function isCurrentAllSectionRequest(
+    section: CommunitySectionKey,
+    requestId: number,
+  ) {
+    return allSectionRequestSeqRef.current[section] === requestId;
+  }
+
+  async function loadAllPrayerSection(
+    section: Exclude<CommunitySectionKey, "qt">,
+    options?: {
+      force?: boolean;
+      supabase?: ReturnType<typeof createClient>;
+      currentUserId?: string;
+    },
+  ) {
+    if (
+      !options?.force &&
+      (allSectionInFlightRef.current.has(section) ||
+        allSectionLoadState[section] === "ready")
+    ) {
+      return;
+    }
+
+    const requestId = ++allSectionRequestSeqRef.current[section];
+    allSectionInFlightRef.current.add(section);
+    setAllSectionState(section, "loading");
+
+    try {
+      const supabase = options?.supabase ?? createClient();
+      let currentUserId = options?.currentUserId ?? userId;
+      if (!currentUserId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        currentUserId = user?.id ?? null;
+      }
+      if (!currentUserId) throw new Error("community_user_missing");
+
+      const resultPromise =
+        section === "praying"
+          ? supabase
+              .from("prayer_items")
+              .select("*")
+              .ilike("visibility", "%all%")
+              .eq("is_answered", false)
+              .order("created_at", { ascending: false })
+              .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT)
+          : supabase
+              .from("prayer_items")
+              .select("*")
+              .ilike("visibility", "%all%")
+              .eq("is_answered", true)
+              .order("answered_at", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT);
+
+      const [viewerMeta, result] = await Promise.all([
+        ensureCommunityViewerMeta(supabase, currentUserId),
+        resultPromise,
+      ]);
+
+      if (result.error) throw result.error;
+      const rows = result.data ?? [];
+      const profileMap = await fetchProfiles(supabase, rows);
+      if (!isCurrentAllSectionRequest(section, requestId)) return;
+
+      if (section === "praying") {
+        setPrayers(
+          sortPrayerRequestRows(
+            filterHiddenItems(
+              "prayer",
+              rows.map((row: any) => ({
+                ...row,
+                profiles: profileMap[row.user_id] ?? null,
+              })),
+              viewerMeta.hiddenKeys,
+              viewerMeta.hiddenUserIds,
+            ),
+          ),
+        );
+        setAllSectionState(section, "ready");
+        return;
+      }
+
+      const visibleAnsweredRows = sortAnsweredPrayerRows(
+        filterHiddenItems(
+          "prayer",
+          rows.map((row: any) => ({
+            ...row,
+            like_count: row.like_count ?? 0,
+            profiles: profileMap[row.user_id] ?? null,
+          })),
+          viewerMeta.hiddenKeys,
+          viewerMeta.hiddenUserIds,
+        ),
+      );
+      setAnsweredPrayers(visibleAnsweredRows);
+      setAllSectionState(section, "ready");
+
+      const answeredIds = visibleAnsweredRows.map((row: any) => row.id);
+      if (answeredIds.length > 0) {
+        void fetchPrayerLikeMeta(supabase, answeredIds, currentUserId)
+          .then(({ counts, mine }) => {
+            if (!isCurrentAllSectionRequest(section, requestId)) return;
+            setAnsweredPrayers((current) =>
+              current.map((row: any) =>
+                answeredIds.includes(row.id)
+                  ? {
+                      ...row,
+                      like_count: counts[row.id] ?? row.like_count ?? 0,
+                    }
+                  : row,
+              ),
+            );
+            if (mine.length > 0) {
+              setLikedPrayerIds((current) =>
+                Array.from(new Set([...current, ...mine])),
+              );
+            }
+          })
+          .catch((error) =>
+            console.warn("전체 기도 응답 좋아요 보조 조회 실패:", error),
+          );
+      }
+    } catch (error) {
+      console.warn(
+        section === "praying"
+          ? "전체 기도 중 조회 실패:"
+          : "전체 기도 응답 조회 실패:",
+        error,
+      );
+      if (isCurrentAllSectionRequest(section, requestId)) {
+        setAllSectionState(section, "error");
+      }
+    } finally {
+      if (isCurrentAllSectionRequest(section, requestId)) {
+        allSectionInFlightRef.current.delete(section);
+      }
+    }
+  }
+
+  function prefetchAllPrayerSections(options: {
+    supabase: ReturnType<typeof createClient>;
+    currentUserId: string;
+  }) {
+    const startPrefetch = () => {
+      void loadAllPrayerSection("praying", options);
+      void loadAllPrayerSection("answered", options);
+    };
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(startPrefetch);
+    } else {
+      startPrefetch();
+    }
   }
 
   async function loadData(options?: {
@@ -4648,86 +4923,20 @@ function CommunityPageContent() {
       }
 
       if (targetTab === "all") {
-        const {
-          hiddenKeys: loadedHiddenKeys,
-          hiddenUserIds: loadedHiddenUserIds,
-        } = await ensureCommunityViewerMeta(supabase, user.id);
+        setAllSectionState("qt", "loading");
+        const moderationMeta = await ensureCommunityModerationMeta(
+          supabase,
+          user.id,
+        );
+        const qtData = await fetchQtFeedRows(
+          supabase,
+          "%all%",
+          COMMUNITY_ALL_QT_LIMIT,
+        );
+        const profileMap = await fetchProfiles(supabase, qtData);
 
-        const [prayingResult, answeredResult, qtData] = await Promise.all([
-          supabase
-            .from("prayer_items")
-            .select("*")
-            .ilike("visibility", "%all%")
-            .eq("is_answered", false)
-            .order("created_at", { ascending: false })
-            .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
-          supabase
-            .from("prayer_items")
-            .select("*")
-            .ilike("visibility", "%all%")
-            .eq("is_answered", true)
-            .order("answered_at", { ascending: false })
-            .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT),
-          fetchQtFeedRows(supabase, "%all%", COMMUNITY_ALL_QT_LIMIT),
-        ]);
-
-        if (prayingResult.error) throw prayingResult.error;
-        if (answeredResult.error) throw answeredResult.error;
-
-        const prayingRows = prayingResult.data ?? [];
-        const answeredRows = answeredResult.data ?? [];
-        const answeredIds = answeredRows.map((row: any) => row.id);
-        const qtIds = qtData.map((row: any) => row.id);
-
-        const [profileMap, likesResult, reactions] = await Promise.all([
-          fetchProfiles(supabase, [...prayingRows, ...answeredRows, ...qtData]),
-          answeredIds.length > 0
-            ? supabase
-                .from("prayer_likes")
-                .select("prayer_id,user_id")
-                .in("prayer_id", answeredIds)
-            : Promise.resolve({ data: [], error: null }),
-          fetchQtReactions(supabase, qtIds, user.id),
-        ]);
-
-        if (likesResult.error) throw likesResult.error;
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
-        const likeCounts: Record<string, number> = {};
-        const myLikedIds: string[] = [];
-        (likesResult.data ?? []).forEach((like: any) => {
-          likeCounts[like.prayer_id] = (likeCounts[like.prayer_id] ?? 0) + 1;
-          if (like.user_id === user.id) myLikedIds.push(like.prayer_id);
-        });
-
-        setPrayers(
-          sortPrayerRequestRows(
-            filterHiddenItems(
-              "prayer",
-              prayingRows.map((row: any) => ({
-                ...row,
-                profiles: profileMap[row.user_id] ?? null,
-              })),
-              loadedHiddenKeys,
-              loadedHiddenUserIds,
-            ),
-          ),
-        );
-        setLikedPrayerIds(myLikedIds);
-        setAnsweredPrayers(
-          sortAnsweredPrayerRows(
-            filterHiddenItems(
-              "prayer",
-              answeredRows.map((row: any) => ({
-                ...row,
-                like_count: likeCounts[row.id] ?? 0,
-                profiles: profileMap[row.user_id] ?? null,
-              })),
-              loadedHiddenKeys,
-              loadedHiddenUserIds,
-            ),
-          ),
-        );
         setQtShares(
           sortQtFeedRows(
             filterHiddenItems(
@@ -4736,14 +4945,35 @@ function CommunityPageContent() {
                 ...row,
                 profiles: profileMap[row.user_id] ?? null,
               })),
-              loadedHiddenKeys,
-              loadedHiddenUserIds,
+              moderationMeta.hiddenKeys,
+              moderationMeta.hiddenUserIds,
             ),
           ),
         );
-        setQtReactionCounts(reactions.counts);
-        setMyQtReactions(reactions.mine);
-        markMainTabReady(targetTab, requestId);
+        setAllSectionState("qt", "ready");
+        if (!markMainTabReady(targetTab, requestId)) return;
+
+        // Reactions enrich already-visible meditation cards and must not delay
+        // the first public-community paint.
+        const qtIds = qtData.map((row: any) => row.id);
+        void fetchQtReactions(supabase, qtIds, user.id)
+          .then(({ counts, mine }) => {
+            if (!isCurrentMainTabRequest(targetTab, requestId)) return;
+            setQtReactionCounts((current) => ({ ...current, ...counts }));
+            setMyQtReactions((current) => ({ ...current, ...mine }));
+          })
+          .catch((error) =>
+            console.warn("전체 묵상 반응 보조 조회 실패:", error),
+          );
+
+        // Once the meditation list has had a frame to paint, prefetch both
+        // prayer sections independently. Each section becomes ready as soon as
+        // its own rows/profiles arrive, so praying never waits for answered
+        // prayers (or vice versa).
+        prefetchAllPrayerSections({
+          supabase,
+          currentUserId: user.id,
+        });
         return;
       }
 
@@ -4878,6 +5108,7 @@ function CommunityPageContent() {
       console.error("커뮤니티 목록 조회 실패:", error);
       if (isCurrentMainTabRequest(targetTab, requestId)) {
         loadedMainTabsRef.current.delete(targetTab);
+        if (targetTab === "all") setAllSectionState("qt", "error");
         setMainTabState(targetTab, "error");
       }
     }
@@ -4903,7 +5134,8 @@ function CommunityPageContent() {
     });
     setGroupChallenges([]);
     setGroupChallengeProgress({});
-    setLoadingGroupChallenges(false);
+    setGroupChallengeLoadError(false);
+    setLoadingGroupChallenges(!!group.isMember);
     setLoadingGroupQts(true);
     setLoadingGroupPrayers(true);
     setGroupQtLoadError(false);
@@ -4921,9 +5153,119 @@ function CommunityPageContent() {
       return;
     }
 
-    const viewerMeta = await ensureCommunityViewerMeta(supabase, user.id);
-    const currentHiddenKeys = viewerMeta.hiddenKeys;
-    const currentHiddenUserIds = viewerMeta.hiddenUserIds;
+    // Challenge state is part of the first group-detail screen. Start it
+    // before meditation so the challenge card (or confirmed no-challenge CTA)
+    // is resolved before QT cards are released.
+    const groupChallengePromise = (async () => {
+      if (group.isMember) {
+        if (user?.id) {
+          let latestRequest: any | null = null;
+          const { data: summaryRows, error: summaryError } = await supabase.rpc(
+            "get_group_challenge_request_summary",
+            { p_group_id: group.id },
+          );
+
+          if (summaryError) {
+            console.warn(
+              "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
+              summaryError.message,
+            );
+            const { data: requestRows, error: requestError } = await supabase
+              .from("group_challenge_requests")
+              .select(
+                "id,status,title,requested_start_date,duration_days,created_at",
+              )
+              .eq("group_id", group.id)
+              .eq("requester_id", user.id)
+              .in("status", ["pending", "contacted", "approved"])
+              .order("created_at", { ascending: false })
+              .limit(1);
+            if (requestError) {
+              console.warn(
+                "그룹 챌린지 신청 상태 조회 실패:",
+                requestError.message,
+              );
+              setGroupChallengeLoadError(true);
+            } else {
+              latestRequest = requestRows?.[0] ?? null;
+            }
+          } else {
+            latestRequest = Array.isArray(summaryRows)
+              ? (summaryRows[0] ?? null)
+              : null;
+          }
+
+          setGroupChallengeRequest(
+            group.id,
+            latestRequest
+              ? {
+                  id: latestRequest.id,
+                  status: latestRequest.status,
+                  title: latestRequest.title,
+                  requested_start_date: latestRequest.requested_start_date,
+                  requested_end_date:
+                    latestRequest.requested_end_date ||
+                    deriveChallengeRequestEndDate(
+                      latestRequest.requested_start_date,
+                      latestRequest.duration_days,
+                    ),
+                  duration_days: latestRequest.duration_days,
+                  created_at: latestRequest.created_at,
+                }
+              : null,
+          );
+        } else {
+          setGroupChallengeRequestStatus(group.id, null);
+        }
+
+        const { data: challengeRows, error: challengeError } = await supabase
+          .from("group_challenges")
+          .select(
+            "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
+          )
+          .eq("group_id", group.id)
+          .in("status", ["scheduled", "active", "completed"])
+          .order("start_date", { ascending: true })
+          .limit(5);
+        if (challengeError) {
+          console.warn("그룹 챌린지 조회 실패:", challengeError.message);
+          setGroupChallengeLoadError(true);
+          setGroupChallenges([]);
+          setGroupChallengeProgress({});
+        } else {
+          const nextChallenges = challengeRows ?? [];
+          setGroupChallenges(nextChallenges);
+          if (user?.id && nextChallenges.length > 0) {
+            const progress = await fetchGroupChallengeProgress(
+              supabase,
+              nextChallenges,
+              user.id,
+            );
+            setGroupChallengeProgress(progress);
+          } else {
+            setGroupChallengeProgress({});
+          }
+        }
+      } else {
+        setGroupChallengeRequestStatus(group.id, null);
+        setGroupChallenges([]);
+        setGroupChallengeProgress({});
+      }
+    })()
+      .catch((error) => {
+        console.warn("그룹 챌린지 우선 조회 실패:", error);
+        setGroupChallengeLoadError(true);
+      })
+      .finally(() => {
+        setLoadingGroupChallenges(false);
+      });
+
+    const moderationMeta = await ensureCommunityModerationMeta(
+      supabase,
+      user.id,
+    );
+    const currentHiddenKeys = moderationMeta.hiddenKeys;
+    const currentHiddenUserIds = moderationMeta.hiddenUserIds;
 
     if (group.created_by && !group.leaderProfile) {
       void loadProfileCards(supabase, [group.created_by])
@@ -5057,30 +5399,27 @@ function CommunityPageContent() {
       setLoadingGroupQts(false);
     }
 
+    // The first group-detail screen releases QT only after challenge state and
+    // meditation are both settled. Prayer states are prefetched afterwards.
+    await groupChallengePromise;
+
     if (user) {
       try {
-        const prayerRows = await fetchPrayerFeedRows(
-          supabase,
-          `%group_${group.id}%`,
-        );
+        const [, prayerRows] = await Promise.all([
+          ensureCommunityViewerMeta(supabase, user.id),
+          fetchPrayerFeedRows(supabase, `%group_${group.id}%`),
+        ]);
         const prayerProfMap = await fetchProfiles(supabase, prayerRows);
         const answeredIds = prayerRows
           .filter((row: any) => !!row.is_answered)
           .map((row: any) => row.id);
-        const { counts: likeCounts, mine: myLikedIds } =
-          await fetchPrayerLikeMeta(supabase, answeredIds, user.id);
-        if (myLikedIds.length > 0) {
-          setLikedPrayerIds((prev) =>
-            Array.from(new Set([...prev, ...myLikedIds])),
-          );
-        }
         setGroupPrayers(
           sortPrayerFeedRows(
             filterHiddenItems(
               "prayer",
               prayerRows.map((row: any) => ({
                 ...row,
-                like_count: likeCounts[row.id] ?? row.like_count ?? 0,
+                like_count: row.like_count ?? 0,
                 profiles: prayerProfMap[row.user_id] ?? null,
                 isUnreadInGroup: isLaterThan(
                   prayerUnreadActivityTime(row),
@@ -5092,6 +5431,31 @@ function CommunityPageContent() {
             ),
           ),
         );
+        setLoadingGroupPrayers(false);
+
+        if (answeredIds.length > 0) {
+          void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+            .then(({ counts, mine }) => {
+              setGroupPrayers((current) =>
+                current.map((row: any) =>
+                  answeredIds.includes(row.id)
+                    ? {
+                        ...row,
+                        like_count: counts[row.id] ?? row.like_count ?? 0,
+                      }
+                    : row,
+                ),
+              );
+              if (mine.length > 0) {
+                setLikedPrayerIds((current) =>
+                  Array.from(new Set([...current, ...mine])),
+                );
+              }
+            })
+            .catch((error) =>
+              console.warn("그룹 기도 응답 좋아요 보조 조회 실패:", error),
+            );
+        }
       } catch (prayerError) {
         console.warn("그룹 기도 조회 실패:", prayerError);
         setGroupPrayerLoadError(true);
@@ -5101,105 +5465,6 @@ function CommunityPageContent() {
     } else {
       setLoadingGroupPrayers(false);
     }
-
-    void (async () => {
-      if (group.isMember) {
-        if (user?.id) {
-          let latestRequest: any | null = null;
-          const { data: summaryRows, error: summaryError } = await supabase.rpc(
-            "get_group_challenge_request_summary",
-            { p_group_id: group.id },
-          );
-
-          if (summaryError) {
-            console.warn(
-              "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
-              summaryError.message,
-            );
-            const { data: requestRows, error: requestError } = await supabase
-              .from("group_challenge_requests")
-              .select(
-                "id,status,title,requested_start_date,duration_days,created_at",
-              )
-              .eq("group_id", group.id)
-              .eq("requester_id", user.id)
-              .in("status", ["pending", "contacted", "approved"])
-              .order("created_at", { ascending: false })
-              .limit(1);
-            if (requestError) {
-              console.warn(
-                "그룹 챌린지 신청 상태 조회 실패:",
-                requestError.message,
-              );
-            } else {
-              latestRequest = requestRows?.[0] ?? null;
-            }
-          } else {
-            latestRequest = Array.isArray(summaryRows)
-              ? (summaryRows[0] ?? null)
-              : null;
-          }
-
-          setGroupChallengeRequest(
-            group.id,
-            latestRequest
-              ? {
-                  id: latestRequest.id,
-                  status: latestRequest.status,
-                  title: latestRequest.title,
-                  requested_start_date: latestRequest.requested_start_date,
-                  requested_end_date:
-                    latestRequest.requested_end_date ||
-                    deriveChallengeRequestEndDate(
-                      latestRequest.requested_start_date,
-                      latestRequest.duration_days,
-                    ),
-                  duration_days: latestRequest.duration_days,
-                  created_at: latestRequest.created_at,
-                }
-              : null,
-          );
-        } else {
-          setGroupChallengeRequestStatus(group.id, null);
-        }
-
-        const { data: challengeRows, error: challengeError } = await supabase
-          .from("group_challenges")
-          .select(
-            "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
-          )
-          .eq("group_id", group.id)
-          .in("status", ["scheduled", "active", "completed"])
-          .order("start_date", { ascending: true })
-          .limit(5);
-        if (challengeError) {
-          console.warn("그룹 챌린지 조회 실패:", challengeError.message);
-          setGroupChallenges([]);
-          setGroupChallengeProgress({});
-        } else {
-          const nextChallenges = challengeRows ?? [];
-          setGroupChallenges(nextChallenges);
-          if (user?.id && nextChallenges.length > 0) {
-            const progress = await fetchGroupChallengeProgress(
-              supabase,
-              nextChallenges,
-              user.id,
-            );
-            setGroupChallengeProgress(progress);
-          } else {
-            setGroupChallengeProgress({});
-          }
-        }
-      } else {
-        setGroupChallengeRequestStatus(group.id, null);
-        setGroupChallenges([]);
-        setGroupChallengeProgress({});
-      }
-      setLoadingGroupChallenges(false);
-    })().catch((error) => {
-      console.warn("그룹 챌린지 보조 조회 실패:", error);
-      setLoadingGroupChallenges(false);
-    });
 
   }
 
@@ -7333,7 +7598,7 @@ function CommunityPageContent() {
           {renderCompanionChallengeCard()}
 
           {partnerDetailTab === "qt" ? (
-            loadingPartnerQts ? (
+            loadingCompanionChallenge || loadingPartnerQts ? (
               <div
                 style={{
                   display: "flex",
@@ -8585,6 +8850,7 @@ function CommunityPageContent() {
                 )}
 
               {!loadingGroupChallenges &&
+                !groupChallengeLoadError &&
                 visibleGroupChallengeCards().length === 0 &&
                 !preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
                   <div
@@ -8763,7 +9029,7 @@ function CommunityPageContent() {
                 </p>
               </div>
             ) : groupDetailTab === "qt" ? (
-              loadingGroupQts ? (
+              loadingGroupChallenges || loadingGroupQts ? (
                 <div
                   style={{
                     display: "flex",
@@ -10789,7 +11055,26 @@ function CommunityPageContent() {
                 {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
               </>
             ) : allTab === "praying" ? (
-              prayers.length === 0 ? (
+              allSectionLoadState.praying === "idle" ||
+              allSectionLoadState.praying === "loading" ? (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    padding: 32,
+                  }}
+                >
+                  <Loader2
+                    size={22}
+                    style={{ color: "var(--sage)" }}
+                    className="spin"
+                  />
+                </div>
+              ) : allSectionLoadState.praying === "error" ? (
+                renderLoadFailure(() => {
+                  void loadAllPrayerSection("praying", { force: true });
+                }, true)
+              ) : prayers.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0" }}>
                   <HandHeart
                     size={30}
@@ -10892,6 +11177,25 @@ function CommunityPageContent() {
                   {renderFeedLoadMore(allPrayingFeedKey, prayers.length)}
                 </div>
               )
+            ) : allSectionLoadState.answered === "idle" ||
+              allSectionLoadState.answered === "loading" ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: 32,
+                }}
+              >
+                <Loader2
+                  size={22}
+                  style={{ color: "var(--sage)" }}
+                  className="spin"
+                />
+              </div>
+            ) : allSectionLoadState.answered === "error" ? (
+              renderLoadFailure(() => {
+                void loadAllPrayerSection("answered", { force: true });
+              }, true)
             ) : answeredPrayers.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
                 <p style={{ fontSize: 32, marginBottom: 10 }}>✨</p>
