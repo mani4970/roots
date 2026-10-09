@@ -19,9 +19,12 @@ function addLatestTime(
   if (!current || Date.parse(value) > Date.parse(current)) target[key] = value;
 }
 
-export type CommunityViewerMeta = {
+export type CommunityModerationMeta = {
   hiddenKeys: string[];
   hiddenUserIds: string[];
+};
+
+export type CommunityViewerMeta = CommunityModerationMeta & {
   prayedIds: string[];
 };
 
@@ -39,31 +42,24 @@ export type PartnerActivityData = {
 export type PartnerSupplementalData = PartnerCoreData & PartnerActivityData;
 
 /**
- * Loads the viewer-specific community filters in parallel.
- *
- * These queries are kept independent from the lightweight partner/group list
- * shells so a slow moderation/prayer-log request cannot block the first list
- * paint. Detail views still await this metadata before loading content.
+ * Loads only moderation filters required before shared QT can be rendered.
+ * Prayer-log history is intentionally excluded so the meditation-first path
+ * never waits for intercession state.
  */
-export async function loadCommunityViewerMeta(
+export async function loadCommunityModerationMeta(
   supabase: any,
   userId: string,
-): Promise<CommunityViewerMeta> {
-  const [hiddenItemsResult, hiddenUsersResult, prayerLogsResult] =
-    await Promise.all([
-      supabase
-        .from("hidden_community_items")
-        .select("content_type,content_id")
-        .eq("user_id", userId),
-      supabase
-        .from("hidden_community_users")
-        .select("hidden_user_id")
-        .eq("user_id", userId),
-      supabase
-        .from("user_prayer_logs")
-        .select("prayer_id")
-        .eq("user_id", userId),
-    ]);
+): Promise<CommunityModerationMeta> {
+  const [hiddenItemsResult, hiddenUsersResult] = await Promise.all([
+    supabase
+      .from("hidden_community_items")
+      .select("content_type,content_id")
+      .eq("user_id", userId),
+    supabase
+      .from("hidden_community_users")
+      .select("hidden_user_id")
+      .eq("user_id", userId),
+  ]);
 
   if (hiddenItemsResult.error) {
     console.warn(
@@ -77,9 +73,6 @@ export async function loadCommunityViewerMeta(
       hiddenUsersResult.error.message,
     );
   }
-  if (prayerLogsResult.error) {
-    console.warn("함께 기도한 기록 조회 실패:", prayerLogsResult.error.message);
-  }
 
   return {
     hiddenKeys: (hiddenItemsResult.data ?? []).map(
@@ -88,8 +81,39 @@ export async function loadCommunityViewerMeta(
     hiddenUserIds: (hiddenUsersResult.data ?? [])
       .map((row: any) => row.hidden_user_id)
       .filter(Boolean),
-    prayedIds: (prayerLogsResult.data ?? []).map((row: any) => row.prayer_id),
   };
+}
+
+export async function loadCommunityPrayedIds(
+  supabase: any,
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("user_prayer_logs")
+    .select("prayer_id")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.warn("함께 기도한 기록 조회 실패:", error.message);
+  }
+
+  return (data ?? []).map((row: any) => row.prayer_id).filter(Boolean);
+}
+
+/**
+ * Full viewer metadata used by prayer surfaces. The moderation part remains
+ * reusable by the earlier meditation-first path.
+ */
+export async function loadCommunityViewerMeta(
+  supabase: any,
+  userId: string,
+): Promise<CommunityViewerMeta> {
+  const [moderation, prayedIds] = await Promise.all([
+    loadCommunityModerationMeta(supabase, userId),
+    loadCommunityPrayedIds(supabase, userId),
+  ]);
+
+  return { ...moderation, prayedIds };
 }
 
 /**
