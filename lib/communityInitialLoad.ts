@@ -1,7 +1,6 @@
 import { getPrayerShareActivityTime } from "@/lib/communityContentOrder";
 import { loadProfileCards } from "@/lib/profileCards";
 
-
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
@@ -26,20 +25,25 @@ export type CommunityViewerMeta = {
   prayedIds: string[];
 };
 
-export type PartnerSupplementalData = {
+export type PartnerCoreData = {
   profileMap: Record<string, any>;
   partnerPreferenceMap: Record<string, any>;
   favoritePartnerIds: Set<string>;
+};
+
+export type PartnerActivityData = {
   latestPartnerQtAt: Record<string, string | null>;
   latestPartnerPrayerAt: Record<string, string | null>;
 };
 
+export type PartnerSupplementalData = PartnerCoreData & PartnerActivityData;
+
 /**
  * Loads the viewer-specific community filters in parallel.
  *
- * These three queries are independent. Keeping them outside the large page
- * component also prevents future community features from making the initial
- * loading path even more serial.
+ * These queries are kept independent from the lightweight partner/group list
+ * shells so a slow moderation/prayer-log request cannot block the first list
+ * paint. Detail views still await this metadata before loading content.
  */
 export async function loadCommunityViewerMeta(
   supabase: any,
@@ -84,10 +88,35 @@ export async function loadCommunityViewerMeta(
     hiddenUserIds: (hiddenUsersResult.data ?? [])
       .map((row: any) => row.hidden_user_id)
       .filter(Boolean),
-    prayedIds: (prayerLogsResult.data ?? []).map(
-      (row: any) => row.prayer_id,
-    ),
+    prayedIds: (prayerLogsResult.data ?? []).map((row: any) => row.prayer_id),
   };
+}
+
+/**
+ * Group discovery only needs group-level hides. Loading just those rows lets the
+ * group cards appear without waiting for hidden users, hidden posts, or prayer
+ * logs, while still guaranteeing that a hidden public group never flashes.
+ */
+export async function loadHiddenGroupIds(
+  supabase: any,
+  userId: string,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("hidden_community_items")
+    .select("content_id")
+    .eq("user_id", userId)
+    .eq("content_type", "group");
+
+  if (error) {
+    // Do not silently show hidden public groups if this privacy query fails.
+    throw error;
+  }
+
+  return new Set(
+    (data ?? [])
+      .map((row: any) => String(row.content_id ?? ""))
+      .filter(Boolean),
+  );
 }
 
 async function loadPartnerPreferenceRows(
@@ -123,59 +152,31 @@ async function loadPartnerPreferenceRows(
 }
 
 /**
- * Loads all independent metadata needed by the companion list concurrently.
- * The returned shape matches the maps consumed by app/community/page.tsx.
- * Prayer activity additionally includes answered_at so a newly completed
- * testimony is not hidden behind the original prayer-request date.
+ * Minimal data required to paint the companion list: names/avatars/streaks and
+ * favorite/read preferences. Activity discovery intentionally lives elsewhere.
  */
-export async function loadPartnerSupplementalData(
+export async function loadPartnerCoreData(
   supabase: any,
   userId: string,
   partnerIds: string[],
-): Promise<PartnerSupplementalData> {
+): Promise<PartnerCoreData> {
   if (partnerIds.length === 0) {
     return {
       profileMap: {},
       partnerPreferenceMap: {},
       favoritePartnerIds: new Set<string>(),
-      latestPartnerQtAt: {},
-      latestPartnerPrayerAt: {},
     };
   }
 
-  const [profileResult, preferenceRows, qtRecipientResult, prayerRecipientResult] =
-    await Promise.all([
-      loadProfileCards(supabase, partnerIds)
-        .then((data) => ({ data, error: null }))
-        .catch((error: any) => ({ data: [], error })),
-      loadPartnerPreferenceRows(supabase, userId, partnerIds),
-      supabase
-        .from("qt_record_recipients")
-        .select("owner_id,recipient_id,created_at")
-        .eq("recipient_id", userId)
-        .in("owner_id", partnerIds)
-        .order("created_at", { ascending: false })
-        .limit(200),
-      supabase
-        .from("prayer_item_recipients")
-        .select("prayer_item_id,owner_id,recipient_id,created_at")
-        .eq("recipient_id", userId)
-        .in("owner_id", partnerIds)
-        .order("created_at", { ascending: false })
-        .limit(500),
-    ]);
+  const [profileResult, preferenceRows] = await Promise.all([
+    loadProfileCards(supabase, partnerIds)
+      .then((data) => ({ data, error: null }))
+      .catch((error: any) => ({ data: [], error })),
+    loadPartnerPreferenceRows(supabase, userId, partnerIds),
+  ]);
 
   if (profileResult.error) {
     console.warn("동역자 프로필 조회 실패:", profileResult.error.message);
-  }
-  if (qtRecipientResult.error) {
-    console.warn("동역자 새 묵상 조회 실패:", qtRecipientResult.error.message);
-  }
-  if (prayerRecipientResult.error) {
-    console.warn(
-      "동역자 새 기도 조회 실패:",
-      prayerRecipientResult.error.message,
-    );
   }
 
   const profileMap: Record<string, any> = {};
@@ -194,6 +195,46 @@ export async function loadPartnerSupplementalData(
       .map((row: any) => row.companion_user_id)
       .filter(Boolean),
   );
+
+  return { profileMap, partnerPreferenceMap, favoritePartnerIds };
+}
+
+/**
+ * Slower NEW/activity metadata for companion cards. This can finish after the
+ * list is already visible and only enriches the existing cards.
+ */
+export async function loadPartnerActivityData(
+  supabase: any,
+  userId: string,
+  partnerIds: string[],
+): Promise<PartnerActivityData> {
+  if (partnerIds.length === 0) {
+    return { latestPartnerQtAt: {}, latestPartnerPrayerAt: {} };
+  }
+
+  const [qtRecipientResult, prayerRecipientResult] = await Promise.all([
+    supabase
+      .from("qt_record_recipients")
+      .select("owner_id,recipient_id,created_at")
+      .eq("recipient_id", userId)
+      .in("owner_id", partnerIds)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("prayer_item_recipients")
+      .select("prayer_item_id,owner_id,recipient_id,created_at")
+      .eq("recipient_id", userId)
+      .in("owner_id", partnerIds)
+      .order("created_at", { ascending: false })
+      .limit(500),
+  ]);
+
+  if (qtRecipientResult.error) {
+    console.warn("동역자 새 묵상 조회 실패:", qtRecipientResult.error.message);
+  }
+  if (prayerRecipientResult.error) {
+    console.warn("동역자 새 기도 조회 실패:", prayerRecipientResult.error.message);
+  }
 
   const latestPartnerQtAt: Record<string, string | null> = {};
   (qtRecipientResult.data ?? []).forEach((row: any) => {
@@ -245,11 +286,21 @@ export async function loadPartnerSupplementalData(
     addLatestTime(latestPartnerPrayerAt, recipient.owner_id, activityAt);
   });
 
-  return {
-    profileMap,
-    partnerPreferenceMap,
-    favoritePartnerIds,
-    latestPartnerQtAt,
-    latestPartnerPrayerAt,
-  };
+  return { latestPartnerQtAt, latestPartnerPrayerAt };
+}
+
+/**
+ * Compatibility helper for callers that still need the complete companion
+ * metadata in one await.
+ */
+export async function loadPartnerSupplementalData(
+  supabase: any,
+  userId: string,
+  partnerIds: string[],
+): Promise<PartnerSupplementalData> {
+  const [core, activity] = await Promise.all([
+    loadPartnerCoreData(supabase, userId, partnerIds),
+    loadPartnerActivityData(supabase, userId, partnerIds),
+  ]);
+  return { ...core, ...activity };
 }
