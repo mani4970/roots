@@ -41,6 +41,8 @@ export function isObservationUuid(value: unknown): value is string {
 }
 
 const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
+  draft_auth_snapshot: new Set(['before_fetch', 'result']),
+  draft_auth_fetch_kind: new Set(['none', 'user', 'refresh', 'other', 'mixed']),
   draft_transport_state: new Set(["fetch_not_observed", "fetch_pending", "headers_received", "fetch_rejected"]),
   browser_name: new Set(["chrome", "safari", "firefox", "edge", "unknown"]),
   auth_action: new Set(["login", "signup", "password_reset", "oauth"]),
@@ -61,8 +63,8 @@ const STRING_DETAILS: Record<string, ReadonlySet<string>> = {
   measurement: new Set(["dom_layout"]),
   outcome: new Set(["eligible", "ineligible", "already_seen", "empty", "error", "authenticated", "accepted", "redirect_started", "dom_visible"]),
 };
-const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present", "draft_signal_aborted"]);
-const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days", "draft_rpc_ms", "draft_before_fetch_ms", "draft_fetch_ms", "draft_after_headers_ms"]);
+const BOOLEAN_DETAILS = new Set(["updated", "eligible", "foreground", "interrupted", "reduced_motion", "automatic", "recovery", "persisted", "past_date", "retry", "local_backup", "existing_record", "sharing_failed", "online", "error_present", "message_present", "draft_signal_aborted", "draft_trace_header", "draft_lock_held", "draft_auth_truncated"]);
+const NUMBER_DETAILS = new Set(["streak_days", "total_days", "count", "attempt", "upload_attempt", "progress_days", "draft_rpc_ms", "draft_before_fetch_ms", "draft_fetch_ms", "draft_after_headers_ms", "draft_auth_user_pending", "draft_auth_session_pending", "draft_auth_refresh_pending", "draft_auth_oldest_ms", "draft_auth_fetch_ms", "draft_lock_local_waiters", "draft_lock_browser_waiters", "draft_lock_wait_ms"]);
 const SOURCE_POSITION_DETAILS = new Set(["error_line", "error_column", "caller_line", "caller_column"]);
 // Only build-generated asset basenames; never a complete URL, path or message.
 export function sanitizeObservationScript(input: unknown): string | null {
@@ -94,8 +96,10 @@ export function sanitizeObservationDetails(input: unknown): ObservationDetails {
     } else if (key === "error_script" || key === "caller_script") {
       const script = sanitizeObservationScript(value);
       if (script) clean[key] = script;
-    } else if (key === "draft_transport_version" && value === 1) {
-      clean[key] = 1;
+    } else if (key === "draft_request_id" && typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+      clean[key] = value.toLowerCase();
+    } else if (key === "draft_transport_version" && (value === 1 || value === 2)) {
+      clean[key] = value;
     } else if (key === "draft_http_status" && typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599) {
       clean[key] = value;
     } else if (key === "diagnostic_version" && value === 2) {

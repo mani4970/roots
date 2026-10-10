@@ -31,7 +31,7 @@ export type QtDraftSaveResult = {
 type SupabaseClient = ReturnType<typeof createClient>;
 
 export type QtDraftTransportDetails = {
-  draft_transport_version: 1;
+  draft_transport_version: 1 | 2;
   draft_transport_state: "fetch_not_observed" | "fetch_pending" | "headers_received" | "fetch_rejected";
   draft_rpc_ms: number;
   draft_before_fetch_ms: number;
@@ -39,7 +39,31 @@ export type QtDraftTransportDetails = {
   draft_after_headers_ms?: number;
   draft_http_status?: number;
   draft_signal_aborted: boolean;
+  draft_request_id?: string;
+  draft_trace_header?: boolean;
+  draft_auth_snapshot?: 'before_fetch' | 'result';
+} & Partial<QtDraftAuthDetails>;
+
+export type QtDraftAuthDetails = {
+  draft_auth_user_pending: number;
+  draft_auth_session_pending: number;
+  draft_auth_refresh_pending: number;
+  draft_auth_oldest_ms: number;
+  draft_auth_fetch_kind: 'none' | 'user' | 'refresh' | 'other' | 'mixed';
+  draft_auth_fetch_ms: number;
+  draft_auth_truncated: boolean;
+  draft_lock_held?: boolean;
+  draft_lock_local_waiters?: number;
+  draft_lock_browser_waiters?: number;
+  draft_lock_wait_ms?: number;
 };
+
+// Register the browser singleton's observer without importing auth code into
+// the save path. The observer reads only bounded counters and elapsed times.
+const draftAuthObservers = new WeakMap<object, () => QtDraftAuthDetails>();
+export function registerQtDraftAuthObservation(auth: object, snapshot: () => QtDraftAuthDetails) {
+  try { draftAuthObservers.set(auth, snapshot); } catch { /* Best effort. */ }
+}
 
 type DraftTransportTrace = {
   startedAt: number;
@@ -47,10 +71,15 @@ type DraftTransportTrace = {
   fetchAt?: number;
   settledAt?: number;
   status?: number;
+  requestId?: string;
+  traceHeader: boolean;
+  authSnapshot?: QtDraftAuthDetails;
+  readAuth?: () => QtDraftAuthDetails;
 };
 
 // Only a draft request's existing AbortSignal can opt into this trace. No
 // request body, URL, headers, token, Response body or account data is retained.
+// A random per-request UUID can be added to the existing X-Client-Info value.
 const draftTransportTraces = new WeakMap<AbortSignal, DraftTransportTrace>();
 function transportNow(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -64,12 +93,27 @@ export const fetchWithQtDraftObservation: typeof fetch = (input, init) => {
   const trace = init?.signal ? draftTransportTraces.get(init.signal) : undefined;
   // Every other request passes through without tracing or a promise wrapper.
   if (!trace) return globalThis.fetch(input, init);
+  try { trace.authSnapshot = trace.readAuth?.(); } catch { /* Best effort. */ }
+  // Keep the URL, body, auth headers, signal and header NAMES unchanged. If
+  // metadata preparation fails, send the original request without the marker.
+  let requestInit = init;
+  try {
+    if (trace.requestId) {
+      const headers = new Headers(init?.headers);
+      const clientInfo = headers.get('x-client-info');
+      if (clientInfo && clientInfo.length <= 160) {
+        headers.set('x-client-info', `${clientInfo} roots-draft/${trace.requestId}`);
+        requestInit = { ...init, headers };
+        trace.traceHeader = true;
+      }
+    }
+  } catch { /* Send without correlation when the existing header cannot be copied. */ }
   try { trace.fetchAt = transportNow(); trace.state = "fetch_pending"; } catch { /* Best effort. */ }
   const failed = () => {
     try { trace.settledAt = transportNow(); trace.state = "fetch_rejected"; } catch { /* Best effort. */ }
   };
   try {
-    return globalThis.fetch(input, init).then(response => {
+    return globalThis.fetch(input, requestInit).then(response => {
       try {
         trace.settledAt = transportNow();
         trace.state = "headers_received";
@@ -80,23 +124,30 @@ export const fetchWithQtDraftObservation: typeof fetch = (input, init) => {
   } catch (error) { failed(); throw error; }
 };
 
-function startDraftTransportTrace(signal: AbortSignal, report?: (details: QtDraftTransportDetails) => void): () => void {
+function startDraftTransportTrace(signal: AbortSignal, report?: (details: QtDraftTransportDetails) => void, auth?: object): () => void {
   if (!report) return () => {};
   try {
-    const trace: DraftTransportTrace = { startedAt: transportNow(), state: "fetch_not_observed" };
+    const trace: DraftTransportTrace = { startedAt: transportNow(), state: "fetch_not_observed", traceHeader: false };
+    try { trace.requestId = globalThis.crypto?.randomUUID?.(); } catch { /* Saving does not require an ID. */ }
+    if (auth) trace.readAuth = draftAuthObservers.get(auth);
     draftTransportTraces.set(signal, trace);
     return () => {
       draftTransportTraces.delete(signal);
       try {
         const end = transportNow();
+        let authDetails = trace.authSnapshot;
+        if (!authDetails) { try { authDetails = trace.readAuth?.(); } catch { /* Keep the existing transport summary. */ } }
         report({
-          draft_transport_version: 1,
+          draft_transport_version: 2,
           draft_transport_state: trace.state,
           draft_rpc_ms: transportMs(trace.startedAt, end),
           draft_before_fetch_ms: transportMs(trace.startedAt, trace.fetchAt ?? end),
           ...(trace.fetchAt !== undefined ? { draft_fetch_ms: transportMs(trace.fetchAt, trace.settledAt ?? end) } : {}),
           ...(trace.state === "headers_received" && trace.settledAt !== undefined ? { draft_after_headers_ms: transportMs(trace.settledAt, end), draft_http_status: trace.status } : {}),
           draft_signal_aborted: signal.aborted,
+          ...(trace.requestId ? { draft_request_id: trace.requestId } : {}),
+          draft_trace_header: trace.traceHeader,
+          ...(authDetails ? { ...authDetails, draft_auth_snapshot: trace.authSnapshot ? 'before_fetch' as const : 'result' as const } : {}),
         });
       } catch { /* Diagnostic failure must not change the save result. */ }
     };
@@ -226,7 +277,7 @@ export async function saveQtDraftAtomically(
   onTransport?: (details: QtDraftTransportDetails) => void,
 ): Promise<QtDraftSaveResult> {
   const controller = new AbortController();
-  const finishTrace = startDraftTransportTrace(controller.signal, onTransport);
+  const finishTrace = startDraftTransportTrace(controller.signal, onTransport, supabase.auth);
   try {
     const { data, error } = await withQtDraftTimeout(
       supabase.rpc("save_own_qt_draft", {
