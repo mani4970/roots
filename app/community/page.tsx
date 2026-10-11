@@ -24,6 +24,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { translateBibleRef } from "@/lib/bibleBooks";
+import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import {
   getDateLocale,
@@ -170,6 +171,87 @@ function EsvInlineAttribution({ row }: { row: any }) {
         )
       </span>
     </>
+  );
+}
+
+function renderCommunityBibleReference(
+  row: any,
+  lang: Lang,
+  variant: "card" | "detail" = "card",
+): ReactNode {
+  const raw = String(row?.bible_ref ?? "").trim();
+  if (!raw) return null;
+
+  if (row?.qt_mode === "sunday") {
+    const sermon = parseSundaySermonRef(raw);
+    if (sermon.isSundaySermon) {
+      const detail = variant === "detail";
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: detail ? 5 : 3,
+          }}
+        >
+          {sermon.title && (
+            <p
+              style={{
+                fontSize: detail ? 16 : 13,
+                fontWeight: 500,
+                color: detail ? "var(--terra-dark)" : "var(--terra)",
+                lineHeight: 1.45,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "inherit",
+                  fontWeight: 800,
+                  color: "inherit",
+                }}
+              >
+                {t("qt_record_sermon_title_label", lang)}: {" "}
+              </span>
+              {sermon.title}
+            </p>
+          )}
+          {sermon.referenceText && (
+            <p
+              style={{
+                fontSize: detail ? 16 : 13,
+                fontWeight: 500,
+                color: "var(--text2)",
+                lineHeight: 1.45,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "inherit",
+                  fontWeight: 800,
+                  color: "inherit",
+                }}
+              >
+                {t("qt_record_passage_label", lang)}: {" "}
+              </span>
+              {translateBibleRef(sermon.referenceText, lang)}
+            </p>
+          )}
+        </div>
+      );
+    }
+  }
+
+  return (
+    <p
+      style={{
+        fontSize: variant === "detail" ? 16 : 13,
+        fontWeight: variant === "detail" ? 800 : 700,
+        color: variant === "detail" ? "var(--terra-dark)" : "var(--terra)",
+        lineHeight: 1.45,
+      }}
+    >
+      {translateBibleRef(raw, lang)}
+    </p>
   );
 }
 
@@ -6495,15 +6577,7 @@ function CommunityPageContent() {
                   border: "1px solid var(--community-terra-border-soft)",
                 }}
               >
-                <p
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: "var(--terra-dark)",
-                  }}
-                >
-                  {translateBibleRef(r.bible_ref, lang)}
-                </p>
+                {renderCommunityBibleReference(r, lang, "detail")}
                 {r.key_verse && (
                   <p
                     style={{
@@ -7758,19 +7832,22 @@ function CommunityPageContent() {
                         />
                       </div>
                     </div>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--terra)",
-                        marginBottom: 4,
-                        paddingRight: 34,
-                      }}
-                    >
+                    <div style={{ marginBottom: 4, paddingRight: 34 }}>
                       {r.bible_ref
-                        ? translateBibleRef(r.bible_ref, lang)
-                        : c("community_free_meditation")}
-                    </p>
+                        ? renderCommunityBibleReference(r, lang)
+                        : (
+                          <p
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "var(--terra)",
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {c("community_free_meditation")}
+                          </p>
+                        )}
+                    </div>
                     {r.key_verse && (
                       <p
                         style={{
@@ -9142,19 +9219,22 @@ function CommunityPageContent() {
                           />
                         </div>
                       </div>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: "var(--terra)",
-                          marginBottom: 4,
-                          paddingRight: 34,
-                        }}
-                      >
+                      <div style={{ marginBottom: 4, paddingRight: 34 }}>
                         {r.bible_ref
-                          ? translateBibleRef(r.bible_ref, lang)
-                          : c("community_free_meditation")}
-                      </p>
+                          ? renderCommunityBibleReference(r, lang)
+                          : (
+                            <p
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: "var(--terra)",
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {c("community_free_meditation")}
+                            </p>
+                          )}
+                      </div>
                       {r.key_verse && (
                         <p
                           style={{
@@ -10980,19 +11060,22 @@ function CommunityPageContent() {
                             <CardMenu kind="qt" item={r} scope="all" />
                           </div>
                         </div>
-                        <p
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: "var(--terra)",
-                            marginBottom: 4,
-                            paddingRight: 34,
-                          }}
-                        >
+                        <div style={{ marginBottom: 4, paddingRight: 34 }}>
                           {r.bible_ref
-                            ? translateBibleRef(r.bible_ref, lang)
-                            : c("community_free_meditation")}
-                        </p>
+                            ? renderCommunityBibleReference(r, lang)
+                            : (
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: "var(--terra)",
+                                  lineHeight: 1.45,
+                                }}
+                              >
+                                {c("community_free_meditation")}
+                              </p>
+                            )}
+                        </div>
                         {r.key_verse && (
                           <p
                             style={{

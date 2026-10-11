@@ -17,6 +17,7 @@ import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
+import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { ChevronRight, Loader2, Plus, ChevronDown, HelpCircle, X, BookOpen, HandHeart, Sparkles, MessageCircle, Leaf, CheckCircle2, PenLine, CalendarDays, ImagePlus } from "lucide-react";
 
@@ -600,9 +601,29 @@ export default function QTPage() {
                                     <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
                                       {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
                                     </p>
-                                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
-                                      {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
-                                    </p>
+                                    {r.qt_mode === "sunday" && r.bible_ref ? (() => {
+                                      const sermon = parseSundaySermonRef(r.bible_ref);
+                                      return (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: r.key_verse ? 4 : 0 }}>
+                                          {sermon.title && (
+                                            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--terra)", lineHeight: 1.45 }}>
+                                              <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_sermon_title_label", lang)}: </span>
+                                              {sermon.title}
+                                            </p>
+                                          )}
+                                          {sermon.referenceText && (
+                                            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
+                                              <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_passage_label", lang)}: </span>
+                                              {translateBibleRef(sermon.referenceText, lang)}
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })() : (
+                                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
+                                        {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
+                                      </p>
+                                    )}
                                     {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"{Number(r.bible_version) === ESV_TRANSLATION_ID ? " (ESV)" : ""}</p>}
                                     {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
                                   </div>

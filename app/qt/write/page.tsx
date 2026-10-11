@@ -6,6 +6,7 @@ import { beginObservation, observe, observationError, rememberObservationFlow, t
 import { storageSet } from "@/lib/clientStorage";
 import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, saveQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout, type QtDraftTransportDetails } from "@/lib/qtDraftSync";
+import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { syncQtCompletionRecipients } from "@/lib/qtCompletionRecipients";
 import {
@@ -182,7 +183,7 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "큐티할 말씀을 먼저 선택해요": { ko: "묵상할 말씀을 먼저 선택해요", de: "Bitte zuerst einen Abschnitt wählen", en: "Please select a passage first", fr: "Veuillez d’abord choisir un passage", es: "Primero selecciona el pasaje para tu meditación bíblica" },
   "다시 선택": { de: "Neu wählen", en: "Reselect", fr: "Choisir à nouveau", es: "Seleccionar de nuevo" },
   "본문 다시 선택": { ko: "본문 다시 선택", de: "Bibeltext erneut wählen", en: "Reselect passage", fr: "Rechoisir le passage", es: "Volver a seleccionar el pasaje" },
-  "설교 제목": { ko: "제목", de: "Titel", en: "Title", fr: "Titre", es: "Título" },
+  "설교 제목": { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon", es: "Título del sermón" },
   "본문 말씀": { de: "Bibelstelle", en: "Bible passage", fr: "Passage biblique", es: "Pasaje bíblico" },
   "깨달음 (말씀이 내게 주는 것)": { de: "Erkenntnis (Was das Wort mir sagt)", en: "Insight (what the Word gives me)", fr: "Compréhension (ce que la Parole me donne)", es: "Aprendizaje (lo que la Palabra me enseña)" },
   "오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?": { de: "Was hat Gott mir heute durch die Predigt gesagt?", en: "What did God say to me through today's sermon?", fr: "Qu’est-ce que Dieu m’a dit aujourd’hui à travers le sermon ?", es: "¿Qué me dijo Dios por medio del sermón de hoy?" },
@@ -777,14 +778,8 @@ function QTWriteContent() {
   }
 
   function parseSundayBibleRef(raw?: string | null) {
-    const text = String(raw ?? "").trim();
-    if (!text.startsWith("설교:")) return { title: "", refs: text ? [text] : [] };
-    const body = text.replace(/^설교:\s*/, "").trim();
-    const match = body.match(/^(.*?)(?:\s*\((.*)\))?$/);
-    const title = (match?.[1] ?? "").trim();
-    const refsText = (match?.[2] ?? "").trim();
-    const refs = refsText ? refsText.split(/\s*,\s*/).filter(Boolean) : [];
-    return { title, refs };
+    const parsed = parseSundaySermonRef(raw);
+    return { title: parsed.title, refs: parsed.refs };
   }
 
 

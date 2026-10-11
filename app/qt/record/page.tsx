@@ -11,6 +11,7 @@ import { useLang } from "@/lib/useLang";
 import { t, type Lang, type TKey } from "@/lib/i18n";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { translateBibleRef } from "@/lib/bibleBooks";
+import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { copyText } from "@/lib/nativeShare";
@@ -55,7 +56,8 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "적용과 결단": "qt_record_section_application_decision",
   "행동 (결단)": "qt_record_section_decision",
   "올려드리는 기도": "qt_record_section_closing_prayer",
-  "제목": "qt_record_sermon_title_label",
+  "설교 제목": "qt_record_sermon_title_label",
+  "본문": "qt_record_passage_label",
 };
 function trR(s: string, lang: Lang): string {
   const key = QT_RECORD_LABEL_KEYS[s];
@@ -325,37 +327,18 @@ function RecordContent() {
       ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
       : "";
 
-    // 주일예배 본문 형식: "설교: <제목> (<참조>)"
-    // 복사 시: 첫 줄에 날짜 · 참조, 둘째 줄에 "제목: \n<제목>" 형태로
+    // 저장 형식은 기존 호환을 유지하고, 복사에서는 설교 제목과 본문을 분리한다.
     let headerLine: string;
     if (isSunday) {
-      const raw = String(record.bible_ref ?? "").trim();
-      let title = "";
-      let refsText = "";
-      if (raw.startsWith("설교:")) {
-        const body = raw.replace(/^설교:\s*/, "").trim();
-        const trailingParenthesisStart = body.lastIndexOf(" (");
-        const trailingParenthesisText =
-          trailingParenthesisStart >= 0 && body.endsWith(")")
-            ? body.slice(trailingParenthesisStart + 2, -1).trim()
-            : "";
-        const hasTrailingBibleRef = /\d+\s*:\s*\d+/.test(
-          trailingParenthesisText,
-        );
-
-        if (hasTrailingBibleRef) {
-          title = body.slice(0, trailingParenthesisStart).trim();
-          refsText = trailingParenthesisText;
-        } else {
-          title = body;
-        }
-      } else {
-        refsText = raw;
-      }
-      const translatedRefs = refsText ? translateBibleRef(refsText, lang) : "";
-      headerLine = translatedRefs
-        ? `📖 ${dateStr} · ${translatedRefs}\n${trR("제목", lang)}: ${title}`
-        : `📖 ${dateStr}\n${trR("제목", lang)}: ${title}`;
+      const parsed = parseSundaySermonRef(record.bible_ref);
+      const translatedRefs = parsed.referenceText
+        ? translateBibleRef(parsed.referenceText, lang)
+        : "";
+      headerLine = [
+        `📖 ${dateStr}`,
+        parsed.title ? `${trR("설교 제목", lang)}: ${parsed.title}` : "",
+        translatedRefs ? `${trR("본문", lang)}: ${translatedRefs}` : "",
+      ].filter(Boolean).join("\n");
     } else {
       headerLine = `📖 ${dateStr} · ${translateBibleRef(record.bible_ref, lang)}`;
     }
@@ -421,6 +404,7 @@ function RecordContent() {
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
   const canEdit = Boolean(currentUserId && record?.user_id === currentUserId);
   const isEsvRecord = Number(record?.bible_version) === ESV_TRANSLATION_ID;
+  const sundaySermon = record?.qt_mode === "sunday" ? parseSundaySermonRef(record.bible_ref) : null;
   const SECTIONS = [
     { key: "opening_prayer", label: sectionLabel("opening_prayer", record?.qt_mode, lang) },
     { key: "summary", label: sectionLabel("summary", record?.qt_mode, lang) },
@@ -462,7 +446,24 @@ function RecordContent() {
         <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginBottom: 4 }}>
           {parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
         </p>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
+        {sundaySermon ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {sundaySermon.title && (
+              <p style={{ fontSize: 16, fontWeight: 500, color: "var(--terra-dark)", lineHeight: 1.45 }}>
+                <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("설교 제목", lang)}: </span>
+                {sundaySermon.title}
+              </p>
+            )}
+            {sundaySermon.referenceText && (
+              <p style={{ fontSize: 16, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
+                <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("본문", lang)}: </span>
+                {translateBibleRef(sundaySermon.referenceText, lang)}
+              </p>
+            )}
+          </div>
+        ) : (
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
+        )}
         {isShared && getShareLabel() && (
           <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {getShareLabel()}</p>
         )}
