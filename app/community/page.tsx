@@ -4957,14 +4957,20 @@ function CommunityPageContent() {
               .filter(Boolean),
           ),
         );
-        const {
-          profileMap,
-          partnerPreferenceMap,
-          favoritePartnerIds,
-        } = await loadPartnerCoreData(supabase, user.id, partnerIds);
+        const [
+          { profileMap, partnerPreferenceMap, favoritePartnerIds },
+          { latestPartnerQtAt, latestPartnerPrayerAt },
+        ] = await Promise.all([
+          loadPartnerCoreData(supabase, user.id, partnerIds),
+          loadPartnerActivityData(supabase, user.id, partnerIds),
+        ]);
 
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
+        // Build the same lightweight-card order as before, then enrich every
+        // visible field before the first paint. This keeps the current ordering
+        // stable while preventing NEW/favorite/profile details from popping in
+        // one after another.
         const lightweightPartners = rows.map((row: any) => {
           const partnerId =
             row.requester_id === user.id ? row.receiver_id : row.requester_id;
@@ -4989,8 +4995,31 @@ function CommunityPageContent() {
             activityReady: false,
           };
         });
+        const orderedPartners = sortPartnersForDisplay(lightweightPartners);
+        const completePartners = orderedPartners.map((partner) => {
+          const partnerId = String(partner.partner_id ?? "");
+          const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
+          const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
+          const latestPartnerActivityAt =
+            isLaterThan(latestQtAt, latestPrayerAt)
+              ? latestQtAt
+              : latestPrayerAt;
+          const lastSeenPartnerAt = partner.last_seen_shared_at ?? null;
+          const hasNewQtShare = isLaterThan(latestQtAt, lastSeenPartnerAt);
+          const hasNewPrayer = isLaterThan(latestPrayerAt, lastSeenPartnerAt);
+          return {
+            ...partner,
+            latest_qt_at: latestQtAt,
+            latest_prayer_at: latestPrayerAt,
+            latest_partner_activity_at: latestPartnerActivityAt,
+            hasNewQtShare,
+            hasNewPrayer,
+            hasNewContent: hasNewQtShare || hasNewPrayer,
+            activityReady: true,
+          };
+        });
 
-        setPartners(sortPartnersForDisplay(lightweightPartners));
+        setPartners(completePartners);
         if (!markMainTabReady(targetTab, requestId)) return;
         void loadReflectionNudgeStatus();
 
@@ -4999,49 +5028,6 @@ function CommunityPageContent() {
         void ensureCommunityViewerMeta(supabase, user.id).catch((error) =>
           console.warn("커뮤니티 사용자 메타데이터 보조 조회 실패:", error),
         );
-
-        // Restore only the NEW indicator after the lightweight list has painted.
-        // Do not re-sort or delay the list: this background enrichment updates
-        // activity flags in-place while preserving the current card order.
-        void loadPartnerActivityData(supabase, user.id, partnerIds)
-          .then(({ latestPartnerQtAt, latestPartnerPrayerAt }) => {
-            if (!isCurrentMainTabRequest(targetTab, requestId)) return;
-            const partnerIdSet = new Set(partnerIds);
-            setPartners((current) =>
-              current.map((partner) => {
-                const partnerId = String(partner.partner_id ?? "");
-                if (!partnerIdSet.has(partnerId)) return partner;
-                const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
-                const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
-                const latestPartnerActivityAt =
-                  isLaterThan(latestQtAt, latestPrayerAt)
-                    ? latestQtAt
-                    : latestPrayerAt;
-                const lastSeenPartnerAt = partner.last_seen_shared_at ?? null;
-                const hasNewQtShare = isLaterThan(
-                  latestQtAt,
-                  lastSeenPartnerAt,
-                );
-                const hasNewPrayer = isLaterThan(
-                  latestPrayerAt,
-                  lastSeenPartnerAt,
-                );
-                return {
-                  ...partner,
-                  latest_qt_at: latestQtAt,
-                  latest_prayer_at: latestPrayerAt,
-                  latest_partner_activity_at: latestPartnerActivityAt,
-                  hasNewQtShare,
-                  hasNewPrayer,
-                  hasNewContent: hasNewQtShare || hasNewPrayer,
-                  activityReady: true,
-                };
-              }),
-            );
-          })
-          .catch((error) =>
-            console.warn("동역자 NEW 상태 보조 조회 실패:", error),
-          );
 
         return;
       }
@@ -5189,12 +5175,21 @@ function CommunityPageContent() {
       const uniqueGroupIds = uniqueStrings(
         unique.map((group: any) => String(group.id ?? "")),
       );
-      // Member count is a small group-list field, so include it in the first
-      // complete card paint instead of waiting for QT/prayer activity metadata.
-      const memberCounts = await fetchGroupMemberCounts(
-        supabase,
-        uniqueGroupIds,
+      const joinedGroupIds = uniqueStrings(
+        unique
+          .filter((group: any) => !!memberMap[group.id])
+          .map((group: any) => String(group.id ?? "")),
       );
+
+      // All fields visible on a group card are prepared together. Counts and
+      // NEW/activity checks run in parallel, so the list stays as fast as
+      // possible without member counts or NEW badges popping in afterward.
+      const [memberCounts, latestQtByGroup, latestPrayerByGroup] =
+        await Promise.all([
+          fetchGroupMemberCounts(supabase, uniqueGroupIds),
+          fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
+          fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
+        ]);
       if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
       const lightweightGroups = unique.map((group) => {
@@ -5219,8 +5214,28 @@ function CommunityPageContent() {
           activityReady: false,
         };
       });
+      const orderedGroups = sortGroupsForDisplay(lightweightGroups);
+      const completeGroups = orderedGroups.map((group) => {
+        const groupId = String(group.id ?? "");
+        if (!group.isMember) return group;
+        const latestQtAt = latestQtByGroup[groupId] ?? null;
+        const latestPrayerAt = latestPrayerByGroup[groupId] ?? null;
+        const lastSeenGroupAt = group.last_seen_qt_at ?? null;
+        const hasNewQtShare = isLaterThan(latestQtAt, lastSeenGroupAt);
+        const hasNewPrayer = isLaterThan(latestPrayerAt, lastSeenGroupAt);
+        return {
+          ...group,
+          latest_qt_at: latestQtAt,
+          latest_prayer_at: latestPrayerAt,
+          hasNewQtShare,
+          hasNewPrayer,
+          hasNewContent: hasNewQtShare || hasNewPrayer,
+          hasNewQt: hasNewQtShare || hasNewPrayer,
+          activityReady: true,
+        };
+      });
 
-      setGroups(sortGroupsForDisplay(lightweightGroups));
+      setGroups(completeGroups);
       if (!markMainTabReady(targetTab, requestId)) return;
       void loadReflectionNudgeStatus();
 
@@ -5228,53 +5243,6 @@ function CommunityPageContent() {
       void ensureCommunityViewerMeta(supabase, user.id).catch((error) =>
         console.warn("커뮤니티 사용자 메타데이터 보조 조회 실패:", error),
       );
-
-      // Restore only the NEW indicator after the group cards are already visible.
-      // Keep the existing card order; QT/prayer activity must never block the
-      // group name/member count/public/favorite first paint.
-      const joinedGroupIds = uniqueStrings(
-        unique
-          .filter((group: any) => !!memberMap[group.id])
-          .map((group: any) => String(group.id ?? "")),
-      );
-      void Promise.all([
-        fetchLatestQtTimesByGroup(supabase, joinedGroupIds),
-        fetchLatestPrayerTimesByGroup(supabase, joinedGroupIds),
-      ])
-        .then(([latestQtByGroup, latestPrayerByGroup]) => {
-          if (!isCurrentMainTabRequest(targetTab, requestId)) return;
-          const joinedGroupIdSet = new Set(joinedGroupIds);
-          setGroups((current) =>
-            current.map((group) => {
-              const groupId = String(group.id ?? "");
-              if (!joinedGroupIdSet.has(groupId)) return group;
-              const latestQtAt = latestQtByGroup[groupId] ?? null;
-              const latestPrayerAt = latestPrayerByGroup[groupId] ?? null;
-              const lastSeenGroupAt = group.last_seen_qt_at ?? null;
-              const hasNewQtShare = isLaterThan(
-                latestQtAt,
-                lastSeenGroupAt,
-              );
-              const hasNewPrayer = isLaterThan(
-                latestPrayerAt,
-                lastSeenGroupAt,
-              );
-              return {
-                ...group,
-                latest_qt_at: latestQtAt,
-                latest_prayer_at: latestPrayerAt,
-                hasNewQtShare,
-                hasNewPrayer,
-                hasNewContent: hasNewQtShare || hasNewPrayer,
-                hasNewQt: hasNewQtShare || hasNewPrayer,
-                activityReady: true,
-              };
-            }),
-          );
-        })
-        .catch((error) =>
-          console.warn("그룹 NEW 상태 보조 조회 실패:", error),
-        );
     } catch (error) {
       console.error("커뮤니티 목록 조회 실패:", error);
       if (isCurrentMainTabRequest(targetTab, requestId)) {
