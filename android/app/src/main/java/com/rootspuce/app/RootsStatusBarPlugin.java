@@ -1,5 +1,7 @@
 package com.rootspuce.app;
 
+import android.app.UiModeManager;
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.Gravity;
@@ -20,8 +22,11 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "RootsStatusBar")
 public class RootsStatusBarPlugin extends Plugin {
     private static final String STATUS_BAR_BACKGROUND_TAG = "roots_status_bar_background";
+    private static final int ROOTS_LIGHT_BACKGROUND = Color.rgb(248, 244, 236);
+    private static final int ROOTS_DARK_BACKGROUND = Color.rgb(26, 28, 30);
 
     private View statusBarBackground;
+    private Integer lastApplicationNightMode;
 
     @PluginMethod
     public void setBackgroundColor(PluginCall call) {
@@ -40,6 +45,8 @@ public class RootsStatusBarPlugin extends Plugin {
         }
 
         getBridge().executeOnMainThread(() -> {
+            syncApplicationNightMode(parsedColor);
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 View background = getOrCreateStatusBarBackground();
                 if (background == null) {
@@ -74,6 +81,36 @@ public class RootsStatusBarPlugin extends Plugin {
         } catch (ReflectiveOperationException | SecurityException exception) {
             return false;
         }
+    }
+
+    private void syncApplicationNightMode(int color) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return;
+        }
+
+        final int nightMode;
+        if (color == ROOTS_DARK_BACKGROUND) {
+            nightMode = UiModeManager.MODE_NIGHT_YES;
+        } else if (color == ROOTS_LIGHT_BACKGROUND) {
+            nightMode = UiModeManager.MODE_NIGHT_NO;
+        } else {
+            return;
+        }
+
+        if (lastApplicationNightMode != null && lastApplicationNightMode == nightMode) {
+            return;
+        }
+
+        UiModeManager uiModeManager =
+                (UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
+        if (uiModeManager == null) {
+            return;
+        }
+
+        // Android 12+ persists this app-local choice and uses it when drawing
+        // the mandatory system splash on subsequent launches.
+        uiModeManager.setApplicationNightMode(nightMode);
+        lastApplicationNightMode = nightMode;
     }
 
     private View getOrCreateStatusBarBackground() {

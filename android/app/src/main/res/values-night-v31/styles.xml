@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 12+ dark-system-theme counterpart of the native starting splash.
+      Roots' web loading background in dark mode is #1A1C1E.
+    -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">#1A1C1E</item>
+        <item name="windowSplashScreenBackground">#1A1C1E</item>
+    </style>
+</resources>
