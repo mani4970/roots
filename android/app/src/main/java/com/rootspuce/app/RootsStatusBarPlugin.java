@@ -5,6 +5,7 @@ import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.FrameLayout;
 
 import androidx.core.graphics.Insets;
@@ -49,10 +50,30 @@ public class RootsStatusBarPlugin extends Plugin {
                 background.setBackgroundColor(parsedColor);
                 background.bringToFront();
                 ViewCompat.requestApplyInsets(background);
+            } else if (!setPreAndroid15StatusBarColor(parsedColor)) {
+                call.reject("Unable to set pre-Android 15 status bar background");
+                return;
             }
 
             call.resolve();
         });
+    }
+
+    /**
+     * Android 14 and below still support Window#setStatusBarColor. The project
+     * compiles against Android 16, where that API is deprecated, so invoke the
+     * pre-15 compatibility API reflectively only on SDK < 35. Android 15+ keeps
+     * using the edge-to-edge-safe overlay above. This method does not touch the
+     * navigation bar or decor-fit behavior.
+     */
+    private boolean setPreAndroid15StatusBarColor(int color) {
+        try {
+            Window window = getActivity().getWindow();
+            Window.class.getMethod("setStatusBarColor", int.class).invoke(window, color);
+            return true;
+        } catch (ReflectiveOperationException | SecurityException exception) {
+            return false;
+        }
     }
 
     private View getOrCreateStatusBarBackground() {
