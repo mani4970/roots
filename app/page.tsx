@@ -2255,7 +2255,7 @@ export default function HomePage() {
   });
 
   if (loading) return (
-    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
+    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <img
           src="/roots-logo-transparent-160.png"
