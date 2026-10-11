@@ -23,6 +23,21 @@ const config: CapacitorConfig = {
   appId: "com.rootspuce.app",
   appName: "Roots",
   webDir: "capacitor-www",
+  android: {
+    // Keep the modern Capacitor 8 SystemBars core API and every Android plugin
+    // Roots currently uses, but do not package the legacy StatusBar Android
+    // implementation that triggers Android 15/16 deprecated system-bar APIs.
+    includePlugins: [
+      "@capacitor/app",
+      "@capacitor/browser",
+      "@capacitor/camera",
+      "@capacitor/clipboard",
+      "@capacitor/haptics",
+      "@capacitor/local-notifications",
+      "@capacitor/push-notifications",
+      "@capacitor/share",
+    ],
+  },
   server: {
     url: appUrl,
     cleartext: false,
