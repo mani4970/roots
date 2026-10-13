@@ -19,6 +19,7 @@ import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
+import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
@@ -57,6 +58,7 @@ import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
+import { loadProfileCards } from "@/lib/profileCards";
 import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
 import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopup, markOptionalUpdateSeen, openRequiredUpdateStore, type NativeUpdatePrompt } from "@/lib/requiredUpdate";
@@ -302,6 +304,12 @@ function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardM
   );
 }
 
+type CompanionAcceptanceNoticeState = {
+  ids: string[];
+  primaryName: string | null;
+  additionalCount: number;
+};
+
 type HomePrayerObservationAttempt = {
   flow: ReturnType<typeof beginObservation>;
   mode: "create" | "quiet";
@@ -400,6 +408,9 @@ export default function HomePage() {
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const [pendingCompanionRequestCount, setPendingCompanionRequestCount] = useState(0);
+  const [companionAcceptanceNotice, setCompanionAcceptanceNotice] = useState<CompanionAcceptanceNoticeState | null>(null);
+  const [companionAcceptanceCheckReady, setCompanionAcceptanceCheckReady] = useState(false);
+  const [handlingCompanionAcceptanceNotice, setHandlingCompanionAcceptanceNotice] = useState(false);
   const [activeRewardMapKind, setActiveRewardMapKind] = useState<RewardMapKind | null>(null);
   const [enabledHeartShopItemIds, setEnabledHeartShopItemIds] = useState<HeartShopMapItemId[]>([]);
   const [enabledProfileCharacterItemIds, setEnabledProfileCharacterItemIds] = useState<HeartShopCharacterItemId[]>([]);
@@ -424,6 +435,37 @@ export default function HomePage() {
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
+  }
+
+  async function completeCompanionAcceptanceNotice(openCompanions: boolean) {
+    if (!companionAcceptanceNotice || handlingCompanionAcceptanceNotice) return;
+
+    const noticeIds = companionAcceptanceNotice.ids;
+    acknowledgeObservedPopup(
+      profile?.id,
+      "companion_accepted",
+      openCompanions ? "confirm" : "close",
+    );
+
+    setHandlingCompanionAcceptanceNotice(true);
+    setCompanionAcceptanceNotice(null);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("companion_acceptance_notices")
+        .update({ seen_at: new Date().toISOString() })
+        .in("id", noticeIds)
+        .is("seen_at", null);
+      if (error) throw error;
+    } catch (error) {
+      // Keep Home usable. If this receipt fails, the server-side unseen row can
+      // safely show the notice again on a later Home load.
+      console.warn("동역자 수락 안내 확인 저장 실패:", error);
+    } finally {
+      setHandlingCompanionAcceptanceNotice(false);
+      if (openCompanions) router.push("/community?tab=partner");
+    }
   }
 
   async function completeCompanionChallengeAnnouncement(openCompanions: boolean) {
@@ -747,12 +789,27 @@ export default function HomePage() {
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
   // update takes priority; otherwise welcome precedes an optional update.
+  // The companion-accepted receipt is checked before lower-priority reward and
+  // campaign popups so a slower background query cannot create popup overlap.
   const visibleWelcomeBack = homePopupsReady && showWelcomeBack
     && !requiredUpdatePrompt?.mandatory && !homeDialogBlocked && !celebration.show;
   const visibleRequiredUpdatePrompt = homePopupsReady && requiredUpdatePrompt
     && (requiredUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked && !celebration.show))
     ? requiredUpdatePrompt : null;
-  const canShowProgressPopups = homePopupsReady && !rewardDialogBlocked && !showWelcomeBack;
+  const visibleCompanionAcceptanceNotice = homePopupsReady
+    && companionAcceptanceCheckReady
+    && !!companionAcceptanceNotice
+    && !handlingCompanionAcceptanceNotice
+    && !requiredUpdatePrompt
+    && !showWelcomeBack
+    && !homeDialogBlocked
+    && !celebration.show;
+  const canShowProgressPopups = homePopupsReady
+    && companionAcceptanceCheckReady
+    && !companionAcceptanceNotice
+    && !handlingCompanionAcceptanceNotice
+    && !rewardDialogBlocked
+    && !showWelcomeBack;
   const visibleBadgePopup = canShowProgressPopups && !celebration.show ? badgePopup : null;
   const showGardenUpdatePopup = canShowProgressPopups && gardenPopup.show
     && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
@@ -906,6 +963,9 @@ export default function HomePage() {
     setLoading(true);
     setHomeLoadFailed(false);
     setPrayerDayCount(null);
+    setCompanionAcceptanceNotice(null);
+    setCompanionAcceptanceCheckReady(false);
+    setHandlingCompanionAcceptanceNotice(false);
     setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
     try {
       if (typeof window !== "undefined") {
@@ -1058,6 +1118,57 @@ export default function HomePage() {
         if (ci && !storedVerse && Number(ci.verse_translation_id) === ESV_TRANSLATION_ID) {
           const reloadedVerse = await fetchStoredDailyVerseText(ci);
           if (reloadedVerse && isCurrentLoad()) setTodayVerse({ ...baseTodayVerse, verse: reloadedVerse });
+        }
+      });
+      background("동역자 수락 안내 조회 실패:", async () => {
+        try {
+          const { data, error } = await withQtDraftTimeout(
+            supabase
+              .from("companion_acceptance_notices")
+              .select("id,accepter_id,accepted_at")
+              .eq("requester_id", user.id)
+              .is("seen_at", null)
+              .order("accepted_at", { ascending: true })
+              .limit(20),
+            5_000,
+            "home companion acceptance notices",
+          );
+          if (error) throw error;
+          if (!isCurrentLoad()) return;
+
+          const notices = data ?? [];
+          if (notices.length === 0) {
+            setCompanionAcceptanceNotice(null);
+            return;
+          }
+
+          let primaryName: string | null = null;
+          try {
+            const profiles = await withQtDraftTimeout(
+              loadProfileCards(
+                supabase,
+                notices.map((notice: any) => notice.accepter_id),
+              ),
+              5_000,
+              "home companion acceptance profiles",
+            );
+            if (!isCurrentLoad()) return;
+            const primaryId = String(notices[0]?.accepter_id ?? "");
+            primaryName = profiles.find((item) => item.id === primaryId)?.name?.trim() || null;
+          } catch (profileError) {
+            if (isCurrentLoad()) {
+              console.warn("동역자 수락 안내 프로필 조회 실패:", profileError);
+            }
+          }
+
+          if (!isCurrentLoad()) return;
+          setCompanionAcceptanceNotice({
+            ids: notices.map((notice: any) => String(notice.id)).filter(Boolean),
+            primaryName,
+            additionalCount: Math.max(0, notices.length - 1),
+          });
+        } finally {
+          if (isCurrentLoad()) setCompanionAcceptanceCheckReady(true);
         }
       });
       background("동역자 신청 조회 실패:", async () => {
@@ -2073,6 +2184,9 @@ export default function HomePage() {
 
   const spanishLanguageLaunchAnnouncementBlocked =
     loading ||
+    !companionAcceptanceCheckReady ||
+    !!companionAcceptanceNotice ||
+    handlingCompanionAcceptanceNotice ||
     showFirstLangPicker ||
     showOnboarding ||
     !!requiredUpdatePrompt ||
@@ -2108,6 +2222,9 @@ export default function HomePage() {
     !monthlyBadgeAwardPopupBlocked;
   const homePopupBlocked =
     loading ||
+    !companionAcceptanceCheckReady ||
+    !!companionAcceptanceNotice ||
+    handlingCompanionAcceptanceNotice ||
     showFirstLangPicker ||
     showOnboarding ||
     !!requiredUpdatePrompt ||
@@ -2152,6 +2269,10 @@ export default function HomePage() {
     }
     if (visibleWelcomeBack) {
       closeWelcomeBack("back");
+      return true;
+    }
+    if (visibleCompanionAcceptanceNotice) {
+      void completeCompanionAcceptanceNotice(false);
       return true;
     }
     if (showFirstLangPicker || visibleRootsManPopup) {
@@ -2648,6 +2769,26 @@ export default function HomePage() {
         show={visibleWelcomeBack}
         daysSince={welcomeBackDays}
         onClose={() => closeWelcomeBack()}
+      />
+      </ObservationPopup>
+
+      <ObservationPopup
+        userId={profile?.id}
+        kind="companion_accepted"
+        queued={!!companionAcceptanceNotice}
+        instanceKey={companionAcceptanceNotice?.ids.join(":") ?? null}
+      >
+      <CompanionAcceptedPopup
+        show={visibleCompanionAcceptanceNotice}
+        name={companionAcceptanceNotice?.primaryName ?? null}
+        additionalCount={companionAcceptanceNotice?.additionalCount ?? 0}
+        busy={handlingCompanionAcceptanceNotice}
+        onViewCompanions={() => {
+          void completeCompanionAcceptanceNotice(true);
+        }}
+        onClose={() => {
+          void completeCompanionAcceptanceNotice(false);
+        }}
       />
       </ObservationPopup>
 
