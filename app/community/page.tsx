@@ -712,6 +712,14 @@ function sortGroupsForDisplay(groups: any[]) {
     if (aIsMember && bIsMember) {
       if (!!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
       if (aHasNew !== bHasNew) return aHasNew ? -1 : 1;
+      return (
+        new Date(
+          b.latest_group_activity_at ?? b.created_at ?? 0,
+        ).getTime() -
+        new Date(
+          a.latest_group_activity_at ?? a.created_at ?? 0,
+        ).getTime()
+      );
     }
 
     return (
@@ -4967,10 +4975,9 @@ function CommunityPageContent() {
 
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
-        // Build the same lightweight-card order as before, then enrich every
-        // visible field before the first paint. This keeps the current ordering
-        // stable while preventing NEW/favorite/profile details from popping in
-        // one after another.
+        // Build every visible card field before the first paint, then sort the
+        // completed rows. This keeps NEW/favorite/profile details atomic while
+        // allowing the list to follow favorite -> NEW -> latest activity.
         const lightweightPartners = rows.map((row: any) => {
           const partnerId =
             row.requester_id === user.id ? row.receiver_id : row.requester_id;
@@ -4995,8 +5002,7 @@ function CommunityPageContent() {
             activityReady: false,
           };
         });
-        const orderedPartners = sortPartnersForDisplay(lightweightPartners);
-        const completePartners = orderedPartners.map((partner) => {
+        const completePartners = lightweightPartners.map((partner) => {
           const partnerId = String(partner.partner_id ?? "");
           const latestQtAt = latestPartnerQtAt[partnerId] ?? null;
           const latestPrayerAt = latestPartnerPrayerAt[partnerId] ?? null;
@@ -5019,7 +5025,7 @@ function CommunityPageContent() {
           };
         });
 
-        setPartners(completePartners);
+        setPartners(sortPartnersForDisplay(completePartners));
         if (!markMainTabReady(targetTab, requestId)) return;
         void loadReflectionNudgeStatus();
 
@@ -5207,6 +5213,7 @@ function CommunityPageContent() {
           last_seen_qt_at: lastSeenGroupAt,
           latest_qt_at: null,
           latest_prayer_at: null,
+          latest_group_activity_at: null,
           hasNewQtShare: false,
           hasNewPrayer: false,
           hasNewContent: false,
@@ -5214,12 +5221,15 @@ function CommunityPageContent() {
           activityReady: false,
         };
       });
-      const orderedGroups = sortGroupsForDisplay(lightweightGroups);
-      const completeGroups = orderedGroups.map((group) => {
+      const completeGroups = lightweightGroups.map((group) => {
         const groupId = String(group.id ?? "");
         if (!group.isMember) return group;
         const latestQtAt = latestQtByGroup[groupId] ?? null;
         const latestPrayerAt = latestPrayerByGroup[groupId] ?? null;
+        const latestGroupActivityAt =
+          isLaterThan(latestQtAt, latestPrayerAt)
+            ? latestQtAt
+            : latestPrayerAt;
         const lastSeenGroupAt = group.last_seen_qt_at ?? null;
         const hasNewQtShare = isLaterThan(latestQtAt, lastSeenGroupAt);
         const hasNewPrayer = isLaterThan(latestPrayerAt, lastSeenGroupAt);
@@ -5227,6 +5237,7 @@ function CommunityPageContent() {
           ...group,
           latest_qt_at: latestQtAt,
           latest_prayer_at: latestPrayerAt,
+          latest_group_activity_at: latestGroupActivityAt,
           hasNewQtShare,
           hasNewPrayer,
           hasNewContent: hasNewQtShare || hasNewPrayer,
@@ -5235,7 +5246,7 @@ function CommunityPageContent() {
         };
       });
 
-      setGroups(completeGroups);
+      setGroups(sortGroupsForDisplay(completeGroups));
       if (!markMainTabReady(targetTab, requestId)) return;
       void loadReflectionNudgeStatus();
 
