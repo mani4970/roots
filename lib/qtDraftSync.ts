@@ -81,6 +81,8 @@ type DraftTransportTrace = {
 // request body, URL, headers, token, Response body or account data is retained.
 // A random per-request UUID can be added to the existing X-Client-Info value.
 const draftTransportTraces = new WeakMap<AbortSignal, DraftTransportTrace>();
+// Only deferred resume saves opt in. Safety does not depend on diagnostics.
+const draftDispatchGuards = new WeakMap<AbortSignal, () => boolean>();
 function transportNow(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
@@ -90,6 +92,10 @@ function transportMs(start: number, end: number): number {
 
 /** Supabase calls this after its internal access-token lookup, before fetch. */
 export const fetchWithQtDraftObservation: typeof fetch = (input, init) => {
+  // The SDK can await another token lookup after the caller checks auth.
+  // Recheck the writer immediately before sending that particular request.
+  const guard = init?.signal ? draftDispatchGuards.get(init.signal) : undefined;
+  if (guard && !guard()) return Promise.reject(new Error("QT draft context changed"));
   const trace = init?.signal ? draftTransportTraces.get(init.signal) : undefined;
   // Every other request passes through without tracing or a promise wrapper.
   if (!trace) return globalThis.fetch(input, init);
@@ -275,8 +281,17 @@ export async function saveQtDraftAtomically(
   supabase: SupabaseClient,
   payload: QtDraftServerPayload,
   onTransport?: (details: QtDraftTransportDetails) => void,
+  canDispatch?: () => boolean,
 ): Promise<QtDraftSaveResult> {
   const controller = new AbortController();
+  let dispatchCancelled = false;
+  if (canDispatch) {
+    draftDispatchGuards.set(controller.signal, () => {
+      try { if (canDispatch()) return true; } catch { /* Fail closed for this save only. */ }
+      dispatchCancelled = true;
+      return false;
+    });
+  }
   const finishTrace = startDraftTransportTrace(controller.signal, onTransport, supabase.auth);
   try {
     const { data, error } = await withQtDraftTimeout(
@@ -300,12 +315,16 @@ export async function saveQtDraftAtomically(
       () => controller.abort(),
     );
 
+    if (dispatchCancelled) {
+      throw Object.assign(new Error("QT draft context changed"), { code: "QT_DRAFT_CONTEXT_CHANGED" });
+    }
     if (!error) return normalizeResult(data);
     if (isMissingDraftRpc(error)) {
       throw new Error("QT draft save RPC is not ready. Apply migration 124 before deployment.");
     }
     throw error;
   } finally {
+    draftDispatchGuards.delete(controller.signal);
     finishTrace();
   }
 }

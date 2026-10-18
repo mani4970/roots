@@ -238,7 +238,14 @@ type DraftSnapshot = {
   sermonTitle: string;
   passageRefs: string[];
 };
+type DeferredResumeGuard = {
+  context: string;
+  generation: number;
+  owner: string;
+  date: string;
+};
 type SaveDraftOptions = {
+  resumeGuard?: DeferredResumeGuard;
   silent?: boolean;
   markSaving?: boolean;
   snapshot?: DraftSnapshot;
@@ -679,7 +686,10 @@ function QTWriteContent() {
   }
 
   function leaveWriter() {
-    requestLeave(navigateBackToWriterEntry);
+    requestLeave(() => {
+      cancelDeferredResume();
+      navigateBackToWriterEntry();
+    });
   }
 
   useAndroidBackHandler(() => {
@@ -2317,7 +2327,77 @@ function QTWriteContent() {
     return getLocalDateString(d);
   });
 
+  // Remember only a foreground signal received while a draft is still pending.
+  // Input renders keep this intent; changing the writer's identity invalidates it.
+  const resumePendingRef = useRef<DeferredResumeGuard | null>(null);
+  const resumeGenerationRef = useRef(0);
+  const resumeMountedRef = useRef(false);
+  const resumeSettleRef = useRef<(() => void) | null>(null);
+  const resumeContextRef = useRef("");
+  const resumeOwnerRef = useRef(draftBackupUserId);
+  resumeOwnerRef.current = draftBackupUserId;
+  const resumeContext = JSON.stringify([draftBackupUserId, selectedDate, mode, editId ?? ""]);
+  if (resumeContextRef.current !== resumeContext) {
+    resumeContextRef.current = resumeContext;
+    resumePendingRef.current = null;
+    resumeGenerationRef.current++;
+  }
+
+  function cancelDeferredResume() {
+    resumePendingRef.current = null;
+    resumeGenerationRef.current++;
+  }
+
+  function validDeferredResume(guard: DeferredResumeGuard) {
+    return resumeMountedRef.current
+      && guard.generation === resumeGenerationRef.current
+      && guard.context === resumeContextRef.current
+      && guard.owner === resumeOwnerRef.current
+      && guard.date === getLocalDateString()
+      && document.visibilityState === "visible"
+      && !isEditMode && !pendingCompletionRef.current && !completionSavingRef.current;
+  }
+
+  useEffect(() => {
+    resumeMountedRef.current = true;
+    // Keep this callback synchronous: never request auth while its lock is held.
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((_event, session) => {
+      if ((session?.user.id ?? "") !== resumeOwnerRef.current) cancelDeferredResume();
+    });
+    const onPageHide = () => cancelDeferredResume();
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      resumeMountedRef.current = false;
+      cancelDeferredResume();
+      subscription.unsubscribe();
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, []);
+
+  resumeSettleRef.current = () => {
+    const guard = resumePendingRef.current;
+    if (!guard || draftObservationDepthRef.current > 0) return;
+    // Consume before scheduling: a failed follow-up must not retry itself.
+    resumePendingRef.current = null;
+    if (!validDeferredResume(guard) || localSyncRetryRef.current
+      || autoSaveStatusStateRef.current.status !== "local") return;
+    const snapshot = getDraftSnapshot();
+    const signature = getDraftSignature(snapshot);
+    if (snapshot.selectedDate !== guard.date || !hasDraftContent(snapshot)
+      || signature === lastAutoSaveSignatureRef.current) return;
+    // This save includes the latest input; its old debounce would be a duplicate.
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    localSyncRetryRef.current = true;
+    void saveDraft({ silent: true, markSaving: false, snapshot, signature, resumeGuard: guard })
+      .finally(() => { localSyncRetryRef.current = false; });
+  };
+
   async function saveDraft(options: SaveDraftOptions = {}) {
+    const resumeGuard = options.resumeGuard;
+    if (resumeGuard && !validDeferredResume(resumeGuard)) return false;
     if (isEditMode || pendingCompletionRef.current || completionSavingRef.current) return false;
     const silent = options.silent ?? false;
     const markSaving = options.markSaving ?? true;
@@ -2359,9 +2439,9 @@ function QTWriteContent() {
     if (markSaving) setSaving(true);
 
     const executeSave = async () => {
-      if (!markSaving) updateAutoSaveStatus("saving");
-
       try {
+        if (resumeGuard && !validDeferredResume(resumeGuard)) return false;
+        if (!markSaving) updateAutoSaveStatus("saving");
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
           draftObservationRetryRef.current = true;
           observe(draftFlow, localBackupSaved ? "draft_local_only" : "draft_error", { source: draftSource, attempt: draftAttempt, reason: "offline", local_backup: localBackupSaved });
@@ -2400,6 +2480,12 @@ function QTWriteContent() {
           return false;
         }
 
+        if (resumeGuard && (!validDeferredResume(resumeGuard) || user.id !== resumeGuard.owner)) {
+          if (resumeMountedRef.current && resumeGuard.context === resumeContextRef.current) {
+            updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+          }
+          return false;
+        }
         observedDraftPhase = "draft";
         observedAuthStage = undefined;
         observe(draftFlow, "stage_started", { phase: "draft", source: draftSource, attempt: draftAttempt });
@@ -2407,6 +2493,7 @@ function QTWriteContent() {
           supabase,
           buildDraftData(snapshot),
           details => { draftTransportDetails = details; },
+          resumeGuard ? () => validDeferredResume(resumeGuard) : undefined,
         );
         rememberDraftClientUpdatedAt(result.clientUpdatedAt);
 
@@ -2416,6 +2503,9 @@ function QTWriteContent() {
           && Number.isFinite(storedTimestamp)
           && storedTimestamp > submittedTimestamp;
         if (newerServerSnapshotExists) {
+          // A newer server draft is a deliberate no-op, not a failed save to retry.
+          // Never give this older local text a new timestamp via deferred resume.
+          cancelDeferredResume();
           draftObservationRetryRef.current = true;
           observe(draftFlow, "draft_skipped", { source: draftSource, attempt: draftAttempt, reason: "newer_server_snapshot", local_backup: localBackupSaved, ...draftTransportDetails }, result.id);
           if (!silent && localBackupSaved) {
@@ -2446,6 +2536,12 @@ function QTWriteContent() {
         }
         return true;
       } catch (error) {
+        if (resumeGuard && (error as { code?: string } | null)?.code === "QT_DRAFT_CONTEXT_CHANGED") {
+          if (resumeMountedRef.current && resumeGuard.context === resumeContextRef.current) {
+            updateAutoSaveStatus(localBackupSaved ? "local" : "error");
+          }
+          return false;
+        }
         draftObservationRetryRef.current = true;
         observe(draftFlow, "draft_error", { source: draftSource, attempt: draftAttempt, local_backup: localBackupSaved, ...observationError(error), phase: observedDraftPhase, ...(observedAuthStage ? { auth_stage: observedAuthStage } : {}), ...draftTransportDetails });
         if (!silent) retryToastObservationRef.current = { flow: draftFlow, phase: "draft" };
@@ -2470,7 +2566,7 @@ function QTWriteContent() {
       .catch(() => undefined)
       .then(executeSave);
     draftSaveChainRef.current = task.then(() => undefined, () => undefined);
-    return task;
+    return task.finally(() => { resumeSettleRef.current?.(); });
   }
 
   useEffect(() => {
@@ -2511,6 +2607,15 @@ function QTWriteContent() {
       if (document.visibilityState === "hidden") {
         persistLatestBeforeLeave();
       } else {
+        if (draftObservationDepthRef.current > 0) {
+          resumePendingRef.current = {
+            context: resumeContextRef.current,
+            generation: resumeGenerationRef.current,
+            owner: draftBackupUserId,
+            date: selectedDate,
+          };
+          return;
+        }
         retryLocalOnlyDraft();
       }
     };
@@ -2825,6 +2930,7 @@ function QTWriteContent() {
       observe(observationFlow, "retry_clicked", { phase: "completion", source: "manual" });
     }
     observe(observationFlow, "save_requested", { source: isEditMode ? "edit" : "create", retry: completionRetryRef.current || Boolean(pendingCompletionRef.current) });
+    cancelDeferredResume();
     completionSavingRef.current = true;
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
