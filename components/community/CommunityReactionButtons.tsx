@@ -7,6 +7,7 @@ import {
   getCommunityReactionLabel,
   type CommunityReactionId,
 } from "@/lib/communityReactionText";
+import styles from "./QtReactions.module.css";
 
 type CommunityReactionButtonsProps = {
   qtId: string;
@@ -64,7 +65,7 @@ export default function CommunityReactionButtons({
   onReact,
 }: CommunityReactionButtonsProps) {
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <div className={styles.buttons}>
       {COMMUNITY_REACTIONS.map((reactionId) => {
         const count = Number(counts[reactionId] ?? 0);
         const isSelected = selectedReaction === reactionId;
@@ -72,46 +73,30 @@ export default function CommunityReactionButtons({
           <button
             key={reactionId}
             type="button"
+            className={styles.button}
             aria-pressed={isSelected}
             onClick={() => onReact(qtId, reactionId)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 4,
-              padding: "8px 12px",
-              minHeight: 44,
-              borderRadius: 20,
               border: `1.5px solid ${isSelected ? "var(--community-reaction-selected-border)" : "var(--community-reaction-border)"}`,
               background: isSelected
                 ? "var(--community-reaction-selected-surface)"
                 : "var(--community-reaction-surface)",
-              cursor: "pointer",
-              fontSize: 14,
               color: isSelected
                 ? "var(--community-reaction-selected-text)"
                 : "var(--community-reaction-text)",
               fontWeight: isSelected ? 700 : 500,
-              transition:
-                "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
             }}
           >
             <ReactionIcon id={reactionId} selected={isSelected} />
             <span>{getCommunityReactionLabel(reactionId, lang)}</span>
             <span
               aria-label={`${count}`}
+              className={styles.count}
               style={{
-                minWidth: 14,
-                textAlign: "center",
-                fontWeight: 750,
-                fontVariantNumeric: "tabular-nums",
                 color: isSelected
                   ? "var(--community-reaction-selected-text)"
                   : "var(--community-reaction-text)",
                 opacity: count > 0 ? 1 : 0.58,
-                marginLeft: 1,
               }}
             >
               {count}

@@ -1,8 +1,15 @@
 import { ArrowRight, Heart, MessageCircle, Sparkles } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
-import { getCommunityReactionLabel, type CommunityReactionId } from "@/lib/communityReactionText";
+import { COMMUNITY_REACTIONS, getCommunityReactionLabel } from "@/lib/communityReactionText";
+import styles from "./QtReactions.module.css";
 
-const ORDER: readonly CommunityReactionId[] = ["cheer", "pray", "bless"];
+const MY_REACTION_LABEL: Record<Lang, string> = {
+  ko: "내 반응",
+  en: "My reaction",
+  de: "Meine Reaktion",
+  fr: "Ma réaction",
+  es: "Mi reacción",
+};
 const COMMENT_LABEL: Record<Lang, string> = {
   ko: "댓글",
   en: "Comments",
@@ -26,11 +33,13 @@ function displayCount(value: unknown) {
 /** Read-only counts alongside an explicit reflection detail action. */
 export default function QtReactionSummary({
   counts,
+  selectedReaction,
   commentCount,
   lang,
   onOpen,
 }: {
   counts: Record<string, number>;
+  selectedReaction?: string;
   commentCount?: number;
   lang: Lang;
   onOpen: () => void;
@@ -38,33 +47,35 @@ export default function QtReactionSummary({
   const comments = displayCount(commentCount);
   return (
     <div
+      className={styles.summary}
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         color: "var(--community-reaction-text)",
-        fontSize: 14,
         fontVariantNumeric: "tabular-nums",
       }}
     >
       <div
         style={{ display: "flex", flex: 1, minWidth: 0, alignItems: "center", flexWrap: "wrap", gap: 12 }}
       >
-        {ORDER.map((id) => {
+        {COMMUNITY_REACTIONS.map((id) => {
           const count = displayCount(counts[id]);
+          const isSelected = selectedReaction === id;
           return (
             <span
               key={id}
               role="img"
-              aria-label={`${getCommunityReactionLabel(id, lang)}: ${count}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}
+              aria-label={`${getCommunityReactionLabel(id, lang)}: ${count}${isSelected ? ` (${MY_REACTION_LABEL[lang]})` : ""}`}
+              data-selected={isSelected || undefined}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
+                color: isSelected ? "var(--community-reaction-selected-text)" : undefined,
+                fontWeight: isSelected ? 750 : undefined }}
             >
               {id === "cheer" ? (
-                <Heart size={17} strokeWidth={1.9} aria-hidden="true" />
-              ) : id === "bless" ? (
-                <Sparkles size={17} strokeWidth={1.9} aria-hidden="true" />
+                <Heart size={17} strokeWidth={1.9} fill={isSelected ? "currentColor" : "none"} aria-hidden="true" />
               ) : (
-                <img src="/icon-pray.webp" alt="" aria-hidden="true" draggable={false} style={{ width: 19, height: 19, objectFit: "contain" }} />
+                <Sparkles size={17} strokeWidth={1.9} aria-hidden="true" />
               )}
               <span aria-hidden="true">{count}</span>
             </span>

@@ -3,11 +3,11 @@ import type { Lang } from "@/lib/i18n";
 export type CommunityReactionId = "cheer" | "bless" | "pray";
 type CommunityReactionLang = Lang | "es";
 
-export const COMMUNITY_REACTIONS: readonly CommunityReactionId[] = [
+// Keep the legacy "pray" ID readable while offering only the current QT reactions.
+export const COMMUNITY_REACTIONS = [
   "cheer",
   "bless",
-  "pray",
-] as const;
+] as const satisfies readonly CommunityReactionId[];
 
 const LABELS: Record<CommunityReactionId, Record<CommunityReactionLang, string>> = {
   cheer: {

@@ -1137,7 +1137,7 @@ function CommunityPageContent() {
     string[]
   >([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
-  const [qtDetailTextSizeIndex, setQtDetailTextSizeIndex] = useState(1);
+  const [qtDetailTextSizeIndex, setQtDetailTextSizeIndex] = useState(0);
   const [qtDetailContext, setQtDetailContext] = useState<QtCommentContext>({ scope: "all", scopeId: null });
   const [qtCommentCounts, setQtCommentCounts] = useState<Record<string, number>>({});
   const [manageModal, setManageModal] = useState<null | {
@@ -6686,7 +6686,7 @@ function CommunityPageContent() {
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {sections.map(({ key, labelKey, sundayLabelKey }, index) => {
+              {sections.map(({ key, labelKey, sundayLabelKey, isDecision }, index) => {
                 const heading = (
                   <h3 className={qtDetailReadingStyles.heading} style={{ fontWeight: 700, color: "var(--text3)" }}>
                     {c(key === "summary" && r.qt_mode === "sunday" && sundayLabelKey ? sundayLabelKey : labelKey)}
@@ -6700,10 +6700,20 @@ function CommunityPageContent() {
                         {textSizeControls}
                       </div>
                     ) : heading}
-                    <p className={qtDetailReadingStyles.body} style={{ color: "var(--text)", lineHeight: 1.85, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0 }}>
-                      {r[key]}
-                      {key === "key_verse" && <EsvInlineAttribution row={r} />}
-                    </p>
+                    {isDecision ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {r[key].split("\n").filter((decision: string) => decision.trim()).map((decision: string, decisionIndex: number) => (
+                          <p key={decisionIndex} className={qtDetailReadingStyles.body} style={{ color: "var(--text)", lineHeight: 1.85, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0 }}>
+                            <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{decisionIndex + 1}.</span>{" "}{decision}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className={qtDetailReadingStyles.body} style={{ color: "var(--text)", lineHeight: 1.85, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0 }}>
+                        {r[key]}
+                        {key === "key_verse" && <EsvInlineAttribution row={r} />}
+                      </p>
+                    )}
                   </section>
                 );
               })}
@@ -7828,6 +7838,7 @@ function CommunityPageContent() {
                     <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
                       counts={qtReactionCounts[r.id] ?? {}}
+                      selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))]}
                       lang={lang}
                       onOpen={() => openQtDetail(r, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))}
@@ -9163,6 +9174,7 @@ function CommunityPageContent() {
                       <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
                       counts={qtReactionCounts[r.id] ?? {}}
+                      selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "group", scopeId: selectedGroup.id })]}
                       lang={lang}
                       onOpen={() => openQtDetail(r, { scope: "group", scopeId: selectedGroup.id })}
@@ -10954,6 +10966,7 @@ function CommunityPageContent() {
                         <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
                       counts={qtReactionCounts[r.id] ?? {}}
+                      selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "all", scopeId: null })]}
                       lang={lang}
                       onOpen={() => openQtDetail(r, { scope: "all", scopeId: null })}

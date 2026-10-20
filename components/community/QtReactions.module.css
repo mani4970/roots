@@ -1,0 +1,72 @@
+.buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  container-type: inline-size;
+  container-name: qt-reactions;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.button > svg {
+  flex-shrink: 0;
+}
+
+.button > span,
+.summary span {
+  font-size: inherit;
+}
+
+.count {
+  min-width: 14px;
+  text-align: center;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary {
+  font-size: 14px;
+}
+
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .button,
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .summary {
+    font-size: 17px;
+  }
+}
+
+@container qt-reactions (max-width: 360px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .button {
+    font-size: 14px;
+  }
+}
+
+@container qt-reactions (max-width: 300px) {
+  .button,
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .button {
+    gap: 2px;
+    padding-inline: 2px;
+    font-size: 13px;
+  }
+
+  .button > svg {
+    width: 16px;
+    height: 16px;
+  }
+}

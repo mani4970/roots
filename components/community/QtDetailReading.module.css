@@ -1,6 +1,6 @@
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -22,7 +22,7 @@
 
 .sectionHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 8px;
 }
