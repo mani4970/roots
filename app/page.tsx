@@ -18,6 +18,7 @@ import GardenUpdatePopup from "@/components/GardenUpdatePopup";
 import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import HomeCharacterPreview from "@/components/HomeCharacterPreview";
+import HomeHeader from "@/components/HomeHeader";
 import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
 import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
@@ -40,7 +41,7 @@ import {
   setPreferredLang,
   useLang,
 } from "@/lib/useLang";
-import { getLanguageOptions, isLang, LANG_META, t, type Lang, type TKey } from "@/lib/i18n";
+import { isLang, t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { getDefaultTranslationId } from "@/lib/translationDefaults";
@@ -363,6 +364,7 @@ export default function HomePage() {
   const lang = useLang();
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string}|null>(null);
@@ -781,7 +783,7 @@ export default function HomePage() {
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
-  const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
+  const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || showLastWeekWordCard || showTodayWordCard;
@@ -2198,6 +2200,7 @@ export default function HomePage() {
     showRootsManPopup ||
     showAvatarChoiceModal ||
     showLangPicker ||
+    showThemePicker ||
     showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -2238,6 +2241,7 @@ export default function HomePage() {
     visibleSpanishLanguageLaunchAnnouncement ||
     visibleMonthlyBadgeAward ||
     showLangPicker ||
+    showThemePicker ||
     showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -2344,6 +2348,10 @@ export default function HomePage() {
     if (showHomeQTChoice || showHomeSundayQT) {
       setShowHomeQTChoice(false);
       setShowHomeSundayQT(false);
+      return true;
+    }
+    if (showThemePicker) {
+      setShowThemePicker(false);
       return true;
     }
     if (showLangPicker) {
@@ -2919,10 +2927,30 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div style={{ fontSize: 13, color: "var(--text3)", marginBottom: 4 }}>{t(getGreetingKey(), lang)}</div>
-          <div className="header-title">
+      <HomeHeader
+        userId={profile?.id}
+        lang={lang}
+        theme={theme}
+        menu={showThemePicker ? "theme" : showLangPicker ? "language" : null}
+        onMenuChange={menu => {
+          setShowThemePicker(menu === "theme");
+          setShowLangPicker(menu === "language");
+        }}
+        onThemeChange={nextTheme => {
+          if (nextTheme === "dark") {
+            document.documentElement.setAttribute("data-theme", "dark");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+          storageSet("roots_theme", nextTheme);
+          setTheme(nextTheme);
+          setShowThemePicker(false);
+        }}
+        onLanguageChange={async nextLang => {
+          setShowLangPicker(false);
+          await setPreferredLang(nextLang);
+        }}
+      >
             {(() => {
               const name = profile?.name ?? t("profile_default_name", lang);
               const nehemiahCopy = currentRewardMapKind === "nehemiahWall" ? getNehemiahWallCopy(lang) : null;
@@ -2934,52 +2962,7 @@ export default function HomePage() {
               if (idx === -1) return full;
               return <>{full.slice(0, idx)}<em>{emWord}</em>{full.slice(idx + emWord.length)}</>;
             })()}
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={() => {
-              const html = document.documentElement;
-              const isDark = html.getAttribute("data-theme") === "dark";
-              if (isDark) {
-                html.removeAttribute("data-theme");
-                storageSet("roots_theme", "light");
-              } else {
-                html.setAttribute("data-theme", "dark");
-                storageSet("roots_theme", "dark");
-              }
-              setTheme(isDark ? "light" : "dark");
-            }}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 4, lineHeight: 1 }}
-          >
-            {theme === "light" ? "☀️" : "🌙"}
-          </button>
-          <div style={{ position: "relative" }}>
-            <button onClick={() => setShowLangPicker(p => !p)} style={{ background: "none", border: "none", color: "var(--text3)", marginTop: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 20 }}>{LANG_META[lang].flag}</span>
-            </button>
-            <ObservationPopup userId={profile?.id} kind="language_picker" queued={showLangPicker} instanceKey="home_menu">
-            {showLangPicker && (
-              <div onClick={() => setShowLangPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-            )}
-            {showLangPicker && (
-              <div className="roots-elevation-popover" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 14, padding: "8px 0", zIndex: 100, minWidth: 150 }}>
-                {getLanguageOptions().map(opt => (
-                  <button key={opt.code} onClick={async () => {
-                    setShowLangPicker(false);
-                    await setPreferredLang(opt.code);
-                  }} style={{ width: "100%", textAlign: "left", padding: "10px 16px", background: lang === opt.code ? "var(--surface-sage-selected)" : "none", border: "none", cursor: "pointer", fontSize: 14, color: lang === opt.code ? "var(--sage-dark)" : "var(--text)", fontWeight: lang === opt.code ? 700 : 400, display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 22 }}>{opt.flag}</span>
-                    <span>{opt.nativeName}</span>
-                    {lang === opt.code && <span style={{ marginLeft: "auto", color: "var(--sage)" }}>✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-            </ObservationPopup>
-          </div>
-        </div>
-      </div>
+      </HomeHeader>
 
       <div ref={treeSectionRef}>
         <TreeGrowth
