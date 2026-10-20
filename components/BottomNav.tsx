@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/useLang";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 
-export default function BottomNav() {
+function BottomNavContent({ lang }: { lang: Lang }) {
   const path = usePathname();
-  const lang = useLang();
 
   const NAV = [
     {
@@ -45,4 +44,14 @@ export default function BottomNav() {
       })}
     </nav>
   );
+}
+
+function LocalizedBottomNav() {
+  const lang = useLang();
+  return <BottomNavContent lang={lang} />;
+}
+
+/** Reuse the page language when it is already loaded, including its auth sync. */
+export default function BottomNav({ lang }: { lang?: Lang }) {
+  return lang ? <BottomNavContent lang={lang} /> : <LocalizedBottomNav />;
 }

@@ -46,7 +46,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   const generation = useRef(0);
   const pendingRef = useRef(false);
   const moreRef = useRef(false);
-  const submissionRef = useRef<{ id: string; body: string } | null>(null);
+  const submissionRef = useRef<{ id: string; body: string; context: QtCommentContext } | null>(null);
   const callbackRef = useRef(onCountChange);
   const deleteAnchorRef = useRef<HTMLDivElement | null>(null);
   const deletePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -154,7 +154,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       })
       .finally(() => { if (generation.current === version) setLoading(false); });
     return () => { generation.current++; controller.abort(); };
-    // Primitive contextKey represents both scope fields; callback changes must not reload the thread.
+    // A QT has one shared thread. Changing its entry surface or callbacks must not reload it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextKey, userId, reload]);
 
@@ -194,9 +194,10 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     try {
       const supabase = createClient();
       if (submissionRef.current?.body !== body) {
-        submissionRef.current = { id: crypto.randomUUID(), body };
+        submissionRef.current = { id: crypto.randomUUID(), body, context: { ...context } };
       }
-      const row = await insertQtComment(supabase, qtId, context, body, {
+      // An uncertain insert keeps its original route as well as its UUID when retried.
+      const row = await insertQtComment(supabase, qtId, submissionRef.current.context, body, {
         id: submissionRef.current.id, authorId: userId,
       });
       if (generation.current !== version) return;

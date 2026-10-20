@@ -38,13 +38,14 @@ export default function QtReactionSummary({
   lang,
   onOpen,
 }: {
-  counts: Record<string, number>;
+  counts?: Record<string, number>;
   selectedReaction?: string;
   commentCount?: number;
   lang: Lang;
   onOpen: () => void;
 }) {
   const comments = displayCount(commentCount);
+  const commentsReady = commentCount !== undefined;
   return (
     <div
       className={styles.summary}
@@ -60,13 +61,14 @@ export default function QtReactionSummary({
         style={{ display: "flex", flex: 1, minWidth: 0, alignItems: "center", flexWrap: "wrap", gap: 12 }}
       >
         {COMMUNITY_REACTIONS.map((id) => {
-          const count = displayCount(counts[id]);
+          const count = displayCount(counts?.[id]);
+          const ready = counts !== undefined;
           const isSelected = selectedReaction === id;
           return (
             <span
               key={id}
               role="img"
-              aria-label={`${getCommunityReactionLabel(id, lang)}: ${count}${isSelected ? ` (${MY_REACTION_LABEL[lang]})` : ""}`}
+              aria-label={`${getCommunityReactionLabel(id, lang)}${ready ? `: ${count}` : ""}${isSelected ? ` (${MY_REACTION_LABEL[lang]})` : ""}`}
               data-selected={isSelected || undefined}
               style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
                 color: isSelected ? "var(--community-reaction-selected-text)" : undefined,
@@ -77,17 +79,19 @@ export default function QtReactionSummary({
               ) : (
                 <Sparkles size={17} strokeWidth={1.9} aria-hidden="true" />
               )}
-              <span aria-hidden="true">{count}</span>
+              <span aria-hidden="true" style={{ minWidth: "2ch", textAlign: "center" }}>{ready ? count : "–"}</span>
             </span>
           );
         })}
         <span
           role="img"
-          aria-label={`${COMMENT_LABEL[lang]}: ${comments}`}
+          aria-label={`${COMMENT_LABEL[lang]}${commentsReady ? `: ${comments}` : ""}`}
           style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}
         >
           <MessageCircle size={17} strokeWidth={1.9} aria-hidden="true" />
-          {comments > 0 && <span aria-hidden="true">{comments}</span>}
+          <span aria-hidden="true" style={{ minWidth: "2ch", textAlign: "center", visibility: commentsReady && comments === 0 ? "hidden" : "visible" }}>
+            {commentsReady ? comments : "–"}
+          </span>
         </span>
       </div>
       <button

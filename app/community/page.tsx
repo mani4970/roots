@@ -19,6 +19,7 @@ import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import NotificationDirectOpenOverlay from "@/components/notifications/NotificationDirectOpenOverlay";
 import CommunityReactionButtons from "@/components/community/CommunityReactionButtons";
+import CommunityChallengeBoundary from "@/components/community/CommunityChallengeBoundary";
 import QtFeedPreview from "@/components/community/QtFeedPreview";
 import QtReactionSummary from "@/components/community/QtReactionSummary";
 import QtComments from "@/components/community/QtComments";
@@ -27,6 +28,8 @@ import qtDetailReadingStyles from "@/components/community/QtDetailReading.module
 import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
 import GroupChallengeScheduleFields from "@/components/community/GroupChallengeScheduleFields";
 import { createClient } from "@/lib/supabase";
+import { createCommunityProfileCardCache } from "@/lib/communityProfileCards";
+import { createCommunityChallengeAvailabilityCache } from "@/lib/communityChallengeAvailability";
 import { useLang } from "@/lib/useLang";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { translateBibleRef } from "@/lib/bibleBooks";
@@ -533,6 +536,14 @@ async function fetchGroupMemberCounts(
   if (groupIds.length === 0) return counts;
 
   for (const chunk of chunkArray(groupIds, 100)) {
+    const summary = await supabase.rpc("get_community_group_member_counts", { p_group_ids: chunk });
+    if (!summary.error) {
+      (summary.data ?? []).forEach((row: any) => {
+        const count = Number(row.member_count);
+        if (row.group_id && Number.isFinite(count)) counts[row.group_id] = Math.max(0, count);
+      });
+      continue;
+    }
     const { data, error } = await supabase
       .from("group_members")
       .select("group_id")
@@ -568,12 +579,15 @@ async function fetchLatestQtTimesByGroup(
     let createdAtRows: any[] = [];
     let sharedAtRows: any[] = [];
 
-    const createdAt = await supabase
-      .from("qt_records")
-      .select("id,visibility,created_at,shared_at")
-      .or(visibilityFilter)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const [createdAt, withSharedAt] = await Promise.all([
+      supabase.from("qt_records")
+        .select("id,visibility,created_at,shared_at").or(visibilityFilter)
+        .order("created_at", { ascending: false }).limit(limit),
+      supabase.from("qt_records")
+        .select("id,visibility,created_at,shared_at").or(visibilityFilter)
+        .order("shared_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false }).limit(limit),
+    ]);
 
     if (createdAt.error) {
       if (/shared_at/i.test(createdAt.error.message ?? "")) {
@@ -602,13 +616,6 @@ async function fetchLatestQtTimesByGroup(
       createdAtRows = createdAt.data ?? [];
     }
 
-    const withSharedAt = await supabase
-      .from("qt_records")
-      .select("id,visibility,created_at,shared_at")
-      .or(visibilityFilter)
-      .order("shared_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(limit);
 
     if (withSharedAt.error) {
       if (!/shared_at/i.test(withSharedAt.error.message ?? "")) {
@@ -1009,6 +1016,15 @@ function CommunityPageContent() {
     all: 0,
   });
   const loadedMainTabsRef = useRef<Set<CommunityMainTab>>(new Set());
+  const mainTabInFlightRef = useRef<Partial<Record<CommunityMainTab, Promise<void>>>>({});
+  const communityDetailRequestSeqRef = useRef(0);
+  const communityProfileCardsRef = useRef<ReturnType<typeof createCommunityProfileCardCache> | null>(null);
+  if (!communityProfileCardsRef.current) communityProfileCardsRef.current = createCommunityProfileCardCache();
+  const communityChallengeAvailabilityRef = useRef<ReturnType<typeof createCommunityChallengeAvailabilityCache> | null>(null);
+  if (!communityChallengeAvailabilityRef.current) communityChallengeAvailabilityRef.current = createCommunityChallengeAvailabilityCache();
+  const qtCommentCountRevisionsRef = useRef<Record<string, number>>({});
+  const qtCommentCountRequestIdsRef = useRef<Record<string, number>>({});
+  const qtCommentCountRequestSeqRef = useRef(0);
   const communityModerationMetaPromiseRef = useRef<{
     userId: string;
     promise: Promise<CommunityModerationMeta>;
@@ -1661,6 +1677,14 @@ function CommunityPageContent() {
 
   useEffect(() => {
     return () => {
+      communityDetailRequestSeqRef.current += 1;
+      mainTabRequestSeqRef.current.partner += 1;
+      mainTabRequestSeqRef.current.group += 1;
+      mainTabRequestSeqRef.current.all += 1;
+      allSectionRequestSeqRef.current.praying += 1;
+      allSectionRequestSeqRef.current.answered += 1;
+      mainTabInFlightRef.current = {};
+      allSectionInFlightRef.current.clear();
       if (loveHeartToastTimerRef.current)
         window.clearTimeout(loveHeartToastTimerRef.current);
       if (reflectionNudgeToastTimerRef.current) {
@@ -2208,29 +2232,30 @@ function CommunityPageContent() {
   }
 
   async function loadCompanionChallengeForPartner(
-    supabase: ReturnType<typeof createClient>,
-    partnerId: string,
+    supabase: ReturnType<typeof createClient>, partnerId: string,
+    currentUserId: string, requestId: number,
   ) {
-    if (!partnerId) return;
-    setLoadingCompanionChallenge(true);
+    const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
+    if (!partnerId || !isCurrent()) return;
+    const today = localDateInputValue(0);
+    const availability = communityChallengeAvailabilityRef.current!.peek(currentUserId, today);
+    setLoadingCompanionChallenge(availability !== false);
     setCompanionChallengeStatus(null);
     try {
-      const today = localDateInputValue(0);
-      const status = await loadCompanionChallengeStatus(
-        supabase,
-        partnerId,
-        today,
-      );
-      setCompanionChallengeStatus(
-        status?.endDate && today > status.endDate ? null : status,
-      );
+      if (availability === false) return;
+      const available = communityChallengeAvailabilityRef.current!.load(supabase, currentUserId, today);
+      const statusRequest = loadCompanionChallengeStatus(supabase, partnerId, today);
+      const status = await Promise.race([
+        statusRequest,
+        available.then((value) => value === false ? null : statusRequest),
+      ]);
+      if (!isCurrent()) return;
+      setCompanionChallengeStatus(status?.endDate && today > status.endDate ? null : status);
     } catch (error) {
-      // The community tab should remain usable if production deploy happens before
-      // the companion challenge SQL is applied, or when no active challenge exists.
       console.warn("동역자 챌린지 상태 조회 실패:", error);
-      setCompanionChallengeStatus(null);
+      if (isCurrent()) setCompanionChallengeStatus(null);
     } finally {
-      setLoadingCompanionChallenge(false);
+      if (isCurrent()) setLoadingCompanionChallenge(false);
     }
   }
 
@@ -2723,6 +2748,7 @@ function CommunityPageContent() {
   }
 
   function resetGroupDetailState() {
+    communityDetailRequestSeqRef.current += 1;
     setActionMenu(null);
     setOpenGroupHeaderMenu(null);
     setShowGroupMembers(false);
@@ -2762,6 +2788,7 @@ function CommunityPageContent() {
   }
 
   function resetPartnerDetailState() {
+    communityDetailRequestSeqRef.current += 1;
     setActionMenu(null);
     setSafetyConfirm(null);
     closeManageModal();
@@ -3074,6 +3101,8 @@ function CommunityPageContent() {
           { onConflict: "user_id,content_type,content_id" },
         );
       if (hideError) throw hideError;
+      communityModerationMetaPromiseRef.current = null;
+      communityViewerMetaPromiseRef.current = null;
 
       const key = contentKey(kind, item.id);
       setHiddenKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
@@ -3138,6 +3167,8 @@ function CommunityPageContent() {
           { onConflict: "user_id,hidden_user_id" },
         );
       if (hideError) throw hideError;
+      communityModerationMetaPromiseRef.current = null;
+      communityViewerMetaPromiseRef.current = null;
 
       setHiddenUserIds((prev) =>
         prev.includes(item.user_id) ? prev : [...prev, item.user_id],
@@ -3764,10 +3795,40 @@ function CommunityPageContent() {
   }
 
   // 프로필 fetch 헬퍼
-  async function fetchProfiles(supabase: any, data: any[]) {
+  async function fetchProfiles(supabase: any, data: any[], viewerId: string | null = userId) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
     if (uids.length === 0) return {};
-    return mapProfileCards(await loadProfileCards(supabase, uids));
+    if (!viewerId) return mapProfileCards(await loadProfileCards(supabase, uids));
+    return communityProfileCardsRef.current!.load(supabase, viewerId, uids);
+  }
+
+  function updateQtCommentCount(qtId: string, context: QtCommentContext, count: number) {
+    const key = qtCommentContextKey(qtId, context);
+    qtCommentCountRevisionsRef.current[key] = (qtCommentCountRevisionsRef.current[key] ?? 0) + 1;
+    setQtCommentCounts((previous) => ({ ...previous, [key]: count }));
+  }
+
+  async function refreshQtCommentCounts(
+    supabase: any, rows: any[], contextForRow: (row: any) => QtCommentContext,
+    isCurrent: () => boolean,
+  ) {
+    const requestId = ++qtCommentCountRequestSeqRef.current;
+    const revisions: Record<string, number> = {};
+    rows.forEach((row) => {
+      const key = qtCommentContextKey(row.id, contextForRow(row));
+      revisions[key] = qtCommentCountRevisionsRef.current[key] ?? 0;
+      qtCommentCountRequestIdsRef.current[key] = requestId;
+    });
+    const counts = await fetchQtCommentCountMeta(supabase, rows, contextForRow);
+    if (!isCurrent()) return;
+    setQtCommentCounts((previous) => {
+      if (!isCurrent()) return previous;
+      const currentCounts = Object.fromEntries(Object.entries(counts).filter(([key]) =>
+        qtCommentCountRequestIdsRef.current[key] === requestId &&
+        (qtCommentCountRevisionsRef.current[key] ?? 0) === revisions[key],
+      ));
+      return { ...previous, ...currentCounts };
+    });
   }
 
   async function loadQtPhotoUrls(supabase: any, rows: any[]) {
@@ -4050,6 +4111,7 @@ function CommunityPageContent() {
       userId?: string;
       hiddenKeys?: string[];
       hiddenUserIds?: string[];
+      isCurrent?: () => boolean;
     },
   ): Promise<"qt" | "prayer" | null> {
     const supabase = context?.supabase ?? createClient();
@@ -4061,14 +4123,14 @@ function CommunityPageContent() {
       } = await supabase.auth.getUser();
       directUserId = user?.id ?? null;
     }
-    if (!directUserId) return null;
+    if (!directUserId || context?.isCurrent?.() === false) return null;
 
     const directContent = await loadCommunityNotificationDirectContent(
       supabase,
       directUserId,
       target,
     );
-    if (!directContent) return null;
+    if (!directContent || context?.isCurrent?.() === false) return null;
 
     if (directContent.kind === "qt") {
       const record = directContent.record;
@@ -4285,6 +4347,8 @@ function CommunityPageContent() {
     directTarget?: CommunityNotificationDirectTarget,
     options?: { skipHistory?: boolean },
   ) {
+    const requestId = ++communityDetailRequestSeqRef.current;
+    const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
     if (!options?.skipHistory) pushCommunityDetailHistory("partner");
     setPartnerQtLoadError(false);
     setPartnerPrayerLoadError(false);
@@ -4301,7 +4365,7 @@ function CommunityPageContent() {
     setPartnerQts([]);
     setPartnerPrayers([]);
     setCompanionChallengeStatus(null);
-    setLoadingCompanionChallenge(true);
+    setLoadingCompanionChallenge(communityChallengeAvailabilityRef.current!.peek(userId, localDateInputValue(0)) !== false);
     setLoadingPartnerQts(true);
     setLoadingPartnerPrayers(true);
 
@@ -4314,9 +4378,21 @@ function CommunityPageContent() {
     }
 
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const userResult = await supabase.auth.getUser().catch((error) => {
+      console.warn("커뮤니티 사용자 확인 실패:", error);
+      if (isCurrent()) {
+        setPartnerQtLoadError(true);
+        setPartnerPrayerLoadError(true);
+        setLoadingPartnerQts(false);
+        setLoadingPartnerPrayers(false);
+        setLoadingCompanionChallenge(false);
+        setNotificationDirectOpenPending(false);
+      }
+      return null;
+    });
+    if (!userResult) return;
+    const { data: { user } } = userResult;
+    if (!isCurrent()) return;
     if (!user) {
       setLoadingCompanionChallenge(false);
       setLoadingPartnerQts(false);
@@ -4325,37 +4401,47 @@ function CommunityPageContent() {
       return;
     }
 
-    // The challenge belongs to the first detail screen. Start it in parallel
-    // with meditation so the header/challenge area is settled before QT cards
-    // are released. Prayer tabs remain background-prefetched afterwards.
-    const companionChallengePromise = loadCompanionChallengeForPartner(
-      supabase,
-      partnerId,
-    );
+    // Challenge progress settles in its own area; QT and prayer fetches are independent.
+    const companionChallengePromise = loadCompanionChallengeForPartner(supabase, partnerId, user.id, requestId);
 
-    const moderationMeta = await ensureCommunityModerationMeta(
-      supabase,
-      user.id,
-    );
+    const moderationMeta = await ensureCommunityModerationMeta(supabase, user.id).catch((error) => {
+      console.warn("커뮤니티 숨김 정보 조회 실패:", error);
+      if (isCurrent()) {
+        setPartnerQtLoadError(true);
+        setPartnerPrayerLoadError(true);
+        setLoadingPartnerQts(false);
+        setLoadingPartnerPrayers(false);
+        setNotificationDirectOpenPending(false);
+      }
+      return null;
+    });
+    if (!moderationMeta || !isCurrent()) return;
     const currentHiddenKeys = moderationMeta.hiddenKeys;
     const currentHiddenUserIds = moderationMeta.hiddenUserIds;
 
-    if (directTarget) {
-      const opened = await openDirectNotificationContent(directTarget, {
-        supabase,
-        userId: user.id,
-        hiddenKeys: currentHiddenKeys,
-        hiddenUserIds: currentHiddenUserIds,
-      });
-      if (opened === "qt") {
-        setLoadingPartnerQts(false);
-        setNotificationDirectOpenPending(false);
-      } else if (opened === "prayer") {
-        setLoadingPartnerPrayers(false);
-      } else {
-        setNotificationDirectOpenPending(false);
+    const directContentPromise = (async () => {
+      if (directTarget) {
+        const opened = await openDirectNotificationContent(directTarget, {
+          supabase,
+          userId: user.id,
+          hiddenKeys: currentHiddenKeys,
+          hiddenUserIds: currentHiddenUserIds,
+          isCurrent,
+        });
+        if (!isCurrent()) return;
+        if (opened === "qt") {
+          setLoadingPartnerQts(false);
+          setNotificationDirectOpenPending(false);
+        } else if (opened === "prayer") {
+          setLoadingPartnerPrayers(false);
+        } else {
+          setNotificationDirectOpenPending(false);
+        }
       }
-    }
+    })().catch((error) => {
+      console.warn("커뮤니티 알림 대상 조회 실패:", error);
+      if (isCurrent()) setNotificationDirectOpenPending(false);
+    });
 
     setPartners((prev) =>
       sortPartnersForDisplay(
@@ -4394,193 +4480,198 @@ function CommunityPageContent() {
       }
     })();
 
-    try {
-      const { data: qtRecipientRows, error: qtRecipientError } = await supabase
-        .from("qt_record_recipients")
-        .select("qt_record_id,owner_id,recipient_id,created_at")
-        .or(
-          `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
-        )
-        .order("created_at", { ascending: false })
-        .limit(COMMUNITY_PARTNER_QT_HISTORY_LIMIT);
+    const loadMeditations = async () => {
+      try {
+        const { data: qtRecipientRows, error: qtRecipientError } = await supabase
+          .from("qt_record_recipients")
+          .select("qt_record_id,owner_id,recipient_id,created_at")
+          .or(
+            `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
+          )
+          .order("created_at", { ascending: false })
+          .limit(COMMUNITY_PARTNER_QT_HISTORY_LIMIT);
 
-      if (qtRecipientError) throw qtRecipientError;
-      const qtIds = Array.from(
-        new Set(
-          (qtRecipientRows ?? [])
-            .map((row: any) => row.qt_record_id)
-            .filter(Boolean),
-        ),
-      );
-
-      if (qtIds.length > 0) {
-        const recipientMap: Record<string, any> = {};
-        (qtRecipientRows ?? []).forEach((row: any) => {
-          recipientMap[row.qt_record_id] = row;
-        });
-
-        const qtRows = await fetchContentRowsByIds(
-          supabase,
-          "qt_records",
-          qtIds,
-        );
-        const [profMap, commentCounts] = await Promise.all([
-          fetchProfiles(supabase, qtRows),
-          fetchQtCommentCountMeta(supabase, qtRows, (row) => partnerQtCommentContext(row, user.id, partnerId)),
-        ]);
-        const rowsWithProfiles = sortQtFeedRows(
-          qtRows.map((row: any) => {
-            const recipient = recipientMap[row.id] ?? null;
-            const partnerSharedAt = recipient?.created_at ?? row.created_at;
-            return {
-              ...row,
-              profiles: profMap[row.user_id] ?? null,
-              partnerSharedAt,
-              isUnreadInPartner:
-                recipient?.owner_id === partnerId &&
-                recipient?.recipient_id === user.id &&
-                isLaterThan(partnerSharedAt, previousSeenAt),
-            };
-          }),
+        if (!isCurrent()) return;
+        if (qtRecipientError) throw qtRecipientError;
+        const qtIds = Array.from(
+          new Set(
+            (qtRecipientRows ?? [])
+              .map((row: any) => row.qt_record_id)
+              .filter(Boolean),
+          ),
         );
 
-        const visibleRows = filterHiddenItems(
-          "qt",
-          rowsWithProfiles,
-          currentHiddenKeys,
-          currentHiddenUserIds,
-        );
-        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
-        setPartnerQts(visibleRows);
-        setLoadingPartnerQts(false);
+        if (qtIds.length > 0) {
+          const recipientMap: Record<string, any> = {};
+          (qtRecipientRows ?? []).forEach((row: any) => {
+            recipientMap[row.qt_record_id] = row;
+          });
 
-        void fetchQtReactions(supabase, qtIds, user.id)
-          .then(({ counts, mine }) => {
-            setQtReactionCounts((prev) => ({ ...prev, ...counts }));
-            setMyQtReactions((prev) => ({ ...prev, ...mine }));
-          })
-          .catch((error) =>
-            console.warn("동역자 묵상 반응 조회 실패:", error),
+          const qtRows = await fetchContentRowsByIds(
+            supabase,
+            "qt_records",
+            qtIds,
           );
-      } else if (directTarget?.contentKind !== "qt") {
-        setPartnerQts([]);
-      }
-    } catch (error) {
-      console.warn("동역자 묵상 나눔 조회 실패:", error);
-      setPartnerQtLoadError(true);
-    } finally {
-      setLoadingPartnerQts(false);
-    }
+          const profMap = await fetchProfiles(supabase, qtRows, user.id);
+          if (!isCurrent()) return;
+          const rowsWithProfiles = sortQtFeedRows(
+            qtRows.map((row: any) => {
+              const recipient = recipientMap[row.id] ?? null;
+              const partnerSharedAt = recipient?.created_at ?? row.created_at;
+              return {
+                ...row,
+                profiles: profMap[row.user_id] ?? null,
+                partnerSharedAt,
+                isUnreadInPartner:
+                  recipient?.owner_id === partnerId &&
+                  recipient?.recipient_id === user.id &&
+                  isLaterThan(partnerSharedAt, previousSeenAt),
+              };
+            }),
+          );
 
-    // The first detail screen is complete only after both challenge state and
-    // meditation are resolved. Prayer/answered content starts after that and is
-    // prefetched in the background for quick tab switches.
-    await companionChallengePromise;
-
-    try {
-      const prayerRecipientQuery = supabase
-        .from("prayer_item_recipients")
-        .select("prayer_item_id,owner_id,recipient_id,created_at")
-        .or(
-          `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
-        )
-        .order("created_at", { ascending: false })
-        .limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT);
-      const [, prayerRecipientResult] = await Promise.all([
-        ensureCommunityViewerMeta(supabase, user.id),
-        prayerRecipientQuery,
-      ]);
-      const { data: prayerRecipientRows, error: prayerRecipientError } =
-        prayerRecipientResult;
-
-      if (prayerRecipientError) throw prayerRecipientError;
-      const prayerIds = Array.from(
-        new Set(
-          (prayerRecipientRows ?? [])
-            .map((row: any) => row.prayer_item_id)
-            .filter(Boolean),
-        ),
-      );
-
-      if (prayerIds.length > 0) {
-        const recipientMap: Record<string, any> = {};
-        (prayerRecipientRows ?? []).forEach((row: any) => {
-          recipientMap[row.prayer_item_id] = row;
-        });
-
-        const prayerRows = await fetchContentRowsByIds(
-          supabase,
-          "prayer_items",
-          prayerIds,
-        );
-        const profMap = await fetchProfiles(supabase, prayerRows);
-        const answeredIds = prayerRows
-          .filter((row: any) => !!row.is_answered)
-          .map((row: any) => row.id);
-        const rowsWithProfiles = sortPrayerFeedRows(
-          prayerRows.map((row: any) => {
-            const recipient = recipientMap[row.id] ?? null;
-            const partnerSharedAt = recipient?.created_at ?? row.created_at;
-            const partnerActivityAt = row.is_answered
-              ? getAnsweredPrayerTime(row) ?? partnerSharedAt
-              : partnerSharedAt;
-            return {
-              ...row,
-              like_count: row.like_count ?? 0,
-              profiles: profMap[row.user_id] ?? null,
-              partnerSharedAt,
-              partnerActivityAt,
-              isUnreadInPartner:
-                recipient?.owner_id === partnerId &&
-                recipient?.recipient_id === user.id &&
-                isLaterThan(partnerActivityAt, previousSeenAt),
-            };
-          }),
-        );
-
-        setPartnerPrayers(
-          filterHiddenItems(
-            "prayer",
+          const visibleRows = filterHiddenItems(
+            "qt",
             rowsWithProfiles,
             currentHiddenKeys,
             currentHiddenUserIds,
-          ),
-        );
-        setLoadingPartnerPrayers(false);
+          );
+          void refreshQtCommentCounts(supabase, visibleRows, (row) => partnerQtCommentContext(row, user.id, partnerId), isCurrent);
+          setPartnerQts(visibleRows);
+          setLoadingPartnerQts(false);
 
-        if (answeredIds.length > 0) {
-          void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+          void fetchQtReactions(supabase, qtIds, user.id)
             .then(({ counts, mine }) => {
-              setPartnerPrayers((current) =>
-                current.map((row: any) =>
-                  answeredIds.includes(row.id)
-                    ? {
-                        ...row,
-                        like_count: counts[row.id] ?? row.like_count ?? 0,
-                      }
-                    : row,
-                ),
-              );
-              if (mine.length > 0) {
-                setLikedPrayerIds((current) =>
-                  Array.from(new Set([...current, ...mine])),
-                );
-              }
+              if (!isCurrent()) return;
+              setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+              setMyQtReactions((prev) => ({ ...prev, ...mine }));
             })
             .catch((error) =>
-              console.warn("동역자 기도 응답 좋아요 보조 조회 실패:", error),
+              console.warn("동역자 묵상 반응 조회 실패:", error),
             );
+        } else if (directTarget?.contentKind !== "qt") {
+          setPartnerQts([]);
         }
-      } else if (directTarget?.contentKind !== "prayer") {
-        setPartnerPrayers([]);
+      } catch (error) {
+        console.warn("동역자 묵상 나눔 조회 실패:", error);
+        if (isCurrent()) setPartnerQtLoadError(true);
+      } finally {
+        if (isCurrent()) setLoadingPartnerQts(false);
       }
-    } catch (error) {
-      console.warn("동역자 기도 나눔 조회 실패:", error);
-      setPartnerPrayerLoadError(true);
-    } finally {
-      setLoadingPartnerPrayers(false);
-    }
+    };
+    const loadPrayers = async () => {
+      try {
+        const prayerRecipientQuery = supabase
+          .from("prayer_item_recipients")
+          .select("prayer_item_id,owner_id,recipient_id,created_at")
+          .or(
+            `and(owner_id.eq.${user.id},recipient_id.eq.${partnerId}),and(owner_id.eq.${partnerId},recipient_id.eq.${user.id})`,
+          )
+          .order("created_at", { ascending: false })
+          .limit(COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT);
+        const [, prayerRecipientResult] = await Promise.all([
+          ensureCommunityViewerMeta(supabase, user.id),
+          prayerRecipientQuery,
+        ]);
+        const { data: prayerRecipientRows, error: prayerRecipientError } =
+          prayerRecipientResult;
 
+        if (!isCurrent()) return;
+        if (prayerRecipientError) throw prayerRecipientError;
+        const prayerIds = Array.from(
+          new Set(
+            (prayerRecipientRows ?? [])
+              .map((row: any) => row.prayer_item_id)
+              .filter(Boolean),
+          ),
+        );
+
+        if (prayerIds.length > 0) {
+          const recipientMap: Record<string, any> = {};
+          (prayerRecipientRows ?? []).forEach((row: any) => {
+            recipientMap[row.prayer_item_id] = row;
+          });
+
+          const prayerRows = await fetchContentRowsByIds(
+            supabase,
+            "prayer_items",
+            prayerIds,
+          );
+          const profMap = await fetchProfiles(supabase, prayerRows, user.id);
+          if (!isCurrent()) return;
+          const answeredIds = prayerRows
+            .filter((row: any) => !!row.is_answered)
+            .map((row: any) => row.id);
+          const rowsWithProfiles = sortPrayerFeedRows(
+            prayerRows.map((row: any) => {
+              const recipient = recipientMap[row.id] ?? null;
+              const partnerSharedAt = recipient?.created_at ?? row.created_at;
+              const partnerActivityAt = row.is_answered
+                ? getAnsweredPrayerTime(row) ?? partnerSharedAt
+                : partnerSharedAt;
+              return {
+                ...row,
+                like_count: row.like_count ?? 0,
+                profiles: profMap[row.user_id] ?? null,
+                partnerSharedAt,
+                partnerActivityAt,
+                isUnreadInPartner:
+                  recipient?.owner_id === partnerId &&
+                  recipient?.recipient_id === user.id &&
+                  isLaterThan(partnerActivityAt, previousSeenAt),
+              };
+            }),
+          );
+
+          setPartnerPrayers((current) => {
+            if (!isCurrent()) return current;
+            const directRows = directTarget?.contentKind === "prayer"
+              ? current.filter((row) => row.id === directTarget.contentId) : [];
+            return sortPrayerFeedRows(filterHiddenItems(
+              "prayer", mergeRowsById([directRows, rowsWithProfiles]),
+              currentHiddenKeys, currentHiddenUserIds,
+            ));
+          });
+          setLoadingPartnerPrayers(false);
+
+          if (answeredIds.length > 0) {
+            void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+              .then(({ counts, mine }) => {
+                if (!isCurrent()) return;
+                setPartnerPrayers((current) =>
+                  current.map((row: any) =>
+                    answeredIds.includes(row.id)
+                      ? {
+                          ...row,
+                          like_count: counts[row.id] ?? row.like_count ?? 0,
+                        }
+                      : row,
+                  ),
+                );
+                if (mine.length > 0) {
+                  setLikedPrayerIds((current) =>
+                    Array.from(new Set([...current, ...mine])),
+                  );
+                }
+              })
+              .catch((error) =>
+                console.warn("동역자 기도 응답 좋아요 보조 조회 실패:", error),
+              );
+          }
+        } else if (directTarget?.contentKind !== "prayer") {
+          setPartnerPrayers([]);
+        }
+      } catch (error) {
+        console.warn("동역자 기도 나눔 조회 실패:", error);
+        if (isCurrent()) setPartnerPrayerLoadError(true);
+      } finally {
+        if (isCurrent()) setLoadingPartnerPrayers(false);
+      }
+    };
+    const contentRequests = preferredSection && preferredSection !== "qt"
+      ? [loadPrayers(), loadMeditations()]
+      : [loadMeditations(), loadPrayers()];
+    await Promise.all([...contentRequests, companionChallengePromise, directContentPromise]);
   }
 
   async function loadGroupMemberProfiles(group: any) {
@@ -4672,6 +4763,7 @@ function CommunityPageContent() {
         continue;
       }
 
+      ids.forEach((id) => { counts[id] = {}; });
       (rxData ?? []).forEach((r: any) => {
         if (!counts[r.qt_id]) counts[r.qt_id] = {};
         counts[r.qt_id][r.reaction] =
@@ -4848,7 +4940,7 @@ function CommunityPageContent() {
 
       if (result.error) throw result.error;
       const rows = result.data ?? [];
-      const profileMap = await fetchProfiles(supabase, rows);
+      const profileMap = await fetchProfiles(supabase, rows, currentUserId);
       if (!isCurrentAllSectionRequest(section, requestId)) return;
 
       if (section === "praying") {
@@ -4942,7 +5034,20 @@ function CommunityPageContent() {
     }
   }
 
-  async function loadData(options?: {
+  function loadData(options?: { targetTab?: CommunityMainTab; force?: boolean }): Promise<void> {
+    const targetTab = options?.targetTab ?? tab;
+    const pending = mainTabInFlightRef.current[targetTab];
+    if (!options?.force && pending) return pending;
+    const request = performMainTabLoad({ ...options, targetTab });
+    mainTabInFlightRef.current[targetTab] = request;
+    const clearRequest = () => {
+      if (mainTabInFlightRef.current[targetTab] === request) delete mainTabInFlightRef.current[targetTab];
+    };
+    void request.then(clearRequest, clearRequest);
+    return request;
+  }
+
+  async function performMainTabLoad(options?: {
     targetTab?: CommunityMainTab;
     force?: boolean;
   }) {
@@ -4960,6 +5065,7 @@ function CommunityPageContent() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (!isCurrentMainTabRequest(targetTab, requestId)) return;
       if (!user) {
         router.push("/login");
         return;
@@ -4975,6 +5081,7 @@ function CommunityPageContent() {
       );
 
       if (targetTab === "partner") {
+        void communityChallengeAvailabilityRef.current!.load(supabase, user.id, localDateInputValue(0));
         const { data: companionRows, error: companionError } = await supabase
           .from("companions")
           .select(
@@ -5007,6 +5114,7 @@ function CommunityPageContent() {
         ]);
 
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
+        communityProfileCardsRef.current!.remember(user.id, Object.values(profileMap));
 
         // Build every visible card field before the first paint, then sort the
         // completed rows. This keeps NEW/favorite/profile details atomic while
@@ -5073,28 +5181,20 @@ function CommunityPageContent() {
 
       if (targetTab === "all") {
         setAllSectionState("qt", "loading");
-        const moderationMeta = await ensureCommunityModerationMeta(
-          supabase,
-          user.id,
-        );
-        const qtData = await fetchQtFeedRows(
-          supabase,
-          "%all%",
-          COMMUNITY_ALL_QT_LIMIT,
-        );
-        const [profileMap, commentCounts] = await Promise.all([
-          fetchProfiles(supabase, qtData),
-          fetchQtCommentCountMeta(supabase, qtData, () => ({ scope: "all", scopeId: null })),
+        const [moderationMeta, qtData] = await Promise.all([
+          ensureCommunityModerationMeta(supabase, user.id),
+          fetchQtFeedRows(supabase, "%all%", COMMUNITY_ALL_QT_LIMIT),
         ]);
+        const visibleQtData = filterHiddenItems("qt", qtData, moderationMeta.hiddenKeys, moderationMeta.hiddenUserIds);
+        const profileMap = await fetchProfiles(supabase, visibleQtData, user.id);
 
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
-        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
         setQtShares(
           sortQtFeedRows(
             filterHiddenItems(
               "qt",
-              qtData.map((row: any) => ({
+              visibleQtData.map((row: any) => ({
                 ...row,
                 profiles: profileMap[row.user_id] ?? null,
               })),
@@ -5108,7 +5208,9 @@ function CommunityPageContent() {
 
         // Reactions enrich already-visible meditation cards and must not delay
         // the first public-community paint.
-        const qtIds = qtData.map((row: any) => row.id);
+        void refreshQtCommentCounts(supabase, visibleQtData, () => ({ scope: "all", scopeId: null }),
+          () => isCurrentMainTabRequest(targetTab, requestId));
+        const qtIds = visibleQtData.map((row: any) => row.id);
         void fetchQtReactions(supabase, qtIds, user.id)
           .then(({ counts, mine }) => {
             if (!isCurrentMainTabRequest(targetTab, requestId)) return;
@@ -5134,11 +5236,11 @@ function CommunityPageContent() {
       // membership/favorite query resolves. Hidden public groups are never
       // rendered before the dedicated hide query succeeds.
       const favoriteCache = readFavoriteCache(user.id);
-      const publicGroupsPromise = supabase
+      const publicGroupsPromise = Promise.resolve(supabase
         .from("groups")
         .select("*")
         .eq("is_public", true)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
       const hiddenPublicGroupIdsPromise = loadHiddenGroupIds(supabase, user.id);
 
       let memberRows: any[] = [];
@@ -5307,6 +5409,8 @@ function CommunityPageContent() {
     directTarget?: CommunityNotificationDirectTarget,
     options?: { skipHistory?: boolean },
   ) {
+    const requestId = ++communityDetailRequestSeqRef.current;
+    const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
     if (!options?.skipHistory) pushCommunityDetailHistory("group");
     setGroupDetailTab(preferredSection ?? "qt");
     const openedAt = new Date().toISOString();
@@ -5320,6 +5424,8 @@ function CommunityPageContent() {
       last_seen_qt_at: openedAt,
     });
     setGroupChallenges([]);
+    setGroupQts([]);
+    setGroupPrayers([]);
     setGroupChallengeProgress({});
     setGroupChallengeLoadError(false);
     setLoadingGroupChallenges(!!group.isMember);
@@ -5328,10 +5434,23 @@ function CommunityPageContent() {
     setGroupQtLoadError(false);
     setGroupPrayerLoadError(false);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const userResult = await supabase.auth.getUser().catch((error) => {
+      console.warn("커뮤니티 사용자 확인 실패:", error);
+      if (isCurrent()) {
+        setGroupQtLoadError(true);
+        setGroupPrayerLoadError(true);
+        setLoadingGroupQts(false);
+        setLoadingGroupPrayers(false);
+        setLoadingGroupChallenges(false);
+        setGroupChallengeLoadError(true);
+        setNotificationDirectOpenPending(false);
+      }
+      return null;
+    });
+    if (!userResult) return;
+    const { data: { user } } = userResult;
 
+    if (!isCurrent()) return;
     if (!user) {
       setLoadingGroupChallenges(false);
       setLoadingGroupQts(false);
@@ -5340,124 +5459,74 @@ function CommunityPageContent() {
       return;
     }
 
-    // Challenge state is part of the first group-detail screen. Start it
-    // before meditation so the challenge card (or confirmed no-challenge CTA)
-    // is resolved before QT cards are released.
+    // Summary and approved challenges are independent. Only this area waits for
+    // their complete result; QT and prayer can render as soon as they are ready.
     const groupChallengePromise = (async () => {
-      if (group.isMember) {
-        if (user?.id) {
-          let latestRequest: any | null = null;
-          const { data: summaryRows, error: summaryError } = await supabase.rpc(
-            "get_group_challenge_request_summary",
-            { p_group_id: group.id },
-          );
-
-          if (summaryError) {
-            console.warn(
-              "그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:",
-              summaryError.message,
-            );
-            const { data: requestRows, error: requestError } = await supabase
-              .from("group_challenge_requests")
-              .select(
-                "id,status,title,requested_start_date,duration_days,created_at",
-              )
-              .eq("group_id", group.id)
-              .eq("requester_id", user.id)
-              .in("status", ["pending", "contacted", "approved"])
-              .order("created_at", { ascending: false })
-              .limit(1);
-            if (requestError) {
-              console.warn(
-                "그룹 챌린지 신청 상태 조회 실패:",
-                requestError.message,
-              );
-              setGroupChallengeLoadError(true);
-            } else {
-              latestRequest = requestRows?.[0] ?? null;
-            }
-          } else {
-            latestRequest = Array.isArray(summaryRows)
-              ? (summaryRows[0] ?? null)
-              : null;
-          }
-
-          setGroupChallengeRequest(
-            group.id,
-            latestRequest
-              ? {
-                  id: latestRequest.id,
-                  status: latestRequest.status,
-                  title: latestRequest.title,
-                  requested_start_date: latestRequest.requested_start_date,
-                  requested_end_date:
-                    latestRequest.requested_end_date ||
-                    deriveChallengeRequestEndDate(
-                      latestRequest.requested_start_date,
-                      latestRequest.duration_days,
-                    ),
-                  duration_days: latestRequest.duration_days,
-                  created_at: latestRequest.created_at,
-                }
-              : null,
-          );
-        } else {
-          setGroupChallengeRequestStatus(group.id, null);
+      if (!group.isMember) return;
+      const summaryRequest = (async () => {
+        const summary = await supabase.rpc("get_group_challenge_request_summary", { p_group_id: group.id });
+        if (!summary.error) return { latestRequest: Array.isArray(summary.data) ? summary.data[0] ?? null : null, error: false };
+        console.warn("그룹 챌린지 그룹 기준 신청 상태 조회 실패. 본인 신청 상태로 fallback:", summary.error.message);
+        const fallback = await supabase.from("group_challenge_requests")
+          .select("id,status,title,requested_start_date,duration_days,created_at")
+          .eq("group_id", group.id).eq("requester_id", user.id)
+          .in("status", ["pending", "contacted", "approved"])
+          .order("created_at", { ascending: false }).limit(1);
+        if (fallback.error) console.warn("그룹 챌린지 신청 상태 조회 실패:", fallback.error.message);
+        return { latestRequest: fallback.data?.[0] ?? null, error: !!fallback.error };
+      })();
+      const challengesRequest = (async () => {
+        const result = await supabase.from("group_challenges")
+          .select("id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status")
+          .eq("group_id", group.id).in("status", ["scheduled", "active", "completed"])
+          .order("start_date", { ascending: true }).limit(5);
+        if (result.error) {
+          console.warn("그룹 챌린지 조회 실패:", result.error.message);
+          return { challenges: [] as any[], progress: {} as Record<string, { doneDays: number; totalDays: number }>, error: true };
         }
+        const challenges = result.data ?? [];
+        const visibleChallenges = challenges.filter(shouldShowGroupChallengeCard);
+        const progress = await fetchGroupChallengeProgress(supabase, visibleChallenges, user.id);
+        return { challenges, progress, error: false };
+      })();
+      const [summary, result] = await Promise.all([summaryRequest, challengesRequest]);
+      if (!isCurrent()) return;
+      const latestRequest = summary.latestRequest;
+      setGroupChallengeRequest(group.id, latestRequest ? {
+        id: latestRequest.id, status: latestRequest.status, title: latestRequest.title,
+        requested_start_date: latestRequest.requested_start_date,
+        requested_end_date: latestRequest.requested_end_date || deriveChallengeRequestEndDate(latestRequest.requested_start_date, latestRequest.duration_days),
+        duration_days: latestRequest.duration_days, created_at: latestRequest.created_at,
+      } : null);
+      setGroupChallenges(result.challenges);
+      setGroupChallengeProgress(result.progress);
+      setGroupChallengeLoadError(summary.error || result.error);
+    })().catch((error) => {
+      console.warn("그룹 챌린지 우선 조회 실패:", error);
+      if (isCurrent()) setGroupChallengeLoadError(true);
+    }).finally(() => {
+      if (isCurrent()) setLoadingGroupChallenges(false);
+    });
 
-        const { data: challengeRows, error: challengeError } = await supabase
-          .from("group_challenges")
-          .select(
-            "id,request_id,title,description,start_date,end_date,badge_name,badge_description,badge_image_path,status",
-          )
-          .eq("group_id", group.id)
-          .in("status", ["scheduled", "active", "completed"])
-          .order("start_date", { ascending: true })
-          .limit(5);
-        if (challengeError) {
-          console.warn("그룹 챌린지 조회 실패:", challengeError.message);
-          setGroupChallengeLoadError(true);
-          setGroupChallenges([]);
-          setGroupChallengeProgress({});
-        } else {
-          const nextChallenges = challengeRows ?? [];
-          setGroupChallenges(nextChallenges);
-          if (user?.id && nextChallenges.length > 0) {
-            const progress = await fetchGroupChallengeProgress(
-              supabase,
-              nextChallenges,
-              user.id,
-            );
-            setGroupChallengeProgress(progress);
-          } else {
-            setGroupChallengeProgress({});
-          }
-        }
-      } else {
-        setGroupChallengeRequestStatus(group.id, null);
-        setGroupChallenges([]);
-        setGroupChallengeProgress({});
+    const moderationMeta = await ensureCommunityModerationMeta(supabase, user.id).catch((error) => {
+      console.warn("커뮤니티 숨김 정보 조회 실패:", error);
+      if (isCurrent()) {
+        setGroupQtLoadError(true);
+        setGroupPrayerLoadError(true);
+        setLoadingGroupQts(false);
+        setLoadingGroupPrayers(false);
+        setNotificationDirectOpenPending(false);
       }
-    })()
-      .catch((error) => {
-        console.warn("그룹 챌린지 우선 조회 실패:", error);
-        setGroupChallengeLoadError(true);
-      })
-      .finally(() => {
-        setLoadingGroupChallenges(false);
-      });
-
-    const moderationMeta = await ensureCommunityModerationMeta(
-      supabase,
-      user.id,
-    );
+      return null;
+    });
+    if (!moderationMeta || !isCurrent()) return;
     const currentHiddenKeys = moderationMeta.hiddenKeys;
     const currentHiddenUserIds = moderationMeta.hiddenUserIds;
 
     if (group.created_by && !group.leaderProfile) {
       void loadProfileCards(supabase, [group.created_by])
         .then(([leaderProfile]) => {
-          if (!leaderProfile) return;
+          if (!leaderProfile || !isCurrent()) return;
           setSelectedGroup((current: any) =>
             current?.id === group.id
               ? { ...current, leaderProfile }
@@ -5485,178 +5554,188 @@ function CommunityPageContent() {
       return;
     }
 
-    if (directTarget) {
-      const opened = await openDirectNotificationContent(directTarget, {
-        supabase,
-        userId: user.id,
-        hiddenKeys: currentHiddenKeys,
-        hiddenUserIds: currentHiddenUserIds,
-      });
-      if (opened === "qt") {
-        setLoadingGroupQts(false);
-        setNotificationDirectOpenPending(false);
-      } else if (opened === "prayer") {
-        setLoadingGroupPrayers(false);
-      } else {
-        setNotificationDirectOpenPending(false);
-      }
-    }
-
-    try {
-      const data = await fetchQtFeedRows(
-        supabase,
-        `%group_${group.id}%`,
-        COMMUNITY_RELATION_QT_LIMIT,
-      );
-      if (data && user) {
-        const [profMap, commentCounts] = await Promise.all([
-          fetchProfiles(supabase, data),
-          fetchQtCommentCountMeta(supabase, data, () => ({ scope: "group", scopeId: group.id })),
-        ]);
-        const withProfs = filterHiddenItems(
-          "qt",
-          data.map((r: any) => ({
-            ...r,
-            profiles: profMap[r.user_id] ?? null,
-            isUnreadInGroup: isLaterThan(
-              qtUnreadActivityTime(r),
-              previousSeenAt,
-            ),
-          })),
-          currentHiddenKeys,
-          currentHiddenUserIds,
-        );
-        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
-        setGroupQts(sortQtFeedRows(withProfs));
-        setLoadingGroupQts(false);
-        const qtIds = data.map((r: any) => r.id);
-
-        void fetchQtReactions(supabase, qtIds, user.id)
-          .then(({ counts, mine }) => {
-            setQtReactionCounts((prev) => ({ ...prev, ...counts }));
-            setMyQtReactions((prev) => ({ ...prev, ...mine }));
-          })
-          .catch((error) =>
-            console.warn("그룹 묵상 반응 조회 실패:", error),
-          );
-
-        if (group.isMember) {
-          void (async () => {
-            const { data: seenRows, error } = await supabase.rpc(
-              "mark_group_qt_seen_v2",
-              { p_group_id: group.id },
-            );
-            if (error) {
-              console.warn("그룹 큐티 읽음 처리 실패:", error.message);
-              const { error: oldError } = await supabase.rpc(
-                "mark_group_qt_seen",
-                { p_group_id: group.id },
-              );
-              if (oldError)
-                console.warn(
-                  "기존 그룹 큐티 읽음 처리도 실패:",
-                  oldError.message,
-                );
-            }
-            const persistedSeenAt =
-              Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
-                ? seenRows[0].last_seen_qt_at
-                : openedAt;
-            setGroups((prev) =>
-              sortGroupsForDisplay(
-                prev.map((g) =>
-                  g.id === group.id
-                    ? {
-                        ...g,
-                        hasNewQt: false,
-                        hasNewQtShare: false,
-                        hasNewPrayer: false,
-                        hasNewContent: false,
-                        last_seen_qt_at: persistedSeenAt,
-                      }
-                    : g,
-                ),
-              ),
-            );
-          })().catch((error) =>
-            console.warn("그룹 큐티 읽음 상태 저장 중 예외:", error),
-          );
+    const directContentPromise = (async () => {
+      if (directTarget) {
+        const opened = await openDirectNotificationContent(directTarget, {
+          supabase,
+          userId: user.id,
+          hiddenKeys: currentHiddenKeys,
+          hiddenUserIds: currentHiddenUserIds,
+          isCurrent,
+        });
+        if (!isCurrent()) return;
+        if (opened === "qt") {
+          setLoadingGroupQts(false);
+          setNotificationDirectOpenPending(false);
+        } else if (opened === "prayer") {
+          setLoadingGroupPrayers(false);
+        } else {
+          setNotificationDirectOpenPending(false);
         }
       }
-    } catch (qtError) {
-      console.warn("그룹 묵상 조회 실패:", qtError);
-      setGroupQtLoadError(true);
-    } finally {
-      setLoadingGroupQts(false);
-    }
+    })().catch((error) => {
+      console.warn("커뮤니티 알림 대상 조회 실패:", error);
+      if (isCurrent()) setNotificationDirectOpenPending(false);
+    });
 
-    // The first group-detail screen releases QT only after challenge state and
-    // meditation are both settled. Prayer states are prefetched afterwards.
-    await groupChallengePromise;
-
-    if (user) {
+    const loadMeditations = async () => {
       try {
-        const [, prayerRows] = await Promise.all([
-          ensureCommunityViewerMeta(supabase, user.id),
-          fetchPrayerFeedRows(supabase, `%group_${group.id}%`),
-        ]);
-        const prayerProfMap = await fetchProfiles(supabase, prayerRows);
-        const answeredIds = prayerRows
-          .filter((row: any) => !!row.is_answered)
-          .map((row: any) => row.id);
-        setGroupPrayers(
-          sortPrayerFeedRows(
-            filterHiddenItems(
-              "prayer",
-              prayerRows.map((row: any) => ({
-                ...row,
-                like_count: row.like_count ?? 0,
-                profiles: prayerProfMap[row.user_id] ?? null,
-                isUnreadInGroup: isLaterThan(
-                  prayerUnreadActivityTime(row),
-                  previousSeenAt,
-                ),
-              })),
-              currentHiddenKeys,
-              currentHiddenUserIds,
-            ),
-          ),
+        const data = await fetchQtFeedRows(
+          supabase,
+          `%group_${group.id}%`,
+          COMMUNITY_RELATION_QT_LIMIT,
         );
-        setLoadingGroupPrayers(false);
+        if (!isCurrent()) return;
+        if (data && user) {
+          const profMap = await fetchProfiles(supabase, data, user.id);
+          if (!isCurrent()) return;
+          const withProfs = filterHiddenItems(
+            "qt",
+            data.map((r: any) => ({
+              ...r,
+              profiles: profMap[r.user_id] ?? null,
+              isUnreadInGroup: isLaterThan(
+                qtUnreadActivityTime(r),
+                previousSeenAt,
+              ),
+            })),
+            currentHiddenKeys,
+            currentHiddenUserIds,
+          );
+          void refreshQtCommentCounts(supabase, withProfs, () => ({ scope: "group", scopeId: group.id }), isCurrent);
+          setGroupQts(sortQtFeedRows(withProfs));
+          setLoadingGroupQts(false);
+          const qtIds = data.map((r: any) => r.id);
 
-        if (answeredIds.length > 0) {
-          void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+          void fetchQtReactions(supabase, qtIds, user.id)
             .then(({ counts, mine }) => {
-              setGroupPrayers((current) =>
-                current.map((row: any) =>
-                  answeredIds.includes(row.id)
-                    ? {
-                        ...row,
-                        like_count: counts[row.id] ?? row.like_count ?? 0,
-                      }
-                    : row,
-                ),
-              );
-              if (mine.length > 0) {
-                setLikedPrayerIds((current) =>
-                  Array.from(new Set([...current, ...mine])),
-                );
-              }
+              if (!isCurrent()) return;
+              setQtReactionCounts((prev) => ({ ...prev, ...counts }));
+              setMyQtReactions((prev) => ({ ...prev, ...mine }));
             })
             .catch((error) =>
-              console.warn("그룹 기도 응답 좋아요 보조 조회 실패:", error),
+              console.warn("그룹 묵상 반응 조회 실패:", error),
             );
+
+          if (group.isMember) {
+            void (async () => {
+              const { data: seenRows, error } = await supabase.rpc(
+                "mark_group_qt_seen_v2",
+                { p_group_id: group.id },
+              );
+              if (error) {
+                console.warn("그룹 큐티 읽음 처리 실패:", error.message);
+                const { error: oldError } = await supabase.rpc(
+                  "mark_group_qt_seen",
+                  { p_group_id: group.id },
+                );
+                if (oldError)
+                  console.warn(
+                    "기존 그룹 큐티 읽음 처리도 실패:",
+                    oldError.message,
+                  );
+              }
+              if (!isCurrent()) return;
+              const persistedSeenAt =
+                Array.isArray(seenRows) && seenRows[0]?.last_seen_qt_at
+                  ? seenRows[0].last_seen_qt_at
+                  : openedAt;
+              setGroups((prev) =>
+                sortGroupsForDisplay(
+                  prev.map((g) =>
+                    g.id === group.id
+                      ? {
+                          ...g,
+                          hasNewQt: false,
+                          hasNewQtShare: false,
+                          hasNewPrayer: false,
+                          hasNewContent: false,
+                          last_seen_qt_at: persistedSeenAt,
+                        }
+                      : g,
+                  ),
+                ),
+              );
+            })().catch((error) =>
+              console.warn("그룹 큐티 읽음 상태 저장 중 예외:", error),
+            );
+          }
         }
-      } catch (prayerError) {
-        console.warn("그룹 기도 조회 실패:", prayerError);
-        setGroupPrayerLoadError(true);
+      } catch (qtError) {
+        console.warn("그룹 묵상 조회 실패:", qtError);
+        if (isCurrent()) setGroupQtLoadError(true);
       } finally {
+        if (isCurrent()) setLoadingGroupQts(false);
+      }
+    };
+    const loadPrayers = async () => {
+      if (user) {
+        try {
+          const [, prayerRows] = await Promise.all([
+            ensureCommunityViewerMeta(supabase, user.id),
+            fetchPrayerFeedRows(supabase, `%group_${group.id}%`),
+          ]);
+          if (!isCurrent()) return;
+          const prayerProfMap = await fetchProfiles(supabase, prayerRows, user.id);
+          if (!isCurrent()) return;
+          const answeredIds = prayerRows
+            .filter((row: any) => !!row.is_answered)
+            .map((row: any) => row.id);
+          const rowsWithProfiles = prayerRows.map((row: any) => ({
+            ...row,
+            like_count: row.like_count ?? 0,
+            profiles: prayerProfMap[row.user_id] ?? null,
+            isUnreadInGroup: isLaterThan(prayerUnreadActivityTime(row), previousSeenAt),
+          }));
+          setGroupPrayers((current) => {
+            if (!isCurrent()) return current;
+            const directRows = directTarget?.contentKind === "prayer"
+              ? current.filter((row) => row.id === directTarget.contentId) : [];
+            return sortPrayerFeedRows(filterHiddenItems(
+              "prayer", mergeRowsById([directRows, rowsWithProfiles]),
+              currentHiddenKeys, currentHiddenUserIds,
+            ));
+          });
+          setLoadingGroupPrayers(false);
+
+          if (answeredIds.length > 0) {
+            void fetchPrayerLikeMeta(supabase, answeredIds, user.id)
+              .then(({ counts, mine }) => {
+                if (!isCurrent()) return;
+                setGroupPrayers((current) =>
+                  current.map((row: any) =>
+                    answeredIds.includes(row.id)
+                      ? {
+                          ...row,
+                          like_count: counts[row.id] ?? row.like_count ?? 0,
+                        }
+                      : row,
+                  ),
+                );
+                if (mine.length > 0) {
+                  setLikedPrayerIds((current) =>
+                    Array.from(new Set([...current, ...mine])),
+                  );
+                }
+              })
+              .catch((error) =>
+                console.warn("그룹 기도 응답 좋아요 보조 조회 실패:", error),
+              );
+          }
+        } catch (prayerError) {
+          console.warn("그룹 기도 조회 실패:", prayerError);
+          if (isCurrent()) setGroupPrayerLoadError(true);
+        } finally {
+          if (isCurrent()) setLoadingGroupPrayers(false);
+        }
+      } else if (isCurrent()) {
         setLoadingGroupPrayers(false);
       }
-    } else {
-      setLoadingGroupPrayers(false);
-    }
-
+    };
+    const contentRequests = preferredSection && preferredSection !== "qt"
+      ? [loadPrayers(), loadMeditations()]
+      : [loadMeditations(), loadPrayers()];
+    await Promise.all([...contentRequests, groupChallengePromise, directContentPromise]);
   }
 
   // 통합 반응 함수 (큐티 나눔 + 그룹 큐티 공용)
@@ -6726,9 +6805,7 @@ function CommunityPageContent() {
               <QtComments key={qtCommentContextKey(r.id, qtDetailContext)} qtId={r.id} userId={userId}
                 context={qtDetailContext} lang={lang}
                 onOpenProfile={(profile, authorId) => { void openAuthorProfile(profile, authorId); }}
-                onCountChange={(count) => setQtCommentCounts((previous) => ({
-                  ...previous, [qtCommentContextKey(r.id, qtDetailContext)]: count,
-                }))} />
+                onCountChange={(count) => updateQtCommentCount(r.id, qtDetailContext, count)} />
             )}
           </div>
         </div>
@@ -7661,10 +7738,12 @@ function CommunityPageContent() {
             })}
           </div>
 
-          {renderCompanionChallengeCard()}
+          <CommunityChallengeBoundary viewKey={`partner-${selectedPartner.partner_id}`} present={loadingCompanionChallenge || !!companionChallengeStatus}>
+            {renderCompanionChallengeCard()}
+          </CommunityChallengeBoundary>
 
           {partnerDetailTab === "qt" ? (
-            loadingCompanionChallenge || loadingPartnerQts ? (
+            loadingPartnerQts ? (
               <div
                 style={{
                   display: "flex",
@@ -7837,7 +7916,7 @@ function CommunityPageContent() {
                     </div>
                     <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
-                      counts={qtReactionCounts[r.id] ?? {}}
+                      counts={qtReactionCounts[r.id]}
                       selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))]}
                       lang={lang}
@@ -8145,7 +8224,7 @@ function CommunityPageContent() {
 
         {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
         {renderSharedOverlayModals()}
-        <BottomNav />
+        <BottomNav lang={lang} />
       </div>
     );
   }
@@ -8592,7 +8671,7 @@ function CommunityPageContent() {
           )}
 
           {selectedGroup.isMember && (
-            <>
+            <CommunityChallengeBoundary viewKey={`group-${selectedGroup.id}`} present={loadingGroupChallenges || visibleGroupChallengeCards().length > 0 || !!preparingApprovedGroupChallengeRequest(selectedGroup.id) || !groupChallengeLoadError}>
               {(loadingGroupChallenges ||
                 visibleGroupChallengeCards().length > 0) && (
                 <div
@@ -8969,7 +9048,7 @@ function CommunityPageContent() {
                     )}
                   </div>
                 )}
-            </>
+            </CommunityChallengeBoundary>
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>
@@ -9049,7 +9128,7 @@ function CommunityPageContent() {
                 </p>
               </div>
             ) : groupDetailTab === "qt" ? (
-              loadingGroupChallenges || loadingGroupQts ? (
+              loadingGroupQts ? (
                 <div
                   style={{
                     display: "flex",
@@ -9173,7 +9252,7 @@ function CommunityPageContent() {
                       </div>
                       <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
-                      counts={qtReactionCounts[r.id] ?? {}}
+                      counts={qtReactionCounts[r.id]}
                       selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "group", scopeId: selectedGroup.id })]}
                       lang={lang}
@@ -10433,7 +10512,7 @@ function CommunityPageContent() {
           </GroupManagementModal>
         )}
         {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
-        <BottomNav />
+        <BottomNav lang={lang} />
       </div>
     );
   }
@@ -10965,7 +11044,7 @@ function CommunityPageContent() {
                         </div>
                         <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
                     <QtReactionSummary
-                      counts={qtReactionCounts[r.id] ?? {}}
+                      counts={qtReactionCounts[r.id]}
                       selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "all", scopeId: null })]}
                       lang={lang}
@@ -11749,7 +11828,7 @@ function CommunityPageContent() {
           </div>
         </div>
       )}
-      <BottomNav />
+      <BottomNav lang={lang} />
     </div>
   );
 }

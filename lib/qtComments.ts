@@ -22,34 +22,35 @@ export const QT_COMMENT_MAX_LENGTH = 2000;
 export const QT_COMMENT_PAGE_SIZE = 30;
 const COMMENT_COLUMNS = "id,qt_id,scope,scope_id,author_id,body,created_at,updated_at";
 
-export function qtCommentContextKey(qtId: string, context: QtCommentContext) {
-  return `${qtId}:${context.scope}:${context.scopeId ?? ""}`;
+/** One thread/count identity per QT; context remains insertion provenance only. */
+export function qtCommentContextKey(qtId: string, _context?: QtCommentContext) {
+  return qtId;
 }
 
-function commentQuery(supabase: any, qtId: string, context: QtCommentContext, count = false) {
-  let query = supabase.from("qt_comments")
+function commentQuery(supabase: any, qtId: string, count = false) {
+  return supabase.from("qt_comments")
     .select(COMMENT_COLUMNS, count ? { count: "exact" } : undefined)
-    .eq("qt_id", qtId).eq("scope", context.scope);
-  query = context.scopeId ? query.eq("scope_id", context.scopeId) : query.is("scope_id", null);
-  return query;
+    .eq("qt_id", qtId);
 }
 
-/** Counts are returned only for contexts authorized by RLS; no comment bodies are loaded. */
+/** Counts follow live QT visibility; no comment bodies are loaded. */
 export async function loadQtCommentCounts(supabase: any, contexts: QtCommentCountRequest[], signal?: AbortSignal) {
   const counts: Record<string, number> = {};
-  const unique = Array.from(new Map(contexts.map(context => [qtCommentContextKey(context.qtId, context), context])).values());
+  const unique = Array.from(new Set(contexts.map(context => context.qtId).filter(Boolean)));
   for (let offset = 0; offset < unique.length; offset += 100) {
     const batch = unique.slice(offset, offset + 100);
-    const request = supabase.rpc("get_qt_comment_counts", {
-      p_contexts: batch.map(context => ({ qt_id: context.qtId, scope: context.scope, scope_id: context.scopeId })),
+    const requestedIds = new Set(batch);
+    const request = supabase.rpc("get_qt_shared_comment_counts", {
+      p_qt_ids: batch,
     });
     const { data, error } = await (signal ? request.abortSignal(signal) : request);
     if (error) throw error;
-    batch.forEach(context => { counts[qtCommentContextKey(context.qtId, context)] = 0; });
+    batch.forEach(qtId => { counts[qtCommentContextKey(qtId)] = 0; });
     (data ?? []).forEach((row: any) => {
+      const qtId = String(row.qt_id);
       const count = Number(row.comment_count);
-      if (!Number.isFinite(count) || count < 0) return;
-      counts[qtCommentContextKey(String(row.qt_id), { scope: row.scope, scopeId: row.scope_id ?? null })] = count;
+      if (!requestedIds.has(qtId) || !Number.isFinite(count) || count < 0) return;
+      counts[qtCommentContextKey(qtId)] = count;
     });
   }
   return counts;
@@ -58,10 +59,10 @@ export async function loadQtCommentCounts(supabase: any, contexts: QtCommentCoun
 export async function loadQtComments(
   supabase: any,
   qtId: string,
-  context: QtCommentContext,
+  _context: QtCommentContext,
   options: { before?: Pick<QtComment, "created_at" | "id">; signal?: AbortSignal } = {},
 ) {
-  let query = commentQuery(supabase, qtId, context, true)
+  let query = commentQuery(supabase, qtId, true)
     .order("created_at", { ascending: false }).order("id", { ascending: false })
     .limit(QT_COMMENT_PAGE_SIZE);
   if (options.before) {
