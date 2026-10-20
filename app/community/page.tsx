@@ -6668,7 +6668,11 @@ function CommunityPageContent() {
 
   // Keep a stable modal DOM while reactions and comments update below the text.
   function renderQTDetailModal(r: any, onClose: () => void) {
-    const sections = SECTIONS.filter(({ key }) => typeof r[key] === "string" && r[key].trim());
+    // Sunday reading ends with the sermon summary, matching My Reflections and copy-all.
+    const sectionOrder = r.qt_mode === "sunday"
+      ? [...SECTIONS.filter(({ key }) => key !== "summary"), ...SECTIONS.filter(({ key }) => key === "summary")]
+      : SECTIONS;
+    const sections = sectionOrder.filter(({ key }) => typeof r[key] === "string" && r[key].trim());
     const isPhoto = Boolean(r.photo_path);
     const hasBibleReference = Boolean(String(r.bible_ref ?? "").trim());
     const photoCaption = typeof r.photo_caption === "string" ? r.photo_caption : "";
