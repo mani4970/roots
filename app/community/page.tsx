@@ -19,6 +19,12 @@ import PhotoViewerModal from "@/components/PhotoViewerModal";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import NotificationDirectOpenOverlay from "@/components/notifications/NotificationDirectOpenOverlay";
 import CommunityReactionButtons from "@/components/community/CommunityReactionButtons";
+import QtFeedPreview from "@/components/community/QtFeedPreview";
+import QtReactionSummary from "@/components/community/QtReactionSummary";
+import QtComments from "@/components/community/QtComments";
+import QtDetailTextSizeControls from "@/components/community/QtDetailTextSizeControls";
+import qtDetailReadingStyles from "@/components/community/QtDetailReading.module.css";
+import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
 import GroupChallengeScheduleFields from "@/components/community/GroupChallengeScheduleFields";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
@@ -198,7 +204,7 @@ function renderCommunityBibleReference(
           {sermon.title && (
             <p
               style={{
-                fontSize: detail ? 16 : 13,
+                fontSize: detail ? 17 : 15,
                 fontWeight: 500,
                 color: detail ? "var(--terra-dark)" : "var(--terra)",
                 lineHeight: 1.45,
@@ -219,7 +225,7 @@ function renderCommunityBibleReference(
           {sermon.referenceText && (
             <p
               style={{
-                fontSize: detail ? 16 : 13,
+                fontSize: detail ? 17 : 15,
                 fontWeight: 500,
                 color: "var(--text2)",
                 lineHeight: 1.45,
@@ -245,7 +251,7 @@ function renderCommunityBibleReference(
   return (
     <p
       style={{
-        fontSize: variant === "detail" ? 16 : 13,
+        fontSize: variant === "detail" ? 17 : 15,
         fontWeight: variant === "detail" ? 800 : 700,
         color: variant === "detail" ? "var(--terra-dark)" : "var(--terra)",
         lineHeight: 1.45,
@@ -274,6 +280,7 @@ const COMMUNITY_ALL_QT_LIMIT = 30;
 const COMMUNITY_RELATION_QT_LIMIT = 60;
 const COMMUNITY_PRAYER_PREFETCH_LIMIT = 90;
 const COMMUNITY_PARTNER_QT_HISTORY_LIMIT = 60;
+const QT_DETAIL_TEXT_SIZES = [15, 17, 19, 21] as const;
 const COMMUNITY_PARTNER_PRAYER_HISTORY_LIMIT = 500;
 type CommunitySectionKey = "qt" | "praying" | "answered";
 
@@ -911,7 +918,6 @@ const SECTIONS: {
   key: string;
   labelKey: TKey;
   sundayLabelKey?: TKey;
-  italic?: boolean;
   isDecision?: boolean;
 }[] = [
   { key: "opening_prayer", labelKey: "community_qt_section_opening_prayer" },
@@ -923,7 +929,6 @@ const SECTIONS: {
   {
     key: "key_verse",
     labelKey: "community_qt_section_key_verse",
-    italic: true,
   },
   { key: "meditation", labelKey: "community_qt_section_meditation" },
   { key: "application", labelKey: "community_qt_section_application" },
@@ -1132,6 +1137,9 @@ function CommunityPageContent() {
     string[]
   >([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
+  const [qtDetailTextSizeIndex, setQtDetailTextSizeIndex] = useState(1);
+  const [qtDetailContext, setQtDetailContext] = useState<QtCommentContext>({ scope: "all", scopeId: null });
+  const [qtCommentCounts, setQtCommentCounts] = useState<Record<string, number>>({});
   const [manageModal, setManageModal] = useState<null | {
     kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit";
     item: any;
@@ -1202,6 +1210,11 @@ function CommunityPageContent() {
 
   useAndroidBackHandler(() => {
     if (notificationDirectOpenPending) return true;
+    // Photo is the topmost overlay. Closing it keeps the underlying QT open.
+    if (photoViewer) {
+      closePhotoViewer();
+      return true;
+    }
     if (badgePopup) {
       setBadgePopup(null);
       return true;
@@ -1228,6 +1241,10 @@ function CommunityPageContent() {
     }
     if (profileModal) {
       if (!profileModal.saving) setProfileModal(null);
+      return true;
+    }
+    if (detailQt) {
+      closeQtDetail();
       return true;
     }
     if (publicGroupHideConfirm) {
@@ -1849,17 +1866,11 @@ function CommunityPageContent() {
     );
   }
 
-  function openQtDetail(record: any) {
+  function openQtDetail(record: any, context: QtCommentContext) {
     setActionMenu(null);
+    setQtDetailContext(context);
     pushCommunityModalHistory("qt-detail");
     setDetailQt(record);
-  }
-
-  function scrollQtDetailToTop(qtId: string) {
-    if (detailQt?.id !== qtId) return;
-    window.requestAnimationFrame(() => {
-      qtDetailScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    });
   }
 
   function resetQtDetailState() {
@@ -2405,9 +2416,11 @@ function CommunityPageContent() {
   function AuthorIdentity({
     profile,
     authorId,
+    fontSize = 12,
   }: {
     profile: any;
     authorId?: string | null;
+    fontSize?: number;
   }) {
     const canOpen = !!authorId;
     return (
@@ -2452,7 +2465,7 @@ function CommunityPageContent() {
           <span
             style={{
               display: "block",
-              fontSize: 12,
+              fontSize,
               fontWeight: 600,
               color: "var(--text2)",
               overflow: "hidden",
@@ -3736,6 +3749,20 @@ function CommunityPageContent() {
     answeredPrayers.length,
   ]);
 
+  function partnerQtCommentContext(row: any, currentUserId: string, partnerId: string): QtCommentContext {
+    return { scope: "partner", scopeId: row.user_id === currentUserId ? partnerId : currentUserId };
+  }
+
+  async function fetchQtCommentCountMeta(supabase: any, rows: any[], contextForRow: (row: any) => QtCommentContext) {
+    try {
+      return await loadQtCommentCounts(supabase, rows.map((row) => ({ qtId: row.id, ...contextForRow(row) })));
+    } catch (error) {
+      // Reading existing reflections stays available if the new SQL is not installed yet.
+      console.warn("묵상 댓글 개수 조회 실패:", error);
+      return {};
+    }
+  }
+
   // 프로필 fetch 헬퍼
   async function fetchProfiles(supabase: any, data: any[]) {
     const uids = Array.from(new Set(data.map((r: any) => r.user_id)));
@@ -4075,7 +4102,9 @@ function CommunityPageContent() {
       }
 
       if (record.photo_path) void loadQtPhotoUrls(supabase, [record]);
-      openQtDetail(record);
+      openQtDetail(record, target.scope === "group"
+        ? { scope: "group", scopeId: target.scopeTargetId }
+        : partnerQtCommentContext(record, directUserId, target.scopeTargetId));
       return "qt";
     }
 
@@ -4395,7 +4424,10 @@ function CommunityPageContent() {
           "qt_records",
           qtIds,
         );
-        const profMap = await fetchProfiles(supabase, qtRows);
+        const [profMap, commentCounts] = await Promise.all([
+          fetchProfiles(supabase, qtRows),
+          fetchQtCommentCountMeta(supabase, qtRows, (row) => partnerQtCommentContext(row, user.id, partnerId)),
+        ]);
         const rowsWithProfiles = sortQtFeedRows(
           qtRows.map((row: any) => {
             const recipient = recipientMap[row.id] ?? null;
@@ -4418,6 +4450,7 @@ function CommunityPageContent() {
           currentHiddenKeys,
           currentHiddenUserIds,
         );
+        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
         setPartnerQts(visibleRows);
         setLoadingPartnerQts(false);
 
@@ -5049,10 +5082,14 @@ function CommunityPageContent() {
           "%all%",
           COMMUNITY_ALL_QT_LIMIT,
         );
-        const profileMap = await fetchProfiles(supabase, qtData);
+        const [profileMap, commentCounts] = await Promise.all([
+          fetchProfiles(supabase, qtData),
+          fetchQtCommentCountMeta(supabase, qtData, () => ({ scope: "all", scopeId: null })),
+        ]);
 
         if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
+        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
         setQtShares(
           sortQtFeedRows(
             filterHiddenItems(
@@ -5472,7 +5509,10 @@ function CommunityPageContent() {
         COMMUNITY_RELATION_QT_LIMIT,
       );
       if (data && user) {
-        const profMap = await fetchProfiles(supabase, data);
+        const [profMap, commentCounts] = await Promise.all([
+          fetchProfiles(supabase, data),
+          fetchQtCommentCountMeta(supabase, data, () => ({ scope: "group", scopeId: group.id })),
+        ]);
         const withProfs = filterHiddenItems(
           "qt",
           data.map((r: any) => ({
@@ -5486,6 +5526,7 @@ function CommunityPageContent() {
           currentHiddenKeys,
           currentHiddenUserIds,
         );
+        setQtCommentCounts((previous) => ({ ...previous, ...commentCounts }));
         setGroupQts(sortQtFeedRows(withProfs));
         setLoadingGroupQts(false);
         const qtIds = data.map((r: any) => r.id);
@@ -5656,7 +5697,6 @@ function CommunityPageContent() {
             [reactionId]: Math.max(0, (prev[qtId]?.[reactionId] ?? 1) - 1),
           },
         }));
-        scrollQtDetailToTop(qtId);
       } else {
         // 새 반응 or 변경 — insert 먼저, 실패하면 update
         const { error: upsertErr } = await supabase
@@ -5685,7 +5725,6 @@ function CommunityPageContent() {
           cur[reactionId] = (cur[reactionId] ?? 0) + 1;
           return { ...prev, [qtId]: cur };
         });
-        scrollQtDetailToTop(qtId);
         void awardCommunityLoveHeart(supabase, "qt_reaction", qtId);
 
         try {
@@ -6548,265 +6587,139 @@ function CommunityPageContent() {
     );
   }
 
-  // 큐티 전체보기 모달
+  // Keep a stable modal DOM while reactions and comments update below the text.
   function renderQTDetailModal(r: any, onClose: () => void) {
+    const sections = SECTIONS.filter(({ key }) => typeof r[key] === "string" && r[key].trim());
+    const isPhoto = Boolean(r.photo_path);
+    const hasBibleReference = Boolean(String(r.bible_ref ?? "").trim());
+    const photoCaption = typeof r.photo_caption === "string" ? r.photo_caption : "";
+    const hasSeparatePhotoCaption = Boolean(photoCaption.trim()) && photoCaption !== r.meditation;
+    const textSizeControls = (
+      <QtDetailTextSizeControls
+        lang={lang}
+        canDecrease={qtDetailTextSizeIndex > 0}
+        canIncrease={qtDetailTextSizeIndex < QT_DETAIL_TEXT_SIZES.length - 1}
+        onChange={(direction) => setQtDetailTextSizeIndex((current) =>
+          Math.max(0, Math.min(QT_DETAIL_TEXT_SIZES.length - 1, current + direction)),
+        )}
+      />
+    );
     return (
       <div
         key={r.id}
         ref={qtDetailScrollRef}
+        data-qt-detail={r.id}
+        role="dialog"
+        aria-modal="true"
+        aria-label={c("qt_title")}
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
+          position: "fixed", top: 0, left: 0, right: 0,
           bottom: "calc(-1 * var(--native-bottom-system-bar))",
-          background: "var(--community-detail-overlay)",
-          zIndex: 100,
-          overflowY: "auto",
-          overscrollBehavior: "contain",
-        }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
+          background: "var(--community-detail-overlay)", zIndex: 100,
+          overflowY: "auto", overscrollBehavior: "contain",
+          "--qt-reading-size": `${QT_DETAIL_TEXT_SIZES[qtDetailTextSizeIndex]}px`,
+        } as CSSProperties}
+        onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
       >
-        <div
-          style={{
-            minHeight: "calc(100dvh + var(--native-bottom-system-bar))",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            padding:
-              "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",
-          }}
-        >
-          <div
-            style={{
-              background: "var(--community-modal-surface)",
-              borderRadius: 24,
-              border: "1px solid var(--community-card-border)",
-              width: "100%",
-              maxWidth: 480,
-              padding: "24px 20px",
-              boxShadow: "var(--shadow-modal)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Avatar
-                  url={r.profiles?.avatar_url}
-                  name={r.profiles?.name}
-                  profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt}
-                  size={36}
-                />
-                <div>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "var(--text)",
-                    }}
-                  >
-                    {r.profiles?.name ?? c("community_unknown")}
-                  </p>
-                  <p style={{ fontSize: 11, color: "var(--text3)" }}>
-                    {parseLocalDateString(r.date).toLocaleDateString(
-                      getDateLocale(lang),
-                      { month: "long", day: "numeric", weekday: "short" },
-                    )}
-                  </p>
-                </div>
+        <div style={{
+          minHeight: "calc(100dvh + var(--native-bottom-system-bar))",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+          padding: "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",
+        }}>
+          <div style={{
+            background: "var(--community-modal-surface)", borderRadius: 24,
+            border: "1px solid var(--community-card-border)", width: "100%",
+            maxWidth: 520, padding: "16px 20px 24px", boxShadow: "var(--shadow-modal)",
+          }}>
+            <div style={{
+              position: "sticky", top: 0, zIndex: 2,
+              background: "var(--community-modal-surface)", padding: "8px 0 12px",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              gap: 12, marginBottom: 12,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <Avatar url={r.profiles?.avatar_url} name={r.profiles?.name}
+                  profileAlt={COMMUNITY_LOCAL_TEXT[lang].profileAlt} size={38} />
+                <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>
+                  {r.profiles?.name ?? c("community_unknown")}
+                </p>
               </div>
-              <button
-                onClick={onClose}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--text3)",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={22} />
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <p style={{ fontSize: 13, color: "var(--text3)" }}>
+                  {parseLocalDateString(r.date).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}
+                </p>
+                <button type="button" onClick={onClose} aria-label={c("close")}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44,
+                    background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
+                  <X size={24} />
+                </button>
+              </div>
             </div>
-            {r.bible_ref && (
-              <div
-                style={{
-                  background: "var(--terra-light)",
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  marginBottom: 16,
-                  border: "1px solid var(--community-terra-border-soft)",
-                }}
-              >
-                {renderCommunityBibleReference(r, lang, "detail")}
-                {r.key_verse && (
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: "var(--terra-dark)",
-                      lineHeight: 1.7,
-                      marginTop: 6,
-                      fontStyle: "italic",
-                      whiteSpace: "pre-line",
-                    }}
-                  >
-                    "{r.key_verse}"
-                    <EsvInlineAttribution row={r} />
-                  </p>
-                )}
+            {(!isPhoto || hasBibleReference) && (
+              <div className={qtDetailReadingStyles.header}>
+                <div className={qtDetailReadingStyles.reference}>
+                  {renderCommunityBibleReference(r, lang, "detail")}
+                </div>
+                {!isPhoto && textSizeControls}
               </div>
             )}
             {r.photo_path && (
-              <div style={{ marginBottom: 16 }}>
-                {qtPhotoUrls[r.id] ? (
-                  renderPhotoReflectionImage({
-                    src: qtPhotoUrls[r.id],
-                    alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
-                    style: {
-                      width: "100%",
-                      maxHeight: 520,
-                      objectFit: "contain",
-                      borderRadius: 18,
-                      border: "1px solid var(--border)",
-                      background: "var(--bg3)",
-                    },
-                  })
-                ) : (
-                  <div
-                    style={{
-                      padding: 24,
-                      borderRadius: 16,
-                      background: "var(--bg3)",
-                      color: "var(--text3)",
-                      fontSize: 13,
-                      textAlign: "center",
-                    }}
-                  >
+              <div style={{ marginBottom: 24 }}>
+                {qtPhotoUrls[r.id] ? renderPhotoReflectionImage({
+                  src: qtPhotoUrls[r.id], alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
+                  style: { width: "100%", maxHeight: 600, objectFit: "contain", borderRadius: 16,
+                    border: "1px solid var(--border)", background: "var(--bg3)" },
+                }) : (
+                  <div style={{ padding: 24, borderRadius: 16, background: "var(--bg3)",
+                    color: "var(--text3)", fontSize: 16, textAlign: "center" }}>
                     {COMMUNITY_LOCAL_TEXT[lang].photoLoading}
+                  </div>
+                )}
+                {hasSeparatePhotoCaption && (
+                  <div style={{ marginTop: 16 }}>
+                    <div className={qtDetailReadingStyles.captionControls}>{textSizeControls}</div>
+                    <p className={qtDetailReadingStyles.body} style={{ lineHeight: 1.85, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0, color: "var(--text)" }}>
+                      {photoCaption}
+                    </p>
                   </div>
                 )}
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.filter((s) => s.key !== "key_verse" && r[s.key])
-                .sort((a, b) => {
-                  if (r.qt_mode === "sunday") {
-                    const order = [
-                      "opening_prayer",
-                      "meditation",
-                      "application",
-                      "decision",
-                      "closing_prayer",
-                      "summary",
-                    ];
-                    return order.indexOf(a.key) - order.indexOf(b.key);
-                  }
-                  return 0;
-                })
-                .map(
-                  ({ key, labelKey, sundayLabelKey, italic, isDecision }) => {
-                    const displayLabelKey =
-                      key === "summary" &&
-                      r.qt_mode === "sunday" &&
-                      sundayLabelKey
-                        ? sundayLabelKey
-                        : labelKey;
-                    return (
-                      <div key={key}>
-                        <p
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "var(--text3)",
-                            letterSpacing: "1px",
-                            textTransform: "uppercase",
-                            marginBottom: 6,
-                          }}
-                        >
-                          {c(displayLabelKey)}
-                        </p>
-                        {isDecision ? (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 5,
-                            }}
-                          >
-                            {r[key]
-                              .split("\n")
-                              .filter((d: string) => d.trim())
-                              .map((d: string, i: number) => (
-                                <p
-                                  key={i}
-                                  style={{
-                                    fontSize: 13,
-                                    color: "var(--text)",
-                                    lineHeight: 1.6,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontWeight: 700,
-                                      color: "var(--sage-dark)",
-                                    }}
-                                  >
-                                    {i + 1}.
-                                  </span>{" "}
-                                  {d}
-                                </p>
-                              ))}
-                          </div>
-                        ) : (
-                          <p
-                            style={{
-                              fontSize: 13,
-                              color: "var(--text)",
-                              lineHeight: 1.7,
-                              fontStyle: italic ? "italic" : "normal",
-                              whiteSpace: "pre-line",
-                            }}
-                          >
-                            {r[key]}
-                          </p>
-                        )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {sections.map(({ key, labelKey, sundayLabelKey }, index) => {
+                const heading = (
+                  <h3 className={qtDetailReadingStyles.heading} style={{ fontWeight: 700, color: "var(--text3)" }}>
+                    {c(key === "summary" && r.qt_mode === "sunday" && sundayLabelKey ? sundayLabelKey : labelKey)}
+                  </h3>
+                );
+                return (
+                  <section key={key} data-qt-section={key}>
+                    {isPhoto && !hasSeparatePhotoCaption && index === 0 ? (
+                      <div className={qtDetailReadingStyles.sectionHeader}>
+                        {heading}
+                        {textSizeControls}
                       </div>
-                    );
-                  },
-                )}
+                    ) : heading}
+                    <p className={qtDetailReadingStyles.body} style={{ color: "var(--text)", lineHeight: 1.85, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0 }}>
+                      {r[key]}
+                      {key === "key_verse" && <EsvInlineAttribution row={r} />}
+                    </p>
+                  </section>
+                );
+              })}
             </div>
-            <div
-              style={{
-                borderTop: "1px solid var(--border)",
-                marginTop: 20,
-                paddingTop: 16,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--text3)",
-                  marginBottom: 10,
-                  fontWeight: 600,
-                }}
-              >
-                {c("community_react_to_qt")}
-              </p>
-              <CommunityReactionButtons
-                qtId={r.id}
-                counts={qtReactionCounts[r.id] ?? {}}
-                selectedReaction={myQtReactions[r.id]}
-                lang={lang}
-                onReact={reactToQT}
-              />
+            <div style={{ borderTop: "1px solid var(--border)", marginTop: 28, paddingTop: 20 }}>
+              <CommunityReactionButtons qtId={r.id} counts={qtReactionCounts[r.id] ?? {}}
+                selectedReaction={myQtReactions[r.id]} lang={lang} onReact={reactToQT} />
             </div>
+            {userId && (
+              <QtComments key={qtCommentContextKey(r.id, qtDetailContext)} qtId={r.id} userId={userId}
+                context={qtDetailContext} lang={lang}
+                onOpenProfile={(profile, authorId) => { void openAuthorProfile(profile, authorId); }}
+                onCountChange={(count) => setQtCommentCounts((previous) => ({
+                  ...previous, [qtCommentContextKey(r.id, qtDetailContext)]: count,
+                }))} />
+            )}
           </div>
         </div>
       </div>
@@ -7725,6 +7638,7 @@ function CommunityPageContent() {
                       fontSize: 13,
                       fontWeight: active ? 700 : 400,
                       color: active ? "var(--sage-dark)" : "var(--text3)",
+                      whiteSpace: key === "qt" ? "nowrap" : undefined,
                     }}
                   >
                     {label}
@@ -7828,22 +7742,16 @@ function CommunityPageContent() {
                     key={r.id}
                     className="card"
                     style={{ cursor: "pointer", position: "relative" }}
-                    onClick={() => openQtDetail(r)}
+                    data-qt-card={r.id}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        openQtDetail(r, partnerQtCommentContext(r, userId!, selectedPartner.partner_id));
+                      }
+                    }}
+                    onClick={() => openQtDetail(r, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))}
                   >
-                    {!r.photo_path && (
-                      <ChevronRight
-                        size={18}
-                        style={{
-                          position: "absolute",
-                          right: 14,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "var(--text3)",
-                          opacity: 0.65,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    )}
                     <div
                       style={{
                         display: "flex",
@@ -7855,6 +7763,7 @@ function CommunityPageContent() {
                       <AuthorIdentity
                         profile={r.profiles}
                         authorId={r.user_id}
+                          fontSize={15}
                       />
                       <div
                         style={{
@@ -7882,7 +7791,7 @@ function CommunityPageContent() {
                         )}
                         <span
                           style={{
-                            fontSize: 10,
+                            fontSize: 13,
                             color: "var(--text3)",
                             whiteSpace: "nowrap",
                           }}
@@ -7900,13 +7809,13 @@ function CommunityPageContent() {
                         />
                       </div>
                     </div>
-                    <div style={{ marginBottom: 4, paddingRight: 34 }}>
+                    <div style={{ marginBottom: 4, paddingRight: 0 }}>
                       {r.bible_ref
                         ? renderCommunityBibleReference(r, lang)
                         : (
                           <p
                             style={{
-                              fontSize: 13,
+                              fontSize: 15,
                               fontWeight: 700,
                               color: "var(--terra)",
                               lineHeight: 1.45,
@@ -7916,59 +7825,13 @@ function CommunityPageContent() {
                           </p>
                         )}
                     </div>
-                    {r.key_verse && (
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: "var(--text2)",
-                          lineHeight: 1.6,
-                          fontStyle: "italic",
-                          marginBottom: 10,
-                          paddingRight: 34,
-                        }}
-                      >
-                        "{r.key_verse.slice(0, 60)}
-                        {r.key_verse.length > 60 ? "..." : ""}"
-                        <EsvInlineAttribution row={r} />
-                      </p>
-                    )}
-                    {r.photo_path && qtPhotoUrls[r.id] && (
-                      renderPhotoReflectionImage({
-                        src: qtPhotoUrls[r.id],
-                        alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
-                        style: {
-                          width: "100%",
-                          maxHeight: 220,
-                          objectFit: "cover",
-                          borderRadius: 14,
-                          border: "1px solid var(--border)",
-                          margin: "6px 0 10px",
-                        },
-                      })
-                    )}
-                    {(r.photo_caption || (r.photo_path && r.meditation)) && (
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: "var(--text2)",
-                          lineHeight: 1.6,
-                          marginBottom: 10,
-                          paddingRight: 34,
-                          whiteSpace: "pre-line",
-                        }}
-                      >
-                        {r.photo_caption || r.meditation}
-                      </p>
-                    )}
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <CommunityReactionButtons
-                          qtId={r.id}
-                          counts={qtReactionCounts[r.id] ?? {}}
-                          selectedReaction={myQtReactions[r.id]}
-                          lang={lang}
-                          onReact={reactToQT}
-                        />
-                    </div>
+                    <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
+                    <QtReactionSummary
+                      counts={qtReactionCounts[r.id] ?? {}}
+                      commentCount={qtCommentCounts[qtCommentContextKey(r.id, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))]}
+                      lang={lang}
+                      onOpen={() => openQtDetail(r, partnerQtCommentContext(r, userId!, selectedPartner.partner_id))}
+                    />
                   </div>
                 ))}
                 {renderFeedLoadMore(partnerQtFeedKey, partnerQts.length)}
@@ -9136,6 +8999,7 @@ function CommunityPageContent() {
                         fontSize: 13,
                         fontWeight: active ? 700 : 400,
                         color: active ? "var(--sage-dark)" : "var(--text3)",
+                        whiteSpace: key === "qt" ? "nowrap" : undefined,
                       }}
                     >
                       {label}
@@ -9219,22 +9083,16 @@ function CommunityPageContent() {
                       key={r.id}
                       className="card"
                       style={{ cursor: "pointer", position: "relative" }}
-                      onClick={() => openQtDetail(r)}
+                      data-qt-card={r.id}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        openQtDetail(r, { scope: "group", scopeId: selectedGroup.id });
+                      }
+                    }}
+                    onClick={() => openQtDetail(r, { scope: "group", scopeId: selectedGroup.id })}
                     >
-                      {!r.photo_path && (
-                        <ChevronRight
-                          size={18}
-                          style={{
-                            position: "absolute",
-                            right: 14,
-                            top: "50%",
-                            transform: "translateY(-50%)",
-                            color: "var(--text3)",
-                            opacity: 0.65,
-                            pointerEvents: "none",
-                          }}
-                        />
-                      )}
                       <div
                         style={{
                           display: "flex",
@@ -9246,12 +9104,11 @@ function CommunityPageContent() {
                         <AuthorIdentity
                           profile={r.profiles}
                           authorId={r.user_id}
+                          fontSize={15}
                         />
                         <div
                           style={{
-                            position: "absolute",
-                            top: 18,
-                            right: 18,
+                            flexShrink: 0,
                             display: "flex",
                             alignItems: "center",
                             gap: 6,
@@ -9273,7 +9130,7 @@ function CommunityPageContent() {
                               {c("community_unread")}
                             </span>
                           )}
-                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
+                          <span style={{ fontSize: 13, color: "var(--text3)" }}>
                             {parseLocalDateString(r.date).toLocaleDateString(
                               getDateLocale(lang),
                               { month: "short", day: "numeric" },
@@ -9287,13 +9144,13 @@ function CommunityPageContent() {
                           />
                         </div>
                       </div>
-                      <div style={{ marginBottom: 4, paddingRight: 34 }}>
+                      <div style={{ marginBottom: 4, paddingRight: 0 }}>
                         {r.bible_ref
                           ? renderCommunityBibleReference(r, lang)
                           : (
                             <p
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: 700,
                                 color: "var(--terra)",
                                 lineHeight: 1.45,
@@ -9303,59 +9160,13 @@ function CommunityPageContent() {
                             </p>
                           )}
                       </div>
-                      {r.key_verse && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "var(--text2)",
-                            lineHeight: 1.6,
-                            fontStyle: "italic",
-                            marginBottom: 10,
-                            paddingRight: 34,
-                          }}
-                        >
-                          "{r.key_verse.slice(0, 60)}
-                          {r.key_verse.length > 60 ? "..." : ""}"
-                          <EsvInlineAttribution row={r} />
-                        </p>
-                      )}
-                      {r.photo_path && qtPhotoUrls[r.id] && (
-                        renderPhotoReflectionImage({
-                          src: qtPhotoUrls[r.id],
-                          alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
-                          style: {
-                            width: "100%",
-                            maxHeight: 220,
-                            objectFit: "cover",
-                            borderRadius: 14,
-                            border: "1px solid var(--border)",
-                            margin: "6px 0 10px",
-                          },
-                        })
-                      )}
-                      {(r.photo_caption || (r.photo_path && r.meditation)) && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "var(--text2)",
-                            lineHeight: 1.6,
-                            marginBottom: 10,
-                            paddingRight: 34,
-                            whiteSpace: "pre-line",
-                          }}
-                        >
-                          {r.photo_caption || r.meditation}
-                        </p>
-                      )}
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <CommunityReactionButtons
-                          qtId={r.id}
-                          counts={qtReactionCounts[r.id] ?? {}}
-                          selectedReaction={myQtReactions[r.id]}
-                          lang={lang}
-                          onReact={reactToQT}
-                        />
-                      </div>
+                      <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
+                    <QtReactionSummary
+                      counts={qtReactionCounts[r.id] ?? {}}
+                      commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "group", scopeId: selectedGroup.id })]}
+                      lang={lang}
+                      onOpen={() => openQtDetail(r, { scope: "group", scopeId: selectedGroup.id })}
+                    />
                     </div>
                   ))}
                   {renderFeedLoadMore(groupQtFeedKey, groupQts.length)}
@@ -11038,6 +10849,7 @@ function CommunityPageContent() {
                         fontSize: 13,
                         fontWeight: active ? 700 : 400,
                         color: active ? "var(--sage-dark)" : "var(--text3)",
+                        whiteSpace: key === "qt" ? "nowrap" : undefined,
                       }}
                     >
                       {label}
@@ -11082,22 +10894,16 @@ function CommunityPageContent() {
                         key={r.id}
                         className="card"
                         style={{ cursor: "pointer", position: "relative" }}
-                        onClick={() => openQtDetail(r)}
+                        data-qt-card={r.id}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        openQtDetail(r, { scope: "all", scopeId: null });
+                      }
+                    }}
+                    onClick={() => openQtDetail(r, { scope: "all", scopeId: null })}
                       >
-                        {!r.photo_path && (
-                          <ChevronRight
-                            size={18}
-                            style={{
-                              position: "absolute",
-                              right: 14,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              color: "var(--text3)",
-                              opacity: 0.65,
-                              pointerEvents: "none",
-                            }}
-                          />
-                        )}
                         <div
                           style={{
                             display: "flex",
@@ -11109,6 +10915,7 @@ function CommunityPageContent() {
                           <AuthorIdentity
                             profile={r.profiles}
                             authorId={r.user_id}
+                          fontSize={15}
                           />
                           <div
                             style={{
@@ -11118,7 +10925,7 @@ function CommunityPageContent() {
                             }}
                           >
                             <span
-                              style={{ fontSize: 10, color: "var(--text3)" }}
+                              style={{ fontSize: 13, color: "var(--text3)" }}
                             >
                               {parseLocalDateString(r.date).toLocaleDateString(
                                 getDateLocale(lang),
@@ -11128,13 +10935,13 @@ function CommunityPageContent() {
                             <CardMenu kind="qt" item={r} scope="all" />
                           </div>
                         </div>
-                        <div style={{ marginBottom: 4, paddingRight: 34 }}>
+                        <div style={{ marginBottom: 4, paddingRight: 0 }}>
                           {r.bible_ref
                             ? renderCommunityBibleReference(r, lang)
                             : (
                               <p
                                 style={{
-                                  fontSize: 13,
+                                  fontSize: 15,
                                   fontWeight: 700,
                                   color: "var(--terra)",
                                   lineHeight: 1.45,
@@ -11144,60 +10951,13 @@ function CommunityPageContent() {
                               </p>
                             )}
                         </div>
-                        {r.key_verse && (
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "var(--text2)",
-                              lineHeight: 1.6,
-                              fontStyle: "italic",
-                              marginBottom: 10,
-                              paddingRight: 34,
-                            }}
-                          >
-                            "{r.key_verse.slice(0, 60)}
-                            {r.key_verse.length > 60 ? "..." : ""}"
-                            <EsvInlineAttribution row={r} />
-                          </p>
-                        )}
-                        {r.photo_path && qtPhotoUrls[r.id] && (
-                          renderPhotoReflectionImage({
-                            src: qtPhotoUrls[r.id],
-                            alt: COMMUNITY_LOCAL_TEXT[lang].photoAlt,
-                            style: {
-                              width: "100%",
-                              maxHeight: 220,
-                              objectFit: "cover",
-                              borderRadius: 14,
-                              border: "1px solid var(--border)",
-                              margin: "6px 0 10px",
-                            },
-                          })
-                        )}
-                        {(r.photo_caption ||
-                          (r.photo_path && r.meditation)) && (
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "var(--text2)",
-                              lineHeight: 1.6,
-                              marginBottom: 10,
-                              paddingRight: 34,
-                              whiteSpace: "pre-line",
-                            }}
-                          >
-                            {r.photo_caption || r.meditation}
-                          </p>
-                        )}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <CommunityReactionButtons
-                          qtId={r.id}
-                          counts={qtReactionCounts[r.id] ?? {}}
-                          selectedReaction={myQtReactions[r.id]}
-                          lang={lang}
-                          onReact={reactToQT}
-                        />
-                        </div>
+                        <QtFeedPreview row={r} photoUrl={qtPhotoUrls[r.id]} lang={lang} />
+                    <QtReactionSummary
+                      counts={qtReactionCounts[r.id] ?? {}}
+                      commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "all", scopeId: null })]}
+                      lang={lang}
+                      onOpen={() => openQtDetail(r, { scope: "all", scopeId: null })}
+                    />
                       </div>
                     ))}
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}

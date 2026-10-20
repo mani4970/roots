@@ -134,7 +134,7 @@ export const T = {
   community_cancel: { ko: "취소", de: "Abbrechen", en: "Cancel", fr: "Annuler", es: "Cancelar" },
   community_leave: { ko: "나가기", de: "Verlassen", en: "Leave", fr: "Quitter", es: "Salir" },
   community_group_qt_exchange: { ko: "그룹 말씀 묵상 나눔", de: "Austausch zur Stillen Zeit in der Gruppe", en: "Group Bible Reflection sharing", fr: "Partage de méditations bibliques du groupe", es: "Meditaciones bíblicas del grupo" },
-  community_group_tab_qt: { ko: "묵상 나눔", de: "Austausch zur Stille Zeit", en: "Bible Reflection sharing", fr: "Partage de méditations bibliques", es: "Meditaciones bíblicas" },
+  community_group_tab_qt: { ko: "묵상", de: "Stille Zeit", en: "Reflections", fr: "Méditations", es: "Meditaciones" },
   community_group_tab_prayer: { ko: "기도 제목", de: "Gebetsanliegen", en: "Prayer requests", fr: "Sujets de prière", es: "Peticiones de oración" },
   community_no_group_qts: { ko: "아직 이 그룹에 나눈 묵상이 없어요", de: "Noch keine geteilten Stillen Zeiten in dieser Gruppe", en: "No shared Bible Reflections in this group yet", fr: "Aucune méditation biblique partagée dans ce groupe pour l’instant", es: "Todavía no hay meditaciones bíblicas compartidas en este grupo" },
   community_no_group_prayers: { ko: "아직 이 그룹에 나눈 기도 제목이 없어요", de: "Noch keine geteilten Gebetsanliegen in dieser Gruppe", en: "No shared prayer requests in this group yet", fr: "Aucun sujet de prière partagé dans ce groupe pour l’instant", es: "Todavía no hay peticiones de oración compartidas en este grupo" },

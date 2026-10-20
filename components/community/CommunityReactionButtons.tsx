@@ -29,7 +29,7 @@ function ReactionIcon({
   if (id === "cheer") {
     return (
       <Heart
-        size={14}
+        size={18}
         strokeWidth={1.9}
         fill={selected ? color : "none"}
         style={{ color }}
@@ -37,7 +37,7 @@ function ReactionIcon({
     );
   }
   if (id === "bless") {
-    return <Sparkles size={14} strokeWidth={1.9} style={{ color }} />;
+    return <Sparkles size={18} strokeWidth={1.9} style={{ color }} />;
   }
   return (
     <img
@@ -46,8 +46,8 @@ function ReactionIcon({
       aria-hidden="true"
       draggable={false}
       style={{
-        width: 16,
-        height: 16,
+        width: 20,
+        height: 20,
         objectFit: "contain",
         flexShrink: 0,
         opacity: selected ? 1 : 0.82,
@@ -79,14 +79,15 @@ export default function CommunityReactionButtons({
               alignItems: "center",
               justifyContent: "center",
               gap: 4,
-              padding: "6px 10px",
+              padding: "8px 12px",
+              minHeight: 44,
               borderRadius: 20,
               border: `1.5px solid ${isSelected ? "var(--community-reaction-selected-border)" : "var(--community-reaction-border)"}`,
               background: isSelected
                 ? "var(--community-reaction-selected-surface)"
                 : "var(--community-reaction-surface)",
               cursor: "pointer",
-              fontSize: 12,
+              fontSize: 14,
               color: isSelected
                 ? "var(--community-reaction-selected-text)"
                 : "var(--community-reaction-text)",
