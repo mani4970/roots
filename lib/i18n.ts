@@ -31,7 +31,7 @@ export const T = {
   // ── BottomNav ──
     nav_home:       { ko: "홈",       de: "Startseite", en: "Home", fr: "Accueil", es: "Inicio" },
     nav_prayer:     { ko: "기도",     de: "Gebet", en: "Prayer", fr: "Prière", es: "Oración" },
-    nav_qt:         { ko: "QT",       de: "QT", en: "QT", fr: "QT", es: "Devocional" },
+    nav_qt:         { ko: "묵상",     de: "Stille Zeit", en: "Reflection", fr: "Méditation", es: "Devocional" },
     nav_community:  { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
     nav_profile:    { ko: "프로필",   de: "Profil", en: "Profile", fr: "Profil", es: "Perfil" },
 
@@ -263,12 +263,12 @@ export const T = {
   community_create: { ko: "만들기", de: "Erstellen", en: "Create", fr: "Créer", es: "Crear" },
 
   // ── 큐티(QT) 탭 ──
-  qt_title: { ko: "말씀 묵상", de: "Stille Zeit", en: "Bible Reflection", fr: "Méditation biblique", es: "Meditación bíblica" },
-  qt_sub: { ko: "말씀과 함께하는 조용한 시간", de: "Stille Zeit mit Gottes Wort", en: "Quiet Time with God's Word", fr: "Un temps calme avec la Parole de Dieu", es: "Un tiempo a solas con la Palabra de Dios" },
+  qt_title: { ko: "말씀 묵상", de: "Stille Zeit", en: "Bible Reflection", fr: "Méditation biblique", es: "Devocional bíblico" },
+  qt_sub: { ko: "말씀으로 하나님과 동행하는 시간", de: "Zeit, durch Gottes Wort mit ihm zu gehen", en: "A time to walk with God through His Word", fr: "Un temps pour cheminer avec Dieu à travers sa Parole", es: "Un tiempo para caminar con Dios a través de su Palabra" },
   qt_start_btn: { ko: "오늘 말씀 묵상 시작하기", de: "Heutige Stille Zeit beginnen", en: "Start today's Bible Reflection", fr: "Commencer la méditation biblique du jour", es: "Comenzar la meditación bíblica de hoy" },
     qt_sunday_required: { ko: "오늘은 주일이에요. 주일예배 말씀 묵상으로 진행해주세요.", de: "Heute ist Sonntag. Bitte machen Sie die Stille Zeit zum Sonntagsgottesdienst.", en: "Today is Sunday. Please continue with a Sunday Worship Bible Reflection.", fr: "Aujourd’hui, c’est dimanche. Veuillez faire la méditation biblique du culte dominical.", es: "Hoy es domingo. Continúa con la meditación bíblica del culto dominical." },
   qt_done: { ko: "오늘 말씀 묵상 완료!", de: "Stille Zeit abgeschlossen!", en: "Bible Reflection complete!", fr: "Méditation biblique terminée !", es: "¡Meditación bíblica de hoy completada!" },
-  qt_done_sub: { ko: "말씀 앞에 앉은 당신, 축복해요", de: "Gott segne dich!", en: "God bless you!", fr: "que Dieu te bénisse!", es: "Bendiciones por haberte sentado ante la Palabra." },
+  qt_done_sub: { ko: "매일 말씀에 뿌리내리는 당신을 축복합니다", de: "Gott segne Sie, während Sie täglich in seinem Wort Wurzeln schlagen.", en: "Blessings on you as you take root in God’s Word each day.", fr: "Que Dieu vous bénisse, vous qui vous enracinez chaque jour dans sa Parole.", es: "Bendiciones para ti, que echas raíces cada día en la Palabra de Dios." },
   qt_sunday: { ko: "오늘은 주일이에요!", de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !", es: "¡Hoy es domingo!" },
   qt_sunday_sub: { ko: "6단계 말씀 묵상 대신 주일예배 말씀 묵상을 진행해 주세요.", de: "Bitte machen Sie statt der 6-Schritte-Stillen-Zeit die Stille Zeit zum Sonntagsgottesdienst.", en: "Please continue with a Sunday Worship Bible Reflection instead of the 6-step Bible Reflection.", fr: "Veuillez faire la méditation biblique du culte dominical plutôt que la méditation biblique en 6 étapes.", es: "En lugar de la meditación bíblica en 6 pasos, realiza la meditación bíblica del culto dominical." },
   qt_today_passage: { ko: "오늘의 묵상 본문", de: "Heutiger Abschnitt", en: "Today's passage", fr: "Passage du jour", es: "Pasaje de hoy" },
@@ -803,10 +803,10 @@ export const T = {
   home_qt_view_record: { ko: "말씀 묵상 보러 가기", de: "Stille Zeit ansehen", en: "View Bible Reflection", fr: "Voir la méditation biblique", es: "Ver meditación bíblica" },
   home_partner_request_notice: { ko: "새 동역자 신청이 있어요!", de: "Neue Glaubenspartner-Anfrage erhalten!", en: "You have a new faith partner request!", fr: "Vous avez une nouvelle demande de partenaire de foi !", es: "¡Tienes una nueva solicitud de compañero de fe!" },
   home_partner_request_cta: { ko: "확인하러 가기", de: "Ansehen", en: "View request", fr: "Voir la demande", es: "Ver solicitud" },
-    home_routine_qt: { ko: "말씀 묵상", de: "Stille Zeit", en: "Bible Reflection", fr: "Méditation biblique", es: "Meditación bíblica" },
+    home_routine_qt: { ko: "말씀 묵상", de: "Stille Zeit", en: "Bible Reflection", fr: "Méditation biblique", es: "Devocional bíblico" },
     home_routine_prayer: { ko: "기도", de: "Gebet", en: "Prayer", fr: "Prière", es: "Oración" },
-  home_routine_qt_start: { ko: "오늘 묵상하기", de: "Heute Stille Zeit", en: "Reflect today", fr: "Méditer aujourd’hui", es: "Meditar hoy" },
-  home_routine_qt_done: { ko: "묵상 완료", de: "Stille Zeit fertig", en: "Reflection complete", fr: "Méditation terminée", es: "Meditación completada" },
+  home_routine_qt_start: { ko: "오늘 묵상하기", de: "Heute Stille Zeit", en: "Reflect today", fr: "Méditer aujourd’hui", es: "Devocional de hoy" },
+  home_routine_qt_done: { ko: "묵상 완료", de: "Stille Zeit fertig", en: "Reflection complete", fr: "Méditation terminée", es: "Devocional completado" },
   home_routine_view_record: { ko: "보러가기", de: "Ansehen", en: "View", fr: "Voir", es: "Ver" },
   home_routine_prayer_start: { ko: "오늘 기도하기", de: "Heute beten", en: "Pray today", fr: "Prier aujourd’hui", es: "Orar hoy" },
   home_routine_prayer_done: { ko: "기도 완료", de: "Gebet beendet", en: "Prayer complete", fr: "Prière terminée", es: "Oración completada" },
@@ -952,7 +952,7 @@ export const T = {
 
   // ── QT 페이지 ──
   qt_today_done: { ko: "오늘 말씀 묵상 완료!", de: "Stille Zeit heute abgeschlossen!", en: "Bible Reflection complete today!", fr: "Méditation biblique terminée aujourd’hui !", es: "¡Meditación bíblica de hoy completada!" },
-  qt_today_done_sub: { ko: "말씀 앞에 앉은 당신, 축복해요", de: "Gott segne dich – Sie waren beim Wort Gottes.", en: "God bless you — you were with God's Word.", fr: "que Dieu te bénisse — vous étiez avec la Parole de Dieu.", es: "Bendiciones por haberte sentado ante la Palabra." },
+  qt_today_done_sub: { ko: "매일 말씀에 뿌리내리는 당신을 축복합니다", de: "Gott segne Sie, während Sie täglich in seinem Wort Wurzeln schlagen.", en: "Blessings on you as you take root in God’s Word each day.", fr: "Que Dieu vous bénisse, vous qui vous enracinez chaque jour dans sa Parole.", es: "Bendiciones para ti, que echas raíces cada día en la Palabra de Dios." },
   qt_today_bible_ref: { ko: "오늘의 묵상 본문", de: "Heutiger Abschnitt", en: "TODAY'S PASSAGE", fr: "PASSAGE DU JOUR", es: "PASAJE DE HOY" },
   qt_sunday_title: { ko: "오늘은 주일이에요!", de: "Heute ist Sonntag!", en: "Today is Sunday!", fr: "Aujourd’hui, c’est dimanche !", es: "¡Hoy es domingo!" },
   qt_sunday_desc: { ko: "6단계 말씀 묵상 대신 주일예배 말씀 묵상을 진행해 주세요.", de: "Bitte machen Sie statt der 6-Schritte-Stillen-Zeit die Stille Zeit zum Sonntagsgottesdienst.", en: "Please continue with a Sunday Worship Bible Reflection instead of the 6-step Bible Reflection.", fr: "Veuillez faire la méditation biblique du culte dominical plutôt que la méditation biblique en 6 étapes.", es: "En lugar de la meditación bíblica en 6 pasos, realiza la meditación bíblica del culto dominical." },
