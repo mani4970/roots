@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
+import { preserveLocalRewardPresentation, REWARD_PRESENTATIONS_EVENT } from "@/lib/rewardPresentationReceipts";
 
 export const QT_PENDING_AWARDED_BADGES_PREFIX = "qt_pending_awarded_badges_";
 export const QT_PENDING_AWARDED_BADGES_EVENT = "roots:qt-pending-awarded-badges";
@@ -93,7 +94,7 @@ function preserveAwardedBadgeReceipt(userId: string, date: string, awardedBadges
   }
 }
 
-/** Call only once the corresponding badge popup has actually become visible. */
+/** Call only after the user confirms or dismisses the corresponding badge popup. */
 export function acknowledgePendingAwardedBadge(userId: string, date: string, badgeKey: string) {
   const seenKey = getAcknowledgedAwardedBadgesKey(userId, date);
   const seen = Array.from(new Set([...readBadgeKeys(seenKey), badgeKey]));
@@ -119,10 +120,21 @@ export async function recordBibleReflectionProgress(
   userId: string,
   date: string
 ): Promise<ReflectionProgressResult> {
-  const { data, error } = await supabase.rpc("record_bible_reflection_progress", {
+  const args = {
     p_user_id: userId,
     p_date: date,
-  });
+  };
+  const receiptRpc = "record_bible_reflection_progress_with_receipts";
+  let { data, error } = await supabase.rpc(receiptRpc, args);
+  // Rolling deployments may serve the new client before SQL 165 is applied.
+  // Only a missing wrapper permits the original RPC fallback; a real database
+  // failure must retain the existing save/progress retry behavior.
+  const missingReceiptRpc = !!error
+    && (error.code === "42883" || error.code === "PGRST202")
+    && [error.message, error.details, error.hint].some(value => value?.includes(receiptRpc));
+  if (missingReceiptRpc) {
+    ({ data, error } = await supabase.rpc("record_bible_reflection_progress", args));
+  }
 
   if (error) throw error;
   if (!data || typeof data.updated !== "boolean") {
@@ -137,6 +149,16 @@ export async function recordBibleReflectionProgress(
   // server's badge receipt here even when its awaiting screen has timed out or
   // unmounted. Explicit user/date keys cannot feed another account's queue.
   preserveAwardedBadgeReceipt(userId, date, awardedBadges);
+  if (missingReceiptRpc && data.updated) {
+    preserveLocalRewardPresentation(userId, date, Number(data.profile?.streak_days ?? 0), awardedBadges);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent(REWARD_PRESENTATIONS_EVENT, { detail: { userId } }));
+    } catch {
+      // A presentation notification cannot alter already committed progress.
+    }
+  }
 
   return {
     updated: data.updated,

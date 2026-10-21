@@ -48,6 +48,7 @@ const ACCOUNT_SCOPED_STORAGE_PREFIXES = [
   "roots_qt_draft_backup_v1_",
   "qt_pending_awarded_badges_",
   "qt_completion_pending_watering_",
+  "roots_reward_presentations_",
   "celebrated_",
   "roots_group_favorites_",
   "roots_community_all_section_seen_",

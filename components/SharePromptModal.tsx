@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronUp, Globe, Loader2, UserPlus, UserRound, X } from "lucide-react";
 
 const COLLAPSED_ITEM_COUNT = 6;
@@ -47,6 +47,7 @@ type SharePromptModalProps = {
   selectedTargets: string[];
   saving?: boolean;
   actionsDisabled?: boolean;
+  externalShareAction?: ReactNode;
   loadingGroups?: boolean;
   loadingPartners?: boolean;
   // Opt-in list recovery. Existing prayer and saved-record dialogs are unchanged.
@@ -90,6 +91,7 @@ export default function SharePromptModal({
   selectedTargets,
   saving = false,
   actionsDisabled = false,
+  externalShareAction,
   loadingGroups = false,
   loadingPartners = false,
   loadError,
@@ -400,6 +402,7 @@ export default function SharePromptModal({
           )}
         </div>
 
+        {externalShareAction && <div style={{ flexShrink: 0, paddingTop: 4, paddingBottom: 8 }}>{externalShareAction}</div>}
         {!loadError && (
         <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--surface-card)" }}>
           {selectedTargets.length > 0 && (

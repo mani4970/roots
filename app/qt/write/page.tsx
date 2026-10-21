@@ -45,6 +45,7 @@ import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
+import type { QtShareRecord } from "@/lib/qtShare";
 import QTFreePassageChoice from "@/components/QTFreePassageChoice";
 import CursorStableInput from "@/components/CursorStableInput";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
@@ -520,6 +521,7 @@ function QTWriteContent() {
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
   const [completionReady, setCompletionReady] = useState(false);
+  const completionShareRecordRef = useRef<QtShareRecord | null>(null);
   const completionSavingRef = useRef(false);
   const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
   const pendingCompletionRef = useRef<PendingCompletion | null>(null);
@@ -3023,6 +3025,7 @@ function QTWriteContent() {
       }
 
       let completedRecordId = "";
+      let savedRecordData = recordData;
 
       // draft가 있으면 update, 없으면 insert
       if (draftRecord) {
@@ -3047,11 +3050,15 @@ function QTWriteContent() {
             .single();
           if (e2) { observeSaveFailure(e2, "record_insert"); showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error"); return; }
           completedRecordId = fallbackInsertedRecord?.id ?? "";
+          savedRecordData = withoutMode;
         } else {
           completedRecordId = insertedRecord?.id ?? "";
         }
       }
 
+      // Keep the exact body that was saved, including the schema fallback.
+      // Progress retries must never share a later, unsaved form snapshot.
+      completionShareRecordRef.current = { ...savedRecordData, id: completedRecordId };
       observe(completionObservationRef.current, "body_saved", { source: draftRecord ? "draft_conversion" : "create" }, completedRecordId);
       await finishPendingCompletion(supabase, rememberPendingCompletion({
         recordId: completedRecordId,
@@ -3084,7 +3091,7 @@ function QTWriteContent() {
 
   // ─── 말씀 선택 화면 (6step & free) ───
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} shareRecord={completionShareRecordRef.current} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
   }
 
   if (draftLoadError) {

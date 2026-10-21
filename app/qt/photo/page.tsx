@@ -26,6 +26,7 @@ import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal from "@/components/SharePromptModal";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
+import type { QtShareRecord } from "@/lib/qtShare";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
 import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
@@ -492,6 +493,8 @@ function PhotoReflectionContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [completionReady, setCompletionReady] = useState(false);
+  const [completionShareRecord, setCompletionShareRecord] = useState<QtShareRecord | null>(null);
+  const [completionShareRecordId, setCompletionShareRecordId] = useState<string | null>(null);
   const [completionNotice, setCompletionNotice] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargets, setShareTargets] = useState<string[]>([]);
@@ -669,11 +672,12 @@ function PhotoReflectionContent() {
     leaveGuard.leaveAfterSave(() => router.push(href));
   }
 
-  function requestDuplicatePhotoExit(href: string) {
+  function requestDuplicatePhotoExit(href: string, savedRecordId?: string) {
     // A completed record may belong to an earlier session. The current photo
     // and caption have not necessarily been saved, so never discard them just
     // because that date already has a completed reflection.
     if (!window.confirm(`${qtFlowCopy("existingRecordTitle", lang)}\n${qtFlowCopy("leaveUnsaved", lang)}`)) return;
+    if (href === "/qt/complete") setCompletionShareRecordId(savedRecordId ?? null);
     navigateAfterPhotoSave(href);
   }
 
@@ -1216,7 +1220,7 @@ function PhotoReflectionContent() {
               void markBibleReflectionCompletedForNotifications(today, lang)
                 .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
               setShowShareModal(false);
-              requestDuplicatePhotoExit("/qt/complete");
+              requestDuplicatePhotoExit("/qt/complete", existingRecord.id);
               return;
             }
           } catch (progressError) {
@@ -1446,6 +1450,7 @@ function PhotoReflectionContent() {
         }
         observe(observationRef.current, "save_ok", { recovery: observationRetryRef.current, sharing_failed: sharingFailed }, recordId);
         observationRetryRef.current = false;
+        setCompletionShareRecord(insertedRecord);
         navigateAfterPhotoSave("/qt/complete");
         return;
       }
@@ -1742,7 +1747,7 @@ function PhotoReflectionContent() {
   const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
 
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} shareRecord={completionShareRecord} shareRecordId={completionShareRecordId} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
   }
 
   if (isEditMode && editLoading) {

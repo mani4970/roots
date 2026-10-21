@@ -7,7 +7,7 @@ export type ObservedPopupKind =
   | "progress_badge" | "garden_badge" | "garden_stage" | "map_start" | "map_complete"
   | "character_reward" | "avatar_choice" | "celebration" | "monthly_badge"
   | "challenge_reward" | "welcome_back" | "onboarding" | "language_picker"
-  | "required_update" | "spanish_announcement" | "companion_announcement" | "companion_accepted"
+  | "required_update" | "spanish_announcement" | "companion_announcement" | "companion_accepted" | "messenger_share_announcement"
   | "prayer_compose" | "prayer_cards" | "prayer_share" | "qt_choice" | "qt_draft_choice"
   | "chapter" | "notification_settings";
 

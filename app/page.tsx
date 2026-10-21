@@ -19,9 +19,8 @@ import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import HomeHeader from "@/components/HomeHeader";
-import CompanionChallengeAnnouncementPopup from "@/components/CompanionChallengeAnnouncementPopup";
 import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
-import SpanishLanguageLaunchAnnouncementPopup from "@/components/SpanishLanguageLaunchAnnouncementPopup";
+import MessengerShareAnnouncementPopup from "@/components/MessengerShareAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
@@ -31,7 +30,6 @@ import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
-import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import { createClient } from "@/lib/supabase";
 import {
   getPreferredTranslationForLang,
@@ -50,9 +48,16 @@ import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTM
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
-import { acknowledgePendingAwardedBadge, QT_PENDING_AWARDED_BADGES_EVENT, readPendingAwardedBadges, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
-import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, isRewardMapCompletionDay, isRewardMapStartDay, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
-import { getNehemiahWallStage } from "@/lib/nehemiahWall";
+import { acknowledgePendingAwardedBadge, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import {
+  acknowledgeRewardPresentations,
+  migrateLegacyRewardPresentations,
+  readLocalPendingRewardPresentations,
+  readPendingRewardPresentations,
+  REWARD_PRESENTATIONS_EVENT,
+  type RewardPresentationReceipt,
+} from "@/lib/rewardPresentationReceipts";
+import { getCurrentRewardMapCycle, getRewardMapKeywordKey, getRewardMapStartSubKey, getRewardMapTitleKey, type RewardMapCycle, type RewardMapKind } from "@/lib/rewardMaps";
 import { getNehemiahWallCopy } from "@/lib/nehemiahWallText";
 import { getRootsAvatarImageSrc, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
@@ -79,9 +84,7 @@ import {
   type MonthlyBadgeDefinition,
 } from "@/lib/monthlyBadges";
 import {
-  SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
   getUserCampaignLocalStorageKey,
-  isEligibleForSpanishLanguageLaunchAnnouncement,
   loadUserCampaignSeen,
   markUserCampaignSeen,
 } from "@/lib/userCampaignImpressions";
@@ -89,10 +92,9 @@ import {
   COMPANION_CHALLENGE_3_ID,
   COMPANION_CHALLENGE_3_END_DATE,
   COMPANION_CHALLENGE_4_ID,
-  COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
-  isCompanionChallenge4AnnouncementWindow,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
+import { acknowledgeMessengerShareAnnouncement, readMessengerShareAnnouncementSeen } from "@/lib/messengerShareAnnouncement";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
@@ -126,7 +128,6 @@ const CELEBRATED_KEY_PREFIX = "celebrated_";
 const ONBOARDING_DONE_KEY = "onboarding_done";
 const ONBOARDING_DONE_KEY_PREFIX = "onboarding_done_";
 const RECENT_SIGNUP_ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000;
-const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 const HOME_PROFILE_RETRY_DELAYS_MS = [300, 800] as const;
 
 function getScopedStorageKey(prefix: string, userId: string, date: string) {
@@ -180,6 +181,7 @@ type RewardMapNoticeState = {
   type: "complete" | "start";
   days: number;
   kind: RewardMapKind;
+  receipt?: RewardPresentationReceipt;
 };
 
 type ChapterPopupState = {
@@ -341,7 +343,13 @@ export default function HomePage() {
   const homeDataDateRef = useRef<string | null>(null);
   const [homeDetailsReady, setHomeDetailsReady] = useState({ verse: false, prayer: false, schedule: false, decisions: false });
   const [progressRetryToken, setProgressRetryToken] = useState(0);
-  const pendingRewardPresentationRef = useRef<{ userId: string; date: string } | null>(null);
+  const rewardReceiptsRef = useRef<RewardPresentationReceipt[]>([]);
+  const claimedRewardReceiptsRef = useRef(new Set<string>());
+  const rewardReceiptUserRef = useRef<string | null>(null);
+  const rewardReceiptReadGenerationRef = useRef(0);
+  const [rewardReceiptOwner, setRewardReceiptOwner] = useState<string | null>(null);
+  const [pendingRewardReceiptCount, setPendingRewardReceiptCount] = useState(0);
+  const [activeActionReceipt, setActiveActionReceipt] = useState<RewardPresentationReceipt | null>(null);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
@@ -355,7 +363,7 @@ export default function HomePage() {
   const [showHomeQTPhotoPassageChoice, setShowHomeQTPhotoPassageChoice] = useState(false);
   const [showHomeQTGuide, setShowHomeQTGuide] = useState(false);
   const [showHomeSundayQT, setShowHomeSundayQT] = useState(false);
-  const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number; badgeKey?:string; stageKey?:string}>({
+  const [gardenPopup, setGardenPopup] = useState<{show:boolean; type:"garden"|"badge"; badgeIndex:number; badgeKey?:string; stageKey?:string; receipt?:RewardPresentationReceipt}>({
     show: false, type: "garden", badgeIndex: 0,
   });
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
@@ -367,9 +375,7 @@ export default function HomePage() {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string}|null>(null);
-  const newlyAwardedBadgesRef = useRef<Set<string>>(new Set());
-  const queuedStageNoticesRef = useRef<Set<string>>(new Set());
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string;receipt?:RewardPresentationReceipt}|null>(null);
   const celebrationShownRef = useRef(false);
   const progressUpdateInFlightRef = useRef(false);
   const progressRetryRequestedRef = useRef(false);
@@ -418,18 +424,17 @@ export default function HomePage() {
   const [enabledProfileCharacterItemIds, setEnabledProfileCharacterItemIds] = useState<HeartShopCharacterItemId[]>([]);
   const [homeCharacterItemsOwner, setHomeCharacterItemsOwner] = useState<string | null>(null);
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
-  const pendingRewardMapNoticeRef = useRef<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
   const challengeRewardCheckStartedRef = useRef<string | null>(null);
   const challengeLocalDate = useChallengeLocalDate();
   const challengeRewardActionInFlightRef = useRef(false);
   const [openingChallengeProfile, setOpeningChallengeProfile] = useState(false);
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
-  const [showCompanionChallengeAnnouncement, setShowCompanionChallengeAnnouncement] = useState(false);
-  const [handlingCompanionChallengeAnnouncement, setHandlingCompanionChallengeAnnouncement] = useState(false);
-  const spanishLanguageLaunchAnnouncementUserIdRef = useRef<string | null>(null);
-  const spanishLanguageLaunchAnnouncementHandledRef = useRef(false);
-  const [showSpanishLanguageLaunchAnnouncement, setShowSpanishLanguageLaunchAnnouncement] = useState(false);
+  const messengerShareAnnouncementUserIdRef = useRef<string | null>(null);
+  const messengerShareAnnouncementHandledRef = useRef(false);
+  const [messengerShareAnnouncementOwner, setMessengerShareAnnouncementOwner] = useState<string | null>(null);
+  const [showMessengerShareAnnouncement, setShowMessengerShareAnnouncement] = useState(false);
+  const [announcementRewardChecksReadyFor, setAnnouncementRewardChecksReadyFor] = useState<string | null>(null);
   const monthlyBadgeAwardUserIdRef = useRef<string | null>(null);
   const monthlyBadgeAwardHandledRef = useRef(false);
   const [monthlyBadgeAward, setMonthlyBadgeAward] = useState<MonthlyBadgeDefinition | null>(null);
@@ -470,86 +475,15 @@ export default function HomePage() {
     }
   }
 
-  async function completeCompanionChallengeAnnouncement(openCompanions: boolean) {
-    if (handlingCompanionChallengeAnnouncement) return;
-    acknowledgeObservedPopup(profile?.id, "companion_announcement", openCompanions ? "manage" : "close");
-
-    const userId =
-      companionChallengeAnnouncementUserIdRef.current ?? profile?.id ?? "";
-    if (userId) {
-      storageSet(
-        getUserCampaignLocalStorageKey(
-          COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
-          userId,
-        ),
-        "true",
-      );
-    }
-
-    setHandlingCompanionChallengeAnnouncement(true);
-    setShowCompanionChallengeAnnouncement(false);
-
-    try {
-      if (userId) {
-        const supabase = createClient();
-        await markUserCampaignSeen(
-          supabase,
-          userId,
-          COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY,
-        );
-      }
-    } catch (error) {
-      // The local receipt still prevents an annoying repeat on this device.
-      // A temporary campaign-receipt failure must never block Home or companions.
-      console.warn("동역자 챌린지 안내 확인 저장 실패:", error);
-    } finally {
-      setHandlingCompanionChallengeAnnouncement(false);
-      if (openCompanions) router.push("/companions");
-    }
-  }
-
-  async function completeSpanishLanguageLaunchAnnouncement(invite: boolean) {
-    if (spanishLanguageLaunchAnnouncementHandledRef.current) return;
-    acknowledgeObservedPopup(profile?.id, "spanish_announcement", invite ? "invite" : "close");
-    spanishLanguageLaunchAnnouncementHandledRef.current = true;
-
-    const userId =
-      spanishLanguageLaunchAnnouncementUserIdRef.current ?? profile?.id ?? "";
-    const localCampaignKey = userId
-      ? getUserCampaignLocalStorageKey(
-          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
-          userId,
-        )
-      : "";
-
-    if (localCampaignKey) storageSet(localCampaignKey, "true");
-    setShowSpanishLanguageLaunchAnnouncement(false);
-
-    const persistSeenTask = (userId
-      ? markUserCampaignSeen(
-          createClient(),
-          userId,
-          SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY,
-        )
-      : Promise.resolve()
-    ).catch((error) => {
-      // The local receipt still guarantees one-time display on this device.
-      // A temporary campaign-receipt failure must never block Home or sharing.
-      console.warn("스페인어 출시 안내 확인 저장 실패:", error);
-    });
-
-    if (invite) {
-      const result = await shareInviteContent({
-        title: t("profile_invite_title", "es"),
-        text: t("profile_invite_text", "es"),
-        url: `${ROOTS_WEB_ORIGIN}/welcome?from=invite`,
-      });
-      if (result === "copied") {
-        showToast(t("profile_invite_copied", lang));
-      }
-    }
-
-    await persistSeenTask;
+  function completeMessengerShareAnnouncement(action: "confirm" | "close" | "back" = "confirm") {
+    const userId = messengerShareAnnouncementUserIdRef.current;
+    if (!userId || userId !== profile?.id || !visibleMessengerShareAnnouncement || messengerShareAnnouncementHandledRef.current) return;
+    messengerShareAnnouncementHandledRef.current = true;
+    acknowledgeObservedPopup(userId, "messenger_share_announcement", action);
+    setShowMessengerShareAnnouncement(false);
+    // The helper records this confirmation synchronously before starting its
+    // server write. A failed request is retried without reopening the popup.
+    void acknowledgeMessengerShareAnnouncement(createClient(), userId);
   }
 
   async function completeMonthlyBadgeAward(openProfile: boolean) {
@@ -782,6 +716,8 @@ export default function HomePage() {
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
   const wordWalkDone = todayDone.qt;
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
+  const rewardActionDisplayDays = activeActionReceipt?.days ?? rewardMapDisplayDays;
+  const rewardPresentationsReady = !!profile?.id && rewardReceiptOwner === profile.id;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
@@ -807,6 +743,7 @@ export default function HomePage() {
     && !homeDialogBlocked
     && !celebration.show;
   const canShowProgressPopups = homePopupsReady
+    && rewardPresentationsReady
     && companionAcceptanceCheckReady
     && !companionAcceptanceNotice
     && !handlingCompanionAcceptanceNotice
@@ -842,30 +779,50 @@ export default function HomePage() {
 
   useEffect(() => {
     const userId = profile?.id;
-    if (!isCompanionChallenge4AnnouncementWindow(challengeLocalDate)) {
-      setShowCompanionChallengeAnnouncement(false);
+    if (loading || !userId) {
+      setShowMessengerShareAnnouncement(false);
+      setMessengerShareAnnouncementOwner(null);
       return;
     }
-    if (loading || !userId) return;
+    messengerShareAnnouncementUserIdRef.current = userId;
+    messengerShareAnnouncementHandledRef.current = false;
+    setShowMessengerShareAnnouncement(false);
+    setMessengerShareAnnouncementOwner(userId);
     let cancelled = false;
-    const localKey = getUserCampaignLocalStorageKey(
-      COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY, userId,
-    );
-    if (storageGet(localKey)) return;
-    void loadUserCampaignSeen(createClient(), userId, COMPANION_CHALLENGE_4_ANNOUNCEMENT_KEY)
-      .then((seen) => {
-        if (cancelled) return;
-        if (seen === true) {
-          storageSet(localKey, "true");
-          return;
-        }
-        // An in-flight lookup must not open the announcement after Sep 10.
-        if (isCompanionChallenge4AnnouncementWindow(getLocalDateString()) && !storageGet(localKey)) {
-          setShowCompanionChallengeAnnouncement(true);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [loading, profile?.id, challengeLocalDate]);
+    let readGeneration = 0;
+    const refresh = async (event?: Event) => {
+      if (cancelled || (event?.type === "visibilitychange" && document.visibilityState !== "visible")) return;
+      const generation = ++readGeneration;
+      let seen: boolean | null = null;
+      try {
+        seen = await withQtDraftTimeout(
+          readMessengerShareAnnouncementSeen(createClient(), userId),
+          6_000, "messenger sharing announcement",
+        );
+      } catch { /* A later Home entry or reconnect retries this optional notice. */ }
+      if (cancelled || generation !== readGeneration || messengerShareAnnouncementUserIdRef.current !== userId) return;
+      setShowMessengerShareAnnouncement(seen === false && !messengerShareAnnouncementHandledRef.current);
+    };
+    void refresh();
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) void refresh();
+      }).then(handle => {
+        if (cancelled) void handle.remove();
+        else appStateListener = handle;
+      }).catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+      readGeneration += 1;
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      if (appStateListener) void appStateListener.remove();
+    };
+  }, [loading, profile?.id]);
 
   useEffect(() => {
     if (loading || !profile?.id || challengeLocalDate <= COMPANION_CHALLENGE_3_END_DATE) return;
@@ -969,6 +926,7 @@ export default function HomePage() {
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
     setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
+    setAnnouncementRewardChecksReadyFor(null);
     try {
       if (typeof window !== "undefined") {
         const saved = storageGet("roots_theme");
@@ -1029,7 +987,6 @@ export default function HomePage() {
       const hasDraft = !completedQt && (remoteDraftExists || !!loadQTDraftBackup(user.id, today));
       homeDataDateRef.current = today;
       companionChallengeAnnouncementUserIdRef.current = user.id;
-      spanishLanguageLaunchAnnouncementUserIdRef.current = user.id;
       monthlyBadgeAwardUserIdRef.current = user.id;
       setProfile(p);
       if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
@@ -1058,7 +1015,6 @@ export default function HomePage() {
           setShowWelcomeBack(true);
         }
       }
-      readPendingAwardedBadges(user.id, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
       const completionWateringKey = getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, user.id, today);
       const legacyCompletionWateringKey = getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, today);
       const celebratedKey = getScopedStorageKey(CELEBRATED_KEY_PREFIX, user.id, today);
@@ -1067,7 +1023,6 @@ export default function HomePage() {
         || (!!storageGet(legacyCompletionWateringKey) && !profileLastCheckinToday);
       if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
         celebrationShownRef.current = true;
-        if (profileLastCheckinToday && !storageGet(celebratedKey)) storageSet(celebratedKey, "true");
       }
       if (isFirstLaunch()) setShowFirstLangPicker(true);
       const onboardingDoneKey = getOnboardingDoneKey(user.id);
@@ -1096,17 +1051,15 @@ export default function HomePage() {
         setEnabledProfileCharacterItemIds(enabledItemIds.filter(isHeartShopCharacterItemId));
         setHomeCharacterItemsOwner(user.id);
       });
-      if (isEligibleForSpanishLanguageLaunchAnnouncement(user.created_at)) {
-        const localCampaignKey = getUserCampaignLocalStorageKey(SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY, user.id);
-        if (!storageGet(localCampaignKey)) background("스페인어 출시 안내 조회 실패:", async () => {
-          const seen = await loadUserCampaignSeen(supabase, user.id, SPANISH_LANGUAGE_LAUNCH_ANNOUNCEMENT_KEY);
-          if (!isCurrentLoad()) return;
-          if (seen === true) storageSet(localCampaignKey, "true");
-          else if (!storageGet(localCampaignKey)) setShowSpanishLanguageLaunchAnnouncement(true);
-        });
-      }
-      background("월별 배지 축하 안내 조회 실패:", () => checkMonthlyBadgeAwardAnnouncement(supabase, user.id));
-      background("챌린지 보상 조회 실패:", () => checkPendingChallengeRewards(supabase, today));
+      background("홈 보상 안내 확인 실패:", async () => {
+        // This readiness flag only delays the optional new-feature notice.
+        // Existing monthly/challenge rewards still prepare independently.
+        await Promise.allSettled([
+          checkMonthlyBadgeAwardAnnouncement(supabase, user.id),
+          checkPendingChallengeRewards(supabase, today),
+        ]);
+        if (isCurrentLoad()) setAnnouncementRewardChecksReadyFor(user.id);
+      });
       background("홈 오늘의 말씀 조회 실패:", async () => {
         const { data: ci, error } = await withQtDraftTimeout(supabase.from("daily_checkins")
           .select("user_id,date,verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
@@ -1243,13 +1196,11 @@ export default function HomePage() {
       || (!!storageGet(legacyCompletionWateringKey) && !profileLastCheckinToday);
     if (!hasCompletionWateringRequest && (storageGet(celebratedKey) || profileLastCheckinToday)) {
       celebrationShownRef.current = true;
-      if (profileLastCheckinToday && !storageGet(celebratedKey)) storageSet(celebratedKey, "true");
       return;
     }
     const generation = homeLoadGenerationRef.current;
     progressUpdateInFlightRef.current = true;
     void (async () => {
-      readPendingAwardedBadges(userId, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
       // This is a freshly read, server-confirmed profile, not a locally
       // calculated increment. Keep the original idempotent RPC for recovery.
       const confirmedDays = Number(profile?.streak_days ?? 0);
@@ -1258,18 +1209,18 @@ export default function HomePage() {
         : await updateStreak(today, userId, generation);
       if (nextStreakDays === null || homeLoadGenerationRef.current !== generation || getLocalDateString() !== today) return;
       celebrationShownRef.current = true;
-      pendingRewardPresentationRef.current = { userId, date: today };
-      const map = getCurrentRewardMapCycle(nextStreakDays);
-      if (map.kind === "futureJourney" || map.kind === "futureMap") {
-        // Preserve the existing boundary: there is no fourth reward UI yet.
-        acknowledgePostReflectionReward();
-        return;
-      }
-      requestPostReflectionRewardExperience(nextStreakDays);
+      // Progress was already confirmed above. Replaying its UI only reads
+      // receipts; an older pending date never re-enters the progress RPC.
+      await refreshRewardPresentations(userId, {
+        ...profile, streak_days: nextStreakDays, last_checkin: today,
+      });
     })().catch(error => {
       console.warn("말씀 묵상 보상 화면 준비 실패:", error);
     }).finally(() => {
       progressUpdateInFlightRef.current = false;
+      // Resume the receipt queue after today's recovery settles, including a
+      // failed recovery. It may still contain valid older, already-earned UI.
+      if (homeLoadGenerationRef.current === generation) setRootsManRequestToken(token => token + 1);
       if (progressRetryRequestedRef.current) {
         progressRetryRequestedRef.current = false;
         if (homeLoadGenerationRef.current === generation) setProgressRetryToken(token => token + 1);
@@ -1286,7 +1237,6 @@ export default function HomePage() {
       const result = await withQtDraftTimeout(recordBibleReflectionProgress(supabase, userId, today), 10_000, "home reflection progress");
       if (homeLoadGenerationRef.current !== generation) return null;
       // A failed presentation must not consume an already-earned badge receipt.
-      readPendingAwardedBadges(userId, today).forEach(key => newlyAwardedBadgesRef.current.add(key));
       if (result.profile) setProfile((previous: any) => ({ ...(previous ?? {}), ...result.profile }));
       // Reward ledger recovery is independent from the already committed core
       // progress; Home also retries it on online and native resume.
@@ -1299,48 +1249,102 @@ export default function HomePage() {
     }
   }
 
+  function rewardReceiptIdentity(receipt: RewardPresentationReceipt) {
+    return `${receipt.userId}:${receipt.date}:${receipt.itemKey}`;
+  }
+
+  async function refreshRewardPresentations(userId: string, receiptProfile: any) {
+    const generation = ++rewardReceiptReadGenerationRef.current;
+    const supabase = createClient();
+    let receipts: RewardPresentationReceipt[];
+    try {
+      // Migration queues its local receipts synchronously. The read joins its
+      // existing outbox sync, so Home needs one server lookup after that sync.
+      void migrateLegacyRewardPresentations(supabase, userId, receiptProfile).catch(() => {});
+      receipts = await withQtDraftTimeout(
+        readPendingRewardPresentations(supabase, userId),
+        8_000, "home pending reward receipts",
+      );
+    } catch {
+      // A transient network failure cannot hide a device's durable pending UI.
+      // Server receipts are retried on Home entry, foreground and reconnect.
+      receipts = readLocalPendingRewardPresentations(userId);
+    }
+    if (rewardReceiptUserRef.current !== userId || generation !== rewardReceiptReadGenerationRef.current) return;
+    rewardReceiptsRef.current = receipts;
+    setPendingRewardReceiptCount(receipts.filter(receipt =>
+      !claimedRewardReceiptsRef.current.has(rewardReceiptIdentity(receipt)),
+    ).length);
+    setRewardReceiptOwner(userId);
+    setRootsManRequestToken(token => token + 1);
+  }
+
   useEffect(() => {
-    if (!profile?.id) return;
-    const userId = profile.id;
-    const receivePendingBadges = (event?: Event) => {
-      const date = homeDataDateRef.current;
-      if (!date || date !== getLocalDateString()) return;
-      if (event) {
-        const detail = (event as CustomEvent<{ userId?: string; date?: string }>).detail;
-        if (detail?.userId !== userId || detail?.date !== date) return;
-        if (String(profile.last_checkin ?? "").slice(0, 10) !== date) {
-          // A Home recovery request may itself have timed out. Use the same
-          // idempotent recovery gate to refresh confirmed growth before its UI.
-          if (!celebrationShownRef.current) {
-            if (progressUpdateInFlightRef.current) progressRetryRequestedRef.current = true;
-            else setProgressRetryToken(token => token + 1);
-          }
-          return;
+    const userId = profile?.id;
+    if (loading || !userId) return;
+    if (rewardReceiptUserRef.current !== userId) {
+      rewardReceiptUserRef.current = userId;
+      rewardReceiptsRef.current = [];
+      claimedRewardReceiptsRef.current.clear();
+      setBadgePopup(null);
+      setGardenPopup({ show: false, type: "garden", badgeIndex: 0 });
+      setRewardMapNotice(null);
+      setActiveActionReceipt(null);
+      setShowRootsManPopup(false);
+      setShowRootsMan(false);
+      setRewardReceiptOwner(null);
+    }
+    let cancelled = false;
+    const refresh = (event?: Event) => {
+      if (cancelled || (event?.type === "visibilitychange" && document.visibilityState !== "visible")) return;
+      if (event?.type === REWARD_PRESENTATIONS_EVENT) {
+        const detail = (event as CustomEvent<{ userId?: string }>).detail;
+        if (detail?.userId !== userId) return;
+        // A delayed successful completion may have outlived its screen timeout.
+        // Only today's ordinary recovery gate may refresh missing progress.
+        if (String(profile.last_checkin ?? "").slice(0, 10) !== getLocalDateString()) {
+          if (progressUpdateInFlightRef.current) progressRetryRequestedRef.current = true;
+          else setProgressRetryToken(token => token + 1);
         }
       }
-      // A first response can arrive after its retry has already reached Home.
-      // Feed only its unseen receipt into the existing sequential popup queue.
-      let added = false;
-      for (const key of readPendingAwardedBadges(userId, date)) {
-        if (!newlyAwardedBadgesRef.current.has(key)) {
-          newlyAwardedBadgesRef.current.add(key);
-          added = true;
-        }
-      }
-      if (added) setRootsManRequestToken(token => token + 1);
+      void refreshRewardPresentations(userId, profile);
     };
-    window.addEventListener(QT_PENDING_AWARDED_BADGES_EVENT, receivePendingBadges);
-    receivePendingBadges();
-    return () => window.removeEventListener(QT_PENDING_AWARDED_BADGES_EVENT, receivePendingBadges);
-  }, [profile?.id, profile?.last_checkin]);
+    refresh();
+    window.addEventListener(REWARD_PRESENTATIONS_EVENT, refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) refresh();
+      }).then(handle => {
+        if (cancelled) void handle.remove();
+        else appStateListener = handle;
+      }).catch(error => {
+        console.warn("보상 안내 재개 리스너 등록 실패:", error);
+      });
+    }
+    return () => {
+      cancelled = true;
+      rewardReceiptReadGenerationRef.current += 1;
+      window.removeEventListener(REWARD_PRESENTATIONS_EVENT, refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      if (appStateListener) void appStateListener.remove();
+    };
+  }, [loading, profile?.id, profile?.last_checkin, profile?.streak_days]);
+
+  function acknowledgeRewardReceipt(receipt?: RewardPresentationReceipt | null) {
+    if (!receipt || receipt.userId !== profile?.id) return;
+    // The helper writes a durable local acknowledgement before its first await.
+    // Closing the app during the request must not replay a confirmed popup.
+    void acknowledgeRewardPresentations(createClient(), receipt.userId, [receipt]).catch(() => {
+      // The helper retains its outbox and retries it at the next receipt read.
+    });
+  }
 
   function acknowledgePostReflectionReward() {
-    const pending = pendingRewardPresentationRef.current;
-    if (!pending) return;
-    storageSet(getScopedStorageKey(CELEBRATED_KEY_PREFIX, pending.userId, pending.date), "true");
-    storageRemove(getScopedStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, pending.userId, pending.date));
-    storageRemove(getLegacyStorageKey(QT_COMPLETION_WATERING_KEY_PREFIX, pending.date));
-    pendingRewardPresentationRef.current = null;
+    acknowledgeRewardReceipt(activeActionReceipt);
   }
 
   useEffect(() => {
@@ -1353,156 +1357,78 @@ export default function HomePage() {
     return () => document.removeEventListener("visibilitychange", markWelcomeShown);
   }, [visibleWelcomeBack, welcomeBackStorageKey]);
 
-  useEffect(() => {
-    if (!visibleRootsManPopup && visibleRewardMapNotice?.type !== "complete") return;
-    // Use the same visibility decision as rendering, including a foreground
-    // check. Start notices still lead to the avatar popup before acknowledgement.
-    const markRewardShown = () => {
-      if (document.visibilityState !== "visible") return;
-      acknowledgePostReflectionReward();
-    };
-    markRewardShown();
-    document.addEventListener("visibilitychange", markRewardShown);
-    return () => document.removeEventListener("visibilitychange", markRewardShown);
-  }, [visibleRootsManPopup, visibleRewardMapNotice, profile]);
-
-  useEffect(() => {
-    if (!profile?.id || !homeDataDateRef.current) return;
-    const stageKey = showGardenUpdatePopup ? gardenPopup.stageKey : undefined;
-    const visibleBadgeKey = visibleBadgePopup?.badgeKey
-      ?? (showGardenUpdatePopup && gardenPopup.type === "badge" ? gardenPopup.badgeKey : undefined);
-    if (!stageKey && !visibleBadgeKey) return;
-    const date = homeDataDateRef.current;
-    const markProgressShown = () => {
-      if (document.visibilityState !== "visible") return;
-      if (stageKey) storageSet(stageKey, "true");
-      if (visibleBadgeKey) {
-        acknowledgePendingAwardedBadge(profile.id, date, visibleBadgeKey);
-        newlyAwardedBadgesRef.current.delete(visibleBadgeKey);
-      }
-    };
-    markProgressShown();
-    document.addEventListener("visibilitychange", markProgressShown);
-    return () => document.removeEventListener("visibilitychange", markProgressShown);
-  }, [profile?.id, visibleBadgePopup, showGardenUpdatePopup, gardenPopup]);
-
-  function requestPostReflectionRewardExperience(streakDays: number) {
-    const currentMap = getCurrentRewardMapCycle(streakDays);
-
-    // No fourth map has been chosen yet. Keep Bible Reflection progress intact,
-    // but do not reuse Garden/Ark reward actions or announce a map that does not exist.
-    if (currentMap.kind === "futureJourney" || currentMap.kind === "futureMap") {
-      return;
-    }
-
-    if (isRewardMapCompletionDay(streakDays)) {
-      pendingRewardMapNoticeRef.current = { type: "complete", days: streakDays, kind: currentMap.kind };
-      setRootsManRequestToken(token => token + 1);
-      return;
-    }
-
-    if (isRewardMapStartDay(streakDays)) {
-      pendingRewardMapNoticeRef.current = { type: "start", days: streakDays, kind: currentMap.kind };
-      pendingRootsManRef.current = true;
-      setRootsManRequestToken(token => token + 1);
-      return;
-    }
-
-    requestRootsManExperience();
+  function takeRewardReceipt(predicate: (receipt: RewardPresentationReceipt) => boolean) {
+    const receipt = rewardReceiptsRef.current.find(candidate =>
+      predicate(candidate) && !claimedRewardReceiptsRef.current.has(rewardReceiptIdentity(candidate)),
+    );
+    if (!receipt) return null;
+    claimedRewardReceiptsRef.current.add(rewardReceiptIdentity(receipt));
+    setPendingRewardReceiptCount(count => Math.max(0, count - 1));
+    return receipt;
   }
 
   function showNextProgressPopup(): boolean {
     if (!profile || badgePopup || gardenPopup.show || rewardMapNotice) return false;
-
-    const newly = newlyAwardedBadgesRef.current;
-    const streak = profile?.streak_days ?? 0;
-
-    // 이번 세션에서 새로 획득한 뱃지만 팝업 (newlyAwardedBadgesRef에 있는 것만)
-    if (newly.has("badge_rootsman")) {
-      newly.delete("badge_rootsman");
-      setBadgePopup({ badgeKey: "badge_rootsman", img: "/badge_rootsman.webp", title: t("badge_popup_rootsman", lang), msg: t("badge_rootsman_msg", lang) });
-      return true;
-    }
-    if (newly.has("badge_mose")) {
-      newly.delete("badge_mose");
-      setBadgePopup({ badgeKey: "badge_mose", img: "/badge_mose.webp", title: t("badge_popup_mose", lang), msg: t("badge_mose_msg", lang) });
-      return true;
-    }
-    if (newly.has("badge_rootsman_bible")) {
-      newly.delete("badge_rootsman_bible");
-      setBadgePopup({ badgeKey: "badge_rootsman_bible", img: "/badge_rootsman_bible.webp", title: t("badge_popup_rootsman_bible", lang), msg: t("badge_rootsman_bible_msg", lang) });
-      return true;
-    }
-    if (newly.has("badge_david")) {
-      newly.delete("badge_david");
-      setBadgePopup({ badgeKey: "badge_david", img: "/badge_david.webp", title: t("badge_popup_david", lang), msg: t("badge_david_msg", lang) });
-      return true;
-    }
-    for (let i = 0; i < 9; i++) {
-      const key = `fruit_badge_${i}`;
-      if (newly.has(key)) {
-        newly.delete(key);
-        setGardenPopup({ show: true, type: "badge", badgeIndex: i, badgeKey: key });
+    const badgeDefinitions = [
+      ["badge_rootsman", "/badge_rootsman.webp", "badge_popup_rootsman", "badge_rootsman_msg"],
+      ["badge_mose", "/badge_mose.webp", "badge_popup_mose", "badge_mose_msg"],
+      ["badge_rootsman_bible", "/badge_rootsman_bible.webp", "badge_popup_rootsman_bible", "badge_rootsman_bible_msg"],
+      ["badge_david", "/badge_david.webp", "badge_popup_david", "badge_david_msg"],
+    ] as const;
+    for (const [badgeKey, img, titleKey, messageKey] of badgeDefinitions) {
+      const receipt = takeRewardReceipt(candidate => candidate.itemKey === badgeKey);
+      if (receipt) {
+        setBadgePopup({ badgeKey, receipt, img, title: t(titleKey, lang), msg: t(messageKey, lang) });
         return true;
       }
     }
-    if (newly.has("badge_angel")) {
-      newly.delete("badge_angel");
-      setBadgePopup({ badgeKey: "badge_angel", img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
+    for (let index = 0; index < 9; index++) {
+      const badgeKey = `fruit_badge_${index}`;
+      const receipt = takeRewardReceipt(candidate => candidate.itemKey === badgeKey);
+      if (receipt) {
+        setGardenPopup({ show: true, type: "badge", badgeIndex: index, badgeKey, receipt });
+        return true;
+      }
+    }
+    const angel = takeRewardReceipt(candidate => candidate.itemKey === "badge_angel");
+    if (angel) {
+      setBadgePopup({ badgeKey: "badge_angel", receipt: angel, img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return true;
     }
-
-    // Reward-map stage change popup. Garden/Ark keep their verified 10-day
-    // cadence; Nehemiah uses its approved irregular 14-stage boundaries.
-    // Roots의 streak_days는 연속 출석이 아니라 누적 QT 완료일(말씀 동행일)입니다.
-    const currentRewardMap = getCurrentRewardMapCycle(streak);
-    if (currentRewardMap.kind === "nehemiahWall") {
-      const stage = getNehemiahWallStage(currentRewardMap.progressDay);
-      const isStageStart =
-        currentRewardMap.progressDay === stage.startDay
-        && currentRewardMap.progressDay > 1
-        && currentRewardMap.progressDay < 100;
-      if (isStageStart) {
-        const stageKey = `nehemiah_stage_shown_${streak}`;
-        if (!storageGet(stageKey) && !queuedStageNoticesRef.current.has(stageKey)) {
-          queuedStageNoticesRef.current.add(stageKey);
-          setGardenPopup({ show: true, type: "garden", badgeIndex: 0, stageKey });
-          return true;
-        }
-      }
-    } else if (currentRewardMap.kind === "garden" || currentRewardMap.kind === "peaceArk") {
-      const cycleDay = streak > 0 ? (streak % 100) : 0;
-      if (cycleDay % 10 === 1 && cycleDay > 1) {
-        const gardenKey = `garden_shown_${streak}`;
-        if (!storageGet(gardenKey) && !queuedStageNoticesRef.current.has(gardenKey)) {
-          queuedStageNoticesRef.current.add(gardenKey);
-          setGardenPopup({ show: true, type: "garden", badgeIndex: 0, stageKey: gardenKey });
-          return true;
-        }
-      }
+    const stage = takeRewardReceipt(candidate => candidate.itemKey === "stage");
+    if (stage) {
+      const kind = getCurrentRewardMapCycle(stage.days).kind;
+      const stageKey = `${kind === "nehemiahWall" ? "nehemiah_stage_shown" : "garden_shown"}_${stage.days}`;
+      setGardenPopup({ show: true, type: "garden", badgeIndex: 0, stageKey, receipt: stage });
+      return true;
     }
-
     return false;
   }
 
   useEffect(() => {
-    if (loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice) return;
-
-    const openedProgressPopup = showNextProgressPopup();
-    if (openedProgressPopup) return;
-
-    if (pendingRewardMapNoticeRef.current && !badgePopup && !gardenPopup.show) {
-      const nextNotice = pendingRewardMapNoticeRef.current;
-      pendingRewardMapNoticeRef.current = null;
-      setRewardMapNotice(nextNotice);
+    if (!rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
+    if (showNextProgressPopup() || badgePopup || gardenPopup.show) return;
+    const notice = takeRewardReceipt(candidate => candidate.itemKey === "map_start" || candidate.itemKey === "map_complete");
+    if (notice) {
+      setRewardMapNotice({
+        type: notice.itemKey === "map_complete" ? "complete" : "start",
+        days: notice.days,
+        kind: getCurrentRewardMapCycle(notice.days).kind,
+        receipt: notice,
+      });
       return;
     }
-
-    if (pendingRootsManRef.current && !badgePopup && !gardenPopup.show) {
+    const action = takeRewardReceipt(candidate => candidate.itemKey === "action");
+    if (action) {
+      setActiveActionReceipt(action);
+      openRootsManExperience();
+      return;
+    }
+    if (pendingRootsManRef.current) {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
+  }, [rewardPresentationsReady, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -1532,10 +1458,12 @@ export default function HomePage() {
   function closeRewardMapNotice() {
     acknowledgeObservedPopup(profile?.id, rewardMapNotice?.type === "complete" ? "map_complete" : "map_start");
     const notice = rewardMapNotice;
+    acknowledgeRewardReceipt(notice?.receipt);
     setRewardMapNotice(null);
 
     if (notice?.type === "complete" && notice.kind === "nehemiahWall") {
       // Day 300 uses the approved longer tambourine praise directly on the map.
+      setActiveActionReceipt(notice.receipt ?? null);
       setShowRootsMan(true);
       requestAnimationFrame(() => {
         if (treeSectionRef.current) {
@@ -1544,12 +1472,6 @@ export default function HomePage() {
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
       });
-      return;
-    }
-
-    if (notice?.type === "start" && pendingRootsManRef.current) {
-      pendingRootsManRef.current = false;
-      openRootsManExperience();
       return;
     }
 
@@ -1562,14 +1484,23 @@ export default function HomePage() {
     });
   }
 
+  function closeProgressBadge(action: "close" | "back" = "close") {
+    acknowledgeObservedPopup(profile?.id, "progress_badge", action);
+    acknowledgeRewardReceipt(badgePopup?.receipt);
+    if (badgePopup?.badgeKey && badgePopup.receipt) {
+      acknowledgePendingAwardedBadge(badgePopup.receipt.userId, badgePopup.receipt.date, badgePopup.badgeKey);
+    }
+    setBadgePopup(null);
+  }
+
   function closeGardenUpdatePopup() {
     acknowledgeObservedPopup(profile?.id, gardenPopup.type === "badge" ? "garden_badge" : "garden_stage");
-    setGardenPopup(previous => ({ ...previous, show: false }));
-    if (pendingRootsManRef.current) {
-      pendingRootsManRef.current = false;
-      openRootsManExperience();
-      return;
+    acknowledgeRewardReceipt(gardenPopup.receipt);
+    if (gardenPopup.stageKey) storageSet(gardenPopup.stageKey, "true");
+    if (gardenPopup.badgeKey && gardenPopup.receipt) {
+      acknowledgePendingAwardedBadge(gardenPopup.receipt.userId, gardenPopup.receipt.date, gardenPopup.badgeKey);
     }
+    setGardenPopup(previous => ({ ...previous, show: false }));
     gardenTopRef_scroll();
   }
 
@@ -2184,8 +2115,8 @@ export default function HomePage() {
     router.push("/qt");
   }
 
-  const spanishLanguageLaunchAnnouncementBlocked =
-    loading ||
+  const rewardCampaignPopupBlocked =
+    loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
     !companionAcceptanceCheckReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||
@@ -2214,17 +2145,12 @@ export default function HomePage() {
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
-  const visibleSpanishLanguageLaunchAnnouncement =
-    showSpanishLanguageLaunchAnnouncement &&
-    !spanishLanguageLaunchAnnouncementBlocked;
-  const monthlyBadgeAwardPopupBlocked =
-    spanishLanguageLaunchAnnouncementBlocked ||
-    visibleSpanishLanguageLaunchAnnouncement;
+  const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
   const visibleMonthlyBadgeAward =
     !!monthlyBadgeAward &&
     !monthlyBadgeAwardPopupBlocked;
   const homePopupBlocked =
-    loading ||
+    loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
     !companionAcceptanceCheckReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||
@@ -2238,7 +2164,6 @@ export default function HomePage() {
     !!rewardMapNotice ||
     showRootsManPopup ||
     showAvatarChoiceModal ||
-    visibleSpanishLanguageLaunchAnnouncement ||
     visibleMonthlyBadgeAward ||
     showLangPicker ||
     showThemePicker ||
@@ -2254,17 +2179,22 @@ export default function HomePage() {
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
-  const visibleCompanionChallengeAnnouncement =
-    showCompanionChallengeAnnouncement &&
-    isCompanionChallenge4AnnouncementWindow(challengeLocalDate) &&
-    !homePopupBlocked;
   const visibleChallengeReward =
-    homePopupBlocked || visibleCompanionChallengeAnnouncement || handlingCompanionChallengeAnnouncement || openingChallengeProfile
+    homePopupBlocked || openingChallengeProfile
       ? null
       : challengeRewardQueue[0] ?? null;
   const visibleAvatarChoiceModal = canShowProgressPopups && showAvatarChoiceModal
     && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
-    && !visibleSpanishLanguageLaunchAnnouncement && !visibleMonthlyBadgeAward;
+    && !visibleMonthlyBadgeAward;
+  const visibleMessengerShareAnnouncement =
+    messengerShareAnnouncementOwner === profile?.id &&
+    showMessengerShareAnnouncement &&
+    announcementRewardChecksReadyFor === profile?.id &&
+    !rewardCampaignPopupBlocked &&
+    !monthlyBadgeAward && challengeRewardQueue.length === 0 &&
+    !openingChallengeProfile && !challengeRewardActionInFlightRef.current &&
+    !progressUpdateInFlightRef.current && !pendingRootsManRef.current && !showRootsMan;
+
 
   useAndroidBackHandler(() => {
     if (visibleRequiredUpdatePrompt) {
@@ -2288,18 +2218,12 @@ export default function HomePage() {
       }
       return true;
     }
-    if (visibleCompanionChallengeAnnouncement) {
-      if (!handlingCompanionChallengeAnnouncement) {
-        void completeCompanionChallengeAnnouncement(false);
-      }
-      return true;
-    }
     if (visibleMonthlyBadgeAward) {
       void completeMonthlyBadgeAward(false);
       return true;
     }
-    if (visibleSpanishLanguageLaunchAnnouncement) {
-      void completeSpanishLanguageLaunchAnnouncement(false);
+    if (visibleMessengerShareAnnouncement) {
+      completeMessengerShareAnnouncement("back");
       return true;
     }
     if (showTodayWordCard) {
@@ -2368,8 +2292,7 @@ export default function HomePage() {
       return true;
     }
     if (visibleBadgePopup) {
-      acknowledgeObservedPopup(profile?.id, "progress_badge", "back");
-      setBadgePopup(null);
+      closeProgressBadge("back");
       return true;
     }
     if (showGardenUpdatePopup) {
@@ -2722,15 +2645,11 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="spanish_announcement" queued={showSpanishLanguageLaunchAnnouncement}>
-      <SpanishLanguageLaunchAnnouncementPopup
-        show={visibleSpanishLanguageLaunchAnnouncement}
-        onInvite={() => {
-          void completeSpanishLanguageLaunchAnnouncement(true);
-        }}
-        onClose={() => {
-          void completeSpanishLanguageLaunchAnnouncement(false);
-        }}
+      <ObservationPopup userId={profile?.id} kind="messenger_share_announcement" queued={showMessengerShareAnnouncement}>
+      <MessengerShareAnnouncementPopup
+        show={visibleMessengerShareAnnouncement}
+        onConfirm={() => completeMessengerShareAnnouncement("confirm")}
+        onClose={() => completeMessengerShareAnnouncement("close")}
       />
       </ObservationPopup>
 
@@ -2743,19 +2662,6 @@ export default function HomePage() {
         }}
         onClose={() => {
           void completeMonthlyBadgeAward(false);
-        }}
-      />
-      </ObservationPopup>
-
-      <ObservationPopup userId={profile?.id} kind="companion_announcement" queued={showCompanionChallengeAnnouncement}>
-      <CompanionChallengeAnnouncementPopup
-        show={visibleCompanionChallengeAnnouncement}
-        busy={handlingCompanionChallengeAnnouncement}
-        onManageCompanions={() => {
-          void completeCompanionChallengeAnnouncement(true);
-        }}
-        onClose={() => {
-          void completeCompanionChallengeAnnouncement(false);
         }}
       />
       </ObservationPopup>
@@ -2800,9 +2706,9 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={profile?.streak_days}>
+      <ObservationPopup userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={badgePopup?.receipt?.days ?? profile?.streak_days}>
       {visibleBadgePopup && (
-        <div onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={() => closeProgressBadge()} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg2)", borderRadius: 28, border: "1px solid rgba(232,197,71,0.4)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
@@ -2812,7 +2718,7 @@ export default function HomePage() {
             <div style={{ padding: "14px 16px", background: "rgba(232,197,71,0.08)", borderRadius: 14, border: "1px solid rgba(232,197,71,0.25)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{visibleBadgePopup.msg}</p>
             </div>
-            <button onClick={() => { acknowledgeObservedPopup(profile?.id, "progress_badge"); setBadgePopup(null); }} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => closeProgressBadge()} style={{ width: "100%", padding: "13px", background: "rgba(232,197,71,0.9)", color: "#1a1c1e", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("home_badge_thanks", lang)}
             </button>
           </div>
@@ -2893,17 +2799,18 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice || !!pendingRewardMapNoticeRef.current} instanceKey={rewardMapNotice ?? pendingRewardMapNoticeRef.current} progressDays={(rewardMapNotice ?? pendingRewardMapNoticeRef.current)?.days}>
+      <ObservationPopup userId={profile?.id} kind={rewardMapNotice?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice} instanceKey={rewardMapNotice} progressDays={rewardMapNotice?.days}>
       <RewardMapNoticePopup notice={visibleRewardMapNotice} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardMapDisplayDays}>
+      <ObservationPopup userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardActionDisplayDays}>
       <RootsManPopup
         show={visibleRootsManPopup}
-        streakDays={rewardMapDisplayDays}
+        streakDays={rewardActionDisplayDays}
         avatarType={currentAvatarType}
         onGoGarden={() => {
           acknowledgeObservedPopup(profile?.id, "character_reward", "confirm");
+          acknowledgePostReflectionReward();
           setShowRootsMan(true);
           setShowRootsManPopup(false);
           requestAnimationFrame(() => {
@@ -2917,11 +2824,11 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind={gardenPopup.type === "badge" ? "garden_badge" : "garden_stage"} queued={gardenPopup.show} instanceKey={gardenPopup} progressDays={rewardMapDisplayDays}>
+      <ObservationPopup userId={profile?.id} kind={gardenPopup.type === "badge" ? "garden_badge" : "garden_stage"} queued={gardenPopup.show} instanceKey={gardenPopup} progressDays={gardenPopup.receipt?.days ?? rewardMapDisplayDays}>
       <GardenUpdatePopup
         show={showGardenUpdatePopup}
         type={gardenPopup.type}
-        streakDays={rewardMapDisplayDays}
+        streakDays={gardenPopup.receipt?.days ?? rewardMapDisplayDays}
         badgeIndex={gardenPopup.badgeIndex}
         onClose={closeGardenUpdatePopup}
       />
@@ -2966,7 +2873,7 @@ export default function HomePage() {
 
       <div ref={treeSectionRef}>
         <TreeGrowth
-          days={rewardMapDisplayDays}
+          days={showRootsMan ? rewardActionDisplayDays : rewardMapDisplayDays}
           lastCheckin={profile?.last_checkin ?? null}
           showRootsMan={showRootsMan}
           ownerName={profile?.name ?? t("profile_default_name", lang)}

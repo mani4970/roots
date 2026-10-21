@@ -1,26 +1,49 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { t, type Lang } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase";
 import { observe, resumeObservationFlow, type ObservationFlow } from "@/lib/appObservation";
+import QtExternalShareButton from "@/components/QtExternalShareButton";
+import type { QtShareRecord } from "@/lib/qtShare";
 
 type QTCompletionScreenProps = {
   lang: Lang;
   onConfirm: () => void;
   notice?: string | null;
   observationFlow?: ObservationFlow | null;
+  shareRecord?: QtShareRecord | null;
+  shareRecordId?: string | null;
 };
 
 /** Rendered only after the caller has confirmed its required save/progress work. */
-export default function QTCompletionScreen({ lang, onConfirm, notice, observationFlow }: QTCompletionScreenProps) {
+export default function QTCompletionScreen({ lang, onConfirm, notice, observationFlow, shareRecord, shareRecordId }: QTCompletionScreenProps) {
   const router = useRouter();
   const observationRef = useRef<ObservationFlow | null>(observationFlow ?? null);
   const visibleRecordedRef = useRef(false);
   const confirmedRef = useRef(false);
   const confirmationRecordedRef = useRef(false);
+  const [loadedShareRecord, setLoadedShareRecord] = useState<QtShareRecord | null>(null);
+
+  useEffect(() => {
+    if (shareRecord || !shareRecordId) return;
+    let cancelled = false;
+    // Duplicate-save recovery has a confirmed record ID, not a saved snapshot
+    // of the current form. Resolve only that owned record without gating Home.
+    const supabase = createClient();
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const userId = data.session?.user.id;
+      if (!userId || cancelled) return;
+      const { data: savedRecord, error } = await supabase.from("qt_records")
+        .select("*").eq("id", shareRecordId).eq("user_id", userId).eq("is_draft", false).maybeSingle();
+      if (!cancelled && !error && savedRecord) setLoadedShareRecord(savedRecord);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [shareRecord, shareRecordId]);
+
+  const savedShareRecord = shareRecord ?? (loadedShareRecord?.id === shareRecordId ? loadedShareRecord : null);
 
   useEffect(() => {
     try {
@@ -91,8 +114,9 @@ export default function QTCompletionScreen({ lang, onConfirm, notice, observatio
           {t("qt_complete_blessing", lang)}
         </p>
         {notice && <p role="status" style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.65, marginBottom: 18 }}>{notice}</p>}
+        {savedShareRecord && <div style={{ marginBottom: 10 }}><QtExternalShareButton record={savedShareRecord} lang={lang} /></div>}
         <button type="button" className="btn-sage" onClick={confirmCompletion} style={{ width: "100%" }}>
-          {t("confirm", lang)}
+          {t("qt_complete_go_home", lang)}
         </button>
       </div>
     </div>

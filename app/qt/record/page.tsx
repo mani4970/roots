@@ -15,6 +15,8 @@ import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { getDateLocale, parseLocalDateString } from "@/lib/date";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { copyText } from "@/lib/nativeShare";
+import { formatQtShareText } from "@/lib/qtShare";
+import QtExternalShareButton from "@/components/QtExternalShareButton";
 import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -313,58 +315,7 @@ function RecordContent() {
 
   async function copyAll() {
     if (!record) return;
-    const isEsvRecord = Number(record.bible_version) === ESV_TRANSLATION_ID;
-    const isSunday = record.qt_mode === "sunday";
-    // 한국어 + 주일예배일 때 날짜 끝에 "주일" 추가 (예: "2026년 5월 3일 주일")
-    const dateObj = parseLocalDateString(record.date);
-    const dateStrBase = dateObj.toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" });
-    const dateStr = isSunday && lang === "ko"
-      ? `${dateStrBase} 주일`
-      : isSunday
-        ? dateStrBase
-        : dateObj.toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" });
-    const decisions = record.decision
-      ? record.decision.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")
-      : "";
-
-    // 저장 형식은 기존 호환을 유지하고, 복사에서는 설교 제목과 본문을 분리한다.
-    let headerLine: string;
-    if (isSunday) {
-      const parsed = parseSundaySermonRef(record.bible_ref);
-      const translatedRefs = parsed.referenceText
-        ? translateBibleRef(parsed.referenceText, lang)
-        : "";
-      headerLine = [
-        `📖 ${dateStr}`,
-        parsed.title ? `${trR("설교 제목", lang)}: ${parsed.title}` : "",
-        translatedRefs ? `${trR("본문", lang)}: ${translatedRefs}` : "",
-      ].filter(Boolean).join("\n");
-    } else {
-      headerLine = `📖 ${dateStr} · ${translateBibleRef(record.bible_ref, lang)}`;
-    }
-
-    // 주일예배: 화면 표시 순서대로 복사 (들어가는 기도 → 느낌과 묵상 → 적용과 결단 → 올려드리는 기도 → 말씀 요약)
-    // 6단계: 기존 순서 유지 (들어가는 기도 → 본문 요약 → 붙잡은 말씀 → 느낌과 묵상 → 적용과 결단 → 올려드리는 기도)
-    const sundayParts = [
-      headerLine,
-      record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
-      record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
-      (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
-      record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
-      record.summary ? `\n${trR("말씀 요약", lang)}\n${record.summary}` : "",
-    ];
-
-    const sixStepParts = [
-      headerLine,
-      record.opening_prayer ? `\n${trR("들어가는 기도", lang)}\n${record.opening_prayer}` : "",
-      record.summary ? `\n${trR("본문 요약", lang)}\n${record.summary}` : "",
-      record.key_verse ? `\n${trR("붙잡은 말씀", lang)}\n${record.key_verse}${isEsvRecord ? `\n(ESV)` : ""}` : "",
-      record.meditation ? `\n${trR("느낌과 묵상", lang)}\n${record.meditation}` : "",
-      (record.application || decisions) ? `\n${trR("적용과 결단", lang)}\n${record.application ?? ""}${decisions ? "\n" + decisions : ""}` : "",
-      record.closing_prayer ? `\n${trR("올려드리는 기도", lang)}\n${record.closing_prayer}` : "",
-    ];
-
-    const parts = (isSunday ? sundayParts : sixStepParts).filter(Boolean).join("\n");
+    const parts = formatQtShareText(record, lang);
     const ok = await copyText(parts);
     if (ok) {
       setCopied(true);
@@ -512,6 +463,7 @@ function RecordContent() {
           partners={myPartners}
           selectedTargets={selectedTargets}
           saving={sharing}
+          externalShareAction={<QtExternalShareButton record={record} lang={lang} photoUrl={photoUrl} disabled={sharing} />}
           onToggleTarget={toggleTarget}
           onChangeTargets={setSelectedTargets}
           onClose={() => setShowShareModal(false)}
