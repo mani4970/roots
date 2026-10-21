@@ -50,6 +50,17 @@ import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { acknowledgePendingAwardedBadge, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import {
+  ACTIVITY_BADGE_PRESENTATIONS_EVENT,
+  acknowledgeActivityBadges,
+  checkAndAwardPrayerShareBadges,
+  getActivityBadgePopup,
+  readActivityBadgeAwardRetries,
+  readLocalPendingActivityBadges,
+  readPendingActivityBadges,
+  retryPendingActivityBadgeAwards,
+  type ActivityBadgeKey,
+} from "@/lib/activityBadgePresentations";
+import {
   acknowledgeRewardPresentations,
   migrateLegacyRewardPresentations,
   readLocalPendingRewardPresentations,
@@ -349,6 +360,13 @@ export default function HomePage() {
   const rewardReceiptReadGenerationRef = useRef(0);
   const [rewardReceiptOwner, setRewardReceiptOwner] = useState<string | null>(null);
   const [pendingRewardReceiptCount, setPendingRewardReceiptCount] = useState(0);
+  const activityBadgeUserRef = useRef<string | null>(null);
+  const activityBadgeReadGenerationRef = useRef(0);
+  const activityBadgeRetryRef = useRef<{ userId: string; promise: Promise<ActivityBadgeKey[]>; blocking: boolean } | null>(null);
+  const activityBadgesRef = useRef<ActivityBadgeKey[]>([]);
+  const claimedActivityBadgesRef = useRef(new Set<ActivityBadgeKey>());
+  const [activityBadgeOwner, setActivityBadgeOwner] = useState<string | null>(null);
+  const [pendingActivityBadgeCount, setPendingActivityBadgeCount] = useState(0);
   const [activeActionReceipt, setActiveActionReceipt] = useState<RewardPresentationReceipt | null>(null);
   const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -375,7 +393,7 @@ export default function HomePage() {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string;receipt?:RewardPresentationReceipt}|null>(null);
+  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string;receipt?:RewardPresentationReceipt;activityBadgeKey?:ActivityBadgeKey}|null>(null);
   const celebrationShownRef = useRef(false);
   const progressUpdateInFlightRef = useRef(false);
   const progressRetryRequestedRef = useRef(false);
@@ -718,6 +736,9 @@ export default function HomePage() {
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const rewardActionDisplayDays = activeActionReceipt?.days ?? rewardMapDisplayDays;
   const rewardPresentationsReady = !!profile?.id && rewardReceiptOwner === profile.id;
+  const activityPresentationsReady = !!profile?.id && activityBadgeOwner === profile.id;
+  const activityBadgeRecoveryPending = !!profile?.id && activityBadgeRetryRef.current?.userId === profile.id
+    && activityBadgeRetryRef.current?.blocking === true;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
@@ -1334,6 +1355,100 @@ export default function HomePage() {
     };
   }, [loading, profile?.id, profile?.last_checkin, profile?.streak_days]);
 
+  async function refreshActivityBadgePresentations(userId: string, retryAwardChecks = false) {
+    if (retryAwardChecks && readActivityBadgeAwardRetries(userId).length > 0
+      && activityBadgeRetryRef.current?.userId !== userId) {
+      const tracked = { userId, promise: retryPendingActivityBadgeAwards(createClient(), userId), blocking: true };
+      activityBadgeRetryRef.current = tracked;
+      setRootsManRequestToken(token => token + 1);
+      void tracked.promise.finally(() => {
+        if (activityBadgeRetryRef.current === tracked) activityBadgeRetryRef.current = null;
+      }).catch(() => {});
+    }
+    const retry = activityBadgeRetryRef.current?.userId === userId && activityBadgeRetryRef.current.blocking
+      ? activityBadgeRetryRef.current.promise : null;
+    const generation = ++activityBadgeReadGenerationRef.current;
+    const supabase = createClient();
+    let keys: ActivityBadgeKey[];
+    try {
+      keys = await withQtDraftTimeout((async () => {
+        // When a failed award is being recovered, read after that transaction
+        // settles. All overlapping reads share the same recovery promise.
+        if (retry) await retry;
+        return readPendingActivityBadges(supabase, userId);
+      })(), 8_000, "home activity badge receipts");
+    } catch {
+      if (retry && activityBadgeRetryRef.current?.promise === retry) {
+        // The UI wait is bounded even if the underlying RPC keeps running.
+        // Its eventual grant stays durable and must not interrupt an animation.
+        activityBadgeRetryRef.current.blocking = false;
+      }
+      keys = readLocalPendingActivityBadges(userId);
+    }
+    if (activityBadgeUserRef.current !== userId || generation !== activityBadgeReadGenerationRef.current) return;
+    activityBadgesRef.current = keys;
+    setPendingActivityBadgeCount(keys.filter(key => !claimedActivityBadgesRef.current.has(key)).length);
+    setActivityBadgeOwner(userId);
+    setRootsManRequestToken(token => token + 1);
+  }
+
+  useEffect(() => {
+    const userId = profile?.id;
+    if (loading || !userId) return;
+    if (activityBadgeUserRef.current !== userId) {
+      activityBadgeUserRef.current = userId;
+      activityBadgesRef.current = [];
+      claimedActivityBadgesRef.current.clear();
+      setActivityBadgeOwner(null);
+      setPendingActivityBadgeCount(0);
+    }
+    let cancelled = false;
+    const refresh = (event?: Event) => {
+      if (cancelled || (event?.type === "visibilitychange" && document.visibilityState !== "visible")) return;
+      if (event?.type === ACTIVITY_BADGE_PRESENTATIONS_EVENT
+        && (event as CustomEvent<{ userId?: string }>).detail?.userId !== userId) return;
+      // Only failed checks explicitly queued by a successful share are retried.
+      // Reading/acknowledging a popup never invokes the progress RPC.
+      void refreshActivityBadgePresentations(userId, event?.type !== ACTIVITY_BADGE_PRESENTATIONS_EVENT);
+    };
+    refresh();
+    window.addEventListener(ACTIVITY_BADGE_PRESENTATIONS_EVENT, refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
+      if (cancelled || (event !== "SIGNED_OUT" && (!session?.user?.id || session.user.id === userId))) return;
+      // Revoke this queue immediately even if the old profile is still on
+      // screen while the route's ordinary account refresh is completing.
+      activityBadgeUserRef.current = null;
+      activityBadgeReadGenerationRef.current += 1;
+      activityBadgesRef.current = [];
+      claimedActivityBadgesRef.current.clear();
+      setActivityBadgeOwner(null);
+      setPendingActivityBadgeCount(0);
+      setBadgePopup(previous => previous?.activityBadgeKey ? null : previous);
+    });
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) refresh();
+      }).then(handle => {
+        if (cancelled) void handle.remove();
+        else appStateListener = handle;
+      }).catch(error => {
+        console.warn("배지 안내 재개 리스너 등록 실패:", error);
+      });
+    }
+    return () => {
+      cancelled = true;
+      activityBadgeReadGenerationRef.current += 1;
+      window.removeEventListener(ACTIVITY_BADGE_PRESENTATIONS_EVENT, refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      subscription.unsubscribe();
+      if (appStateListener) void appStateListener.remove();
+    };
+  }, [loading, profile?.id]);
+
   function acknowledgeRewardReceipt(receipt?: RewardPresentationReceipt | null) {
     if (!receipt || receipt.userId !== profile?.id) return;
     // The helper writes a durable local acknowledgement before its first await.
@@ -1395,6 +1510,19 @@ export default function HomePage() {
       setBadgePopup({ badgeKey: "badge_angel", receipt: angel, img: "/angel.webp", title: t("badge_popup_angel", lang), msg: t("badge_angel_msg", lang) });
       return true;
     }
+    // Earned activity badges join the same one-at-a-time sequence before map
+    // notices and the reward animation. Keep their acknowledgement separate.
+    if (!activityPresentationsReady || (activityBadgeRetryRef.current?.userId === profile.id && activityBadgeRetryRef.current?.blocking === true)) return false;
+    const activityBadgeKey = activityBadgesRef.current.find(key => !claimedActivityBadgesRef.current.has(key));
+    if (activityBadgeKey) {
+      // An unusually late award response must not interrupt an animation the
+      // user has already started. Its receipt remains pending for the next Home.
+      if (showRootsMan) return false;
+      claimedActivityBadgesRef.current.add(activityBadgeKey);
+      setPendingActivityBadgeCount(count => Math.max(0, count - 1));
+      setBadgePopup({ ...getActivityBadgePopup(activityBadgeKey, lang), activityBadgeKey });
+      return true;
+    }
     const stage = takeRewardReceipt(candidate => candidate.itemKey === "stage");
     if (stage) {
       const kind = getCurrentRewardMapCycle(stage.days).kind;
@@ -1408,6 +1536,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
     if (showNextProgressPopup() || badgePopup || gardenPopup.show) return;
+    if (!activityPresentationsReady || (activityBadgeRetryRef.current?.userId === profile.id && activityBadgeRetryRef.current?.blocking === true)) return;
+    if (showRootsMan && pendingActivityBadgeCount > 0) return;
     const notice = takeRewardReceipt(candidate => candidate.itemKey === "map_start" || candidate.itemKey === "map_complete");
     if (notice) {
       setRewardMapNotice({
@@ -1428,7 +1558,7 @@ export default function HomePage() {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [rewardPresentationsReady, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, rootsManRequestToken]);
+  }, [rewardPresentationsReady, activityPresentationsReady, activityBadgeRecoveryPending, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, showRootsMan, pendingActivityBadgeCount, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -1486,6 +1616,9 @@ export default function HomePage() {
 
   function closeProgressBadge(action: "close" | "back" = "close") {
     acknowledgeObservedPopup(profile?.id, "progress_badge", action);
+    if (badgePopup?.activityBadgeKey && profile?.id && activityBadgeOwner === profile.id) {
+      void acknowledgeActivityBadges(createClient(), profile.id, [badgePopup.activityBadgeKey]);
+    }
     acknowledgeRewardReceipt(badgePopup?.receipt);
     if (badgePopup?.badgeKey && badgePopup.receipt) {
       acknowledgePendingAwardedBadge(badgePopup.receipt.userId, badgePopup.receipt.date, badgePopup.badgeKey);
@@ -1768,6 +1901,14 @@ export default function HomePage() {
       // error. Record that mismatch without changing the current save flow.
       homePrayerObservationEvent(observation, completionError ? "stage_failed" : "stage_succeeded", observationPhase,
         completionError ? { ...observationError(completionError), persisted } : { persisted });
+
+      if (visibility !== "private" || partnerRecipientIds.length > 0) {
+        // Saving the prayer and its local-day completion retain their existing
+        // outcome. Award checking cannot delay or fail that successful save.
+        void checkAndAwardPrayerShareBadges(supabase, user.id).catch(error => {
+          console.warn("home prayer share badge check failed", error);
+        });
+      }
 
       observationPhase = "completion";
       setHomePrayerInput("");
@@ -2117,6 +2258,7 @@ export default function HomePage() {
 
   const rewardCampaignPopupBlocked =
     loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
+    !activityPresentationsReady || activityBadgeRecoveryPending || pendingActivityBadgeCount > 0 ||
     !companionAcceptanceCheckReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||
@@ -2151,6 +2293,7 @@ export default function HomePage() {
     !monthlyBadgeAwardPopupBlocked;
   const homePopupBlocked =
     loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
+    !activityPresentationsReady || activityBadgeRecoveryPending || pendingActivityBadgeCount > 0 ||
     !companionAcceptanceCheckReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||

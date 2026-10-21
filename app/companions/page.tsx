@@ -22,8 +22,8 @@ import { getLocalDateString } from "@/lib/date";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import {
   checkAndAwardCompanionBadge,
-  getRewardBadgePopup,
 } from "@/lib/rewardBadges";
+import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 import {
   ArrowLeft,
   Check,
@@ -137,15 +137,11 @@ function CompanionsContent() {
   const [removeTarget, setRemoveTarget] = useState<CompanionWithProfile | null>(
     null,
   );
-  const [badgePopup, setBadgePopup] = useState<{
-    img: string;
-    title: string;
-    msg: string;
-  } | null>(null);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup } = useActivityBadgePopupQueue({ userId, lang });
 
   useAndroidBackHandler(() => {
     if (badgePopup) {
-      setBadgePopup(null);
+      closeBadgePopup();
       return true;
     }
     if (removeTarget) {
@@ -366,7 +362,7 @@ function CompanionsContent() {
       showToast(c("companions_invite_accepted"));
       try {
         const awarded = await checkAndAwardCompanionBadge(supabase, userId);
-        if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+        if (awarded) enqueueAwardedBadges([awarded], userId);
       } catch (badgeError) {
         console.warn("동역자 보상 배지 확인 실패:", badgeError);
       }
@@ -399,7 +395,7 @@ function CompanionsContent() {
         clearSharePromptOptionsCache();
         try {
           const awarded = await checkAndAwardCompanionBadge(supabase, userId);
-          if (awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+          if (awarded) enqueueAwardedBadges([awarded], userId);
         } catch (badgeError) {
           console.warn("동역자 보상 배지 확인 실패:", badgeError);
         }
@@ -831,7 +827,7 @@ function CompanionsContent() {
               {badgePopup.msg}
             </p>
             <button
-              onClick={() => setBadgePopup(null)}
+              onClick={closeBadgePopup}
               className="btn-sage"
               style={{ width: "100%" }}
             >

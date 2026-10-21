@@ -14,7 +14,9 @@ import { t, type TKey, type Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2, UserRound } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
-import { checkAndAwardAnsweredPrayerBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import { checkAndAwardAnsweredPrayerBadge } from "@/lib/rewardBadges";
+import { checkAndAwardPrayerShareBadges, recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
+import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -124,7 +126,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const searchParams = useSearchParams();
   const cardText = getPrayerCardText(lang);
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [intercessionPrayers, setIntercessionPrayers] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -132,6 +133,11 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState(false);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup, resetBadgePopups } = useActivityBadgePopupQueue({
+    userId,
+    lang,
+    enabled: !celebration,
+  });
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [view, setView] = useState<PrayerView>({ status: "ongoing", category: "mine" });
@@ -249,7 +255,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       return true;
     }
     if (badgePopup) {
-      setBadgePopup(null);
+      closeBadgePopup();
       return true;
     }
     // Saving a prayer must finish before dismissing its form or the popup.
@@ -666,7 +672,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     setPendingDeletePrayerId(null);
     setPendingRemovalId(null);
     setActionMenuPrayerId(null);
-    setBadgePopup(null);
+    resetBadgePopups();
     setCelebration(false);
     setNotice(null);
   }
@@ -833,9 +839,16 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     }
   }
 
+  function canPresentPrayerBadge(awardUserId: string, awardRoute: string) {
+    return mountedRef.current && authUserRef.current === awardUserId
+      && window.location.pathname + window.location.search === awardRoute;
+  }
+
   async function submit(visibility = "private", partnerRecipientIds: string[] = []) {
     if (!newPrayer.trim() || !userId || saving || !shareOptionsReady.current) return;
     const observation = startPrayerObservation("create");
+    const awardUserId = userId;
+    const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "body";
     let persisted = false;
     invalidatePrayerSnapshot();
@@ -902,6 +915,18 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           prayerItemId: String(insertedPrayer.id),
           visibility,
           partnerRecipientIds,
+        });
+      }
+
+      // Sharing has committed past every rollback boundary. Badge checks must
+      // not delay the existing save/celebration flow or lose simultaneous awards.
+      if (insertedPrayer?.id) {
+        void checkAndAwardPrayerShareBadges(supabase, awardUserId).then(awardedBadges => {
+          if (canPresentPrayerBadge(awardUserId, awardRoute)) {
+            enqueueAwardedBadges(awardedBadges, awardUserId);
+          }
+        }).catch(badgeError => {
+          console.warn("기도 공유 배지 확인 실패:", badgeError);
         });
       }
 
@@ -1039,6 +1064,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   async function saveIntercessionTargets(privateOnly = false) {
     if (!sharePrayerId || (!privateOnly && selectedTargets.length === 0) || sharingIntercession || !shareOptionsReady.current) return;
     const observation = startPrayerObservation("share", String(sharePrayerId));
+    const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "auth";
     let persisted = false;
     invalidatePrayerSnapshot();
@@ -1107,36 +1133,15 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       // 중보기도 요청 배지는 서버가 실제 공개/그룹/동역자 공유 기록을
       // 다시 확인한 뒤 현재 사용자에게만 원자적으로 지급합니다.
       observationPhase = "badge";
-      const { data: prayerBadgeAward, error: prayerBadgeAwardError } = await supabase.rpc(
-        "award_own_prayer_share_badges",
-        {
-          p_user_id: user.id,
-          p_include_partner_recipients: true,
-        },
-      );
-      if (prayerBadgeAwardError) {
-        prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(prayerBadgeAwardError));
-        console.warn("기도 공유 배지를 저장하지 못했어요:", prayerBadgeAwardError.message);
-      } else {
+      try {
+        const awardedBadges = await checkAndAwardPrayerShareBadges(supabase, user.id);
         prayerObservationEvent(observation, "stage_succeeded", observationPhase);
-        const awardedBadges = new Set(
-          Array.isArray(prayerBadgeAward?.awarded_badges)
-            ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
-            : [],
-        );
-        if (awardedBadges.has("badge_prayer_ember")) {
-          setBadgePopup({
-            img: "/badge_rootswoman_fire.webp",
-            title: c("prayer_badge_ember_popup"),
-            msg: t("badge_prayer_ember_msg", lang),
-          });
-        } else if (awardedBadges.has("badge_prayer_warrior")) {
-          setBadgePopup({
-            img: "/prayer_warrior.webp",
-            title: c("prayer_badge_warrior_popup"),
-            msg: t("badge_prayer_warrior_msg", lang),
-          });
+        if (canPresentPrayerBadge(user.id, awardRoute)) {
+          enqueueAwardedBadges(awardedBadges, user.id);
         }
+      } catch (badgeError) {
+        prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(badgeError));
+        console.warn("기도 공유 배지를 저장하지 못했어요:", badgeError);
       }
 
       setShowShareModal(false);
@@ -1158,6 +1163,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   async function saveAnsweredPrayer() {
     if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
     const observation = startPrayerObservation("answer", String(testimonyPrayerId));
+    const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "auth";
     let persisted = false;
     invalidatePrayerSnapshot();
@@ -1206,7 +1212,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       }
       // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
       observationPhase = "badge";
-      let existingAnsweredBadgeAwarded = false;
       if (user) {
         const { data: noahAward, error: noahAwardError } = await supabase.rpc("award_own_noah_badge", {
           p_user_id: user.id,
@@ -1216,15 +1221,16 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(noahAwardError));
           console.warn("노아 배지를 저장하지 못했어요:", noahAwardError.message);
         } else if (noahAward?.awarded === true) {
-          existingAnsweredBadgeAwarded = true;
-          setBadgePopup({ img: "/badge_noah.webp", title: c("prayer_badge_noah_popup"), msg: t("badge_noah_msg", lang) });
+          recordActivityBadgeAwards(supabase, user.id, ["badge_noah"]);
+          if (canPresentPrayerBadge(user.id, awardRoute)) {
+            enqueueAwardedBadges(["badge_noah"], user.id);
+          }
         }
 
         try {
           const awarded = await checkAndAwardAnsweredPrayerBadge(supabase, user.id);
-          if (awarded && !existingAnsweredBadgeAwarded) {
-            const popup = getRewardBadgePopup(awarded, lang);
-            setBadgePopup(popup);
+          if (awarded && canPresentPrayerBadge(user.id, awardRoute)) {
+            enqueueAwardedBadges([awarded], user.id);
           }
         } catch (badgeError) {
           prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(badgeError));
@@ -1465,7 +1471,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
       {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--prayer-modal-surface)", borderRadius: 28, border: "1px solid var(--prayer-gold-border)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
@@ -1475,7 +1481,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             <div style={{ padding: "14px 16px", background: "var(--prayer-gold-surface)", borderRadius: 14, border: "1px solid var(--prayer-gold-border)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "var(--prayer-gold-action)", color: "var(--prayer-on-gold-action)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={closeBadgePopup} style={{ width: "100%", padding: "13px", background: "var(--prayer-gold-action)", color: "var(--prayer-on-gold-action)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("badge_thanks", lang)}
             </button>
           </div>

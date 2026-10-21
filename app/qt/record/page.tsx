@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Suspense, type MouseEvent } from "react";
+import { useEffect, useRef, useState, Suspense, type MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
@@ -20,6 +20,8 @@ import QtExternalShareButton from "@/components/QtExternalShareButton";
 import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";
+import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 
 
 type QTRecordCopyLang = Lang | "es";
@@ -82,6 +84,8 @@ function RecordContent() {
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get("id");
+  const activeRecordIdRef = useRef(id);
+  activeRecordIdRef.current = id;
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
@@ -95,11 +99,19 @@ function RecordContent() {
   const [sharedTargets, setSharedTargets] = useState<string[]>([]);
   const lang = useLang();
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
-  const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string}|null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup, resetBadgePopups } = useActivityBadgePopupQueue({
+    userId: currentUserId,
+    lang,
+  });
+
+  useEffect(() => {
+    // A route change leaves every unseen badge pending for Home.
+    resetBadgePopups();
+  }, [id, resetBadgePopups]);
 
   useAndroidBackHandler(() => {
     if (photoViewerOpen) {
@@ -107,7 +119,7 @@ function RecordContent() {
       return true;
     }
     if (badgePopup) {
-      setBadgePopup(null);
+      closeBadgePopup();
       return true;
     }
     if (showShareModal) {
@@ -233,11 +245,13 @@ function RecordContent() {
 
   async function saveShareTargets(privateOnly = false) {
     if (!id || (!privateOnly && selectedTargets.length === 0)) return;
+    const sharedRecordId = id;
     setSharing(true);
     const supabase = createClient();
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
       const { visibility: newVisibility, partnerRecipientIds } = privateOnly
         ? { visibility: "private", partnerRecipientIds: [] as string[] }
@@ -274,29 +288,17 @@ function RecordContent() {
       // 전체/그룹 공유와 동역자 공유 모두 QT 나눔으로 인정합니다.
       if (!privateOnly) {
         try {
-            const { data: qtShareBadgeAward, error: qtShareBadgeAwardError } = await supabase.rpc(
-              "award_own_qt_share_badges",
-              {
-                p_user_id: user.id,
-                p_include_partner_recipients: true,
-              },
-            );
-            if (qtShareBadgeAwardError) throw qtShareBadgeAwardError;
-
-            const awardedBadges = new Set(
-              Array.isArray(qtShareBadgeAward?.awarded_badges)
-                ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
-                : [],
-            );
-            // 기존 팝업 우선순위: 말씀의 평안 → 말씀 배달부 → 요셉
-            if (awardedBadges.has("badge_word_peace")) {
-              setBadgePopup({ img: "/badge_rootswoman_rest.webp", title: t("qt_record_badge_word_peace_title", lang), msg: t("badge_word_peace_msg", lang) });
-            } else if (awardedBadges.has("badge_qt_bird")) {
-              setBadgePopup({ img: "/qt_bird.webp", title: t("qt_record_badge_qt_bird_title", lang), msg: t("badge_qt_bird_msg", lang) });
-            } else if (awardedBadges.has("badge_joseph")) {
-              setBadgePopup({ img: "/badge_joseph.webp", title: t("qt_record_badge_joseph_title", lang), msg: t("badge_joseph_msg", lang) });
-            }
-          } catch (e) { /* 뱃지 체크 실패해도 나눔은 완료 */ }
+          const awardedBadges = await checkAndAwardQtShareBadges(supabase, user.id);
+          if (activeRecordIdRef.current === sharedRecordId) {
+            // Retain the original priority while showing every awarded badge.
+            const awardedKeys = new Set<string>(awardedBadges);
+            const badgePriority = ["badge_word_peace", "badge_qt_bird", "badge_joseph"] as const;
+            enqueueAwardedBadges(badgePriority.filter(key => awardedKeys.has(key)), user.id);
+          }
+        } catch (error) {
+          // A retry marker keeps badge checks separate from the saved share.
+          console.warn("qt share badge check failed", error);
+        }
       }
       setShowShareModal(false);
     } catch (error) {
@@ -374,7 +376,7 @@ function RecordContent() {
         </div>
       )}
       {badgePopup && (
-        <div onClick={() => setBadgePopup(null)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
@@ -384,7 +386,7 @@ function RecordContent() {
             <div style={{ padding: "14px 16px", background: "var(--surface-gold-subtle)", borderRadius: 14, border: "1px solid var(--border-gold-soft)", marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
             </div>
-            <button onClick={() => setBadgePopup(null)} style={{ width: "100%", padding: "13px", background: "var(--gold-200)", color: "var(--gold-900)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={closeBadgePopup} style={{ width: "100%", padding: "13px", background: "var(--gold-200)", color: "var(--gold-900)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {t("badge_thanks", lang)}
             </button>
           </div>

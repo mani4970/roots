@@ -9,6 +9,7 @@ import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout, type 
 import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import { syncQtCompletionRecipients } from "@/lib/qtCompletionRecipients";
+import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";
 import {
   getPreferredTranslationForLang,
   getStoredLang,
@@ -2883,6 +2884,13 @@ function QTWriteContent() {
       }
       observe(completionObservationRef.current, "recipients_ok", { phase: "recipients" }, recordId);
       pending = rememberPendingCompletion({ ...pending, recipientsSaved: true });
+    }
+
+    if ((options.visibility && options.visibility !== "private") || options.partnerRecipientIds?.length) {
+      // Sharing is committed. Badge checks retry independently and must not
+      // delay completion or alter the existing progress/date gate below.
+      void checkAndAwardQtShareBadges(supabase, userId)
+        .catch(error => console.warn("말씀 묵상 나눔 배지 확인 실패:", error));
     }
 
     // Preserve the same progress gate and date policy: never reach completion

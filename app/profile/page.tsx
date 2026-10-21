@@ -19,6 +19,7 @@ import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import ProfileCharacterViewer from "@/components/ProfileCharacterViewer";
 import { disableCurrentUserPushTokens } from "@/lib/notifications/pushTokens";
 import { NEW_REWARD_BADGES, repairNewRewardBadges } from "@/lib/rewardBadges";
+import { recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
 import { getLoveHeartBalance } from "@/lib/loveHearts";
 import { getRootsAvatarChoiceText, getRootsAvatarLabel, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { getHeartShopText } from "@/lib/heartShopText";
@@ -527,6 +528,7 @@ export default function ProfilePage() {
           ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
           : [],
       );
+      recordActivityBadgeAwards(supabase, userId, Array.from(awardedBadges));
       if (awardedBadges.has("badge_roots_together")) {
         setProfile((current: any) => ({
           ...(current ?? baseProfile),
@@ -553,6 +555,7 @@ export default function ProfilePage() {
           ? qtShareBadgeAward.awarded_badges.map((key: unknown) => String(key))
           : [],
       );
+      recordActivityBadgeAwards(supabase, userId, Array.from(awardedBadges));
       const qtShareBadgeUpdates: Record<string, boolean> = {};
       if (awardedBadges.has("badge_joseph")) qtShareBadgeUpdates.badge_joseph = true;
       if (awardedBadges.has("badge_qt_bird")) qtShareBadgeUpdates.badge_qt_bird = true;
@@ -580,6 +583,7 @@ export default function ProfilePage() {
           ? prayerBadgeAward.awarded_badges.map((key: unknown) => String(key))
           : [],
       );
+      recordActivityBadgeAwards(supabase, userId, Array.from(awardedBadges));
       const prayerBadgeUpdates: Record<string, boolean> = {};
       if (awardedBadges.has("badge_prayer_ember")) prayerBadgeUpdates.badge_prayer_ember = true;
       if (awardedBadges.has("badge_prayer_warrior")) prayerBadgeUpdates.badge_prayer_warrior = true;

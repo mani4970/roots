@@ -15,7 +15,8 @@ import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { storageGet } from "@/lib/clientStorage";
 import BottomNav from "@/components/BottomNav";
 import ConfettiBurst from "@/components/ConfettiBurst";
-import { checkAndAwardDailyWordBadge, getRewardBadgePopup } from "@/lib/rewardBadges";
+import { checkAndAwardDailyWordBadge } from "@/lib/rewardBadges";
+import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 const CHECKIN_RESULT_TEXT = {
@@ -38,11 +39,12 @@ function ResultContent() {
   const [loadError, setLoadError] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [celebrateNewWord, setCelebrateNewWord] = useState(false);
-  const [badgePopup, setBadgePopup] = useState<{ img: string; title: string; msg: string } | null>(null);
+  const [badgeUserId, setBadgeUserId] = useState<string | null>(null);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup, resetBadgePopups } = useActivityBadgePopupQueue({ userId: badgeUserId, lang });
 
   useAndroidBackHandler(() => {
     if (!badgePopup) return false;
-    setBadgePopup(null);
+    closeBadgePopup();
     return true;
   });
 
@@ -65,13 +67,14 @@ function ResultContent() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
     async function loadVerse() {
-      setLoading(true); setLoadError(false); setResult(null); setCelebrateNewWord(false); setBadgePopup(null);
+      setLoading(true); setLoadError(false); setResult(null); setCelebrateNewWord(false); resetBadgePopups();
       try {
         const supabase = createClient();
         const { data: { user }, error: authError } = await withQtDraftTimeout(supabase.auth.getUser(), 6_000, "daily Word user");
         if (cancelled) return;
         if (authError) throw authError;
         if (!user) { router.replace("/welcome"); return; }
+        setBadgeUserId(user.id);
         const today = getLocalDateString();
         const translationId = getDefaultTranslationId(lang);
         const existing = await readDailyWordRecord(supabase, user.id, today, controller.signal);
@@ -120,7 +123,7 @@ function ResultContent() {
         }
         try {
           const awarded = await withQtDraftTimeout(checkAndAwardDailyWordBadge(supabase, user.id), 8_000, "daily Word badge");
-          if (!cancelled && awarded) setBadgePopup(getRewardBadgePopup(awarded, lang));
+          if (!cancelled && awarded) enqueueAwardedBadges([awarded], user.id);
         } catch (badgeError) {
           console.warn("오늘의 말씀 보상 배지 확인 실패:", badgeError);
         }
@@ -194,7 +197,7 @@ function ResultContent() {
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 850, color: "var(--daily-word-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
             <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: 18 }}>{badgePopup.msg}</p>
-            <button onClick={() => setBadgePopup(null)} className="btn-sage" style={{ width: "100%", background: "var(--daily-word-gold-action)", color: "var(--daily-word-on-gold-action)" }}>{t("badge_thanks", lang)}</button>
+            <button onClick={closeBadgePopup} className="btn-sage" style={{ width: "100%", background: "var(--daily-word-gold-action)", color: "var(--daily-word-on-gold-action)" }}>{t("badge_thanks", lang)}</button>
           </div>
         </div>
       )}

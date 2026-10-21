@@ -9,6 +9,7 @@ import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCc
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -1390,6 +1391,13 @@ function PhotoReflectionContent() {
         } catch (fallbackError) {
           console.warn("photo reflection private fallback failed", fallbackError);
         }
+      }
+
+      if (!sharingFailed && (effectiveVisibility !== "private" || effectivePartnerRecipientIds.length > 0)) {
+        // Both sharing writes succeeded; retry badges separately from the
+        // saved photo, its progress update and its completion screen.
+        void checkAndAwardQtShareBadges(supabase, user.id)
+          .catch(error => console.warn("photo reflection share badge check failed", error));
       }
 
       if (targetDate === today) {

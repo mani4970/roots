@@ -1,4 +1,5 @@
 import { t, type Lang, type TKey } from "@/lib/i18n";
+import { recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
 
 type SupabaseLike = any;
 export type NewRewardBadgeKey =
@@ -68,7 +69,9 @@ async function awardBadgeIfNeeded(
     return null;
   }
 
-  return data?.awarded === true ? key : null;
+  if (data?.awarded !== true) return null;
+  recordActivityBadgeAwards(supabase, userId, [key]);
+  return key;
 }
 
 export async function checkAndAwardQtReactionBadge(supabase: SupabaseLike, userId: string) {

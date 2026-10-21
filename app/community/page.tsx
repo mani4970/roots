@@ -83,8 +83,9 @@ import { clearSharePromptOptionsCache } from "@/lib/sharePromptOptions";
 import {
   checkAndAwardPrayTogetherBadge,
   checkAndAwardQtReactionBadge,
-  getRewardBadgePopup,
 } from "@/lib/rewardBadges";
+import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
+import { recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
 import { awardLoveHeartOnce, type LoveHeartSourceType } from "@/lib/loveHearts";
 import { getLoveHeartToastText } from "@/lib/loveHeartText";
 import {
@@ -971,11 +972,6 @@ function CommunityPageContent() {
   });
   const allSectionInFlightRef = useRef<Set<CommunitySectionKey>>(new Set());
   const lang = useLang();
-  const [badgePopup, setBadgePopup] = useState<{
-    img: string;
-    title: string;
-    msg: string;
-  } | null>(null);
   const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
   const loveHeartToastTimerRef = useRef<number | null>(null);
   const loveHeartHapticPendingRef = useRef<Set<string>>(new Set());
@@ -1040,6 +1036,7 @@ function CommunityPageContent() {
   const [partnerQtLoadError, setPartnerQtLoadError] = useState(false);
   const [partnerPrayerLoadError, setPartnerPrayerLoadError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup } = useActivityBadgePopupQueue({ userId, lang });
 
   // 중보기도
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
@@ -1232,7 +1229,7 @@ function CommunityPageContent() {
       return true;
     }
     if (badgePopup) {
-      setBadgePopup(null);
+      closeBadgePopup();
       return true;
     }
     if (prayerAdded) {
@@ -5809,8 +5806,7 @@ function CommunityPageContent() {
         try {
           const awarded = await checkAndAwardQtReactionBadge(supabase, user.id);
           if (awarded) {
-            const popup = getRewardBadgePopup(awarded, lang);
-            setBadgePopup(popup);
+            enqueueAwardedBadges([awarded], user.id);
           }
         } catch (error) {
           console.warn("묵상 리액션 보상 배지 확인 실패:", error);
@@ -5901,7 +5897,6 @@ function CommunityPageContent() {
       void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
 
       // 바울 뱃지 체크 (함께 기도 30번)
-      let existingPrayerBadgeAwarded = false;
       try {
         const { data: paulBadgeAward, error: paulBadgeAwardError } =
           await supabase.rpc("award_own_paul_badge", {
@@ -5909,20 +5904,15 @@ function CommunityPageContent() {
           });
         if (paulBadgeAwardError) throw paulBadgeAwardError;
         if (paulBadgeAward?.awarded === true) {
-          existingPrayerBadgeAwarded = true;
-          setBadgePopup({
-            img: "/badge_paul.webp",
-            title: c("community_badge_paul_title"),
-            msg: t("badge_paul_msg", lang),
-          });
+          recordActivityBadgeAwards(supabase, user.id, ["badge_paul"]);
+          enqueueAwardedBadges(["badge_paul"], user.id);
         }
       } catch (e) {}
 
       try {
         const awarded = await checkAndAwardPrayTogetherBadge(supabase, user.id);
-        if (awarded && !existingPrayerBadgeAwarded) {
-          const popup = getRewardBadgePopup(awarded, lang);
-          setBadgePopup(popup);
+        if (awarded) {
+          enqueueAwardedBadges([awarded], user.id);
         }
       } catch (error) {
         console.warn("함께 기도 보상 배지 확인 실패:", error);
@@ -5993,23 +5983,12 @@ function CommunityPageContent() {
             ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
             : [],
         );
-        let popup: null | { img: string; title: string; msg: string } = null;
-        if (awardedBadges.has("badge_peter")) {
-          popup = {
-            img: "/badge_peter.webp",
-            title: c("community_badge_peter_title"),
-            msg: t("badge_peter_msg", lang),
-          };
-        }
-        // 기존 순서 유지: 두 배지를 동시에 받으면 동역 배지가 표시됩니다.
-        if (awardedBadges.has("badge_roots_together")) {
-          popup = {
-            img: "/badge_roots_together.webp",
-            title: c("community_badge_roots_together_title"),
-            msg: t("badge_roots_together_msg", lang),
-          };
-        }
-        if (popup) setBadgePopup(popup);
+        recordActivityBadgeAwards(supabase, user.id, Array.from(awardedBadges));
+        // Keep the existing first popup, then present any other earned badge.
+        enqueueAwardedBadges(
+          ["badge_roots_together", "badge_peter"].filter(key => awardedBadges.has(key)),
+          user.id,
+        );
       }
     } catch (e) {}
     setGroupName("");
@@ -6156,12 +6135,9 @@ function CommunityPageContent() {
             ? groupBadgeAward.awarded_badges.map((key: unknown) => String(key))
             : [],
         );
+        recordActivityBadgeAwards(supabase, user.id, Array.from(awardedBadges));
         if (awardedBadges.has("badge_roots_together")) {
-          setBadgePopup({
-            img: "/badge_roots_together.webp",
-            title: c("community_badge_roots_together_title"),
-            msg: t("badge_roots_together_msg", lang),
-          });
+          enqueueAwardedBadges(["badge_roots_together"], user.id);
         }
       }
     } catch (e) {}
@@ -7401,7 +7377,7 @@ function CommunityPageContent() {
       <>
       {badgePopup && (
         <div
-          onClick={() => setBadgePopup(null)}
+          onClick={closeBadgePopup}
           style={{
             position: "fixed",
             inset: 0,
@@ -7461,7 +7437,7 @@ function CommunityPageContent() {
               </p>
             </div>
             <button
-              onClick={() => setBadgePopup(null)}
+              onClick={closeBadgePopup}
               style={{
                 width: "100%",
                 padding: "13px",
