@@ -2,6 +2,11 @@ import type { Lang } from "@/lib/i18n";
 
 const TEXT = {
   ko: {
+    confirmRemoveThread: "댓글과 답글을 모두 삭제할까요?",
+    like: "좋아요", unlike: "좋아요 취소", reply: "답글", replies: "답글 {n}개 보기", replyOne: "답글 {n}개 보기",
+    replyTo: "{name}님에게 답글", earlierReplies: "이전 답글 보기",
+    repliesLoading: "답글을 불러오는 중이에요.", repliesError: "답글을 불러오지 못했어요. 다시 시도해주세요.",
+    likeError: "좋아요를 저장하지 못했어요. 다시 시도해주세요.", deleted: "삭제된 댓글입니다.",
     title: "댓글", placeholder: "축복의 메시지를 남겨보세요.",
     empty: "첫 댓글로 마음을 나눠보세요.", send: "남기기", sending: "저장 중…",
     edit: "수정", save: "저장", cancel: "취소", remove: "삭제", confirmRemove: "댓글을 삭제할까요?",
@@ -14,6 +19,11 @@ const TEXT = {
     partner: "이 묵상을 나눈 두 동역자 사이에서만 보이는 댓글이에요.",
   },
   en: {
+    confirmRemoveThread: "Delete this comment and its replies?",
+    like: "Like", unlike: "Unlike", reply: "Reply", replies: "{n} replies", replyOne: "{n} reply",
+    replyTo: "Reply to {name}", earlierReplies: "Earlier replies",
+    repliesLoading: "Loading replies…", repliesError: "Replies could not be loaded. Please try again.",
+    likeError: "Your like could not be saved. Please try again.", deleted: "This comment was deleted.",
     title: "Comments", placeholder: "Leave a message of blessing.",
     empty: "Be the first to share a comment.", send: "Post", sending: "Saving…",
     edit: "Edit", save: "Save", cancel: "Cancel", remove: "Delete", confirmRemove: "Delete this comment?",
@@ -26,6 +36,11 @@ const TEXT = {
     partner: "Only the two partners in this sharing space can see these comments.",
   },
   de: {
+    confirmRemoveThread: "Diesen Kommentar und alle Antworten löschen?",
+    like: "Gefällt mir", unlike: "Gefällt mir zurücknehmen", reply: "Antworten", replies: "{n} Antworten", replyOne: "{n} Antwort",
+    replyTo: "Antwort an {name}", earlierReplies: "Frühere Antworten",
+    repliesLoading: "Antworten werden geladen…", repliesError: "Die Antworten konnten nicht geladen werden. Bitte versuche es erneut.",
+    likeError: "Deine Reaktion konnte nicht gespeichert werden. Bitte versuche es erneut.", deleted: "Dieser Kommentar wurde gelöscht.",
     title: "Kommentare", placeholder: "Hinterlasse eine Segensbotschaft.",
     empty: "Teile den ersten Kommentar.", send: "Senden", sending: "Wird gespeichert…",
     edit: "Bearbeiten", save: "Speichern", cancel: "Abbrechen", remove: "Löschen", confirmRemove: "Diesen Kommentar löschen?",
@@ -38,6 +53,11 @@ const TEXT = {
     partner: "Diese Kommentare sehen nur die beiden Partner in diesem Bereich.",
   },
   fr: {
+    confirmRemoveThread: "Supprimer ce commentaire et ses réponses ?",
+    like: "J’aime", unlike: "Retirer mon J’aime", reply: "Répondre", replies: "{n} réponses", replyOne: "{n} réponse",
+    replyTo: "Répondre à {name}", earlierReplies: "Réponses précédentes",
+    repliesLoading: "Chargement des réponses…", repliesError: "Impossible de charger les réponses. Veuillez réessayer.",
+    likeError: "Impossible d’enregistrer votre réaction. Veuillez réessayer.", deleted: "Ce commentaire a été supprimé.",
     title: "Commentaires", placeholder: "Laissez un message de bénédiction.",
     empty: "Soyez la première personne à laisser un commentaire.", send: "Publier", sending: "Enregistrement…",
     edit: "Modifier", save: "Enregistrer", cancel: "Annuler", remove: "Supprimer", confirmRemove: "Supprimer ce commentaire ?",
@@ -50,6 +70,11 @@ const TEXT = {
     partner: "Seuls les deux partenaires de cet espace peuvent voir ces commentaires.",
   },
   es: {
+    confirmRemoveThread: "¿Eliminar este comentario y sus respuestas?",
+    like: "Me gusta", unlike: "Quitar Me gusta", reply: "Responder", replies: "{n} respuestas", replyOne: "{n} respuesta",
+    replyTo: "Responder a {name}", earlierReplies: "Respuestas anteriores",
+    repliesLoading: "Cargando respuestas…", repliesError: "No se pudieron cargar las respuestas. Vuelve a intentarlo.",
+    likeError: "No se pudo guardar tu reacción. Vuelve a intentarlo.", deleted: "Este comentario fue eliminado.",
     title: "Comentarios", placeholder: "Deja un mensaje de bendición.",
     empty: "Sé la primera persona en dejar un comentario.", send: "Publicar", sending: "Guardando…",
     edit: "Editar", save: "Guardar", cancel: "Cancelar", remove: "Eliminar", confirmRemove: "¿Eliminar este comentario?",
