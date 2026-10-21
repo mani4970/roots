@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { ChevronDown, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale } from "@/lib/date";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -25,7 +25,6 @@ type Props = {
   lang: Lang;
   onCountChange?: (count: number) => void;
   onOpenProfile?: (profile: ProfileCard | undefined, authorId: string) => void;
-  onAuthorBlocked?: (authorId: string) => void;
 };
 
 type ReplyPage = { rows: QtComment[]; loaded: boolean; loading: boolean; error: boolean; hasMore: boolean; oldest: QtComment | null };
@@ -38,15 +37,14 @@ function mergeComments(first: QtComment[], second: QtComment[]) {
 }
 
 /** Kept outside the community page so reacting never remounts the draft or thread. */
-export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile, onAuthorBlocked }: Props) {
+export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile }: Props) {
   const text = getQtCommentText(lang);
   const safetyText = getQtCommentSafetyText(lang);
   const contextKey = qtCommentContextKey(qtId, context);
   const [rows, setRows] = useState<QtComment[]>([]);
   const [count, setCount] = useState(0);
   const [canPost, setCanPost] = useState(true);
-  const [moderationNoticeCount, setModerationNoticeCount] = useState(0);
-  const [safety, setSafety] = useState<QtComment | "history" | null>(null);
+  const [safety, setSafety] = useState<QtComment | null>(null);
   const countRef = useRef(0);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -74,7 +72,6 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   const replyRequests = useRef(new Map<string, AbortController>());
   const likeRequests = useRef(new Set<string>());
   const removedIds = useRef(new Set<string>());
-  const filteredAuthorIds = useRef(new Set<string>());
   const oldestRoot = useRef<QtComment | null>(null);
   const replyInput = useRef<HTMLTextAreaElement | null>(null);
   const callbackRef = useRef(onCountChange);
@@ -175,7 +172,6 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     moreRef.current = false;
     setPending(null);
     setLoading(true);
-    setModerationNoticeCount(0);
     setLoadingMore(false);
     setLoadError(false);
     setRows([]);
@@ -184,7 +180,6 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     replyRequests.current.clear();
     likeRequests.current.clear();
     removedIds.current.clear();
-    filteredAuthorIds.current.clear();
     setReplies({});
     setExpanded({});
     setLikePending({});
@@ -198,7 +193,6 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
         if (generation.current !== version) return;
         setRows(page.rows);
         setCanPost(page.canPost);
-        setModerationNoticeCount(page.moderationNoticeCount);
         publishCount(page.totalCount);
         setHasMore(page.hasMore);
         oldestRoot.current = page.oldest;
@@ -460,11 +454,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   }
 
   function safetyChanged(action: CommentSafetyAction) {
-    if (action.kind === "acknowledge") { setModerationNoticeCount(value => Math.max(0, value - 1)); return; }
-    if (action.kind === "restore") { setReload(value => value + 1); return; }
+    if (action.kind !== "hide" && action.kind !== "report") return;
     const version = generation.current;
-    if (action.kind === "block" && action.authorId) filteredAuthorIds.current.add(action.authorId);
-    const shouldHide = (row: QtComment) => action.kind === "block" ? row.author_id === action.authorId : row.id === action.commentId;
+    const shouldHide = (row: QtComment) => row.id === action.commentId;
     const removedRoots = new Set(rows.filter(shouldHide).map(row => row.id));
     rows.filter(shouldHide).forEach(row => removedIds.current.add(row.id));
     Object.entries(replies).forEach(([rootId, page]) => {
@@ -488,12 +480,10 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
         }
       } catch { /* The acknowledged safety action remains successful. */ }
     })();
-    if (action.kind === "block" && action.authorId) onAuthorBlocked?.(action.authorId);
   }
 
   function commentIsFiltered(row: QtComment) {
-    return removedIds.current.has(row.id) || (!!row.parent_id && removedIds.current.has(row.parent_id))
-      || filteredAuthorIds.current.has(row.author_id);
+    return removedIds.current.has(row.id) || (!!row.parent_id && removedIds.current.has(row.parent_id));
   }
 
   function renderComment(comment: QtComment, isReply = false) {
@@ -602,17 +592,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   return (
     <section className={styles.thread} aria-label={text.title}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-        <h3 style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, fontSize: 17, color: "var(--text)", margin: 0 }}>
-          <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
-        </h3>
-        {userId && <button type="button" className={styles.iconButton} style={{ position: "relative" }}
-          aria-label={`${safetyText.title}${moderationNoticeCount ? ` · ${moderationNoticeCount}` : ""}`} title={safetyText.title}
-          aria-haspopup="dialog" disabled={!!pending} onClick={() => { setDeleting(null); setSafety("history"); }}>
-          <ShieldCheck size={18} aria-hidden="true" />
-          {moderationNoticeCount > 0 && <span aria-hidden="true" style={{ position: "absolute", right: 5, top: 5, minWidth: 14, padding: "0 3px", borderRadius: 8, background: "var(--community-danger-text, #a33f3f)", color: "white", fontSize: 10, lineHeight: "14px" }}>{moderationNoticeCount}</span>}
-        </button>}
-      </div>
+      <h3 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 17, color: "var(--text)", margin: "0 0 8px" }}>
+        <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
+      </h3>
       {loading && <p role="status" className={styles.meta}><Loader2 size={15} className="spin" aria-hidden="true" /> {text.loading}</p>}
       {loadError && (
         <div role="alert" className={styles.error}>
@@ -673,8 +655,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
           </div>
         </form>
       ) : <p className={styles.meta}>{text.signIn}</p>}
-      {safety && <CommentSafetyDialog key={safety === "history" ? "history" : safety.id} userId={userId} lang={lang}
-        comment={safety === "history" ? undefined : safety} onClose={() => setSafety(null)} onChange={safetyChanged} />}
+      {safety && <CommentSafetyDialog key={safety.id} lang={lang}
+        comment={safety} onClose={() => setSafety(null)} onChange={safetyChanged} />}
     </section>
   );
 }

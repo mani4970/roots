@@ -6784,12 +6784,6 @@ function CommunityPageContent() {
             {userId && (
               <QtComments key={qtCommentContextKey(r.id, qtDetailContext)} qtId={r.id} userId={userId}
                 context={qtDetailContext} lang={lang}
-                onAuthorBlocked={(authorId) => {
-                  communityModerationMetaPromiseRef.current = null;
-                  communityViewerMetaPromiseRef.current = null;
-                  setHiddenUserIds((prev) => prev.includes(authorId) ? prev : [...prev, authorId]);
-                  removeSharedAuthor(authorId);
-                }}
                 onOpenProfile={(profile, authorId) => { void openAuthorProfile(profile, authorId); }}
                 onCountChange={(count) => updateQtCommentCount(r.id, qtDetailContext, count)} />
             )}

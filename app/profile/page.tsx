@@ -46,7 +46,7 @@ import {
   type MonthlyBadgeStatus,
 } from "@/lib/monthlyBadges";
 import { getMonthlyBadgeText } from "@/lib/monthlyBadgeText";
-import { Loader2, Check, X, Camera, Share2, Settings, Bell, Users } from "lucide-react";
+import { Loader2, Check, X, Camera, Share2, Settings, ShieldCheck, Bell, Users } from "lucide-react";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
@@ -2269,7 +2269,6 @@ export default function ProfilePage() {
           { href: "/privacy", label: t("profile_privacy", lang) },
           { href: "/terms", label: t("profile_terms", lang) },
           { href: "/support", label: t("profile_support", lang) },
-          { href: "/community/safety", label: `${getQtCommentSafetyText(lang).title}${unreadCommentNotices ? ` · ${unreadCommentNotices}` : ""}` },
           { href: "/account-deletion", label: t("profile_account_deletion", lang) },
         ].map((link, index) => (
           <span key={link.href} style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>
@@ -2331,7 +2330,7 @@ export default function ProfilePage() {
       {/* 계정 설정 모달 */}
       {showSettingsModal && (
         <div onClick={() => setShowSettingsModal(false)} style={{ position: "fixed", inset: 0, zIndex: 110, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--profile-modal-surface)", borderRadius: 24, border: "1px solid var(--border)", padding: "22px 18px 18px", width: "100%", maxWidth: 390, boxShadow: "var(--shadow-modal)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--profile-modal-surface)", borderRadius: 24, border: "1px solid var(--border)", padding: "22px 18px 18px", width: "100%", maxWidth: 390, maxHeight: "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))", overflowY: "auto", boxSizing: "border-box", boxShadow: "var(--shadow-modal)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{t("profile_account_settings", lang)}</h3>
@@ -2374,6 +2373,22 @@ export default function ProfilePage() {
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
+            </button>
+
+            <button
+              onClick={() => { setShowSettingsModal(false); router.push("/community/safety"); }}
+              style={{ width: "100%", padding: "13px 14px", background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, cursor: "pointer", marginBottom: 10, textAlign: "left" }}
+            >
+              <span style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 12, background: "var(--sage-light)", color: "var(--sage-dark)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <ShieldCheck size={15} aria-hidden="true" />
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 800, overflowWrap: "anywhere" }}>{getQtCommentSafetyText(lang).title}</span>
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                {unreadCommentNotices > 0 && <span style={{ minWidth: 20, padding: "2px 6px", borderRadius: 10, background: "var(--profile-danger-surface)", color: "var(--profile-danger-text)", fontSize: 11, fontWeight: 700, textAlign: "center" }}>{unreadCommentNotices}</span>}
+                <span aria-hidden="true" style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
+              </span>
             </button>
 
             <button
