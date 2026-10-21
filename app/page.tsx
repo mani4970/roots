@@ -3166,7 +3166,7 @@ export default function HomePage() {
                 minWidth: 0,
                 minHeight: 46,
                 borderRadius: 16,
-                padding: "9px 38px 9px 12px",
+                padding: todayDone.qt ? "6px 38px 6px 12px" : "9px 38px 9px 12px",
                 border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
                 background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-card)",
                 display: "flex",
@@ -3181,14 +3181,29 @@ export default function HomePage() {
                 style={{
                   minWidth: 0,
                   maxWidth: "100%",
-                  whiteSpace: "nowrap",
-                  fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
-                  fontWeight: 900,
-                  color: "var(--text)",
-                  lineHeight: 1.1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
                 }}
               >
-                {t("home_routine_qt", lang)}
+                <span
+                  style={{
+                    whiteSpace: "normal",
+                    overflowWrap: "break-word",
+                    fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
+                    fontWeight: 900,
+                    color: "var(--text)",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {t(todayDone.qt ? "home_routine_qt_done" : "home_routine_qt_start", lang)}
+                </span>
+                {todayDone.qt && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+                    {t("home_routine_view_record", lang)} <span aria-hidden="true">→</span>
+                  </span>
+                )}
               </span>
               {todayDone.qt ? (
                 <CheckCircle2
@@ -3232,14 +3247,15 @@ export default function HomePage() {
                 style={{
                   minWidth: 0,
                   maxWidth: "100%",
-                  whiteSpace: "nowrap",
+                  whiteSpace: "normal",
+                  overflowWrap: "break-word",
                   fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
                   fontWeight: 900,
                   color: "var(--text)",
                   lineHeight: 1.1,
                 }}
               >
-                {t("home_routine_prayer", lang)}
+                {t(todayDone.prayer ? "home_routine_prayer_done" : homeDetailsReady.prayer ? "home_routine_prayer_start" : "home_routine_prayer", lang)}
               </span>
               {todayDone.prayer ? (
                 <CheckCircle2
