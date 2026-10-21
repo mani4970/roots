@@ -21,7 +21,7 @@ export type ShareTargetPartner = {
 
 type SharePromptModalProps = {
   title: string;
-  description: string;
+  description?: string;
   helperText: string;
   allLabel: string;
   allSubLabel: string;
@@ -297,7 +297,7 @@ export default function SharePromptModal({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
             <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", lineHeight: 1.35 }}>{title}</h2>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", lineHeight: 1.6, marginTop: 8 }}>{description}</p>
+              {description ? <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", lineHeight: 1.6, marginTop: 8 }}>{description}</p> : null}
             </div>
             <button
               type="button"
@@ -402,7 +402,6 @@ export default function SharePromptModal({
           )}
         </div>
 
-        {externalShareAction && <div style={{ flexShrink: 0, paddingTop: 4, paddingBottom: 8 }}>{externalShareAction}</div>}
         {!loadError && (
         <div style={{ flexShrink: 0, paddingTop: 4, background: "var(--surface-card)" }}>
           {selectedTargets.length > 0 && (
@@ -418,6 +417,7 @@ export default function SharePromptModal({
           </div>
         </div>
         )}
+        {externalShareAction && <div style={{ flexShrink: 0, paddingTop: 12 }}>{externalShareAction}</div>}
       </div>
     </div>
   );

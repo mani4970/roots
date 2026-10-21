@@ -441,7 +441,6 @@ function RecordContent() {
       {showShareModal && (
         <SharePromptModal
           title={trR("큐티 나누기", lang)}
-          description={trR("여러 곳에 동시에 나눌 수 있어요 (복수 선택 가능)", lang)}
           helperText={t("qt_complete_share_helper", lang)}
           allLabel={trR("전체 커뮤니티", lang)}
           allSubLabel={trR("모든 Roots 사용자에게 공개", lang)}
