@@ -32,7 +32,7 @@ export const T = {
     nav_home:       { ko: "홈",       de: "Startseite", en: "Home", fr: "Accueil", es: "Inicio" },
     nav_prayer:     { ko: "기도",     de: "Gebet", en: "Prayer", fr: "Prière", es: "Oración" },
     nav_qt:         { ko: "묵상",     de: "Stille Zeit", en: "Reflection", fr: "Méditation", es: "Devocional" },
-    nav_community:  { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
+    nav_community:  { ko: "공동체", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
     nav_profile:    { ko: "프로필",   de: "Profil", en: "Profile", fr: "Profil", es: "Perfil" },
 
   // ── Celebration ──
@@ -102,7 +102,7 @@ export const T = {
   back: { ko: "돌아가기",                de: "Zurück", en: "Back", fr: "Retour", es: "Volver" },
 
   // ── 커뮤니티 ──
-  community_title: { ko: "커뮤니티", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
+  community_title: { ko: "공동체", de: "Gemeinde", en: "Community", fr: "Communauté", es: "Comunidad" },
   community_subtitle: { ko: "함께 기도하고 말씀을 나눠요", de: "Gemeinsam beten und Gottes Wort teilen", en: "Pray together and share God's Word", fr: "Prier ensemble et partager la Parole de Dieu", es: "Oremos juntos y compartamos la Palabra de Dios" },
   community_app_invite: { ko: "앱 초대", de: "Einladen", en: "Invite", fr: "Inviter", es: "Invitar" },
   community_unknown: { ko: "이름 없음", de: "Unbekannt", en: "Unknown", fr: "Inconnu", es: "Sin nombre" },

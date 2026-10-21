@@ -10690,15 +10690,6 @@ function CommunityPageContent() {
               </>
             ) : (
               <>
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text3)",
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {c("community_partner_list_hint")}
-                </p>
                 {partners.map((partner) => {
                   const profile = partner.profile ?? {};
                   const partnerName = profile.name || c("profile_default_name");
@@ -10933,15 +10924,6 @@ function CommunityPageContent() {
 
             {allTab === "qt" ? (
               <>
-                <p
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text3)",
-                    marginBottom: 12,
-                  }}
-                >
-                  {c("community_qt_shared_sub")}
-                </p>
                 {qtShares.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "48px 0" }}>
                     <BookOpen
