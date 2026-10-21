@@ -32,6 +32,7 @@ import {
   uploadProfileCharacterAvatar,
 } from "@/lib/profileAvatar";
 import { getProfileAvatarText } from "@/lib/profileAvatarText";
+import { getQtCommentSafetyText } from "@/lib/qtCommentSafetyText";
 import { storageClearAfterAccountDeletion } from "@/lib/clientStorage";
 import { loadProfileCards } from "@/lib/profileCards";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -259,6 +260,21 @@ export default function ProfilePage() {
   const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
   const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
   const [profileUserId, setProfileUserId] = useState("");
+  const [unreadCommentNotices, setUnreadCommentNotices] = useState(0);
+  // This optional count never gates the profile, calendar or reward UI.
+  useEffect(() => {
+    setUnreadCommentNotices(0);
+    if (!profileUserId) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const { count, error } = await createClient().from("qt_comment_moderation_notices")
+          .select("id", { count: "exact", head: true }).eq("user_id", profileUserId).is("read_at", null).abortSignal(controller.signal);
+        if (!controller.signal.aborted && !error) setUnreadCommentNotices(count ?? 0);
+      } catch { /* Safety history remains available when the optional count is offline. */ }
+    })();
+    return () => controller.abort();
+  }, [profileUserId]);
   const [loadingQtCalendar, setLoadingQtCalendar] = useState(true);
   const [loadingMonthlyBadges, setLoadingMonthlyBadges] = useState(true);
   const [monthlyBadgeRecords, setMonthlyBadgeRecords] = useState<MonthlyBadgeCompletionRecord[] | null>(null);
@@ -2253,6 +2269,7 @@ export default function ProfilePage() {
           { href: "/privacy", label: t("profile_privacy", lang) },
           { href: "/terms", label: t("profile_terms", lang) },
           { href: "/support", label: t("profile_support", lang) },
+          { href: "/community/safety", label: `${getQtCommentSafetyText(lang).title}${unreadCommentNotices ? ` · ${unreadCommentNotices}` : ""}` },
           { href: "/account-deletion", label: t("profile_account_deletion", lang) },
         ].map((link, index) => (
           <span key={link.href} style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>

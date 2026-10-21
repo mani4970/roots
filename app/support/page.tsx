@@ -17,6 +17,7 @@ const COPY = {
     deletion: "계정 삭제 안내",
     sections: [
       { title: "문의 이메일", paragraphs: [SUPPORT_EMAIL] },
+      { title: "콘텐츠 신고·이의 제기", paragraphs: ["댓글·답글의 ⋯ 메뉴에서 신고할 수 있습니다. 접수와 결과는 프로필의 신고·차단 관리에서 확인하세요. 로그인 없이 신고하거나 조치에 이의가 있다면, 해당 글·댓글의 위치 또는 접수 번호, 사유, 가능한 경우 이름·회신 이메일과 신고가 사실이라고 믿는다는 설명을 지원 이메일로 보내주세요."] },
       { title: "빠른 확인을 위해", paragraphs: ["계정 이메일, 기기 종류, 운영체제와 앱 버전, 문제가 발생한 화면과 재현 방법을 보내주시면 확인에 도움이 됩니다. 오류 화면은 개인정보를 가린 뒤 첨부해 주세요."] },
       { title: "보내지 말아야 할 정보", paragraphs: ["비밀번호, 로그인 코드, API 키, 결제 정보 또는 문의 해결에 필요하지 않은 묵상·기도 전문을 이메일로 보내지 마세요."] },
       { title: "계정과 개인정보 요청", paragraphs: ["앱에 로그인할 수 있다면 프로필의 계정 관리에서 직접 계정을 삭제할 수 있습니다. 열람, 정정, 삭제, 이동과 그 밖의 개인정보 요청은 이메일로 접수할 수 있으며 계정 보호를 위해 본인 확인을 요청할 수 있습니다."] },
@@ -32,6 +33,7 @@ const COPY = {
     deletion: "Kontolöschung",
     sections: [
       { title: "Support-E-Mail", paragraphs: [SUPPORT_EMAIL] },
+      { title: "Inhalte melden / Einspruch", paragraphs: ["Kommentare und Antworten können über das ⋯-Menü gemeldet werden. Eingang und Ergebnis finden Sie im Profil unter Meldungen & Sperren. Für Meldungen ohne Anmeldung oder Einsprüche senden Sie Ort des Inhalts oder Meldungsnummer, Begründung sowie möglichst Name, Antwortadresse und eine Erklärung nach bestem Wissen und Gewissen an den Support."] },
       { title: "Für eine schnelle Prüfung", paragraphs: ["Hilfreich sind Ihre Konto-E-Mail, Gerätetyp, Betriebssystem und App-Version sowie der betroffene Bildschirm und Schritte zur Wiederholung. Bitte verdecken Sie personenbezogene Daten auf Screenshots."] },
       { title: "Nicht per E-Mail senden", paragraphs: ["Senden Sie keine Passwörter, Anmeldecodes, API-Schlüssel, Zahlungsdaten oder vollständigen Einträge zur Stillen Zeit und Gebete, die für die Bearbeitung nicht erforderlich sind."] },
       { title: "Konto- und Datenschutzanfragen", paragraphs: ["Wenn Sie sich anmelden können, löschen Sie Ihr Konto direkt in der Kontoverwaltung des Profils. Auskunft, Berichtigung, Löschung, Übertragung und andere Datenschutzanfragen können per E-Mail gestellt werden. Zum Schutz des Kontos kann ein Identitätsnachweis erforderlich sein."] },
@@ -47,6 +49,7 @@ const COPY = {
     deletion: "Account deletion",
     sections: [
       { title: "Support email", paragraphs: [SUPPORT_EMAIL] },
+      { title: "Report content / appeal", paragraphs: ["Use the ⋯ menu on comments and replies to report them. Receipts and outcomes are available under Reports & blocks in Profile. To report without signing in or appeal a decision, email support with the content location or report ID, your explanation and, where possible, your name, reply email and a statement that you believe the report is accurate and submit it in good faith."] },
       { title: "Help us investigate", paragraphs: ["Include your account email, device type, operating system and app version, the affected screen, and steps to reproduce the issue. Please hide personal information in screenshots."] },
       { title: "Do not send", paragraphs: ["Do not email passwords, sign-in codes, API keys, payment details, or full Bible Reflection and prayer content that is not necessary to resolve the request."] },
       { title: "Account and privacy requests", paragraphs: ["If you can sign in, delete the account directly from Profile account management. Access, correction, deletion, portability, and other privacy requests may be sent by email. We may verify identity to protect the account."] },
@@ -62,6 +65,7 @@ const COPY = {
     deletion: "Suppression du compte",
     sections: [
       { title: "E-mail d’assistance", paragraphs: [SUPPORT_EMAIL] },
+      { title: "Signaler un contenu / recours", paragraphs: ["Utilisez le menu ⋯ des commentaires et réponses pour les signaler. Consultez la réception et le résultat dans Signalements et blocages du profil. Sans connexion ou pour contester une décision, envoyez au support l’emplacement du contenu ou le numéro de signalement, votre explication et, si possible, votre nom, une adresse de réponse et une déclaration de bonne foi sur l’exactitude du signalement."] },
       { title: "Pour faciliter la vérification", paragraphs: ["Indiquez l’e-mail du compte, le type d’appareil, le système et la version de l’app, l’écran concerné et les étapes permettant de reproduire le problème. Masquez les données personnelles sur les captures."] },
       { title: "Informations à ne pas envoyer", paragraphs: ["N’envoyez pas de mots de passe, codes de connexion, clés API, données de paiement ni le texte complet de méditations bibliques ou de prières sans rapport avec la demande."] },
       { title: "Compte et demandes de confidentialité", paragraphs: ["Si vous pouvez vous connecter, supprimez directement le compte dans la gestion du profil. Les demandes d’accès, rectification, suppression, portabilité ou autres demandes peuvent être envoyées par e-mail. Une vérification d’identité peut être demandée."] },
@@ -77,6 +81,7 @@ const COPY = {
     deletion: "Eliminación de la cuenta",
     sections: [
       { title: "Correo de soporte", paragraphs: [SUPPORT_EMAIL] },
+      { title: "Reportar contenido / apelar", paragraphs: ["Usa el menú ⋯ de los comentarios y respuestas para reportarlos. Consulta la recepción y el resultado en Reportes y bloqueos del perfil. Para reportar sin iniciar sesión o apelar, envía al soporte la ubicación del contenido o el número de reporte, el motivo y, si es posible, tu nombre, correo de respuesta y una declaración de que crees que el reporte es correcto y lo presentas de buena fe."] },
       { title: "Ayúdanos a investigar", paragraphs: ["Incluye el correo electrónico de tu cuenta, el tipo de dispositivo, el sistema operativo y la versión de la app, la pantalla afectada y los pasos para reproducir el problema. Oculta la información personal de las capturas de pantalla."] },
       { title: "Información que no debes enviar", paragraphs: ["No envíes por correo electrónico contraseñas, códigos de inicio de sesión, claves API, datos de pago ni el contenido completo de meditaciones bíblicas u oraciones que no sea necesario para resolver la solicitud."] },
       { title: "Solicitudes sobre la cuenta y la privacidad", paragraphs: ["Si puedes iniciar sesión, elimina la cuenta directamente desde la gestión de la cuenta en el perfil. Las solicitudes de acceso, rectificación, eliminación, portabilidad y otras solicitudes de privacidad pueden enviarse por correo electrónico. Podemos verificar tu identidad para proteger la cuenta."] },

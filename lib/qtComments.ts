@@ -23,7 +23,10 @@ export type QtComment = {
   profile?: ProfileCard;
 };
 
-export const QT_COMMENT_MAX_LENGTH = 2000;
+export const QT_COMMENT_MAX_LENGTH = 500;
+// PostgreSQL char_length counts Unicode code points, not UTF-16 code units.
+export const qtCommentLength = (value: string) => Array.from(value).length;
+export const limitQtCommentInput = (value: string, maximum = QT_COMMENT_MAX_LENGTH) => Array.from(value).slice(0, maximum).join("");
 export const QT_COMMENT_PAGE_SIZE = 30;
 const COMMENT_COLUMNS = "id,qt_id,scope,scope_id,author_id,body,created_at,updated_at,parent_id,deleted_at";
 
@@ -88,6 +91,8 @@ export async function loadQtComments(
   return {
     rows: rows.map(row => ({ ...row, profile: profiles[row.author_id] })),
     totalCount: Number(data.comment_count ?? 0),
+    canPost: data.can_post !== false,
+    moderationNoticeCount: Number(data.moderation_notice_count ?? 0),
     hasMore: data.has_more === true,
     oldest: rows[0] ?? null,
   };
@@ -99,6 +104,7 @@ export async function insertQtComment(
   parentId: string | null = null,
 ) {
   const trimmed = body.trim();
+  if (!trimmed || qtCommentLength(trimmed) > QT_COMMENT_MAX_LENGTH) throw new Error("Comment length limit exceeded");
   const { data, error } = await supabase.from("qt_comments").insert({
     ...(retryIdentity ? { id: retryIdentity.id } : {}),
     qt_id: qtId, scope: context.scope, scope_id: context.scopeId, body: trimmed, parent_id: parentId,

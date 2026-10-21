@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { ChevronDown, Heart, Loader2, MessageCircle, Pencil, X } from "lucide-react";
+import { ChevronDown, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, ShieldCheck, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale } from "@/lib/date";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { createClient } from "@/lib/supabase";
 import { loadProfileCards, type ProfileCard } from "@/lib/profileCards";
 import { getQtCommentText } from "@/lib/qtCommentText";
+import { getQtCommentSafetyText } from "@/lib/qtCommentSafetyText";
+import type { CommentSafetyAction } from "@/lib/qtCommentSafety";
+import CommentSafetyDialog from "./CommentSafetyDialog";
 import {
   deleteQtComment, insertQtComment, loadQtCommentCounts, loadQtComments,
-  QT_COMMENT_MAX_LENGTH, qtCommentContextKey, setQtCommentLike, updateQtComment,
+  QT_COMMENT_MAX_LENGTH, qtCommentLength, limitQtCommentInput, qtCommentContextKey, setQtCommentLike, updateQtComment,
   type QtComment, type QtCommentContext,
 } from "@/lib/qtComments";
 import styles from "./QtComments.module.css";
@@ -22,6 +25,7 @@ type Props = {
   lang: Lang;
   onCountChange?: (count: number) => void;
   onOpenProfile?: (profile: ProfileCard | undefined, authorId: string) => void;
+  onAuthorBlocked?: (authorId: string) => void;
 };
 
 type ReplyPage = { rows: QtComment[]; loaded: boolean; loading: boolean; error: boolean; hasMore: boolean; oldest: QtComment | null };
@@ -34,11 +38,15 @@ function mergeComments(first: QtComment[], second: QtComment[]) {
 }
 
 /** Kept outside the community page so reacting never remounts the draft or thread. */
-export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile }: Props) {
+export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile, onAuthorBlocked }: Props) {
   const text = getQtCommentText(lang);
+  const safetyText = getQtCommentSafetyText(lang);
   const contextKey = qtCommentContextKey(qtId, context);
   const [rows, setRows] = useState<QtComment[]>([]);
   const [count, setCount] = useState(0);
+  const [canPost, setCanPost] = useState(true);
+  const [moderationNoticeCount, setModerationNoticeCount] = useState(0);
+  const [safety, setSafety] = useState<QtComment | "history" | null>(null);
   const countRef = useRef(0);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -66,6 +74,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   const replyRequests = useRef(new Map<string, AbortController>());
   const likeRequests = useRef(new Set<string>());
   const removedIds = useRef(new Set<string>());
+  const filteredAuthorIds = useRef(new Set<string>());
   const oldestRoot = useRef<QtComment | null>(null);
   const replyInput = useRef<HTMLTextAreaElement | null>(null);
   const callbackRef = useRef(onCountChange);
@@ -142,6 +151,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   useEffect(() => {
     setDraft("");
+    setSafety(null);
     setEditing(null);
     setEditBody("");
     setDeleting(null);
@@ -165,6 +175,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     moreRef.current = false;
     setPending(null);
     setLoading(true);
+    setModerationNoticeCount(0);
     setLoadingMore(false);
     setLoadError(false);
     setRows([]);
@@ -173,6 +184,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     replyRequests.current.clear();
     likeRequests.current.clear();
     removedIds.current.clear();
+    filteredAuthorIds.current.clear();
     setReplies({});
     setExpanded({});
     setLikePending({});
@@ -185,6 +197,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       .then(page => {
         if (generation.current !== version) return;
         setRows(page.rows);
+        setCanPost(page.canPost);
+        setModerationNoticeCount(page.moderationNoticeCount);
         publishCount(page.totalCount);
         setHasMore(page.hasMore);
         oldestRoot.current = page.oldest;
@@ -211,7 +225,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     try {
       const page = await loadQtComments(createClient(), qtId, context, { before: oldestRoot.current });
       if (generation.current !== version) return;
-      setRows(current => mergeComments(page.rows.filter(row => !removedIds.current.has(row.id)), current));
+      setRows(current => mergeComments(page.rows.filter(row => !commentIsFiltered(row)), current));
       setHasMore(page.hasMore);
       oldestRoot.current = page.oldest;
     } catch {
@@ -235,7 +249,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       });
       if (generation.current !== version) return;
       setReplies(current => ({ ...current, [rootId]: {
-        rows: mergeComments(page.rows, current[rootId]?.rows ?? []).filter(row => !removedIds.current.has(row.id)),
+        rows: mergeComments(page.rows, current[rootId]?.rows ?? []).filter(row => !commentIsFiltered(row)),
         loaded: true, loading: false, error: false,
         hasMore: page.hasMore, oldest: page.oldest,
       } }));
@@ -288,7 +302,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   async function submitReply(event: FormEvent, rootId: string) {
     event.preventDefault();
     const body = (replyDrafts[rootId] ?? "").trim();
-    if (!body || body.length > QT_COMMENT_MAX_LENGTH || pendingRef.current || !userId) return;
+    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || !userId || !canPost) return;
     pendingRef.current = true;
     setPending(`reply:${rootId}`);
     setActionError(null);
@@ -338,7 +352,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   async function submit(event: FormEvent) {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || body.length > QT_COMMENT_MAX_LENGTH || pendingRef.current || loading || loadError || !userId) return;
+    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || loading || loadError || !userId || !canPost) return;
     pendingRef.current = true;
     setPending("new");
     setActionError(null);
@@ -373,7 +387,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   async function saveEdit(id: string) {
     const body = editBody.trim();
-    if (!body || body.length > QT_COMMENT_MAX_LENGTH || pendingRef.current) return;
+    const original = rows.find(row => row.id === id) ?? Object.values(replies).flatMap(page => page.rows).find(row => row.id === id);
+    const maximum = Math.max(QT_COMMENT_MAX_LENGTH, qtCommentLength(original?.body ?? ""));
+    if (!body || qtCommentLength(body) > maximum || pendingRef.current) return;
     pendingRef.current = true;
     setPending(id);
     setActionError(null);
@@ -443,8 +459,46 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     });
   }
 
+  function safetyChanged(action: CommentSafetyAction) {
+    if (action.kind === "acknowledge") { setModerationNoticeCount(value => Math.max(0, value - 1)); return; }
+    if (action.kind === "restore") { setReload(value => value + 1); return; }
+    const version = generation.current;
+    if (action.kind === "block" && action.authorId) filteredAuthorIds.current.add(action.authorId);
+    const shouldHide = (row: QtComment) => action.kind === "block" ? row.author_id === action.authorId : row.id === action.commentId;
+    const removedRoots = new Set(rows.filter(shouldHide).map(row => row.id));
+    rows.filter(shouldHide).forEach(row => removedIds.current.add(row.id));
+    Object.entries(replies).forEach(([rootId, page]) => {
+      page.rows.filter(row => removedRoots.has(rootId) || shouldHide(row)).forEach(row => removedIds.current.add(row.id));
+      if (removedRoots.has(rootId)) { replyRequests.current.get(rootId)?.abort(); replyRequests.current.delete(rootId); }
+    });
+    if (action.commentId) removedIds.current.add(action.commentId);
+    setRows(current => current.filter(row => !removedIds.current.has(row.id)));
+    setReplies(current => Object.fromEntries(Object.entries(current).filter(([id]) => !removedRoots.has(id))
+      .map(([id, page]) => [id, { ...page, rows: page.rows.filter(row => !removedIds.current.has(row.id)) }])));
+    if (replying && removedRoots.has(replying)) setReplying(null);
+    void refreshCount(version);
+    // Reconcile only the existing roots' statistics; retain drafts, pages and scroll.
+    const ids = rows.filter(row => !removedIds.current.has(row.id)).map(row => row.id);
+    void (async () => {
+      try {
+        for (let offset = 0; offset < ids.length; offset += 100) {
+          const { data, error } = await createClient().rpc("get_qt_comment_stats", { p_comment_ids: ids.slice(offset, offset + 100) });
+          if (error || generation.current !== version) return;
+          (data ?? []).forEach((row: { comment_id: string; reply_count: number }) => patchComment(row.comment_id, { reply_count: Number(row.reply_count) }));
+        }
+      } catch { /* The acknowledged safety action remains successful. */ }
+    })();
+    if (action.kind === "block" && action.authorId) onAuthorBlocked?.(action.authorId);
+  }
+
+  function commentIsFiltered(row: QtComment) {
+    return removedIds.current.has(row.id) || (!!row.parent_id && removedIds.current.has(row.parent_id))
+      || filteredAuthorIds.current.has(row.author_id);
+  }
+
   function renderComment(comment: QtComment, isReply = false) {
     const own = comment.author_id === userId;
+    const editMaximum = Math.max(QT_COMMENT_MAX_LENGTH, qtCommentLength(comment.body));
     const confirmRemove = !isReply && comment.reply_count > 0 ? text.confirmRemoveThread : text.confirmRemove;
     return <div className={styles.commentContent} data-comment-id={comment.id}>
       {!comment.deleted_at && <div className={styles.commentHeader}>
@@ -463,6 +517,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
             {comment.updated_at !== comment.created_at ? ` · ${text.edited}` : ""}
           </p>
         </div>
+        {!own && userId && <button type="button" className={styles.iconButton} aria-label={safetyText.menu}
+          title={safetyText.menu} disabled={!!pending} aria-haspopup="dialog"
+          onClick={() => { setDeleting(null); setSafety(comment); }}><MoreHorizontal size={18} aria-hidden="true" /></button>}
         {comment.author_id === userId && editing !== comment.id && (
           <div className={styles.headerActions} ref={deleting === comment.id ? deleteAnchorRef : undefined}>
             <button type="button" className={styles.iconButton} aria-label={text.edit} title={text.edit} disabled={!!pending}
@@ -499,8 +556,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       </div>}
       {comment.deleted_at ? <p className={styles.deleted}>{text.deleted}</p> : editing === comment.id ? (
         <div className={styles.composer}>
-          <textarea className={styles.composerInput} aria-label={text.edit} maxLength={QT_COMMENT_MAX_LENGTH} value={editBody} onChange={event => setEditBody(event.target.value)} disabled={!!pending} rows={2} />
+          <textarea className={styles.composerInput} aria-label={text.edit} maxLength={editMaximum * 2} value={editBody} onChange={event => setEditBody(limitQtCommentInput(event.target.value, editMaximum))} disabled={!!pending} rows={2} />
           <div className={`${styles.composerFooter} ${styles.editFooter}`}>
+            <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(editBody)}/{editMaximum}</span>
             <button type="button" className={`${styles.button} ${styles.primary}`} disabled={!!pending || !editBody.trim()}
               aria-busy={pending === comment.id} aria-label={pending === comment.id ? text.sending : text.save}
               onClick={() => void saveEdit(comment.id)}>{pending === comment.id ? <Loader2 size={16} className="spin" aria-hidden="true" /> : text.save}</button>
@@ -524,7 +582,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
       {editing !== comment.id && !isReply && <div className={styles.replyActions}>
         {!comment.deleted_at && <button type="button" className={styles.replyAction} aria-label={text.reply}
-            disabled={!userId || !!pending} aria-expanded={replying === comment.id}
+            disabled={!userId || !!pending || !canPost} aria-expanded={replying === comment.id}
             aria-controls={replying === comment.id ? `qt-comment-reply-form-${comment.id}` : undefined}
             onClick={() => {
               setReplying(current => current === comment.id ? null : comment.id);
@@ -544,9 +602,17 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   return (
     <section className={styles.thread} aria-label={text.title}>
-      <h3 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 17, color: "var(--text)", margin: "0 0 8px" }}>
-        <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
-      </h3>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+        <h3 style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, fontSize: 17, color: "var(--text)", margin: 0 }}>
+          <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
+        </h3>
+        {userId && <button type="button" className={styles.iconButton} style={{ position: "relative" }}
+          aria-label={`${safetyText.title}${moderationNoticeCount ? ` · ${moderationNoticeCount}` : ""}`} title={safetyText.title}
+          aria-haspopup="dialog" disabled={!!pending} onClick={() => { setDeleting(null); setSafety("history"); }}>
+          <ShieldCheck size={18} aria-hidden="true" />
+          {moderationNoticeCount > 0 && <span aria-hidden="true" style={{ position: "absolute", right: 5, top: 5, minWidth: 14, padding: "0 3px", borderRadius: 8, background: "var(--community-danger-text, #a33f3f)", color: "white", fontSize: 10, lineHeight: "14px" }}>{moderationNoticeCount}</span>}
+        </button>}
+      </div>
       {loading && <p role="status" className={styles.meta}><Loader2 size={15} className="spin" aria-hidden="true" /> {text.loading}</p>}
       {loadError && (
         <div role="alert" className={styles.error}>
@@ -564,12 +630,13 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
                 onSubmit={event => void submitReply(event, comment.id)}>
                 <textarea ref={replyInput} className={styles.composerInput} rows={2}
                   aria-label={text.replyTo.replace("{name}", comment.profile?.name || text.unknown)}
-                  value={replyDrafts[comment.id] ?? ""} maxLength={QT_COMMENT_MAX_LENGTH} disabled={!!pending}
-                  onChange={event => setReplyDrafts(current => ({ ...current, [comment.id]: event.target.value }))} />
+                  value={replyDrafts[comment.id] ?? ""} maxLength={QT_COMMENT_MAX_LENGTH * 2} disabled={!!pending || !canPost}
+                  onChange={event => { const value = limitQtCommentInput(event.target.value); setReplyDrafts(current => ({ ...current, [comment.id]: value })); }} />
                 {actionError === "reply" && <p role="alert" className={styles.error}>{text.saveError}</p>}
                 <div className={`${styles.composerFooter} ${styles.editFooter}`}>
+                  <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(replyDrafts[comment.id] ?? "")}/{QT_COMMENT_MAX_LENGTH}</span>
                   <button type="submit" className={`${styles.button} ${styles.primary}`}
-                    disabled={!!pending || !(replyDrafts[comment.id] ?? "").trim()}
+                    disabled={!!pending || !canPost || !(replyDrafts[comment.id] ?? "").trim()}
                     aria-label={pending === `reply:${comment.id}` ? text.sending : text.send}
                     aria-busy={pending === `reply:${comment.id}`}>
                     {pending === `reply:${comment.id}` ? <Loader2 size={16} className="spin" aria-hidden="true" /> : text.send}
@@ -594,17 +661,20 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
         ))}
       </div>}
       {actionError === "save" && <p role="alert" className={styles.error}>{text.saveError}</p>}
+      {!loading && !canPost && <p className={styles.meta}>{safetyText.postingBlocked}</p>}
       {userId ? (
         <form className={styles.composer} onSubmit={event => void submit(event)}>
           <textarea className={styles.composerInput} aria-label={text.placeholder} placeholder={text.placeholder}
-            value={draft} onChange={event => setDraft(event.target.value)} maxLength={QT_COMMENT_MAX_LENGTH}
-            disabled={!!pending || loading || (loadError && !rows.length)} rows={2} />
+            value={draft} onChange={event => setDraft(limitQtCommentInput(event.target.value))} maxLength={QT_COMMENT_MAX_LENGTH * 2}
+            disabled={!!pending || loading || !canPost || (loadError && !rows.length)} rows={2} />
           <div className={styles.composerFooter}>
-            <span className={styles.meta}>{draft.length}/{QT_COMMENT_MAX_LENGTH}</span>
-            <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!!pending || loading || loadError || !draft.trim()}>{pending === "new" ? text.sending : text.send}</button>
+            <span className={styles.meta}>{qtCommentLength(draft)}/{QT_COMMENT_MAX_LENGTH}</span>
+            <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!!pending || loading || loadError || !canPost || !draft.trim()}>{pending === "new" ? text.sending : text.send}</button>
           </div>
         </form>
       ) : <p className={styles.meta}>{text.signIn}</p>}
+      {safety && <CommentSafetyDialog key={safety === "history" ? "history" : safety.id} userId={userId} lang={lang}
+        comment={safety === "history" ? undefined : safety} onClose={() => setSafety(null)} onChange={safetyChanged} />}
     </section>
   );
 }
