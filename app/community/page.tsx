@@ -6755,7 +6755,7 @@ function CommunityPageContent() {
           position: "fixed", top: "var(--qt-modal-viewport-top, 0px)", left: 0, right: 0,
           bottom: "var(--qt-modal-viewport-bottom, calc(-1 * var(--native-bottom-system-bar)))",
           height: "var(--qt-modal-viewport-height, auto)",
-          background: "var(--community-detail-overlay)", zIndex: 100,
+          background: "var(--qt-modal-viewport-background, var(--community-detail-overlay))", zIndex: 100,
           overflowY: "auto", overscrollBehavior: "contain",
           "--qt-reading-size": `${QT_DETAIL_TEXT_SIZES[qtDetailTextSizeIndex]}px`,
         } as CSSProperties}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 
 function preserveStyles(element: HTMLElement, properties: string[]) {
   const saved = properties.map(property => [
@@ -20,6 +21,18 @@ function isIosPhone() {
 
 /** Mounted with the actual dialog so every close and history change restores the page. */
 export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLDivElement> }) {
+  const [backdropActive, setBackdropActive] = useState(false);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!backdropActive || !root) return;
+    const restore = preserveStyles(root, ["--qt-modal-viewport-background"]);
+    // The portal now paints the backdrop. Do not darken it a second time inside
+    // the shorter, independently scrolling input viewport.
+    root.style.setProperty("--qt-modal-viewport-background", "transparent");
+    return restore;
+  }, [backdropActive, rootRef]);
+
   useEffect(() => {
     const root = rootRef.current;
     if (!root || !isIosPhone()) return;
@@ -29,7 +42,10 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     const viewport = window.visualViewport;
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-    const restoreBody = preserveStyles(body, ["position", "top", "left", "right", "width", "overflow"]);
+    const restoreBody = preserveStyles(body, [
+      "position", "top", "left", "right", "width", "overflow",
+      "--qt-modal-backdrop-top", "--qt-modal-backdrop-height",
+    ]);
     const restoreHtml = preserveStyles(html, ["overflow", "scroll-behavior"]);
     const restoreRoot = preserveStyles(root, [
       "--qt-modal-viewport-top", "--qt-modal-viewport-height", "--qt-modal-viewport-bottom",
@@ -37,6 +53,7 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     let frame = 0;
     let revealFocusedComposer = false;
     let previousHeight = viewport?.height ?? window.innerHeight;
+    let sceneHeight = Math.max(previousHeight, window.innerHeight, html.clientHeight);
 
     // iOS can pan the document when focusing a textarea inside a fixed dialog.
     // Freeze only the page beneath this dialog; its own scrolling stays available.
@@ -48,6 +65,7 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     body.style.right = "0";
     body.style.width = "100%";
     body.style.overflow = "hidden";
+    setBackdropActive(true);
 
     function updateViewport() {
       frame = 0;
@@ -55,6 +73,11 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
       const top = viewport?.offsetTop ?? 0;
       if (!Number.isFinite(height) || height <= 0) return;
 
+      // iOS's accessory bar can expose space beyond visualViewport.height.
+      // Keep a full scene behind it through resize, pan, blur and cancellation.
+      sceneHeight = Math.max(sceneHeight, height, window.innerHeight, html.clientHeight);
+      body.style.setProperty("--qt-modal-backdrop-top", `${Math.max(0, top)}px`);
+      body.style.setProperty("--qt-modal-backdrop-height", `${sceneHeight}px`);
       root!.style.setProperty("--qt-modal-viewport-top", `${top}px`);
       root!.style.setProperty("--qt-modal-viewport-height", `${height}px`);
       root!.style.setProperty("--qt-modal-viewport-bottom", "auto");
@@ -104,5 +127,25 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     };
   }, [rootRef]);
 
-  return null;
+  return backdropActive ? createPortal(
+    <div
+      data-qt-detail-backdrop
+      aria-hidden="true"
+      onPointerDown={event => event.preventDefault()}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        // Cover both ends of the scene even while iOS pans its visual viewport.
+        height: "calc(var(--qt-modal-backdrop-height, 100vh) + var(--qt-modal-backdrop-top, 0px))",
+        minHeight: "100lvh",
+        zIndex: 99,
+        // Paint over a solid app surface so cards and navigation never show
+        // through the native keyboard accessory bar's translucent background.
+        background: "linear-gradient(var(--community-detail-overlay), var(--community-detail-overlay)), var(--bg)",
+      }}
+    />,
+    document.body,
+  ) : null;
 }
