@@ -632,7 +632,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
         )}
       </div>}
       {comment.deleted_at ? <p className={styles.deleted}>{text.deleted}</p> : editing === comment.id ? (
-        <div className={styles.composer}>
+        <div className={styles.composer} data-qt-comment-composer>
           <textarea className={styles.composerInput} aria-label={text.edit} maxLength={editMaximum * 2} value={editBody} onChange={event => setEditBody(limitQtCommentInput(event.target.value, editMaximum))} disabled={!!pending} rows={2} />
           <div className={`${styles.composerFooter} ${styles.editFooter}`}>
             <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(editBody)}/{editMaximum}</span>
@@ -699,7 +699,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
           <article key={comment.id} style={{ minWidth: 0 }}>
             {renderComment(comment)}
             {replying === comment.id && !comment.deleted_at && (
-              <form id={`qt-comment-reply-form-${comment.id}`} className={`${styles.composer} ${styles.replyComposer}`}
+              <form id={`qt-comment-reply-form-${comment.id}`} className={`${styles.composer} ${styles.replyComposer}`} data-qt-comment-composer
                 onSubmit={event => void submitReply(event, comment.id)}>
                 <textarea ref={replyInput} className={styles.composerInput} rows={2}
                   aria-label={text.replyTo.replace("{name}", comment.profile?.name || text.unknown)}
@@ -736,7 +736,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       {actionError === "save" && <p role="alert" className={styles.error}>{text.saveError}</p>}
       {!loading && !canPost && <p className={styles.meta}>{safetyText.postingBlocked}</p>}
       {userId && !(notificationFocus && !notificationFocus.context) ? (
-        <form className={styles.composer} onSubmit={event => void submit(event)}>
+        <form className={styles.composer} data-qt-comment-composer onSubmit={event => void submit(event)}>
           <textarea className={styles.composerInput} aria-label={text.placeholder} placeholder={text.placeholder}
             value={draft} onChange={event => setDraft(limitQtCommentInput(event.target.value))} maxLength={QT_COMMENT_MAX_LENGTH * 2}
             disabled={!!pending || loading || !postingAllowed || (loadError && !rows.length)} rows={2} />

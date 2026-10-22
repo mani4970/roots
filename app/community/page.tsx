@@ -25,6 +25,7 @@ import QtReactionSummary from "@/components/community/QtReactionSummary";
 import CommentNotificationInbox, { CommentNotificationBell, CommentNotificationStatus } from "@/components/notifications/CommentNotificationInbox";
 import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, loadCommentNotificationFocus, publishCommentNotificationChange, type CommentNotificationFocus } from "@/lib/notifications/commentNotifications";
 import QtComments from "@/components/community/QtComments";
+import QtDetailViewport from "@/components/community/QtDetailViewport";
 import QtDetailTextSizeControls from "@/components/community/QtDetailTextSizeControls";
 import qtDetailReadingStyles from "@/components/community/QtDetailReading.module.css";
 import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
@@ -6751,16 +6752,18 @@ function CommunityPageContent() {
         aria-modal="true"
         aria-label={c("qt_title")}
         style={{
-          position: "fixed", top: 0, left: 0, right: 0,
-          bottom: "calc(-1 * var(--native-bottom-system-bar))",
+          position: "fixed", top: "var(--qt-modal-viewport-top, 0px)", left: 0, right: 0,
+          bottom: "var(--qt-modal-viewport-bottom, calc(-1 * var(--native-bottom-system-bar)))",
+          height: "var(--qt-modal-viewport-height, auto)",
           background: "var(--community-detail-overlay)", zIndex: 100,
           overflowY: "auto", overscrollBehavior: "contain",
           "--qt-reading-size": `${QT_DETAIL_TEXT_SIZES[qtDetailTextSizeIndex]}px`,
         } as CSSProperties}
         onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
       >
+        <QtDetailViewport rootRef={qtDetailScrollRef} />
         <div style={{
-          minHeight: "calc(100dvh + var(--native-bottom-system-bar))",
+          minHeight: "var(--qt-modal-viewport-height, calc(100dvh + var(--native-bottom-system-bar)))",
           display: "flex", alignItems: "flex-start", justifyContent: "center",
           padding: "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",
         }}>
@@ -10608,34 +10611,7 @@ function CommunityPageContent() {
               {c("community_subtitle")}
             </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <CommentNotificationBell lang={lang} onClick={() => setCommentInboxOpen(true)} />
-          <button
-            onClick={shareApp}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              background: "var(--sage-light)",
-              border: "1px solid var(--community-sage-border)",
-              borderRadius: 20,
-              padding: "7px 12px",
-              cursor: "pointer",
-              marginTop: 4,
-            }}
-          >
-            <Share2 size={13} style={{ color: "var(--sage-dark)" }} />
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "var(--sage-dark)",
-              }}
-            >
-              {c("community_app_invite")}
-            </span>
-          </button>
-          </div>
         </div>
         <div
           style={{
