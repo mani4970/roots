@@ -130,6 +130,14 @@ export async function acknowledgeCommentNotification(
   publishCommentNotificationChange();
 }
 
+export async function clearCommentNotifications(supabase: any) {
+  const { data, error } = await supabase.rpc("clear_qt_comment_notifications");
+  if (error) throw error;
+  if (!Number.isSafeInteger(data) || data < 0)
+    throw new Error("Invalid notification deletion result");
+  publishCommentNotificationChange();
+}
+
 /** The SQL trigger is authoritative; this only wakes the durable server queue. */
 export function wakeCommentNotificationDelivery(commentId: string) {
   if (typeof window === "undefined") return;

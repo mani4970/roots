@@ -12,6 +12,7 @@ import {
   getCommentNotificationText,
 } from "@/lib/notifications/commentNotificationText";
 import {
+  clearCommentNotifications,
   loadCommentNotificationPage,
   type CommentNotification,
 } from "@/lib/notifications/commentNotifications";
@@ -44,10 +45,12 @@ export function CommentNotificationBell({
 function Frame({
   lang,
   onClose,
+  headerAction,
   children,
 }: {
   lang: Lang;
   onClose: () => void;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null),
@@ -125,14 +128,17 @@ function Frame({
           <h2 id="comment-notification-title" className={styles.title}>
             {text.title}
           </h2>
-          <button
-            type="button"
-            className={styles.close}
-            aria-label={text.close}
-            onClick={() => closeRef.current()}
-          >
-            <X size={21} aria-hidden="true" />
-          </button>
+          <div className={styles.headerActions}>
+            {headerAction}
+            <button
+              type="button"
+              className={styles.close}
+              aria-label={text.close}
+              onClick={() => closeRef.current()}
+            >
+              <X size={21} aria-hidden="true" />
+            </button>
+          </div>
         </div>
         <div className={styles.content}>{children}</div>
       </div>
@@ -190,11 +196,15 @@ export default function CommentNotificationInbox({
   const [rows, setRows] = useState<CommentNotification[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(false),
+    [clearing, setClearing] = useState(false),
+    [clearError, setClearError] = useState(false),
     [more, setMore] = useState(false),
     [reload, setReload] = useState(0);
   const busy = useRef(false),
+    clearBusy = useRef(false),
     alive = useRef(true),
     request = useRef<AbortController | null>(null),
+    clearButton = useRef<HTMLButtonElement>(null),
     cursor = useRef<CommentNotification | undefined>();
   const { refresh } = useCommentNotifications(),
     text = getCommentNotificationText(lang);
@@ -237,7 +247,7 @@ export default function CommentNotificationInbox({
     };
   }, [reload, refresh]);
   async function earlier() {
-    if (busy.current || !cursor.current) return;
+    if (busy.current || clearBusy.current || !cursor.current) return;
     busy.current = true;
     setLoading(true);
     setError(false);
@@ -266,8 +276,62 @@ export default function CommentNotificationInbox({
       }
     }
   }
+  async function clearAll() {
+    if (clearBusy.current) return;
+    clearBusy.current = true;
+    setClearing(true);
+    setClearError(false);
+    // An earlier-page response must not restore notifications after deletion.
+    request.current?.abort();
+    busy.current = false;
+    setLoading(false);
+    setError(false);
+    try {
+      await clearCommentNotifications(createClient());
+      if (!alive.current) return;
+      if (
+        document.activeElement === clearButton.current ||
+        document.activeElement === document.body
+      )
+        (
+          clearButton.current?.closest('[role="dialog"]') as HTMLElement | null
+        )?.focus({ preventScroll: true });
+      setRows([]);
+      setMore(false);
+      cursor.current = undefined;
+      // Fetch again so a notification arriving after deletion is still shown.
+      setReload((n) => n + 1);
+    } catch {
+      if (alive.current) setClearError(true);
+    } finally {
+      clearBusy.current = false;
+      if (alive.current) setClearing(false);
+    }
+  }
   return (
-    <Frame lang={lang} onClose={onClose}>
+    <Frame
+      lang={lang}
+      onClose={onClose}
+      headerAction={
+        (rows.length > 0 || clearing) && (
+          <button
+            ref={clearButton}
+            type="button"
+            className={styles.clear}
+            disabled={clearing}
+            aria-busy={clearing}
+            onClick={() => void clearAll()}
+          >
+            {text.clearAll}
+          </button>
+        )
+      }
+    >
+      {clearError && (
+        <p className={styles.state} role="alert">
+          {text.clearError}
+        </p>
+      )}
       {!loading && !error && !rows.length && (
         <p className={styles.state}>{text.empty}</p>
       )}
@@ -276,6 +340,7 @@ export default function CommentNotificationInbox({
           type="button"
           key={row.id}
           className={`${styles.item}${!row.read_at ? ` ${styles.unread}` : ""}`}
+          disabled={clearing}
           onClick={() => onSelect(row.id)}
         >
           {row.profile?.avatar_url ? (
