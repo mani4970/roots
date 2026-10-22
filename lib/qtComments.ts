@@ -1,4 +1,5 @@
 import { loadProfileCards, mapProfileCards, type ProfileCard } from "@/lib/profileCards";
+import { wakeCommentNotificationDelivery } from "@/lib/notifications/commentNotifications";
 
 export type QtCommentContext = {
   scope: "all" | "group" | "partner";
@@ -118,9 +119,10 @@ export async function insertQtComment(
     if (!existing.error && row && row.id === retryIdentity.id && row.author_id === retryIdentity.authorId &&
       row.qt_id === qtId && row.scope === context.scope &&
       (row.scope_id ?? null) === context.scopeId && (row.parent_id ?? null) === parentId &&
-      !row.deleted_at && row.body === trimmed) return normalizeComment(row);
+      !row.deleted_at && row.body === trimmed) { wakeCommentNotificationDelivery(row.id); return normalizeComment(row); }
   }
   if (error) throw error;
+  wakeCommentNotificationDelivery(data.id);
   return normalizeComment(data);
 }
 

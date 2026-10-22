@@ -12,6 +12,7 @@ export type RootsPushNotificationPreferences = {
   partnerQtEnabled: boolean;
   partnerPrayerEnabled: boolean;
   partnerAnsweredPrayerEnabled: boolean;
+  commentNotificationsEnabled: boolean;
 };
 
 type NotificationPreferenceRow = {
@@ -24,6 +25,7 @@ type NotificationPreferenceRow = {
   partner_qt_enabled: boolean | null;
   partner_prayer_enabled: boolean | null;
   partner_answered_prayer_enabled: boolean | null;
+  comment_notifications_enabled: boolean | null;
 };
 
 export const DEFAULT_PUSH_NOTIFICATION_PREFERENCES: RootsPushNotificationPreferences = {
@@ -36,6 +38,7 @@ export const DEFAULT_PUSH_NOTIFICATION_PREFERENCES: RootsPushNotificationPrefere
   partnerQtEnabled: true,
   partnerPrayerEnabled: true,
   partnerAnsweredPrayerEnabled: true,
+  commentNotificationsEnabled: true,
 };
 
 function rowToPreferences(row: NotificationPreferenceRow | null | undefined): RootsPushNotificationPreferences {
@@ -50,6 +53,7 @@ function rowToPreferences(row: NotificationPreferenceRow | null | undefined): Ro
     partnerQtEnabled: row.partner_qt_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerQtEnabled,
     partnerPrayerEnabled: row.partner_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerPrayerEnabled,
     partnerAnsweredPrayerEnabled: row.partner_answered_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerAnsweredPrayerEnabled,
+    commentNotificationsEnabled: row.comment_notifications_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.commentNotificationsEnabled,
   };
 }
 
@@ -65,6 +69,7 @@ function preferencesToRow(userId: string, preferences: RootsPushNotificationPref
     partner_qt_enabled: preferences.partnerQtEnabled,
     partner_prayer_enabled: preferences.partnerPrayerEnabled,
     partner_answered_prayer_enabled: preferences.partnerAnsweredPrayerEnabled,
+    comment_notifications_enabled: preferences.commentNotificationsEnabled,
     updated_at: new Date().toISOString(),
   };
 }
@@ -78,7 +83,7 @@ export async function loadPushNotificationPreferences(): Promise<RootsPushNotifi
 
   const { data, error } = await supabase
     .from("notification_preferences")
-    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled, comment_notifications_enabled")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -95,7 +100,7 @@ export async function ensureDefaultPushNotificationPreferences(): Promise<RootsP
 
   const { data: existing, error: selectError } = await supabase
     .from("notification_preferences")
-    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled, comment_notifications_enabled")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -105,7 +110,7 @@ export async function ensureDefaultPushNotificationPreferences(): Promise<RootsP
   const { data: inserted, error: insertError } = await supabase
     .from("notification_preferences")
     .insert(preferencesToRow(userId, DEFAULT_PUSH_NOTIFICATION_PREFERENCES))
-    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+    .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled, comment_notifications_enabled")
     .single();
 
   if (!insertError) return rowToPreferences(inserted as NotificationPreferenceRow);
@@ -115,7 +120,7 @@ export async function ensureDefaultPushNotificationPreferences(): Promise<RootsP
   if (insertError.code === "23505") {
     const { data: current, error: reloadError } = await supabase
       .from("notification_preferences")
-      .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled")
+      .select("push_enabled, group_notifications_enabled, partner_notifications_enabled, group_qt_enabled, group_prayer_enabled, group_answered_prayer_enabled, partner_qt_enabled, partner_prayer_enabled, partner_answered_prayer_enabled, comment_notifications_enabled")
       .eq("user_id", userId)
       .single();
 

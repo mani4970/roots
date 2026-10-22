@@ -17,6 +17,8 @@ import {
   type QtComment, type QtCommentContext,
 } from "@/lib/qtComments";
 import styles from "./QtComments.module.css";
+import { acknowledgeCommentNotification, type CommentNotificationFocus } from "@/lib/notifications/commentNotifications";
+import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
 
 type Props = {
   qtId: string;
@@ -25,6 +27,7 @@ type Props = {
   lang: Lang;
   onCountChange?: (count: number) => void;
   onOpenProfile?: (profile: ProfileCard | undefined, authorId: string) => void;
+  notificationFocus?: CommentNotificationFocus;
 };
 
 type ReplyPage = { rows: QtComment[]; loaded: boolean; loading: boolean; error: boolean; hasMore: boolean; oldest: QtComment | null };
@@ -37,13 +40,21 @@ function mergeComments(first: QtComment[], second: QtComment[]) {
 }
 
 /** Kept outside the community page so reacting never remounts the draft or thread. */
-export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile }: Props) {
+export default function QtComments({ qtId, userId, context, lang, onCountChange, onOpenProfile, notificationFocus }: Props) {
   const text = getQtCommentText(lang);
   const safetyText = getQtCommentSafetyText(lang);
   const contextKey = qtCommentContextKey(qtId, context);
   const [rows, setRows] = useState<QtComment[]>([]);
   const [count, setCount] = useState(0);
   const [canPost, setCanPost] = useState(true);
+  const postingAllowed = canPost && !(notificationFocus && !notificationFocus.context);
+  const threadRef = useRef<HTMLElement>(null);
+  const [notificationReady, setNotificationReady] = useState<string | null>(null);
+  const [highlightedComment, setHighlightedComment] = useState<string | null>(null);
+  const [notificationAckError, setNotificationAckError] = useState(false);
+  const focusedNotification = useRef<string | null>(null);
+  const notificationInteraction = useRef<string | null>(null);
+  const ackAttempted = useRef<string | null>(null);
   const [safety, setSafety] = useState<QtComment | null>(null);
   const countRef = useRef(0);
   const [draft, setDraft] = useState("");
@@ -210,6 +221,81 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextKey, userId, reload]);
 
+  useEffect(() => {
+    if (!notificationFocus || loading || loadError) return;
+    const { root, target, notificationId } = notificationFocus;
+    focusedNotification.current = null;
+    setRows(current => mergeComments([root], current));
+    setNotificationAckError(false);
+    if (target.parent_id) {
+      setExpanded(current => ({ ...current, [root.id]: true }));
+      setReplies(current => ({ ...current, [root.id]: {
+        ...(current[root.id] ?? emptyReplyPage()), rows: mergeComments([target], current[root.id]?.rows ?? []),
+      } }));
+      void loadReplies(root.id);
+    }
+    setNotificationReady(notificationId);
+    // A notification explicitly opens one thread; normal pagination keeps its cursors.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notificationFocus, loading, loadError]);
+
+  async function markNotificationRead() {
+    if (!notificationFocus) return;
+    const id = notificationFocus.notificationId;
+    ackAttempted.current = id;
+    try { await acknowledgeCommentNotification(createClient(), id); setNotificationAckError(false); }
+    catch { setNotificationAckError(true); }
+  }
+
+  useLayoutEffect(() => {
+    if (!notificationFocus || notificationReady !== notificationFocus.notificationId) return;
+    const { target, notificationId } = notificationFocus;
+    const element = threadRef.current?.querySelector<HTMLElement>(`[data-comment-id="${target.id}"]`);
+    if (!element) return;
+    if (focusedNotification.current !== notificationId) {
+      focusedNotification.current = notificationId;
+      element.scrollIntoView({ block: "center", behavior: "auto" });
+      element.focus({ preventScroll: true });
+      setHighlightedComment(target.id);
+    }
+    const acknowledgeVisible = () => {
+      if (document.visibilityState === "hidden" || ackAttempted.current === notificationId) return;
+      const rect = element.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0) void markNotificationRead();
+    };
+    const container = threadRef.current?.closest<HTMLElement>("[data-qt-detail]");
+    const stopAnchoring = () => { notificationInteraction.current = notificationId; };
+    const keepCommentVisible = () => {
+      if (notificationInteraction.current !== notificationId) {
+        element.scrollIntoView({ block: "center", behavior: "auto" });
+        acknowledgeVisible();
+      }
+    };
+    // A signed photo can finish loading after the comment is focused. Keep that
+    // destination visible until the reader starts scrolling or interacting.
+    container?.addEventListener("load", keepCommentVisible, true);
+    container?.addEventListener("error", keepCommentVisible, true);
+    container?.addEventListener("pointerdown", stopAnchoring, { passive: true });
+    container?.addEventListener("touchstart", stopAnchoring, { passive: true });
+    container?.addEventListener("wheel", stopAnchoring, { passive: true });
+    container?.addEventListener("keydown", stopAnchoring);
+    const frame = requestAnimationFrame(acknowledgeVisible);
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) acknowledgeVisible();
+    });
+    observer.observe(element);
+    document.addEventListener("visibilitychange", acknowledgeVisible);
+    const timer = window.setTimeout(() => setHighlightedComment(null), 3600);
+    return () => {
+      cancelAnimationFrame(frame); observer.disconnect(); document.removeEventListener("visibilitychange", acknowledgeVisible); window.clearTimeout(timer);
+      container?.removeEventListener("load", keepCommentVisible, true); container?.removeEventListener("error", keepCommentVisible, true);
+      container?.removeEventListener("pointerdown", stopAnchoring); container?.removeEventListener("touchstart", stopAnchoring);
+      container?.removeEventListener("wheel", stopAnchoring); container?.removeEventListener("keydown", stopAnchoring);
+    };
+    // Re-run when the exact reply has entered the DOM; never mark the whole inbox read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notificationReady, notificationFocus, rows, replies, expanded]);
+
   async function loadEarlier() {
     if (moreRef.current || pendingRef.current || !hasMore || !oldestRoot.current) return;
     moreRef.current = true;
@@ -296,7 +382,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   async function submitReply(event: FormEvent, rootId: string) {
     event.preventDefault();
     const body = (replyDrafts[rootId] ?? "").trim();
-    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || !userId || !canPost) return;
+    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || !userId || !postingAllowed) return;
     pendingRef.current = true;
     setPending(`reply:${rootId}`);
     setActionError(null);
@@ -346,7 +432,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   async function submit(event: FormEvent) {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || loading || loadError || !userId || !canPost) return;
+    if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || loading || loadError || !userId || !postingAllowed) return;
     pendingRef.current = true;
     setPending("new");
     setActionError(null);
@@ -490,7 +576,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     const own = comment.author_id === userId;
     const editMaximum = Math.max(QT_COMMENT_MAX_LENGTH, qtCommentLength(comment.body));
     const confirmRemove = !isReply && comment.reply_count > 0 ? text.confirmRemoveThread : text.confirmRemove;
-    return <div className={styles.commentContent} data-comment-id={comment.id}>
+    return <div className={`${styles.commentContent}${highlightedComment === comment.id ? ` ${styles.notificationHighlight}` : ""}`} data-comment-id={comment.id}
+      tabIndex={notificationFocus?.target.id === comment.id ? -1 : undefined}>
       {!comment.deleted_at && <div className={styles.commentHeader}>
         <button type="button" className={styles.avatarButton} aria-label={text.profile} title={text.profile}
           disabled={!onOpenProfile} onClick={() => onOpenProfile?.(comment.profile, comment.author_id)}>
@@ -572,7 +659,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
       {editing !== comment.id && !isReply && <div className={styles.replyActions}>
         {!comment.deleted_at && <button type="button" className={styles.replyAction} aria-label={text.reply}
-            disabled={!userId || !!pending || !canPost} aria-expanded={replying === comment.id}
+            disabled={!userId || !!pending || !postingAllowed} aria-expanded={replying === comment.id}
             aria-controls={replying === comment.id ? `qt-comment-reply-form-${comment.id}` : undefined}
             onClick={() => {
               setReplying(current => current === comment.id ? null : comment.id);
@@ -591,10 +678,14 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   }
 
   return (
-    <section className={styles.thread} aria-label={text.title}>
+    <section ref={threadRef} className={styles.thread} aria-label={text.title}>
       <h3 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 17, color: "var(--text)", margin: "0 0 8px" }}>
         <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
       </h3>
+      {notificationAckError && <div role="alert" className={styles.error}>
+        {getCommentNotificationText(lang).acknowledgeError}
+        <button type="button" className={styles.button} onClick={() => void markNotificationRead()}>{text.retry}</button>
+      </div>}
       {loading && <p role="status" className={styles.meta}><Loader2 size={15} className="spin" aria-hidden="true" /> {text.loading}</p>}
       {loadError && (
         <div role="alert" className={styles.error}>
@@ -612,13 +703,13 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
                 onSubmit={event => void submitReply(event, comment.id)}>
                 <textarea ref={replyInput} className={styles.composerInput} rows={2}
                   aria-label={text.replyTo.replace("{name}", comment.profile?.name || text.unknown)}
-                  value={replyDrafts[comment.id] ?? ""} maxLength={QT_COMMENT_MAX_LENGTH * 2} disabled={!!pending || !canPost}
+                  value={replyDrafts[comment.id] ?? ""} maxLength={QT_COMMENT_MAX_LENGTH * 2} disabled={!!pending || !postingAllowed}
                   onChange={event => { const value = limitQtCommentInput(event.target.value); setReplyDrafts(current => ({ ...current, [comment.id]: value })); }} />
                 {actionError === "reply" && <p role="alert" className={styles.error}>{text.saveError}</p>}
                 <div className={`${styles.composerFooter} ${styles.editFooter}`}>
                   <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(replyDrafts[comment.id] ?? "")}/{QT_COMMENT_MAX_LENGTH}</span>
                   <button type="submit" className={`${styles.button} ${styles.primary}`}
-                    disabled={!!pending || !canPost || !(replyDrafts[comment.id] ?? "").trim()}
+                    disabled={!!pending || !postingAllowed || !(replyDrafts[comment.id] ?? "").trim()}
                     aria-label={pending === `reply:${comment.id}` ? text.sending : text.send}
                     aria-busy={pending === `reply:${comment.id}`}>
                     {pending === `reply:${comment.id}` ? <Loader2 size={16} className="spin" aria-hidden="true" /> : text.send}
@@ -644,17 +735,17 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       </div>}
       {actionError === "save" && <p role="alert" className={styles.error}>{text.saveError}</p>}
       {!loading && !canPost && <p className={styles.meta}>{safetyText.postingBlocked}</p>}
-      {userId ? (
+      {userId && !(notificationFocus && !notificationFocus.context) ? (
         <form className={styles.composer} onSubmit={event => void submit(event)}>
           <textarea className={styles.composerInput} aria-label={text.placeholder} placeholder={text.placeholder}
             value={draft} onChange={event => setDraft(limitQtCommentInput(event.target.value))} maxLength={QT_COMMENT_MAX_LENGTH * 2}
-            disabled={!!pending || loading || !canPost || (loadError && !rows.length)} rows={2} />
+            disabled={!!pending || loading || !postingAllowed || (loadError && !rows.length)} rows={2} />
           <div className={styles.composerFooter}>
             <span className={styles.meta}>{qtCommentLength(draft)}/{QT_COMMENT_MAX_LENGTH}</span>
-            <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!!pending || loading || loadError || !canPost || !draft.trim()}>{pending === "new" ? text.sending : text.send}</button>
+            <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!!pending || loading || loadError || !postingAllowed || !draft.trim()}>{pending === "new" ? text.sending : text.send}</button>
           </div>
         </form>
-      ) : <p className={styles.meta}>{text.signIn}</p>}
+      ) : !userId ? <p className={styles.meta}>{text.signIn}</p> : null}
       {safety && <CommentSafetyDialog key={safety.id} lang={lang}
         comment={safety} onClose={() => setSafety(null)} onChange={safetyChanged} />}
     </section>

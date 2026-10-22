@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
+import { useCommentNotifications } from "@/components/notifications/CommentNotificationsProvider";
+import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
 
 function BottomNavContent({ lang }: { lang: Lang }) {
   const path = usePathname();
+  const { unread } = useCommentNotifications();
 
   const NAV = [
     {
@@ -36,8 +39,11 @@ function BottomNavContent({ lang }: { lang: Lang }) {
       {NAV.map(({ href, icon, label }) => {
         const active = path === href || (href !== "/" && path.startsWith(href));
         return (
-          <Link key={href} href={href} className={`nav-item ${active ? "active" : ""}`}>
-            {icon}
+          <Link key={href} href={href} className={`nav-item ${active ? "active" : ""}`}
+            aria-label={href === "/community" && unread > 0 ? `${label}, ${getCommentNotificationText(lang).unread}` : undefined}>
+            {href === "/community" ? <span style={{ position: "relative", display: "flex" }}>{icon}
+              {unread > 0 && <span aria-hidden="true" style={{ position: "absolute", top: -2, right: -4, width: 7, height: 7, borderRadius: "50%", background: "var(--terra)", border: "1px solid var(--bg)" }} />}
+            </span> : icon}
             <span>{label}</span>
           </Link>
         );

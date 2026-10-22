@@ -12,6 +12,7 @@ type PendingNotificationRow = {
   body: string;
   deep_link: string;
   push_status: string;
+  collapseKey?: string;
 };
 
 type PushTokenRow = {
@@ -198,6 +199,7 @@ async function sendApnsPush(token: string, row: PendingNotificationRow, config: 
       "apns-push-type": "alert",
       "apns-priority": "10",
       "content-type": "application/json",
+      ...(row.collapseKey ? { "apns-collapse-id": row.collapseKey } : {}),
     });
 
     let statusCode = 0;
@@ -242,7 +244,7 @@ async function sendApnsPush(token: string, row: PendingNotificationRow, config: 
   });
 }
 
-async function getFcmAccessToken(config: FcmConfig) {
+async function getFcmAccessToken(config: FcmConfig, signal?: AbortSignal) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const cacheKey = `${config.projectId}:${config.clientEmail}`;
   if (fcmAccessTokenCache && fcmAccessTokenCache.cacheKey === cacheKey && fcmAccessTokenCache.expiresAt > nowSeconds + 60) {
@@ -263,6 +265,7 @@ async function getFcmAccessToken(config: FcmConfig) {
   );
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
+    ...(signal ? { signal } : {}),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -286,8 +289,10 @@ async function getFcmAccessToken(config: FcmConfig) {
 }
 
 async function sendFcmPush(token: string, row: PendingNotificationRow, config: FcmConfig): Promise<ProviderSendResult> {
-  const accessToken = await getFcmAccessToken(config);
+  const signal = row.collapseKey ? AbortSignal.timeout(PUSH_TIMEOUT_MS) : undefined;
+  const accessToken = await getFcmAccessToken(config, signal);
   const response = await fetch(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(config.projectId)}/messages:send`, {
+    ...(signal ? { signal } : {}),
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
@@ -303,7 +308,9 @@ async function sendFcmPush(token: string, row: PendingNotificationRow, config: F
         data: notificationPayload(row),
         android: {
           priority: "HIGH",
+          ...(row.collapseKey ? { collapse_key: row.collapseKey } : {}),
           notification: {
+            ...(row.collapseKey ? { tag: row.collapseKey } : {}),
             sound: "default",
             channel_id: "default",
           },
@@ -344,6 +351,12 @@ async function sendProviderPush(token: PushTokenRow, row: PendingNotificationRow
 
 function compactError(errors: string[]) {
   return errors.filter(Boolean).slice(0, 3).join(" | ").slice(0, 500) || null;
+}
+
+/** Comment-only entry point. Existing share/nudge dispatch keeps its behavior. */
+export async function sendCommentNotificationPush(token: PushTokenRow, row: PendingNotificationRow) {
+  try { return await sendProviderPush(token, row, { apns: getApnsConfig(), fcm: getFcmConfig() }); }
+  catch { return { configured: true as const, result: { ok: false, provider: token.token_provider, error: "Temporary provider error" } as ProviderSendResult }; }
 }
 
 export async function dispatchNotificationsByIds(admin: any, notificationIds: string[]): Promise<PushDispatchSummary> {

@@ -13,6 +13,7 @@ import {
   type NotificationTarget,
 } from "@/lib/localNotifications";
 import { syncDefaultPushNotificationRegistration } from "@/lib/notifications/pushTokens";
+import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, publishCommentNotificationChange } from "@/lib/notifications/commentNotifications";
 
 function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
@@ -156,6 +157,10 @@ export default function NotificationBridge() {
         router.push("/");
         return;
       }
+      try {
+        const id = new URL(deepLink, window.location.origin).searchParams.get("commentNotificationId");
+        if (isCommentNotificationId(id)) sessionStorage.setItem(COMMENT_NOTIFICATION_INTENT, id);
+      } catch { /* Routing still works when session storage is unavailable. */ }
       router.push(deepLink);
     }).then((handle) => {
       if (!mounted) {
@@ -172,6 +177,16 @@ export default function NotificationBridge() {
       void listener?.remove();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!isNativePushAvailable()) return;
+    let active = true;
+    let listener: { remove: () => Promise<void> } | undefined;
+    void PushNotifications.addListener("pushNotificationReceived", () => publishCommentNotificationChange()).then(handle => {
+      if (active) listener = handle; else void handle.remove();
+    }).catch(() => {});
+    return () => { active = false; void listener?.remove(); };
+  }, []);
 
   return null;
 }

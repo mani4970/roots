@@ -22,6 +22,8 @@ import CommunityReactionButtons from "@/components/community/CommunityReactionBu
 import CommunityChallengeBoundary from "@/components/community/CommunityChallengeBoundary";
 import QtFeedPreview from "@/components/community/QtFeedPreview";
 import QtReactionSummary from "@/components/community/QtReactionSummary";
+import CommentNotificationInbox, { CommentNotificationBell, CommentNotificationStatus } from "@/components/notifications/CommentNotificationInbox";
+import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, loadCommentNotificationFocus, publishCommentNotificationChange, type CommentNotificationFocus } from "@/lib/notifications/commentNotifications";
 import QtComments from "@/components/community/QtComments";
 import QtDetailTextSizeControls from "@/components/community/QtDetailTextSizeControls";
 import qtDetailReadingStyles from "@/components/community/QtDetailReading.module.css";
@@ -1152,6 +1154,12 @@ function CommunityPageContent() {
   const [detailQt, setDetailQt] = useState<any | null>(null);
   const [qtDetailTextSizeIndex, setQtDetailTextSizeIndex] = useState(0);
   const [qtDetailContext, setQtDetailContext] = useState<QtCommentContext>({ scope: "all", scopeId: null });
+  const [commentInboxOpen, setCommentInboxOpen] = useState(false);
+  const [commentNotificationFocus, setCommentNotificationFocus] = useState<CommentNotificationFocus | null>(null);
+  const [commentNotificationStatus, setCommentNotificationStatus] = useState<"loading" | "error" | "unavailable" | null>(null);
+  const commentNotificationRequestRef = useRef<AbortController | null>(null);
+  const commentNotificationRouteRef = useRef<string | null>(null);
+  const commentNotificationLastIdRef = useRef<string | null>(null);
   const [qtCommentCounts, setQtCommentCounts] = useState<Record<string, number>>({});
   const [manageModal, setManageModal] = useState<null | {
     kind: "qt-unshare" | "qt-edit" | "prayer-unshare" | "prayer-edit";
@@ -1895,6 +1903,7 @@ function CommunityPageContent() {
   }
 
   function resetQtDetailState() {
+    setCommentNotificationFocus(null);
     clearCommunityModalHistory("qt-detail");
     setDetailQt(null);
   }
@@ -1953,6 +1962,7 @@ function CommunityPageContent() {
         return;
       }
       if (activeModal === "qt-detail") {
+        setCommentNotificationFocus(null);
         setDetailQt(null);
         return;
       }
@@ -4212,6 +4222,75 @@ function CommunityPageContent() {
     directPrayerFocusRef.current = null;
     setDirectPrayerTargetId(target.contentId);
     return "prayer";
+  }
+
+  async function openCommentNotification(id: string) {
+    commentNotificationRequestRef.current?.abort();
+    const controller = new AbortController();
+    commentNotificationRequestRef.current = controller;
+    commentNotificationLastIdRef.current = id;
+    setCommentInboxOpen(false);
+    setCommentNotificationStatus("loading");
+    try {
+      const supabase = createClient();
+      const focus = await loadCommentNotificationFocus(supabase, id, controller.signal);
+      if (controller.signal.aborted) return;
+      if (!focus) { publishCommentNotificationChange(); setCommentNotificationStatus("unavailable"); return; }
+      // Load only this reflection's reaction summary, independently of all feeds.
+      const reactions = await supabase.from("qt_reactions").select("qt_id,reaction,user_id")
+        .eq("qt_id", focus.record.id).abortSignal(controller.signal);
+      if (controller.signal.aborted) return;
+      if (!reactions.error) {
+        const counts: Record<string, number> = {};
+        let mine = "";
+        for (const reaction of reactions.data ?? []) {
+          counts[reaction.reaction] = (counts[reaction.reaction] ?? 0) + 1;
+          if (reaction.user_id === userId) mine = reaction.reaction;
+        }
+        setQtReactionCounts(current => ({ ...current, [focus.record.id]: counts }));
+        setMyQtReactions(current => ({ ...current, [focus.record.id]: mine }));
+      }
+      if (focus.record.photo_path) void loadQtPhotoUrls(supabase, [focus.record]);
+      setCommentNotificationFocus(focus);
+      if (detailQt?.id === focus.record.id) {
+        setQtDetailContext(focus.context ?? { scope: "all", scopeId: null });
+        setDetailQt(focus.record);
+      } else openQtDetail(focus.record, focus.context ?? { scope: "all", scopeId: null });
+      setCommentNotificationStatus(null);
+    } catch {
+      if (!controller.signal.aborted) setCommentNotificationStatus("error");
+    }
+  }
+
+  function closeCommentNotificationStatus() {
+    commentNotificationRequestRef.current?.abort();
+    setCommentNotificationStatus(null);
+  }
+
+  const commentNotificationRouteId = searchParams.get("commentNotificationId");
+  useEffect(() => {
+    if (!isCommentNotificationId(commentNotificationRouteId)) return;
+    if (!userId) {
+      try { sessionStorage.setItem(COMMENT_NOTIFICATION_INTENT, commentNotificationRouteId); } catch {}
+      return;
+    }
+    if (commentNotificationRouteRef.current === commentNotificationRouteId) return;
+    commentNotificationRouteRef.current = commentNotificationRouteId;
+    try { sessionStorage.removeItem(COMMENT_NOTIFICATION_INTENT); } catch {}
+    void openCommentNotification(commentNotificationRouteId);
+    // The URL and account are the only triggers; feed refreshes must not reopen a closed modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentNotificationRouteId, userId]);
+  useEffect(() => () => { commentNotificationRequestRef.current?.abort(); }, []);
+
+  function renderCommentNotificationUi() {
+    return <>
+      {commentInboxOpen && <CommentNotificationInbox lang={lang} onClose={() => setCommentInboxOpen(false)} onSelect={id => void openCommentNotification(id)} />}
+      {commentNotificationStatus && <CommentNotificationStatus lang={lang}
+        loading={commentNotificationStatus === "loading"} unavailable={commentNotificationStatus === "unavailable"}
+        onClose={closeCommentNotificationStatus}
+        onRetry={() => { if (commentNotificationLastIdRef.current) void openCommentNotification(commentNotificationLastIdRef.current); }} />}
+    </>;
   }
 
   useEffect(() => {
@@ -6784,6 +6863,7 @@ function CommunityPageContent() {
             {userId && (
               <QtComments key={qtCommentContextKey(r.id, qtDetailContext)} qtId={r.id} userId={userId}
                 context={qtDetailContext} lang={lang}
+                notificationFocus={commentNotificationFocus?.record.id === r.id ? commentNotificationFocus ?? undefined : undefined}
                 onOpenProfile={(profile, authorId) => { void openAuthorProfile(profile, authorId); }}
                 onCountChange={(count) => updateQtCommentCount(r.id, qtDetailContext, count)} />
             )}
@@ -7565,6 +7645,7 @@ function CommunityPageContent() {
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
+      {renderCommentNotificationUi()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
         <div
           style={{
@@ -8228,6 +8309,7 @@ function CommunityPageContent() {
       <div className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
+      {renderCommentNotificationUi()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
         <div
           style={{
@@ -10501,6 +10583,7 @@ function CommunityPageContent() {
     <div className="page roots-community-phase2d">
       {renderLoveHeartToast()}
       {renderReflectionNudgeToast()}
+      {renderCommentNotificationUi()}
       {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
       <div
         style={{
@@ -10525,6 +10608,8 @@ function CommunityPageContent() {
               {c("community_subtitle")}
             </p>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <CommentNotificationBell lang={lang} onClick={() => setCommentInboxOpen(true)} />
           <button
             onClick={shareApp}
             style={{
@@ -10550,6 +10635,7 @@ function CommunityPageContent() {
               {c("community_app_invite")}
             </span>
           </button>
+          </div>
         </div>
         <div
           style={{
@@ -11017,7 +11103,6 @@ function CommunityPageContent() {
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
-                {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
               </>
             ) : allTab === "praying" ? (
               allSectionLoadState.praying === "idle" ||
@@ -11790,6 +11875,7 @@ function CommunityPageContent() {
           </div>
         </div>
       )}
+      {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
       <BottomNav lang={lang} />
     </div>
   );

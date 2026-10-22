@@ -52,3 +52,4 @@
 .replyComposer { margin: 4px 0 12px 16px; }
 .deleted { margin: 0; color: var(--text3); font-size: 14px; line-height: 1.8; }
 html[data-native-platform="ios"][data-native-form-factor="tablet"] .thread :is(textarea.input, textarea.composerInput) { font-size: 20px !important; }
+.notificationHighlight { outline: 2px solid var(--sage); outline-offset: 5px; border-radius: 10px; background: var(--sage-light); scroll-margin-block: 90px; }

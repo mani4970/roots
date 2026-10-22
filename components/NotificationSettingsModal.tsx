@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell, Clock, Loader2, X } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
 import { useLang } from "@/lib/useLang";
 import {
   applyNotificationSettings,
@@ -29,12 +30,13 @@ type Props = {
   onSaved?: (message: string) => void;
 };
 
-function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
+function Toggle({ checked, onChange, disabled = false, label }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label?: string }) {
   return (
     <button
       type="button"
       onClick={() => !disabled && onChange(!checked)}
       aria-pressed={checked}
+      aria-label={label}
       disabled={disabled}
       style={{
         width: 48,
@@ -106,12 +108,14 @@ function ToggleRow({
   enabled,
   disabled,
   onEnabledChange,
+  label,
 }: {
   title: string;
   description: string;
   enabled: boolean;
   disabled: boolean;
   onEnabledChange: (value: boolean) => void;
+  label?: string;
 }) {
   return (
     <div style={{ padding: "12px 0", borderTop: "1px solid var(--border)" }}>
@@ -120,7 +124,7 @@ function ToggleRow({
           <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{title}</p>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{description}</p>
         </div>
-        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} />
+        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} label={label} />
       </div>
     </div>
   );
@@ -128,6 +132,7 @@ function ToggleRow({
 
 export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   const lang = useLang();
+  const commentText = getCommentNotificationText(lang);
   const pushText = useMemo(() => getNotificationSettingsText(lang), [lang]);
   const [settings, setSettings] = useState<RootsNotificationSettings>(() => getNotificationSettings());
   const [pushPreferences, setPushPreferences] = useState<RootsPushNotificationPreferences>(DEFAULT_PUSH_NOTIFICATION_PREFERENCES);
@@ -281,8 +286,8 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
         <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.pushTitle}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.pushDescription}</p>
+              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{commentText.pushTitle}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{commentText.pushDescription}</p>
             </div>
             <Toggle checked={pushPreferences.pushEnabled} onChange={(value) => updatePush({ pushEnabled: value })} disabled={loadingPushPreferences} />
           </div>
@@ -302,6 +307,15 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             disabled={pushDisabled}
             onEnabledChange={(value) => updatePush({ partnerNotificationsEnabled: value })}
           />
+          <ToggleRow
+            title={commentText.setting}
+            label={commentText.setting}
+            description={commentText.settingDescription}
+            enabled={pushPreferences.commentNotificationsEnabled}
+            disabled={pushDisabled}
+            onEnabledChange={(value) => updatePush({ commentNotificationsEnabled: value })}
+          />
+
         </div>
 
         {message && <p style={{ fontSize: 12, color: message === t("notifications_saved", lang) ? "var(--profile-sage-notice-text)" : "var(--profile-danger-text)", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
