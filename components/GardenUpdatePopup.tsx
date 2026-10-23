@@ -76,12 +76,6 @@ export default function GardenUpdatePopup({ show, type, streakDays, badgeIndex =
         {isBadge ? (
           <>
             <div style={{ fontSize: 56, marginBottom: 12 }}>🏅</div>
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(232,197,71,0.15)", border: "3px solid rgba(232,197,71,0.6)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", gap: 2 }}>
-              <span style={{ fontSize: 32 }}>{badge.fruit}</span>
-              <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(232,197,71,0.9)", letterSpacing: 0.5 }}>
-                {badge.name.toUpperCase()}
-              </span>
-            </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
               {t("garden_badge_title", lang)}
             </h2>
