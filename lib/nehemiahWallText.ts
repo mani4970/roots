@@ -16,9 +16,9 @@ export type NehemiahWallLocalizedCopy = {
 
 const COPY: Record<Lang, NehemiahWallLocalizedCopy> = {
   ko: {
-    title: (name) => `${name} 님의 느헤미야 성벽`,
-    keyword: "느헤미야 성벽",
-    fallbackTitle: "느헤미야 성벽",
+    title: (name) => `${name} 님의 성벽`,
+    keyword: "성벽",
+    fallbackTitle: "성벽",
     stageLabels: [
       "기도",
       "왕의 명령 편지",
@@ -59,9 +59,9 @@ const COPY: Record<Lang, NehemiahWallLocalizedCopy> = {
     completionButton: "완성된 성벽 보러 가기",
   },
   en: {
-    title: (name) => `${name}'s Nehemiah Wall`,
-    keyword: "Nehemiah Wall",
-    fallbackTitle: "Nehemiah Wall",
+    title: (name) => `${name}'s Wall`,
+    keyword: "Wall",
+    fallbackTitle: "Wall",
     stageLabels: [
       "Prayer",
       "The king's sealed letter",
@@ -102,9 +102,9 @@ const COPY: Record<Lang, NehemiahWallLocalizedCopy> = {
     completionButton: "View the completed wall",
   },
   de: {
-    title: (name) => `${name}s Nehemia-Mauer`,
-    keyword: "Nehemia-Mauer",
-    fallbackTitle: "Nehemia-Mauer",
+    title: (name) => `${name}s Mauer`,
+    keyword: "Mauer",
+    fallbackTitle: "Mauer",
     stageLabels: [
       "Gebet",
       "Der versiegelte Brief des Königs",
@@ -145,9 +145,9 @@ const COPY: Record<Lang, NehemiahWallLocalizedCopy> = {
     completionButton: "Vollendete Mauer ansehen",
   },
   fr: {
-    title: (name) => `Muraille de Néhémie de ${name}`,
-    keyword: "Muraille de Néhémie",
-    fallbackTitle: "Muraille de Néhémie",
+    title: (name) => `Muraille de ${name}`,
+    keyword: "Muraille",
+    fallbackTitle: "Muraille",
     stageLabels: [
       "Prière",
       "La lettre scellée du roi",
@@ -188,9 +188,9 @@ const COPY: Record<Lang, NehemiahWallLocalizedCopy> = {
     completionButton: "Voir la muraille achevée",
   },
   es: {
-    title: (name) => `Muralla de Nehemías de ${name}`,
-    keyword: "Muralla de Nehemías",
-    fallbackTitle: "Muralla de Nehemías",
+    title: (name) => `Muralla de ${name}`,
+    keyword: "Muralla",
+    fallbackTitle: "Muralla",
     stageLabels: [
       "Oración",
       "La carta sellada del rey",

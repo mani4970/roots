@@ -56,14 +56,13 @@ function getArkGroundPlacements(stageNumber: number): GroundFriendPlacements {
 }
 
 const NEHEMIAH_GROUND_PLACEMENTS: GroundFriendPlacements = {
-  // Keep ground friends on the left half of the Nehemiah map so they do not
-  // occupy the action lane where the Roots character enters from the right
-  // and stops around 57%.
+  // Raise Choko above Hindungi's full drift path. Match the garden's right
+  // rear row for Bamtoli and Mongsili while retaining wall sprite sizes.
   hindungi: { left: "3%", bottom: "1%", renderWidth: 48 },
-  choko: { left: "19%", bottom: "7%", renderWidth: 50 },
+  choko: { left: "19%", bottom: "calc(7% + 28px)", renderWidth: 50 },
   kkumdeuli: { left: "36%", bottom: "10%", renderWidth: 33 },
-  bamtoli: { left: "7%", bottom: "calc(23% - 14px)", renderWidth: 29 },
-  mongsili: { left: "25%", bottom: "calc(23% - 12px)", renderWidth: 27 },
+  bamtoli: { right: "13%", bottom: "calc(23% - 14px)", renderWidth: 29 },
+  mongsili: { right: "2%", bottom: "calc(23% - 12px)", renderWidth: 27 },
 };
 
 function getGroundPlacements(mapKind: RewardMapKind, stageNumber: number) {
@@ -76,6 +75,11 @@ function getMotionClassName(itemId: HeartShopMapItemId) {
   if (itemId === "hindungi") return "roots-heart-shop-dog-drift";
   if (itemId === "choko") return "roots-heart-shop-cat-drift";
   return undefined;
+}
+
+function getFriendZIndex(itemId: HeartShopMapItemId) {
+  // Only foreground companions cover the avatar action layer (4).
+  return itemId === "hindungi" || itemId === "choko" || itemId === "kkangchongi" ? 5 : 3;
 }
 
 export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: HeartShopMapFriendsProps) {
@@ -110,7 +114,6 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
       style={{
         position: "absolute",
         inset: 0,
-        zIndex: 4,
         overflow: "hidden",
         pointerEvents: "none",
       }}
@@ -163,13 +166,13 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
         }
 
         @keyframes roots-heart-shop-rabbit-travel-nehemiah {
-          0%   { left: 5%; transform: scaleX(1); }
-          42%  { left: 40%; transform: scaleX(1); }
-          48%  { left: 40%; transform: scaleX(1); }
-          50%  { left: 40%; transform: scaleX(-1); }
-          92%  { left: 5%; transform: scaleX(-1); }
-          98%  { left: 5%; transform: scaleX(-1); }
-          100% { left: 5%; transform: scaleX(1); }
+          0%   { left: 60%; transform: scaleX(1); }
+          42%  { left: 80%; transform: scaleX(1); }
+          48%  { left: 80%; transform: scaleX(1); }
+          50%  { left: 80%; transform: scaleX(-1); }
+          92%  { left: 60%; transform: scaleX(-1); }
+          98%  { left: 60%; transform: scaleX(-1); }
+          100% { left: 60%; transform: scaleX(1); }
         }
         .roots-heart-shop-rabbit-travel-nehemiah {
           animation: roots-heart-shop-rabbit-travel-nehemiah 16s linear infinite;
@@ -240,7 +243,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
           }
           .roots-heart-shop-rabbit-travel-nehemiah {
             animation: none;
-            left: 32% !important;
+            left: 68% !important;
             transform: none !important;
           }
           .roots-heart-shop-snail-travel {
@@ -264,7 +267,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
       {visible.has("jjaekjjaek") && (
         <div
           className="roots-heart-shop-bird-travel"
-          style={{ position: "absolute", width: birdRenderWidth, height: birdRenderWidth }}
+          style={{ position: "absolute", width: birdRenderWidth, height: birdRenderWidth, zIndex: getFriendZIndex("jjaekjjaek") }}
         >
           <HeartShopFriendSprite itemId="jjaekjjaek" renderWidth={birdRenderWidth} />
         </div>
@@ -273,7 +276,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
       {visible.has("nabi") && (
         <div
           className="roots-heart-shop-butterfly-travel"
-          style={{ position: "absolute", width: butterflyRenderWidth, height: butterflyRenderWidth }}
+          style={{ position: "absolute", width: butterflyRenderWidth, height: butterflyRenderWidth, zIndex: getFriendZIndex("nabi") }}
         >
           <HeartShopFriendSprite itemId="nabi" renderWidth={butterflyRenderWidth} />
         </div>
@@ -282,7 +285,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
       {visible.has("kkangchongi") && (
         <div
           className={mapKind === "nehemiahWall" ? "roots-heart-shop-rabbit-travel-nehemiah" : "roots-heart-shop-rabbit-travel"}
-          style={{ position: "absolute", bottom: rabbitBottom }}
+          style={{ position: "absolute", bottom: rabbitBottom, zIndex: getFriendZIndex("kkangchongi") }}
         >
           <HeartShopFriendSprite itemId="kkangchongi" renderWidth={rabbitRenderWidth} />
         </div>
@@ -291,7 +294,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
       {visible.has("salgeumi") && (
         <div
           className={mapKind === "nehemiahWall" ? "roots-heart-shop-snail-travel-nehemiah" : "roots-heart-shop-snail-travel"}
-          style={{ position: "absolute", bottom: snailBottom }}
+          style={{ position: "absolute", bottom: snailBottom, zIndex: getFriendZIndex("salgeumi") }}
         >
           <HeartShopFriendSprite itemId="salgeumi" renderWidth={snailRenderWidth} />
         </div>
@@ -308,6 +311,7 @@ export default function HeartShopMapFriends({ itemIds, mapKind, stageNumber }: H
             style={{
               position: "absolute",
               ...position,
+              zIndex: mapKind === "nehemiahWall" && itemId === "choko" ? 3 : getFriendZIndex(itemId),
             }}
           >
             <HeartShopFriendSprite itemId={itemId} renderWidth={renderWidth} />

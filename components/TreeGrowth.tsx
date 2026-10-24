@@ -228,7 +228,9 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
           {rangeLabel}
         </div>
 
-        <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} nehemiahAction={nehemiahAction} />
+        <div style={{ position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none" }}>
+          <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} nehemiahAction={nehemiahAction} />
+        </div>
       </div>
     </div>
   );
