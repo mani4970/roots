@@ -12,6 +12,7 @@ import {
 import { StatusBar, Style } from "@capacitor/status-bar";
 
 const LIGHT_BG = "#F8F4EC";
+const IPHONE_LIGHT_BG = "#FAF6F0";
 const DARK_BG = "#1A1C1E";
 const AUTH_PATHS = new Set(["/welcome", "/login", "/signup", "/reset-password", "/auth/callback"]);
 
@@ -77,6 +78,11 @@ export default function NativeStatusBar() {
     if (!Capacitor.isNativePlatform()) return;
 
     const nativePlatform = Capacitor.getPlatform();
+    // Only the new iPhone native shell enables this treatment. A native flag
+    // avoids changing older binaries or guessing iPad/Mac from viewport width.
+    const hasIPhoneStatusBarSurface = nativePlatform === "ios" && (
+      window as Window & { __rootsIPhoneStatusBarSurface?: boolean }
+    ).__rootsIPhoneStatusBarSurface === true;
     document.documentElement.setAttribute("data-native-app", "true");
     document.documentElement.setAttribute("data-native-platform", nativePlatform);
     const shortestScreenSide = Math.min(
@@ -136,7 +142,9 @@ export default function NativeStatusBar() {
       }
 
       void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
-      void StatusBar.setBackgroundColor({ color: isDark ? DARK_BG : LIGHT_BG }).catch(() => {});
+      void StatusBar.setBackgroundColor({
+        color: isDark ? DARK_BG : hasIPhoneStatusBarSurface ? IPHONE_LIGHT_BG : LIGHT_BG,
+      }).catch(() => {});
       void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
     }
 

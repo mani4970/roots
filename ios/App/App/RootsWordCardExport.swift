@@ -1,13 +1,36 @@
 import Foundation
 import UIKit
+import WebKit
 import Capacitor
 import Photos
 import ImageIO
 
-// Preserve the stock bridge behaviour; only register our app-local export plugin.
+// Preserve the stock bridge layout and register our app-local export plugin.
 class RootsBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(RootsWordCardExportPlugin())
+        configureIPhoneStatusBarSurface()
+    }
+
+    private func configureIPhoneStatusBarSurface() {
+        #if !targetEnvironment(macCatalyst)
+        guard UIDevice.current.userInterfaceIdiom == .phone,
+              !ProcessInfo.processInfo.isiOSAppOnMac,
+              let webView = webView else { return }
+
+        // Publish this capability before the page loads. Older app builds,
+        // iPad and Mac keep their existing status-bar background treatment.
+        let script = WKUserScript(
+            source: "window.__rootsIPhoneStatusBarSurface = true;",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        webView.configuration.userContentController.addUserScript(script)
+
+        if #available(iOS 27.0, *) {
+            webView.scrollView.topEdgeEffect.isHidden = true
+        }
+        #endif
     }
 }
 
