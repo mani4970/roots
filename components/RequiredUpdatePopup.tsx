@@ -1,23 +1,49 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { Download } from "lucide-react";
 import { useLang } from "@/lib/useLang";
 import { getRequiredUpdateText } from "@/lib/requiredUpdateText";
 import type { RequiredUpdatePlatform } from "@/lib/requiredUpdate";
+import { IPHONE_222_UPDATE_CAMPAIGN_ID } from "@/lib/requiredUpdate";
 
 type RequiredUpdatePopupProps = {
   platform: RequiredUpdatePlatform;
   mandatory: boolean;
+  campaignId?: string;
   onUpdate: () => void;
   onClose: () => void;
 };
 
-export default function RequiredUpdatePopup({ platform, mandatory, onUpdate, onClose }: RequiredUpdatePopupProps) {
+export default function RequiredUpdatePopup({ platform, mandatory, campaignId, onUpdate, onClose }: RequiredUpdatePopupProps) {
   const lang = useLang();
-  const copy = getRequiredUpdateText(lang, mandatory);
+  const copy = getRequiredUpdateText(lang, mandatory, campaignId);
+  const updateRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (campaignId !== IPHONE_222_UPDATE_CAMPAIGN_ID) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => updateRef.current?.focus({ preventScroll: true }));
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" && event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      updateRef.current?.focus({ preventScroll: true });
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (event.target !== updateRef.current) updateRef.current?.focus({ preventScroll: true });
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("focusin", onFocus);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("focusin", onFocus);
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [campaignId]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -58,7 +84,7 @@ export default function RequiredUpdatePopup({ platform, mandatory, onUpdate, onC
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 500,
+        zIndex: campaignId === IPHONE_222_UPDATE_CAMPAIGN_ID ? 30000 : 500,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -71,6 +97,8 @@ export default function RequiredUpdatePopup({ platform, mandatory, onUpdate, onC
         style={{
           width: "100%",
           maxWidth: 350,
+          maxHeight: campaignId === IPHONE_222_UPDATE_CAMPAIGN_ID ? "100%" : undefined,
+          overflowY: campaignId === IPHONE_222_UPDATE_CAMPAIGN_ID ? "auto" : undefined,
           borderRadius: 30,
           border: "1px solid rgba(122,157,122,0.32)",
           background: "var(--bg2)",
@@ -124,6 +152,7 @@ export default function RequiredUpdatePopup({ platform, mandatory, onUpdate, onC
         </p>
 
         <button
+          ref={updateRef}
           type="button"
           onClick={onUpdate}
           className="btn-sage"

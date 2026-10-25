@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 import NativeStatusBar from "@/components/NativeStatusBar";
+import IPhoneRequiredUpdateGate from "@/components/IPhoneRequiredUpdateGate";
 import NotificationBridge from "@/components/NotificationBridge";
 import CommentNotificationsProvider from "@/components/notifications/CommentNotificationsProvider";
 import AndroidBackButtonBridge from "@/components/AndroidBackButtonBridge";
@@ -96,6 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <NativeStatusBar />
+        <IPhoneRequiredUpdateGate />
         <CapacitorAuthBridge />
         <NotificationBridge />
         <AndroidBackButtonBridge />

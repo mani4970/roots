@@ -1,4 +1,5 @@
 import type { Lang } from "@/lib/i18n";
+import { IPHONE_222_UPDATE_CAMPAIGN_ID } from "@/lib/requiredUpdate";
 
 type UpdatePopupText = {
   title: string;
@@ -8,6 +9,14 @@ type UpdatePopupText = {
 };
 
 type UpdateCopyLang = Lang | "es";
+
+const IPHONE_222_TEXT: Record<UpdateCopyLang, UpdatePopupText> = {
+  ko: { title: "새로운 버전이 나왔어요", body: "지금 업데이트 하세요!", updateNow: "업데이트 하기" },
+  en: { title: "A new version is available", body: "Update now!", updateNow: "Update" },
+  de: { title: "Eine neue Version ist verfügbar", body: "Jetzt aktualisieren!", updateNow: "Aktualisieren" },
+  fr: { title: "Une nouvelle version est disponible", body: "Mettez à jour maintenant !", updateNow: "Mettre à jour" },
+  es: { title: "Hay una nueva versión disponible", body: "¡Actualiza ahora!", updateNow: "Actualizar" },
+};
 
 const REQUIRED_TEXT: Record<UpdateCopyLang, UpdatePopupText> = {
   ko: {
@@ -70,8 +79,9 @@ const OPTIONAL_TEXT: Record<UpdateCopyLang, UpdatePopupText> = {
   },
 };
 
-export function getRequiredUpdateText(lang: Lang | string, mandatory = true): UpdatePopupText {
+export function getRequiredUpdateText(lang: Lang | string, mandatory = true, campaignId?: string): UpdatePopupText {
   const normalized: UpdateCopyLang =
     lang === "en" || lang === "de" || lang === "fr" || lang === "es" ? lang : "ko";
+  if (campaignId === IPHONE_222_UPDATE_CAMPAIGN_ID) return IPHONE_222_TEXT[normalized];
   return (mandatory ? REQUIRED_TEXT : OPTIONAL_TEXT)[normalized];
 }

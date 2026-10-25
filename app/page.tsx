@@ -2782,6 +2782,7 @@ export default function HomePage() {
         <RequiredUpdatePopup
           platform={visibleRequiredUpdatePrompt.platform}
           mandatory={visibleRequiredUpdatePrompt.mandatory}
+          campaignId={visibleRequiredUpdatePrompt.campaignId}
           onUpdate={openRequiredUpdate}
           onClose={closeOptionalUpdate}
         />

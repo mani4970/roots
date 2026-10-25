@@ -9,6 +9,11 @@ export type NativeUpdatePrompt = {
   campaignId: string;
 };
 
+// Keep this off until 2.2.2 (17) is available to download from the App Store.
+export const IPHONE_222_REQUIRED_UPDATE_ENABLED = true;
+export const IPHONE_222_UPDATE_CAMPAIGN_ID = "2026-10-iphone-native-2.2.2-17";
+const IPHONE_222_NATIVE_VERSION = { version: "2.2.2", build: 17 };
+
 const APP_STORE_URL = "https://apps.apple.com/app/christian-roots/id6769063816";
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.rootspuce.app";
 
@@ -44,6 +49,9 @@ function isLocalPreviewRuntime() {
 function getLocalPreviewPrompt(): NativeUpdatePrompt | null {
   if (!isLocalPreviewRuntime()) return null;
   const params = new URLSearchParams(window.location.search);
+  if (params.get("previewIPhoneUpdate") === "1") {
+    return { platform: "ios", mandatory: true, campaignId: IPHONE_222_UPDATE_CAMPAIGN_ID };
+  }
   const required = params.get("previewRequiredUpdate");
   if (required === "ios" || required === "android") {
     return { platform: required, mandatory: true, campaignId: "preview-required" };
@@ -91,6 +99,36 @@ function isInstalledBelow(
   return installedBuild < target.build;
 }
 
+// Older binaries cannot expose the new status-bar capability flag. Require
+// explicit phone evidence and leave iPad, Mac and ambiguous runtimes unchanged.
+export function shouldCheckIPhone222RequiredUpdate(): boolean {
+  if (!IPHONE_222_REQUIRED_UPDATE_ENABLED || typeof window === "undefined") return false;
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return false;
+  const { userAgent, platform, maxTouchPoints } = window.navigator;
+  if (!/iPhone/i.test(userAgent) || /iPad|Macintosh/i.test(userAgent) || /iPad|Mac/i.test(platform)) return false;
+  const width = window.screen?.width;
+  const height = window.screen?.height;
+  return maxTouchPoints > 0 && Number.isFinite(width) && Number.isFinite(height)
+    && width > 0 && height > 0 && Math.min(width, height) < 700;
+}
+
+function getIPhone222RequiredUpdate(appInfo: { version: string; build: string }): NativeUpdatePrompt | null {
+  if (isInstalledBelow(appInfo.version, appInfo.build, IPHONE_222_NATIVE_VERSION) !== true) return null;
+  return { platform: "ios", mandatory: true, campaignId: IPHONE_222_UPDATE_CAMPAIGN_ID };
+}
+
+/** New iPhone campaign only. Used outside Home without changing legacy rules. */
+export async function detectIPhone222RequiredUpdatePopup(): Promise<NativeUpdatePrompt | null> {
+  const previewPrompt = getLocalPreviewPrompt();
+  if (previewPrompt?.campaignId === IPHONE_222_UPDATE_CAMPAIGN_ID) return previewPrompt;
+  try {
+    if (!shouldCheckIPhone222RequiredUpdate()) return null;
+    return getIPhone222RequiredUpdate(await App.getInfo());
+  } catch {
+    return null;
+  }
+}
+
 function optionalSeenKey(userId: string, platform: RequiredUpdatePlatform, campaignId: string) {
   return `${OPTIONAL_UPDATE_SEEN_PREFIX}${campaignId}:${platform}:${userId}`;
 }
@@ -123,6 +161,10 @@ export async function detectOneTimeUpdatePopup(userId: string): Promise<NativeUp
     if (platform !== "ios" && platform !== "android") return null;
 
     const appInfo = await App.getInfo();
+    if (shouldCheckIPhone222RequiredUpdate()) {
+      const iPhonePrompt = getIPhone222RequiredUpdate(appInfo);
+      if (iPhonePrompt) return iPhonePrompt;
+    }
     const belowMinimum = isInstalledBelow(appInfo.version, appInfo.build, MIN_SUPPORTED_NATIVE_VERSION[platform]);
     if (belowMinimum === true) {
       return { platform, mandatory: true, campaignId: "minimum-2.0.1" };
