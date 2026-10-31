@@ -18,7 +18,7 @@ import { checkAndAwardAnsweredPrayerBadge } from "@/lib/rewardBadges";
 import { checkAndAwardPrayerShareBadges, recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
 import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
-import { loadProfileCards, mapProfileCards } from "@/lib/profileCards";
+import { loadProfileCards, mapProfileCards, type ProfileCard } from "@/lib/profileCards";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import {
   sortAnsweredPrayerRows,
@@ -69,17 +69,21 @@ export type PrayerCardSnapshot = {
 
 type PrayerLoadState = "loading" | "ready" | "error";
 const PRAYER_SNAPSHOT_MAX_AGE = 30_000;
+const PRAYER_PROFILE_WAIT_MS = 6_000;
+const PRAYER_AVATAR_WAIT_MS = 3_000;
+type PrayerAuthorProfile = Pick<ProfileCard, "id" | "name" | "avatar_url">;
+type PrayerAvatarState = "loaded" | "failed";
 
-function PrayerCardAvatar({ url, name, anonymous, nearActive }: { url?: string | null; name: string; anonymous: boolean; nearActive: boolean }) {
+function PrayerCardAvatar({ url, anonymous, nearActive, prepared }: { url?: string | null; anonymous: boolean; nearActive: boolean; prepared: boolean }) {
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  // The profile lookup already includes this URL. Only the current card and
-  // its neighbours may request a photo; neither metadata nor images gate text.
+  // The owning card prepares its photo before revealing the header and body.
+  // Only the current card and its neighbours need an image element.
   const src = !anonymous && nearActive && url && url !== failedUrl ? url : undefined;
-  const loaded = Boolean(src && loadedUrl === src);
+  const loaded = Boolean(src && (prepared || loadedUrl === src));
   return <span className={styles.cardAvatar} aria-hidden="true" data-prayer-card-avatar>
-    {!loaded && (anonymous ? <UserRound size={16} /> : Array.from(name.trim())[0] || <UserRound size={16} />)}
-    {src && <img key={src} src={src} alt="" width={28} height={28} loading="lazy" decoding="async" fetchPriority="low" draggable={false}
+    {!loaded && <UserRound size={16} />}
+    {src && <img key={src} src={src} alt="" width={28} height={28} loading="eager" decoding="async" fetchPriority="low" draggable={false}
       style={{ opacity: loaded ? 1 : 0 }}
       onLoad={() => setLoadedUrl(src)} onError={() => setFailedUrl(src)} />}
   </span>;
@@ -88,6 +92,7 @@ function PrayerCardAvatar({ url, name, anonymous, nearActive }: { url?: string |
 export type PrayerExperienceProps = {
   variant?: "page" | "popup";
   lang?: Lang;
+  initialProfile?: PrayerAuthorProfile | null;
   snapshotRef?: MutableRefObject<PrayerCardSnapshot | null>;
   onClose?: () => void;
   initialAnswerId?: string | null;
@@ -108,7 +113,7 @@ function PrayerExperienceWithLang(props: PrayerExperienceProps) {
   return <PrayerExperienceContent {...props} lang={lang} />;
 }
 
-function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, lang }: PrayerExperienceProps & { lang: Lang }) {
+function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, initialProfile, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
   const rootRef = useRef<HTMLDivElement>(null);
   const handledAnswerId = useRef<string | null>(null);
@@ -145,6 +150,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const category = view.category;
   const loading = categoryLoad[category] === "loading";
   const loadError = categoryLoad[category] === "error";
+  const currentCardSelectionRef = useRef({ status, category, activeCardIds });
+  currentCardSelectionRef.current = { status, category, activeCardIds };
   const [notice, setNotice] = useState<string | null>(null);
   const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
   const [testimonyText, setTestimonyText] = useState("");
@@ -157,6 +164,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const authUserRef = useRef<string | null>(null);
   const authResolvedRef = useRef(false);
   const initialSnapshotChecked = useRef(false);
+  const authorProfilesRef = useRef<Record<string, PrayerAuthorProfile>>({});
+  const profileRequestsRef = useRef(new Set<AbortController>());
+  const avatarRequestsRef = useRef(new Map<string, () => void>());
+  const avatarPreparationEpochRef = useRef(0);
+  const presentedDeckRef = useRef(false);
+  const [avatarStates, setAvatarStates] = useState<Record<string, PrayerAvatarState>>({});
   const shareOptionsRequest = useRef(0);
   const shareOptionsReady = useRef(false);
   const [partnerSharedPrayerIds, setPartnerSharedPrayerIds] = useState<Set<string>>(new Set());
@@ -445,6 +458,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     return () => {
       mountedRef.current = false;
       prayerLoadRequest.current += 1;
+      clearCardPreparation();
       shareOptionsRequest.current += 1;
       shareOptionsReady.current = false;
       if (authReloadTimer) clearTimeout(authReloadTimer);
@@ -631,15 +645,49 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     void loadShareOptions(prayer);
   }
 
-  async function fetchProfiles(supabase: any, rows: any[]) {
-    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
-    if (userIds.length === 0) return {};
+  async function fetchProfiles(
+    supabase: any, rows: any[], signal: AbortSignal, priorityAuthorId: string | undefined,
+    onBatch: (profiles: Record<string, ProfileCard>, resolvedIds: string[]) => void,
+  ) {
+    const userIds: string[] = Array.from(new Set(rows.filter(row => !row.is_anonymous).map((row: any) => row.user_id).filter(Boolean)));
+    if (priorityAuthorId && userIds.includes(priorityAuthorId)) {
+      userIds.splice(userIds.indexOf(priorityAuthorId), 1);
+      userIds.unshift(priorityAuthorId);
+    }
+    // Publish the first batch without waiting for other authors. Keep the
+    // existing 500-author bound; a missing profile settles to a neutral header.
+    for (let index = 0; index < Math.min(userIds.length, 500); index += 100) {
+      const batch = userIds.slice(index, index + 100);
+      onBatch(mapProfileCards(await loadProfileCards(supabase, batch, { signal })), batch);
+    }
+    if (userIds.length > 500) onBatch({}, userIds.slice(500));
+  }
 
-    return mapProfileCards(await loadProfileCards(supabase, userIds));
+  function clearCardPreparation() {
+    avatarPreparationEpochRef.current += 1;
+    profileRequestsRef.current.forEach(controller => controller.abort());
+    profileRequestsRef.current.clear();
+    avatarRequestsRef.current.forEach(cancel => cancel());
+    avatarRequestsRef.current.clear();
+  }
+
+  function withKnownAuthors(rows: any[], currentUserId: string) {
+    if (initialProfile?.id === currentUserId && !authorProfilesRef.current[currentUserId]) {
+      authorProfilesRef.current[currentUserId] = initialProfile;
+    }
+    return rows.map(row => {
+      const profile = authorProfilesRef.current[row.user_id] ?? row.profiles;
+      if (profile) authorProfilesRef.current[row.user_id] = profile;
+      return profile ? { ...row, profiles: profile } : row;
+    });
   }
 
   function discardAccountData() {
     prayerLoadRequest.current += 1;
+    clearCardPreparation();
+    authorProfilesRef.current = {};
+    presentedDeckRef.current = false;
+    setAvatarStates({});
     shareOptionsRequest.current += 1;
     shareOptionsReady.current = false;
     if (snapshotRef) snapshotRef.current = null;
@@ -694,7 +742,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     if (observation) prayerObservationEvent(observation, "stage_started", "refresh");
     const request = ++prayerLoadRequest.current;
     const isCurrentRequest = () => mountedRef.current && request === prayerLoadRequest.current;
-    setCategoryLoad({ mine: "loading", intercession: "loading" });
+    // A refresh must not replace an already visible card with a spinner or
+    // discard its known author while the fresh prayer rows are on the way.
+    setCategoryLoad(previous => ({
+      mine: previous.mine === "ready" ? "ready" : "loading",
+      intercession: previous.intercession === "ready" ? "ready" : "loading",
+    }));
     setFreshCategories({ mine: false, intercession: false });
     const supabase = createClient();
     try {
@@ -730,8 +783,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         && age >= 0 && age <= PRAYER_SNAPSHOT_MAX_AGE;
       initialSnapshotChecked.current = true;
       if (canUseSnapshot && snapshot) {
-        setPrayers(snapshot.prayers);
-        setIntercessionPrayers(snapshot.intercessionPrayers);
+        setPrayers(withKnownAuthors(snapshot.prayers, user.id));
+        setIntercessionPrayers(withKnownAuthors(snapshot.intercessionPrayers, user.id));
         setPartnerSharedPrayerIds(new Set(snapshot.partnerSharedPrayerIds));
         setCategoryLoad({ mine: "ready", intercession: "ready" });
         if (!selectionTouched.current && !initialAnswerId
@@ -747,20 +800,53 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       let intercessionRows: any[] = [];
       let sharedPrayerIds: string[] = [];
       let publishedSnapshot: PrayerCardSnapshot | null = null;
+      const freshAuthorProfiles: Record<string, ProfileCard> = {};
+      const snapshotRows = (rows: any[]) => rows.map(row => freshAuthorProfiles[row.user_id]
+        ? { ...row, profiles: freshAuthorProfiles[row.user_id] } : row);
       const updatePublishedSnapshot = () => {
         if (!isCurrentRequest() || !publishedSnapshot || snapshotRef?.current !== publishedSnapshot) return;
-        publishedSnapshot = { ...publishedSnapshot, prayers: ownRows, intercessionPrayers: intercessionRows };
+        // Keep this visit's prepared header stable, but let the next opening
+        // use freshly fetched names/photos instead of extending stale metadata.
+        publishedSnapshot = { ...publishedSnapshot, prayers: snapshotRows(ownRows), intercessionPrayers: snapshotRows(intercessionRows) };
         snapshotRef.current = publishedSnapshot;
       };
       const enrichProfiles = (rows: any[], kind: PrayerCategory) => {
-        void fetchProfiles(supabase, rows).then(profileMap => {
+        const selection = currentCardSelectionRef.current;
+        const ordered = selection.status === "answered" && selection.category === kind
+          ? sortAnsweredPrayerRows(rows.filter(row => row.is_answered))
+          : sortPrayerRequestRows(rows.filter(row => !row.is_answered));
+        const priorityPrayer = ordered.find(row => String(row.id) === selection.activeCardIds[kind])
+          ?? ordered[Math.min(cardIndexes.current[kind], Math.max(0, ordered.length - 1))];
+        const controller = new AbortController();
+        profileRequestsRef.current.add(controller);
+        const timeout = window.setTimeout(() => controller.abort(), PRAYER_PROFILE_WAIT_MS);
+        const resolvedAuthorIds = new Set<string>();
+        const publish = (profileMap: Record<string, ProfileCard>, resolvedIds: string[]) => {
           if (!isCurrentRequest()) return;
-          const enriched = rows.map(row => ({ ...row, profiles: profileMap[row.user_id] ?? row.profiles ?? null }));
+          Object.assign(freshAuthorProfiles, profileMap);
+          for (const [id, profile] of Object.entries(profileMap)) {
+            // A card already being read keeps its prepared identity for this
+            // visit, including when a background lookup returns a new photo.
+            if (!authorProfilesRef.current[id]) authorProfilesRef.current[id] = profile;
+          }
+          resolvedIds.forEach(id => resolvedAuthorIds.add(id));
+          // null means the lookup finished without a profile. undefined alone
+          // means the card is still waiting; neither uses a temporary name.
+          const enriched = rows.map(row => ({
+            ...row,
+            profiles: authorProfilesRef.current[row.user_id] ?? row.profiles
+              ?? (row.is_anonymous || resolvedAuthorIds.has(row.user_id) ? null : undefined),
+          }));
           if (kind === "mine") { ownRows = enriched; setPrayers(enriched); }
           else { intercessionRows = enriched; setIntercessionPrayers(enriched); }
           updatePublishedSnapshot();
-        }).catch(error => {
+        };
+        void fetchProfiles(supabase, rows, controller.signal, priorityPrayer?.user_id, publish).catch(error => {
+          publish({}, rows.map(row => String(row.user_id)));
           if (isCurrentRequest()) console.warn("prayer author name load failed", error);
+        }).finally(() => {
+          window.clearTimeout(timeout);
+          profileRequestsRef.current.delete(controller);
         });
       };
       const failCategory = (kind: PrayerCategory, error: unknown) => {
@@ -785,7 +871,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           if (!isCurrentRequest()) return false;
           if (ownResult.error) throw ownResult.error;
           if (recipientResult.error) throw recipientResult.error;
-          ownRows = ownResult.data ?? [];
+          ownRows = withKnownAuthors(ownResult.data ?? [], user.id);
           sharedPrayerIds = Array.from(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
           setPrayers(ownRows);
           setPartnerSharedPrayerIds(new Set(sharedPrayerIds));
@@ -809,7 +895,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             const { data, error } = await query;
             if (error) throw error;
             if (!isCurrentRequest()) return false;
-            intercessionRows = data ?? [];
+            intercessionRows = withKnownAuthors(data ?? [], user.id);
           }
           setIntercessionPrayers(intercessionRows);
           setCategoryLoad(previous => ({ ...previous, intercession: "ready" }));
@@ -824,7 +910,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         prayerObservationEvent(observation, "stage_succeeded", "refresh");
       }
       if (isCurrentRequest() && ownLoaded && intercessionLoaded && isPopup && snapshotRef) {
-        publishedSnapshot = { userId: user.id, scope: "ongoing", prayers: ownRows, intercessionPrayers: intercessionRows, partnerSharedPrayerIds: sharedPrayerIds, loadedAt: Date.now() };
+        publishedSnapshot = { userId: user.id, scope: "ongoing", prayers: snapshotRows(ownRows), intercessionPrayers: snapshotRows(intercessionRows), partnerSharedPrayerIds: sharedPrayerIds, loadedAt: Date.now() };
         snapshotRef.current = publishedSnapshot;
       }
     } catch (error) {
@@ -1311,6 +1397,11 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     return prayer.profiles?.name || c(prayer.user_id === userId ? "profile_default_name" : "prayer_intercession_anonymous");
   }
 
+  function cardProfileName(prayer: any) {
+    if (prayer.is_anonymous) return c("prayer_intercession_anonymous");
+    return prayer.profiles?.name?.trim() || "";
+  }
+
   useEffect(() => {
     if (!freshCategories.mine || categoryLoad.mine !== "ready" || !initialAnswerId || handledAnswerId.current === initialAnswerId) return;
     handledAnswerId.current = initialAnswerId;
@@ -1424,12 +1515,65 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   ];
   const avatarIndex = Math.max(0, avatarCardIds.indexOf(activeCardId ?? ""));
   const nearbyAvatarIds = new Set(avatarCardIds.slice(Math.max(0, avatarIndex - 1), avatarIndex + 2));
+  const nearbyAvatarUrls = Array.from(new Set([
+    ...myPrayingList.filter(prayer => nearbyAvatarIds.has(`mine:${prayer.id}`)),
+    ...intercessionPrayingList.filter(prayer => nearbyAvatarIds.has(`intercession:${prayer.id}`)),
+  ].filter(prayer => !prayer.is_anonymous).map(prayer => prayer.profiles?.avatar_url).filter(Boolean))) as string[];
+  const nearbyAvatarKey = JSON.stringify(nearbyAvatarUrls);
+
+  useEffect(() => {
+    const epoch = avatarPreparationEpochRef.current;
+    const urls: string[] = JSON.parse(nearbyAvatarKey);
+    for (const url of urls) {
+      if (avatarStates[url] || avatarRequestsRef.current.has(url)) continue;
+      const image = new Image();
+      let settled = false;
+      let timeout: number;
+      const release = () => {
+        window.clearTimeout(timeout);
+        image.onload = null;
+        image.onerror = null;
+        avatarRequestsRef.current.delete(url);
+      };
+      const settle = (state: PrayerAvatarState) => {
+        if (settled) return;
+        settled = true;
+        release();
+        if (mountedRef.current && avatarPreparationEpochRef.current === epoch) {
+          setAvatarStates(previous => ({ ...previous, [url]: state }));
+        }
+      };
+      avatarRequestsRef.current.set(url, () => { settled = true; release(); });
+      timeout = window.setTimeout(() => settle("failed"), PRAYER_AVATAR_WAIT_MS);
+      image.onload = () => {
+        if (typeof image.decode === "function") void image.decode().then(() => settle("loaded"), () => settle("failed"));
+        else settle("loaded");
+      };
+      image.onerror = () => settle("failed");
+      image.src = url;
+    }
+  }, [nearbyAvatarKey, avatarStates]);
+
+  function cardReady(prayer: any) {
+    if (prayer.is_anonymous) return true;
+    if (prayer.profiles === undefined) return false;
+    const url = prayer.profiles?.avatar_url;
+    return !url || Boolean(avatarStates[url]);
+  }
+
+  const activePrayer = ongoingList.find(prayer => String(prayer.id) === String(activePrayerId));
+  const activeCardReady = Boolean(activePrayer && cardReady(activePrayer));
+  const waitingForInitialCard = showDeck && !presentedDeckRef.current && !activeCardReady;
+  useEffect(() => {
+    if (showDeck && activeCardReady) presentedDeckRef.current = true;
+  }, [showDeck, activeCardReady]);
 
   function cardHeader(prayer: any, kind: PrayerCategory) {
+    const url = prayer.is_anonymous ? undefined : prayer.profiles?.avatar_url;
     return <div className={styles.cardMeta}>
       <span className={styles.cardAuthor}>
-        <PrayerCardAvatar url={prayer.is_anonymous ? undefined : prayer.profiles?.avatar_url} name={profileName(prayer)} anonymous={Boolean(prayer.is_anonymous)} nearActive={nearbyAvatarIds.has(`${kind}:${prayer.id}`)} />
-        <span className={styles.cardAuthorName}>{profileName(prayer)}</span>
+        <PrayerCardAvatar url={url && avatarStates[url] === "loaded" ? url : undefined} anonymous={Boolean(prayer.is_anonymous)} nearActive={nearbyAvatarIds.has(`${kind}:${prayer.id}`)} prepared={Boolean(url && avatarStates[url] === "loaded")} />
+        <span className={styles.cardAuthorName}>{cardProfileName(prayer)}</span>
       </span>
       <time className={styles.cardDate} dateTime={prayer.created_at}>{new Date(prayer.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })}</time>
       {kind === "mine" ? cardMenu(prayer) : intercessionMenu(prayer)}
@@ -1440,16 +1584,18 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     ...myPrayingList.map(prayer => ({
       id: `mine:${prayer.id}`,
       kind: "mine" as const,
+      ready: cardReady(prayer),
       content: String(prayer.content ?? ""),
-      authorName: profileName(prayer),
+      authorName: cardProfileName(prayer),
       header: cardHeader(prayer, "mine"),
       actions: <button type="button" className={styles.answerButton} onClick={() => openAnsweredPrayer(String(prayer.id))}><CheckCircle size={17} />{c("prayer_answered_cta")}</button>,
     })),
     ...intercessionPrayingList.map(prayer => ({
       id: `intercession:${prayer.id}`,
       kind: "intercession" as const,
+      ready: cardReady(prayer),
       content: String(prayer.content ?? ""),
-      authorName: profileName(prayer),
+      authorName: cardProfileName(prayer),
       header: cardHeader(prayer, "intercession"),
       actions: <div className={`${styles.answerButton} ${styles.intercedingStatus}`}><CheckCircle size={17} />{cardText.interceding}</div>,
     })),
@@ -1585,7 +1731,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             <Plus size={16} aria-hidden="true" />{cardText.addPrayerRequest}
           </button>}
         </div>}
-        {loading || waitingForInitialIntercession ? (
+        {loading || waitingForInitialIntercession || waitingForInitialCard ? (
           <div className={styles.loading}>
             <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
           </div>

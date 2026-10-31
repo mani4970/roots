@@ -2645,6 +2645,7 @@ export default function HomePage() {
             variant="popup"
             lang={lang}
             snapshotRef={homePrayerSnapshotRef}
+            initialProfile={profile ? { id: profile.id, name: profile.name ?? null, avatar_url: profile.avatar_url ?? null } : null}
             onClose={() => setShowHomePrayerCards(false)}
             dailyPrayerDone={todayDone.prayer}
             onCompleteDailyPrayer={markQuietPrayer}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 import { getPrayerCardText } from "@/lib/prayerCardText";
+import { Loader2 } from "lucide-react";
 import styles from "./PrayerCardDeck.module.css";
 
 export type PrayerCardEntry = {
@@ -11,6 +12,7 @@ export type PrayerCardEntry = {
   kind: "mine" | "intercession";
   content: string;
   authorName?: string;
+  ready?: boolean;
   header?: ReactNode;
   actions?: ReactNode;
   domId?: string;
@@ -331,6 +333,7 @@ export default function PrayerCardDeck({
       >
         {items.map((item, index) => {
           const isActive = item.id === currentId;
+          const ready = item.ready !== false;
           const kind = item.kind === "mine" ? text.mine : text.intercession;
           const position = positions[index];
           return (
@@ -344,9 +347,15 @@ export default function PrayerCardDeck({
               className={styles.card}
               data-prayer-card-id={item.id}
               data-prayer-kind={item.kind}
-              aria-label={`${kind}${item.authorName ? ` · ${item.authorName}` : ""} · ${text.cardLabel(position.current, position.total)}`}
+              aria-label={`${kind}${ready && item.authorName ? ` · ${item.authorName}` : ""} · ${text.cardLabel(position.current, position.total)}`}
               aria-hidden={!isActive}
+              aria-busy={!ready || undefined}
             >
+              {!ready ? (
+                <div role="status" aria-label={text.loading} style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <Loader2 size={24} className="spin" aria-hidden="true" />
+                </div>
+              ) : <>
               <div
                 className={styles.head}
                 ref={node => {
@@ -376,6 +385,7 @@ export default function PrayerCardDeck({
                   {item.actions}
                 </div>
               )}
+              </>}
             </article>
           );
         })}
