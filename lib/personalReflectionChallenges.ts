@@ -86,6 +86,16 @@ const rewardAckMemory = new Map<string, string[]>();
 const completionFlushes = new Map<string, Promise<void>>();
 const rewardAckRequests = new Map<string, Promise<boolean>>();
 const announcementAckRequests = new Map<string, Promise<boolean>>();
+const completionRevisions = new Map<string, number>();
+const cardStatusMemory = new Map<string, { today: string; status: unknown }>();
+const syncRequests = new Map<string, Promise<{ status: unknown; rewards: unknown }>>();
+
+export function getPersonalChallengeCompletionRevision(userId: string): number {
+  return completionRevisions.get(userId) ?? 0;
+}
+function advanceCompletionRevision(userId: string) {
+  completionRevisions.set(userId, getPersonalChallengeCompletionRevision(userId) + 1);
+}
 
 function toObject(value: unknown): Record<string, unknown> | null {
   const row = Array.isArray(value) ? value[0] : value;
@@ -116,6 +126,38 @@ export function normalizePersonalChallengeStatus(value: unknown): PersonalChalle
     hasMissedDay: toBoolean(row.has_missed_day), todayCompleted: toBoolean(row.today_completed),
     isComplete: toBoolean(row.is_complete), awarded: toBoolean(row.awarded), canClaim: toBoolean(row.can_claim),
   };
+}
+
+function validCardStatus(value: unknown): boolean {
+  const row = toObject(value);
+  if (row?.has_challenge === false) return true;
+  return row?.has_challenge === true && !!row.challenge_id
+    && DATE.test(String(row.announcement_date)) && DATE.test(String(row.start_date)) && DATE.test(String(row.end_date));
+}
+
+/** Display only: a cached card never confirms completion, rewards or popups. */
+export function readCachedPersonalChallengeStatus(userId: string, today: string): { status: PersonalChallengeStatus | null } | null {
+  if (!userId || !DATE.test(today) || today !== getLocalDateString()) return null;
+  const memory = cardStatusMemory.get(userId);
+  if (memory?.today === today) return { status: normalizePersonalChallengeStatus(memory.status) };
+  const raw = storageGet(localKey(userId, "card_status_v1"));
+  if (!raw || raw.length > 20_000) return null;
+  try {
+    const cached = JSON.parse(raw);
+    if (cached?.version !== 1 || cached.today !== today || !validCardStatus(cached.status)) return null;
+    cardStatusMemory.set(userId, { today, status: cached.status });
+    return { status: normalizePersonalChallengeStatus(cached.status) };
+  } catch { return null; }
+}
+
+function rememberCardStatus(userId: string, today: string, status: unknown) {
+  if (today !== getLocalDateString() || !validCardStatus(status)) return;
+  if (cardStatusMemory.size >= 16 && !cardStatusMemory.has(userId)) {
+    const oldest = cardStatusMemory.keys().next().value;
+    if (oldest) cardStatusMemory.delete(oldest);
+  }
+  cardStatusMemory.set(userId, { today, status });
+  storageSet(localKey(userId, "card_status_v1"), JSON.stringify({ version: 1, today, status }));
 }
 
 export function normalizePersonalChallengeRewards(value: unknown): PersonalChallengeReward[] {
@@ -206,6 +248,9 @@ export function flushPersonalChallengeCompletions(supabase: any, userId: string)
       if (!proof) return;
       const identity = proofId(proof);
       attempted.add(identity);
+      // Reads started before or during a write must not be reused as the
+      // final post-recovery snapshot, including an ambiguous network timeout.
+      advanceCompletionRevision(userId);
       try {
         const result = toObject(await rpc(supabase, "record_personal_challenge_completion", {
           p_completion_date: proof.completionDate, p_qt_record_id: proof.qtRecordId,
@@ -224,6 +269,8 @@ export function flushPersonalChallengeCompletions(supabase: any, userId: string)
       } catch (error) {
         console.warn("개인 묵상 챌린지 완료일 기록 재시도 대기:", error);
         return;
+      } finally {
+        advanceCompletionRevision(userId);
       }
     }
   })();
@@ -315,10 +362,30 @@ export async function loadPersonalChallengeBadges(supabase: any, userId?: string
   if (!userId) return [];
   return normalizePersonalChallengeRewards(await rpc(supabase, "get_personal_challenge_badges", { p_expected_user_id: userId }));
 }
-export async function syncPersonalChallenge(supabase: any, userId: string, today: string): Promise<{ status: PersonalChallengeStatus | null; rewards: PersonalChallengeReward[] }> {
-  if (!userId || !DATE.test(today)) return { status: null, rewards: [] };
-  const data = toObject(await rpc(supabase, "sync_personal_challenge", { p_today: today, p_expected_user_id: userId }));
-  return { status: normalizePersonalChallengeStatus(data?.status), rewards: visibleRewards(supabase, userId, data?.rewards) };
+export async function syncPersonalChallenge(supabase: any, userId: string, today: string): Promise<{
+  status: PersonalChallengeStatus | null; rewards: PersonalChallengeReward[]; completionRevision: number;
+}> {
+  if (!userId || !DATE.test(today)) return { status: null, rewards: [], completionRevision: getPersonalChallengeCompletionRevision(userId) };
+  while (true) {
+    const completionRevision = getPersonalChallengeCompletionRevision(userId);
+    const identity = `${userId}:${today}:${completionRevision}`;
+    let request = syncRequests.get(identity);
+    if (!request) {
+      request = rpc(supabase, "sync_personal_challenge", { p_today: today, p_expected_user_id: userId }).then(value => {
+        const data = toObject(value);
+        if (!data || !validCardStatus(data.status) || !Array.isArray(data.rewards)) throw new Error("Invalid personal challenge response");
+        return { status: data.status, rewards: data.rewards };
+      });
+      syncRequests.set(identity, request);
+      const currentRequest = request;
+      const clear = () => { if (syncRequests.get(identity) === currentRequest) syncRequests.delete(identity); };
+      void request.then(clear, clear);
+    }
+    const data = await request;
+    if (completionRevision !== getPersonalChallengeCompletionRevision(userId)) continue;
+    rememberCardStatus(userId, today, data.status);
+    return { status: normalizePersonalChallengeStatus(data.status), rewards: visibleRewards(supabase, userId, data.rewards), completionRevision };
+  }
 }
 
 function announcementKeys(userId: string, challengeId: string) {

@@ -30,7 +30,10 @@ export default function PersonalReflectionChallengeCard({
 
   if (loading && !status) {
     return <div className={styles.card} lang={lang} aria-label={text.loading} aria-busy="true" style={cardStyle}>
-      <div aria-hidden="true" style={{ width: "54%", height: 17, borderRadius: 5, background: "var(--personal-challenge-track)" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 16, fontWeight: 650, lineHeight: 1.45 }}>
+        <BookOpen size={22} strokeWidth={1.6} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{text.genericTitle}</span>
+      </div>
       <div aria-hidden="true" style={{ width: "68%", height: 15, marginTop: 17, borderRadius: 5, background: "var(--personal-challenge-track)" }} />
       <div aria-hidden="true" style={{ height: 10, marginTop: 18, borderRadius: 4, background: "var(--personal-challenge-track)" }} />
     </div>;

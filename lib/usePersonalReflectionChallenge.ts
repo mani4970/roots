@@ -10,7 +10,9 @@ import {
   acknowledgePersonalChallengeAnnouncement,
   acknowledgePersonalChallengeReward,
   flushPersonalChallengeCompletions,
+  getPersonalChallengeCompletionRevision,
   readPersonalChallengeAnnouncementSeen,
+  readCachedPersonalChallengeStatus,
   recordPersonalChallengeReflectionCompletedBestEffort,
   syncPersonalChallenge,
   type PersonalChallengeReward,
@@ -25,6 +27,7 @@ type Snapshot = {
   error: boolean;
   announcementPending: boolean;
   ready: boolean;
+  hasCard: boolean;
 };
 
 /** Optional campaign state never participates in core Home/progress readiness. */
@@ -39,7 +42,7 @@ export function usePersonalReflectionChallenge({ userId, today, ready, completed
   currentScope.current = scope;
   const [snapshot, setSnapshot] = useState<Snapshot>({
     scope: "", status: null, rewards: [], loading: true, error: false,
-    announcementPending: false, ready: false,
+    announcementPending: false, ready: false, hasCard: false,
   });
   const [retryToken, setRetryToken] = useState(0);
   const retry = useCallback(() => setRetryToken(value => value + 1), []);
@@ -49,52 +52,85 @@ export function usePersonalReflectionChallenge({ userId, today, ready, completed
     let cancelled = false;
     let running = false;
     let rerun = false;
+    let firstRefresh = true;
     let listener: { remove: () => Promise<void> } | null = null;
     const isCurrent = () => !cancelled && currentScope.current === scope;
     const refresh = async () => {
       if (!isCurrent() || document.visibilityState === "hidden") return;
       if (running) { rerun = true; return; }
       running = true;
-      setSnapshot(previous => previous.scope === scope
-        ? { ...previous, loading: !previous.ready }
-        : { scope, status: null, rewards: [], loading: true, error: false, announcementPending: false, ready: false });
+      const resetReadiness = firstRefresh;
+      firstRefresh = false;
+      const cached = readCachedPersonalChallengeStatus(userId, today);
+      setSnapshot(previous => {
+        const current = previous.scope === scope ? previous : {
+          scope, status: cached?.status ?? null, rewards: [], loading: !cached,
+          error: false, announcementPending: false, ready: false, hasCard: !!cached,
+        };
+        return {
+          ...current, loading: !current.hasCard, error: false,
+          ...(resetReadiness ? { ready: false, rewards: [], announcementPending: false } : {}),
+        };
+      });
       try {
         const supabase = createClient();
         // The outbox owns original completion dates/offsets. Replaying it later
         // cannot reinterpret yesterday using a new timezone or today's date.
-        await withQtDraftTimeout(flushPersonalChallengeCompletions(supabase, userId), 9_000, "personal challenge completion recovery");
+        // Start recovery and the first read together. Only the card can use
+        // this first response; automatic popups wait for reconciliation below.
+        const recovery = (async () => {
+          await withQtDraftTimeout(flushPersonalChallengeCompletions(supabase, userId), 9_000, "personal challenge completion recovery");
+          if (!isCurrent()) return;
+          if (completedQtRecordId && getLocalDateString() === today) {
+            await withQtDraftTimeout(recordPersonalChallengeReflectionCompletedBestEffort(
+              supabase, userId, today, completedQtRecordId,
+            ), 9_000, "personal challenge same-day recovery");
+          }
+        })().then(() => ({ error: null }), error => ({ error }));
+        let result = await withQtDraftTimeout(syncPersonalChallenge(supabase, userId, today), 9_000, "personal challenge status");
         if (!isCurrent()) return;
-        if (completedQtRecordId && getLocalDateString() === today) {
-          await withQtDraftTimeout(recordPersonalChallengeReflectionCompletedBestEffort(
-            supabase, userId, today, completedQtRecordId,
-          ), 9_000, "personal challenge same-day recovery");
+        const firstStatus = result.status;
+        setSnapshot(previous => previous.scope === scope
+          ? {
+            ...previous, status: firstStatus, hasCard: true, loading: false, error: false,
+            announcementPending: !!firstStatus && previous.status?.challengeId === firstStatus.challengeId
+              ? previous.announcementPending : false,
+          }
+          : previous);
+        const recovered = await recovery;
+        if (!isCurrent()) return;
+        if (recovered.error) throw recovered.error;
+        if (result.completionRevision !== getPersonalChallengeCompletionRevision(userId)) {
+          result = await withQtDraftTimeout(syncPersonalChallenge(supabase, userId, today), 9_000, "personal challenge recovered status");
         }
-        if (!isCurrent()) return;
-        const result = await withQtDraftTimeout(syncPersonalChallenge(supabase, userId, today), 9_000, "personal challenge status");
         if (!isCurrent()) return;
         // Publish the card/rewards first. The optional campaign receipt read
         // has its own bounded request and cannot delay their display.
         setSnapshot(previous => ({
           scope, status: result.status, rewards: result.rewards,
-          loading: false, error: false, ready: true,
-          announcementPending: previous.scope === scope && previous.status?.challengeId === result.status?.challengeId
+          loading: false, error: false, ready: true, hasCard: true,
+          announcementPending: !!result.status && previous.scope === scope && previous.status?.challengeId === result.status.challengeId
             ? previous.announcementPending : false,
         }));
         const campaign = result.status;
         if (campaign && today >= campaign.announcementDate && today <= campaign.endDate) {
-          const seen = await withQtDraftTimeout(readPersonalChallengeAnnouncementSeen(
-            supabase, userId, campaign.challengeId,
-          ), 6_000, "personal challenge announcement");
-          if (isCurrent() && seen !== null) {
-            setSnapshot(previous => previous.scope === scope && previous.status?.challengeId === campaign.challengeId
-              ? { ...previous, announcementPending: seen === false } : previous);
+          try {
+            const seen = await withQtDraftTimeout(readPersonalChallengeAnnouncementSeen(
+              supabase, userId, campaign.challengeId,
+            ), 6_000, "personal challenge announcement");
+            if (isCurrent() && seen !== null) {
+              setSnapshot(previous => previous.scope === scope && previous.status?.challengeId === campaign.challengeId
+                ? { ...previous, announcementPending: seen === false } : previous);
+            }
+          } catch (error) {
+            if (isCurrent()) console.warn("개인 묵상 챌린지 공지 확인 실패:", error);
           }
         }
       } catch (error) {
         if (isCurrent()) {
           console.warn("개인 묵상 챌린지 확인 실패:", error);
           setSnapshot(previous => ({
-            ...(previous.scope === scope ? previous : { scope, status: null, rewards: [], announcementPending: false }),
+            ...(previous.scope === scope ? previous : { scope, status: null, rewards: [], announcementPending: false, hasCard: false }),
             loading: false, error: true, ready: true,
           }));
         }
@@ -137,10 +173,11 @@ export function usePersonalReflectionChallenge({ userId, today, ready, completed
   }, [userId, scope, snapshot.scope]);
 
   const current = snapshot.scope === scope ? snapshot : null;
+  const cached = userId && today ? readCachedPersonalChallengeStatus(userId, today) : null;
   return {
-    status: current?.status ?? null,
+    status: current?.hasCard ? current.status : cached?.status ?? null,
     rewards: current?.rewards ?? [],
-    loading: !current || current.loading,
+    loading: !current?.hasCard && !cached && (!current || current.loading),
     error: current?.error ?? false,
     ready: current?.ready ?? false,
     announcementPending: current?.announcementPending ?? false,
