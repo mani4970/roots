@@ -36,6 +36,7 @@ import { useQTShareOptions } from "@/lib/useQTShareOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import { capturePersonalChallengeCompletion, recordPersonalChallengeReflectionCompletedBestEffort, type PersonalChallengeCompletionContext } from "@/lib/personalReflectionChallenges";
 import { prepareQTPhoto, QTPhotoPreparationError, type PreparedQTPhoto } from "@/lib/qtPhotoProcessing";
 import { removeQTPhotoBestEffort, uploadQTPhotoDurably } from "@/lib/qtPhotoStorage";
 import {
@@ -1138,7 +1139,9 @@ function PhotoReflectionContent() {
     supabase: ReturnType<typeof createClient>,
     userId: string,
     qtRecordId?: string | null,
+    personalChallengeContext?: PersonalChallengeCompletionContext | null,
   ) {
+    const personalContext = personalChallengeContext ?? capturePersonalChallengeCompletion(userId, today);
     observe(observationRef.current, "progress_requested", undefined, qtRecordId);
     const progress = await recordBibleReflectionProgress(supabase, userId, today);
     if (progress.updated) {
@@ -1150,6 +1153,8 @@ function PhotoReflectionContent() {
     // so a prior transient failure cannot leave photo reflections behind.
     void recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, qtRecordId)
       .catch(error => console.warn("photo reflection companion challenge recording failed", error));
+    void recordPersonalChallengeReflectionCompletedBestEffort(supabase, userId, today, qtRecordId, personalContext)
+      .catch(error => console.warn("photo reflection personal challenge recording failed", error));
     return progress.updated;
   }
 
@@ -1277,6 +1282,7 @@ function PhotoReflectionContent() {
       });
 
       stage = "record";
+      const personalChallengeContext = capturePersonalChallengeCompletion(user.id, targetDate);
       const insertedRecord = await insertQTPhotoRecordDurably(supabase, {
         id: attemptId,
         user_id: user.id,
@@ -1404,7 +1410,7 @@ function PhotoReflectionContent() {
         stage = "progress";
         try {
           const updated = await withPhotoStageTimeout(
-            recordTodayPhotoProgress(supabase, user.id, recordId),
+            recordTodayPhotoProgress(supabase, user.id, recordId, personalChallengeContext),
             "photo progress save",
           );
           observe(observationRef.current, "progress_ok", { updated }, recordId);

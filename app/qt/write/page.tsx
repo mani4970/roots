@@ -40,6 +40,7 @@ import { useQTShareOptions } from "@/lib/useQTShareOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
+import { capturePersonalChallengeCompletion, recordPersonalChallengeReflectionCompletedBestEffort, type PersonalChallengeCompletionContext } from "@/lib/personalReflectionChallenges";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
@@ -268,6 +269,7 @@ type PendingCompletion = {
   recipientsSaved: boolean;
   progressSaved: boolean;
   failed: boolean;
+  personalChallengeContext?: PersonalChallengeCompletionContext | null;
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
@@ -2904,6 +2906,14 @@ function QTWriteContent() {
       pending = rememberPendingCompletion({ ...pending, progressSaved: true });
     }
 
+    // This proof was captured before the final write. Sending it only after
+    // the existing completion gate succeeds preserves that original local
+    // date even when sharing/progress returns after midnight.
+    void recordPersonalChallengeReflectionCompletedBestEffort(
+      supabase, userId, pending.personalChallengeContext?.completionDate ?? selectedDate,
+      recordId, pending.personalChallengeContext,
+    ).catch(error => console.warn("개인 묵상 챌린지 완료일 기록 실패:", error));
+
     if (selectedDate === getLocalDateString()) {
       void markBibleReflectionCompletedForNotifications(selectedDate, lang)
         .catch(notificationError => console.warn("말씀 묵상 완료 알림 상태 업데이트 실패:", notificationError));
@@ -2975,6 +2985,7 @@ function QTWriteContent() {
         return;
       }
 
+      const personalChallengeContext = capturePersonalChallengeCompletion(user.id, selectedDate);
       const recordData = buildCompleteRecordData(user.id, options);
 
       if (isEditMode && editId) {
@@ -3024,6 +3035,7 @@ function QTWriteContent() {
             recipientsSaved: !Array.isArray(options.partnerRecipientIds),
             progressSaved: false,
             failed: false,
+            personalChallengeContext,
           });
           return;
         }
@@ -3080,6 +3092,7 @@ function QTWriteContent() {
         recipientsSaved: !Array.isArray(options.partnerRecipientIds),
         progressSaved: false,
         failed: false,
+        personalChallengeContext,
       }));
     } catch (error) {
       console.warn("말씀 묵상 저장/완료 재시도 필요:", error);

@@ -25,7 +25,10 @@ import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
-import HomeWordCardButtons from "@/components/HomeWordCardButtons";
+import PersonalReflectionChallengeCard from "@/components/PersonalReflectionChallengeCard";
+import PersonalReflectionChallengePopup from "@/components/PersonalReflectionChallengePopup";
+import { usePersonalReflectionChallenge } from "@/lib/usePersonalReflectionChallenge";
+import { NOVEMBER_PERSONAL_CHALLENGE_ID, type PersonalChallengeStatus } from "@/lib/personalReflectionChallenges";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -413,8 +416,9 @@ export default function HomePage() {
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
-  const [showLastWeekWordCard, setShowLastWeekWordCard] = useState(false);
-  const [showTodayWordCard, setShowTodayWordCard] = useState(false);
+  const [personalChallengeDetails, setPersonalChallengeDetails] = useState<PersonalChallengeStatus | null>(null);
+  const [openingPersonalChallengeProfile, setOpeningPersonalChallengeProfile] = useState(false);
+  useEffect(() => { setPersonalChallengeDetails(null); setOpeningPersonalChallengeProfile(false); }, [profile?.id]);
   const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
@@ -733,6 +737,12 @@ export default function HomePage() {
   const hasMyDecisions = myDecisions.length > 0;
   const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
   const wordWalkDone = todayDone.qt;
+  const personalChallenge = usePersonalReflectionChallenge({
+    userId: profile?.id ?? null,
+    today: challengeLocalDate,
+    ready: !loading && !homeLoadFailed,
+    completedQtRecordId: wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
+  });
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const rewardActionDisplayDays = activeActionReceipt?.days ?? rewardMapDisplayDays;
   const rewardPresentationsReady = !!profile?.id && rewardReceiptOwner === profile.id;
@@ -743,7 +753,7 @@ export default function HomePage() {
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
-    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || showLastWeekWordCard || showTodayWordCard;
+    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || !!personalChallengeDetails;
   const rewardDialogBlocked = homeDialogBlocked || !!requiredUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
@@ -1080,21 +1090,6 @@ export default function HomePage() {
           checkPendingChallengeRewards(supabase, today),
         ]);
         if (isCurrentLoad()) setAnnouncementRewardChecksReadyFor(user.id);
-      });
-      background("홈 오늘의 말씀 조회 실패:", async () => {
-        const { data: ci, error } = await withQtDraftTimeout(supabase.from("daily_checkins")
-          .select("user_id,date,verse,reference,verse_text,verse_reference,verse_lang,verse_translation_id,verse_ref_id,verse_book,verse_start_chapter,verse_start_verse,verse_end_chapter,verse_end_verse")
-          .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home daily verse");
-        if (error) throw error;
-        if (!isCurrentLoad()) return;
-        const storedVerse = ci?.verse_text ?? ci?.verse;
-        const baseTodayVerse = ci ? { ...ci, verse: storedVerse, reference: ci.verse_reference ?? ci.reference } : null;
-        setTodayVerse(baseTodayVerse);
-        ready("verse");
-        if (ci && !storedVerse && Number(ci.verse_translation_id) === ESV_TRANSLATION_ID) {
-          const reloadedVerse = await fetchStoredDailyVerseText(ci);
-          if (reloadedVerse && isCurrentLoad()) setTodayVerse({ ...baseTodayVerse, verse: reloadedVerse });
-        }
       });
       background("동역자 수락 안내 조회 실패:", async () => {
         try {
@@ -2282,8 +2277,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    showLastWeekWordCard ||
-    showTodayWordCard ||
+    !!personalChallengeDetails ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -2317,8 +2311,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    showLastWeekWordCard ||
-    showTodayWordCard ||
+    !!personalChallengeDetails ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt ||
     chapterPopup.show;
@@ -2329,12 +2322,36 @@ export default function HomePage() {
   const visibleAvatarChoiceModal = canShowProgressPopups && showAvatarChoiceModal
     && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
     && !visibleMonthlyBadgeAward;
+  const personalCampaignPopupBlocked = homePopupBlocked || homeLoadFailed
+    || !!monthlyBadgeAward || challengeRewardQueue.length > 0
+    || openingChallengeProfile || openingPersonalChallengeProfile
+    || challengeRewardActionInFlightRef.current || progressUpdateInFlightRef.current
+    || pendingRootsManRef.current || showRootsMan;
+  const visiblePersonalChallengeReward = personalCampaignPopupBlocked
+    ? null : personalChallenge.rewards[0] ?? null;
+  const visiblePersonalChallengeAnnouncement = !personalCampaignPopupBlocked
+    && personalChallenge.ready && personalChallenge.rewards.length === 0
+    && announcementRewardChecksReadyFor === profile?.id
+    && personalChallenge.announcementPending;
+
+  function completePersonalChallengeReward(openProfile = false) {
+    const reward = visiblePersonalChallengeReward;
+    if (!reward) return;
+    acknowledgeObservedPopup(profile?.id, "challenge_reward", openProfile ? "profile" : "close");
+    personalChallenge.acknowledgeReward(reward);
+    if (openProfile) {
+      setOpeningPersonalChallengeProfile(true);
+      router.push("/profile#special-badges");
+    }
+  }
   const visibleMessengerShareAnnouncement =
     messengerShareAnnouncementOwner === profile?.id &&
     showMessengerShareAnnouncement &&
+    personalChallenge.ready &&
     announcementRewardChecksReadyFor === profile?.id &&
     !rewardCampaignPopupBlocked &&
     !monthlyBadgeAward && challengeRewardQueue.length === 0 &&
+    personalChallenge.rewards.length === 0 && !personalChallenge.announcementPending &&
     !openingChallengeProfile && !challengeRewardActionInFlightRef.current &&
     !progressUpdateInFlightRef.current && !pendingRootsManRef.current && !showRootsMan;
 
@@ -2369,12 +2386,16 @@ export default function HomePage() {
       completeMessengerShareAnnouncement("back");
       return true;
     }
-    if (showTodayWordCard) {
-      setShowTodayWordCard(false);
+    if (visiblePersonalChallengeReward) {
+      completePersonalChallengeReward();
       return true;
     }
-    if (showLastWeekWordCard) {
-      setShowLastWeekWordCard(false);
+    if (visiblePersonalChallengeAnnouncement) {
+      personalChallenge.acknowledgeAnnouncement();
+      return true;
+    }
+    if (personalChallengeDetails) {
+      setPersonalChallengeDetails(null);
       return true;
     }
     if (showHomePrayerSharePrompt) {
@@ -2788,6 +2809,38 @@ export default function HomePage() {
           onClose={closeOptionalUpdate}
         />
       )}
+      </ObservationPopup>
+
+      <PersonalReflectionChallengePopup
+        show={!!personalChallengeDetails && !visibleRequiredUpdatePrompt && !showFirstLangPicker && !showOnboarding}
+        mode="details"
+        lang={lang}
+        earned={personalChallengeDetails?.awarded === true}
+        title={personalChallengeDetails && personalChallengeDetails.challengeId !== NOVEMBER_PERSONAL_CHALLENGE_ID ? personalChallengeDetails.title : undefined}
+        requiredDays={personalChallengeDetails?.requiredDays}
+        rewardHearts={personalChallengeDetails?.rewardHearts}
+        badgeImagePath={personalChallengeDetails?.badgeImagePath}
+        onClose={() => setPersonalChallengeDetails(null)}
+      />
+      <PersonalReflectionChallengePopup
+        show={visiblePersonalChallengeAnnouncement}
+        mode="announcement"
+        lang={lang}
+        requiredDays={personalChallenge.status?.requiredDays}
+        rewardHearts={personalChallenge.status?.rewardHearts}
+        badgeImagePath={personalChallenge.status?.badgeImagePath}
+        onClose={personalChallenge.acknowledgeAnnouncement}
+      />
+      <ObservationPopup userId={profile?.id} kind="challenge_reward" queued={personalChallenge.rewards.length > 0} instanceKey={personalChallenge.rewards[0]?.awardId}>
+        <PersonalReflectionChallengePopup
+          show={!!visiblePersonalChallengeReward}
+          mode="reward"
+          lang={lang}
+          rewardHearts={visiblePersonalChallengeReward?.rewardHearts}
+          badgeImagePath={visiblePersonalChallengeReward?.badgeImagePath}
+          onClose={() => completePersonalChallengeReward()}
+          onViewBadge={() => completePersonalChallengeReward(true)}
+        />
       </ObservationPopup>
 
       <ObservationPopup userId={profile?.id} kind="messenger_share_announcement" queued={showMessengerShareAnnouncement}>
@@ -3347,16 +3400,13 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 14px" }}>
-        <HomeWordCardButtons
-          userId={profile.id}
+        <PersonalReflectionChallengeCard
           lang={lang}
-          today={challengeLocalDate}
-          open={showLastWeekWordCard}
-          onOpenChange={setShowLastWeekWordCard}
-          dailyRecord={todayVerse}
-          dailyReady={homeDetailsReady.verse && homeDataDateRef.current === challengeLocalDate}
-          todayOpen={showTodayWordCard}
-          onTodayOpenChange={setShowTodayWordCard}
+          status={personalChallenge.status}
+          loading={personalChallenge.loading}
+          error={personalChallenge.error}
+          onRetry={personalChallenge.retry}
+          onOpen={() => { if (personalChallenge.status && !personalCampaignPopupBlocked) setPersonalChallengeDetails(personalChallenge.status); }}
         />
       </div>
 

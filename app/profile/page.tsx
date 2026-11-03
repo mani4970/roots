@@ -10,6 +10,8 @@ import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { getCompanionChallengeBadgeImageSrc } from "@/lib/companionChallenges";
 import { getCompanionChallengeDisplayTitle, getCompanionChallengeText } from "@/lib/companionChallengeText";
+import { NOVEMBER_PERSONAL_CHALLENGE_ID, loadPersonalChallengeBadges, type PersonalChallengeReward } from "@/lib/personalReflectionChallenges";
+import { getPersonalChallengeText } from "@/lib/personalReflectionChallengeText";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
@@ -230,6 +232,16 @@ type SpecialProfileBadge =
       badgeImagePath: string | null;
       badge: CompanionChallengeProfileBadge;
       awardedAt: string;
+    }
+  | {
+      kind: "personal";
+      id: string;
+      title: string;
+      subtitle: string;
+      badgeName: string;
+      badgeImagePath: string | null;
+      badge: PersonalChallengeReward;
+      awardedAt: string;
     };
 
 function getGroupChallengeBadgeImg(path?: string | null) {
@@ -238,6 +250,13 @@ function getGroupChallengeBadgeImg(path?: string | null) {
 
 function getCompanionChallengeBadgeImg(path?: string | null) {
   return getCompanionChallengeBadgeImageSrc(path);
+}
+
+function getSpecialProfileBadgeImg(item: SpecialProfileBadge) {
+  if (item.kind === "personal") return item.badgeImagePath || LOCKED_FAITH_BADGE_IMG;
+  return item.kind === "group"
+    ? getGroupChallengeBadgeImg(item.badgeImagePath)
+    : getCompanionChallengeBadgeImg(item.badgeImagePath);
 }
 
 function getSpiritFruitBadgeImg(name: string) {
@@ -305,6 +324,8 @@ export default function ProfilePage() {
   const [selectedGroupChallengeBadge, setSelectedGroupChallengeBadge] = useState<GroupChallengeProfileBadge | null>(null);
   const [companionChallengeBadges, setCompanionChallengeBadges] = useState<CompanionChallengeProfileBadge[]>([]);
   const [selectedCompanionChallengeBadge, setSelectedCompanionChallengeBadge] = useState<CompanionChallengeProfileBadge | null>(null);
+  const [personalChallengeBadges, setPersonalChallengeBadges] = useState<PersonalChallengeReward[]>([]);
+  const [selectedPersonalChallengeBadge, setSelectedPersonalChallengeBadge] = useState<PersonalChallengeReward | null>(null);
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
   const profileRef = useRef<any>(null);
@@ -313,6 +334,10 @@ export default function ProfilePage() {
   const profileAvatarActionPendingRef = useRef(false);
 
   useAndroidBackHandler(() => {
+    if (selectedPersonalChallengeBadge) {
+      setSelectedPersonalChallengeBadge(null);
+      return true;
+    }
     if (selectedCompanionChallengeBadge) {
       setSelectedCompanionChallengeBadge(null);
       return true;
@@ -407,6 +432,33 @@ export default function ProfilePage() {
   }, [profile]);
 
   useEffect(() => {
+    if (!selectedPersonalChallengeBadge) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = document.getElementById("personal-profile-badge-title")?.closest("[role='dialog']");
+    const buttons = dialog ? Array.from(dialog.querySelectorAll<HTMLButtonElement>("button")) : [];
+    buttons[0]?.focus({ preventScroll: true });
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSelectedPersonalChallengeBadge(null);
+      } else if (event.key === "Tab" && buttons.length > 0) {
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [selectedPersonalChallengeBadge]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     if (url.searchParams.get("openHeartShop") !== "1") return;
@@ -421,12 +473,12 @@ export default function ProfilePage() {
     if (typeof window === "undefined") return;
     const hash = window.location.hash;
     if (hash !== "#special-badges" && hash !== "#group-challenge-badges" && hash !== "#companion-challenge-badges") return;
-    const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0;
+    const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0 || personalChallengeBadges.length > 0;
     const timer = window.setTimeout(() => {
       document.getElementById("special-badges")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, hasRows ? 260 : 700);
     return () => window.clearTimeout(timer);
-  }, [groupChallengeBadges.length, companionChallengeBadges.length]);
+  }, [groupChallengeBadges.length, companionChallengeBadges.length, personalChallengeBadges.length]);
 
   async function load() {
     const supabase = createClient();
@@ -508,6 +560,9 @@ export default function ProfilePage() {
   async function loadProfileSupplementalData(userId: string, baseProfile: any) {
     setLoadingQtCalendar(true);
     setLoadingMonthlyBadges(true);
+
+    // Personal awards are independent of the existing badge-repair gate.
+    void loadPersonalChallengeBadgesForProfile(userId);
 
     // These sections do not depend on one another. Load them together after the
     // visible profile shell is ready, then repair historical badges afterwards so
@@ -791,6 +846,16 @@ export default function ProfilePage() {
         awardedAt: row.awarded_at,
       };
     }));
+  }
+
+  async function loadPersonalChallengeBadgesForProfile(userId: string) {
+    try {
+      const awards = await loadPersonalChallengeBadges(createClient(), userId);
+      if (profileRef.current?.id === userId) setPersonalChallengeBadges(awards);
+    } catch (error) {
+      // A temporary failure must not hide already-loaded special badges.
+      console.warn("개인 묵상 챌린지 배지 조회 실패:", error);
+    }
   }
 
   async function loadMonthlyBadgeRecords(userId: string) {
@@ -1359,15 +1424,24 @@ export default function ProfilePage() {
     if (status === "missed") return monthlyBadgeText.missed;
     return monthlyBadgeText.mystery;
   };
-  const sortedFaithBadges = [...FAITH_BADGES].sort((a, b) => {
+  // Retired Today's Word awards stay visible to their existing owners only.
+  const visibleFaithBadges = FAITH_BADGES.filter(b => b.key !== "badge_word_fruit" || profile?.badge_word_fruit === true);
+  const sortedFaithBadges = [...visibleFaithBadges].sort((a, b) => {
     const aEarned = profile?.[a.key] ? 1 : 0;
     const bEarned = profile?.[b.key] ? 1 : 0;
     return bEarned - aEarned;
   });
   const previewFaithBadges = sortedFaithBadges.slice(0, 3);
-  const earnedFaithBadgeCount = FAITH_BADGES.filter(b => profile?.[b.key]).length;
+  const earnedFaithBadgeCount = visibleFaithBadges.filter(b => profile?.[b.key]).length;
   const earnedSpiritFruitCount = SPIRIT_FRUIT_BADGES.filter(b => profile?.[b.key]).length;
   const companionChallengeText = getCompanionChallengeText(lang);
+  const personalChallengeText = getPersonalChallengeText(lang);
+  const personalChallengeTitle = (badge: PersonalChallengeReward) => badge.challengeId === NOVEMBER_PERSONAL_CHALLENGE_ID
+    ? personalChallengeText.title
+    : badge.challengeTitle;
+  const personalChallengeBadgeName = (badge: PersonalChallengeReward) => badge.challengeId === NOVEMBER_PERSONAL_CHALLENGE_ID
+    ? personalChallengeText.badgeName
+    : badge.badgeName;
   const specialBadges: SpecialProfileBadge[] = [
     ...groupChallengeBadges.map((badge): SpecialProfileBadge => ({
       kind: "group",
@@ -1385,6 +1459,16 @@ export default function ProfilePage() {
       title: badge.title,
       subtitle: "",
       badgeName: badge.badgeName,
+      badgeImagePath: badge.badgeImagePath,
+      badge,
+      awardedAt: badge.awardedAt,
+    })),
+    ...personalChallengeBadges.map((badge): SpecialProfileBadge => ({
+      kind: "personal",
+      id: `personal_${badge.awardId}`,
+      title: personalChallengeTitle(badge),
+      subtitle: "",
+      badgeName: personalChallengeBadgeName(badge),
       badgeImagePath: badge.badgeImagePath,
       badge,
       awardedAt: badge.awardedAt,
@@ -1611,7 +1695,7 @@ export default function ProfilePage() {
 
             <div className="sec-label" style={{ marginBottom: 10 }}>
               {t("profile_faith_fruits", lang)}
-              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {FAITH_BADGES.length}</span>
+              <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {visibleFaithBadges.length}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
               {sortedFaithBadges.map(b => {
@@ -1664,6 +1748,8 @@ export default function ProfilePage() {
                     setShowGroupChallengeBadgeGallery(false);
                     if (item.kind === "group") {
                       setSelectedGroupChallengeBadge(item.badge);
+                    } else if (item.kind === "personal") {
+                      setSelectedPersonalChallengeBadge(item.badge);
                     } else {
                       setSelectedCompanionChallengeBadge(item.badge);
                     }
@@ -1672,10 +1758,10 @@ export default function ProfilePage() {
                 >
                   <div style={{ width: 72, height: 72, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
-                      src={item.kind === "group" ? getGroupChallengeBadgeImg(item.badgeImagePath) : getCompanionChallengeBadgeImg(item.badgeImagePath)}
+                      src={getSpecialProfileBadgeImg(item)}
                       alt={item.badgeName || item.title}
                       onError={(event) => {
-                        const fallback = item.kind === "group" ? "/badge_roots_together.webp" : "/badge_roots_together.webp";
+                        const fallback = item.kind === "personal" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
                         event.currentTarget.src = fallback;
                       }}
@@ -1772,6 +1858,51 @@ export default function ProfilePage() {
             </div>
             <button onClick={() => setSelectedGroupChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
               {t("group_challenge_close", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedPersonalChallengeBadge && (
+        <div
+          onClick={() => setSelectedPersonalChallengeBadge(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="personal-profile-badge-title"
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 340, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "24px 20px 20px", textAlign: "center", boxShadow: "var(--shadow-modal)", position: "relative" }}
+          >
+            <button
+              onClick={() => setSelectedPersonalChallengeBadge(null)}
+              aria-label={personalChallengeText.close}
+              style={{ position: "absolute", top: 8, right: 8, width: 44, height: 44, borderRadius: "50%", background: "transparent", border: "none", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 22, lineHeight: 1 }}
+            >
+              ×
+            </button>
+            <div style={{ width: 132, height: 132, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={selectedPersonalChallengeBadge.badgeImagePath || LOCKED_FAITH_BADGE_IMG}
+                alt={personalChallengeBadgeName(selectedPersonalChallengeBadge)}
+                onError={event => {
+                  if (!event.currentTarget.src.endsWith(LOCKED_FAITH_BADGE_IMG)) event.currentTarget.src = LOCKED_FAITH_BADGE_IMG;
+                }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <h3 id="personal-profile-badge-title" style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", marginBottom: 8 }}>
+              {personalChallengeBadgeName(selectedPersonalChallengeBadge)}
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5, margin: "0 0 16px" }}>
+              {personalChallengeTitle(selectedPersonalChallengeBadge)}
+            </p>
+            <div style={{ padding: "12px", borderRadius: 14, background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: 14, fontWeight: 850, marginBottom: 18 }}>
+              💛 +{selectedPersonalChallengeBadge.rewardHearts} {personalChallengeText.heartsLabel}
+            </div>
+            <button onClick={() => setSelectedPersonalChallengeBadge(null)} className="btn-sage" style={{ width: "100%" }}>
+              {personalChallengeText.confirm}
             </button>
           </div>
         </div>
@@ -2052,7 +2183,7 @@ export default function ProfilePage() {
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {t("profile_faith_fruits", lang)}
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {FAITH_BADGES.length}</span>
+            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {visibleFaithBadges.length}</span>
           </span>
           <button
             type="button"
@@ -2107,6 +2238,8 @@ export default function ProfilePage() {
                   onClick={() => {
                     if (item.kind === "group") {
                       setSelectedGroupChallengeBadge(item.badge);
+                    } else if (item.kind === "personal") {
+                      setSelectedPersonalChallengeBadge(item.badge);
                     } else {
                       setSelectedCompanionChallengeBadge(item.badge);
                     }
@@ -2115,12 +2248,12 @@ export default function ProfilePage() {
                 >
                   <div style={{ width: 78, height: 78, marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img
-                      src={item.kind === "group" ? getGroupChallengeBadgeImg(item.badgeImagePath) : getCompanionChallengeBadgeImg(item.badgeImagePath)}
+                      src={getSpecialProfileBadgeImg(item)}
                       alt={item.badgeName || item.title}
                       loading="lazy"
                       decoding="async"
                       onError={(event) => {
-                        const fallback = "/badge_roots_together.webp";
+                        const fallback = item.kind === "personal" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
                         event.currentTarget.src = fallback;
                       }}

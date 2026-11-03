@@ -90,8 +90,10 @@ export async function checkAndAwardPrayTogetherBadge(supabase: SupabaseLike, use
   return awardBadgeIfNeeded(supabase, userId, "badge_prayer_cheer");
 }
 
-export async function checkAndAwardDailyWordBadge(supabase: SupabaseLike, userId: string) {
-  return awardBadgeIfNeeded(supabase, userId, "badge_word_fruit");
+export async function checkAndAwardDailyWordBadge(_supabase: SupabaseLike, _userId: string): Promise<NewRewardBadgeKey | null> {
+  // Today's Word is retired. Keep its metadata for earned badges and pending
+  // award presentations, but never request another award from an old caller.
+  return null;
 }
 
 export async function repairNewRewardBadges(supabase: SupabaseLike, userId: string) {
@@ -100,7 +102,6 @@ export async function repairNewRewardBadges(supabase: SupabaseLike, userId: stri
     checkAndAwardAnsweredPrayerBadge(supabase, userId),
     checkAndAwardCompanionBadge(supabase, userId),
     checkAndAwardPrayTogetherBadge(supabase, userId),
-    checkAndAwardDailyWordBadge(supabase, userId),
   ]);
 
   return awarded.filter(Boolean).reduce<Record<string, boolean>>((acc, key) => {

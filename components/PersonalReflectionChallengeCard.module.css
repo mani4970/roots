@@ -1,0 +1,17 @@
+.card {
+  --personal-challenge-surface: #EEF2E9;
+  --personal-challenge-border: #D8E0D0;
+  --personal-challenge-text: #364332;
+  --personal-challenge-muted: #64705C;
+  --personal-challenge-track: #D7DFD0;
+  --personal-challenge-filled: #8D794A;
+}
+
+:global([data-theme="dark"]) .card {
+  --personal-challenge-surface: #2B352D;
+  --personal-challenge-border: #405141;
+  --personal-challenge-text: #E7EDE1;
+  --personal-challenge-muted: #BBC6B1;
+  --personal-challenge-track: #455143;
+  --personal-challenge-filled: #B8AA7B;
+}
