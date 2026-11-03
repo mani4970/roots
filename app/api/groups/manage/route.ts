@@ -232,14 +232,14 @@ export async function POST(request: NextRequest) {
         typeof payload.description === "string"
           ? payload.description.trim()
           : "";
-      const isPublic =
-        typeof payload.isPublic === "boolean" ? payload.isPublic : null;
+      // Groups use one private visibility mode. Older clients may still send
+      // a public flag; normalize it without rejecting an otherwise valid edit.
+      const isPublic = false;
 
       if (
         name.length < 1 ||
         name.length > 80 ||
-        description.length > 500 ||
-        isPublic === null
+        description.length > 500
       ) {
         return errorResponse("invalid_group_details", 400);
       }

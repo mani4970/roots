@@ -48,7 +48,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     removeMember: "내보내기",
     removeConfirmTitle: "그룹원을 내보낼까요?",
     removeConfirmMessage: (name) =>
-      `${name}님을 그룹에서 내보내시겠어요? 내보낸 뒤에도 초대 링크나 공개 그룹을 통해 다시 참여할 수 있어요.`,
+      `${name}님을 그룹에서 내보내시겠어요? 내보낸 뒤에도 초대 링크를 통해 다시 참여할 수 있어요.`,
     removeError:
       "그룹원을 내보내지 못했어요. 잠시 후 다시 시도해주세요.",
     deleteGroup: "그룹 삭제",
@@ -81,7 +81,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     removeMember: "Remove",
     removeConfirmTitle: "Remove this member?",
     removeConfirmMessage: (name) =>
-      `Remove ${name} from this group? They can join again later through an invite link or the public group.`,
+      `Remove ${name} from this group? They can join again later through an invite link.`,
     removeError: "Could not remove the member. Please try again shortly.",
     deleteGroup: "Delete group",
     deleteGroupTitle: "Delete this group?",
@@ -114,7 +114,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     removeMember: "Entfernen",
     removeConfirmTitle: "Mitglied entfernen?",
     removeConfirmMessage: (name) =>
-      `${name} aus dieser Gruppe entfernen? Ein späterer Beitritt über einen Einladungslink oder die öffentliche Gruppe bleibt möglich.`,
+      `${name} aus dieser Gruppe entfernen? Ein späterer Beitritt über einen Einladungslink bleibt möglich.`,
     removeError:
       "Das Mitglied konnte nicht entfernt werden. Bitte versuchen Sie es später erneut.",
     deleteGroup: "Gruppe löschen",
@@ -149,7 +149,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     removeMember: "Retirer",
     removeConfirmTitle: "Retirer ce membre ?",
     removeConfirmMessage: (name) =>
-      `Retirer ${name} de ce groupe ? Cette personne pourra le rejoindre plus tard avec un lien d’invitation ou via le groupe public.`,
+      `Retirer ${name} de ce groupe ? Cette personne pourra le rejoindre plus tard avec un lien d’invitation.`,
     removeError:
       "Impossible de retirer le membre. Veuillez réessayer dans un instant.",
     deleteGroup: "Supprimer le groupe",
@@ -184,7 +184,7 @@ const GROUP_LEADER_TEXT: Record<GroupLeaderTextLang, GroupLeaderText> = {
     removeMember: "Quitar",
     removeConfirmTitle: "¿Quitar a este miembro?",
     removeConfirmMessage: (name) =>
-      `¿Quieres quitar a ${name} de este grupo? Podrá volver a unirse más adelante mediante un enlace de invitación o el grupo público.`,
+      `¿Quieres quitar a ${name} de este grupo? Podrá volver a unirse más adelante mediante un enlace de invitación.`,
     removeError:
       "No se pudo quitar al miembro. Vuelve a intentarlo dentro de un momento.",
     deleteGroup: "Eliminar grupo",

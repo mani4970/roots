@@ -65,7 +65,6 @@ import {
 import {
   loadCommunityModerationMeta,
   loadCommunityPrayedIds,
-  loadHiddenGroupIds,
   loadPartnerActivityData,
   loadPartnerCoreData,
   type CommunityModerationMeta,
@@ -1054,14 +1053,7 @@ function CommunityPageContent() {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
-  const [publicGroupHideConfirm, setPublicGroupHideConfirm] =
-    useState<any | null>(null);
-  const [hidingPublicGroup, setHidingPublicGroup] = useState(false);
-  const [publicGroupHideError, setPublicGroupHideError] = useState<
-    string | null
-  >(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showChallengeRequestForm, setShowChallengeRequestForm] =
     useState(false);
@@ -1112,7 +1104,6 @@ function CommunityPageContent() {
   const [showGroupEdit, setShowGroupEdit] = useState(false);
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupDesc, setEditGroupDesc] = useState("");
-  const [editGroupIsPublic, setEditGroupIsPublic] = useState(true);
   const [savingGroupEdit, setSavingGroupEdit] = useState(false);
   const [groupEditError, setGroupEditError] = useState<string | null>(null);
   const [showLeadershipTransfer, setShowLeadershipTransfer] = useState(false);
@@ -1251,10 +1242,6 @@ function CommunityPageContent() {
     }
     if (detailQt) {
       closeQtDetail();
-      return true;
-    }
-    if (publicGroupHideConfirm) {
-      if (!hidingPublicGroup) closePublicGroupHideConfirm();
       return true;
     }
     if (showDeleteGroupConfirm) {
@@ -5012,16 +4999,9 @@ function CommunityPageContent() {
         return;
       }
 
-      // Group: start public groups and privacy filtering immediately while the
-      // membership/favorite query resolves. Hidden public groups are never
-      // rendered before the dedicated hide query succeeds.
+      // Group discovery is invitation-only. Load this viewer's memberships
+      // first, then fetch only those groups and preserve their favorite order.
       const favoriteCache = readFavoriteCache(user.id);
-      const publicGroupsPromise = Promise.resolve(supabase
-        .from("groups")
-        .select("*")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false }));
-      const hiddenPublicGroupIdsPromise = loadHiddenGroupIds(supabase, user.id);
 
       let memberRows: any[] = [];
       const { data: preferenceRows, error: preferenceError } =
@@ -5064,38 +5044,19 @@ function CommunityPageContent() {
         };
       });
       const myGroupIds = memberRows.map((row: any) => row.group_id);
-      const privateGroupsPromise =
-        myGroupIds.length > 0
-          ? supabase
-              .from("groups")
-              .select("*")
-              .eq("is_public", false)
-              .in("id", myGroupIds)
-          : Promise.resolve({ data: [], error: null });
-
-      const [publicGroupsResult, privateGroupsResult, hiddenPublicGroupIds] =
-        await Promise.all([
-          publicGroupsPromise,
-          privateGroupsPromise,
-          hiddenPublicGroupIdsPromise,
-        ]);
-
-      if (publicGroupsResult.error) throw publicGroupsResult.error;
-      if (privateGroupsResult.error) throw privateGroupsResult.error;
+      const myGroupsResult = myGroupIds.length > 0
+        ? await supabase
+            .from("groups")
+            .select("*")
+            .in("id", myGroupIds)
+            .order("created_at", { ascending: false })
+        : { data: [], error: null };
+      if (myGroupsResult.error) throw myGroupsResult.error;
       if (!isCurrentMainTabRequest(targetTab, requestId)) return;
 
-      const all = [
-        ...(publicGroupsResult.data ?? []),
-        ...(privateGroupsResult.data ?? []),
-      ];
-      const unique = all
-        .filter((group, index, rows) =>
-          rows.findIndex((candidate) => candidate.id === group.id) === index,
-        )
-        .filter(
-          (group) =>
-            !!memberMap[group.id] ||
-            !hiddenPublicGroupIds.has(String(group.id ?? "")),
+      const unique = (myGroupsResult.data ?? [])
+        .filter((group: any, index: number, rows: any[]) =>
+          !!memberMap[group.id] && rows.findIndex(candidate => candidate.id === group.id) === index,
         );
       const uniqueGroupIds = uniqueStrings(
         unique.map((group: any) => String(group.id ?? "")),
@@ -5725,7 +5686,7 @@ function CommunityPageContent() {
       .insert({
         name: groupName.trim(),
         description: groupDesc.trim() || null,
-        is_public: isPublic,
+        is_public: false,
         created_by: userId,
       })
       .select()
@@ -5769,59 +5730,9 @@ function CommunityPageContent() {
     } catch (e) {}
     setGroupName("");
     setGroupDesc("");
-    setIsPublic(true);
     setShowGroupForm(false);
     setSavingGroup(false);
     void loadData({ targetTab: "group", force: true });
-  }
-
-  function openPublicGroupHideConfirm(group: any, event?: any) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    if (!group?.id || !group.is_public || group.isMember) return;
-    setPublicGroupHideError(null);
-    setPublicGroupHideConfirm(group);
-  }
-
-  function closePublicGroupHideConfirm() {
-    if (hidingPublicGroup) return;
-    setPublicGroupHideError(null);
-    setPublicGroupHideConfirm(null);
-  }
-
-  async function confirmHidePublicGroup() {
-    if (
-      !userId ||
-      !publicGroupHideConfirm?.id ||
-      publicGroupHideConfirm.isMember ||
-      hidingPublicGroup
-    ) {
-      return;
-    }
-
-    const groupId = String(publicGroupHideConfirm.id);
-    setHidingPublicGroup(true);
-    setPublicGroupHideError(null);
-    const supabase = createClient();
-    const { error } = await supabase.from("hidden_community_items").upsert(
-      {
-        user_id: userId,
-        content_type: "group",
-        content_id: groupId,
-      },
-      { onConflict: "user_id,content_type,content_id" },
-    );
-
-    if (error) {
-      console.warn("공개 그룹 숨기기 실패:", error.message);
-      setPublicGroupHideError(c("community_hide_public_group_error"));
-      setHidingPublicGroup(false);
-      return;
-    }
-
-    setGroups((prev) => prev.filter((group) => group.id !== groupId));
-    setPublicGroupHideConfirm(null);
-    setHidingPublicGroup(false);
   }
 
   async function joinGroup(groupId: string) {
@@ -6046,7 +5957,6 @@ function CommunityPageContent() {
     setGroupEditError(null);
     setEditGroupName(selectedGroup.name ?? "");
     setEditGroupDesc(selectedGroup.description ?? "");
-    setEditGroupIsPublic(!!selectedGroup.is_public);
     setOpenGroupHeaderMenu(null);
     setShowGroupEdit(true);
   }
@@ -6074,12 +5984,12 @@ function CommunityPageContent() {
         groupId: selectedGroup.id,
         name,
         description,
-        isPublic: editGroupIsPublic,
+        isPublic: false,
       });
       const updatedGroup = result.group ?? {
         name,
         description: description || null,
-        is_public: editGroupIsPublic,
+        is_public: false,
       };
 
       setSelectedGroup((current: any) =>
@@ -6306,7 +6216,6 @@ function CommunityPageContent() {
     setOpenGroupHeaderMenu(null);
     setShowGroupMembers(false);
     const leftGroupId = selectedGroup.id;
-    const wasPublic = !!selectedGroup.is_public;
     updateFavoriteCache(userId, leftGroupId, false);
     clearCommunityDetailHistory("group");
     setSelectedGroup(null);
@@ -6333,7 +6242,7 @@ function CommunityPageContent() {
                 }
               : g,
           )
-          .filter((g) => wasPublic || g.id !== leftGroupId),
+          .filter((g) => g.id !== leftGroupId),
       ),
     );
     setLeavingGroup(false);
@@ -8040,25 +7949,7 @@ function CommunityPageContent() {
             >
               {selectedGroup.name}
             </h1>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                padding: "2px 7px",
-                borderRadius: 10,
-                background: selectedGroup.is_public
-                  ? "var(--sage-light)"
-                  : "var(--bg3)",
-                color: selectedGroup.is_public
-                  ? "var(--sage-dark)"
-                  : "var(--text3)",
-                border: `1px solid ${selectedGroup.is_public ? "var(--community-sage-border)" : "var(--community-card-border)"}`,
-              }}
-            >
-              {selectedGroup.is_public
-                ? c("community_public")
-                : c("community_private")}
-            </span>
+
             {selectedGroup.isMember && (
               <button
                 onClick={(e) => toggleFavoriteGroup(selectedGroup, e)}
@@ -9668,75 +9559,7 @@ function CommunityPageContent() {
                   onChange={(event) => setEditGroupDesc(event.target.value)}
                 />
               </div>
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: 8,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--text3)",
-                  }}
-                >
-                  {c("community_visibility")}
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[
-                    {
-                      value: true,
-                      label: c("community_public"),
-                      sub: c("community_public_sub"),
-                    },
-                    {
-                      value: false,
-                      label: c("community_private"),
-                      sub: c("community_private_sub"),
-                    },
-                  ].map((option) => (
-                    <button
-                      key={String(option.value)}
-                      onClick={() => setEditGroupIsPublic(option.value)}
-                      style={{
-                        flex: 1,
-                        padding: "10px 8px",
-                        borderRadius: 12,
-                        border: `1px solid ${
-                          editGroupIsPublic === option.value
-                            ? "var(--sage)"
-                            : "var(--border)"
-                        }`,
-                        background:
-                          editGroupIsPublic === option.value
-                            ? "var(--sage-light)"
-                            : "var(--bg3)",
-                        color: "var(--text)",
-                        cursor: "pointer",
-                        textAlign: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: "block",
-                          fontSize: 12,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {option.label}
-                      </span>
-                      <span
-                        style={{
-                          display: "block",
-                          marginTop: 3,
-                          fontSize: 9.5,
-                          color: "var(--text3)",
-                        }}
-                      >
-                        {option.sub}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+
               {groupEditError && (
                 <p
                   style={{
@@ -10711,20 +10534,51 @@ function CommunityPageContent() {
           </>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button
-              onClick={() => setShowGroupForm(true)}
-              className="btn-sage"
-              style={{ display: "flex", alignItems: "center", gap: 8 }}
-            >
-              <Plus size={16} /> {c("community_create_group")}
-            </button>
+            {groups.length > 0 && (
+              <button
+                onClick={() => setShowGroupForm(true)}
+                className="btn-sage"
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <Plus size={16} /> {c("community_create_group")}
+              </button>
+            )}
             {groups.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <p style={{ fontSize: 32, marginBottom: 10 }}>👥</p>
-                <p style={{ color: "var(--text3)", fontSize: 14 }}>
-                  {c("community_no_groups")}
+              <section
+                className="card"
+                aria-labelledby="community-empty-groups-title"
+                style={{ padding: "26px 20px 20px", textAlign: "center" }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 48, height: 48, margin: "0 auto 14px", borderRadius: 16,
+                    background: "var(--community-card-muted-surface)", color: "var(--sage-dark)",
+                  }}
+                >
+                  <Users size={26} strokeWidth={1.6} />
+                </div>
+                <h2
+                  id="community-empty-groups-title"
+                  style={{ margin: "0 auto", maxWidth: 340, fontSize: 16, fontWeight: 700, color: "var(--text)", lineHeight: 1.45, overflowWrap: "anywhere", wordBreak: lang === "ko" ? "keep-all" : "normal" }}
+                >
+                  {c("community_group_empty_title")}
+                </h2>
+                <p style={{ margin: "9px auto 20px", maxWidth: 340, color: "var(--text3)", fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere" }}>
+                  {c("community_group_empty_body")}
                 </p>
-              </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 340, margin: "0 auto" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowGroupForm(true)}
+                    className="btn-sage"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, padding: "12px 14px", whiteSpace: "normal", lineHeight: 1.4 }}
+                  >
+                    <Plus size={16} style={{ flexShrink: 0 }} /> {c("community_create_group")}
+                  </button>
+                </div>
+              </section>
             ) : (
               groups.map((g) => (
                 <div
@@ -10813,25 +10667,7 @@ function CommunityPageContent() {
                       >
                         {g.name}
                       </span>
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: "2px 7px",
-                          borderRadius: 10,
-                          background: g.is_public
-                            ? "var(--sage-light)"
-                            : "var(--bg3)",
-                          color: g.is_public
-                            ? "var(--sage-dark)"
-                            : "var(--text3)",
-                          border: `1px solid ${g.is_public ? "var(--community-sage-border)" : "var(--community-card-border)"}`,
-                        }}
-                      >
-                        {g.is_public
-                          ? c("community_public")
-                          : c("community_private")}
-                      </span>
+
                       {(g.hasNewContent ?? g.hasNewQt) && (
                         <span
                           style={{
@@ -10855,18 +10691,7 @@ function CommunityPageContent() {
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>
                         {g.member_count == null ? "…" : g.member_count}
                       </span>
-                      {g.isMember && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: "var(--sage-dark)",
-                            fontWeight: 600,
-                            marginLeft: 6,
-                          }}
-                        >
-                          ✓ {c("community_member")}
-                        </span>
-                      )}
+
                     </div>
                   </div>
                   {g.isMember &&
@@ -10875,29 +10700,7 @@ function CommunityPageContent() {
                       g.id,
                       String(g.name ?? c("community_unknown")),
                     )}
-                  {g.is_public && !g.isMember && (
-                    <button
-                      onClick={(e) => openPublicGroupHideConfirm(g, e)}
-                      aria-label={c("community_hide_public_group")}
-                      title={c("community_hide_public_group")}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 999,
-                        border: "1px solid var(--community-card-border)",
-                        background: "var(--community-card-muted-surface)",
-                        color: "var(--text3)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                        padding: 0,
-                      }}
-                    >
-                      <EyeOff size={15} strokeWidth={1.9} />
-                    </button>
-                  )}
+
                   <ChevronRight
                     size={16}
                     style={{ color: "var(--text3)", flexShrink: 0 }}
@@ -10910,118 +10713,6 @@ function CommunityPageContent() {
       </div>
 
       {renderSharedOverlayModals()}
-
-      {publicGroupHideConfirm && (
-        <div
-          onClick={closePublicGroupHideConfirm}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 220,
-            background: "var(--community-overlay-modal)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 22px",
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="public-group-hide-title"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 360,
-              background: "var(--community-modal-surface)",
-              borderRadius: 24,
-              padding: 22,
-              border: "1px solid var(--community-card-border)",
-              boxShadow: "var(--shadow-modal)",
-            }}
-          >
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 999,
-                background: "var(--community-card-muted-surface)",
-                color: "var(--text3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 14,
-              }}
-            >
-              <EyeOff size={23} strokeWidth={1.9} />
-            </div>
-            <h2
-              id="public-group-hide-title"
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "var(--text)",
-                marginBottom: 8,
-              }}
-            >
-              {c("community_hide_public_group_title")}
-            </h2>
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--text2)",
-                lineHeight: 1.65,
-                marginBottom: publicGroupHideError ? 10 : 18,
-              }}
-            >
-              {c("community_hide_public_group_msg", {
-                name: publicGroupHideConfirm.name,
-              })}
-            </p>
-            {publicGroupHideError && (
-              <p
-                role="alert"
-                style={{
-                  fontSize: 12,
-                  color: "var(--community-danger-text)",
-                  lineHeight: 1.5,
-                  marginBottom: 14,
-                }}
-              >
-                {publicGroupHideError}
-              </p>
-            )}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={closePublicGroupHideConfirm}
-                disabled={hidingPublicGroup}
-                className="btn-outline"
-                style={{ flex: 1 }}
-              >
-                {c("community_cancel")}
-              </button>
-              <button
-                onClick={confirmHidePublicGroup}
-                disabled={hidingPublicGroup}
-                className="btn-sage"
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                {hidingPublicGroup && (
-                  <Loader2 size={15} className="spin" />
-                )}
-                {c("community_hide_confirm_action")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showGroupForm && (
         <div
@@ -11113,77 +10804,7 @@ function CommunityPageContent() {
                   onChange={(e) => setGroupDesc(e.target.value)}
                 />
               </div>
-              <div>
-                <label
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "var(--text3)",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  {c("community_visibility")}
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[
-                    {
-                      v: true,
-                      emoji: "🌍",
-                      label: c("community_public"),
-                      sub: c("community_public_sub"),
-                    },
-                    {
-                      v: false,
-                      emoji: "🔒",
-                      label: c("community_private"),
-                      sub: c("community_private_sub"),
-                    },
-                  ].map((opt) => (
-                    <button
-                      key={String(opt.v)}
-                      onClick={() => setIsPublic(opt.v)}
-                      style={{
-                        flex: 1,
-                        padding: "10px 8px",
-                        borderRadius: 12,
-                        border: `1px solid ${isPublic === opt.v ? "var(--sage)" : "var(--border)"}`,
-                        background:
-                          isPublic === opt.v
-                            ? "var(--sage-light)"
-                            : "var(--bg3)",
-                        cursor: "pointer",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div style={{ fontSize: 16, marginBottom: 3 }}>
-                        {opt.emoji}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color:
-                            isPublic === opt.v
-                              ? "var(--sage-dark)"
-                              : "var(--text)",
-                        }}
-                      >
-                        {opt.label}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "var(--text3)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {opt.sub}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   className="btn-outline"

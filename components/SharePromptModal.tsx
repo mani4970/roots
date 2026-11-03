@@ -188,7 +188,6 @@ export default function SharePromptModal({
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.35, color: selected ? "var(--sage-dark)" : "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
-          <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.is_public ? publicGroupLabel : privateGroupLabel}</p>
         </div>
         <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, borderRadius: 6, border: `2px solid ${selected ? "var(--sage-action)" : "var(--border)"}`, background: selected ? "var(--sage-action)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {selected && <Check size={11} style={{ color: "var(--on-sage-action)" }} />}
