@@ -3083,39 +3083,6 @@ export default function HomePage() {
 
       <div style={{ padding: "0 16px 14px" }}>
         <div
-          style={{
-            position: "relative",
-            margin: "0 8px 10px",
-            padding: "10px 14px",
-            borderRadius: "18px 18px 18px 8px",
-            border: "1px solid var(--border-sage-soft)",
-            background: "var(--surface-sage-subtle)",
-            color: "var(--text)",
-            fontSize: 13,
-            fontWeight: 850,
-            lineHeight: 1.35,
-            textAlign: "center",
-            wordBreak: "keep-all",
-          }}
-        >
-          {t("home_routine_prompt", lang)}
-          <span
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              left: 28,
-              bottom: -7,
-              width: 13,
-              height: 13,
-              borderRight: "1px solid var(--border-sage-soft)",
-              borderBottom: "1px solid var(--border-sage-soft)",
-              background: "var(--surface-sage-subtle)",
-              transform: "rotate(45deg)",
-            }}
-          />
-        </div>
-
-        <div
           className="card roots-elevation-card"
           style={{
             display: "grid",
