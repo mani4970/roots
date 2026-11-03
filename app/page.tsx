@@ -1788,12 +1788,8 @@ export default function HomePage() {
         .map(target => target.replace(/^partner_/, ""))
         .filter(Boolean)
     ));
-    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
-    const visibility = visibilityTargets.includes("all")
-      ? "all"
-      : visibilityTargets.length > 0
-        ? visibilityTargets.join(",")
-        : "private";
+    const visibilityTargets = targets.filter(target => target.startsWith("group_"));
+    const visibility = visibilityTargets.length > 0 ? visibilityTargets.join(",") : "private";
     return { visibility, partnerRecipientIds };
   }
 
@@ -1817,6 +1813,7 @@ export default function HomePage() {
   }
 
   function toggleHomePrayerShareTarget(target: string) {
+    if (target === "all") return;
     setHomePrayerShareTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
@@ -2949,6 +2946,7 @@ export default function HomePage() {
       <ObservationPopup userId={profile?.id} kind="prayer_share" queued={showHomePrayerSharePrompt}>
       {showHomePrayerSharePrompt && (
         <SharePromptModal
+          allowPublic={false}
           title={t("prayer_complete_share_title", lang)}
           description={t("prayer_complete_share_sub", lang)}
           helperText={t("prayer_complete_share_helper", lang)}
@@ -2979,7 +2977,7 @@ export default function HomePage() {
           loadingGroups={loadingHomePrayerShareOptions}
           loadingPartners={loadingHomePrayerShareOptions}
           onToggleTarget={toggleHomePrayerShareTarget}
-          onChangeTargets={setHomePrayerShareTargets}
+          onChangeTargets={targets => setHomePrayerShareTargets(targets.filter(target => target !== "all"))}
           onClose={closeHomePrayerSharePrompt}
           onPrivate={() => { void saveHomePrayerRequest("private", []); }}
           onShare={() => { if (homePrayerShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitHomePrayerShareTargets(homePrayerShareTargets); void saveHomePrayerRequest(visibility, partnerRecipientIds); } }}

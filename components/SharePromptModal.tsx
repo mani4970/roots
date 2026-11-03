@@ -25,6 +25,7 @@ type SharePromptModalProps = {
   helperText: string;
   allLabel: string;
   allSubLabel: string;
+  allowPublic?: boolean;
   partnersLabel: string;
   partnerSubLabel: string;
   noPartnersLabel: string;
@@ -69,6 +70,7 @@ export default function SharePromptModal({
   helperText,
   allLabel,
   allSubLabel,
+  allowPublic = true,
   partnersLabel,
   partnerSubLabel,
   noPartnersLabel,
@@ -88,7 +90,7 @@ export default function SharePromptModal({
   closeLabel,
   groups,
   partners = [],
-  selectedTargets,
+  selectedTargets: rawSelectedTargets,
   saving = false,
   actionsDisabled = false,
   externalShareAction,
@@ -107,6 +109,7 @@ export default function SharePromptModal({
 }: SharePromptModalProps) {
   const [partnersExpanded, setPartnersExpanded] = useState(false);
   const [groupsExpanded, setGroupsExpanded] = useState(false);
+  const selectedTargets = allowPublic ? rawSelectedTargets : rawSelectedTargets.filter(target => target !== "all");
   const allSelected = selectedTargets.includes("all");
   const directTargets = [
     ...partners.map(partner => `partner_${partner.id}`),
@@ -393,11 +396,14 @@ export default function SharePromptModal({
                 )}
               </section>
 
-              <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
-
-              <section style={sectionStyle}>
-                {renderAllCommunityOption()}
-              </section>
+              {allowPublic && (
+                <>
+                  <div style={{ height: 1, background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
+                  <section style={sectionStyle}>
+                    {renderAllCommunityOption()}
+                  </section>
+                </>
+              )}
             </>
           )}
         </div>

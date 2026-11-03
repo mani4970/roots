@@ -954,7 +954,6 @@ const SECTIONS: {
 type CommunityModalHistoryKind = "qt-detail" | "photo-viewer" | "prayer-added" | "prayer-answer";
 type CommunityMainTab = "partner" | "group" | "all";
 type CommunityMainLoadState = "idle" | "loading" | "ready" | "error";
-type CommunitySectionLoadState = "idle" | "loading" | "ready" | "error";
 
 function CommunityPageContent() {
   const router = useRouter();
@@ -964,16 +963,6 @@ function CommunityPageContent() {
     if (initialTab === "group" || initialTab === "all") return initialTab;
     return "partner";
   });
-  const [allTab, setAllTab] = useState<"qt" | "praying" | "answered">("qt");
-  const [allSectionLoadState, setAllSectionLoadState] = useState<
-    Record<CommunitySectionKey, CommunitySectionLoadState>
-  >({ qt: "idle", praying: "idle", answered: "idle" });
-  const allSectionRequestSeqRef = useRef<Record<CommunitySectionKey, number>>({
-    qt: 0,
-    praying: 0,
-    answered: 0,
-  });
-  const allSectionInFlightRef = useRef<Set<CommunitySectionKey>>(new Set());
   const lang = useLang();
   const [loveHeartToast, setLoveHeartToast] = useState<string | null>(null);
   const loveHeartToastTimerRef = useRef<number | null>(null);
@@ -993,8 +982,6 @@ function CommunityPageContent() {
   >(null);
   const reflectionNudgeToastTimerRef = useRef<number | null>(null);
   const reflectionNudgeWaveTimerRef = useRef<number | null>(null);
-  const [prayers, setPrayers] = useState<any[]>([]);
-  const [answeredPrayers, setAnsweredPrayers] = useState<any[]>([]);
   const [qtShares, setQtShares] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -1191,9 +1178,6 @@ function CommunityPageContent() {
   const [visibleFeedCounts, setVisibleFeedCounts] = useState<
     Record<string, number>
   >({});
-  const [allSectionSeenAt, setAllSectionSeenAt] = useState<
-    Record<CommunitySectionKey, string | null>
-  >({ qt: null, praying: null, answered: null });
   const [profileModal, setProfileModal] = useState<null | {
     profile: any;
     userId: string;
@@ -1227,8 +1211,8 @@ function CommunityPageContent() {
     string | null
   >(null);
   const prayerAnswerBackRef = useRef<(() => boolean) | null>(null);
-  const communityPrayerContextRef = useRef({ userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id, prayers, answeredPrayers });
-  communityPrayerContextRef.current = { userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id, prayers, answeredPrayers };
+  const communityPrayerContextRef = useRef({ userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id });
+  communityPrayerContextRef.current = { userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id };
 
   useAndroidBackHandler(() => {
     if (notificationDirectOpenPending) return true;
@@ -1687,10 +1671,7 @@ function CommunityPageContent() {
       mainTabRequestSeqRef.current.partner += 1;
       mainTabRequestSeqRef.current.group += 1;
       mainTabRequestSeqRef.current.all += 1;
-      allSectionRequestSeqRef.current.praying += 1;
-      allSectionRequestSeqRef.current.answered += 1;
       mainTabInFlightRef.current = {};
-      allSectionInFlightRef.current.clear();
       if (loveHeartToastTimerRef.current)
         window.clearTimeout(loveHeartToastTimerRef.current);
       if (reflectionNudgeToastTimerRef.current) {
@@ -2860,10 +2841,8 @@ function CommunityPageContent() {
       setPartnerQts((prev) => prev.filter((item) => item.id !== id));
       if (detailQt?.id === id) resetQtDetailState();
     } else {
-      setPrayers((prev) => prev.filter((item) => item.id !== id));
       setGroupPrayers((prev) => prev.filter((item) => item.id !== id));
       setPartnerPrayers((prev) => prev.filter((item) => item.id !== id));
-      setAnsweredPrayers((prev) => prev.filter((item) => item.id !== id));
     }
   }
 
@@ -2871,12 +2850,8 @@ function CommunityPageContent() {
     setQtShares((prev) => prev.filter((item) => item.user_id !== authorId));
     setGroupQts((prev) => prev.filter((item) => item.user_id !== authorId));
     setPartnerQts((prev) => prev.filter((item) => item.user_id !== authorId));
-    setPrayers((prev) => prev.filter((item) => item.user_id !== authorId));
     setGroupPrayers((prev) => prev.filter((item) => item.user_id !== authorId));
     setPartnerPrayers((prev) =>
-      prev.filter((item) => item.user_id !== authorId),
-    );
-    setAnsweredPrayers((prev) =>
       prev.filter((item) => item.user_id !== authorId),
     );
     if (detailQt?.user_id === authorId) resetQtDetailState();
@@ -2958,17 +2933,11 @@ function CommunityPageContent() {
           )
             resetQtDetailState();
         } else {
-          setPrayers((prev) =>
-            target === "all"
-              ? prev.filter((item) => item.id !== manageModal.item.id)
-              : prev.map(updateVisibility),
-          );
           setGroupPrayers((prev) =>
             target !== "all"
               ? prev.filter((item) => item.id !== manageModal.item.id)
               : prev.map(updateVisibility),
           );
-          setAnsweredPrayers((prev) => prev.map(updateVisibility));
         }
       }
       closeManageModal();
@@ -3004,10 +2973,8 @@ function CommunityPageContent() {
         item.id === manageModal.item.id
           ? { ...item, content: nextContent }
           : item;
-      setPrayers((prev) => prev.map(updateItem));
       setGroupPrayers((prev) => prev.map(updateItem));
       setPartnerPrayers((prev) => prev.map(updateItem));
-      setAnsweredPrayers((prev) => prev.map(updateItem));
       closeManageModal();
     } catch (error) {
       console.error("community prayer edit failed", error);
@@ -3705,7 +3672,6 @@ function CommunityPageContent() {
       setLikedPrayerIds((prev) =>
         prev.includes(prayerId) ? prev : [...prev, prayerId],
       );
-      setAnsweredPrayers((prev) => bumpLikeCount(prev));
       setGroupPrayers((prev) => bumpLikeCount(prev));
       setPartnerPrayers((prev) => bumpLikeCount(prev));
       void awardCommunityLoveHeart(
@@ -3775,18 +3741,6 @@ function CommunityPageContent() {
   useEffect(() => {
     void loadData({ targetTab: tab });
   }, [tab]);
-
-  useEffect(() => {
-    if (tab !== "all" || !userId) return;
-    markAllSectionSeen(allTab);
-  }, [
-    tab,
-    allTab,
-    userId,
-    qtShares.length,
-    prayers.length,
-    answeredPrayers.length,
-  ]);
 
   function partnerQtCommentContext(row: any, currentUserId: string, partnerId: string): QtCommentContext {
     return { scope: "partner", scopeId: row.user_id === currentUserId ? partnerId : currentUserId };
@@ -3944,12 +3898,11 @@ function CommunityPageContent() {
       return;
     }
 
-    if (tab === "all" && allTab === "qt") {
+    if (tab === "all") {
       void loadQtPhotoUrls(supabase, visibleFeedItems("all-qt", qtShares));
     }
   }, [
     tab,
-    allTab,
     selectedGroup?.id,
     groupDetailTab,
     selectedPartner?.partner_id,
@@ -3973,72 +3926,6 @@ function CommunityPageContent() {
         {c("community_manage_more")}
       </button>
     );
-  }
-
-  function allSectionSeenKey(uid: string) {
-    return `roots_community_all_section_seen_${uid}`;
-  }
-
-  function latestContentTime(
-    rows: any[],
-    field: "qt" | "prayer" | "answered" = "qt",
-  ) {
-    if (!rows || rows.length === 0) return null;
-    const times = rows
-      .map((row: any) => {
-        if (field === "answered") return getAnsweredPrayerTime(row);
-        if (field === "prayer") return prayerUnreadActivityTime(row);
-        return qtUnreadActivityTime(row);
-      })
-      .filter(
-        (value): value is string =>
-          typeof value === "string" && value.length > 0,
-      );
-    return (
-      times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ??
-      null
-    );
-  }
-
-  function hasAllSectionNew(section: CommunitySectionKey) {
-    const latest =
-      section === "qt"
-        ? latestContentTime(qtShares, "qt")
-        : section === "answered"
-          ? latestContentTime(answeredPrayers, "answered")
-          : latestContentTime(prayers, "prayer");
-    return isLaterThan(latest, allSectionSeenAt[section]);
-  }
-
-  function markAllSectionSeen(section: CommunitySectionKey) {
-    if (!userId) return;
-    const seenAt = new Date().toISOString();
-    setAllSectionSeenAt((prev) => {
-      const next = { ...prev, [section]: seenAt };
-      storageSetJson(allSectionSeenKey(userId), next);
-      return next;
-    });
-  }
-
-  function selectAllSection(section: CommunitySectionKey) {
-    setAllTab(section);
-    markAllSectionSeen(section);
-
-    if (section === "qt") {
-      if (allSectionLoadState.qt === "error") {
-        void loadData({ targetTab: "all", force: true });
-      }
-      return;
-    }
-
-    if (
-      allSectionLoadState[section] === "idle" ||
-      allSectionLoadState[section] === "error"
-    ) {
-      void loadAllPrayerSection(section, {
-        force: allSectionLoadState[section] === "error",
-      });
-    }
   }
 
   function hasUnreadPartnerSection(section: CommunitySectionKey) {
@@ -4943,174 +4830,6 @@ function CommunityPageContent() {
     return promise;
   }
 
-  function setAllSectionState(
-    section: CommunitySectionKey,
-    state: CommunitySectionLoadState,
-  ) {
-    setAllSectionLoadState((current) =>
-      current[section] === state
-        ? current
-        : { ...current, [section]: state },
-    );
-  }
-
-  function isCurrentAllSectionRequest(
-    section: CommunitySectionKey,
-    requestId: number,
-  ) {
-    return allSectionRequestSeqRef.current[section] === requestId;
-  }
-
-  async function loadAllPrayerSection(
-    section: Exclude<CommunitySectionKey, "qt">,
-    options?: {
-      force?: boolean;
-      supabase?: ReturnType<typeof createClient>;
-      currentUserId?: string;
-    },
-  ) {
-    if (
-      !options?.force &&
-      (allSectionInFlightRef.current.has(section) ||
-        allSectionLoadState[section] === "ready")
-    ) {
-      return;
-    }
-
-    const requestId = ++allSectionRequestSeqRef.current[section];
-    allSectionInFlightRef.current.add(section);
-    setAllSectionState(section, "loading");
-
-    try {
-      const supabase = options?.supabase ?? createClient();
-      let currentUserId = options?.currentUserId ?? userId;
-      if (!currentUserId) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        currentUserId = user?.id ?? null;
-      }
-      if (!currentUserId) throw new Error("community_user_missing");
-
-      const resultPromise =
-        section === "praying"
-          ? supabase
-              .from("prayer_items")
-              .select("*")
-              .ilike("visibility", "%all%")
-              .eq("is_answered", false)
-              .order("created_at", { ascending: false })
-              .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT)
-          : supabase
-              .from("prayer_items")
-              .select("*")
-              .ilike("visibility", "%all%")
-              .eq("is_answered", true)
-              .order("answered_at", { ascending: false, nullsFirst: false })
-              .order("created_at", { ascending: false })
-              .limit(COMMUNITY_PRAYER_PREFETCH_LIMIT);
-
-      const [viewerMeta, result] = await Promise.all([
-        ensureCommunityViewerMeta(supabase, currentUserId),
-        resultPromise,
-      ]);
-
-      if (result.error) throw result.error;
-      const rows = result.data ?? [];
-      const profileMap = await fetchProfiles(supabase, rows, currentUserId);
-      if (!isCurrentAllSectionRequest(section, requestId)) return;
-
-      if (section === "praying") {
-        setPrayers(
-          sortPrayerRequestRows(
-            filterHiddenItems(
-              "prayer",
-              rows.map((row: any) => ({
-                ...row,
-                profiles: profileMap[row.user_id] ?? null,
-              })),
-              viewerMeta.hiddenKeys,
-              viewerMeta.hiddenUserIds,
-            ),
-          ),
-        );
-        setAllSectionState(section, "ready");
-        return;
-      }
-
-      const visibleAnsweredRows = sortAnsweredPrayerRows(
-        filterHiddenItems(
-          "prayer",
-          rows.map((row: any) => ({
-            ...row,
-            like_count: row.like_count ?? 0,
-            profiles: profileMap[row.user_id] ?? null,
-          })),
-          viewerMeta.hiddenKeys,
-          viewerMeta.hiddenUserIds,
-        ),
-      );
-      setAnsweredPrayers(visibleAnsweredRows);
-      setAllSectionState(section, "ready");
-
-      const answeredIds = visibleAnsweredRows.map((row: any) => row.id);
-      if (answeredIds.length > 0) {
-        void fetchPrayerLikeMeta(supabase, answeredIds, currentUserId)
-          .then(({ counts, mine }) => {
-            if (!isCurrentAllSectionRequest(section, requestId)) return;
-            setAnsweredPrayers((current) =>
-              current.map((row: any) =>
-                answeredIds.includes(row.id)
-                  ? {
-                      ...row,
-                      like_count: counts[row.id] ?? row.like_count ?? 0,
-                    }
-                  : row,
-              ),
-            );
-            if (mine.length > 0) {
-              setLikedPrayerIds((current) =>
-                Array.from(new Set([...current, ...mine])),
-              );
-            }
-          })
-          .catch((error) =>
-            console.warn("전체 기도 응답 좋아요 보조 조회 실패:", error),
-          );
-      }
-    } catch (error) {
-      console.warn(
-        section === "praying"
-          ? "전체 기도 중 조회 실패:"
-          : "전체 기도 응답 조회 실패:",
-        error,
-      );
-      if (isCurrentAllSectionRequest(section, requestId)) {
-        setAllSectionState(section, "error");
-      }
-    } finally {
-      if (isCurrentAllSectionRequest(section, requestId)) {
-        allSectionInFlightRef.current.delete(section);
-      }
-    }
-  }
-
-  function prefetchAllPrayerSections(options: {
-    supabase: ReturnType<typeof createClient>;
-    currentUserId: string;
-  }) {
-    const startPrefetch = () => {
-      void loadAllPrayerSection("praying", options);
-      void loadAllPrayerSection("answered", options);
-    };
-
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(startPrefetch);
-    } else {
-      startPrefetch();
-    }
-  }
-
   function loadData(options?: { targetTab?: CommunityMainTab; force?: boolean }): Promise<void> {
     const targetTab = options?.targetTab ?? tab;
     const pending = mainTabInFlightRef.current[targetTab];
@@ -5150,12 +4869,6 @@ function CommunityPageContent() {
 
       setUserId(user.id);
       setChallengeContactEmail((prev) => prev || user.email || "");
-      setAllSectionSeenAt(
-        storageGetJson<Record<CommunitySectionKey, string | null>>(
-          allSectionSeenKey(user.id),
-          { qt: null, praying: null, answered: null },
-        ),
-      );
 
       if (targetTab === "partner") {
         void communityChallengeAvailabilityRef.current!.load(supabase, user.id, localDateInputValue(0));
@@ -5257,7 +4970,6 @@ function CommunityPageContent() {
       }
 
       if (targetTab === "all") {
-        setAllSectionState("qt", "loading");
         const [moderationMeta, qtData] = await Promise.all([
           ensureCommunityModerationMeta(supabase, user.id),
           fetchQtFeedRows(supabase, "%all%", COMMUNITY_ALL_QT_LIMIT),
@@ -5280,7 +4992,6 @@ function CommunityPageContent() {
             ),
           ),
         );
-        setAllSectionState("qt", "ready");
         if (!markMainTabReady(targetTab, requestId)) return;
 
         // Reactions enrich already-visible meditation cards and must not delay
@@ -5298,14 +5009,6 @@ function CommunityPageContent() {
             console.warn("전체 묵상 반응 보조 조회 실패:", error),
           );
 
-        // Once the meditation list has had a frame to paint, prefetch both
-        // prayer sections independently. Each section becomes ready as soon as
-        // its own rows/profiles arrive, so praying never waits for answered
-        // prayers (or vice versa).
-        prefetchAllPrayerSections({
-          supabase,
-          currentUserId: user.id,
-        });
         return;
       }
 
@@ -5474,7 +5177,6 @@ function CommunityPageContent() {
       console.error("커뮤니티 목록 조회 실패:", error);
       if (isCurrentMainTabRequest(targetTab, requestId)) {
         loadedMainTabsRef.current.delete(targetTab);
-        if (targetTab === "all") setAllSectionState("qt", "error");
         setMainTabState(targetTab, "error");
       }
     }
@@ -5906,7 +5608,7 @@ function CommunityPageContent() {
 
     const hapticKey = beginLoveHeartTapHaptic("prayer_intercession", id);
     if (!hapticKey) return;
-    const prayer = [...prayers, ...partnerPrayers, ...groupPrayers].find((row) => row.id === id);
+    const prayer = [...partnerPrayers, ...groupPrayers].find((row) => row.id === id);
     const sourceElement = source?.closest<HTMLElement>("[data-prayer-card-id], .card") ?? source;
     setPrayerJoinError(null);
     setPrayerJoiningIds((current) => [...current, id]);
@@ -5962,16 +5664,10 @@ function CommunityPageContent() {
         storageSetJson(`comm_prayed_${user.id}`, next);
         return next;
       });
-      setPrayers((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-      );
       setGroupPrayers((prev) =>
         prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
       );
       setPartnerPrayers((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
-      );
-      setAnsweredPrayers((prev) =>
         prev.map((p) => (p.id === id ? { ...p, prayer_count: newCount } : p)),
       );
       void awardCommunityLoveHeart(supabase, "prayer_intercession", id);
@@ -7371,8 +7067,7 @@ function CommunityPageContent() {
     // Testimony entry must not reload QT data or widen any community visibility.
     const context = communityPrayerContextRef.current;
     if (!context.userId) return;
-    const publicRows = mergeRowsById([prayers, answeredPrayers]);
-    const ids = Array.from(new Set([...publicRows, ...partnerPrayers, ...groupPrayers].map((row) => String(row.id))));
+    const ids = Array.from(new Set([...partnerPrayers, ...groupPrayers].map((row) => String(row.id))));
     if (!ids.length) return;
     try {
       const supabase = createClient();
@@ -7401,9 +7096,6 @@ function CommunityPageContent() {
         const updated = byId.get(String(row.id));
         return updated ? [{ ...row, ...updated }] : [];
       });
-      const updatedPublic = refresh(mergeRowsById([current.prayers, current.answeredPrayers])).filter((row) => hasScope(row, "all"));
-      setPrayers(sortPrayerRequestRows(updatedPublic.filter((row) => !row.is_answered)));
-      setAnsweredPrayers(sortAnsweredPrayerRows(updatedPublic.filter((row) => !!row.is_answered)));
       if (context.partnerId) setPartnerPrayers((items) => sortPrayerFeedRows(refresh(items).filter((row) => partnerIds.has(String(row.id)))));
       if (context.groupId) setGroupPrayers((items) => sortPrayerFeedRows(refresh(items).filter((row) => hasScope(row, `group_${context.groupId}`))));
     } catch (error) {
@@ -7590,14 +7282,7 @@ function CommunityPageContent() {
   const groupPrayersForCurrentTab =
     groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
   const allQtFeedKey = "all-qt";
-  const allPrayingFeedKey = "all-praying";
-  const allAnsweredFeedKey = "all-answered";
   const visibleAllQts = visibleFeedItems(allQtFeedKey, qtShares);
-  const visibleAllPrayers = visibleFeedItems(allPrayingFeedKey, prayers);
-  const visibleAllAnsweredPrayers = visibleFeedItems(
-    allAnsweredFeedKey,
-    answeredPrayers,
-  );
 
   if (selectedPartner) {
     const partnerProfile = selectedPartner.profile ?? {};
@@ -10930,62 +10615,6 @@ function CommunityPageContent() {
           </div>
         ) : tab === "all" ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                marginBottom: 16,
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              {[
-                { key: "qt" as const, label: c("community_group_tab_qt") },
-                {
-                  key: "praying" as const,
-                  label: c("community_prayer_tab_praying"),
-                },
-                {
-                  key: "answered" as const,
-                  label: c("community_prayer_tab_answered"),
-                },
-              ].map(({ key, label }) => {
-                const active = allTab === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => selectAllSection(key)}
-                    style={{
-                      flex: 1,
-                      padding: "8px 0 10px",
-                      background: "none",
-                      border: "none",
-                      borderBottom: active
-                        ? "2px solid var(--sage)"
-                        : "2px solid transparent",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: active ? 700 : 400,
-                        color: active ? "var(--sage-dark)" : "var(--text3)",
-                        whiteSpace: key === "qt" ? "nowrap" : undefined,
-                      }}
-                    >
-                      {label}
-                    </span>
-                    <SectionUnreadDot show={!active && hasAllSectionNew(key)} />
-                  </button>
-                );
-              })}
-            </div>
-
-            {allTab === "qt" ? (
-              <>
                 {qtShares.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "48px 0" }}>
                     <BookOpen
@@ -11079,277 +10708,6 @@ function CommunityPageContent() {
                     {renderFeedLoadMore(allQtFeedKey, qtShares.length)}
                   </div>
                 )}
-              </>
-            ) : allTab === "praying" ? (
-              allSectionLoadState.praying === "idle" ||
-              allSectionLoadState.praying === "loading" ? (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    padding: 32,
-                  }}
-                >
-                  <Loader2
-                    size={22}
-                    style={{ color: "var(--sage)" }}
-                    className="spin"
-                  />
-                </div>
-              ) : allSectionLoadState.praying === "error" ? (
-                renderLoadFailure(() => {
-                  void loadAllPrayerSection("praying", { force: true });
-                }, true)
-              ) : prayers.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "48px 0" }}>
-                  <HandHeart
-                    size={30}
-                    style={{ color: "var(--text3)", marginBottom: 10 }}
-                  />
-                  <p style={{ color: "var(--text3)", fontSize: 14 }}>
-                    {c("community_no_prayers")}
-                  </p>
-                </div>
-              ) : (
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                >
-                  {visibleAllPrayers.map((p) => (
-                    <div key={p.id} className="card">
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: 8,
-                        }}
-                      >
-                        {p.is_anonymous
-                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
-                      : <AuthorIdentity
-                          profile={p.profiles}
-                          authorId={p.user_id}
-                        />}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                            {new Date(p.created_at).toLocaleDateString(
-                              getDateLocale(lang),
-                              { month: "short", day: "numeric" },
-                            )}
-                          </span>
-                          {!p.is_answered && (
-                            <CardMenu kind="prayer" item={p} scope="all" />
-                          )}
-                        </div>
-                      </div>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          lineHeight: 1.6,
-                          color: "var(--text)",
-                          marginBottom: 12,
-                          whiteSpace: "pre-line",
-                        }}
-                      >
-                        {p.content}
-                      </p>
-                      <button
-                        onClick={(event) => void prayTogether(p.id, event.currentTarget, "spin")}
-                        disabled={prayedIds.includes(p.id) || prayerJoiningIds.includes(p.id)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 6,
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: 12,
-                          border: `1px solid ${prayedIds.includes(p.id) ? "var(--sage)" : "var(--border)"}`,
-                          background: prayedIds.includes(p.id)
-                            ? "var(--sage-light)"
-                            : "var(--bg2)",
-                          cursor: prayedIds.includes(p.id)
-                            ? "default"
-                            : "pointer",
-                        }}
-                      >
-                        <span style={{ fontSize: 14 }}>
-                          {prayedIds.includes(p.id) ? (
-                            <CheckCircle2 size={14} />
-                          ) : (
-                            <HandHeart size={14} />
-                          )}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: prayedIds.includes(p.id)
-                              ? "var(--sage-dark)"
-                              : "var(--text2)",
-                          }}
-                        >
-                          {prayerActionText(prayedIds.includes(p.id))}
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                  {renderFeedLoadMore(allPrayingFeedKey, prayers.length)}
-                </div>
-              )
-            ) : allSectionLoadState.answered === "idle" ||
-              allSectionLoadState.answered === "loading" ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  padding: 32,
-                }}
-              >
-                <Loader2
-                  size={22}
-                  style={{ color: "var(--sage)" }}
-                  className="spin"
-                />
-              </div>
-            ) : allSectionLoadState.answered === "error" ? (
-              renderLoadFailure(() => {
-                void loadAllPrayerSection("answered", { force: true });
-              }, true)
-            ) : answeredPrayers.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <p style={{ fontSize: 32, marginBottom: 10 }}>✨</p>
-                <p style={{ color: "var(--text3)", fontSize: 14 }}>
-                  {c("community_no_answered_prayers")}
-                </p>
-                <p
-                  style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}
-                >
-                  {c("community_no_answered_sub")}
-                </p>
-              </div>
-            ) : (
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
-              >
-                {visibleAllAnsweredPrayers.map((p) => (
-                  <div key={p.id} className="card">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 8,
-                      }}
-                    >
-                      {p.is_anonymous
-                      ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}>{c("prayer_intercession_anonymous")}</span>
-                      : <AuthorIdentity
-                        profile={p.profiles}
-                        authorId={p.user_id}
-                      />}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                          {p.answered_at
-                            ? new Date(p.answered_at).toLocaleDateString(
-                                getDateLocale(lang),
-                                { month: "short", day: "numeric" },
-                              )
-                            : ""}
-                        </span>
-                      </div>
-                    </div>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        lineHeight: 1.6,
-                        color: "var(--text2)",
-                        marginBottom: 8,
-                        whiteSpace: "pre-line",
-                        textDecoration: "line-through",
-                        opacity: 0.7,
-                      }}
-                    >
-                      {p.content}{" "}
-                      <span style={{ fontSize: 10, color: "var(--text3)" }}>
-                        ({new Date(p.created_at).toLocaleDateString(getDateLocale(lang), { month: "short", day: "numeric" })})
-                      </span>
-                    </p>
-                    {p.testimony && (
-                      <div
-                        style={{
-                          background: "var(--community-gold-surface)",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          border: "1px solid var(--community-gold-border)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "var(--community-gold-text)",
-                            marginBottom: 4,
-                          }}
-                        >
-                          {c("community_prayer_testimony")}
-                        </p>
-                        <p
-                          style={{
-                            fontSize: 13,
-                            color: "var(--text)",
-                            lineHeight: 1.6,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          "{p.testimony}"
-                        </p>
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "var(--sage-dark)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {c("community_answered")}
-                        </span>
-                      </div>
-                      <PrayerLikeButton prayer={p} />
-                    </div>
-                  </div>
-                ))}
-                {renderFeedLoadMore(allAnsweredFeedKey, answeredPrayers.length)}
-              </div>
-            )}
           </>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

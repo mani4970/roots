@@ -480,7 +480,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     return (visibility ?? "private")
       .split(",")
       .map(target => target.trim())
-      .filter(target => target && target !== "private");
+      .filter(target => target && target !== "private" && target !== "all");
   }
 
   function isSharedVisibility(visibility?: string | null) {
@@ -494,12 +494,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         .map(target => target.replace(/^partner_/, ""))
         .filter(Boolean)
     ));
-    const visibilityTargets = targets.filter(target => target === "all" || target.startsWith("group_"));
-    const visibility = visibilityTargets.includes("all")
-      ? "all"
-      : visibilityTargets.length > 0
-        ? visibilityTargets.join(",")
-        : "private";
+    const visibilityTargets = targets.filter(target => target.startsWith("group_"));
+    const visibility = visibilityTargets.length > 0 ? visibilityTargets.join(",") : "private";
     return { visibility, partnerRecipientIds };
   }
 
@@ -508,14 +504,14 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   }
 
   function toggleTarget(target: string) {
-    if (!shareOptionsReady.current) return;
+    if (!shareOptionsReady.current || target === "all") return;
     setSelectedTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
   }
 
   function toggleCreateShareTarget(target: string) {
-    if (!shareOptionsReady.current) return;
+    if (!shareOptionsReady.current || target === "all") return;
     setCreateShareTargets(prev =>
       prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
     );
@@ -1650,6 +1646,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
       {showCreateSharePrompt && (
         <SharePromptModal
+          allowPublic={false}
           title={c("prayer_complete_share_title")}
           description={c("prayer_complete_share_sub")}
           helperText={c("prayer_complete_share_helper")}
@@ -1681,7 +1678,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           loadingGroups={loadingShareOptions}
           loadingPartners={loadingShareOptions}
           onToggleTarget={toggleCreateShareTarget}
-          onChangeTargets={targets => { if (shareOptionsReady.current) setCreateShareTargets(targets); }}
+          onChangeTargets={targets => { if (shareOptionsReady.current) setCreateShareTargets(targets.filter(target => target !== "all")); }}
           onClose={closeCreateSharePrompt}
           onPrivate={() => { void submit("private", []); }}
           onShare={() => { if (createShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitShareTargets(createShareTargets); void submit(visibility, partnerRecipientIds); } }}
@@ -1977,6 +1974,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
       {showShareModal && (
         <SharePromptModal
+          allowPublic={false}
           title={c("prayer_intercession_share_title")}
           description={c("prayer_intercession_share_sub")}
           helperText={c("prayer_complete_share_helper")}
@@ -2008,7 +2006,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           loadingGroups={loadingShareOptions}
           loadingPartners={loadingShareOptions}
           onToggleTarget={toggleTarget}
-          onChangeTargets={targets => { if (shareOptionsReady.current) setSelectedTargets(targets); }}
+          onChangeTargets={targets => { if (shareOptionsReady.current) setSelectedTargets(targets.filter(target => target !== "all")); }}
           onClose={closeIntercessionShareModal}
           onPrivate={() => { void saveIntercessionTargets(true); }}
           onShare={() => { void saveIntercessionTargets(false); }}
