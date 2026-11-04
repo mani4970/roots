@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import { getLocalDateString } from "@/lib/date";
 import { withQtDraftTimeout } from "@/lib/qtDraftSync";
 import {
+  NOVEMBER_PERSONAL_CHALLENGE_ID,
   acknowledgePersonalChallengeAnnouncement,
   acknowledgePersonalChallengeReward,
   flushPersonalChallengeCompletions,
@@ -113,7 +114,10 @@ export function usePersonalReflectionChallenge({ userId, today, ready, completed
             ? previous.announcementPending : false,
         }));
         const campaign = result.status;
-        if (campaign && today >= campaign.announcementDate && today <= campaign.endDate) {
+        // The November introduction closes when the challenge starts. The card
+        // handles on-demand details throughout the challenge.
+        if (campaign && today >= campaign.announcementDate && today <= campaign.endDate
+          && (campaign.challengeId !== NOVEMBER_PERSONAL_CHALLENGE_ID || today < campaign.startDate)) {
           try {
             const seen = await withQtDraftTimeout(readPersonalChallengeAnnouncementSeen(
               supabase, userId, campaign.challengeId,
