@@ -183,7 +183,7 @@ function JoinContent() {
         );
       }
       setJoined(true);
-      setTimeout(() => router.push("/community"), 2000);
+      setTimeout(() => router.push("/community?tab=group"), 2000);
     } catch (error) {
       console.error("join group failed", error);
       setErrorMessage(t("join_error_submit", inviteLang));

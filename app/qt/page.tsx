@@ -138,7 +138,8 @@ export default function QTPage() {
   const lang = useLang();
   const [records, setRecords] = useState<QTRecord[]>([]);
   const [todayDone, setTodayDone] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [historyStatus, setHistoryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const historyRequest = useRef(0);
   const [draftCheckPending, setDraftCheckPending] = useState(true);
   const [expandedYear, setExpandedYear] = useState<number | null>(() => parseLocalDateString(getLocalDateString()).getFullYear());
   const [expandedMonthKeys, setExpandedMonthKeys] = useState<Set<string>>(() => new Set([getYearMonthKey()]));
@@ -293,11 +294,40 @@ export default function QTPage() {
     setPreferredTranslation(current => current === nextTranslation ? current : nextTranslation);
   }, [lang, draftCheckPending, hasDraft]);
 
+  async function loadHistory(supabase = createClient(), userId?: string) {
+    const request = ++historyRequest.current;
+    setHistoryStatus("loading");
+    try {
+      const ownerId = userId ?? (await getQtDraftSessionUser(supabase))?.id;
+      if (request !== historyRequest.current) return;
+      if (!ownerId) { router.push("/login"); return; }
+
+      const controller = new AbortController();
+      const { data, error } = await withQtDraftTimeout(
+        supabase.from("qt_records").select("*")
+          .eq("user_id", ownerId).eq("is_draft", false)
+          .order("date", { ascending: false })
+          .abortSignal(controller.signal),
+        20_000, "qt overview history", () => controller.abort(),
+      );
+      if (request !== historyRequest.current) return;
+      if (error || !data) {
+        setHistoryStatus("error");
+        return;
+      }
+      setRecords(data);
+      setHistoryStatus("ready");
+    } catch {
+      if (request === historyRequest.current) setHistoryStatus("error");
+    }
+  }
+
   async function load() {
     const supabase = createClient();
     try {
       const user = await getQtDraftSessionUser(supabase);
       if (!user) { router.push("/login"); return; }
+      void loadHistory(supabase, user.id);
       const today = getLocalDateString();
       const localDraftExists = !!loadQTDraftBackup(user.id, today);
       if (localDraftExists) setHasDraft(true);
@@ -321,10 +351,6 @@ export default function QTPage() {
       setHasDraft(draftExists);
       setDraftCheckPending(false);
       if (draftExists && !shouldSuppressDraftPopupAfterWriterReturn()) openQTModal("draft");
-      const { data } = await supabase.from("qt_records").select("*")
-        .eq("user_id", user.id).eq("is_draft", false)
-        .order("date", { ascending: false });
-      if (data) setRecords(data);
 
       const todayDate = new Date();
       if (todayDate.getDay() !== 0) {
@@ -352,7 +378,6 @@ export default function QTPage() {
       showToast(t("qt_error_load", lang));
     } finally {
       setDraftCheckPending(false);
-      setLoading(false);
     }
   }
 
@@ -449,11 +474,27 @@ export default function QTPage() {
   }
 
   const completedRecordDates = new Set(records.map(r => r.date));
-  const catchUpDateOptions = Array.from({ length: 60 }, (_, i) => {
+  const catchUpDateOptions = historyStatus === "ready" ? Array.from({ length: 60 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (i + 1));
     return getLocalDateString(d);
-  }).filter(d => !completedRecordDates.has(d));
+  }).filter(d => !completedRecordDates.has(d)) : [];
+
+  const historyNotice = historyStatus === "loading" ? (
+    <div role="status" aria-label={t("loading", lang)} style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+      <Loader2 size={24} aria-hidden="true" style={{ color: "var(--sage)" }} className="spin" />
+    </div>
+  ) : historyStatus === "error" ? (
+    <div style={{ textAlign: "center", padding: "24px 12px" }}>
+      <p role="status" style={{ color: "var(--text-muted-readable)", fontSize: 14, marginBottom: 12 }}>{t("qt_error_load", lang)}</p>
+      <button type="button" className="btn-outline" onClick={() => void loadHistory()}>{t("common_retry", lang)}</button>
+    </div>
+  ) : null;
+  const catchUpButton = (
+    <button onClick={() => openQTModal("catch-up")} disabled={historyStatus !== "ready"} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: historyStatus === "ready" ? 1 : 0.55 }}>
+      <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
+    </button>
+  );
 
   const dateLocale = getDateLocale(lang);
   const isSundayToday = new Date().getDay() === 0;
@@ -497,9 +538,7 @@ export default function QTPage() {
                 <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
               </div>
             </div>
-            <button onClick={() => openQTModal("catch-up")} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
-            </button>
+            {catchUpButton}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -536,20 +575,15 @@ export default function QTPage() {
               {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
               {t("qt_today_start", lang)}
             </button>
-            <button onClick={() => openQTModal("catch-up")} className="btn-outline" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <CalendarDays size={17} /> {t("qt_catchup_start", lang)}
-            </button>
+            {catchUpButton}
           </div>
         )}
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
         <div className="sec-label">{t("qt_past_records", lang)}</div>
-        {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-            <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
-          </div>
-        ) : records.length === 0 ? (
+        {historyNotice}
+        {records.length === 0 ? historyStatus === "ready" && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <BookOpen size={32} style={{ color: "var(--text3)", marginBottom: 10 }} />
             <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("qt_no_records_simple", lang)}</p>
@@ -666,7 +700,7 @@ export default function QTPage() {
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
-            {catchUpDateOptions.length > 0 ? (
+            {historyNotice ?? (catchUpDateOptions.length > 0 ? (
               <select value={catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0]} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
                 {catchUpDateOptions.map(d => (
                   <option key={d} value={d}>{parseLocalDateString(d).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</option>
@@ -676,7 +710,7 @@ export default function QTPage() {
               <div style={{ padding: "14px", borderRadius: 14, background: "var(--qt-card-muted-surface)", border: "1px solid var(--qt-card-border)", color: "var(--text-muted-readable)", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
                 {t("qt_catchup_no_dates", lang)}
               </div>
-            )}
+            ))}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button className="qt-option-card" disabled={catchUpDateOptions.length === 0} onClick={() => startCatchUp("6step")} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 16, border: "1px solid var(--qt-sage-border)", background: "var(--qt-sage-surface)", cursor: catchUpDateOptions.length === 0 ? "not-allowed" : "pointer", opacity: catchUpDateOptions.length === 0 ? 0.5 : 1, textAlign: "left" }}>
