@@ -921,10 +921,6 @@ const remainingCopyStandaloneRecords = [
     ),
   },
   {
-    label: "app/checkin/result/page.tsx",
-    audit: auditDeepStandaloneLanguageRecord("app/checkin/result/page.tsx", "const CHECKIN_RESULT_TEXT"),
-  },
-  {
     label: "app/page.tsx local copy",
     audit: auditDeepStandaloneLanguageRecord("app/page.tsx", "const HOME_LOCAL_TEXT"),
   },
@@ -939,13 +935,6 @@ const remainingCopyStandaloneRecords = [
   {
     label: "app/profile/page.tsx month locale",
     audit: auditDeepStandaloneLanguageRecord("app/profile/page.tsx", "const PROFILE_MONTH_LOCALE"),
-  },
-];
-
-const remainingCopyTranslationObjects = [
-  {
-    label: "app/page.tsx chapter labels",
-    audit: auditTranslationObject("app/page.tsx", "const HOME_CHAPTER_LABELS"),
   },
 ];
 
@@ -1421,10 +1410,6 @@ for (const entry of remainingCopyStandaloneRecords) {
     console.log(`    extra: ${audit.extraPaths.join(", ")}`);
   }
 }
-for (const entry of remainingCopyTranslationObjects) {
-  const translated = entry.audit.total - entry.audit.missingSpanish.length;
-  console.log(`  - ${entry.label}: ${translated}/${entry.audit.total} Spanish entries`);
-}
 for (const entry of legalDocumentRecords) {
   const { deep, sections } = entry;
   console.log(
@@ -1567,7 +1552,6 @@ const strictFailures = [
     audit.extraPaths.length > 0,
     audit.translatedStrings !== audit.expectedStrings,
   ]),
-  ...remainingCopyTranslationObjects.map(({ audit }) => audit.missingSpanish.length > 0),
   ...legalDocumentRecords.flatMap(({ deep, sections }) => [
     !deep.spanishPresent,
     deep.missingPaths.length > 0,

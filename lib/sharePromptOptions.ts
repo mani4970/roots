@@ -118,7 +118,7 @@ async function fetchSharePromptOptions(userId: string, signal?: AbortSignal): Pr
     groupIds.length > 0
       ? cancellable(supabase
         .from("groups")
-        .select("id, name, is_public")
+        .select("id, name")
         .in("id", groupIds))
       : Promise.resolve({ data: [], error: null }),
     partnerIds.length > 0
@@ -161,7 +161,6 @@ async function fetchSharePromptOptions(userId: string, signal?: AbortSignal): Pr
       .map((group: any) => ({
         id: String(group.id),
         name: String(group.name ?? ""),
-        is_public: !!group.is_public,
         isFavorite: !!groupFavoriteMap[String(group.id)],
       }))),
     partners: sortFavoritesFirst(partnerIds.map(partnerId => ({

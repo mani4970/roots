@@ -21,7 +21,6 @@ const GOOGLE_PLAY_URL =
 type GroupInvite = {
   name: string;
   description: string | null;
-  is_public: boolean;
   member_count: number | null;
 };
 
@@ -39,7 +38,6 @@ function JoinContent() {
   const [joined, setJoined] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -85,42 +83,21 @@ function JoinContent() {
       setIsLoggedIn(!!currentUser);
 
       const loadWithExistingPolicies = async () => {
-        // 공개 그룹이면 로그인 없이 조회 가능
-        const { data: pub } = await supabase
-          .from("groups")
-          .select("*")
-          .eq("id", groupId)
-          .eq("is_public", true)
-          .maybeSingle();
-        if (pub) {
-          setGroupName(pub.name);
-          setGroupDesc(pub.description ?? "");
-          setIsPublic(true);
-          const { count } = await supabase
-            .from("group_members")
-            .select("*", { count: "exact", head: true })
-            .eq("group_id", groupId);
-          setMemberCount(count ?? 0);
-          return;
-        }
-
         // 비공개 그룹: 비로그인 상태에서도 초대 랜딩은 유지
         if (!currentUser) {
           setGroupName(inviteText.privateGroupName);
-          setIsPublic(false);
           return;
         }
 
         // 로그인됨 → 비공개 그룹 조회 시도
-        const { data: priv } = await supabase
+        const { data: group } = await supabase
           .from("groups")
-          .select("*")
+          .select("name, description")
           .eq("id", groupId)
           .maybeSingle();
-        if (priv) {
-          setGroupName(priv.name);
-          setGroupDesc(priv.description ?? "");
-          setIsPublic(false);
+        if (group) {
+          setGroupName(group.name);
+          setGroupDesc(group.description ?? "");
           const { count } = await supabase
             .from("group_members")
             .select("*", { count: "exact", head: true })
@@ -140,7 +117,6 @@ function JoinContent() {
         if (!inviteError && invite) {
           setGroupName(invite.name);
           setGroupDesc(invite.description ?? "");
-          setIsPublic(invite.is_public);
           setMemberCount(invite.member_count ?? 0);
           setLoading(false);
           return;
@@ -149,7 +125,6 @@ function JoinContent() {
         if (!inviteError) {
           if (!currentUser) {
             setGroupName(inviteText.privateGroupName);
-            setIsPublic(false);
           } else {
             setNotFound(true);
           }
@@ -157,7 +132,7 @@ function JoinContent() {
           return;
         }
 
-        // SQL 패치 적용 전 배포되어도 기존 초대 링크 흐름이 깨지지 않도록 fallback 유지
+        // 초대 RPC 오류 시 현재 사용자의 그룹 조회 권한으로 재시도
         await loadWithExistingPolicies();
         setLoading(false);
       } catch (error) {

@@ -44,9 +44,6 @@ import {
 } from "@/lib/useLang";
 import { isLang, t, type Lang, type TKey } from "@/lib/i18n";
 import { translateBookName } from "@/lib/bibleBooks";
-import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
-import { getDefaultTranslationId } from "@/lib/translationDefaults";
-import { ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -198,76 +195,6 @@ type RewardMapNoticeState = {
   receipt?: RewardPresentationReceipt;
 };
 
-type ChapterPopupState = {
-  show: boolean;
-  loading: boolean;
-  translationId: number | null;
-  reference: string;
-  text: string;
-  error: string;
-};
-
-const HOME_CHAPTER_LABELS = {
-  open: { ko: "장 전체 보기", de: "Ganzes Kapitel", en: "Full chapter", fr: "Chapitre entier", es: "Capítulo completo" },
-  close: { ko: "닫기", de: "Schließen", en: "Close", fr: "Fermer", es: "Cerrar" },
-  loading: { ko: "장을 불러오고 있어요...", de: "Kapitel wird geladen...", en: "Loading chapter...", fr: "Chargement du chapitre...", es: "Cargando el capítulo..." },
-  error: { ko: "장 전체를 불러오지 못했어요.", de: "Das ganze Kapitel konnte nicht geladen werden.", en: "Could not load the full chapter.", fr: "Impossible de charger le chapitre entier.", es: "No pudimos cargar el capítulo completo." },
-  chapterSuffix: { ko: "장", de: "", en: "", fr: "", es: "" },
-} as const;
-
-type HomeChapterCopyLang = Lang;
-
-function homeChapterText(key: keyof typeof HOME_CHAPTER_LABELS, lang: HomeChapterCopyLang) {
-  return HOME_CHAPTER_LABELS[key][lang] ?? HOME_CHAPTER_LABELS[key].ko;
-}
-
-function formatChapterReference(book: string, chapter: number, lang: Lang) {
-  const translatedBook = translateBookName(book, lang);
-  if (lang === "ko") return `${translatedBook} ${chapter}장`;
-  if (lang === "de") return `${translatedBook} ${chapter}`;
-  if (lang === "fr") return `${translatedBook} ${chapter}`;
-  return `${translatedBook} ${chapter}`;
-}
-
-async function fetchStoredDailyVerseText(row: any): Promise<string> {
-  const translationId = Number(row?.verse_translation_id);
-  const book = String(row?.verse_book ?? "").trim();
-  const startChapter = Number(row?.verse_start_chapter);
-  const startVerse = Number(row?.verse_start_verse);
-  const endChapter = Number(row?.verse_end_chapter ?? startChapter);
-  const endVerse = Number(row?.verse_end_verse ?? startVerse);
-
-  if (!book || !Number.isFinite(translationId) || !Number.isFinite(startChapter) || !Number.isFinite(startVerse)) {
-    return "";
-  }
-
-  const load = async (chapter: number, fromVerse: number, toVerse: number) => {
-    const params = new URLSearchParams({
-      translation: String(translationId),
-      book,
-      chapter: String(chapter),
-      startVerse: String(fromVerse),
-      endVerse: String(toVerse),
-    });
-    const response = await fetch(`/api/bible?${params.toString()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error("Stored daily verse reload failed");
-    const payload = await response.json();
-    return Array.isArray(payload?.verses)
-      ? payload.verses.map((verse: any) => String(verse?.text ?? "").trim()).filter(Boolean)
-      : [];
-  };
-
-  if (startChapter === endChapter) {
-    return (await load(startChapter, startVerse, endVerse)).join("\n");
-  }
-
-  const [first, second] = await Promise.all([
-    load(startChapter, startVerse, 176),
-    load(endChapter, 1, endVerse),
-  ]);
-  return [...first, ...second].join("\n");
-}
-
 function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
   if (typeof value !== "string" || !value.trim()) return fallback;
 
@@ -339,15 +266,6 @@ type HomePrayerObservationAttempt = {
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
-  const [todayVerse, setTodayVerse] = useState<any>(null);
-  const [chapterPopup, setChapterPopup] = useState<ChapterPopupState>({
-    show: false,
-    loading: false,
-    translationId: null,
-    reference: "",
-    text: "",
-    error: "",
-  });
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [prayerDayCount, setPrayerDayCount] = useState<number | null>(null);
@@ -355,7 +273,7 @@ export default function HomePage() {
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const homeLoadGenerationRef = useRef(0);
   const homeDataDateRef = useRef<string | null>(null);
-  const [homeDetailsReady, setHomeDetailsReady] = useState({ verse: false, prayer: false, schedule: false, decisions: false });
+  const [homeDetailsReady, setHomeDetailsReady] = useState({ prayer: false, schedule: false, decisions: false });
   const [progressRetryToken, setProgressRetryToken] = useState(0);
   const rewardReceiptsRef = useRef<RewardPresentationReceipt[]>([]);
   const claimedRewardReceiptsRef = useRef(new Set<string>());
@@ -752,7 +670,7 @@ export default function HomePage() {
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
-    || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal || chapterPopup.show
+    || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || !!personalChallengeDetails;
   const rewardDialogBlocked = homeDialogBlocked || !!requiredUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
@@ -956,7 +874,7 @@ export default function HomePage() {
     setCompanionAcceptanceNotice(null);
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
-    setHomeDetailsReady({ verse: false, prayer: false, schedule: false, decisions: false });
+    setHomeDetailsReady({ prayer: false, schedule: false, decisions: false });
     setAnnouncementRewardChecksReadyFor(null);
     try {
       if (typeof window !== "undefined") {
@@ -2016,43 +1934,6 @@ export default function HomePage() {
     }
   }
 
-  async function loadChapterText(translationId: number) {
-    if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
-
-    const book = String(todayVerse.verse_book);
-    const chapter = Number(todayVerse.verse_start_chapter);
-    if (!book || !Number.isFinite(chapter) || chapter <= 0) return;
-
-    const reference = formatChapterReference(book, chapter, lang);
-    setChapterPopup(current => ({ ...current, show: true, loading: true, translationId, reference, text: "", error: "" }));
-
-    try {
-      const params = new URLSearchParams({
-        book,
-        chapter: String(chapter),
-        startVerse: "1",
-        endVerse: "176",
-        translation: String(translationId),
-      });
-      const res = await fetch(`/api/bible?${params.toString()}`);
-      if (!res.ok) throw new Error(`Bible chapter failed: ${res.status}`);
-      const data = await res.json();
-      const text = String(data.text ?? "").trim();
-      if (!text) throw new Error("Empty chapter text");
-      setChapterPopup({ show: true, loading: false, translationId, reference, text, error: "" });
-    } catch (error) {
-      console.error(error);
-      setChapterPopup({ show: true, loading: false, translationId, reference, text: "", error: homeChapterText("error", lang) });
-    }
-  }
-
-  async function openChapterPopup() {
-    if (!todayVerse?.verse_book || !todayVerse?.verse_start_chapter) return;
-
-    const translation = Number(todayVerse.verse_translation_id ?? getDefaultTranslationId(lang));
-    await loadChapterText(translation);
-  }
-
   function formatTodaySchedule() {
     const schedule = homeQTState.todaySchedule;
     if (!schedule) return null;
@@ -2276,8 +2157,7 @@ export default function HomePage() {
     showHomePrayerCards ||
     !!personalChallengeDetails ||
     showHomePrayerCompose ||
-    showHomePrayerSharePrompt ||
-    chapterPopup.show;
+    showHomePrayerSharePrompt;
   const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
   const visibleMonthlyBadgeAward =
     !!monthlyBadgeAward &&
@@ -2310,8 +2190,7 @@ export default function HomePage() {
     showHomePrayerCards ||
     !!personalChallengeDetails ||
     showHomePrayerCompose ||
-    showHomePrayerSharePrompt ||
-    chapterPopup.show;
+    showHomePrayerSharePrompt;
   const visibleChallengeReward =
     homePopupBlocked || openingChallengeProfile
       ? null
@@ -2404,10 +2283,6 @@ export default function HomePage() {
         setShowHomePrayerCompose(false);
         setHomePrayerInput("");
       }
-      return true;
-    }
-    if (chapterPopup.show) {
-      setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" });
       return true;
     }
     if (showNotificationSettingsModal) {
@@ -2720,68 +2595,6 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="chapter" queued={chapterPopup.show}>
-      {chapterPopup.show && (
-        <div
-          onClick={() => setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" })}
-          style={{ position: "fixed", inset: 0, zIndex: 260, background: "rgba(26,28,30,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))" }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 520, maxHeight: "78vh", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 26, boxShadow: "0 18px 52px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 18px 12px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 850, color: "var(--text)", margin: 0 }}>{chapterPopup.reference}</h2>
-              </div>
-              <button
-                onClick={() => setChapterPopup({ show: false, loading: false, translationId: null, reference: "", text: "", error: "" })}
-                aria-label={homeChapterText("close", lang)}
-                style={{ border: "none", background: "none", color: "var(--text3)", fontSize: 24, lineHeight: 1, cursor: "pointer", padding: 2 }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ padding: 18, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-              {chapterPopup.loading ? (
-                <p style={{ fontSize: 14, color: "var(--text3)", lineHeight: 1.7 }}>{homeChapterText("loading", lang)}</p>
-              ) : chapterPopup.error ? (
-                <p style={{ fontSize: 14, color: "var(--terra-dark)", lineHeight: 1.7 }}>{chapterPopup.error}</p>
-              ) : (
-                <>
-                  <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.9, whiteSpace: "pre-line" }}>
-                    {chapterPopup.text}
-                  </div>
-                  {chapterPopup.translationId != null && (() => {
-                    const copyrightInfo = getBibleCopyrightInfo(chapterPopup.translationId);
-                    if (!copyrightInfo) return null;
-                    return (
-                      <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 12 }}>
-                        {copyrightInfo.notice}
-                        {copyrightInfo.url && (
-                          <>
-                            {" "}
-                            <a
-                              href={copyrightInfo.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
-                            >
-                              {copyrightInfo.linkLabel ?? copyrightInfo.url}
-                            </a>
-                          </>
-                        )}
-                      </p>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      </ObservationPopup>
-
       <ObservationPopup userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
@@ -2958,8 +2771,6 @@ export default function HomePage() {
           invitePartnersLabel={t("share_prompt_invite_partners", lang)}
           onInvitePartners={() => router.push("/community")}
           groupsLabel={t("prayer_intercession_my_groups", lang)}
-          publicGroupLabel={t("prayer_intercession_public_group", lang)}
-          privateGroupLabel={t("prayer_intercession_private_group", lang)}
           noGroupsLabel={t("prayer_intercession_no_groups", lang)}
           selectedCountLabel={t("prayer_intercession_selected_count", lang, { count: homePrayerShareTargets.length })}
           selectAllLabel={bulkSelectionLabels.selectAll}

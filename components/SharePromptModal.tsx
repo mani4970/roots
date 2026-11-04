@@ -8,7 +8,6 @@ const COLLAPSED_ITEM_COUNT = 6;
 export type ShareTargetGroup = {
   id: string;
   name: string;
-  is_public?: boolean | null;
   isFavorite?: boolean | null;
 };
 
@@ -31,8 +30,6 @@ type SharePromptModalProps = {
   noPartnersLabel: string;
   invitePartnersLabel?: string;
   groupsLabel: string;
-  publicGroupLabel: string;
-  privateGroupLabel: string;
   noGroupsLabel: string;
   selectedCountLabel: string;
   selectAllLabel?: string;
@@ -76,8 +73,6 @@ export default function SharePromptModal({
   noPartnersLabel,
   invitePartnersLabel,
   groupsLabel,
-  publicGroupLabel,
-  privateGroupLabel,
   noGroupsLabel,
   selectedCountLabel,
   selectAllLabel,

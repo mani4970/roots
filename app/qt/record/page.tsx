@@ -48,8 +48,6 @@ const QT_RECORD_LABEL_KEYS: Record<string, TKey> = {
   "전체 커뮤니티": "qt_record_share_all",
   "모든 Roots 사용자에게 공개": "qt_record_share_all_sub",
   "내 그룹": "qt_record_my_groups",
-  "공개 그룹": "qt_record_public_group",
-  "비공개 그룹": "qt_record_private_group",
   "그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!": "qt_record_no_groups",
   "들어가는 기도": "qt_record_section_opening_prayer",
   "본문 요약": "qt_record_section_summary",
@@ -448,8 +446,6 @@ function RecordContent() {
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
           noPartnersLabel={qtFlowCopy("noPartners", lang)}
           groupsLabel={trR("내 그룹", lang)}
-          publicGroupLabel={trR("공개 그룹", lang)}
-          privateGroupLabel={trR("비공개 그룹", lang)}
           noGroupsLabel={trR("그룹이 없어요. 커뮤니티에서 그룹을 만들어보세요!", lang)}
           selectedCountLabel={t("qt_record_selected_count", lang, { count: selectedTargets.length })}
           selectAllLabel={bulkSelectionLabels.selectAll}

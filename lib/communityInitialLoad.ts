@@ -116,33 +116,6 @@ export async function loadCommunityViewerMeta(
   return { ...moderation, prayedIds };
 }
 
-/**
- * Group discovery only needs group-level hides. Loading just those rows lets the
- * group cards appear without waiting for hidden users, hidden posts, or prayer
- * logs, while still guaranteeing that a hidden public group never flashes.
- */
-export async function loadHiddenGroupIds(
-  supabase: any,
-  userId: string,
-): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from("hidden_community_items")
-    .select("content_id")
-    .eq("user_id", userId)
-    .eq("content_type", "group");
-
-  if (error) {
-    // Do not silently show hidden public groups if this privacy query fails.
-    throw error;
-  }
-
-  return new Set(
-    (data ?? [])
-      .map((row: any) => String(row.content_id ?? ""))
-      .filter(Boolean),
-  );
-}
-
 async function loadPartnerPreferenceRows(
   supabase: any,
   userId: string,

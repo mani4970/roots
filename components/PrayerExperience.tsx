@@ -549,7 +549,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     return myGroups.map((group: any) => ({
       id: String(group.id),
       name: String(group.name ?? ""),
-      is_public: !!group.is_public,
       isFavorite: !!group.isFavorite,
     }));
   }
@@ -1658,8 +1657,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           invitePartnersLabel={c("share_prompt_invite_partners")}
           onInvitePartners={() => router.push("/community")}
           groupsLabel={c("prayer_intercession_my_groups")}
-          publicGroupLabel={c("prayer_intercession_public_group")}
-          privateGroupLabel={c("prayer_intercession_private_group")}
           noGroupsLabel={c("prayer_intercession_no_groups")}
           selectedCountLabel={c("prayer_intercession_selected_count", { count: createShareTargets.length })}
           selectAllLabel={bulkSelectionLabels.selectAll}
@@ -1986,8 +1983,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           invitePartnersLabel={c("share_prompt_invite_partners")}
           onInvitePartners={() => router.push("/community")}
           groupsLabel={c("prayer_intercession_my_groups")}
-          publicGroupLabel={c("prayer_intercession_public_group")}
-          privateGroupLabel={c("prayer_intercession_private_group")}
           noGroupsLabel={c("prayer_intercession_no_groups")}
           selectedCountLabel={c("prayer_intercession_selected_count", { count: selectedTargets.length })}
           selectAllLabel={bulkSelectionLabels.selectAll}

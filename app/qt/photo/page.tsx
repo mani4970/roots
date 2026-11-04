@@ -2081,8 +2081,6 @@ function PhotoReflectionContent() {
           partnerSubLabel={t("share_prompt_partner_sub", lang)}
           noPartnersLabel={qtFlowCopy("noPartners", lang)}
           groupsLabel={t("qt_record_my_groups", lang)}
-          publicGroupLabel={t("qt_record_public_group", lang)}
-          privateGroupLabel={t("qt_record_private_group", lang)}
           noGroupsLabel={t("qt_record_no_groups", lang)}
           selectedCountLabel={t("qt_record_selected_count", lang, { count: shareTargets.length })}
           selectAllLabel={bulkSelectionLabels.selectAll}
