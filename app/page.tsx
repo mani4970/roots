@@ -106,7 +106,7 @@ import {
   COMPANION_CHALLENGE_4_ID,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
-import { acknowledgeMessengerShareAnnouncement, readMessengerShareAnnouncementSeen } from "@/lib/messengerShareAnnouncement";
+import { acknowledgeMessengerShareAnnouncement, isMessengerShareAnnouncementEligible, readMessengerShareAnnouncementSeen } from "@/lib/messengerShareAnnouncement";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
@@ -391,6 +391,9 @@ export default function HomePage() {
   const messengerShareAnnouncementHandledRef = useRef(false);
   const [messengerShareAnnouncementOwner, setMessengerShareAnnouncementOwner] = useState<string | null>(null);
   const [showMessengerShareAnnouncement, setShowMessengerShareAnnouncement] = useState(false);
+  const [updateAnnouncementAccount, setUpdateAnnouncementAccount] = useState<{ userId: string; createdAt: string | null } | null>(null);
+  const messengerShareAnnouncementEligible = updateAnnouncementAccount?.userId === profile?.id
+    && isMessengerShareAnnouncementEligible(updateAnnouncementAccount?.createdAt);
   const [announcementRewardChecksReadyFor, setAnnouncementRewardChecksReadyFor] = useState<string | null>(null);
   const monthlyBadgeAwardUserIdRef = useRef<string | null>(null);
   const monthlyBadgeAwardHandledRef = useRef(false);
@@ -790,7 +793,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const userId = profile?.id;
-    if (loading || !userId) {
+    if (loading || !userId || !messengerShareAnnouncementEligible) {
+      messengerShareAnnouncementUserIdRef.current = null;
       setShowMessengerShareAnnouncement(false);
       setMessengerShareAnnouncementOwner(null);
       return;
@@ -833,7 +837,7 @@ export default function HomePage() {
       document.removeEventListener("visibilitychange", refresh);
       if (appStateListener) void appStateListener.remove();
     };
-  }, [loading, profile?.id]);
+  }, [loading, profile?.id, messengerShareAnnouncementEligible]);
 
   useEffect(() => {
     if (loading || !profile?.id || challengeLocalDate <= COMPANION_CHALLENGE_3_END_DATE) return;
@@ -938,6 +942,7 @@ export default function HomePage() {
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
     setHomeDetailsReady({ prayer: false, schedule: false, decisions: false });
+    setUpdateAnnouncementAccount(null);
     setAnnouncementRewardChecksReadyFor(null);
     try {
       if (typeof window !== "undefined") {
@@ -1022,6 +1027,7 @@ export default function HomePage() {
       homeDataDateRef.current = today;
       companionChallengeAnnouncementUserIdRef.current = user.id;
       monthlyBadgeAwardUserIdRef.current = user.id;
+      setUpdateAnnouncementAccount({ userId: user.id, createdAt: user.created_at ?? null });
       setProfile(p);
       setShowAvatarChoiceModal(!entry.postReflection
         && Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true);
@@ -2349,7 +2355,7 @@ export default function HomePage() {
     }
   }
   const visibleMessengerShareAnnouncement =
-    generalHomePopupsAllowed && messengerShareAnnouncementOwner === profile?.id &&
+    generalHomePopupsAllowed && messengerShareAnnouncementEligible && messengerShareAnnouncementOwner === profile?.id &&
     showMessengerShareAnnouncement &&
     personalChallenge.ready &&
     announcementRewardChecksReadyFor === profile?.id &&

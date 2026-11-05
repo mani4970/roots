@@ -1,7 +1,14 @@
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { getUserCampaignLocalStorageKey, loadUserCampaignSeen, markUserCampaignSeen } from "@/lib/userCampaignImpressions";
+import { isExistingUserForUpdateAnnouncement } from "@/lib/updateAnnouncementAudience";
 
 export const MESSENGER_SHARE_ANNOUNCEMENT_KEY = "messenger_share_announcement_20261021";
+// Use the existing campaign date as the fixed audience cutoff, not an account-age window.
+const MESSENGER_SHARE_ANNOUNCED_AT = "2026-10-21T00:00:00Z";
+
+export function isMessengerShareAnnouncementEligible(accountCreatedAt: string | null | undefined): boolean {
+  return isExistingUserForUpdateAnnouncement(accountCreatedAt, MESSENGER_SHARE_ANNOUNCED_AT);
+}
 
 const pendingRequests = new Map<string, Promise<boolean>>();
 
