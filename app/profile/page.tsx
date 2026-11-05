@@ -1694,8 +1694,7 @@ export default function ProfilePage() {
               ×
             </button>
             <div style={{ paddingRight: 36, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 6 }}>{t("profile_badge_gallery_title", lang)}</h3>
-              <p style={{ fontSize: 12, color: "var(--profile-muted-text)", lineHeight: 1.55 }}>{t("profile_badge_gallery_sub", lang)}</p>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 0 }}>{t("profile_badge_gallery_title", lang)}</h3>
             </div>
 
             <div className="sec-label" style={{ marginBottom: 10 }}>
@@ -2508,8 +2507,7 @@ export default function ProfilePage() {
                   <Bell size={15} />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("notifications_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)", lineHeight: 1.45 }}>{t("notifications_settings_hint", lang)}</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>{t("notifications_title", lang)}</p>
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
@@ -2540,8 +2538,7 @@ export default function ProfilePage() {
                   <Users size={15} />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("companions_title", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)", lineHeight: 1.45 }}>{t("companions_profile_settings_hint", lang)}</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>{t("companions_title", lang)}</p>
                 </div>
               </div>
               <span style={{ fontSize: 18, color: "var(--text3)" }}>›</span>
@@ -2565,8 +2562,7 @@ export default function ProfilePage() {
                 style={{ width: "100%", padding: "13px 14px", background: "transparent", border: "1px solid var(--profile-danger-border)", borderRadius: 14, color: "var(--profile-danger-text)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>{t("profile_delete", lang)}</p>
-                  <p style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_delete_hint", lang)}</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, margin: 0 }}>{t("profile_delete", lang)}</p>
                 </div>
                 <span style={{ fontSize: 18, color: "var(--profile-danger-text)" }}>›</span>
               </button>

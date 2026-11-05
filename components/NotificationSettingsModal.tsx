@@ -209,8 +209,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
         <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.remindersTitle}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.remindersDescription}</p>
+              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", margin: 0 }}>{pushText.remindersTitle}</p>
             </div>
             <Toggle checked={settings.enabled} onChange={(value) => update({ enabled: value })} label={pushText.remindersTitle} />
           </div>
