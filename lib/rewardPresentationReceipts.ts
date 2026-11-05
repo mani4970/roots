@@ -101,7 +101,11 @@ export function readLocalPendingRewardPresentations(userId: string): RewardPrese
 function queueLocal(userId: string, receipts: RewardPresentationReceipt[], announce = true) {
   const local = readLocal(userId);
   const seen = new Set(local.acknowledgements.map(rewardPresentationReceiptKey));
-  const incoming = receipts.filter(item => isReceipt(item, userId) && !seen.has(rewardPresentationReceiptKey(item)));
+  // Cached receipts come from a successful server read, import or completion.
+  // Legacy markers may describe those same records; they need no second import.
+  const stored = new Set(local.cached.map(rewardPresentationReceiptKey));
+  const incoming = receipts.filter(item => isReceipt(item, userId)
+    && !seen.has(rewardPresentationReceiptKey(item)) && !stored.has(rewardPresentationReceiptKey(item)));
   if (incoming.length === 0) return;
   const next = mergeReceipts([...local.pending, ...incoming]);
   if (JSON.stringify(next) === JSON.stringify(local.pending)) return;
@@ -115,11 +119,7 @@ export function isRewardPresentationStageDay(days: number): boolean {
   return days <= 200 ? day > 1 && day % 10 === 1 : NEHEMIAH_STAGE_STARTS.has(day);
 }
 
-/** Used only after an old progress RPC fallback reports updated=true. */
-export function preserveLocalRewardPresentation(userId: string, date: string, days: number, badgeKeys: string[]) {
-  if (!isDate(date) || !Number.isSafeInteger(days) || days <= 0) return;
-  const local = readLocal(userId);
-  if (days > local.latestDays) writeLocal(userId, { ...local, latestDays: days });
+function completionReceipts(userId: string, date: string, days: number, badgeKeys: string[]): RewardPresentationReceipt[] {
   const keys = badgeKeys.filter(key => BADGE_KEY.test(key));
   if (days <= 300) {
     if (days % 100 === 0) keys.push("map_complete");
@@ -129,8 +129,34 @@ export function preserveLocalRewardPresentation(userId: string, date: string, da
     }
     if (isRewardPresentationStageDay(days)) keys.push("stage");
   }
-  queueLocal(userId, Array.from(new Set(keys)).map(itemKey => ({ userId, date, days, itemKey })));
-  if (keys.length === 0 && days > local.latestDays) notify(userId);
+  return Array.from(new Set(keys)).map(itemKey => ({ userId, date, days, itemKey }));
+}
+
+/** Used only after an old progress RPC fallback reports updated=true. */
+export function preserveLocalRewardPresentation(userId: string, date: string, days: number, badgeKeys: string[]) {
+  if (!isDate(date) || !Number.isSafeInteger(days) || days <= 0) return;
+  const local = readLocal(userId);
+  if (days > local.latestDays) writeLocal(userId, { ...local, latestDays: days });
+  const receipts = completionReceipts(userId, date, days, badgeKeys);
+  queueLocal(userId, receipts);
+  if (receipts.length === 0 && days > local.latestDays) notify(userId);
+}
+
+/** The modern updated=true RPC commits progress and these receipts atomically. */
+export function preserveServerRewardPresentation(userId: string, date: string, days: number, badgeKeys: string[]) {
+  if (!isDate(date) || !Number.isSafeInteger(days) || days <= 0) return;
+  const receipts = completionReceipts(userId, date, days, badgeKeys);
+  const local = readLocal(userId);
+  const stored = new Set(receipts.map(rewardPresentationReceiptKey));
+  const seen = new Set(local.acknowledgements.map(rewardPresentationReceiptKey));
+  writeLocal(userId, {
+    ...local,
+    pending: local.pending.filter(item => !stored.has(rewardPresentationReceiptKey(item))),
+    cached: mergeReceipts([...local.cached, ...receipts].filter(item => !seen.has(rewardPresentationReceiptKey(item)))),
+    latestDays: Math.max(local.latestDays, days),
+  });
+  // The caller notifies Home after preserving badge receipts too. This is
+  // evidence of storage, not acknowledgement: the server SELECT still runs.
 }
 
 function rpcReceipts(receipts: RewardPresentationReceipt[]) {

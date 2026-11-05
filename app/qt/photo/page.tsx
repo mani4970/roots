@@ -9,6 +9,7 @@ import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCc
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { markPostReflectionHomeReturn, type PostReflectionHomeReturn } from "@/lib/postReflectionHome";
 import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
@@ -495,6 +496,7 @@ function PhotoReflectionContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [completionReady, setCompletionReady] = useState(false);
+  const completionHomeReturnRef = useRef<PostReflectionHomeReturn | null>(null);
   const [completionShareRecord, setCompletionShareRecord] = useState<QtShareRecord | null>(null);
   const [completionShareRecordId, setCompletionShareRecordId] = useState<string | null>(null);
   const [completionNotice, setCompletionNotice] = useState<string | null>(null);
@@ -562,7 +564,7 @@ function PhotoReflectionContent() {
 
   useAndroidBackHandler(() => {
     if (completionReady) {
-      leaveGuard.leaveAfterSave(() => router.replace("/"));
+      returnHomeAfterCompletion();
       return true;
     }
     if (showShareModal) {
@@ -672,6 +674,15 @@ function PhotoReflectionContent() {
       return;
     }
     leaveGuard.leaveAfterSave(() => router.push(href));
+  }
+
+  function returnHomeAfterCompletion() {
+    leaveGuard.leaveAfterSave(() => {
+      const completion = completionHomeReturnRef.current;
+      completionHomeReturnRef.current = null;
+      if (completion) markPostReflectionHomeReturn(completion);
+      router.replace("/");
+    });
   }
 
   function requestDuplicatePhotoExit(href: string, savedRecordId?: string) {
@@ -1465,6 +1476,7 @@ function PhotoReflectionContent() {
         observe(observationRef.current, "save_ok", { recovery: observationRetryRef.current, sharing_failed: sharingFailed }, recordId);
         observationRetryRef.current = false;
         setCompletionShareRecord(insertedRecord);
+        completionHomeReturnRef.current = { userId: user.id, date: targetDate, qtRecordId: recordId };
         navigateAfterPhotoSave("/qt/complete");
         return;
       }
@@ -1761,7 +1773,7 @@ function PhotoReflectionContent() {
   const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
 
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} shareRecord={completionShareRecord} shareRecordId={completionShareRecordId} onConfirm={() => leaveGuard.leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} shareRecord={completionShareRecord} shareRecordId={completionShareRecordId} onConfirm={returnHomeAfterCompletion} />;
   }
 
   if (isEditMode && editLoading) {

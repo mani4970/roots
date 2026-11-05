@@ -47,6 +47,7 @@ import { translateBookName } from "@/lib/bibleBooks";
 import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { consumePostReflectionHomeReturn } from "@/lib/postReflectionHome";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { acknowledgePendingAwardedBadge, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import {
@@ -255,6 +256,13 @@ type CompanionAcceptanceNoticeState = {
   additionalCount: number;
 };
 
+type HomeEntry = {
+  userId: string;
+  date: string;
+  qtRecordId: string | null;
+  postReflection: boolean;
+};
+
 type HomePrayerObservationAttempt = {
   flow: ReturnType<typeof beginObservation>;
   mode: "create" | "quiet";
@@ -274,16 +282,26 @@ export default function HomePage() {
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const homeLoadGenerationRef = useRef(0);
   const homeDataDateRef = useRef<string | null>(null);
+  const homeEntryRef = useRef<HomeEntry | null>(null);
+  const [homeEntry, setHomeEntry] = useState<HomeEntry | null>(null);
   const [homeDetailsReady, setHomeDetailsReady] = useState({ prayer: false, schedule: false, decisions: false });
   const [progressRetryToken, setProgressRetryToken] = useState(0);
   const rewardReceiptsRef = useRef<RewardPresentationReceipt[]>([]);
   const claimedRewardReceiptsRef = useRef(new Set<string>());
   const rewardReceiptUserRef = useRef<string | null>(null);
   const rewardReceiptReadGenerationRef = useRef(0);
+  const rewardReceiptRequestRef = useRef<{
+    userId: string; loadGeneration: number; readGeneration: number; lastCheckin: string; days: number;
+    promise: Promise<void>;
+  } | null>(null);
   const [rewardReceiptOwner, setRewardReceiptOwner] = useState<string | null>(null);
   const [pendingRewardReceiptCount, setPendingRewardReceiptCount] = useState(0);
   const activityBadgeUserRef = useRef<string | null>(null);
   const activityBadgeReadGenerationRef = useRef(0);
+  const initialActivityBadgeReadRef = useRef<{
+    userId: string; loadGeneration: number; promise: Promise<ActivityBadgeKey[]>;
+  } | null>(null);
+  const activityBadgeReadInFlightRef = useRef<{ userId: string; generation: number } | null>(null);
   const activityBadgeRetryRef = useRef<{ userId: string; promise: Promise<ActivityBadgeKey[]>; blocking: boolean } | null>(null);
   const activityBadgesRef = useRef<ActivityBadgeKey[]>([]);
   const claimedActivityBadgesRef = useRef(new Set<ActivityBadgeKey>());
@@ -667,22 +685,29 @@ export default function HomePage() {
   const activityBadgeRecoveryPending = !!profile?.id && activityBadgeRetryRef.current?.userId === profile.id
     && activityBadgeRetryRef.current?.blocking === true;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
+  const isPostReflectionHome = homeEntry?.userId === profile?.id && homeEntry?.postReflection === true;
+  const generalHomePopupsAllowed = !!homeEntry && homeEntry.userId === profile?.id && !isPostReflectionHome;
+  // A deferred check is distinct from a completed check: no acceptance receipt
+  // is read or acknowledged during the post-reflection visit.
+  const companionNoticeGateReady = isPostReflectionHome || companionAcceptanceCheckReady;
+  const effectiveUpdatePrompt = requiredUpdatePrompt
+    && (generalHomePopupsAllowed || requiredUpdatePrompt.mandatory) ? requiredUpdatePrompt : null;
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || !!personalChallengeDetails;
-  const rewardDialogBlocked = homeDialogBlocked || !!requiredUpdatePrompt;
+  const rewardDialogBlocked = homeDialogBlocked || !!effectiveUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
   // update takes priority; otherwise welcome precedes an optional update.
-  // The companion-accepted receipt is checked before lower-priority reward and
-  // campaign popups so a slower background query cannot create popup overlap.
-  const visibleWelcomeBack = homePopupsReady && showWelcomeBack
-    && !requiredUpdatePrompt?.mandatory && !homeDialogBlocked && !celebration.show;
-  const visibleRequiredUpdatePrompt = homePopupsReady && requiredUpdatePrompt
-    && (requiredUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked && !celebration.show))
-    ? requiredUpdatePrompt : null;
-  const visibleCompanionAcceptanceNotice = homePopupsReady
+  // General Home notices retain their existing sequence. A completed reflection
+  // gets its own visit: ordinary notices stay unseen until the next Home entry.
+  const visibleWelcomeBack = generalHomePopupsAllowed && homePopupsReady && showWelcomeBack
+    && !effectiveUpdatePrompt?.mandatory && !homeDialogBlocked && !celebration.show;
+  const visibleRequiredUpdatePrompt = homePopupsReady && effectiveUpdatePrompt
+    && (effectiveUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked && !celebration.show))
+    ? effectiveUpdatePrompt : null;
+  const visibleCompanionAcceptanceNotice = generalHomePopupsAllowed && homePopupsReady
     && companionAcceptanceCheckReady
     && !!companionAcceptanceNotice
     && !handlingCompanionAcceptanceNotice
@@ -692,7 +717,7 @@ export default function HomePage() {
     && !celebration.show;
   const canShowProgressPopups = homePopupsReady
     && rewardPresentationsReady
-    && companionAcceptanceCheckReady
+    && companionNoticeGateReady
     && !companionAcceptanceNotice
     && !handlingCompanionAcceptanceNotice
     && !rewardDialogBlocked
@@ -715,6 +740,44 @@ export default function HomePage() {
     void load();
     return () => { homeLoadGenerationRef.current += 1; };
   }, []);
+
+  useEffect(() => {
+    if (!isPostReflectionHome || !profile?.id) return;
+    const userId = profile.id;
+    let active = true;
+    let nativeActive = true;
+    let foreground = document.visibilityState !== "hidden";
+    let leftForeground = !foreground;
+    const updateForeground = () => {
+      const next = nativeActive && document.visibilityState !== "hidden";
+      if (!active || next === foreground) return;
+      foreground = next;
+      if (!next) { leftForeground = true; return; }
+      const entry = homeEntryRef.current;
+      if (!leftForeground || !entry || entry.userId !== userId || !entry.postReflection) return;
+      // Returning to the app is a new ordinary Home visit. Keep all pending
+      // rewards; only the one-visit presentation mode is reset.
+      homeEntryRef.current = null;
+      setHomeEntry(null);
+      void load();
+    };
+    document.addEventListener("visibilitychange", updateForeground);
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App")) {
+      void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+        nativeActive = isActive;
+        updateForeground();
+      }).then(handle => {
+        if (!active) void handle.remove();
+        else appStateListener = handle;
+      }).catch(() => {});
+    }
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", updateForeground);
+      if (appStateListener) void appStateListener.remove();
+    };
+  }, [isPostReflectionHome, profile?.id]);
 
   useEffect(() => {
     const retryProgress = () => {
@@ -866,6 +929,7 @@ export default function HomePage() {
   async function load() {
     const generation = ++homeLoadGenerationRef.current;
     const isCurrentLoad = () => homeLoadGenerationRef.current === generation;
+    initialActivityBadgeReadRef.current = null;
     setHomeCharacterItemsOwner(null);
     setLoading(true);
     setHomeLoadFailed(false);
@@ -899,6 +963,19 @@ export default function HomePage() {
       if (!user) { router.push("/welcome"); return; }
       const today = getLocalDateString();
 
+      // These presentation reads do not depend on the profile/QT snapshot.
+      // Start them alongside it, but keep all existing popup readiness gates.
+      if (readActivityBadgeAwardRetries(user.id).length === 0) {
+        initialActivityBadgeReadRef.current = {
+          userId: user.id,
+          loadGeneration: generation,
+          promise: withQtDraftTimeout(
+            readPendingActivityBadges(supabase, user.id),
+            8_000, "home activity badge preparation",
+          ).catch(() => readLocalPendingActivityBadges(user.id)),
+        };
+      }
+
       // Only this confirmed snapshot gates Home and the post-reflection reward.
       // Optional verse, schedule and community requests must not hold it back.
       const loadProfile = async () => {
@@ -930,14 +1007,24 @@ export default function HomePage() {
       const qtRecords = qtResponse.data ?? [];
       const completedQt = qtRecords.find((record: any) => !record.is_draft) ?? null;
       const remoteDraftExists = qtRecords.some((record: any) => record.is_draft);
+      const confirmedQtRecordId = completedQt?.id ?? null;
+      const previousEntry = homeEntryRef.current;
+      const entry = previousEntry?.userId === user.id && previousEntry.date === today
+        && previousEntry.qtRecordId === confirmedQtRecordId
+        ? previousEntry
+        : {
+          userId: user.id, date: today, qtRecordId: confirmedQtRecordId,
+          postReflection: consumePostReflectionHomeReturn(user.id, today, confirmedQtRecordId),
+        };
+      homeEntryRef.current = entry;
+      setHomeEntry(entry);
       const hasDraft = !completedQt && (remoteDraftExists || !!loadQTDraftBackup(user.id, today));
       homeDataDateRef.current = today;
       companionChallengeAnnouncementUserIdRef.current = user.id;
       monthlyBadgeAwardUserIdRef.current = user.id;
       setProfile(p);
-      if (Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true) {
-        setShowAvatarChoiceModal(true);
-      }
+      setShowAvatarChoiceModal(!entry.postReflection
+        && Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true);
       const profileLang = isLang(p.preferred_language) ? p.preferred_language : null;
       const activeLang = getStoredLang() ?? profileLang ?? lang;
       const preferredTranslation = getPreferredTranslationForLang(activeLang, p.preferred_translation, profileLang);
@@ -948,7 +1035,8 @@ export default function HomePage() {
       setMyDecisions([]);
 
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
-      if (lastCheckin) {
+      setShowWelcomeBack(false);
+      if (!entry.postReflection && lastCheckin) {
         const lastDate = parseLocalDateString(lastCheckin);
         lastDate.setHours(0, 0, 0, 0);
         const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
@@ -1006,7 +1094,7 @@ export default function HomePage() {
         ]);
         if (isCurrentLoad()) setAnnouncementRewardChecksReadyFor(user.id);
       });
-      background("동역자 수락 안내 조회 실패:", async () => {
+      if (!entry.postReflection) background("동역자 수락 안내 조회 실패:", async () => {
         try {
           const { data, error } = await withQtDraftTimeout(
             supabase
@@ -1144,7 +1232,7 @@ export default function HomePage() {
       // receipts; an older pending date never re-enters the progress RPC.
       await refreshRewardPresentations(userId, {
         ...profile, streak_days: nextStreakDays, last_checkin: today,
-      });
+      }, true);
     })().catch(error => {
       console.warn("말씀 묵상 보상 화면 준비 실패:", error);
     }).finally(() => {
@@ -1184,30 +1272,48 @@ export default function HomePage() {
     return `${receipt.userId}:${receipt.date}:${receipt.itemKey}`;
   }
 
-  async function refreshRewardPresentations(userId: string, receiptProfile: any) {
+  async function refreshRewardPresentations(userId: string, receiptProfile: any, reuseInFlight = false) {
+    const loadGeneration = homeLoadGenerationRef.current;
+    const lastCheckin = String(receiptProfile?.last_checkin ?? "");
+    const days = Number(receiptProfile?.streak_days ?? 0);
+    const shared = rewardReceiptRequestRef.current;
+    if (reuseInFlight && shared?.userId === userId
+      && shared.loadGeneration === loadGeneration && shared.lastCheckin === lastCheckin && shared.days === days
+      && shared.readGeneration === rewardReceiptReadGenerationRef.current) {
+      // The initial effect and confirmed-progress gate await the same read.
+      // Joining must not supersede its publisher or a newer event refresh.
+      return shared.promise;
+    }
     const generation = ++rewardReceiptReadGenerationRef.current;
     const supabase = createClient();
-    let receipts: RewardPresentationReceipt[];
-    try {
-      // Migration queues its local receipts synchronously. The read joins its
-      // existing outbox sync, so Home needs one server lookup after that sync.
-      void migrateLegacyRewardPresentations(supabase, userId, receiptProfile).catch(() => {});
-      receipts = await withQtDraftTimeout(
-        readPendingRewardPresentations(supabase, userId),
-        8_000, "home pending reward receipts",
-      );
-    } catch {
-      // A transient network failure cannot hide a device's durable pending UI.
-      // Server receipts are retried on Home entry, foreground and reconnect.
-      receipts = readLocalPendingRewardPresentations(userId);
-    }
-    if (rewardReceiptUserRef.current !== userId || generation !== rewardReceiptReadGenerationRef.current) return;
-    rewardReceiptsRef.current = receipts;
-    setPendingRewardReceiptCount(receipts.filter(receipt =>
-      !claimedRewardReceiptsRef.current.has(rewardReceiptIdentity(receipt)),
-    ).length);
-    setRewardReceiptOwner(userId);
-    setRootsManRequestToken(token => token + 1);
+    const promise = (async () => {
+      let receipts: RewardPresentationReceipt[];
+      try {
+        // Migration queues its local receipts synchronously. The read joins its
+        // existing outbox sync, so Home needs one server lookup after that sync.
+        void migrateLegacyRewardPresentations(supabase, userId, receiptProfile).catch(() => {});
+        receipts = await withQtDraftTimeout(
+          readPendingRewardPresentations(supabase, userId),
+          8_000, "home pending reward receipts",
+        );
+      } catch {
+        // A transient network failure cannot hide a device's durable pending UI.
+        // Server receipts are retried on Home entry, foreground and reconnect.
+        receipts = readLocalPendingRewardPresentations(userId);
+      }
+      if (rewardReceiptUserRef.current !== userId || generation !== rewardReceiptReadGenerationRef.current
+        || loadGeneration !== homeLoadGenerationRef.current) return;
+      rewardReceiptsRef.current = receipts;
+      setPendingRewardReceiptCount(receipts.filter(receipt =>
+        !claimedRewardReceiptsRef.current.has(rewardReceiptIdentity(receipt)),
+      ).length);
+      setRewardReceiptOwner(userId);
+      setRootsManRequestToken(token => token + 1);
+    })();
+    const request = { userId, loadGeneration, readGeneration: generation, lastCheckin, days, promise };
+    rewardReceiptRequestRef.current = request;
+    try { await promise; }
+    finally { if (rewardReceiptRequestRef.current === request) rewardReceiptRequestRef.current = null; }
   }
 
   useEffect(() => {
@@ -1226,7 +1332,7 @@ export default function HomePage() {
       setRewardReceiptOwner(null);
     }
     let cancelled = false;
-    const refresh = (event?: Event) => {
+    const refresh = (event?: Event, reuseInFlight = false) => {
       if (cancelled || (event?.type === "visibilitychange" && document.visibilityState !== "visible")) return;
       if (event?.type === REWARD_PRESENTATIONS_EVENT) {
         const detail = (event as CustomEvent<{ userId?: string }>).detail;
@@ -1238,9 +1344,9 @@ export default function HomePage() {
           else setProgressRetryToken(token => token + 1);
         }
       }
-      void refreshRewardPresentations(userId, profile);
+      void refreshRewardPresentations(userId, profile, reuseInFlight);
     };
-    refresh();
+    refresh(undefined, true);
     window.addEventListener(REWARD_PRESENTATIONS_EVENT, refresh);
     window.addEventListener("online", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -1278,13 +1384,26 @@ export default function HomePage() {
     const retry = activityBadgeRetryRef.current?.userId === userId && activityBadgeRetryRef.current.blocking
       ? activityBadgeRetryRef.current.promise : null;
     const generation = ++activityBadgeReadGenerationRef.current;
+    const loadGeneration = homeLoadGenerationRef.current;
     const supabase = createClient();
+    const prepared = initialActivityBadgeReadRef.current;
+    const usePreparedRead = !retry && readActivityBadgeAwardRetries(userId).length === 0
+      && prepared?.userId === userId && prepared.loadGeneration === homeLoadGenerationRef.current;
+    if (prepared?.userId === userId) initialActivityBadgeReadRef.current = null;
+    const trackedRead = { userId, generation };
+    activityBadgeReadInFlightRef.current = trackedRead;
     let keys: ActivityBadgeKey[];
     try {
       keys = await withQtDraftTimeout((async () => {
         // When a failed award is being recovered, read after that transaction
         // settles. All overlapping reads share the same recovery promise.
         if (retry) await retry;
+        if (usePreparedRead) {
+          await prepared.promise;
+          // A newly earned badge or dismissal may have arrived while Home's
+          // profile was loading. Publish the latest merged presentation state.
+          return readLocalPendingActivityBadges(userId);
+        }
         return readPendingActivityBadges(supabase, userId);
       })(), 8_000, "home activity badge receipts");
     } catch {
@@ -1294,8 +1413,14 @@ export default function HomePage() {
         activityBadgeRetryRef.current.blocking = false;
       }
       keys = readLocalPendingActivityBadges(userId);
+    } finally {
+      if (activityBadgeReadInFlightRef.current === trackedRead) activityBadgeReadInFlightRef.current = null;
     }
-    if (activityBadgeUserRef.current !== userId || generation !== activityBadgeReadGenerationRef.current) return;
+    if (activityBadgeUserRef.current !== userId || generation !== activityBadgeReadGenerationRef.current
+      || loadGeneration !== homeLoadGenerationRef.current) return;
+    // The server read has merged into local state. Include any award/ACK event
+    // received during its final promise handoff before publishing the queue.
+    keys = readLocalPendingActivityBadges(userId);
     activityBadgesRef.current = keys;
     setPendingActivityBadgeCount(keys.filter(key => !claimedActivityBadgesRef.current.has(key)).length);
     setActivityBadgeOwner(userId);
@@ -1315,9 +1440,15 @@ export default function HomePage() {
     let cancelled = false;
     const refresh = (event?: Event) => {
       if (cancelled || (event?.type === "visibilitychange" && document.visibilityState !== "visible")) return;
-      if (event?.type === ACTIVITY_BADGE_PRESENTATIONS_EVENT
-        && (event as CustomEvent<{ userId?: string }>).detail?.userId !== userId) return;
-      // Only failed checks explicitly queued by a successful share are retried.
+      if (event?.type === ACTIVITY_BADGE_PRESENTATIONS_EVENT) {
+        if ((event as CustomEvent<{ userId?: string }>).detail?.userId !== userId) return;
+        const reading = activityBadgeReadInFlightRef.current;
+        // The active read merges current local awards/ACKs before returning.
+        // Its own cache-change notification must not start a second server read.
+        if (reading && activityBadgeUserRef.current === userId && reading.userId === userId
+          && reading.generation === activityBadgeReadGenerationRef.current) return;
+      }
+      // Unfinished or failed checks queued by a successful share are retried.
       // Reading/acknowledging a popup never invokes the progress RPC.
       void refreshActivityBadgePresentations(userId, event?.type !== ACTIVITY_BADGE_PRESENTATIONS_EVENT);
     };
@@ -1331,6 +1462,7 @@ export default function HomePage() {
       // screen while the route's ordinary account refresh is completing.
       activityBadgeUserRef.current = null;
       activityBadgeReadGenerationRef.current += 1;
+      activityBadgeReadInFlightRef.current = null;
       activityBadgesRef.current = [];
       claimedActivityBadgesRef.current.clear();
       setActivityBadgeOwner(null);
@@ -1351,6 +1483,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
       activityBadgeReadGenerationRef.current += 1;
+      activityBadgeReadInFlightRef.current = null;
       window.removeEventListener(ACTIVITY_BADGE_PRESENTATIONS_EVENT, refresh);
       window.removeEventListener("online", refresh);
       document.removeEventListener("visibilitychange", refresh);
@@ -2129,12 +2262,12 @@ export default function HomePage() {
   const rewardCampaignPopupBlocked =
     loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
     !activityPresentationsReady || activityBadgeRecoveryPending || pendingActivityBadgeCount > 0 ||
-    !companionAcceptanceCheckReady ||
+    !companionNoticeGateReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||
     showFirstLangPicker ||
     showOnboarding ||
-    !!requiredUpdatePrompt ||
+    !!effectiveUpdatePrompt ||
     showWelcomeBack ||
     !!badgePopup ||
     celebration.show ||
@@ -2156,17 +2289,17 @@ export default function HomePage() {
     showHomePrayerSharePrompt;
   const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
   const visibleMonthlyBadgeAward =
-    !!monthlyBadgeAward &&
+    generalHomePopupsAllowed && !!monthlyBadgeAward &&
     !monthlyBadgeAwardPopupBlocked;
   const homePopupBlocked =
     loading || !rewardPresentationsReady || pendingRewardReceiptCount > 0 ||
     !activityPresentationsReady || activityBadgeRecoveryPending || pendingActivityBadgeCount > 0 ||
-    !companionAcceptanceCheckReady ||
+    !companionNoticeGateReady ||
     !!companionAcceptanceNotice ||
     handlingCompanionAcceptanceNotice ||
     showFirstLangPicker ||
     showOnboarding ||
-    !!requiredUpdatePrompt ||
+    !!effectiveUpdatePrompt ||
     showWelcomeBack ||
     !!badgePopup ||
     celebration.show ||
@@ -2187,20 +2320,20 @@ export default function HomePage() {
     showHomePrayerCompose ||
     showHomePrayerSharePrompt;
   const visibleChallengeReward =
-    homePopupBlocked || openingChallengeProfile
+    !generalHomePopupsAllowed || homePopupBlocked || openingChallengeProfile
       ? null
       : challengeRewardQueue[0] ?? null;
-  const visibleAvatarChoiceModal = canShowProgressPopups && showAvatarChoiceModal
+  const visibleAvatarChoiceModal = generalHomePopupsAllowed && canShowProgressPopups && showAvatarChoiceModal
     && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
     && !visibleMonthlyBadgeAward;
   const personalCampaignPopupBlocked = homePopupBlocked || homeLoadFailed
-    || !!monthlyBadgeAward || challengeRewardQueue.length > 0
+    || (generalHomePopupsAllowed && (!!monthlyBadgeAward || challengeRewardQueue.length > 0))
     || openingChallengeProfile || openingPersonalChallengeProfile
     || challengeRewardActionInFlightRef.current || progressUpdateInFlightRef.current
     || pendingRootsManRef.current || showRootsMan;
-  const visiblePersonalChallengeReward = personalCampaignPopupBlocked
+  const visiblePersonalChallengeReward = !generalHomePopupsAllowed || personalCampaignPopupBlocked
     ? null : personalChallenge.rewards[0] ?? null;
-  const visiblePersonalChallengeAnnouncement = !personalCampaignPopupBlocked
+  const visiblePersonalChallengeAnnouncement = generalHomePopupsAllowed && !personalCampaignPopupBlocked
     && personalChallenge.ready && personalChallenge.rewards.length === 0
     && announcementRewardChecksReadyFor === profile?.id
     && personalChallenge.announcementPending;
@@ -2216,7 +2349,7 @@ export default function HomePage() {
     }
   }
   const visibleMessengerShareAnnouncement =
-    messengerShareAnnouncementOwner === profile?.id &&
+    generalHomePopupsAllowed && messengerShareAnnouncementOwner === profile?.id &&
     showMessengerShareAnnouncement &&
     personalChallenge.ready &&
     announcementRewardChecksReadyFor === profile?.id &&
@@ -2647,7 +2780,7 @@ export default function HomePage() {
       {homePopupsReady && (
         <Suspense fallback={null}>
           <HomeHeartShopGift key={profile.id} userId={profile.id} lang={lang}
-            eligible={!personalCampaignPopupBlocked && personalChallenge.ready
+            eligible={generalHomePopupsAllowed && !personalCampaignPopupBlocked && personalChallenge.ready
               && announcementRewardChecksReadyFor === profile.id
               && !visiblePersonalChallengeReward && !visiblePersonalChallengeAnnouncement
               && !visibleMessengerShareAnnouncement} />

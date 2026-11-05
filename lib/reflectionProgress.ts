@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
-import { preserveLocalRewardPresentation, REWARD_PRESENTATIONS_EVENT } from "@/lib/rewardPresentationReceipts";
+import { preserveLocalRewardPresentation, preserveServerRewardPresentation, REWARD_PRESENTATIONS_EVENT } from "@/lib/rewardPresentationReceipts";
 
 export const QT_PENDING_AWARDED_BADGES_PREFIX = "qt_pending_awarded_badges_";
 export const QT_PENDING_AWARDED_BADGES_EVENT = "roots:qt-pending-awarded-badges";
@@ -144,6 +144,12 @@ export async function recordBibleReflectionProgress(
   const awardedBadges = Array.isArray(data.awarded_badges)
     ? data.awarded_badges.filter((value: unknown): value is string => typeof value === "string")
     : [];
+
+  // Only a new completion through the receipt RPC proves these UI records were
+  // committed. Cache that proof before a badge event can start Home recovery.
+  if (!missingReceiptRpc && data.updated && data.profile?.id === userId && data.profile?.last_checkin === date) {
+    preserveServerRewardPresentation(userId, date, Number(data.profile.streak_days ?? 0), awardedBadges);
+  }
 
   // The caller's UI timeout does not cancel a committed RPC. Preserve the
   // server's badge receipt here even when its awaiting screen has timed out or

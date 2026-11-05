@@ -8,6 +8,7 @@ import { loadQTDraftBackup, mergeQtDraftRowWithBackup, removeQTDraftBackup, save
 import { getQtDraftSessionUser, saveQtDraftAtomically, withQtDraftTimeout, type QtDraftTransportDetails } from "@/lib/qtDraftSync";
 import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
+import { markPostReflectionHomeReturn, type PostReflectionHomeReturn } from "@/lib/postReflectionHome";
 import { syncQtCompletionRecipients } from "@/lib/qtCompletionRecipients";
 import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";
 import {
@@ -524,6 +525,7 @@ function QTWriteContent() {
   const [decisions, setDecisions] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
   const [completionReady, setCompletionReady] = useState(false);
+  const completionHomeReturnRef = useRef<PostReflectionHomeReturn | null>(null);
   const completionShareRecordRef = useRef<QtShareRecord | null>(null);
   const completionSavingRef = useRef(false);
   const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
@@ -699,7 +701,7 @@ function QTWriteContent() {
 
   useAndroidBackHandler(() => {
     if (completionReady) {
-      leaveAfterSave(() => router.replace("/"));
+      returnHomeAfterCompletion();
       return true;
     }
     if (saving || completionSavingRef.current) return true;
@@ -2938,7 +2940,18 @@ function QTWriteContent() {
     observe(completionObservationRef.current, "completion_ready", undefined, recordId);
     rememberObservationFlow(completionObservationRef.current, "qt_completion");
     completionRetryRef.current = false;
+    completionHomeReturnRef.current = selectedDate === getLocalDateString()
+      ? { userId, date: selectedDate, qtRecordId: recordId } : null;
     setCompletionReady(true);
+  }
+
+  function returnHomeAfterCompletion() {
+    leaveAfterSave(() => {
+      const completion = completionHomeReturnRef.current;
+      completionHomeReturnRef.current = null;
+      if (completion) markPostReflectionHomeReturn(completion);
+      router.replace("/");
+    });
   }
 
   async function save(options: CompleteSaveOptions = {}) {
@@ -3110,7 +3123,7 @@ function QTWriteContent() {
 
   // ─── 말씀 선택 화면 (6step & free) ───
   if (completionReady) {
-    return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} shareRecord={completionShareRecordRef.current} onConfirm={() => leaveAfterSave(() => router.replace("/"))} />;
+    return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} shareRecord={completionShareRecordRef.current} onConfirm={returnHomeAfterCompletion} />;
   }
 
   if (draftLoadError) {
