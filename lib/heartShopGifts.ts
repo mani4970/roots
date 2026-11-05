@@ -92,6 +92,16 @@ export async function sendGift(
   if (typeof data?.sent !== "boolean" || typeof data.reason !== "string") {
     throw new Error("Invalid gift send response");
   }
+  if (data.sent) {
+    // Presentation delivery is independent of the successful gift transaction.
+    // A lost request is recovered from the committed gift by the minute cron.
+    try {
+      void fetch("/api/gift-notifications/dispatch", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }), keepalive: true,
+      }).catch(() => {});
+    } catch { /* Notification setup cannot turn a successful gift into a failure. */ }
+  }
   return {
     sent: data.sent,
     reason: data.reason,
@@ -109,6 +119,17 @@ export async function fetchPendingGifts(): Promise<PendingGift[]> {
     }
     return { giftId: row.gift_id, itemKey: row.item_key, senderName: row.sender_name || null };
   });
+}
+
+/** Recipient-only lookup for a push target outside the ordinary Home batch. */
+export async function fetchPendingGift(giftId: string): Promise<PendingGift | null> {
+  const { data, error } = await createClient().rpc("get_pending_heart_shop_gift", { p_gift_id: giftId });
+  if (error) throw error;
+  if (!Array.isArray(data) || data.length > 1) throw new Error("Invalid pending gift");
+  if (data.length === 0) return null;
+  const row = data[0];
+  if (row?.gift_id !== giftId || typeof row.item_key !== "string") throw new Error("Invalid pending gift");
+  return { giftId: row.gift_id, itemKey: row.item_key, senderName: typeof row.sender_name === "string" ? row.sender_name : null };
 }
 
 export async function acknowledgeGift(giftId: string): Promise<boolean> {

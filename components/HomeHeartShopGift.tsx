@@ -6,7 +6,7 @@ import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/lib/supabase";
 import { storageGetJson, storageRemove, storageSetJson } from "@/lib/clientStorage";
-import { acknowledgeGift, fetchPendingGifts, getGiftItem, getGiftText, type PendingGift } from "@/lib/heartShopGifts";
+import { acknowledgeGift, fetchPendingGift, fetchPendingGifts, getGiftItem, getGiftText, type PendingGift } from "@/lib/heartShopGifts";
 import type { Lang } from "@/lib/i18n";
 import HeartShopItemArt from "@/components/HeartShopItemArt";
 import HeartShopGiftPopup from "@/components/HeartShopGiftPopup";
@@ -25,9 +25,9 @@ async function uploadAcknowledgement(key: string, giftId: string) {
   } catch { /* Home retries the account's pending acknowledgements on resume or reconnect. */ }
 }
 
-type Props = { userId: string; lang: Lang; eligible: boolean };
+type Props = { userId: string; lang: Lang; eligible: boolean; targetGiftId?: string };
 
-export default function HomeHeartShopGift({ userId, lang, eligible }: Props) {
+export default function HomeHeartShopGift({ userId, lang, eligible, targetGiftId }: Props) {
   const router = useRouter();
   const [gifts, setGifts] = useState<PendingGift[]>([]);
   const dismissedThisVisit = useRef(false);
@@ -38,6 +38,10 @@ export default function HomeHeartShopGift({ userId, lang, eligible }: Props) {
 
   useEffect(() => {
     const client = createClient();
+    dismissedThisVisit.current = false;
+    handled.current.clear();
+    currentAccount.current = null;
+    setGifts([]);
     let active = true;
     let generation = 0;
     let nativeActive = true;
@@ -56,7 +60,10 @@ export default function HomeHeartShopGift({ userId, lang, eligible }: Props) {
         acknowledged.forEach(id => handled.current.add(id));
         await Promise.all(acknowledged.map(id => uploadAcknowledgement(key, id)));
         if (!current() || dismissedThisVisit.current) return;
-        const unread = await fetchPendingGifts();
+        // A push targets that gift only. Do not substitute another unread gift
+        // when this one was already handled, removed or belongs to an old account.
+        const target = targetGiftId ? await fetchPendingGift(targetGiftId) : null;
+        const unread = targetGiftId ? target ? [target] : [] : await fetchPendingGifts();
         if (current() && !dismissedThisVisit.current && currentAccount.current === userId) {
           setGifts(unread.filter(gift => !handled.current.has(gift.giftId)));
         }
@@ -122,10 +129,10 @@ export default function HomeHeartShopGift({ userId, lang, eligible }: Props) {
       document.removeEventListener("focusout", onFocus);
       if (appListener) void appListener.remove();
     };
-  }, [key, userId]);
+  }, [key, userId, targetGiftId]);
 
   const gift = eligible && !editing && currentAccount.current === userId
-    ? gifts.find(candidate => !!getGiftItem(candidate.itemKey, lang)) : undefined;
+    ? gifts.find(candidate => (!targetGiftId || candidate.giftId === targetGiftId) && !!getGiftItem(candidate.itemKey, lang)) : undefined;
   const item = gift && getGiftItem(gift.itemKey, lang);
   if (!gift || !item) return null;
   const copy = getGiftText(lang);

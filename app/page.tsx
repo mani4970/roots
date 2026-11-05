@@ -106,6 +106,7 @@ import {
   COMPANION_CHALLENGE_4_ID,
 } from "@/lib/companionChallengeCampaign";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
+import { consumeGiftHomeIntent, GIFT_HOME_INTENT_EVENT, type GiftHomeIntent } from "@/lib/giftHomeEntry";
 import { acknowledgeMessengerShareAnnouncement, isMessengerShareAnnouncementEligible, readMessengerShareAnnouncementSeen } from "@/lib/messengerShareAnnouncement";
 import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
@@ -261,6 +262,7 @@ type HomeEntry = {
   date: string;
   qtRecordId: string | null;
   postReflection: boolean;
+  giftIntent?: GiftHomeIntent | null;
 };
 
 type HomePrayerObservationAttempt = {
@@ -689,10 +691,12 @@ export default function HomePage() {
     && activityBadgeRetryRef.current?.blocking === true;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const isPostReflectionHome = homeEntry?.userId === profile?.id && homeEntry?.postReflection === true;
-  const generalHomePopupsAllowed = !!homeEntry && homeEntry.userId === profile?.id && !isPostReflectionHome;
+  const isGiftNotificationHome = homeEntry?.userId === profile?.id && !!homeEntry?.giftIntent;
+  const visibleCelebration = !isGiftNotificationHome && celebration.show;
+  const generalHomePopupsAllowed = !!homeEntry && homeEntry.userId === profile?.id && !isPostReflectionHome && !isGiftNotificationHome;
   // A deferred check is distinct from a completed check: no acceptance receipt
   // is read or acknowledged during the post-reflection visit.
-  const companionNoticeGateReady = isPostReflectionHome || companionAcceptanceCheckReady;
+  const companionNoticeGateReady = isPostReflectionHome || isGiftNotificationHome || companionAcceptanceCheckReady;
   const effectiveUpdatePrompt = requiredUpdatePrompt
     && (generalHomePopupsAllowed || requiredUpdatePrompt.mandatory) ? requiredUpdatePrompt : null;
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
@@ -719,6 +723,7 @@ export default function HomePage() {
     && !homeDialogBlocked
     && !celebration.show;
   const canShowProgressPopups = homePopupsReady
+    && !isGiftNotificationHome
     && rewardPresentationsReady
     && companionNoticeGateReady
     && !companionAcceptanceNotice
@@ -745,19 +750,29 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!isPostReflectionHome || !profile?.id) return;
+    const onGiftPush = () => { void load(); };
+    window.addEventListener(GIFT_HOME_INTENT_EVENT, onGiftPush);
+    return () => window.removeEventListener(GIFT_HOME_INTENT_EVENT, onGiftPush);
+  }, []);
+
+  useEffect(() => {
+    if ((!isPostReflectionHome && !isGiftNotificationHome) || !profile?.id) return;
     const userId = profile.id;
     let active = true;
     let nativeActive = true;
     let foreground = document.visibilityState !== "hidden";
-    let leftForeground = !foreground;
+    // Opening a push while the app is still becoming active belongs to this
+    // gift visit. Only a later leave/return starts an ordinary Home visit.
+    const giftToken = homeEntryRef.current?.giftIntent?.token;
+    let leftForeground = !foreground && !isGiftNotificationHome;
     const updateForeground = () => {
       const next = nativeActive && document.visibilityState !== "hidden";
       if (!active || next === foreground) return;
       foreground = next;
       if (!next) { leftForeground = true; return; }
       const entry = homeEntryRef.current;
-      if (!leftForeground || !entry || entry.userId !== userId || !entry.postReflection) return;
+      if (entry?.giftIntent && entry.giftIntent.token !== giftToken) return;
+      if (!leftForeground || !entry || entry.userId !== userId || (!entry.postReflection && !entry.giftIntent)) return;
       // Returning to the app is a new ordinary Home visit. Keep all pending
       // rewards; only the one-visit presentation mode is reset.
       homeEntryRef.current = null;
@@ -780,7 +795,7 @@ export default function HomePage() {
       document.removeEventListener("visibilitychange", updateForeground);
       if (appStateListener) void appStateListener.remove();
     };
-  }, [isPostReflectionHome, profile?.id]);
+  }, [isPostReflectionHome, isGiftNotificationHome, homeEntry?.giftIntent?.token, profile?.id]);
 
   useEffect(() => {
     const retryProgress = () => {
@@ -1014,12 +1029,14 @@ export default function HomePage() {
       const remoteDraftExists = qtRecords.some((record: any) => record.is_draft);
       const confirmedQtRecordId = completedQt?.id ?? null;
       const previousEntry = homeEntryRef.current;
-      const entry = previousEntry?.userId === user.id && previousEntry.date === today
+      const giftIntent = consumeGiftHomeIntent(user.id);
+      const entry = !giftIntent && previousEntry?.userId === user.id && previousEntry.date === today
         && previousEntry.qtRecordId === confirmedQtRecordId
         ? previousEntry
         : {
           userId: user.id, date: today, qtRecordId: confirmedQtRecordId,
-          postReflection: consumePostReflectionHomeReturn(user.id, today, confirmedQtRecordId),
+          postReflection: consumePostReflectionHomeReturn(user.id, today, confirmedQtRecordId) && !giftIntent,
+          giftIntent,
         };
       homeEntryRef.current = entry;
       setHomeEntry(entry);
@@ -1029,7 +1046,7 @@ export default function HomePage() {
       monthlyBadgeAwardUserIdRef.current = user.id;
       setUpdateAnnouncementAccount({ userId: user.id, createdAt: user.created_at ?? null });
       setProfile(p);
-      setShowAvatarChoiceModal(!entry.postReflection
+      setShowAvatarChoiceModal(!entry.postReflection && !entry.giftIntent
         && Object.prototype.hasOwnProperty.call(p, "avatar_choice_seen") && p.avatar_choice_seen !== true);
       const profileLang = isLang(p.preferred_language) ? p.preferred_language : null;
       const activeLang = getStoredLang() ?? profileLang ?? lang;
@@ -1042,7 +1059,7 @@ export default function HomePage() {
 
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       setShowWelcomeBack(false);
-      if (!entry.postReflection && lastCheckin) {
+      if (!entry.postReflection && !entry.giftIntent && lastCheckin) {
         const lastDate = parseLocalDateString(lastCheckin);
         lastDate.setHours(0, 0, 0, 0);
         const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
@@ -1100,7 +1117,7 @@ export default function HomePage() {
         ]);
         if (isCurrentLoad()) setAnnouncementRewardChecksReadyFor(user.id);
       });
-      if (!entry.postReflection) background("동역자 수락 안내 조회 실패:", async () => {
+      if (!entry.postReflection && !entry.giftIntent) background("동역자 수락 안내 조회 실패:", async () => {
         try {
           const { data, error } = await withQtDraftTimeout(
             supabase
@@ -1583,7 +1600,9 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (!rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
+    // A gift push is an explicit one-visit destination. Keep earned receipts
+    // unclaimed until the next ordinary Home; progress/reward writes still run.
+    if (isGiftNotificationHome || !rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
     if (showNextProgressPopup() || badgePopup || gardenPopup.show) return;
     if (!activityPresentationsReady || (activityBadgeRetryRef.current?.userId === profile.id && activityBadgeRetryRef.current?.blocking === true)) return;
     if (showRootsMan && pendingActivityBadgeCount > 0) return;
@@ -1607,7 +1626,7 @@ export default function HomePage() {
       pendingRootsManRef.current = false;
       openRootsManExperience();
     }
-  }, [rewardPresentationsReady, activityPresentationsReady, activityBadgeRecoveryPending, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, showRootsMan, pendingActivityBadgeCount, rootsManRequestToken]);
+  }, [isGiftNotificationHome, rewardPresentationsReady, activityPresentationsReady, activityBadgeRecoveryPending, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, showRootsMan, pendingActivityBadgeCount, rootsManRequestToken]);
 
   function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
     setCelebration((current) => {
@@ -2453,7 +2472,7 @@ export default function HomePage() {
       // the first slide. It must only be completed via its final action.
       return false;
     }
-    if (celebration.show) {
+    if (visibleCelebration) {
       closeCelebration();
       return true;
     }
@@ -2785,8 +2804,11 @@ export default function HomePage() {
 
       {homePopupsReady && (
         <Suspense fallback={null}>
-          <HomeHeartShopGift key={profile.id} userId={profile.id} lang={lang}
-            eligible={generalHomePopupsAllowed && !personalCampaignPopupBlocked && personalChallenge.ready
+          <HomeHeartShopGift key={`${profile.id}:${homeEntry?.giftIntent?.token ?? "general"}`} userId={profile.id} lang={lang}
+            targetGiftId={isGiftNotificationHome ? homeEntry?.giftIntent?.giftId : undefined}
+            eligible={isGiftNotificationHome
+              ? !homeDialogBlocked && !effectiveUpdatePrompt
+              : generalHomePopupsAllowed && !personalCampaignPopupBlocked && personalChallenge.ready
               && announcementRewardChecksReadyFor === profile.id
               && !visiblePersonalChallengeReward && !visiblePersonalChallengeAnnouncement
               && !visibleMessengerShareAnnouncement} />
@@ -2876,7 +2898,7 @@ export default function HomePage() {
 
       <ObservationPopup userId={profile?.id} kind="celebration" queued={celebration.show} instanceKey={celebration} progressDays={profile?.streak_days}>
       <Celebration
-        show={celebration.show}
+        show={visibleCelebration}
         message={celebration.message}
         subMessage={celebration.subMessage}
         iconSrc="/icon-qt.webp"

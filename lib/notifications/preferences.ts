@@ -41,35 +41,45 @@ export const DEFAULT_PUSH_NOTIFICATION_PREFERENCES: RootsPushNotificationPrefere
   commentNotificationsEnabled: true,
 };
 
-function rowToPreferences(row: NotificationPreferenceRow | null | undefined): RootsPushNotificationPreferences {
-  if (!row) return DEFAULT_PUSH_NOTIFICATION_PREFERENCES;
+/** One news switch controls every news category, including gift arrivals. */
+export function normalizeNewsNotificationPreferences(preferences: RootsPushNotificationPreferences): RootsPushNotificationPreferences {
+  const enabled = preferences.pushEnabled;
   return {
-    pushEnabled: row.push_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.pushEnabled,
-    groupNotificationsEnabled: row.group_notifications_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.groupNotificationsEnabled,
-    partnerNotificationsEnabled: row.partner_notifications_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerNotificationsEnabled,
-    groupQtEnabled: row.group_qt_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.groupQtEnabled,
-    groupPrayerEnabled: row.group_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.groupPrayerEnabled,
-    groupAnsweredPrayerEnabled: row.group_answered_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.groupAnsweredPrayerEnabled,
-    partnerQtEnabled: row.partner_qt_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerQtEnabled,
-    partnerPrayerEnabled: row.partner_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerPrayerEnabled,
-    partnerAnsweredPrayerEnabled: row.partner_answered_prayer_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.partnerAnsweredPrayerEnabled,
-    commentNotificationsEnabled: row.comment_notifications_enabled ?? DEFAULT_PUSH_NOTIFICATION_PREFERENCES.commentNotificationsEnabled,
+    pushEnabled: enabled,
+    groupNotificationsEnabled: enabled,
+    partnerNotificationsEnabled: enabled,
+    groupQtEnabled: enabled,
+    groupPrayerEnabled: enabled,
+    groupAnsweredPrayerEnabled: enabled,
+    partnerQtEnabled: enabled,
+    partnerPrayerEnabled: enabled,
+    partnerAnsweredPrayerEnabled: enabled,
+    commentNotificationsEnabled: enabled,
   };
 }
 
+function rowToPreferences(row: NotificationPreferenceRow | null | undefined): RootsPushNotificationPreferences {
+  if (!row) return DEFAULT_PUSH_NOTIFICATION_PREFERENCES;
+  // Match SQL 182 before and during rollout: a previous explicit OFF must not
+  // become ON merely because individual switches have been combined.
+  const enabled = Object.values(row).every(value => value !== false);
+  return normalizeNewsNotificationPreferences({ ...DEFAULT_PUSH_NOTIFICATION_PREFERENCES, pushEnabled: enabled });
+}
+
 function preferencesToRow(userId: string, preferences: RootsPushNotificationPreferences) {
+  const normalized = normalizeNewsNotificationPreferences(preferences);
   return {
     user_id: userId,
-    push_enabled: preferences.pushEnabled,
-    group_notifications_enabled: preferences.groupNotificationsEnabled,
-    partner_notifications_enabled: preferences.partnerNotificationsEnabled,
-    group_qt_enabled: preferences.groupQtEnabled,
-    group_prayer_enabled: preferences.groupPrayerEnabled,
-    group_answered_prayer_enabled: preferences.groupAnsweredPrayerEnabled,
-    partner_qt_enabled: preferences.partnerQtEnabled,
-    partner_prayer_enabled: preferences.partnerPrayerEnabled,
-    partner_answered_prayer_enabled: preferences.partnerAnsweredPrayerEnabled,
-    comment_notifications_enabled: preferences.commentNotificationsEnabled,
+    push_enabled: normalized.pushEnabled,
+    group_notifications_enabled: normalized.groupNotificationsEnabled,
+    partner_notifications_enabled: normalized.partnerNotificationsEnabled,
+    group_qt_enabled: normalized.groupQtEnabled,
+    group_prayer_enabled: normalized.groupPrayerEnabled,
+    group_answered_prayer_enabled: normalized.groupAnsweredPrayerEnabled,
+    partner_qt_enabled: normalized.partnerQtEnabled,
+    partner_prayer_enabled: normalized.partnerPrayerEnabled,
+    partner_answered_prayer_enabled: normalized.partnerAnsweredPrayerEnabled,
+    comment_notifications_enabled: normalized.commentNotificationsEnabled,
     updated_at: new Date().toISOString(),
   };
 }

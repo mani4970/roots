@@ -7,6 +7,7 @@ import {
   dispatchCommentNotifications,
 } from "@/lib/notifications/commentNotificationServer";
 import { isCommentNotificationId } from "@/lib/notifications/commentNotifications";
+import { dispatchGiftNotifications } from "@/lib/notifications/giftNotificationServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,9 +25,15 @@ export async function GET(request: NextRequest) {
   )
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const admin = commentNotificationAdmin();
+    const [comments, gifts] = await Promise.allSettled([
+      dispatchCommentNotifications(admin),
+      dispatchGiftNotifications(admin),
+    ]);
     return NextResponse.json({
-      ok: true,
-      ...(await dispatchCommentNotifications(commentNotificationAdmin())),
+      ok: comments.status === "fulfilled" && gifts.status === "fulfilled",
+      ...(comments.status === "fulfilled" ? comments.value : { commentRetry: true }),
+      gifts: gifts.status === "fulfilled" ? gifts.value : { retry: true },
     });
   } catch {
     return NextResponse.json(

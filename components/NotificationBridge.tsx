@@ -14,6 +14,7 @@ import {
 } from "@/lib/localNotifications";
 import { syncDefaultPushNotificationRegistration } from "@/lib/notifications/pushTokens";
 import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, publishCommentNotificationChange } from "@/lib/notifications/commentNotifications";
+import { clearGiftHomeIntent, markGiftHomeIntent, readGiftHomeLink } from "@/lib/giftHomeEntry";
 
 function routeForTarget(target: NotificationTarget) {
   if (target === "prayer") return "/prayer";
@@ -157,6 +158,14 @@ export default function NotificationBridge() {
         router.push("/");
         return;
       }
+      const gift = readGiftHomeLink(deepLink);
+      if (gift) {
+        try { sessionStorage.removeItem(COMMENT_NOTIFICATION_INTENT); } catch {}
+        markGiftHomeIntent(gift);
+        router.push("/");
+        return;
+      }
+      clearGiftHomeIntent();
       try {
         const id = new URL(deepLink, window.location.origin).searchParams.get("commentNotificationId");
         if (isCommentNotificationId(id)) sessionStorage.setItem(COMMENT_NOTIFICATION_INTENT, id);

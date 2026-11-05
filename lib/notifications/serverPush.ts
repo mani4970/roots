@@ -359,6 +359,12 @@ export async function sendCommentNotificationPush(token: PushTokenRow, row: Pend
   catch { return { configured: true as const, result: { ok: false, provider: token.token_provider, error: "Temporary provider error" } as ProviderSendResult }; }
 }
 
+/** Gift-only entry point using the same configured native providers. */
+export async function sendGiftNotificationPush(token: PushTokenRow, row: PendingNotificationRow) {
+  try { return await sendProviderPush(token, row, { apns: getApnsConfig(), fcm: getFcmConfig() }); }
+  catch { return { configured: true as const, result: { ok: false, provider: token.token_provider, error: "Temporary provider error" } as ProviderSendResult }; }
+}
+
 export async function dispatchNotificationsByIds(admin: any, notificationIds: string[]): Promise<PushDispatchSummary> {
   const uniqueIds = Array.from(new Set(notificationIds.filter(Boolean))).slice(0, MAX_DISPATCH_NOTIFICATIONS);
   const apns = getApnsConfig();

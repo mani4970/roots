@@ -1,93 +1,84 @@
 import type { Lang } from "@/lib/i18n";
 
 type NotificationSettingsText = {
-  modalDescription: string;
-  devicePermissionDescription: string;
-  eveningReminderDescription: string;
+  remindersTitle: string;
+  remindersDescription: string;
+  morningReminderTitle: string;
+  eveningReminderTitle: string;
+  prayerReminderTitle: string;
   loadFailed: string;
   pushTitle: string;
   pushDescription: string;
-  groupTitle: string;
-  groupDescription: string;
-  partnerTitle: string;
-  partnerDescription: string;
   pushPermissionDenied: string;
   pushRegistrationFailed: string;
+  save: string;
 };
 
-// Spanish copy is staged before Español becomes selectable in the app.
-type NotificationSettingsLang = Lang | "es";
-
-const NOTIFICATION_SETTINGS_TEXT: Record<NotificationSettingsLang, NotificationSettingsText> = {
+const NOTIFICATION_SETTINGS_TEXT: Record<Lang, NotificationSettingsText> = {
   ko: {
-    modalDescription: "말씀 묵상과 기도의 시간, 그리고 커뮤니티의 알림을 설정해보세요.",
-    devicePermissionDescription: "기기 알림 권한을 설정합니다",
-    eveningReminderDescription: "하루가 끝나기 전, 오늘의 묵상 리마인드 해드려요",
-    loadFailed: "동역자/그룹 알림 설정을 불러오지 못했어요.",
-    pushTitle: "동역자/그룹 알림",
-    pushDescription: "새 말씀 묵상, 기도 제목, 기도 응답 소식을 핸드폰 알림으로 받을지 설정해요.",
-    groupTitle: "그룹 알림",
-    groupDescription: "내가 참여한 그룹의 묵상과 기도 소식을 받아요.",
-    partnerTitle: "동역자 알림",
-    partnerDescription: "나의 동역자가 나눈 묵상과 기도 소식을 받아요.",
-    pushPermissionDenied: "핸드폰 알림 권한이 허용되지 않았어요. 기기 설정에서 Roots 알림을 허용해주세요.",
-    pushRegistrationFailed: "핸드폰 알림 준비 중 문제가 있었어요. 잠시 후 다시 시도해주세요.",
+    remindersTitle: "묵상·기도 리마인드",
+    remindersDescription: "정한 시간에 알림을 받아요.",
+    morningReminderTitle: "아침 묵상",
+    eveningReminderTitle: "저녁 묵상",
+    prayerReminderTitle: "기도",
+    loadFailed: "소식 알림 설정을 불러오지 못했어요. 다시 열어주세요.",
+    pushTitle: "소식 알림",
+    pushDescription: "그룹·동역자·댓글·선물 소식을 받아요.",
+    pushPermissionDenied: "기기 설정에서 Roots 알림을 허용해주세요.",
+    pushRegistrationFailed: "알림을 준비하지 못했어요. 잠시 후 다시 시도해주세요.",
+    save: "저장",
   },
   de: {
-    modalDescription: "Lege Zeiten für Stille Zeit und Gebet fest und verwalte Community-Hinweise.",
-    devicePermissionDescription: "Richte die Benachrichtigungsberechtigung des Geräts ein.",
-    eveningReminderDescription: "Vor Tagesende erinnern wir dich an die heutige Stille Zeit.",
-    loadFailed: "Einstellungen für Partner- und Gruppenbenachrichtigungen konnten nicht geladen werden.",
-    pushTitle: "Partner- und Gruppenhinweise",
-    pushDescription: "Lege fest, ob du Hinweise zu Stille Zeit, Gebetsanliegen und erhörten Gebeten auf deinem Handy erhältst.",
-    groupTitle: "Gruppenbenachrichtigungen",
-    groupDescription: "Erhalte Hinweise zu Stille Zeit und Gebet in deinen Gruppen.",
-    partnerTitle: "Partnerbenachrichtigungen",
-    partnerDescription: "Erhalte Hinweise zu Stille Zeit und Gebet deiner Glaubenspartner.",
-    pushPermissionDenied: "Die Handy-Benachrichtigungen sind nicht erlaubt. Bitte erlaube Roots-Benachrichtigungen in den Geräteeinstellungen.",
-    pushRegistrationFailed: "Beim Vorbereiten der Handy-Benachrichtigungen ist ein Problem aufgetreten. Bitte versuche es später erneut.",
+    remindersTitle: "Stille Zeit & Gebet",
+    remindersDescription: "Erinnerungen zu deinen Zeiten.",
+    morningReminderTitle: "Am Morgen",
+    eveningReminderTitle: "Am Abend",
+    prayerReminderTitle: "Gebet",
+    loadFailed: "Hinweise konnten nicht geladen werden. Öffne die Einstellungen erneut.",
+    pushTitle: "Neuigkeiten",
+    pushDescription: "Neuigkeiten zu Gruppen, Glaubenspartnern, Kommentaren und Geschenken.",
+    pushPermissionDenied: "Erlaube Roots-Mitteilungen in den Geräteeinstellungen.",
+    pushRegistrationFailed: "Hinweise sind gerade nicht verfügbar. Versuche es später erneut.",
+    save: "Speichern",
   },
   en: {
-    modalDescription: "Set your Bible Reflection and prayer times, and manage community notifications.",
-    devicePermissionDescription: "Set your device notification permission.",
-    eveningReminderDescription: "Before the day ends, we’ll remind you about today’s Bible Reflection.",
-    loadFailed: "Could not load partner and group notification settings.",
-    pushTitle: "Partner and group notifications",
-    pushDescription: "Choose whether to receive Bible Reflection, prayer request, and answered-prayer updates on your phone.",
-    groupTitle: "Group notifications",
-    groupDescription: "Receive Bible Reflection and prayer updates from groups you joined.",
-    partnerTitle: "Faith partner notifications",
-    partnerDescription: "Receive Bible Reflection and prayer updates from your faith partners.",
-    pushPermissionDenied: "Phone notifications are not allowed. Please allow Roots notifications in your device settings.",
-    pushRegistrationFailed: "There was a problem preparing phone notifications. Please try again later.",
+    remindersTitle: "Bible Reflection & prayer",
+    remindersDescription: "Reminders at your chosen times.",
+    morningReminderTitle: "Morning",
+    eveningReminderTitle: "Evening",
+    prayerReminderTitle: "Prayer",
+    loadFailed: "Could not load notification settings. Reopen settings to try again.",
+    pushTitle: "Updates",
+    pushDescription: "Updates from groups, faith partners, comments and gifts.",
+    pushPermissionDenied: "Allow Roots notifications in your device settings.",
+    pushRegistrationFailed: "Could not prepare notifications. Try again later.",
+    save: "Save",
   },
   fr: {
-    modalDescription: "Définissez vos temps de méditation biblique et de prière, et gérez les notifications de la communauté.",
-    devicePermissionDescription: "Configurez l’autorisation de notification de l’appareil.",
-    eveningReminderDescription: "Avant la fin de la journée, nous vous rappellerons la méditation biblique du jour.",
-    loadFailed: "Impossible de charger les notifications de partenaires et de groupes.",
-    pushTitle: "Notifications partenaires et groupes",
-    pushDescription: "Choisissez si vous souhaitez recevoir les méditations bibliques, sujets de prière et prières exaucées sur votre téléphone.",
-    groupTitle: "Notifications de groupe",
-    groupDescription: "Recevez les méditations bibliques et prières des groupes que vous avez rejoints.",
-    partnerTitle: "Notifications de partenaires",
-    partnerDescription: "Recevez les méditations bibliques et prières de vos partenaires de foi.",
-    pushPermissionDenied: "Les notifications du téléphone ne sont pas autorisées. Veuillez autoriser les notifications Roots dans les réglages de l’appareil.",
-    pushRegistrationFailed: "Un problème est survenu lors de la préparation des notifications du téléphone. Veuillez réessayer plus tard.",
+    remindersTitle: "Méditation et prière",
+    remindersDescription: "Des rappels aux heures choisies.",
+    morningReminderTitle: "Le matin",
+    eveningReminderTitle: "Le soir",
+    prayerReminderTitle: "Prière",
+    loadFailed: "Impossible de charger les notifications. Rouvrez les réglages.",
+    pushTitle: "Actualités",
+    pushDescription: "Nouvelles des groupes, partenaires, commentaires et cadeaux.",
+    pushPermissionDenied: "Autorisez les notifications Roots dans les réglages de l’appareil.",
+    pushRegistrationFailed: "Notifications indisponibles. Réessayez plus tard.",
+    save: "Enregistrer",
   },
   es: {
-    modalDescription: "Configura tus horarios de meditación bíblica y oración, y gestiona las notificaciones de la comunidad.",
-    devicePermissionDescription: "Configura el permiso de notificaciones del dispositivo.",
-    eveningReminderDescription: "Antes de que termine el día, te recordaremos la meditación bíblica de hoy.",
-    loadFailed: "No se pudo cargar la configuración de notificaciones de compañeros de fe y grupos.",
-    pushTitle: "Notificaciones de compañeros de fe y grupos",
-    pushDescription: "Elige si quieres recibir en tu teléfono novedades sobre meditaciones bíblicas, peticiones de oración y oraciones respondidas.",
-    groupTitle: "Notificaciones de grupos",
-    groupDescription: "Recibe novedades sobre las meditaciones bíblicas y las oraciones de los grupos a los que perteneces.",
-    partnerTitle: "Notificaciones de compañeros de fe",
-    partnerDescription: "Recibe novedades sobre las meditaciones bíblicas y las oraciones de tus compañeros de fe.",
-    pushPermissionDenied: "Las notificaciones del teléfono no están permitidas. Habilita las notificaciones de Roots en la configuración de tu dispositivo.",
-    pushRegistrationFailed: "Hubo un problema al preparar las notificaciones del teléfono. Inténtalo de nuevo más tarde.",
+    remindersTitle: "Meditación y oración",
+    remindersDescription: "Recordatorios a las horas elegidas.",
+    morningReminderTitle: "Por la mañana",
+    eveningReminderTitle: "Por la noche",
+    prayerReminderTitle: "Oración",
+    loadFailed: "No se pudo cargar la configuración. Vuelve a abrir los ajustes.",
+    pushTitle: "Novedades",
+    pushDescription: "Novedades de grupos, compañeros de fe, comentarios y regalos.",
+    pushPermissionDenied: "Permite las notificaciones de Roots en los ajustes del dispositivo.",
+    pushRegistrationFailed: "No se pudieron preparar los avisos. Inténtalo más tarde.",
+    save: "Guardar",
   },
 };
 

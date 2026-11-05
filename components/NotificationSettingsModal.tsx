@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell, Clock, Loader2, X } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
 import { useLang } from "@/lib/useLang";
 import {
   applyNotificationSettings,
@@ -16,6 +15,7 @@ import {
 import {
   DEFAULT_PUSH_NOTIFICATION_PREFERENCES,
   loadPushNotificationPreferences,
+  normalizeNewsNotificationPreferences,
   savePushNotificationPreferences,
   type RootsPushNotificationPreferences,
 } from "@/lib/notifications/preferences";
@@ -64,7 +64,6 @@ function Toggle({ checked, onChange, disabled = false, label }: { checked: boole
 
 function TimeRow({
   title,
-  description,
   enabled,
   time,
   disabled,
@@ -72,7 +71,6 @@ function TimeRow({
   onTimeChange,
 }: {
   title: string;
-  description: string;
   enabled: boolean;
   time: string;
   disabled: boolean;
@@ -83,10 +81,9 @@ function TimeRow({
     <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{title}</p>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{description}</p>
+          <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{title}</p>
         </div>
-        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} />
+        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} label={title} />
       </div>
       <label style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 12, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", opacity: disabled || !enabled ? 0.6 : 1 }}>
         <Clock size={14} style={{ color: "var(--profile-sage-notice-text)" }} />
@@ -102,53 +99,29 @@ function TimeRow({
   );
 }
 
-function ToggleRow({
-  title,
-  description,
-  enabled,
-  disabled,
-  onEnabledChange,
-  label,
-}: {
-  title: string;
-  description: string;
-  enabled: boolean;
-  disabled: boolean;
-  onEnabledChange: (value: boolean) => void;
-  label?: string;
-}) {
-  return (
-    <div style={{ padding: "12px 0", borderTop: "1px solid var(--border)" }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{title}</p>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{description}</p>
-        </div>
-        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} label={label} />
-      </div>
-    </div>
-  );
-}
-
 export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   const lang = useLang();
-  const commentText = getCommentNotificationText(lang);
   const pushText = useMemo(() => getNotificationSettingsText(lang), [lang]);
   const [settings, setSettings] = useState<RootsNotificationSettings>(() => getNotificationSettings());
   const [pushPreferences, setPushPreferences] = useState<RootsPushNotificationPreferences>(DEFAULT_PUSH_NOTIFICATION_PREFERENCES);
   const [loadingPushPreferences, setLoadingPushPreferences] = useState(true);
+  const [pushPreferencesReady, setPushPreferencesReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const notificationsAvailable = useMemo(() => isLocalNotificationsAvailable(), []);
   const disabled = !settings.enabled;
-  const pushDisabled = loadingPushPreferences || !pushPreferences.pushEnabled;
 
   useEffect(() => {
     let cancelled = false;
+    setLoadingPushPreferences(true);
+    setPushPreferencesReady(false);
 
     loadPushNotificationPreferences()
       .then((preferences) => {
-        if (!cancelled) setPushPreferences(preferences);
+        if (!cancelled) {
+          setPushPreferences(preferences);
+          setPushPreferencesReady(true);
+        }
       })
       .catch((error) => {
         console.warn("푸시 알림 설정 불러오기 실패:", error);
@@ -167,27 +140,16 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
     setSettings(current => ({ ...current, ...next }));
   }
 
-  function normalizePushPreferences(preferences: RootsPushNotificationPreferences): RootsPushNotificationPreferences {
-    return {
-      ...preferences,
-      groupQtEnabled: preferences.groupNotificationsEnabled,
-      groupPrayerEnabled: preferences.groupNotificationsEnabled,
-      groupAnsweredPrayerEnabled: preferences.groupNotificationsEnabled,
-      partnerQtEnabled: preferences.partnerNotificationsEnabled,
-      partnerPrayerEnabled: preferences.partnerNotificationsEnabled,
-      partnerAnsweredPrayerEnabled: preferences.partnerNotificationsEnabled,
-    };
-  }
-
   function updatePush(next: Partial<RootsPushNotificationPreferences>) {
-    setPushPreferences(current => normalizePushPreferences({ ...current, ...next }));
+    setPushPreferences(current => normalizeNewsNotificationPreferences({ ...current, ...next }));
   }
 
   async function save() {
+    if (saving || loadingPushPreferences || !pushPreferencesReady) return;
     setSaving(true);
     setMessage("");
     try {
-      const normalizedPushPreferences = normalizePushPreferences(pushPreferences);
+      const normalizedPushPreferences = normalizeNewsNotificationPreferences(pushPreferences);
       await savePushNotificationPreferences(normalizedPushPreferences);
       setPushPreferences(normalizedPushPreferences);
 
@@ -231,7 +193,6 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             </div>
             <div style={{ minWidth: 0 }}>
               <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("notifications_title", lang)}</h3>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.modalDescription}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -248,15 +209,14 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
         <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{t("notifications_master_toggle", lang)}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.devicePermissionDescription}</p>
+              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.remindersTitle}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.remindersDescription}</p>
             </div>
-            <Toggle checked={settings.enabled} onChange={(value) => update({ enabled: value })} />
+            <Toggle checked={settings.enabled} onChange={(value) => update({ enabled: value })} label={pushText.remindersTitle} />
           </div>
 
           <TimeRow
-            title={t("notifications_morning_title", lang)}
-            description={t("notifications_morning_desc", lang)}
+            title={pushText.morningReminderTitle}
             enabled={settings.morningEnabled}
             time={timeToInputValue(settings.morningTime)}
             disabled={disabled}
@@ -264,8 +224,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             onTimeChange={(value) => update({ morningTime: inputValueToTime(value, settings.morningTime) })}
           />
           <TimeRow
-            title={t("notifications_evening_title", lang)}
-            description={pushText.eveningReminderDescription}
+            title={pushText.eveningReminderTitle}
             enabled={settings.eveningEnabled}
             time={timeToInputValue(settings.eveningTime)}
             disabled={disabled}
@@ -273,8 +232,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
             onTimeChange={(value) => update({ eveningTime: inputValueToTime(value, settings.eveningTime) })}
           />
           <TimeRow
-            title={t("notifications_prayer_title", lang)}
-            description={t("notifications_prayer_desc", lang)}
+            title={pushText.prayerReminderTitle}
             enabled={settings.prayerEnabled}
             time={timeToInputValue(settings.prayerTime)}
             disabled={disabled}
@@ -283,50 +241,25 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
           />
         </div>
 
-        <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: "14px 14px 0", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingBottom: 14 }}>
+        <div style={{ borderRadius: 18, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", padding: 14, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{commentText.pushTitle}</p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{commentText.pushDescription}</p>
+              <p style={{ fontSize: 14, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{pushText.pushTitle}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--profile-muted-text)" }}>{pushText.pushDescription}</p>
             </div>
-            <Toggle checked={pushPreferences.pushEnabled} onChange={(value) => updatePush({ pushEnabled: value })} disabled={loadingPushPreferences} />
+            <Toggle checked={pushPreferences.pushEnabled} onChange={(value) => updatePush({ pushEnabled: value })} disabled={loadingPushPreferences || !pushPreferencesReady} label={pushText.pushTitle} />
           </div>
-
-          <ToggleRow
-            title={pushText.groupTitle}
-            description={pushText.groupDescription}
-            enabled={pushPreferences.groupNotificationsEnabled}
-            disabled={pushDisabled}
-            onEnabledChange={(value) => updatePush({ groupNotificationsEnabled: value })}
-          />
-
-          <ToggleRow
-            title={pushText.partnerTitle}
-            description={pushText.partnerDescription}
-            enabled={pushPreferences.partnerNotificationsEnabled}
-            disabled={pushDisabled}
-            onEnabledChange={(value) => updatePush({ partnerNotificationsEnabled: value })}
-          />
-          <ToggleRow
-            title={commentText.setting}
-            label={commentText.setting}
-            description={commentText.settingDescription}
-            enabled={pushPreferences.commentNotificationsEnabled}
-            disabled={pushDisabled}
-            onEnabledChange={(value) => updatePush({ commentNotificationsEnabled: value })}
-          />
-
         </div>
 
         {message && <p style={{ fontSize: 12, color: message === t("notifications_saved", lang) ? "var(--profile-sage-notice-text)" : "var(--profile-danger-text)", lineHeight: 1.55, marginBottom: 12 }}>{message}</p>}
 
         <button
           onClick={save}
-          disabled={saving}
+          disabled={saving || loadingPushPreferences || !pushPreferencesReady}
           style={{ width: "100%", padding: "13px 14px", background: "var(--sage-action)", border: "none", borderRadius: 14, color: "var(--on-sage-action)", fontSize: 14, fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           {saving ? <Loader2 size={15} className="spin" /> : null}
-          {t("notifications_save", lang)}
+          {pushText.save}
         </button>
       </div>
     </div>
