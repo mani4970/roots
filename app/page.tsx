@@ -110,6 +110,7 @@ import PrayerCardsLoading from "@/components/PrayerCardsLoading";
 import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
 const PrayerExperience = lazy(() => import("@/components/PrayerExperience"));
+const HomeHeartShopGift = lazy(() => import("@/components/HomeHeartShopGift"));
 
 function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
   const h = new Date().getHours();
@@ -2652,6 +2653,16 @@ export default function HomePage() {
           onViewBadge={() => completePersonalChallengeReward(true)}
         />
       </ObservationPopup>
+
+      {homePopupsReady && (
+        <Suspense fallback={null}>
+          <HomeHeartShopGift key={profile.id} userId={profile.id} lang={lang}
+            eligible={!personalCampaignPopupBlocked && personalChallenge.ready
+              && announcementRewardChecksReadyFor === profile.id
+              && !visiblePersonalChallengeReward && !visiblePersonalChallengeAnnouncement
+              && !visibleMessengerShareAnnouncement} />
+        </Suspense>
+      )}
 
       <ObservationPopup userId={profile?.id} kind="messenger_share_announcement" queued={showMessengerShareAnnouncement}>
       <MessengerShareAnnouncementPopup

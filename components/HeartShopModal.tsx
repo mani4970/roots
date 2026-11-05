@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, PackageOpen, RotateCcw } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import HeartShopMapPreview from "@/components/HeartShopMapPreview";
+import HeartShopGiftDialog from "@/components/HeartShopGiftDialog";
+import HeartShopItemArt from "@/components/HeartShopItemArt";
+import { getGiftText } from "@/lib/heartShopGifts";
+import giftStyles from "./HeartShopGift.module.css";
 import HeartShopToggleSwitch from "@/components/HeartShopToggleSwitch";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { Lang } from "@/lib/i18n";
@@ -32,6 +36,7 @@ import {
   type HeartShopCharacterItemId,
   type HeartShopItemId,
   isHeartShopCharacterItemId,
+  isHeartShopItemId,
   isHeartShopMapItemId,
   isHeartShopPeaceArkStaticItemId,
   isHeartShopRootsWomanDressItemId,
@@ -55,6 +60,7 @@ type HeartShopModalProps = {
   show: boolean;
   lang: Lang | string;
   heartBalance: number;
+  giftItemKey?: string | null;
   avatarType: RootsAvatarType;
   totalDays?: number;
   peaceArkStageNumber?: number | null;
@@ -63,7 +69,7 @@ type HeartShopModalProps = {
   onClose: () => void;
 };
 
-type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete";
+type HeartShopHistoryKind = "shop" | "preview" | "purchase" | "complete" | "gift";
 type HeartShopMapSection = "garden" | "peaceArk" | "nehemiahWall";
 type HeartShopOwnedSection = "map" | "character";
 type HeartShopOwnedCharacterCategory =
@@ -161,195 +167,11 @@ function getLargeSpriteWidth(itemId: HeartShopMapItemId) {
   return 145;
 }
 
-type CharacterItemPreviewCrop = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-const CHARACTER_ITEM_PREVIEW_CROP: Record<
-  RootsAvatarType,
-  Record<Exclude<HeartShopCharacterSlot, "background" | "hair" | "necklace">, CharacterItemPreviewCrop>
-> = {
-  rootsman: {
-    pet: { x: 665, y: 940, width: 345, height: 345 },
-    top: { x: 230, y: 590, width: 626, height: 405 },
-    bottom: { x: 350, y: 920, width: 397, height: 360 },
-    shoes: { x: 310, y: 1195, width: 480, height: 200 },
-    eyewear: { x: 310, y: 400, width: 500, height: 190 },
-    hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
-    muffler: { x: 350, y: 520, width: 420, height: 470 },
-    headwear: { x: 70, y: 0, width: 970, height: 480 },
-    bag: { x: 250, y: 520, width: 650, height: 620 },
-  },
-  rootswoman: {
-    pet: { x: 665, y: 940, width: 345, height: 345 },
-    top: { x: 230, y: 590, width: 626, height: 405 },
-    bottom: { x: 350, y: 810, width: 397, height: 430 },
-    shoes: { x: 310, y: 1140, width: 480, height: 220 },
-    eyewear: { x: 310, y: 400, width: 500, height: 190 },
-    hair_accessory: { x: 250, y: 80, width: 610, height: 320 },
-    muffler: { x: 350, y: 520, width: 420, height: 470 },
-    headwear: { x: 70, y: 0, width: 970, height: 480 },
-    bag: { x: 250, y: 520, width: 650, height: 620 },
-  },
-};
-
-const CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES: Partial<
-  Record<HeartShopCharacterItemId, CharacterItemPreviewCrop>
-> = {
-  // Yeolmu is a flying pet and sits much higher on the shared 1086×1448 canvas
-  // than the ground pets, so the generic pet crop would show an empty tile.
-  shared_pet_07: { x: 690, y: 570, width: 330, height: 290 },
-  // Long winter coats extend below the shared top crop; keep their hems visible.
-  // Preview-only bounds: the wearable assets and character layer layout stay unchanged.
-  rootsman_top_31: { x: 230, y: 590, width: 626, height: 580 },
-  rootsman_top_32: { x: 230, y: 590, width: 626, height: 580 },
-
-  // Per-item preview bounds measured from the shipped assets. Only clipped edges expand;
-  // the shared crops, wearable files, outfit layers and purchase behavior stay unchanged.
-  // Trouser hems.
-  rootsman_bottom_07: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_09: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_10: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_11: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_12: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_14: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_16: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_17: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_19: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_20: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_21: { x: 350, y: 920, width: 397, height: 380 },
-  rootsman_bottom_22: { x: 350, y: 920, width: 397, height: 380 },
-  // Anorak and trench-coat hems.
-  rootsman_top_14: { x: 230, y: 590, width: 626, height: 430 },
-  rootsman_top_25: { x: 230, y: 590, width: 626, height: 430 },
-  rootsman_top_26: { x: 230, y: 590, width: 626, height: 440 },
-  // Full boot shafts.
-  rootswoman_shoes_09: { x: 310, y: 1070, width: 480, height: 290 },
-  // Necklines and dress hems.
-  rootswoman_top_01: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_02: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_03: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_04: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_05: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_06: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_07: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_08: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_09: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_10: { x: 230, y: 570, width: 626, height: 425 },
-  rootswoman_top_11: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_13: { x: 230, y: 570, width: 626, height: 425 },
-  rootswoman_top_15: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_16: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_17: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_18: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_19: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_20: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_21: { x: 230, y: 540, width: 626, height: 455 },
-  rootswoman_top_22: { x: 230, y: 540, width: 626, height: 455 },
-  rootswoman_top_23: { x: 230, y: 550, width: 626, height: 530 },
-  rootswoman_top_24: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_25: { x: 230, y: 550, width: 626, height: 470 },
-  rootswoman_top_26: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_27: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_28: { x: 230, y: 530, width: 626, height: 465 },
-  rootswoman_top_29: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_30: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_31: { x: 230, y: 560, width: 626, height: 435 },
-  rootswoman_top_32: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_33: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_34: { x: 230, y: 550, width: 626, height: 445 },
-  rootswoman_top_35: { x: 230, y: 540, width: 626, height: 455 },
-  // Upper glasses rim.
-  rootswoman_eyewear_02: { x: 310, y: 380, width: 500, height: 210 },
-};
-
-function CharacterItemLayerPreview({
-  item,
-  alt,
-  maxWidth,
-  loading = "eager",
-}: {
-  item: HeartShopCharacterCatalogItem;
-  alt: string;
-  maxWidth?: number;
-  loading?: "eager" | "lazy";
-}) {
-  if (item.slot === "background" || item.slot === "hair"
-    || item.slot === "necklace" || isHeartShopBibleItemId(item.id)) {
-    return (
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth,
-          aspectRatio: "1 / 1",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}
-      >
-        <img
-          src={item.previewPath ?? item.layerPath}
-          alt={alt}
-          loading={loading}
-          decoding="async"
-          draggable={false}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            imageRendering: "pixelated",
-            userSelect: "none",
-            pointerEvents: "none",
-          }}
-        />
-      </div>
-    );
-  }
-
-  const crop = CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES[item.id]
-    ?? (item.avatarType === "shared"
-      ? CHARACTER_ITEM_PREVIEW_CROP.rootsman[item.slot]
-      : CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot]);
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        maxWidth,
-        aspectRatio: `${crop.width} / ${crop.height}`,
-        overflow: "hidden",
-        flexShrink: 0,
-      }}
-    >
-      <img
-        src={item.layerPath}
-        alt={alt}
-        loading={loading}
-        decoding="async"
-        draggable={false}
-        style={{
-          position: "absolute",
-          left: `${(-crop.x / crop.width) * 100}%`,
-          top: `${(-crop.y / crop.height) * 100}%`,
-          width: `${(1086 / crop.width) * 100}%`,
-          height: `${(1448 / crop.height) * 100}%`,
-          maxWidth: "none",
-          imageRendering: "pixelated",
-          userSelect: "none",
-          pointerEvents: "none",
-        }}
-      />
-    </div>
-  );
-}
-
 export default function HeartShopModal({
   show,
   lang,
   heartBalance,
+  giftItemKey = null,
   avatarType,
   totalDays = 0,
   peaceArkStageNumber = null,
@@ -358,6 +180,7 @@ export default function HeartShopModal({
   onClose,
 }: HeartShopModalProps) {
   const text = useMemo(() => getHeartShopText(lang), [lang]);
+  const giftText = getGiftText(lang);
   const profileText = useMemo(() => getProfileCharacterText(lang), [lang]);
   const [activeTab, setActiveTab] = useState<HeartShopTab>("character");
   const [activeMapSection, setActiveMapSection] = useState<HeartShopMapSection>(() => getDefaultMapSection(totalDays));
@@ -371,12 +194,17 @@ export default function HeartShopModal({
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
+  const [ownedReload, setOwnedReload] = useState(0);
   const [loadingOwned, setLoadingOwned] = useState(false);
   const [ownedItemsLoaded, setOwnedItemsLoaded] = useState(false);
   const [ownedItemsLoadFailed, setOwnedItemsLoadFailed] = useState(false);
   const [previewItemId, setPreviewItemId] = useState<HeartShopItemId | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<HeartShopItemId | null>(null);
   const [completedItemId, setCompletedItemId] = useState<HeartShopItemId | null>(null);
+  const [giftItemId, setGiftItemId] = useState<HeartShopItemId | null>(null);
+  const sendingGift = useRef(false);
+  const giftRow = useRef<HTMLDivElement>(null);
+  const giftRowSeen = useRef<string | null>(null);
   const [purchaseError, setPurchaseError] = useState("");
   const [purchasing, setPurchasing] = useState(false);
   const [applyingFreeItemId, setApplyingFreeItemId] = useState<HeartShopCharacterItemId | null>(null);
@@ -395,7 +223,7 @@ export default function HeartShopModal({
 
   useAndroidBackHandler(() => {
     if (!show) return false;
-    if (purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState || restoringDefaultHairRef.current) {
+    if (sendingGift.current || purchasing || applyingFreeItemId || togglingItemId || restoringCharacterState || restoringDefaultHairRef.current) {
       return true;
     }
     const historyStack = historyStackRef.current;
@@ -514,16 +342,21 @@ export default function HeartShopModal({
     () => HEART_SHOP_MAP_CATALOG.filter(item => ownedById.has(item.id)),
     [ownedById],
   );
+  const receivedItem = isHeartShopItemId(giftItemKey) ? getHeartShopCatalogItem(giftItemKey) : null;
+  // An avatar may have changed after delivery. Show that gift without offering to equip it.
+  const otherAvatarGift = receivedItem && isHeartShopCharacterCatalogItem(receivedItem)
+    && receivedItem.avatarType !== "shared" && receivedItem.avatarType !== avatarType && ownedById.has(receivedItem.id)
+    ? receivedItem : null;
   const visibleOwnedCharacterItems = useMemo(
-    () => ownedCharacterItems.filter(item =>
-      isOwnedCharacterItemInCategory(item, activeOwnedCharacterCategory),
-    ),
-    [activeOwnedCharacterCategory, ownedCharacterItems],
+    () => (otherAvatarGift ? [...ownedCharacterItems, otherAvatarGift] : ownedCharacterItems)
+      .filter(item => isOwnedCharacterItemInCategory(item, activeOwnedCharacterCategory)),
+    [activeOwnedCharacterCategory, ownedCharacterItems, otherAvatarGift],
   );
 
   const previewItem = getHeartShopCatalogItem(previewItemId);
   const selectedItem = getHeartShopCatalogItem(selectedItemId);
   const completedItem = getHeartShopCatalogItem(completedItemId);
+  const giftItem = getHeartShopCatalogItem(giftItemId);
 
   useEffect(() => setLocalBalance(heartBalance), [heartBalance]);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -557,7 +390,7 @@ export default function HeartShopModal({
   }
 
   function closeTopLayer() {
-    if (restoringDefaultHairRef.current) return;
+    if (restoringDefaultHairRef.current || sendingGift.current) return;
     if (typeof window !== "undefined" && historyStackRef.current.length > 0) {
       window.history.back();
       return;
@@ -603,6 +436,17 @@ export default function HeartShopModal({
       }
       return next;
     });
+  }
+
+  function openGift(itemId: HeartShopItemId, fromPreview = false) {
+    if (restoringDefaultHairRef.current) return;
+    if (fromPreview) {
+      setPreviewItemId(null);
+      replaceHistory("gift");
+    } else {
+      pushHistory("gift");
+    }
+    setGiftItemId(itemId);
   }
 
   function openPurchase(itemId: HeartShopItemId) {
@@ -671,6 +515,10 @@ export default function HeartShopModal({
         setSelectedItemId(null);
         setPurchaseError("");
       }
+      if (activeLayer === "gift") {
+        if (sendingGift.current) { pushHistory("gift"); return; }
+        setGiftItemId(null);
+      }
       if (activeLayer === "complete") setCompletedItemId(null);
       if (activeLayer === "shop") onCloseRef.current();
     }
@@ -689,11 +537,15 @@ export default function HeartShopModal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     tabHistoryRef.current = [];
-    setActiveTab("character");
-    setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
+    const target = receivedItem;
+    setActiveTab(target ? "owned" : "character");
     setActiveCharacterCategory("all");
-    setActiveOwnedSection("character");
-    setActiveOwnedCharacterCategory("tops");
+    setActiveOwnedSection(target && isHeartShopMapCatalogItem(target) ? "map" : "character");
+    const ownedCategories: HeartShopOwnedCharacterCategory[] = ["tops", "bottoms", "dresses", "shoes", "hair", "backgrounds", "pets", "accessories"];
+    const targetCategory = target && isHeartShopCharacterCatalogItem(target)
+      ? ownedCategories.find(category => isOwnedCharacterItemInCategory(target, category))
+      : null;
+    setActiveOwnedCharacterCategory(targetCategory ?? "tops");
     setMapScenePreviewItemId(null);
     setCharacterShopPreviewItemIds({});
     setOwnedCharacterPreviewItemIds({});
@@ -706,8 +558,21 @@ export default function HeartShopModal({
     setCompletedItemId(null);
     setPurchaseError("");
     setApplyingFreeItemId(null);
+    setGiftItemId(null);
+    sendingGift.current = false;
+    giftRowSeen.current = null;
     return () => { document.body.style.overflow = previousOverflow; };
+  }, [show, receivedItem]);
+
+  useEffect(() => {
+    if (show) setActiveMapSection(getDefaultMapSection(normalizedTotalDays));
   }, [show, normalizedTotalDays]);
+
+  useEffect(() => {
+    if (!show || !giftItemKey || activeTab !== "owned" || !ownedItemsLoaded || loadingOwned || !giftRow.current || giftRowSeen.current === giftItemKey) return;
+    giftRowSeen.current = giftItemKey;
+    giftRow.current.scrollIntoView({ block: "nearest" });
+  }, [show, giftItemKey, activeTab, activeOwnedSection, activeOwnedCharacterCategory, ownedItemsLoaded, loadingOwned]);
 
   useEffect(() => {
     if (!unlockedMapSections.has(activeMapSection)) {
@@ -751,7 +616,7 @@ export default function HeartShopModal({
         }
       });
     return () => { cancelled = true; };
-  }, [show, text.shopUnavailable]);
+  }, [show, text.shopUnavailable, ownedReload, giftItemKey]);
 
   useEffect(() => {
     if (
@@ -1181,7 +1046,7 @@ export default function HeartShopModal({
     { id: "tops", label: profileText.categories.tops },
     { id: "bottoms", label: profileText.categories.bottoms },
   ];
-  if (avatarType === "rootswoman") {
+  if (avatarType === "rootswoman" || (otherAvatarGift && isHeartShopRootsWomanDressItemId(otherAvatarGift.id))) {
     ownedCharacterCategories.push({ id: "dresses", label: profileText.categories.dresses });
   }
   ownedCharacterCategories.push(
@@ -1211,6 +1076,16 @@ export default function HeartShopModal({
     return isHeartShopPeaceArkStaticItemId(itemId) ? text.staticPreviewTitle : text.previewTitle;
   }
 
+  function renderGiftButton(item: HeartShopCatalogItem, fromPreview = false) {
+    if (item.price <= 0) return null;
+    return (
+      <button type="button" className={giftStyles.giftButton} disabled={restoringDefaultHair}
+        aria-label={`${getItemName(item)} · ${giftText.gift}`} onClick={() => openGift(item.id, fromPreview)}>
+        {giftText.gift}
+      </button>
+    );
+  }
+
   function renderDialogVisual(item: HeartShopCatalogItem) {
     return isHeartShopMapCatalogItem(item) ? (
       <HeartShopFriendSprite
@@ -1223,7 +1098,7 @@ export default function HeartShopModal({
 
   function renderPurchaseDialogVisual(item: HeartShopCatalogItem) {
     return isHeartShopMapCatalogItem(item) ? renderDialogVisual(item) : (
-      <CharacterItemLayerPreview item={item} alt={getItemName(item)} maxWidth={220} />
+      <HeartShopItemArt item={item} alt={getItemName(item)} maxWidth={220} />
     );
   }
 
@@ -1252,7 +1127,7 @@ export default function HeartShopModal({
         </header>
 
         <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflowY: activeTab === "character" ? "hidden" : "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: activeTab === "character" ? "16px 16px 0" : "16px 16px calc(28px + env(safe-area-inset-bottom))" }}>
-          <div style={{ flexShrink: 0, display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 7, padding: 5, borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", marginBottom: 16 }}>
+          <div className={giftStyles.tabs} style={{ flexShrink: 0, display: "flex", gap: 7, padding: 5, borderRadius: 18, background: "var(--bg3)", border: "1px solid var(--border)", marginBottom: 16 }}>
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
@@ -1479,9 +1354,12 @@ export default function HeartShopModal({
                         <h3 style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 950, color: "var(--text)" }}>{itemText.name}</h3>
                         <p style={{ margin: 0, minHeight: 36, color: "var(--heart-shop-muted-text)", fontSize: 10.5, lineHeight: 1.45, fontWeight: 650 }}>{itemText.description}</p>
                         <div style={{ color: "var(--heart-shop-price-text)", fontSize: 13, fontWeight: 950, margin: "10px 0 9px", textAlign: "center" }}>💛 {item.price}</div>
-                        <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); changeActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ width: "100%", minHeight: 38, border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--heart-shop-action)", color: owned ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
-                          {owned ? text.ownedButton : text.purchaseButton}
-                        </button>
+                        <div className={giftStyles.actions}>
+                          <button type="button" onClick={() => { if (owned) { setActiveOwnedSection("map"); changeActiveTab("owned"); } else { openPurchase(item.id); } }} style={{ minHeight: 38, padding: "6px", border: owned ? "1px solid var(--border)" : "none", borderRadius: 13, background: owned ? "var(--bg3)" : "var(--heart-shop-action)", color: owned ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 11.5, fontWeight: 950, cursor: "pointer" }}>
+                            {owned ? text.ownedButton : text.purchaseButton}
+                          </button>
+                          {renderGiftButton(item)}
+                        </div>
                       </article>
                     );
                   })}
@@ -1599,7 +1477,7 @@ export default function HeartShopModal({
                               {text.newLabel}
                             </span>
                           )}
-                          <CharacterItemLayerPreview
+                          <HeartShopItemArt
                             item={item}
                             alt={itemText.name}
                             maxWidth={145}
@@ -1610,44 +1488,46 @@ export default function HeartShopModal({
                         <div style={{ color: isFreeBackground ? "var(--sage-dark)" : "var(--heart-shop-price-text)", fontSize: 12.5, fontWeight: 950, margin: "6px 0 8px", textAlign: "center" }}>
                           {isFreeBackground ? text.freeLabel : `💛 ${item.price}`}
                         </div>
-                        <button
-                          type="button"
-                          disabled={isApplying || restoringDefaultHair}
-                          onClick={() => {
-                            if (isFreeBackground) {
-                              void applyFreeBackground(item);
-                            } else if (owned) {
-                              setActiveOwnedSection("character");
-                              changeActiveTab("owned");
-                            } else {
-                              openPurchase(item.id);
-                            }
-                          }}
-                          style={{
-                            width: "100%",
-                            minHeight: 38,
-                            padding: "7px 8px",
-                            border: owned || isApplied ? "1px solid var(--border)" : "none",
-                            borderRadius: 13,
-                            background: (owned && !isFreeBackground) || isApplied ? "var(--bg3)" : "var(--heart-shop-action)",
-                            color: (owned && !isFreeBackground) || isApplied ? "var(--sage-dark)" : "var(--heart-shop-on-action)",
-                            fontSize: 10.5,
-                            lineHeight: 1.2,
-                            fontWeight: 950,
-                            cursor: isApplying ? "default" : "pointer",
-                            opacity: isApplying ? 0.7 : 1,
-                          }}
-                        >
-                          {isFreeBackground
-                            ? isApplying
-                              ? text.applyingLabel
-                              : isApplied
-                                ? text.appliedButton
-                                : text.applyButton
-                            : owned
-                              ? text.ownedButton
-                              : text.purchaseButton}
-                        </button>
+                        <div className={giftStyles.actions}>
+                          <button
+                            type="button"
+                            disabled={isApplying || restoringDefaultHair}
+                            onClick={() => {
+                              if (isFreeBackground) {
+                                void applyFreeBackground(item);
+                              } else if (owned) {
+                                setActiveOwnedSection("character");
+                                changeActiveTab("owned");
+                              } else {
+                                openPurchase(item.id);
+                              }
+                            }}
+                            style={{
+                              minHeight: 38,
+                              padding: "7px 6px",
+                              border: owned || isApplied ? "1px solid var(--border)" : "none",
+                              borderRadius: 13,
+                              background: (owned && !isFreeBackground) || isApplied ? "var(--bg3)" : "var(--heart-shop-action)",
+                              color: (owned && !isFreeBackground) || isApplied ? "var(--sage-dark)" : "var(--heart-shop-on-action)",
+                              fontSize: 10.5,
+                              lineHeight: 1.2,
+                              fontWeight: 950,
+                              cursor: isApplying ? "default" : "pointer",
+                              opacity: isApplying ? 0.7 : 1,
+                            }}
+                          >
+                            {isFreeBackground
+                              ? isApplying
+                                ? text.applyingLabel
+                                : isApplied
+                                  ? text.appliedButton
+                                  : text.applyButton
+                              : owned
+                                ? text.ownedButton
+                                : text.purchaseButton}
+                          </button>
+                          {renderGiftButton(item)}
+                        </div>
                       </article>
                     );
                   })}
@@ -1658,7 +1538,7 @@ export default function HeartShopModal({
 
           {activeTab === "owned" && (
             <section>
-              <div role="tablist" aria-label={text.ownedTab} style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 6, padding: 4, marginBottom: 14, borderRadius: 16, background: "rgba(122,157,122,.07)", border: "1px solid rgba(122,157,122,.2)" }}>
+              <div role="tablist" aria-label={text.ownedTab} className={giftStyles.tabs} style={{ display: "flex", gap: 6, padding: 4, marginBottom: 14, borderRadius: 16, background: "rgba(122,157,122,.07)", border: "1px solid rgba(122,157,122,.2)" }}>
                 {(["character", "map"] as const).map(section => {
                   const active = activeOwnedSection === section;
                   return (
@@ -1671,7 +1551,12 @@ export default function HeartShopModal({
 
               {loadingOwned ? (
                 <div className="card" style={{ minHeight: 280, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, color: "var(--heart-shop-muted-text)", fontSize: 13, fontWeight: 750 }}><Loader2 size={18} className="spin" />{text.loadingOwned}</div>
-              ) : activeOwnedSection === "character" && ownedCharacterItems.length === 0 ? (
+              ) : giftItemKey && ownedItemsLoadFailed ? (
+                <div className="card" role="alert" style={{ padding: 18, textAlign: "center" }}>
+                  <p>{text.shopUnavailable}</p>
+                  <button className={giftStyles.retry} type="button" onClick={() => setOwnedReload(n => n + 1)}>{giftText.retry}</button>
+                </div>
+              ) : activeOwnedSection === "character" && ownedCharacterItems.length === 0 && !otherAvatarGift ? (
                 <div className="card" style={{ minHeight: 360, padding: "34px 22px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", background: "var(--heart-shop-card-surface-empty)" }}>
                   <PackageOpen size={38} style={{ marginBottom: 18, color: "var(--sage-dark)" }} />
                   <h3 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 19, fontWeight: 950 }}>{text.ownedEmptyTitle}</h3>
@@ -1765,9 +1650,12 @@ export default function HeartShopModal({
                     const name = getProfileCharacterItemText(catalogItem.id, lang).name;
                     const previewing = ownedCharacterPreviewItemIds[catalogItem.slot] === catalogItem.id;
                     return (
-                      <div key={owned.itemId} style={{ minHeight: 72, display: "grid", gridTemplateColumns: "minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div key={owned.itemId} ref={owned.itemId === giftItemKey ? giftRow : undefined}
+                        className={owned.itemId === giftItemKey ? giftStyles.giftFocus : undefined}
+                        style={{ minHeight: 72, display: "grid", gridTemplateColumns: "minmax(0,1fr) 76px", alignItems: "center", gap: 10, borderBottom: index < visibleOwnedCharacterItems.length - 1 ? "1px solid var(--border)" : "none" }}>
                         <button
                           type="button"
+                          disabled={otherAvatarGift?.id === catalogItem.id}
                           onClick={() => applyOwnedCharacterOutfitPreview(catalogItem)}
                           aria-label={`${profileText.previewLabel}: ${name}`}
                           aria-pressed={previewing}
@@ -1787,7 +1675,7 @@ export default function HeartShopModal({
                           }}
                         >
                           <div style={{ width: 50, height: 58, padding: 5, borderRadius: 10, border: previewing ? "2px solid rgba(122,157,122,.58)" : "1px solid var(--border)", background: "rgba(122,157,122,.06)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <CharacterItemLayerPreview
+                            <HeartShopItemArt
                               item={catalogItem}
                               alt={name}
                               maxWidth={44}
@@ -1796,14 +1684,16 @@ export default function HeartShopModal({
                           </div>
                           <span style={{ minWidth: 0, color: previewing ? "var(--sage-dark)" : "var(--text)", fontSize: 12, lineHeight: 1.35, fontWeight: 900 }}>{name}</span>
                         </button>
-                        <HeartShopToggleSwitch
+                        {otherAvatarGift?.id === catalogItem.id && otherAvatarGift.avatarType !== "shared" ? (
+                          <span style={{ color: "var(--text2)", textAlign: "center", fontSize: 12 }}>{getRootsAvatarLabel(otherAvatarGift.avatarType, lang)}</span>
+                        ) : <HeartShopToggleSwitch
                           enabled={owned.isEnabled}
                           loading={restoringDefaultHair || restoringCharacterState || togglingItemId === owned.itemId}
                           enabledLabel={text.enabledLabel}
                           disabledLabel={text.disabledLabel}
                           ariaLabel={name}
                           onChange={() => void toggleOwnedItem(owned)}
-                        />
+                        />}
                       </div>
                     );
                   })}
@@ -1823,6 +1713,8 @@ export default function HeartShopModal({
                       return (
                         <div
                           key={owned.itemId}
+                          ref={owned.itemId === giftItemKey ? giftRow : undefined}
+                          className={owned.itemId === giftItemKey ? giftStyles.giftFocus : undefined}
                           style={{
                             minHeight: 82,
                             display: "grid",
@@ -1906,14 +1798,22 @@ export default function HeartShopModal({
             <h3 style={{ margin: "0 0 8px", color: "var(--text)", fontSize: 20, lineHeight: 1.35, fontWeight: 950 }}>{getItemName(previewItem)}</h3>
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{getItemDescription(previewItem)}</p>
             <div style={{ marginTop: 12, color: "var(--heart-shop-price-text)", fontSize: 16, fontWeight: 950 }}>💛 {previewItem.price}</div>
-            <div style={{ display: "grid", gridTemplateColumns: ".85fr 1.15fr", gap: 9, marginTop: 18 }}>
+            <div className={giftStyles.actions} style={{ marginTop: 18 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: "pointer" }}>{text.closePreviewButton}</button>
               <button type="button" onClick={() => { if (ownedById.has(previewItem.id)) { setActiveOwnedSection(isHeartShopCharacterCatalogItem(previewItem) ? "character" : "map"); changeActiveTab("owned"); closeTopLayer(); } else { openPurchaseFromPreview(previewItem.id); } }} style={{ minHeight: 46, borderRadius: 15, border: ownedById.has(previewItem.id) ? "1px solid var(--border)" : "none", background: ownedById.has(previewItem.id) ? "var(--bg3)" : "var(--heart-shop-action)", color: ownedById.has(previewItem.id) ? "var(--sage-dark)" : "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: "pointer" }}>
                 {ownedById.has(previewItem.id) ? text.ownedButton : text.purchaseButton}
               </button>
+              {renderGiftButton(previewItem, true)}
             </div>
           </div>
         </div>
+      )}
+
+      {giftItem && (
+        <HeartShopGiftDialog key={giftItem.id} itemKey={giftItem.id} itemName={getItemName(giftItem)} price={giftItem.price} lang={lang}
+          visual={<HeartShopItemArt item={giftItem} alt="" />}
+          onClose={closeTopLayer} onBusy={busy => { sendingGift.current = busy; }}
+          onBalanceChange={balance => { setLocalBalance(balance); onHeartBalanceChange?.(balance); }} />
       )}
 
       {selectedItem && (
@@ -1923,7 +1823,7 @@ export default function HeartShopModal({
             <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 950 }}>{isHeartShopMapCatalogItem(selectedItem) ? text.items[selectedItem.id].purchaseTitle : text.characterPurchaseTitle}</h3>
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{isHeartShopMapCatalogItem(selectedItem) ? text.items[selectedItem.id].purchaseBody : formatHeartShopText(text.characterPurchaseBody, { price: selectedItem.price })}</p>
             {purchaseError && <p style={{ margin: "13px 0 0", color: "#c85b55", fontSize: 12, lineHeight: 1.5, fontWeight: 850 }}>{purchaseError}</p>}
-            <div style={{ display: "grid", gridTemplateColumns: ".85fr 1.15fr", gap: 9, marginTop: 20 }}>
+            <div className={giftStyles.actions} style={{ gap: 9, marginTop: 20 }}>
               <button type="button" onClick={closeTopLayer} disabled={purchasing} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12.5, fontWeight: 900, cursor: purchasing ? "default" : "pointer" }}>{text.cancelButton}</button>
               <button type="button" onClick={() => void confirmPurchase()} disabled={purchasing} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12.5, fontWeight: 950, cursor: purchasing ? "default" : "pointer", opacity: purchasing ? .7 : 1 }}>
                 {purchasing ? text.purchasingLabel : formatHeartShopText(text.purchaseAction, { price: selectedItem.price })}
@@ -1940,7 +1840,7 @@ export default function HeartShopModal({
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(completedItem) ? 248 : 165, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>{renderDialogVisual(completedItem)}</div>
             <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 950 }}>{isHeartShopMapCatalogItem(completedItem) ? text.items[completedItem.id].completeTitle : text.characterCompleteTitle}</h3>
             <p style={{ margin: "0 auto", maxWidth: 310, color: "var(--text2)", fontSize: 13, lineHeight: 1.65, fontWeight: 650 }}>{isHeartShopMapCatalogItem(completedItem) ? text.items[completedItem.id].completeBody : text.characterCompleteBody}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginTop: 20 }}>
+            <div className={giftStyles.actions} style={{ gap: 9, marginTop: 20 }}>
               <button type="button" onClick={closeTopLayer} style={{ minHeight: 46, borderRadius: 15, border: "1px solid var(--border)", background: "var(--bg3)", color: "var(--text2)", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>{text.continueShoppingButton}</button>
               <button type="button" onClick={() => { setActiveOwnedSection(isHeartShopCharacterCatalogItem(completedItem) ? "character" : "map"); changeActiveTab("owned"); closeTopLayer(); }} style={{ minHeight: 46, borderRadius: 15, border: "none", background: "var(--heart-shop-action)", color: "var(--heart-shop-on-action)", fontSize: 12, fontWeight: 950, cursor: "pointer" }}>{text.viewOwnedButton}</button>
             </div>

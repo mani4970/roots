@@ -302,6 +302,7 @@ export default function ProfilePage() {
   const [ownedHeartShopItemsReady, setOwnedHeartShopItemsReady] = useState(false);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
   const [showHeartShop, setShowHeartShop] = useState(false);
+  const [giftItemKey, setGiftItemKey] = useState<string | null>(null);
   const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -463,8 +464,10 @@ export default function ProfilePage() {
     const url = new URL(window.location.href);
     if (url.searchParams.get("openHeartShop") !== "1") return;
 
+    setGiftItemKey(url.searchParams.get("giftItem"));
     setShowHeartShop(true);
     url.searchParams.delete("openHeartShop");
+    url.searchParams.delete("giftItem");
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
   }, []);
@@ -1589,6 +1592,7 @@ export default function ProfilePage() {
       <HeartShopModal
         key={`${profileUserId}:${currentAvatarType}`}
         show={showHeartShop}
+        giftItemKey={giftItemKey}
         lang={lang}
         heartBalance={loveHeartBalance}
         avatarType={currentAvatarType}
@@ -1596,7 +1600,7 @@ export default function ProfilePage() {
         peaceArkStageNumber={currentPeaceArkStageNumber}
         onHeartBalanceChange={setLoveHeartBalance}
         onOwnedItemsChange={updateOwnedHeartShopItems}
-        onClose={() => setShowHeartShop(false)}
+        onClose={() => { setShowHeartShop(false); setGiftItemKey(null); }}
       />
 
       <ProfileCharacterViewer
