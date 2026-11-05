@@ -10565,7 +10565,7 @@ function CommunityPageContent() {
                 >
                   {c("community_group_empty_title")}
                 </h2>
-                <p style={{ margin: "9px auto 20px", maxWidth: 340, color: "var(--text3)", fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere" }}>
+                <p style={{ margin: "9px auto 20px", maxWidth: 340, color: "var(--text3)", fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere", whiteSpace: "pre-line" }}>
                   {c("community_group_empty_body")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 340, margin: "0 auto" }}>
