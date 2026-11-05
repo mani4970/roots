@@ -1,48 +1,34 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { Check, ChevronDown, Globe, Moon, Sun } from "lucide-react";
+import { Check, ChevronDown, Globe } from "lucide-react";
 import { getLanguageOptions, LANG_META, t, type Lang } from "@/lib/i18n";
 import ObservationPopup from "@/components/ObservationPopup";
 import styles from "./HomeHeader.module.css";
 
-type HeaderMenu = "theme" | "language" | null;
-type Theme = "light" | "dark";
-
-const TEXT = {
-  ko: { appearance: "화면 설정", light: "밝게", dark: "어둡게" },
-  en: { appearance: "Appearance", light: "Light", dark: "Dark" },
-  de: { appearance: "Darstellung", light: "Hell", dark: "Dunkel" },
-  fr: { appearance: "Apparence", light: "Clair", dark: "Sombre" },
-  es: { appearance: "Apariencia", light: "Claro", dark: "Oscuro" },
-} satisfies Record<Lang, { appearance: string; light: string; dark: string }>;
+type HeaderMenu = "language" | null;
 
 type HomeHeaderProps = {
   children: ReactNode;
   userId?: string | null;
   lang: Lang;
-  theme: Theme;
   menu: HeaderMenu;
   onMenuChange: (menu: HeaderMenu) => void;
-  onThemeChange: (theme: Theme) => void;
   onLanguageChange: (lang: Lang) => void;
 };
 
-export default function HomeHeader({ children, userId, lang, theme, menu, onMenuChange, onThemeChange, onLanguageChange }: HomeHeaderProps) {
-  const themeButtonRef = useRef<HTMLButtonElement>(null);
+export default function HomeHeader({ children, userId, lang, menu, onMenuChange, onLanguageChange }: HomeHeaderProps) {
   const languageButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const previousMenuRef = useRef<HeaderMenu>(null);
   const restoreFocusRef = useRef(true);
-  const copy = TEXT[lang];
 
   useEffect(() => {
     if (menu) {
       const selected = menuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]');
       selected?.focus({ preventScroll: true });
     } else if (previousMenuRef.current && restoreFocusRef.current) {
-      const trigger = previousMenuRef.current === "theme" ? themeButtonRef.current : languageButtonRef.current;
-      trigger?.focus({ preventScroll: true });
+      languageButtonRef.current?.focus({ preventScroll: true });
     }
     previousMenuRef.current = menu;
     restoreFocusRef.current = true;
@@ -85,33 +71,6 @@ export default function HomeHeader({ children, userId, lang, theme, menu, onMenu
       <div className={`${styles.title} header-title`}>{children}</div>
       <div className={styles.controls} data-open={menu !== null}>
         {menu && <div className={styles.backdrop} onClick={() => closeMenu()} aria-hidden="true" />}
-        <div className={styles.control}>
-          <button
-            ref={themeButtonRef}
-            type="button"
-            className={styles.trigger}
-            aria-label={`${copy.appearance}: ${copy[theme]}`}
-            aria-haspopup="menu"
-            aria-expanded={menu === "theme"}
-            aria-controls={menu === "theme" ? "home-theme-menu" : undefined}
-            onClick={() => onMenuChange(menu === "theme" ? null : "theme")}
-            onKeyDown={event => handleTriggerKeyDown(event, "theme")}
-          >
-            {theme === "light" ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-            <ChevronDown size={12} className={menu === "theme" ? styles.chevronOpen : undefined} aria-hidden="true" />
-          </button>
-          {menu === "theme" && (
-            <div ref={menuRef} id="home-theme-menu" role="menu" aria-label={copy.appearance} className={`${styles.menu} roots-elevation-popover`} onKeyDown={handleMenuKeyDown}>
-              {(["light", "dark"] as const).map(option => (
-                <button key={option} type="button" role="menuitemradio" aria-checked={theme === option} tabIndex={-1} className={styles.option} onClick={() => onThemeChange(option)}>
-                  {option === "light" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
-                  <span>{copy[option]}</span>
-                  {theme === option && <Check size={16} className={styles.check} aria-hidden="true" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         <div className={styles.control}>
           <button
             ref={languageButtonRef}

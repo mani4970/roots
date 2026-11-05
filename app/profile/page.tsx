@@ -14,6 +14,7 @@ import { NOVEMBER_PERSONAL_CHALLENGE_ID, loadPersonalChallengeBadges, type Perso
 import { getPersonalChallengeText } from "@/lib/personalReflectionChallengeText";
 import { shareInvite as shareInviteContent } from "@/lib/nativeShare";
 import NotificationSettingsModal from "@/components/NotificationSettingsModal";
+import ProfileAppearanceSettings from "@/components/ProfileAppearanceSettings";
 import AvatarChoiceModal from "@/components/AvatarChoiceModal";
 import HeartShopModal from "@/components/HeartShopModal";
 import FeedbackSuccessPopup from "@/components/FeedbackSuccessPopup";
@@ -2495,6 +2496,8 @@ export default function ProfilePage() {
                 {savingName ? <Loader2 size={13} className="spin" /> : t("profile_save", lang)}
               </button>
             </div>
+
+            <ProfileAppearanceSettings lang={lang} />
 
             <button
               onClick={() => setShowNotificationSettingsModal(true)}

@@ -312,8 +312,6 @@ export default function HomePage() {
   const lang = useLang();
   const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [showLangPicker, setShowLangPicker] = useState(false);
-  const [showThemePicker, setShowThemePicker] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string;receipt?:RewardPresentationReceipt;activityBadgeKey?:ActivityBadgeKey}|null>(null);
   const celebrationShownRef = useRef(false);
@@ -669,7 +667,7 @@ export default function HomePage() {
   const activityBadgeRecoveryPending = !!profile?.id && activityBadgeRetryRef.current?.userId === profile.id
     && activityBadgeRetryRef.current?.blocking === true;
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
-  const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker || showThemePicker
+  const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
     || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || !!personalChallengeDetails;
@@ -882,10 +880,8 @@ export default function HomePage() {
         const saved = storageGet("roots_theme");
         if (saved === "dark") {
           document.documentElement.setAttribute("data-theme", "dark");
-          setTheme("dark");
         } else {
           document.documentElement.removeAttribute("data-theme");
-          setTheme("light");
         }
       }
       const supabase = createClient();
@@ -2147,7 +2143,6 @@ export default function HomePage() {
     showRootsManPopup ||
     showAvatarChoiceModal ||
     showLangPicker ||
-    showThemePicker ||
     showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -2181,7 +2176,6 @@ export default function HomePage() {
     showAvatarChoiceModal ||
     visibleMonthlyBadgeAward ||
     showLangPicker ||
-    showThemePicker ||
     showHomeQTDraftChoice ||
     showHomeQTChoice ||
     showHomeQTPassageChoice ||
@@ -2309,10 +2303,6 @@ export default function HomePage() {
     if (showHomeQTChoice || showHomeSundayQT) {
       setShowHomeQTChoice(false);
       setShowHomeSundayQT(false);
-      return true;
-    }
-    if (showThemePicker) {
-      setShowThemePicker(false);
       return true;
     }
     if (showLangPicker) {
@@ -2855,21 +2845,9 @@ export default function HomePage() {
       <HomeHeader
         userId={profile?.id}
         lang={lang}
-        theme={theme}
-        menu={showThemePicker ? "theme" : showLangPicker ? "language" : null}
+        menu={showLangPicker ? "language" : null}
         onMenuChange={menu => {
-          setShowThemePicker(menu === "theme");
           setShowLangPicker(menu === "language");
-        }}
-        onThemeChange={nextTheme => {
-          if (nextTheme === "dark") {
-            document.documentElement.setAttribute("data-theme", "dark");
-          } else {
-            document.documentElement.removeAttribute("data-theme");
-          }
-          storageSet("roots_theme", nextTheme);
-          setTheme(nextTheme);
-          setShowThemePicker(false);
         }}
         onLanguageChange={async nextLang => {
           setShowLangPicker(false);

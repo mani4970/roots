@@ -1,0 +1,63 @@
+.card {
+  margin-bottom: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--profile-card-muted-surface);
+  color: var(--text);
+}
+
+.label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg3);
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.option[aria-pressed="true"] {
+  border-color: var(--profile-sage-notice-border);
+  background: var(--profile-sage-notice-surface);
+  color: var(--profile-sage-notice-text);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
+.option svg {
+  flex-shrink: 0;
+}
+
+.check {
+  color: currentColor;
+}
+
+.hiddenCheck {
+  visibility: hidden;
+}

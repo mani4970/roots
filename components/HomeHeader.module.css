@@ -1,17 +1,16 @@
 .header {
-  display: flex;
-  flex-wrap: wrap-reverse;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 4px 10px;
   padding: var(--roots-page-top-padding) 20px 16px;
   background: var(--bg);
 }
 
 .title {
-  flex: 1 1 max-content;
   min-width: 0;
   max-width: 100%;
+  padding-top: 7px;
   overflow-wrap: anywhere;
 }
 
