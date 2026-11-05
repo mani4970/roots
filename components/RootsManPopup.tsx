@@ -2,7 +2,7 @@
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getCurrentRewardMapCycle, getRewardMapStage } from "@/lib/rewardMaps";
-import { adaptRootsAvatarNameInText, getRootsAvatarChoiceText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
+import { adaptRootsAvatarNameInText, getRootsAvatarImageSrc, normalizeRootsAvatarType, type RootsAvatarType } from "@/lib/avatar";
 import { getNehemiahWallCopy, getNehemiahWallStageDescription } from "@/lib/nehemiahWallText";
 
 interface RootsManPopupProps {
@@ -31,25 +31,19 @@ function getGardenMessageKey(days: number): TKey {
   return ROOTSMAN_MSG_KEYS[stage - 1];
 }
 
-function getPopupCopy(streakDays: number, avatarType: RootsAvatarType) {
+function getPopupCopy(streakDays: number) {
   const currentMap = getCurrentRewardMapCycle(streakDays);
   if (currentMap.kind === "peaceArk") {
     const stage = getRewardMapStage(currentMap).stageNumber;
     return {
-      titleKey: "rootsman_ark_title" as TKey,
-      checkKey: "rootsman_ark_check" as TKey,
       buttonKey: "rootsman_ark_btn" as TKey,
       messageKey: ROOTSMAN_ARK_MSG_KEYS[Math.max(0, Math.min(stage - 1, ROOTSMAN_ARK_MSG_KEYS.length - 1))],
-      image: getRootsAvatarImageSrc(avatarType),
     };
   }
 
   return {
-    titleKey: "rootsman_title" as TKey,
-    checkKey: "rootsman_check" as TKey,
     buttonKey: "rootsman_btn" as TKey,
     messageKey: getGardenMessageKey(streakDays),
-    image: getRootsAvatarImageSrc(avatarType),
   };
 }
 
@@ -58,18 +52,13 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
   if (!show) return null;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
   const currentMap = getCurrentRewardMapCycle(streakDays);
-  const isGardenMap = currentMap.kind === "garden";
   const isNehemiahMap = currentMap.kind === "nehemiahWall";
-  const copy = isNehemiahMap ? null : getPopupCopy(streakDays, normalizedAvatarType);
+  const copy = isNehemiahMap ? null : getPopupCopy(streakDays);
   const nehemiahCopy = isNehemiahMap ? getNehemiahWallCopy(lang) : null;
   const rewardStage = getRewardMapStage(currentMap);
-  const title = isNehemiahMap
-    ? adaptRootsAvatarNameInText(nehemiahCopy!.popupTitle, normalizedAvatarType)
-    : adaptRootsAvatarNameInText(t(copy!.titleKey, lang), normalizedAvatarType);
   const msg = isNehemiahMap
     ? getNehemiahWallStageDescription(lang, rewardStage.stageNumber)
     : adaptRootsAvatarNameInText(t(copy!.messageKey, lang), normalizedAvatarType);
-  const checkText = isNehemiahMap ? nehemiahCopy!.popupCheck : t(copy!.checkKey, lang);
   const buttonText = isNehemiahMap ? nehemiahCopy!.popupButton : t(copy!.buttonKey, lang);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 99, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", background: "rgba(26,28,30,0.7)", backdropFilter: "blur(6px)", paddingBottom: 80 }}>
@@ -81,15 +70,9 @@ export default function RootsManPopup({ show, streakDays, onGoGarden, avatarType
             style={{ width: 74, height: 74, objectFit: "contain", imageRendering: "pixelated" }}
           />
         </div>
-        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 8, lineHeight: 1.3 }}>
-{isGardenMap ? getRootsAvatarChoiceText(normalizedAvatarType === "rootswoman" ? "popupGardenTitleRootswoman" : "popupGardenTitleRootsman", lang) : title}
+        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 16, lineHeight: 1.3 }}>
+          {msg}
         </h3>
-        <div style={{ padding: "12px 14px", background: "var(--sage-light)", borderRadius: 14, border: "1px solid rgba(122,157,122,0.3)", marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: "var(--sage-dark)", lineHeight: 1.7 }}>{msg}</p>
-        </div>
-        <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 16 }}>
-          {checkText}
-        </p>
         <button onClick={onGoGarden} style={{ width: "100%", padding: "12px", background: "var(--sage)", color: "var(--bg)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           {buttonText}
         </button>
