@@ -26,6 +26,7 @@ import CommentNotificationInbox, { CommentNotificationBell, CommentNotificationS
 import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, loadCommentNotificationFocus, publishCommentNotificationChange, type CommentNotificationFocus } from "@/lib/notifications/commentNotifications";
 import QtComments from "@/components/community/QtComments";
 import QtDetailViewport from "@/components/community/QtDetailViewport";
+import { useQtDetailOutsideDismiss } from "@/components/community/useQtDetailOutsideDismiss";
 import QtDetailTextSizeControls from "@/components/community/QtDetailTextSizeControls";
 import qtDetailReadingStyles from "@/components/community/QtDetailReading.module.css";
 import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
@@ -1191,6 +1192,7 @@ function CommunityPageContent() {
   const communityDetailHistoryRef = useRef<"partner" | "group" | null>(null);
   const communityModalHistoryStackRef = useRef<CommunityModalHistoryKind[]>([]);
   const qtDetailScrollRef = useRef<HTMLDivElement | null>(null);
+  const qtDetailOutsideDismiss = useQtDetailOutsideDismiss(closeQtDetail);
   const groupSettingsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const groupSettingsMenuRef = useRef<HTMLDivElement | null>(null);
   const groupInvitePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -6354,6 +6356,7 @@ function CommunityPageContent() {
         key={r.id}
         ref={qtDetailScrollRef}
         data-qt-detail={r.id}
+        data-qt-dismiss-blocked={Boolean(profileModal || photoViewer || actionMenu || safetyConfirm || manageModal) || undefined}
         role="dialog"
         aria-modal="true"
         aria-label={c("qt_title")}
@@ -6365,10 +6368,10 @@ function CommunityPageContent() {
           overflowY: "auto", overscrollBehavior: "contain",
           "--qt-reading-size": `${QT_DETAIL_TEXT_SIZES[qtDetailTextSizeIndex]}px`,
         } as CSSProperties}
-        onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+        {...qtDetailOutsideDismiss}
       >
         <QtDetailViewport rootRef={qtDetailScrollRef} />
-        <div style={{
+        <div data-qt-detail-outside style={{
           minHeight: "var(--qt-modal-viewport-height, calc(100dvh + var(--native-bottom-system-bar)))",
           display: "flex", alignItems: "flex-start", justifyContent: "center",
           padding: "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",

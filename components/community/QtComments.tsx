@@ -11,6 +11,7 @@ import { getQtCommentText } from "@/lib/qtCommentText";
 import { getQtCommentSafetyText } from "@/lib/qtCommentSafetyText";
 import type { CommentSafetyAction } from "@/lib/qtCommentSafety";
 import CommentSafetyDialog from "./CommentSafetyDialog";
+import { blockQtDetailOutsideDismiss } from "./useQtDetailOutsideDismiss";
 import {
   deleteQtComment, insertQtComment, loadQtCommentCounts, loadQtComments,
   QT_COMMENT_MAX_LENGTH, qtCommentLength, limitQtCommentInput, qtCommentContextKey, setQtCommentLike, updateQtComment,
@@ -133,6 +134,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
     if (!deleting) return;
     function handleOutsidePointer(event: PointerEvent) {
       if (event.target instanceof Node && !deleteAnchorRef.current?.contains(event.target)) {
+        blockQtDetailOutsideDismiss(event);
         closeDeleteConfirmation();
       }
     }
@@ -678,7 +680,10 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   }
 
   return (
-    <section ref={threadRef} className={styles.thread} aria-label={text.title}>
+    <section ref={threadRef} className={styles.thread} aria-label={text.title}
+      data-qt-dismiss-blocked={Boolean(draft.length || editing || replying || pending || deleting || safety
+        || Object.values(replyDrafts).some(value => value.length > 0)
+        || Object.values(likePending).some(Boolean)) || undefined}>
       <h3 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 17, color: "var(--text)", margin: "0 0 8px" }}>
         <MessageCircle size={19} aria-hidden="true" /> {text.title}{!loading && !loadError ? ` ${count}` : ""}
       </h3>
