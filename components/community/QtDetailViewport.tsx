@@ -52,6 +52,7 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     ]);
     let frame = 0;
     let revealFocusedComposer = false;
+    let activeComposerInput: HTMLTextAreaElement | null = null;
     let previousHeight = viewport?.height ?? window.innerHeight;
     let sceneHeight = Math.max(previousHeight, window.innerHeight, html.clientHeight);
 
@@ -67,8 +68,27 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     body.style.overflow = "hidden";
     setBackdropActive(true);
 
+    function getFocusedComposer() {
+      const input = document.activeElement;
+      if (!(input instanceof HTMLTextAreaElement) || !root!.contains(input)
+        || input.disabled || input.readOnly) return null;
+      const composer = input.closest<HTMLElement>("[data-qt-comment-composer]");
+      return composer && root!.contains(composer) ? { input, composer } : null;
+    }
+
     function updateViewport() {
       frame = 0;
+      const focusedComposer = getFocusedComposer();
+      activeComposerInput = focusedComposer?.input ?? null;
+
+      // Reading uses the dialog's normal full-viewport CSS. A stale reduced
+      // visualViewport must not clip a reflection opened without an editor.
+      if (!focusedComposer) {
+        root!.style.removeProperty("--qt-modal-viewport-top");
+        root!.style.removeProperty("--qt-modal-viewport-height");
+        root!.style.removeProperty("--qt-modal-viewport-bottom");
+      }
+
       const height = viewport?.height ?? window.innerHeight;
       const top = viewport?.offsetTop ?? 0;
       if (!Number.isFinite(height) || height <= 0) return;
@@ -78,23 +98,23 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
       sceneHeight = Math.max(sceneHeight, height, window.innerHeight, html.clientHeight);
       body.style.setProperty("--qt-modal-backdrop-top", `${Math.max(0, top)}px`);
       body.style.setProperty("--qt-modal-backdrop-height", `${sceneHeight}px`);
-      root!.style.setProperty("--qt-modal-viewport-top", `${top}px`);
-      root!.style.setProperty("--qt-modal-viewport-height", `${height}px`);
-      root!.style.setProperty("--qt-modal-viewport-bottom", "auto");
+      if (focusedComposer) {
+        root!.style.setProperty("--qt-modal-viewport-top", `${top}px`);
+        root!.style.setProperty("--qt-modal-viewport-height", `${height}px`);
+        root!.style.setProperty("--qt-modal-viewport-bottom", "auto");
+      }
 
-      const focused = document.activeElement;
       const reveal = revealFocusedComposer || Math.abs(height - previousHeight) > 1;
       revealFocusedComposer = false;
       previousHeight = height;
-      if (!reveal || !(focused instanceof HTMLTextAreaElement) || !root!.contains(focused)) return;
-      const composer = focused.closest<HTMLElement>("[data-qt-comment-composer]");
-      if (!composer) return;
+      if (!reveal || !focusedComposer) return;
+      const { input, composer } = focusedComposer;
 
       const bounds = root!.getBoundingClientRect();
       const whole = composer.getBoundingClientRect();
       // A manually enlarged editor can exceed the visible area. Keep its input
       // usable then, rather than oscillating between its top and bottom edges.
-      const target = whole.height <= bounds.height - 24 ? whole : focused.getBoundingClientRect();
+      const target = whole.height <= bounds.height - 24 ? whole : input.getBoundingClientRect();
       if (target.bottom > bounds.bottom - 12) root!.scrollTop += target.bottom - bounds.bottom + 12;
       else if (target.top < bounds.top + 12) root!.scrollTop -= bounds.top + 12 - target.top;
     }
@@ -105,19 +125,41 @@ export default function QtDetailViewport({ rootRef }: { rootRef: RefObject<HTMLD
     function onFocus(event: FocusEvent) {
       if (event.target instanceof HTMLTextAreaElement) {
         revealFocusedComposer = true;
-        schedule();
       }
+      schedule();
     }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") schedule();
+    }
+
+    // Cancelling an inline reply/edit can remove its focused textarea without
+    // a bubbling focusout event. Restore reading geometry in that case too.
+    const composerObserver = new MutationObserver(() => {
+      if (activeComposerInput && (!root.contains(activeComposerInput)
+        || activeComposerInput.disabled || activeComposerInput.readOnly)) schedule();
+    });
+    composerObserver.observe(root, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "readonly"],
+    });
 
     updateViewport();
     root.addEventListener("focusin", onFocus);
+    // Re-read activeElement on the next frame, after focus has moved. Moving
+    // between two composers must not briefly reset the input viewport.
+    root.addEventListener("focusout", schedule);
     window.addEventListener("resize", schedule);
+    window.addEventListener("pageshow", schedule);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     viewport?.addEventListener("resize", schedule);
     viewport?.addEventListener("scroll", schedule);
     return () => {
       cancelAnimationFrame(frame);
+      composerObserver.disconnect();
       root.removeEventListener("focusin", onFocus);
+      root.removeEventListener("focusout", schedule);
       window.removeEventListener("resize", schedule);
+      window.removeEventListener("pageshow", schedule);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
       restoreRoot();
