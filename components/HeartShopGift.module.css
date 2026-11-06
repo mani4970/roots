@@ -157,4 +157,38 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.giftFocus { scroll-margin: 12px; }
+.giftFocus {
+  --gift-shimmer: rgba(213, 166, 83, .24);
+  --gift-gleam: rgba(255, 255, 255, .8);
+  position: relative;
+  isolation: isolate;
+  border-radius: 12px;
+  background-color: var(--surface-gold-subtle);
+  scroll-margin: 12px;
+}
+.giftFocus::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: linear-gradient(110deg, transparent 25%, var(--gift-shimmer) 42%, var(--gift-gleam) 50%, var(--gift-shimmer) 58%, transparent 75%);
+  background-size: 240% 100%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  pointer-events: none;
+  animation: giftShimmer 1.8s ease-in-out .2s 2;
+}
+:global([data-theme="dark"]) .giftFocus {
+  --gift-shimmer: rgba(213, 166, 83, .14);
+  --gift-gleam: rgba(244, 217, 145, .22);
+}
+@keyframes giftShimmer {
+  0% { background-position: 140% 0; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { background-position: -40% 0; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .giftFocus::before { animation: none; }
+}
