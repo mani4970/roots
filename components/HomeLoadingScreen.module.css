@@ -1,0 +1,93 @@
+.frame {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+  --christmas-half-height: 50vh;
+  --christmas-center-offset: 0px;
+}
+
+/* A sibling of the existing loader, outside the iPad translateY transform. */
+.decoration {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.decoration img {
+  display: block;
+  position: absolute;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.star {
+  left: 50%;
+  top: max(0px, calc(var(--christmas-half-height) + var(--christmas-center-offset) - 204px));
+  width: min(80px, 22%, max(0px, calc(var(--christmas-half-height) + var(--christmas-center-offset) - 124px)));
+  height: auto;
+  transform: translateX(-50%);
+  animation: starGlow 3.2s ease-in-out infinite;
+}
+
+/* Reserve 224px around the unchanged central content, plus a 12px gap.
+   Short screens clip/scale only decoration, never the real loading content. */
+.snowScene {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: min(210px, max(0px, calc(var(--christmas-half-height) - var(--christmas-center-offset) - 124px)));
+  overflow: hidden;
+}
+
+.hills {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+
+.trees {
+  left: -2%;
+  bottom: 16px;
+  width: 40%;
+  height: auto;
+  max-height: max(0px, calc(100% - 16px));
+  object-position: bottom center;
+}
+
+.snowmen {
+  right: 1%;
+  bottom: 22px;
+  width: 36%;
+  height: auto;
+  max-height: max(0px, calc(100% - 22px));
+  object-position: bottom center;
+}
+
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .frame {
+    --christmas-half-height: 33.33335vh;
+  }
+  /* Custom properties accept unknown units, so guard dvh explicitly for iOS 15. */
+  @supports (height: 100dvh) {
+    :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .frame {
+      --christmas-half-height: 33.33335dvh;
+    }
+  }
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"]) .frame {
+    --christmas-center-offset: 48px;
+  }
+}
+
+@keyframes starGlow {
+  0%, 100% { opacity: 0.84; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star { animation: none; }
+}

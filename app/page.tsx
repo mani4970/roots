@@ -19,6 +19,8 @@ import RequiredUpdatePopup from "@/components/RequiredUpdatePopup";
 import ChallengeRewardPopup from "@/components/ChallengeRewardPopup";
 import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import HomeHeader from "@/components/HomeHeader";
+import HomeLoadingScreen from "@/components/HomeLoadingScreen";
+import { isChristmasLoadingDate } from "@/lib/christmasLoading";
 import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
 import MessengerShareAnnouncementPopup from "@/components/MessengerShareAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
@@ -2491,28 +2493,7 @@ export default function HomePage() {
     return false;
   });
 
-  if (loading) return (
-    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-        <img
-          src="/roots-logo-transparent-160.png"
-          alt="Roots sprout"
-          width={82}
-          height={82}
-          style={{ objectFit: "contain" }}
-        />
-        <div style={{ textAlign: "center" }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.5px", marginBottom: 6 }}>Roots</h1>
-          <p style={{ fontSize: 13, color: "var(--text3)" }}>{t("home_loading_sub", lang)}</p>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {[0,1,2].map(i => (
-          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--sage)", animation: `pulse 1.2s ease-in-out ${i*0.2}s infinite` }} />
-        ))}
-      </div>
-    </div>
-  );
+  if (loading) return <HomeLoadingScreen lang={lang} christmas={isChristmasLoadingDate(challengeLocalDate)} />;
 
   if (homeLoadFailed || !profile) return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 28, textAlign: "center" }}>
