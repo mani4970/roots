@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Clock, Loader2, X } from "lucide-react";
+import { Bell, Loader2, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useLang } from "@/lib/useLang";
 import {
@@ -78,23 +78,21 @@ function TimeRow({
   onTimeChange: (value: string) => void;
 }) {
   return (
-    <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{title}</p>
-        </div>
-        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} label={title} />
-      </div>
-      <label style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 12, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", opacity: disabled || !enabled ? 0.6 : 1 }}>
-        <Clock size={14} style={{ color: "var(--profile-sage-notice-text)" }} />
+    <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 112px minmax(0, 1fr)", columnGap: 4, alignItems: "center" }}>
+      <p style={{ minWidth: 0, margin: 0, fontSize: 14, fontWeight: 800, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{title}</p>
+      <label style={{ minWidth: 0, minHeight: 44, display: "flex", alignItems: "center", padding: "8px 6px", borderRadius: 12, background: "var(--profile-card-muted-surface)", border: "1px solid var(--border)", opacity: disabled || !enabled ? 0.6 : 1 }}>
         <input
           type="time"
+          aria-label={title}
           value={time}
           disabled={disabled || !enabled}
           onChange={(event) => onTimeChange(event.target.value)}
-          style={{ background: "transparent", border: "none", color: "var(--text)", fontSize: 13, fontWeight: 700, outline: "none" }}
+          style={{ width: "100%", minWidth: 0, margin: 0, padding: 0, background: "transparent", border: "none", color: "var(--text)", fontSize: 13, fontWeight: 700, outline: "none" }}
         />
       </label>
+      <div style={{ display: "flex", justifyContent: "flex-end", minWidth: 0 }}>
+        <Toggle checked={enabled} onChange={onEnabledChange} disabled={disabled} label={title} />
+      </div>
     </div>
   );
 }
@@ -186,13 +184,13 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 180, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
       <div onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 410, maxHeight: "calc(100vh - 72px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 18px 18px", boxShadow: "var(--shadow-modal)" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div style={{ width: 38, height: 38, borderRadius: 14, background: "var(--profile-selected-surface)", color: "var(--profile-sage-notice-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Bell size={18} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("notifications_title", lang)}</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", margin: 0, lineHeight: 1.35, overflowWrap: "anywhere" }}>{t("notifications_title", lang)}</h3>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
