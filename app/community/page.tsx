@@ -10540,7 +10540,7 @@ function CommunityPageContent() {
                 className="btn-sage"
                 style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
-                <Plus size={16} /> {c("community_create_group")}
+                <Plus size={16} style={{ flexShrink: 0 }} /> {c("community_new_private_group")}
               </button>
             )}
             {groups.length === 0 ? (
@@ -10575,7 +10575,7 @@ function CommunityPageContent() {
                     className="btn-sage"
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, padding: "12px 14px", whiteSpace: "normal", lineHeight: 1.4 }}
                   >
-                    <Plus size={16} style={{ flexShrink: 0 }} /> {c("community_create_group")}
+                    <Plus size={16} style={{ flexShrink: 0 }} /> {c("community_new_private_group")}
                   </button>
                 </div>
               </section>
@@ -10742,18 +10742,23 @@ function CommunityPageContent() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: "flex-start",
+                gap: 12,
                 marginBottom: 16,
               }}
             >
-              <h2
-                style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}
-              >
-                {c("community_create_group")}
-              </h2>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>
+                  {c("community_create_group")}
+                </h2>
+                <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--text2)" }}>
+                  {c("community_groups_private_notice")}
+                </p>
+              </div>
               <button
                 onClick={() => setShowGroupForm(false)}
                 style={{
+                  flexShrink: 0,
                   background: "none",
                   border: "none",
                   color: "var(--text3)",
