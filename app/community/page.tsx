@@ -130,6 +130,7 @@ import {
   BookOpen,
   CheckCircle2,
   Star,
+  Lock,
   LogOut,
   AlertTriangle,
   Edit3,
@@ -10751,8 +10752,9 @@ function CommunityPageContent() {
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>
                   {c("community_create_group")}
                 </h2>
-                <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--text2)" }}>
-                  {c("community_groups_private_notice")}
+                <p style={{ display: "flex", alignItems: "flex-start", gap: 6, margin: "6px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--text2)" }}>
+                  <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: ".2em" }} />
+                  <span style={{ minWidth: 0 }}>{c("community_groups_private_notice")}</span>
                 </p>
               </div>
               <button
