@@ -27,6 +27,7 @@ import { COMMENT_NOTIFICATION_INTENT, isCommentNotificationId, loadCommentNotifi
 import QtComments from "@/components/community/QtComments";
 import QtDetailViewport from "@/components/community/QtDetailViewport";
 import { useQtDetailOutsideDismiss } from "@/components/community/useQtDetailOutsideDismiss";
+import { useCommunitySwipeNavigation } from "@/components/community/useCommunitySwipeNavigation";
 import QtDetailTextSizeControls from "@/components/community/QtDetailTextSizeControls";
 import qtDetailReadingStyles from "@/components/community/QtDetailReading.module.css";
 import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
@@ -1207,6 +1208,43 @@ function CommunityPageContent() {
   const prayerAnswerBackRef = useRef<(() => boolean) | null>(null);
   const communityPrayerContextRef = useRef({ userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id });
   communityPrayerContextRef.current = { userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id };
+
+  const swipeViewKey = selectedPartner
+    ? `partner:${selectedPartner.partner_id}:${partnerDetailTab}`
+    : selectedGroup ? `group:${selectedGroup.id}:${groupDetailTab}` : `main:${tab}`;
+  const communitySwipeRef = useCommunitySwipeNavigation({
+    viewKey: swipeViewKey,
+    blocked: Boolean(
+      notificationDirectOpenPending || commentInboxOpen || commentNotificationStatus
+      || photoViewer || badgePopup || prayerAdded || prayerJoinError || answerPrayerId
+      || safetyConfirm || actionMenu || manageModal || profileModal || detailQt
+      || showDeleteGroupConfirm || memberRemovalTarget || showLeadershipTransfer
+      || showGroupEdit || showLeaveConfirm || showGroupMembers || openGroupHeaderMenu
+      || showChallengeRequestForm || showGroupForm,
+    ),
+    onSwipe: (direction) => {
+      const step = direction === "left" ? 1 : -1;
+      if (selectedPartner || selectedGroup) {
+        const sections = ["qt", "praying", "answered"] as const;
+        const current = selectedPartner ? partnerDetailTab : groupDetailTab;
+        const nextIndex = sections.indexOf(current) + step;
+        if (nextIndex < 0) {
+          if (selectedPartner) closePartnerDetail();
+          else closeGroupDetail();
+          return true;
+        }
+        if (nextIndex >= sections.length) return false;
+        if (selectedPartner) selectPartnerSection(sections[nextIndex]);
+        else selectGroupSection(sections[nextIndex]);
+        return true;
+      }
+      const tabs = ["partner", "group", "all"] as const;
+      const nextIndex = tabs.indexOf(tab) + step;
+      if (nextIndex < 0 || nextIndex >= tabs.length) return false;
+      selectCommunityMainTab(tabs[nextIndex]);
+      return true;
+    },
+  });
 
   useAndroidBackHandler(() => {
     if (notificationDirectOpenPending) return true;
@@ -7057,7 +7095,11 @@ function CommunityPageContent() {
         ),
       };
     });
-    return <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId} ariaLabel={c("community_prayer_tab_praying")} />;
+    return (
+      <div data-community-swipe-ignore>
+        <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId} ariaLabel={c("community_prayer_tab_praying")} />
+      </div>
+    );
   }
 
   function renderSharedOverlayModals() {
@@ -7243,7 +7285,7 @@ function CommunityPageContent() {
             };
 
     return (
-      <div className="page roots-community-phase2d">
+      <div ref={communitySwipeRef} className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
       {renderCommentNotificationUi()}
@@ -7366,6 +7408,7 @@ function CommunityPageContent() {
               return (
                 <button
                   key={key}
+                  data-community-swipe-tab
                   onClick={() => selectPartnerSection(key)}
                   style={{
                     flex: 1,
@@ -7907,7 +7950,7 @@ function CommunityPageContent() {
       groupPrayersForCurrentTab,
     );
     return (
-      <div className="page roots-community-phase2d">
+      <div ref={communitySwipeRef} className="page roots-community-phase2d">
         {renderLoveHeartToast()}
         {renderReflectionNudgeToast()}
       {renderCommentNotificationUi()}
@@ -8713,6 +8756,7 @@ function CommunityPageContent() {
                 return (
                   <button
                     key={key}
+                    data-community-swipe-tab
                     onClick={() => selectGroupSection(key)}
                     style={{
                       flex: 1,
@@ -10095,7 +10139,7 @@ function CommunityPageContent() {
   }
 
   return (
-    <div className="page roots-community-phase2d">
+    <div ref={communitySwipeRef} className="page roots-community-phase2d">
       {renderLoveHeartToast()}
       {renderReflectionNudgeToast()}
       {renderCommentNotificationUi()}
@@ -10135,6 +10179,7 @@ function CommunityPageContent() {
           {TABS.map((t) => (
             <button
               key={t.id}
+              data-community-swipe-tab
               onClick={() => selectCommunityMainTab(t.id)}
               style={{
                 flex: 1,
