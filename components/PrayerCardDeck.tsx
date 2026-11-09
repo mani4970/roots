@@ -27,6 +27,8 @@ type PrayerCardDeckProps = {
   ariaLabel?: string;
   className?: string;
   beforePosition?: ReactNode;
+  // Opt in only from community details; other prayer screens keep native card navigation.
+  communitySwipeEdges?: "start" | "both";
 };
 
 type Drag = {
@@ -101,6 +103,7 @@ export default function PrayerCardDeck({
   ariaLabel,
   className,
   beforePosition,
+  communitySwipeEdges,
 }: PrayerCardDeckProps) {
   const text = getPrayerCardText(lang);
   const railRef = useRef<HTMLDivElement>(null);
@@ -314,6 +317,8 @@ export default function PrayerCardDeck({
       <div
         ref={railRef}
         className={styles.rail}
+        data-community-swipe-rail={communitySwipeEdges}
+        data-community-swipe-items={communitySwipeEdges ? itemsKey : undefined}
         role="region"
         aria-label={ariaLabel ?? text.carouselLabel}
         tabIndex={items.length ? 0 : -1}

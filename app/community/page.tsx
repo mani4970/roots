@@ -7055,7 +7055,7 @@ function CommunityPageContent() {
     }
   }
 
-  function renderDetailPrayerCards(rows: any[], scope: "partner" | "group", scopeId: string) {
+  function renderDetailPrayerCards(rows: any[], scope: "partner" | "group", scopeId: string, hasMore: boolean) {
     const items: PrayerCardEntry[] = rows.map((prayer) => {
       const mine = prayer.user_id === userId;
       const alreadyPrayed = prayedIds.includes(prayer.id);
@@ -7096,8 +7096,9 @@ function CommunityPageContent() {
       };
     });
     return (
-      <div data-community-swipe-ignore>
-        <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId} ariaLabel={c("community_prayer_tab_praying")} />
+      <div>
+        <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId}
+          ariaLabel={c("community_prayer_tab_praying")} communitySwipeEdges={hasMore ? "start" : "both"} />
       </div>
     );
   }
@@ -7710,7 +7711,7 @@ function CommunityPageContent() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {partnerDetailTab === "praying"
-                ? renderDetailPrayerCards(visiblePartnerPrayers, "partner", selectedPartner.partner_id)
+                ? renderDetailPrayerCards(visiblePartnerPrayers, "partner", selectedPartner.partner_id, visiblePartnerPrayers.length < partnerPrayersForCurrentTab.length)
                 : visiblePartnerPrayers.map((p) => (
                 <div
                   key={p.id}
@@ -8995,7 +8996,7 @@ function CommunityPageContent() {
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 {groupDetailTab === "praying"
-                  ? renderDetailPrayerCards(visibleGroupPrayers, "group", selectedGroup.id)
+                  ? renderDetailPrayerCards(visibleGroupPrayers, "group", selectedGroup.id, visibleGroupPrayers.length < groupPrayersForCurrentTab.length)
                   : visibleGroupPrayers.map((p) => (
                   <div
                     key={p.id}

@@ -8,6 +8,17 @@ type Options = {
   blocked: boolean;
   onSwipe: (direction: Direction) => boolean;
 };
+type RailEdge = {
+  rail: HTMLElement;
+  items: string;
+  policy: string;
+  left: number;
+  width: number;
+  max: number;
+  allowRight: boolean;
+  allowLeft: boolean;
+  direction: Direction | null;
+};
 type Gesture = {
   id: number;
   x: number;
@@ -17,10 +28,13 @@ type Gesture = {
   startedAt: number;
   viewKey: string;
   horizontal: boolean;
+  edge: RailEdge | null;
 };
 
 const EDGE_GUTTER = 24;
 const INTENT_DISTANCE = 12;
+const EDGE_INTENT_DISTANCE = 4;
+const EDGE_TOLERANCE = 2;
 const SWIPE_DISTANCE = 64;
 const MAX_VERTICAL_DRIFT = 48;
 const MAX_DURATION = 900;
@@ -41,15 +55,38 @@ function isEditingOrSelecting() {
     || (window.visualViewport?.scale ?? 1) > 1.05;
 }
 
-function excludesTarget(root: HTMLElement, target: EventTarget | null) {
+function excludesTarget(root: HTMLElement, target: EventTarget | null, edgeRail: HTMLElement | null) {
   if (!(target instanceof Element) || !root.contains(target) || target.closest(EXCLUDED)) return true;
   const button = target.closest("button");
   if (button && !button.hasAttribute("data-community-swipe-tab")) return true;
-  // Let existing horizontal carousels keep ownership of their gestures.
+  if (edgeRail && target.closest('[role="button"], [data-prayer-no-drag]')) return true;
+  // Only the explicitly opted-in prayer rail can hand its outer edges to the tabs.
   for (let node: Element | null = target; node && node !== root; node = node.parentElement) {
-    if (node.scrollWidth > node.clientWidth + 2 && /^(auto|scroll)$/.test(getComputedStyle(node).overflowX)) return true;
+    if (node !== edgeRail && node.scrollWidth > node.clientWidth + 2 && /^(auto|scroll)$/.test(getComputedStyle(node).overflowX)) return true;
   }
   return false;
+}
+
+function captureRailEdge(rail: HTMLElement): RailEdge | null {
+  const policy = rail.dataset.communitySwipeRail;
+  const items = rail.dataset.communitySwipeItems;
+  if ((policy !== "start" && policy !== "both") || !items || items === "[]" || rail.clientWidth <= 0) return null;
+  const left = rail.scrollLeft;
+  const max = Math.max(0, rail.scrollWidth - rail.clientWidth);
+  const allowRight = Math.abs(left) <= EDGE_TOLERANCE;
+  const allowLeft = policy === "both" && Math.abs(left - max) <= EDGE_TOLERANCE;
+  if (!allowRight && !allowLeft) return null;
+  return { rail, items, policy, left, max, width: rail.clientWidth, allowRight, allowLeft, direction: null };
+}
+
+function railEdgeUnchanged(root: HTMLElement, edge: RailEdge | null) {
+  if (!edge) return true;
+  const { rail } = edge;
+  return root.contains(rail) && rail.dataset.communitySwipeItems === edge.items
+    && rail.dataset.communitySwipeRail === edge.policy
+    && Math.abs(rail.scrollLeft - edge.left) <= EDGE_TOLERANCE
+    && Math.abs(rail.clientWidth - edge.width) <= EDGE_TOLERANCE
+    && Math.abs(Math.max(0, rail.scrollWidth - rail.clientWidth) - edge.max) <= EDGE_TOLERANCE;
 }
 
 /** Touch-only navigation for the installed iPhone app. No document scroll/zoom mutations. */
@@ -75,23 +112,29 @@ export function useCommunitySwipeNavigation(options: Options) {
     const canContinue = (start: Gesture) => isIPhoneApp() && !latest.current.blocked
       && start.viewKey === latest.current.viewKey && !isEditingOrSelecting()
       && Math.abs(window.scrollX - start.scrollX) < 2
-      && Math.abs(window.scrollY - start.scrollY) < 2;
+      && Math.abs(window.scrollY - start.scrollY) < 2
+      && railEdgeUnchanged(root!, start.edge);
 
     function start(event: TouchEvent) {
       cancel();
       // A fresh tap, including a button tap, must never inherit click suppression.
       suppressClickUntil.current = 0;
+      const rail = event.target instanceof Element
+        ? event.target.closest<HTMLElement>("[data-community-swipe-rail]") : null;
       if (!isIPhoneApp() || latest.current.blocked || event.touches.length !== 1
-        || isEditingOrSelecting() || excludesTarget(root!, event.target)) return;
+        || isEditingOrSelecting() || excludesTarget(root!, event.target, rail)) return;
       const lock = navigationLock.current;
       if (lock?.viewKey === latest.current.viewKey && performance.now() < lock.until) return;
       const touch = event.touches[0];
       // Reserve OS edge navigation. Back from the first detail tab works in the rest of the content.
       if (touch.clientX <= EDGE_GUTTER || touch.clientX >= window.innerWidth - EDGE_GUTTER) return;
+      const edge = rail ? captureRailEdge(rail) : null;
+      // Do not take over a card swipe that merely reaches the boundary later.
+      if (rail && !edge) return;
       gesture.current = {
         id: touch.identifier, x: touch.clientX, y: touch.clientY,
         scrollX: window.scrollX, scrollY: window.scrollY,
-        startedAt: performance.now(), viewKey: latest.current.viewKey, horizontal: false,
+        startedAt: performance.now(), viewKey: latest.current.viewKey, horizontal: false, edge,
       };
     }
 
@@ -106,9 +149,17 @@ export function useCommunitySwipeNavigation(options: Options) {
       if (dy > MAX_VERTICAL_DRIFT || (!current.horizontal && dy >= INTENT_DISTANCE && dy >= dx)) {
         cancel(); return;
       }
-      if (dx >= INTENT_DISTANCE && dx >= dy * DIRECTION_RATIO) current.horizontal = true;
+      const intentDistance = current.edge ? EDGE_INTENT_DISTANCE : INTENT_DISTANCE;
+      if (!current.horizontal && dx >= intentDistance && dx >= dy * DIRECTION_RATIO) {
+        if (current.edge) {
+          const direction = touch.clientX < current.x ? "left" : "right";
+          if (direction === "left" ? !current.edge.allowLeft : !current.edge.allowRight) { cancel(); return; }
+          current.edge.direction = direction;
+        }
+        current.horizontal = true;
+      }
       if (current.horizontal) {
-        // Only claim a clearly horizontal gesture. Vertical scroll/pinch and the prayer deck stay native.
+        // Claim an outward edge gesture early; inward/middle card swipes remain native.
         if (!event.cancelable) { cancel(); return; }
         event.preventDefault();
         suppressClickUntil.current = performance.now() + 800;
@@ -129,8 +180,10 @@ export function useCommunitySwipeNavigation(options: Options) {
       event.stopPropagation();
       if (performance.now() - current.startedAt > MAX_DURATION || Math.abs(dx) < SWIPE_DISTANCE
         || dy > MAX_VERTICAL_DRIFT || Math.abs(dx) < dy * DIRECTION_RATIO) return;
+      const direction = dx < 0 ? "left" : "right";
+      if (current.edge && current.edge.direction !== direction) return;
       navigationLock.current = { viewKey: current.viewKey, until: performance.now() + 800 };
-      if (!latest.current.onSwipe(dx < 0 ? "left" : "right")) navigationLock.current = null;
+      if (!latest.current.onSwipe(direction)) navigationLock.current = null;
     }
 
     function suppressClick(event: MouseEvent) {
