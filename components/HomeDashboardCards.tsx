@@ -55,6 +55,8 @@ export default function HomeDashboardCards({
         </span>
       </button>
 
+      <div className={styles.character}>{character}</div>
+
       <button type="button" className={`${styles.tile} ${styles.challenge}`} onClick={onOpenChallenge}
         aria-haspopup="dialog" aria-label={challengeLabel} aria-busy={challengeLoading && !challenge}>
         <Trophy className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
@@ -74,8 +76,6 @@ export default function HomeDashboardCards({
           {(!challenge || challengeError) && <span className={styles.summary}>{challengeSummary}</span>}
         </span>
       </button>
-
-      <div className={styles.character}>{character}</div>
 
       <button type="button" className={`${styles.tile} ${styles.decisions}`} onClick={onOpenDecisions}
         aria-haspopup="dialog" aria-label={`${text.decisionsTitle}. ${decisionTotal ? text.decisionProgress(decisionDone, decisionTotal) : text.decisionsEmpty}`}>

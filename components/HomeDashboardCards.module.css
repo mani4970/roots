@@ -47,6 +47,12 @@
 .challenge .icon { color: var(--text-gold-strong); }
 .decisions .icon { color: var(--terra-dark); }
 
+/* Keep this brighter surface local to the home decision card. */
+:global([data-theme="dark"]) .decisions { background: var(--terra-200); }
+:global([data-theme="dark"]) .decisions .title { color: var(--warm-900); }
+:global([data-theme="dark"]) .decisions .icon { color: var(--terra-700); }
+:global([data-theme="dark"]) .decisions .decisionStatus { color: var(--terra-900); }
+
 .copy {
   display: flex;
   flex-direction: column;

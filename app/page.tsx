@@ -2762,7 +2762,7 @@ export default function HomePage() {
       </ObservationPopup>
 
       <HomeHubDialog open={showHomeRoutine && !visibleRequiredUpdatePrompt}
-        title={dashboardText.routineTitle} closeLabel={dashboardText.close} compact
+        title={dashboardText.routineTitle} closeLabel={dashboardText.close} compact hideTitle
         anchorRef={homeRoutineButtonRef}
         onClose={() => setShowHomeRoutine(false)}>
         <HomeRoutineActions

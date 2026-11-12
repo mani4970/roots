@@ -32,7 +32,9 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 390px;
+  max-width: min(390px, var(--home-dialog-max-width, 390px));
+  left: var(--home-dialog-offset-x, 0px);
+  min-width: 0;
   max-height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -48,7 +50,19 @@
   scrollbar-width: thin;
 }
 
-.compact { max-width: 352px; }
+.compact { max-width: min(352px, var(--home-dialog-max-width, 352px)); }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
 
 .close {
   position: absolute;
@@ -104,7 +118,7 @@
 .popover {
   position: absolute;
   z-index: 1;
-  width: min(220px, calc(100% - 28px));
+  width: min(260px, calc(100% - 28px));
   visibility: hidden;
 }
 
@@ -123,6 +137,11 @@
   border: 1px solid var(--border);
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
+}
+
+.popover[data-side="left"]::before {
+  left: auto;
+  right: -5px;
 }
 
 .anchoredDialog {
@@ -151,3 +170,7 @@
   font-size: 12px;
   text-align: center;
 }
+
+/* Use a side gutter for Close instead of an empty heading row. */
+.anchoredDialog.withoutTitle { padding: 12px 52px 12px 12px; }
+.anchoredDialog.withoutTitle .close { top: 6px; right: 4px; }
