@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 
 import { t, type Lang } from "@/lib/i18n";
+import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 
 export default function HomeQTDraftChoice({
   lang,
@@ -18,14 +19,19 @@ export default function HomeQTDraftChoice({
   onStartNew: () => void;
   onClose: () => void;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const backdropTapStart = useRef<{ x: number; y: number } | null>(null);
+  // Home mounts this component only while the draft-choice popup is visible.
+  usePrayerModalViewport(rootRef, true);
 
   return (
     <div
+      ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="home-qt-draft-choice-title"
       aria-describedby="home-qt-draft-choice-description"
+      onTouchMove={event => event.stopPropagation()}
       onPointerDown={(event) => {
         backdropTapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
           ? { x: event.clientX, y: event.clientY }
@@ -46,7 +52,10 @@ export default function HomeQTDraftChoice({
       }}
       style={{
         position: "fixed",
-        inset: 0,
+        insetInline: 0,
+        top: "var(--prayer-visible-top, 0px)",
+        height: "var(--prayer-visible-height, 100vh)",
+        boxSizing: "border-box",
         zIndex: 120,
         background: "var(--overlay-sheet)",
         backdropFilter: "blur(6px)",
@@ -55,6 +64,7 @@ export default function HomeQTDraftChoice({
         alignItems: "flex-end",
         justifyContent: "center",
         padding: 16,
+        overscrollBehavior: "none",
       }}
     >
       <div
@@ -62,6 +72,11 @@ export default function HomeQTDraftChoice({
         style={{
           width: "100%",
           maxWidth: 420,
+          maxHeight: "100%",
+          boxSizing: "border-box",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          touchAction: "pan-y",
           background: "var(--surface-card)",
           border: "1px solid var(--border)",
           borderRadius: 24,

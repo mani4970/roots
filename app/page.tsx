@@ -27,10 +27,14 @@ import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeDecisionItem from "@/components/HomeDecisionItem";
-import PersonalReflectionChallengeCard from "@/components/PersonalReflectionChallengeCard";
+import HomeDashboardCards from "@/components/HomeDashboardCards";
+import HomeHubDialog from "@/components/HomeHubDialog";
+import HomeRoutineActions from "@/components/HomeRoutineActions";
+import { getHomeDashboardText } from "@/lib/homeDashboardText";
+import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 import PersonalReflectionChallengePopup from "@/components/PersonalReflectionChallengePopup";
 import { usePersonalReflectionChallenge } from "@/lib/usePersonalReflectionChallenge";
-import { NOVEMBER_PERSONAL_CHALLENGE_ID, type PersonalChallengeStatus } from "@/lib/personalReflectionChallenges";
+import { NOVEMBER_PERSONAL_CHALLENGE_ID } from "@/lib/personalReflectionChallenges";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -342,8 +346,7 @@ export default function HomePage() {
   const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
   const pendingRootsManRef = useRef(false);
   const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
-  const applySectionRef = useRef<HTMLDivElement | null>(null);
-  const prayerSectionRef = useRef<HTMLDivElement | null>(null);
+  const homeQTDialogRef = useRef<HTMLDivElement>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
   const [homeQTState, setHomeQTState] = useState<HomeQTState>({
     hasDraft: false,
@@ -355,9 +358,16 @@ export default function HomePage() {
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
-  const [personalChallengeDetails, setPersonalChallengeDetails] = useState<PersonalChallengeStatus | null>(null);
+  const challengeLocalDate = useChallengeLocalDate();
+  const [showHomeRoutine, setShowHomeRoutine] = useState(false);
+  const homeRoutineButtonRef = useRef<HTMLButtonElement>(null);
+  const [showHomeDecisions, setShowHomeDecisions] = useState(false);
+  const [showHomeChallenge, setShowHomeChallenge] = useState(false);
   const [openingPersonalChallengeProfile, setOpeningPersonalChallengeProfile] = useState(false);
-  useEffect(() => { setPersonalChallengeDetails(null); setOpeningPersonalChallengeProfile(false); }, [profile?.id]);
+  useEffect(() => {
+    setShowHomeRoutine(false); setShowHomeDecisions(false); setShowHomeChallenge(false);
+    setHomeDecisionInput(""); setOpeningPersonalChallengeProfile(false);
+  }, [profile?.id, challengeLocalDate]);
   const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
   const [homePrayerInput, setHomePrayerInput] = useState("");
   const [savingHomePrayer, setSavingHomePrayer] = useState(false);
@@ -387,7 +397,6 @@ export default function HomePage() {
   const [rewardMapNotice, setRewardMapNotice] = useState<RewardMapNoticeState | null>(null);
   const [challengeRewardQueue, setChallengeRewardQueue] = useState<ChallengeReward[]>([]);
   const challengeRewardCheckStartedRef = useRef<string | null>(null);
-  const challengeLocalDate = useChallengeLocalDate();
   const challengeRewardActionInFlightRef = useRef(false);
   const [openingChallengeProfile, setOpeningChallengeProfile] = useState(false);
   const companionChallengeAnnouncementUserIdRef = useRef<string | null>(null);
@@ -685,6 +694,25 @@ export default function HomePage() {
     ready: !loading && !homeLoadFailed,
     completedQtRecordId: wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
   });
+  const dashboardText = getHomeDashboardText(lang);
+  const currentHomeChallenge = personalChallenge.status
+    && challengeLocalDate >= personalChallenge.status.startDate
+    && challengeLocalDate <= personalChallenge.status.endDate
+    ? personalChallenge.status : null;
+  const personalChallengeDetails = showHomeChallenge ? currentHomeChallenge : null;
+  const homeHubOpen = showHomeRoutine || showHomeDecisions || showHomeChallenge;
+  const challengeDateFormatter = new Intl.DateTimeFormat(
+    { ko: "ko-KR", en: "en-US", de: "de-DE", fr: "fr-FR", es: "es-ES" }[lang],
+    { year: "numeric", month: "short", day: "numeric" },
+  );
+  const challengePeriod = personalChallengeDetails
+    ? `${challengeDateFormatter.format(parseLocalDateString(personalChallengeDetails.startDate))} – ${challengeDateFormatter.format(parseLocalDateString(personalChallengeDetails.endDate))}`
+    : undefined;
+  usePrayerModalViewport(
+    homeQTDialogRef,
+    !loading && !homeLoadFailed && !!profile
+      && (showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice),
+  );
   const rewardMapDisplayDays = profile?.streak_days ?? 0;
   const rewardActionDisplayDays = activeActionReceipt?.days ?? rewardMapDisplayDays;
   const rewardPresentationsReady = !!profile?.id && rewardReceiptOwner === profile.id;
@@ -704,7 +732,7 @@ export default function HomePage() {
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
-    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || !!personalChallengeDetails;
+    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || homeHubOpen;
   const rewardDialogBlocked = homeDialogBlocked || !!effectiveUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
@@ -2046,9 +2074,7 @@ export default function HomePage() {
       setCompletedQtRecordId(targetRecordId);
       setMyDecisions([{ text: decisionText, done: false }]);
       setHomeDecisionInput("");
-      requestAnimationFrame(() => {
-        applySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+
     } catch (error) {
       console.error(error);
       showToast(t("home_decision_save_error", lang));
@@ -2246,28 +2272,11 @@ export default function HomePage() {
   }
 
   function openDecisionSection() {
-    if (applySectionRef.current) {
-      applySectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      if (!hasMyDecisions) {
-        setTimeout(() => homeDecisionInputRef.current?.focus(), 250);
-      }
-      return;
-    }
-
-    if (!todayDone.qt) {
-      openHomeQT();
-      return;
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setShowHomeDecisions(true);
   }
 
   function openPrayerSection() {
-    if (prayerSectionRef.current) {
-      prayerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setShowHomePrayerCards(true);
   }
 
   function openTreeSection() {
@@ -2311,7 +2320,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    !!personalChallengeDetails ||
+    homeHubOpen ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt;
   const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
@@ -2343,7 +2352,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    !!personalChallengeDetails ||
+    homeHubOpen ||
     showHomePrayerCompose ||
     showHomePrayerSharePrompt;
   const visibleChallengeReward =
@@ -2425,10 +2434,9 @@ export default function HomePage() {
       personalChallenge.acknowledgeAnnouncement();
       return true;
     }
-    if (personalChallengeDetails) {
-      setPersonalChallengeDetails(null);
-      return true;
-    }
+    if (showHomeRoutine) { setShowHomeRoutine(false); return true; }
+    if (showHomeDecisions) { if (!savingHomeDecision) setShowHomeDecisions(false); return true; }
+    if (showHomeChallenge) { setShowHomeChallenge(false); return true; }
     if (showHomePrayerSharePrompt) {
       if (!savingHomePrayer) closeHomePrayerSharePrompt();
       return true;
@@ -2541,6 +2549,8 @@ export default function HomePage() {
       <ObservationPopup userId={profile?.id} kind="qt_choice" queued={showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice}>
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
         <div
+          ref={homeQTDialogRef}
+          onTouchMove={event => event.stopPropagation()}
           onPointerDown={(event) => {
             homeQTBackdropTapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
               ? { x: event.clientX, y: event.clientY }
@@ -2558,9 +2568,9 @@ export default function HomePage() {
             ) return;
             closeHomeQTChoicePopup();
           }}
-          style={{ position: "fixed", inset: 0, zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}
+          style={{ position: "fixed", insetInline: 0, top: "var(--prayer-visible-top, 0px)", height: "var(--prayer-visible-height, 100vh)", boxSizing: "border-box", zIndex: 120, background: "var(--overlay-sheet)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16, overscrollBehavior: "none" }}
         >
-          <div className="roots-elevation-sheet" style={{ width: "100%", maxWidth: 420, background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, position: "relative" }}>
+          <div className="roots-elevation-sheet" style={{ width: "100%", maxWidth: 420, maxHeight: "100%", overflowY: "auto", overscrollBehavior: "contain", touchAction: "pan-y", background: "var(--surface-card)", border: "1px solid var(--border)", borderRadius: 24, padding: 18, position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, paddingRight: 42 }}>
               <div style={{ width: "100%", minWidth: 0 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", lineHeight: 1.35, marginBottom: 6, overflowWrap: "break-word" }}>
@@ -2751,16 +2761,75 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
+      <HomeHubDialog open={showHomeRoutine && !visibleRequiredUpdatePrompt}
+        title={dashboardText.routineTitle} closeLabel={dashboardText.close} compact
+        anchorRef={homeRoutineButtonRef}
+        onClose={() => setShowHomeRoutine(false)}>
+        <HomeRoutineActions
+          lang={lang}
+          qtDone={todayDone.qt}
+          prayerDone={todayDone.prayer}
+          prayerReady={homeDetailsReady.prayer}
+          onReflection={() => { setShowHomeRoutine(false); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
+          onPrayer={() => { setShowHomeRoutine(false); setShowHomePrayerCards(true); }}
+        />
+      </HomeHubDialog>
+      <HomeHubDialog open={showHomeChallenge && !personalChallengeDetails && !visibleRequiredUpdatePrompt}
+        title={dashboardText.challengeTitle} closeLabel={dashboardText.close}
+        onClose={() => setShowHomeChallenge(false)}>
+        <p style={{ margin: "8px 0 16px", lineHeight: 1.65, color: "var(--text2)" }} role="status">
+          {personalChallenge.loading ? dashboardText.loading : personalChallenge.error ? dashboardText.challengeLoadError : dashboardText.noChallenge}
+        </p>
+        {personalChallenge.error && <button type="button" className="btn-sage" onClick={personalChallenge.retry}>{dashboardText.retry}</button>}
+      </HomeHubDialog>
+      <HomeHubDialog open={showHomeDecisions && !visibleRequiredUpdatePrompt}
+        title={dashboardText.decisionsTitle} description={dashboardText.decisionsDescription}
+        closeLabel={dashboardText.close} busy={savingHomeDecision}
+        onClose={() => setShowHomeDecisions(false)}>
+        {!homeDetailsReady.decisions ? (
+          <button type="button" className="btn-outline" onClick={() => void load()}>{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
+        ) : myDecisions.length > 0 ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            {myDecisions.map((decision, index) => (
+              <HomeDecisionItem key={index} text={decision.text} done={decision.done} index={index}
+                isLast={index === myDecisions.length - 1} onToggle={() => void toggleMyDecision(index)} />
+            ))}
+          </div>
+        ) : !todayDone.qt ? (
+          <div>
+            <p style={{ color: "var(--text2)", lineHeight: 1.65, margin: "0 0 16px" }}>{dashboardText.decisionsBeforeReflection}</p>
+            <button type="button" className="btn-sage" style={{ width: "100%" }} onClick={() => { setShowHomeDecisions(false); openHomeQT(); }}>
+              {t("home_routine_qt_start", lang)}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={event => { event.preventDefault(); void saveHomeDecision(); }}>
+            <label htmlFor="home-decision-input" style={{ display: "block", marginBottom: 8, fontWeight: 650, color: "var(--text)" }}>{t("home_my_decision", lang)}</label>
+            <input id="home-decision-input" ref={homeDecisionInputRef} value={homeDecisionInput}
+              onChange={event => setHomeDecisionInput(event.target.value)} disabled={savingHomeDecision}
+              placeholder={t("home_next_step_decision_placeholder", lang)} className="input-field"
+              style={{ fontSize: 16, marginBottom: 14 }} />
+            <button type="submit" disabled={savingHomeDecision || !homeDecisionInput.trim()} className="btn-sage"
+              style={{ width: "100%", minHeight: 46, opacity: savingHomeDecision || !homeDecisionInput.trim() ? 0.55 : 1 }}>
+              {savingHomeDecision ? t("loading", lang) : t("home_next_step_decision_save", lang)}
+            </button>
+          </form>
+        )}
+      </HomeHubDialog>
+
       <PersonalReflectionChallengePopup
         show={!!personalChallengeDetails && !visibleRequiredUpdatePrompt && !showFirstLangPicker && !showOnboarding}
         mode="details"
         lang={lang}
-        earned={personalChallengeDetails?.awarded === true}
+        earned={personalChallengeDetails?.awarded === true || personalChallengeDetails?.isComplete === true}
+        completedDays={personalChallengeDetails?.completedDays}
+        failed={personalChallengeDetails?.hasMissedDay}
+        period={challengePeriod}
         title={personalChallengeDetails && personalChallengeDetails.challengeId !== NOVEMBER_PERSONAL_CHALLENGE_ID ? personalChallengeDetails.title : undefined}
         requiredDays={personalChallengeDetails?.requiredDays}
         rewardHearts={personalChallengeDetails?.rewardHearts}
         badgeImagePath={personalChallengeDetails?.badgeImagePath}
-        onClose={() => setPersonalChallengeDetails(null)}
+        onClose={() => setShowHomeChallenge(false)}
       />
       <PersonalReflectionChallengePopup
         show={visiblePersonalChallengeAnnouncement}
@@ -3021,21 +3090,20 @@ export default function HomePage() {
         />
       </div>
 
-      <div style={{ padding: "0 16px 14px" }}>
-        <div
-          className="card roots-elevation-card"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(104px, 0.95fr) minmax(0, 1.45fr)",
-            gap: 9,
-            alignItems: "center",
-            minHeight: 132,
-            padding: "9px 10px",
-            borderRadius: 22,
-            border: "1px solid var(--border)",
-            background: "var(--surface-card)",
-          }}
-        >
+      <HomeDashboardCards
+        lang={lang}
+        routineButtonRef={homeRoutineButtonRef}
+        routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
+        routineCompleted={Number(todayDone.qt) + Number(todayDone.prayer)}
+        challenge={currentHomeChallenge}
+        challengeLoading={personalChallenge.loading}
+        challengeError={personalChallenge.error}
+        decisionsCompleted={myDecisions.filter(decision => decision.done).length}
+        decisionsTotal={myDecisions.length}
+        onOpenRoutine={() => setShowHomeRoutine(true)}
+        onOpenChallenge={() => setShowHomeChallenge(true)}
+        onOpenDecisions={openDecisionSection}
+        character={(
           <button
             type="button"
             onClick={() => router.push("/profile")}
@@ -3075,169 +3143,9 @@ export default function HomePage() {
               {t("home_character_customize", lang)} ›
             </span>
           </button>
-
-          <div
-            style={{
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: 7,
-              alignSelf: "stretch",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                minHeight: 24,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 14,
-                padding: "0 0 1px",
-              }}
-            >
-              <div
-                role="img"
-                aria-label={`${t("home_routine_qt", lang)} ${Number(profile?.streak_days ?? 0)}`}
-                style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 auto" }}
-              >
-                <img src="/icon-qt.webp" alt="" width={22} height={22} style={{ objectFit: "contain" }} />
-                <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
-                  {Number(profile?.streak_days ?? 0)}
-                </span>
-              </div>
-              <div
-                role="img"
-                aria-label={`${t("home_routine_prayer", lang)} ${prayerDayCount ?? 0}`}
-                style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 auto" }}
-              >
-                <img src="/icon-pray.webp" alt="" width={22} height={22} style={{ objectFit: "contain" }} />
-                <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>
-                  {prayerDayCount ?? "–"}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={todayDone.qt ? openTodayQtRecord : openHomeQT}
-              className={todayDone.qt ? "card-sage roots-elevation-card-sage" : "roots-elevation-card"}
-              style={{
-                position: "relative",
-                width: "100%",
-                minWidth: 0,
-                minHeight: 46,
-                borderRadius: 16,
-                padding: todayDone.qt ? "6px 38px 6px 12px" : "9px 38px 9px 12px",
-                border: todayDone.qt ? "1px solid var(--border-sage-soft)" : "1px solid var(--border)",
-                background: todayDone.qt ? "var(--surface-sage-selected)" : "var(--surface-card)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                textAlign: "center",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <span
-                style={{
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <span
-                  style={{
-                    whiteSpace: "normal",
-                    overflowWrap: "break-word",
-                    fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
-                    fontWeight: 900,
-                    color: "var(--text)",
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {t(todayDone.qt ? "home_routine_qt_done" : "home_routine_qt_start", lang)}
-                </span>
-                {todayDone.qt && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
-                    {t("home_routine_view_record", lang)} <span aria-hidden="true">→</span>
-                  </span>
-                )}
-              </span>
-              {todayDone.qt ? (
-                <CheckCircle2
-                  size={17}
-                  strokeWidth={2.3}
-                  aria-hidden="true"
-                  style={{ position: "absolute", right: 13, color: "var(--sage-dark)" }}
-                />
-              ) : (
-                <ChevronRight
-                  size={17}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  style={{ position: "absolute", right: 13, color: "var(--text3)" }}
-                />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowHomePrayerCards(true)}
-              className="roots-elevation-card"
-              style={{
-                position: "relative",
-                width: "100%",
-                minWidth: 0,
-                minHeight: 46,
-                borderRadius: 16,
-                padding: "9px 38px 9px 12px",
-                border: todayDone.prayer ? "1px solid var(--daily-word-terra-border)" : "1px solid var(--border)",
-                background: todayDone.prayer ? "var(--daily-word-terra-surface)" : "var(--surface-card)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                textAlign: "center",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <span
-                style={{
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  whiteSpace: "normal",
-                  overflowWrap: "break-word",
-                  fontSize: lang === "fr" || lang === "es" ? 13 : lang === "en" ? 14 : 15,
-                  fontWeight: 900,
-                  color: "var(--text)",
-                  lineHeight: 1.1,
-                }}
-              >
-                {t(todayDone.prayer ? "home_routine_prayer_done" : homeDetailsReady.prayer ? "home_routine_prayer_start" : "home_routine_prayer", lang)}
-              </span>
-              {todayDone.prayer ? (
-                <CheckCircle2
-                  size={17}
-                  strokeWidth={2.3}
-                  aria-hidden="true"
-                  style={{ position: "absolute", right: 13, color: "var(--daily-word-terra-text)" }}
-                />
-              ) : (
-                <ChevronRight
-                  size={17}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  style={{ position: "absolute", right: 13, color: "var(--text3)" }}
-                />
-              )}
-            </button>
-          </div>
-        </div>
-
+        )}
+      />
+      <div style={{ padding: "0 16px 14px" }}>
         {pendingCompanionRequestCount > 0 && (
           <div
             className="roots-elevation-card-gold"
@@ -3305,86 +3213,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
-      <div style={{ padding: "0 16px 14px" }}>
-        <PersonalReflectionChallengeCard
-          lang={lang}
-          status={personalChallenge.status}
-          loading={personalChallenge.loading}
-          error={personalChallenge.error}
-          onRetry={personalChallenge.retry}
-          onOpen={() => { if (personalChallenge.status && !personalCampaignPopupBlocked) setPersonalChallengeDetails(personalChallenge.status); }}
-        />
-      </div>
-
-      {(todayDone.qt || myDecisions.length > 0) && (
-        <div ref={applySectionRef} style={{ padding: "0 16px 14px" }}>
-          <div className="sec-label">{t("home_apply_my", lang)}</div>
-          <div className="card" style={{ borderRadius: 22, padding: 18 }}>
-            {!homeDetailsReady.decisions ? (
-              <button type="button" onClick={() => void load()} className="btn-outline">{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
-            ) : myDecisions.length > 0 ? (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-                  <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
-                  </div>
-                  <div style={{ fontSize: 16, color: "var(--text)", lineHeight: 1.45, fontWeight: 800 }}>
-                    {t("home_next_step_decision_empty_sub", lang)}
-                  </div>
-                </div>
-                {myDecisions.map((d, i) => (
-                  <HomeDecisionItem
-                    key={i}
-                    done={d.done}
-                    index={i}
-                    isLast={i === myDecisions.length - 1}
-                    text={d.text}
-                    onToggle={() => void toggleMyDecision(i)}
-                  />
-                ))}
-              </>
-            ) : (
-              <div>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
-                  <div style={{ width: 54, height: 54, borderRadius: 18, background: "rgba(122,157,122,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <img src="/icon-decision.webp" alt="" width={40} height={40} style={{ objectFit: "contain" }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", lineHeight: 1.45, marginBottom: 6 }}>
-                      {t("home_next_step_decision_empty_title", lang)}
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.65 }}>
-                      {t("home_next_step_decision_empty_sub", lang)}
-                    </div>
-                  </div>
-                </div>
-                <input
-                  ref={homeDecisionInputRef}
-                  value={homeDecisionInput}
-                  onChange={(e) => setHomeDecisionInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !savingHomeDecision && homeDecisionInput.trim()) {
-                      saveHomeDecision();
-                    }
-                  }}
-                  placeholder={t("home_next_step_decision_placeholder", lang)}
-                  className="input-field"
-                  style={{ fontSize: 14, marginBottom: 10 }}
-                />
-                <button
-                  onClick={saveHomeDecision}
-                  disabled={savingHomeDecision || !homeDecisionInput.trim()}
-                  className="btn-sage"
-                  style={{ width: "100%", minHeight: 46, opacity: savingHomeDecision || !homeDecisionInput.trim() ? 0.55 : 1 }}
-                >
-                  {savingHomeDecision ? t("loading", lang) : t("home_next_step_decision_save", lang)}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div style={{ padding: "0 16px 14px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

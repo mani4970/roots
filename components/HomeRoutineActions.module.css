@@ -1,0 +1,39 @@
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 9px 25px 9px 9px;
+  background: var(--surface-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action:focus-visible { outline: 2px solid var(--sage-dark); outline-offset: 2px; }
+.actions:lang(ko) .action { font-size: 14px; }
+.copy { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow-wrap: anywhere; }
+.actions:lang(ko) .copy { word-break: keep-all; }
+.record { font-size: 11px; font-weight: 650; color: var(--sage-dark); }
+.indicator { position: absolute; right: 8px; color: var(--text2); }
+.reflectionDone { background: var(--surface-sage-selected); border-color: var(--border-sage-soft); }
+.reflectionDone .indicator { color: var(--sage-dark); }
+.prayerDone { background: var(--daily-word-terra-surface); border-color: var(--daily-word-terra-border); }
+.prayerDone .indicator { color: var(--daily-word-terra-text); }

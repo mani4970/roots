@@ -1194,9 +1194,10 @@ a { text-decoration: none; color: inherit; }
     pointer-events: auto;
   }
 }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 2px; background: none; border: none; color: var(--text3); font-size: 10px; font-weight: 400; cursor: pointer; text-decoration: none; }
-.nav-item.active { color: var(--sage); font-weight: 600; }
-.nav-item svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0 2px; background: none; border: none; color: var(--text-muted-readable); font-size: 10px; font-weight: 400; cursor: pointer; text-decoration: none; }
+.nav-item.active { color: var(--sage-dark); font-weight: 700; }
+.nav-item svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }
+.nav-item.active svg { color: var(--sage); }
 
 /* 진행 바 */
 .progress-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }

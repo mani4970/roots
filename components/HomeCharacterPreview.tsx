@@ -116,7 +116,7 @@ export default function HomeCharacterPreview({ ownerId, avatarType, alt, layers,
   }, [signature, itemsReady]);
 
   return (
-    <div aria-busy={phase === "loading"} style={{ position: "relative", width: "clamp(92px, 25vw, 112px)", aspectRatio: "1 / 1" }}>
+    <div aria-busy={phase === "loading"} style={{ position: "relative", width: "clamp(84px, 23.5vw, 104px)", aspectRatio: "1 / 1" }}>
       <div ref={previewRef} aria-hidden={!ready} style={{ visibility: ready ? "visible" : "hidden" }}>
         {itemsReady && (
           <ProfileCharacterPreview key={ownerId} avatarType={avatarType} alt={alt} layers={visibleLayers} forceSquareCanvas />

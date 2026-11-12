@@ -21,6 +21,8 @@ type PersonalReflectionChallengePopupProps = {
   title?: string;
   period?: string;
   requiredDays?: number;
+  completedDays?: number;
+  failed?: boolean;
   rewardHearts?: number;
   badgeImagePath?: string | null;
   onClose: () => void;
@@ -29,7 +31,7 @@ type PersonalReflectionChallengePopupProps = {
 
 export default function PersonalReflectionChallengePopup({
   show, mode, lang, earned = false, busy = false, title, period,
-  requiredDays = 11, rewardHearts = 30, badgeImagePath, onClose, onViewBadge,
+  requiredDays = 11, completedDays, failed = false, rewardHearts = 30, badgeImagePath, onClose, onViewBadge,
 }: PersonalReflectionChallengePopupProps) {
   const text = getPersonalChallengeText(lang);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -83,6 +85,10 @@ export default function PersonalReflectionChallengePopup({
   const badge = reveal ? actualBadge : PERSONAL_REFLECTION_CHALLENGE_MYSTERY_BADGE;
   const showTopBadge = mode === "announcement" || mode === "reward";
   const popupTitle = mode === "reward" ? text.rewardTitle : title || text.title;
+  const progressTarget = Number.isFinite(requiredDays) ? Math.max(1, Math.trunc(requiredDays)) : 1;
+  const progressDays = typeof completedDays === "number" && Number.isFinite(completedDays)
+    ? Math.min(progressTarget, Math.max(0, Math.trunc(completedDays))) : 0;
+  const progressStatus = earned ? text.complete : failed ? text.missed : text.active;
 
   return createPortal(
     <div
@@ -109,6 +115,21 @@ export default function PersonalReflectionChallengePopup({
         <p id={bodyId} style={{ margin: "0 0 25px", fontSize: 13, lineHeight: 1.8, color: "#30372F", wordBreak: lang === "ko" ? "keep-all" : "normal", overflowWrap: "anywhere" }}>
           {mode === "reward" ? text.awarded(rewardHearts) : <>{text.ruleFor(requiredDays)}<br />{text.rewardFor(rewardHearts)}</>}
         </p>
+        {mode === "details" && completedDays !== undefined && (
+          <div style={{ marginBottom: 23, textAlign: "left" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+              <span style={{ minWidth: 0, fontSize: 13, fontWeight: 650, lineHeight: 1.5, overflowWrap: "anywhere" }}>{text.completed(progressDays)}</span>
+              <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{progressDays} / {progressTarget}</span>
+            </div>
+            <div role="progressbar" aria-label={text.genericTitle}
+              aria-valuemin={0} aria-valuemax={progressTarget} aria-valuenow={progressDays}
+              aria-valuetext={`${text.completed(progressDays)} / ${text.goal(progressTarget)}. ${progressStatus}`}
+              style={{ height: 10, overflow: "hidden", borderRadius: 5, background: "#E8E3D8" }}>
+              <div style={{ height: "100%", width: `${progressDays / progressTarget * 100}%`, borderRadius: "inherit", background: "#B4934D" }} />
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: 12, lineHeight: 1.5, color: "#6E7468" }}>{progressStatus}</p>
+          </div>
+        )}
         {mode === "details" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 23 }}>
           <div style={{ width: 78, height: 78, flex: "0 0 78px" }}><img src={badge} alt={reveal ? text.badgeName : text.mystery} width={78} height={78} style={{ display: "block", width: 78, height: 78, objectFit: "contain" }} /></div>
           <span aria-hidden="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 78, height: 78, flex: "0 0 78px", fontSize: 34 }}>💛</span>
