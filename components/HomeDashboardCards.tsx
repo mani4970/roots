@@ -63,6 +63,7 @@ export default function HomeDashboardCards({
             <svg viewBox="0 0 44 44" fill="none">
               <circle className={styles.ringTrack} cx="22" cy="22" r="19" />
               <circle className={styles.ringValue} cx="22" cy="22" r="19" pathLength="100"
+                transform="rotate(-90 22 22)"
                 strokeDasharray={`${ratio * 100} 100`} opacity={ratio > 0 ? 1 : 0} />
             </svg>
             <span className={styles.ringCount}>{completed}/{target}</span>

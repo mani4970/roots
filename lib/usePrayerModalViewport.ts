@@ -10,6 +10,25 @@ function preserveStyles(element: HTMLElement, properties: string[]) {
   });
 }
 
+// Older WKWebView versions return DOMRects before CSS zoom, while newer WebKit
+// and Chromium return zoomed rects. Detect that coordinate system from the body
+// instead of dividing every rect by zoom a second time on older iPads.
+export function getPrayerViewportGeometry() {
+  const body = document.body;
+  const style = getComputedStyle(body);
+  const zoom = Number.parseFloat(style.zoom) || 1;
+  let layoutWidth = Number.parseFloat(style.width);
+  if (Number.isFinite(layoutWidth) && style.boxSizing !== "border-box") {
+    for (const value of [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]) {
+      layoutWidth += Number.parseFloat(value) || 0;
+    }
+  }
+  if (!(layoutWidth > 0)) layoutWidth = body.offsetWidth;
+  const rectWidth = body.getBoundingClientRect().width;
+  const rectScale = layoutWidth > 0 && rectWidth > 0 ? rectWidth / layoutWidth : zoom;
+  return { zoom, rectScale, rectToViewport: zoom / rectScale };
+}
+
 // Keep the scene behind a prayer form still. Only the front form uses the
 // keyboard's available height; viewport panning is compensated without transforms
 // (which would change the containing block of its fixed-position children).
@@ -26,10 +45,11 @@ export function usePrayerModalViewport(rootRef: RefObject<HTMLElement>, open: bo
     const initialTop = viewport?.offsetTop ?? 0;
     const initialLeft = viewport?.offsetLeft ?? 0;
     const bodyRect = body.getBoundingClientRect();
-    const bodyScreenTop = bodyRect.top - initialTop;
-    let bodyScreenLeft = bodyRect.left - initialLeft;
-    let bodyWidth = bodyRect.width;
-    let zoom = Number.parseFloat(getComputedStyle(body).zoom) || 1;
+    let geometry = getPrayerViewportGeometry();
+    const bodyScreenTop = bodyRect.top * geometry.rectToViewport - initialTop;
+    let bodyScreenLeft = bodyRect.left * geometry.rectToViewport - initialLeft;
+    let bodyWidth = bodyRect.width / geometry.rectScale;
+    let zoom = geometry.zoom;
     let layoutWidth = window.innerWidth;
     let sceneHeight = viewport?.height ?? window.innerHeight;
     let keyboardReduced = false;
@@ -48,14 +68,14 @@ export function usePrayerModalViewport(rootRef: RefObject<HTMLElement>, open: bo
       .filter(nav => nav.getClientRects().length > 0)
       .map(nav => ({
         nav,
-        gap: sceneHeight - (nav.getBoundingClientRect().bottom - initialTop),
+        gap: sceneHeight - (nav.getBoundingClientRect().bottom * geometry.rectToViewport - initialTop),
         restore: preserveStyles(nav, ["top", "bottom"]),
       }));
 
     html.style.overflow = "hidden";
     html.style.scrollBehavior = "auto";
     body.style.overflow = "hidden";
-    body.style.height = `${bodyRect.height / zoom}px`;
+    body.style.height = `${bodyRect.height / geometry.rectScale}px`;
 
     function updateViewport() {
       frame = 0;
@@ -76,8 +96,9 @@ export function usePrayerModalViewport(rootRef: RefObject<HTMLElement>, open: bo
         body.style.left = originalLeft;
         body.style.margin = originalMargin;
         const bounds = body.getBoundingClientRect();
-        bodyWidth = bounds.width;
-        bodyScreenLeft = bounds.left - left;
+        geometry = getPrayerViewportGeometry();
+        bodyWidth = bounds.width / geometry.rectScale;
+        bodyScreenLeft = bounds.left * geometry.rectToViewport - left;
         layoutWidth = window.innerWidth;
         zoom = nextZoom;
         sceneHeight = Math.max(visibleHeight, window.innerHeight);
@@ -92,7 +113,7 @@ export function usePrayerModalViewport(rootRef: RefObject<HTMLElement>, open: bo
 
       body.style.position = "fixed";
       body.style.margin = "0";
-      body.style.width = `${bodyWidth / zoom}px`;
+      body.style.width = `${bodyWidth}px`;
       body.style.left = `${(bodyScreenLeft + left) / zoom}px`;
       body.style.top = `${(bodyScreenTop + top) / zoom}px`;
       root!.style.setProperty("--prayer-visible-height", `${visibleHeight / zoom}px`);
@@ -100,7 +121,7 @@ export function usePrayerModalViewport(rootRef: RefObject<HTMLElement>, open: bo
       root!.style.setProperty("--prayer-scene-height", `${sceneHeight / zoom}px`);
       root!.style.setProperty("--prayer-scene-top", `${top / zoom}px`);
       for (const { nav, gap } of navs) {
-        nav.style.top = `${(sceneHeight - gap - nav.getBoundingClientRect().height + top) / zoom}px`;
+        nav.style.top = `${(sceneHeight - gap - nav.getBoundingClientRect().height * geometry.rectToViewport + top) / zoom}px`;
         nav.style.bottom = "auto";
       }
     }

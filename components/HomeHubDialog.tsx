@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, type ReactNode, type RefObje
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
-import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
+import { getPrayerViewportGeometry, usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
 import styles from "./HomeHubDialog.module.css";
 
@@ -62,9 +62,19 @@ export default function HomeHubDialog({
     function position() {
       frame = 0;
       if (!root || !popover || !anchor) return;
-      const rootBounds = root.getBoundingClientRect();
-      // DOM rects are visual pixels; absolute offsets are local CSS pixels.
-      // Measuring this ratio keeps the pointer attached under native body zoom.
+      // Normalize older WKWebView's unzoomed DOMRects before mixing them with
+      // visualViewport coordinates; newer WebKit/Chromium already use visual px.
+      const { rectToViewport } = getPrayerViewportGeometry();
+      const boundsInViewport = (element: HTMLElement) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          left: bounds.left * rectToViewport, right: bounds.right * rectToViewport,
+          top: bounds.top * rectToViewport, bottom: bounds.bottom * rectToViewport,
+          width: bounds.width * rectToViewport, height: bounds.height * rectToViewport,
+        };
+      };
+      const rootBounds = boundsInViewport(root);
+      // Absolute offsets remain local CSS pixels inside the zoomed overlay.
       const scale = root.clientWidth ? rootBounds.width / root.clientWidth : 1;
       if (!scale || !rootBounds.width || !rootBounds.height) return;
       const rootStyle = getComputedStyle(root);
@@ -77,7 +87,7 @@ export default function HomeHubDialog({
       const insetX = 14 * scale;
       // The overlay fills the window, but the home cards can be a narrower,
       // centered column. Keep the popup and its pointer inside that column too.
-      const boundaryBounds = boundary.getBoundingClientRect();
+      const boundaryBounds = boundsInViewport(boundary);
       const boundaryScale = boundary.offsetWidth ? boundaryBounds.width / boundary.offsetWidth : scale;
       const boundaryStyle = getComputedStyle(boundary);
       const contentLeft = boundaryBounds.left + (Number.parseFloat(boundaryStyle.paddingLeft) || 0) * boundaryScale;
@@ -89,8 +99,8 @@ export default function HomeHubDialog({
       popover.style.width = `${Math.min(220, availableWidth)}px`;
       popover.style.setProperty("--popover-max-height", `${availableHeight}px`);
 
-      const bounds = popover.getBoundingClientRect();
-      const anchorBounds = anchor.getBoundingClientRect();
+      const bounds = boundsInViewport(popover);
+      const anchorBounds = boundsInViewport(anchor);
       const anchorCenterY = (anchorBounds.top + anchorBounds.bottom) / 2;
       // Begin halfway across the routine card, keeping the menu beside its
       // visible left half even when there is room beyond the app column.

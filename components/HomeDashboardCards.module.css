@@ -127,8 +127,6 @@
   stroke: var(--text-gold-strong);
   stroke-width: 3;
   stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: 22px 22px;
 }
 .ringCount {
   position: absolute;
