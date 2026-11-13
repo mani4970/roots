@@ -27,8 +27,8 @@ type HomeDashboardText = {
 
 const TEXT: Record<Lang, HomeDashboardText> = {
   ko: {
-    routineTitle: "영적 루틴", challengeTitle: "챌린지", decisionsTitle: "오늘의 결단",
-    routineCardTitle: ["영적 루틴"], decisionsCardTitle: ["오늘의 결단"],
+    routineTitle: "묵상과 기도", challengeTitle: "챌린지", decisionsTitle: "오늘의 결단",
+    routineCardTitle: ["묵상과 기도"], decisionsCardTitle: ["오늘의 결단"],
     decisionsDescription: "하나님이 주신 말씀에 작은 것부터 하나씩 순종해보세요.",
     decisionsBeforeReflection: "말씀을 묵상하며 작은 결단 하나를 세워보세요.",
     noChallenge: "현재 진행 중인 챌린지가 없어요.", noChallengeShort: "진행 중인 챌린지 없음",
@@ -43,8 +43,8 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     decisionsEmptyShort: "작은 것부터",
   },
   en: {
-    routineTitle: "Spiritual routine", challengeTitle: "Challenge", decisionsTitle: "Today’s commitment",
-    routineCardTitle: ["Spiritual", "routine"], decisionsCardTitle: ["Today’s", "commitment"],
+    routineTitle: "Reflection and prayer", challengeTitle: "Challenge", decisionsTitle: "Today’s commitment",
+    routineCardTitle: ["Reflection &", "prayer"], decisionsCardTitle: ["Today’s", "commitment"],
     decisionsDescription: "Put God’s Word into practice, one small step of obedience at a time.",
     decisionsBeforeReflection: "As you reflect on God’s Word, make one small commitment.",
     noChallenge: "There is no active challenge right now.", noChallengeShort: "No active challenge",
@@ -59,8 +59,8 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     decisionsEmptyShort: "Start small",
   },
   de: {
-    routineTitle: "Geistliche Routine", challengeTitle: "Challenge", decisionsTitle: "Heutiger Vorsatz",
-    routineCardTitle: ["Geistliche", "Routine"], decisionsCardTitle: ["Heutiger", "Vorsatz"],
+    routineTitle: "Stille Zeit und Gebet", challengeTitle: "Challenge", decisionsTitle: "Heutiger Vorsatz",
+    routineCardTitle: ["Stille Zeit &", "Gebet"], decisionsCardTitle: ["Heutiger", "Vorsatz"],
     decisionsDescription: "Setze Gottes Wort Schritt für Schritt im Kleinen in die Tat um.",
     decisionsBeforeReflection: "Fasse in deiner Stillen Zeit einen kleinen Vorsatz.",
     noChallenge: "Zurzeit gibt es keine laufende Challenge.", noChallengeShort: "Keine aktive Challenge",
@@ -75,8 +75,8 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     decisionsEmptyShort: "Klein anfangen",
   },
   fr: {
-    routineTitle: "Routine spirituelle", challengeTitle: "Défi", decisionsTitle: "Engagement du jour",
-    routineCardTitle: ["Routine", "spirituelle"], decisionsCardTitle: ["Engagement", "du jour"],
+    routineTitle: "Méditation et prière", challengeTitle: "Défi", decisionsTitle: "Engagement du jour",
+    routineCardTitle: ["Méditation &", "prière"], decisionsCardTitle: ["Engagement", "du jour"],
     decisionsDescription: "Mets la Parole de Dieu en pratique, un petit pas d’obéissance à la fois.",
     decisionsBeforeReflection: "En méditant la Parole de Dieu, prends un petit engagement.",
     noChallenge: "Aucun défi n’est en cours pour le moment.", noChallengeShort: "Aucun défi en cours",
@@ -91,8 +91,8 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     decisionsEmptyShort: "Un petit pas",
   },
   es: {
-    routineTitle: "Rutina espiritual", challengeTitle: "Reto", decisionsTitle: "Compromiso de hoy",
-    routineCardTitle: ["Rutina", "espiritual"], decisionsCardTitle: ["Compromiso", "de hoy"],
+    routineTitle: "Devocional y oración", challengeTitle: "Reto", decisionsTitle: "Compromiso de hoy",
+    routineCardTitle: ["Devocional &", "oración"], decisionsCardTitle: ["Compromiso", "de hoy"],
     decisionsDescription: "Pon en práctica la Palabra de Dios, con pequeños pasos de obediencia.",
     decisionsBeforeReflection: "Al meditar en la Palabra de Dios, haz un pequeño compromiso.",
     noChallenge: "No hay ningún reto activo en este momento.", noChallengeShort: "No hay retos activos",

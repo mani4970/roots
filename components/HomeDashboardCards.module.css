@@ -73,6 +73,7 @@
 
 .dashboard:lang(ko) .title { word-break: keep-all; }
 .titleLine { display: block; }
+.routine .titleLine { white-space: nowrap; }
 
 .decisionHeader {
   display: flex;
