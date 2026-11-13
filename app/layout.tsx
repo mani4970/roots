@@ -6,6 +6,7 @@ import NativeStatusBar from "@/components/NativeStatusBar";
 import IPhoneRequiredUpdateGate from "@/components/IPhoneRequiredUpdateGate";
 import NotificationBridge from "@/components/NotificationBridge";
 import CommentNotificationsProvider from "@/components/notifications/CommentNotificationsProvider";
+import BottomNavSessionProvider from "@/components/BottomNavSessionProvider";
 import AndroidBackButtonBridge from "@/components/AndroidBackButtonBridge";
 import AppObservationBridge from "@/components/AppObservationBridge";
 import { FALLBACK_LANG, SUPPORTED_LANGS } from "@/lib/i18n";
@@ -102,7 +103,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NotificationBridge />
         <AndroidBackButtonBridge />
         <AppObservationBridge />
-        <CommentNotificationsProvider>{children}</CommentNotificationsProvider>
+        <CommentNotificationsProvider>
+          <BottomNavSessionProvider>{children}</BottomNavSessionProvider>
+        </CommentNotificationsProvider>
         <Analytics />
       </body>
     </html>

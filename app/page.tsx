@@ -5,6 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { useBottomNavSession } from "@/components/BottomNavSessionProvider";
 import TreeGrowth from "@/components/TreeGrowth";
 import Celebration from "@/components/Celebration";
 import ConfettiBurst from "@/components/ConfettiBurst";
@@ -282,6 +283,7 @@ type HomePrayerObservationAttempt = {
 
 export default function HomePage() {
   const router = useRouter();
+  const { hasShownNavigation } = useBottomNavSession();
   const [profile, setProfile] = useState<any>(null);
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
@@ -2501,12 +2503,12 @@ export default function HomePage() {
     return false;
   });
 
-  // Keep navigation in the same sibling position while Home loads or retries.
-  // It must also stay outside content transforms so fixed positioning is stable.
+  // Keep the first app load free of navigation. Once a tab has been displayed,
+  // preserve it in the same sibling position during Home returns and retries.
   if (loading) return (
     <>
       <HomeLoadingScreen lang={lang} christmas={isChristmasLoadingDate(challengeLocalDate)} />
-      <BottomNav lang={lang} />
+      {hasShownNavigation && <BottomNav lang={lang} />}
     </>
   );
 
@@ -2532,7 +2534,7 @@ export default function HomePage() {
         {HOME_LOCAL_TEXT[lang].retry}
       </button>
     </div>
-    <BottomNav lang={lang} />
+    {hasShownNavigation && <BottomNav lang={lang} />}
     </>
   );
 

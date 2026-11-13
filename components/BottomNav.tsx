@@ -1,15 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { useCommentNotifications } from "@/components/notifications/CommentNotificationsProvider";
 import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
+import { useBottomNavSession } from "@/components/BottomNavSessionProvider";
 
 function BottomNavContent({ lang }: { lang: Lang }) {
   const path = usePathname();
   const { unread } = useCommentNotifications();
+  const { markNavigationShown } = useBottomNavSession();
+
+  useEffect(() => {
+    markNavigationShown();
+  }, [markNavigationShown]);
 
   const NAV = [
     {
