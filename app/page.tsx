@@ -2501,9 +2501,17 @@ export default function HomePage() {
     return false;
   });
 
-  if (loading) return <HomeLoadingScreen lang={lang} christmas={isChristmasLoadingDate(challengeLocalDate)} />;
+  // Keep navigation in the same sibling position while Home loads or retries.
+  // It must also stay outside content transforms so fixed positioning is stable.
+  if (loading) return (
+    <>
+      <HomeLoadingScreen lang={lang} christmas={isChristmasLoadingDate(challengeLocalDate)} />
+      <BottomNav lang={lang} />
+    </>
+  );
 
   if (homeLoadFailed || !profile) return (
+    <>
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 28, textAlign: "center" }}>
       <img
         src="/roots-logo-transparent-160.png"
@@ -2524,10 +2532,13 @@ export default function HomePage() {
         {HOME_LOCAL_TEXT[lang].retry}
       </button>
     </div>
+    <BottomNav lang={lang} />
+    </>
   );
 
   return (
-    <div className="page fade-in roots-home-phase1">
+    <>
+    <div className="page roots-home-phase1">
       {toast && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
@@ -3266,9 +3277,8 @@ export default function HomePage() {
           </button>
         </div>
       </div>
-
-
-      <BottomNav />
     </div>
+    <BottomNav lang={lang} />
+    </>
   );
 }
