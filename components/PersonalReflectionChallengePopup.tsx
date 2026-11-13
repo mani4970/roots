@@ -6,6 +6,7 @@ import { Loader2, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
+import ObservationPopup from "./ObservationPopup";
 import {
   getPersonalChallengeText,
   PERSONAL_REFLECTION_CHALLENGE_BADGE,
@@ -25,13 +26,18 @@ type PersonalReflectionChallengePopupProps = {
   failed?: boolean;
   rewardHearts?: number;
   badgeImagePath?: string | null;
+  rewardObservation?: {
+    userId: string | null | undefined;
+    queued: boolean;
+    instanceKey?: string | object | null;
+  };
   onClose: () => void;
   onViewBadge?: () => void;
 };
 
 export default function PersonalReflectionChallengePopup({
   show, mode, lang, earned = false, busy = false, title, period,
-  requiredDays = 11, completedDays, failed = false, rewardHearts = 30, badgeImagePath, onClose, onViewBadge,
+  requiredDays = 11, completedDays, failed = false, rewardHearts = 30, badgeImagePath, rewardObservation, onClose, onViewBadge,
 }: PersonalReflectionChallengePopupProps) {
   const text = getPersonalChallengeText(lang);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -78,7 +84,7 @@ export default function PersonalReflectionChallengePopup({
     };
   }, [show, mode]);
 
-  if (!show || typeof document === "undefined") return null;
+  if (typeof document === "undefined" || (!show && !rewardObservation?.queued)) return null;
 
   const actualBadge = badgeImagePath || PERSONAL_REFLECTION_CHALLENGE_BADGE;
   const reveal = mode !== "details" || earned;
@@ -91,7 +97,11 @@ export default function PersonalReflectionChallengePopup({
   const progressStatus = earned ? text.complete : failed ? text.missed : text.active;
 
   return createPortal(
-    <div
+    // Keep queued rewards observable before they become visible, and measure
+    // their actual portal content rather than an empty marker on the home page.
+    <ObservationPopup userId={rewardObservation?.userId} kind="challenge_reward"
+      queued={rewardObservation?.queued === true} instanceKey={rewardObservation?.instanceKey}>
+    {show && <div
       ref={rootRef} lang={lang}
       style={{ position: "fixed", insetInline: 0, top: "var(--prayer-visible-top, 0px)", height: "var(--prayer-visible-height, 100vh)", zIndex: 270,
         display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", isolation: "isolate",
@@ -143,6 +153,7 @@ export default function PersonalReflectionChallengePopup({
           </button>
         </div>
       </div>
-    </div>, document.body,
+    </div>}
+    </ObservationPopup>, document.body,
   );
 }

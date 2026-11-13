@@ -84,7 +84,7 @@ export default function CommentNotificationsProvider({
       .catch(() => {});
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((event, session) => {
+    } = client.auth.onAuthStateChange((_event, session) => {
       authEventSeen = true;
       acceptUser(session?.user.id ?? null);
     });

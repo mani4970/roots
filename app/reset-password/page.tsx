@@ -15,7 +15,6 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [checkingSession, setCheckingSession] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -50,11 +49,9 @@ export default function ResetPasswordPage() {
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!active) return;
-        setHasSession(Boolean(session));
         if (!session) setError(t("reset_password_session_error", lang));
       } catch {
         if (!active) return;
-        setHasSession(false);
         setError(t("reset_password_session_error", lang));
       } finally {
         if (active) setCheckingSession(false);
@@ -83,7 +80,6 @@ export default function ResetPasswordPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setHasSession(false);
         setError(t("reset_password_session_error", lang));
         return;
       }
@@ -92,7 +88,6 @@ export default function ResetPasswordPage() {
       await supabase.auth.signOut();
       setPassword("");
       setConfirmPassword("");
-      setHasSession(false);
       setMessage(t("reset_password_success", lang));
       window.setTimeout(() => {
         const loginPath = `/login?lang=${encodeURIComponent(lang)}`;

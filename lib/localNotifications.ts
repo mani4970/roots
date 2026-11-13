@@ -122,15 +122,6 @@ function addDays(date: Date, days: number) {
   return next;
 }
 
-function nextDateForTime(time: NotificationTime, dayOffset = 0) {
-  const now = new Date();
-  const target = addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate(), time.hour, time.minute, 0, 0), dayOffset);
-  if (dayOffset === 0 && target <= now) {
-    target.setDate(target.getDate() + 1);
-  }
-  return target;
-}
-
 function dateForTimeOnDay(time: NotificationTime, dayOffset: number) {
   const now = new Date();
   return addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate(), time.hour, time.minute, 0, 0), dayOffset);

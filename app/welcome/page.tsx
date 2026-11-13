@@ -283,16 +283,6 @@ function getWelcomeRedirect() {
   return `?redirect=${encodeURIComponent(redirect)}`;
 }
 
-function IconLeaf() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <path d="M16 28 Q14 20 16 12" stroke="var(--auth-sage-text)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M16 18 Q8 14 7 6 Q16 7 16 16" fill="var(--auth-sage-text)" opacity={0.7} />
-      <path d="M16 14 Q24 10 25 2 Q16 3 16 12" fill="var(--auth-sage-text)" opacity={0.6} />
-    </svg>
-  );
-}
-
 // ── Badge image ───────────────────────────────────────────────────
 
 const WELCOME_FRUIT_FILE_KEYS = ["love", "joy", "peace"] as const;

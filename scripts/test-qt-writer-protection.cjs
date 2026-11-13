@@ -25,6 +25,7 @@ function createContext(options = {}) {
   const state = {
     rows: options.rows ?? [{ id: "draft-1", is_draft: true, meditation: "draft text" }],
     routes: [], queries: [], notices: [], recipients: [], progress: [], savedSnapshots: [],
+    challengeCaptures: [], challengeCompletions: [], shareBadgeChecks: [], homeReturns: [],
     recipientsFailures: options.recipientsFailures ?? 0,
     progressFailures: options.progressFailures ?? 0,
     removed: 0, bodyWrites: 0,
@@ -39,6 +40,8 @@ function createContext(options = {}) {
     window: { clearTimeout },
     saving: false, completionSavingRef: { current: false },
     pendingCompletionRef: { current: null },
+    completionShareRecordRef: { current: null }, completionHomeReturnRef: { current: null },
+    resumePendingRef: { current: null }, resumeGenerationRef: { current: 0 },
     autoSaveTimerRef: { current: null }, draftSaveChainRef: { current: Promise.resolve() },
     selectedDate: options.date ?? "2026-09-06", todayStr: "2026-09-06",
     mode: options.mode ?? "free", selectedTranslation: 92, cur: 5,
@@ -49,7 +52,7 @@ function createContext(options = {}) {
     editId: options.edit ? "record-edit" : null,
     draftBackupUserId: "user-1", hasSchedule: false,
     latestDraftSnapshotRef: { current: null }, lastLocalBackupSignatureRef: { current: "" },
-    router: { push: url => state.routes.push(url) },
+    router: { push: url => state.routes.push(url), replace: url => state.routes.push(url) },
     leaveAfterSave: action => action(),
     getLocalDateString: () => "2026-09-06",
     nextDraftClientUpdatedAt: () => "2026-09-06T12:00:00.000Z",
@@ -70,13 +73,25 @@ function createContext(options = {}) {
     },
     markBibleReflectionCompletedForNotifications: async () => {},
     createBibleReflectionShareNotificationsBestEffort: async () => {},
+    // Imported service boundaries stay offline; retain their inputs so the
+    // actual writer's completion ordering and retry snapshot can be checked.
+    capturePersonalChallengeCompletion: (userId, completionDate) => {
+      const proof = options.personalChallengeContext ?? null;
+      state.challengeCaptures.push({ userId, completionDate, proof });
+      return proof;
+    },
+    recordPersonalChallengeReflectionCompletedBestEffort: async (_client, userId, date, recordId, proof) => {
+      state.challengeCompletions.push({ userId, date, recordId, proof });
+    },
+    checkAndAwardQtShareBadges: async (_client, userId) => { state.shareBadgeChecks.push(userId); },
+    markPostReflectionHomeReturn: completion => { state.homeReturns.push(completion); },
   };
   for (const [setter, name] of Object.entries({
     setChapter: "chapter", setStartV: "startV", setEndV: "endV", setEndChapter: "endChapter", setCrossChapter: "crossChapter",
     setCompletionReady: "completionReady", setSaving: "saving", setPendingCompletion: "pendingCompletion", setShowCompleteSharePrompt: "showCompleteSharePrompt",
     setBibleStep: "bibleStep", setPassageVerses: "passageVerses", setBibleRef: "bibleRef",
     setPassages: "passages", setKeyVerse: "keyVerse", setSelectedVerseNums: "selectedVerseNums",
-    setPassageExpanded: "passageExpanded", setVersePreviewExpanded: "versePreviewExpanded",
+    setPassageExpanded: "passageExpanded",
     setBibleError: "bibleError", setFreeText: "freeText", setDecisions: "decisions",
   })) context[setter] = value => { context[name] = value; };
 
@@ -108,7 +123,8 @@ function createContext(options = {}) {
   vm.runInContext(extract("hasMeaningfulQTWriteDraftContent", contentTree), context);
   for (const name of [
     "handleChapterChange", "getDraftSnapshot", "getDraftSignature", "hasDraftContent", "persistDraftBackup",
-    "buildStandardBibleRef", "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion", "save",
+    "buildStandardBibleRef", "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion",
+    "cancelDeferredResume", "returnHomeAfterCompletion", "save",
   ]) vm.runInContext(extract(name), context);
   return { state, context };
 }
@@ -128,16 +144,21 @@ async function run() {
     assert.equal(state.savedSnapshots[0].decisions[0], "My decision");
   }
   for (const mode of ["free", "6step", "sunday"]) {
-    const { context, state } = createContext({ mode, recipientsFailures: 1 });
+    const proof = Object.freeze({ userId: "user-1", completionDate: "2026-09-06", utcOffsetMinutes: 0, capturedAt: "2026-09-06T12:00:00.000Z" });
+    const { context, state } = createContext({ mode, recipientsFailures: 1, personalChallengeContext: proof });
     context.answers = { meditation: "My saved reflection", closing_prayer: "Prayer" };
+    context.resumePendingRef.current = { context: "pending foreground draft" };
     const targets = ["partner-a"];
     await context.save({ visibility: "group-a", partnerRecipientIds: targets });
+    assert.equal(context.resumePendingRef.current, null, "Completion cancels deferred draft resumption");
+    assert.equal(context.resumeGenerationRef.current, 1, "Already queued draft guards become invalid");
     assert.equal(state.rows[0].is_draft, false);
     assert(context.pendingCompletionRef.current?.failed, "Committed record enters explicit recovery state");
     assert.equal(state.routes.length, 0, "Do not navigate before progress");
     assert.notEqual(context.completionReady, true, "Do not complete before progress");
     assert.equal(state.bodyWrites, 1);
     assert.equal(state.removed, 0);
+    assert.equal(state.challengeCompletions.length, 0, "Challenge completion waits for the existing progress gate");
     assert.equal(context.persistDraftBackup(), false, "Committed writer cannot recreate a draft");
     // A retry must ignore changed invocation arguments and preserve committed data.
     targets.push("partner-mutated");
@@ -148,7 +169,17 @@ async function run() {
     assert.equal(state.recipients.length, 2);
     assert.equal(state.recipients[1].recipients.join(","), "partner-a", "Original target snapshot survives retry");
     assert.equal(state.progress.length, 1);
+    assert.equal(state.challengeCaptures.length, 1, "Retry reuses the context captured before the saved body");
+    assert.equal(state.challengeCompletions.length, 1);
+    assert.equal(state.challengeCompletions[0].proof, state.challengeCaptures[0].proof);
+    assert.equal(context.completionShareRecordRef.current.meditation, "My saved reflection", "Share preview retains the committed body on retry");
     assert.equal(context.completionReady, true, "Existing in-page completion screen is ready");
+    context.returnHomeAfterCompletion();
+    assert.equal(state.homeReturns.length, 1, "Confirmed completion carries its record back to Home");
+    assert.equal(state.homeReturns[0].qtRecordId, "draft-1");
+    assert.equal(state.routes.at(-1), "/");
+    context.returnHomeAfterCompletion();
+    assert.equal(state.homeReturns.length, 1, "The same completion handoff is consumed once");
   }
   {
     const { context, state } = createContext({ progressFailures: 1 });

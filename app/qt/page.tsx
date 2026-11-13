@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
-import { storageGet, storageSet } from "@/lib/clientStorage";
+import { storageSet } from "@/lib/clientStorage";
 import {
   getPreferredTranslationForLang,
   getStoredLang,

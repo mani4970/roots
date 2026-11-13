@@ -894,8 +894,16 @@ const remainingCopyStandaloneRecords = [
     audit: auditDeepStandaloneLanguageRecord("app/welcome/page.tsx", "const TEXTS"),
   },
   {
-    label: "lib/requiredUpdateText.ts",
-    audit: auditDeepStandaloneLanguageRecord("lib/requiredUpdateText.ts", "const TEXT"),
+    label: "lib/requiredUpdateText.ts iPhone update",
+    audit: auditDeepStandaloneLanguageRecord("lib/requiredUpdateText.ts", "const IPHONE_222_TEXT"),
+  },
+  {
+    label: "lib/requiredUpdateText.ts required update",
+    audit: auditDeepStandaloneLanguageRecord("lib/requiredUpdateText.ts", "const REQUIRED_TEXT"),
+  },
+  {
+    label: "lib/requiredUpdateText.ts optional update",
+    audit: auditDeepStandaloneLanguageRecord("lib/requiredUpdateText.ts", "const OPTIONAL_TEXT"),
   },
   {
     label: "lib/inAppBrowser.ts",
@@ -1006,6 +1014,10 @@ const rewardTranslationObjects = [
 
 const stagedStandaloneRecords = [
   {
+    label: "lib/homeDashboardText.ts",
+    audit: auditStandaloneLanguageRecord("lib/homeDashboardText.ts", "const TEXT"),
+  },
+  {
     label: "lib/localNotifications.ts",
     audit: auditStandaloneLanguageRecord("lib/localNotifications.ts", "const messages"),
   },
@@ -1038,8 +1050,12 @@ const stagedStandaloneRecords = [
     audit: auditStandaloneLanguageRecord("lib/sharePromptOptions.ts", "const SHARE_PROMPT_BULK_SELECTION_LABELS"),
   },
   {
-    label: "components/CompanionChallengeAnnouncementPopup.tsx",
-    audit: auditStandaloneLanguageRecord("components/CompanionChallengeAnnouncementPopup.tsx", "const COPY"),
+    label: "lib/companionChallengeCampaign.ts September history",
+    audit: auditStandaloneLanguageRecord("lib/companionChallengeCampaign.ts", "const COMPANION_CHALLENGE_3_COPY"),
+  },
+  {
+    label: "lib/companionChallengeCampaign.ts October history",
+    audit: auditStandaloneLanguageRecord("lib/companionChallengeCampaign.ts", "const COMPANION_CHALLENGE_4_COPY"),
   },
   {
     label: "components/MessengerShareAnnouncementPopup.tsx",
@@ -1128,7 +1144,7 @@ const criticalSpanishCopyChecks = [
   },
   {
     label: "Localized prayer accessibility label",
-    relativePath: "app/prayer/page.tsx",
+    relativePath: "components/PrayerExperience.tsx",
     fragments: ['iconAlt={c("nav_prayer")}'],
   },
   {
@@ -1273,7 +1289,11 @@ const centralTranslationsRequireEveryLanguage = /type\s+Translation\s*=\s*Record
 const dateSource = read("lib/date.ts");
 const spanishDateLocaleIsConfigured = /\bes\s*:\s*["']es-ES["']/.test(dateSource);
 const welcomeSource = read("app/welcome/page.tsx");
-const welcomeSelectorIncludesSpanish = /WELCOME_LANG_ORDER\s*=\s*\[[^\]]*["']es["']/.test(welcomeSource) && /if\s*\(isLang\(stored\)\)/.test(welcomeSource);
+const welcomeSelectorIncludesSpanish = /WELCOME_LANG_ORDER\s*=\s*\[[^\]]*["']es["']/.test(welcomeSource)
+  && /code:\s*["']es["'][\s\S]*?name:\s*["']Español["']/.test(welcomeSource)
+  && welcomeSource.includes("WELCOME_LANG_ORDER.includes(value as WelcomeCopyLang)")
+  && /if\s*\(isWelcomeCopyLang\(stored\)\)/.test(welcomeSource)
+  && welcomeSource.includes("LANG_LIST.map((opt)");
 const inviteLandingSource = read("lib/inviteLandingText.ts");
 const inviteSelectorIncludesSpanish = /value:\s*["']es["'][\s\S]*?label:\s*["']Español["'][\s\S]*?shortLabel:\s*["']ES["']/.test(inviteLandingSource);
 const authCallbackSource = read("app/auth/callback/route.ts");
@@ -1288,7 +1308,9 @@ const layoutSource = read("app/layout.tsx");
 const useLangSource = read("lib/useLang.ts");
 const documentLanguageIsSynchronized = layoutSource.includes("document.documentElement.lang = savedLang") && useLangSource.includes("document.documentElement.lang = lang");
 const homeSource = read("app/page.tsx");
-const homeChapterSupportsSpanish = /function\s+formatChapterReference\([^)]*lang:\s*Lang\)/.test(homeSource);
+const homeDashboardSupportsSpanish = homeSource.includes("getHomeDashboardText(lang)")
+  && read("components/HomeDashboardCards.tsx").includes("getHomeDashboardText(lang)")
+  && read("lib/homeDashboardText.ts").includes('routineTitle: "Devocional y oración"');
 const photoDateUsesLanguageLocale = /toLocaleDateString\(getDateLocale\(lang\)\)/.test(read("app/qt/photo/page.tsx"));
 const androidOfflineSource = read("android/app/src/main/java/com/rootspuce/app/MainActivity.java");
 const iosOfflineSource = read("ios/App/App/AppDelegate.swift");
@@ -1486,7 +1508,7 @@ console.log(`  - Capacitor OAuth callback accepts es: ${capacitorOAuthAcceptsSpa
 console.log(`  - Notification API accepts es: ${notificationApiAcceptsSpanish ? "yes" : "no"}`);
 console.log(`  - Reflection nudge API accepts es: ${reflectionNudgeApiAcceptsSpanish ? "yes" : "no"}`);
 console.log(`  - Document <html lang> follows the selected language: ${documentLanguageIsSynchronized ? "yes" : "no"}`);
-console.log(`  - Home chapter references accept Spanish: ${homeChapterSupportsSpanish ? "yes" : "no"}`);
+console.log(`  - Home dashboard uses localized Spanish copy: ${homeDashboardSupportsSpanish ? "yes" : "no"}`);
 console.log(`  - Photo catch-up date uses the selected locale: ${photoDateUsesLanguageLocale ? "yes" : "no"}`);
 console.log(`  - Android offline screen includes Spanish: ${androidOfflineHasSpanish ? "yes" : "no"}`);
 console.log(`  - iOS offline screen includes Spanish: ${iosOfflineHasSpanish ? "yes" : "no"}`);
@@ -1590,7 +1612,7 @@ const strictFailures = [
   !notificationApiAcceptsSpanish,
   !reflectionNudgeApiAcceptsSpanish,
   !documentLanguageIsSynchronized,
-  !homeChapterSupportsSpanish,
+  !homeDashboardSupportsSpanish,
   !photoDateUsesLanguageLocale,
   !androidOfflineHasSpanish,
   !iosOfflineHasSpanish,

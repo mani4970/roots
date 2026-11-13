@@ -76,9 +76,7 @@ import {
   getAnsweredPrayerTime,
   getPrayerShareActivityTime,
   getQtShareActivityTime,
-  sortAnsweredPrayerRows,
   sortCommunityPrayerRows,
-  sortPrayerRequestRows,
   sortQtRowsByCompletion,
 } from "@/lib/communityContentOrder";
 import { copyText, shareInvite as shareInviteContent } from "@/lib/nativeShare";
@@ -341,10 +339,6 @@ function isLaterThan(left?: string | null, right?: string | null) {
   return new Date(left).getTime() > new Date(right).getTime();
 }
 
-function sharedContentTime(row: any): string | null {
-  return row?.shared_at ?? row?.created_at ?? null;
-}
-
 function qtUnreadActivityTime(row: any): string | null {
   return getQtShareActivityTime(row);
 }
@@ -460,17 +454,6 @@ async function fetchPrayerFeedRows(
       answeredAtQuery.error ? [] : (answeredAtQuery.data ?? []),
     ]),
   );
-}
-
-function latestSharedContentTime(rows?: any[] | null): string | null {
-  if (!rows || rows.length === 0) return null;
-  return rows
-    .map(sharedContentTime)
-    .filter(Boolean)
-    .sort(
-      (a, b) =>
-        new Date(b as string).getTime() - new Date(a as string).getTime(),
-    )[0] as string | null;
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
@@ -3498,7 +3481,6 @@ function CommunityPageContent() {
 
   function renderManageModal() {
     if (!manageModal) return null;
-    const isQt = manageModal.kind.startsWith("qt");
     const isEdit = manageModal.kind.endsWith("edit");
     const title =
       manageModal.kind === "qt-unshare"
@@ -6314,18 +6296,6 @@ function CommunityPageContent() {
     });
     if (result === "copied") {
       setCopiedId(group.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    }
-  }
-
-  async function shareApp() {
-    const result = await shareInviteContent({
-      title: c("community_app_invite_share_title"),
-      text: c("community_app_invite_share_text"),
-      url: `${APP_URL}/welcome?from=invite`,
-    });
-    if (result === "copied") {
-      setCopiedId("app");
       setTimeout(() => setCopiedId(null), 2000);
     }
   }

@@ -3,7 +3,6 @@ import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from "rea
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { useBottomNavSession } from "@/components/BottomNavSessionProvider";
 import TreeGrowth from "@/components/TreeGrowth";
@@ -37,8 +36,6 @@ import PersonalReflectionChallengePopup from "@/components/PersonalReflectionCha
 import { usePersonalReflectionChallenge } from "@/lib/usePersonalReflectionChallenge";
 import { NOVEMBER_PERSONAL_CHALLENGE_ID } from "@/lib/personalReflectionChallenges";
 import HomeQTDraftChoice from "@/components/HomeQTDraftChoice";
-import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
-import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { createClient } from "@/lib/supabase";
 import {
@@ -49,18 +46,16 @@ import {
   setPreferredLang,
   useLang,
 } from "@/lib/useLang";
-import { isLang, t, type Lang, type TKey } from "@/lib/i18n";
-import { translateBookName } from "@/lib/bibleBooks";
+import { isLang, t, type TKey } from "@/lib/i18n";
 import { buildQTPhotoHref, buildQTWriteHref, isSunday, type QTSchedule, type QTMode } from "@/lib/qtEntry";
 import { ChevronRight, BookOpen, HandHeart, CheckCircle2, Sparkles, MessageCircle, Leaf, ImagePlus, Bell, Users } from "lucide-react";
 import { getLocalDateString, parseLocalDateString } from "@/lib/date";
 import { consumePostReflectionHomeReturn } from "@/lib/postReflectionHome";
-import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
+import { storageGet, storageSet } from "@/lib/clientStorage";
 import { acknowledgePendingAwardedBadge, recordBibleReflectionProgress } from "@/lib/reflectionProgress";
 import {
   ACTIVITY_BADGE_PRESENTATIONS_EVENT,
   acknowledgeActivityBadges,
-  checkAndAwardPrayerShareBadges,
   getActivityBadgePopup,
   readActivityBadgeAwardRetries,
   readLocalPendingActivityBadges,
@@ -120,29 +115,6 @@ import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
 const PrayerExperience = lazy(() => import("@/components/PrayerExperience"));
 const HomeHeartShopGift = lazy(() => import("@/components/HomeHeartShopGift"));
-
-function getGreetingKey(): "home_greeting_morning" | "home_greeting_afternoon" | "home_greeting_evening" | "home_greeting_night" {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 12) return "home_greeting_morning";
-  if (h >= 12 && h < 17) return "home_greeting_afternoon";
-  if (h >= 17 && h < 19) return "home_greeting_evening";
-  return "home_greeting_night";
-}
-
-function getTreeSubMsgKey(streak: number): "tree_sub_0"|"tree_sub_10"|"tree_sub_20"|"tree_sub_30"|"tree_sub_40"|"tree_sub_50"|"tree_sub_60"|"tree_sub_70"|"tree_sub_80"|"tree_sub_90"|"tree_sub_100" {
-  if (streak <= 0) return "tree_sub_0";
-  const cycleDay = ((streak - 1) % 100) + 1;
-  if (cycleDay <= 10) return "tree_sub_10";
-  if (cycleDay <= 20) return "tree_sub_20";
-  if (cycleDay <= 30) return "tree_sub_30";
-  if (cycleDay <= 40) return "tree_sub_40";
-  if (cycleDay <= 50) return "tree_sub_50";
-  if (cycleDay <= 60) return "tree_sub_60";
-  if (cycleDay <= 70) return "tree_sub_70";
-  if (cycleDay <= 80) return "tree_sub_80";
-  if (cycleDay <= 90) return "tree_sub_90";
-  return "tree_sub_100";
-}
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
 const CELEBRATED_KEY_PREFIX = "celebrated_";
@@ -287,7 +259,6 @@ export default function HomePage() {
   const [profile, setProfile] = useState<any>(null);
   const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
-  const [prayerDayCount, setPrayerDayCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const homeLoadGenerationRef = useRef(0);
@@ -338,7 +309,6 @@ export default function HomePage() {
   const [welcomeBackDays, setWelcomeBackDays] = useState(0);
   const [welcomeBackStorageKey, setWelcomeBackStorageKey] = useState<string | null>(null);
   const lang = useLang();
-  const bulkSelectionLabels = getSharePromptBulkSelectionLabels(lang);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [showFirstLangPicker, setShowFirstLangPicker] = useState(false);
   const [badgePopup, setBadgePopup] = useState<{img:string;title:string;msg:string;badgeKey?:string;receipt?:RewardPresentationReceipt;activityBadgeKey?:ActivityBadgeKey}|null>(null);
@@ -358,7 +328,6 @@ export default function HomePage() {
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const [homeDecisionInput, setHomeDecisionInput] = useState("");
   const [savingHomeDecision, setSavingHomeDecision] = useState(false);
-  const [showHomePrayerCompose, setShowHomePrayerCompose] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
   const challengeLocalDate = useChallengeLocalDate();
   const [showHomeRoutine, setShowHomeRoutine] = useState(false);
@@ -371,18 +340,8 @@ export default function HomePage() {
     setHomeDecisionInput(""); setOpeningPersonalChallengeProfile(false);
   }, [profile?.id, challengeLocalDate]);
   const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
-  const [homePrayerInput, setHomePrayerInput] = useState("");
-  const [savingHomePrayer, setSavingHomePrayer] = useState(false);
-  const [showHomePrayerSharePrompt, setShowHomePrayerSharePrompt] = useState(false);
-  const [homePrayerShareTargets, setHomePrayerShareTargets] = useState<string[]>([]);
-  const [homePrayerShareGroups, setHomePrayerShareGroups] = useState<ShareTargetGroup[]>([]);
-  const [homePrayerSharePartners, setHomePrayerSharePartners] = useState<ShareTargetPartner[]>([]);
-  const [loadingHomePrayerShareOptions, setLoadingHomePrayerShareOptions] = useState(false);
   const homePrayerObservationRef = useRef<Partial<Record<"create" | "quiet", HomePrayerObservationAttempt>>>({});
   useEffect(() => { homePrayerObservationRef.current = {}; }, [profile?.id]);
-  useEffect(() => {
-    if (!showHomePrayerCompose) delete homePrayerObservationRef.current.create;
-  }, [showHomePrayerCompose]);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [requiredUpdatePrompt, setRequiredUpdatePrompt] = useState<NativeUpdatePrompt | null>(null);
@@ -685,10 +644,7 @@ export default function HomePage() {
       setSavingAvatarChoice(false);
     }
   }
-  const homeDecisionInputRef = useRef<HTMLInputElement | null>(null);
 
-  const hasMyDecisions = myDecisions.length > 0;
-  const decisionDone = hasMyDecisions ? myDecisions.some(d => d.done) : false;
   const wordWalkDone = todayDone.qt;
   const personalChallenge = usePersonalReflectionChallenge({
     userId: profile?.id ?? null,
@@ -734,7 +690,7 @@ export default function HomePage() {
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
-    || showHomePrayerCards || showHomePrayerCompose || showHomePrayerSharePrompt || homeHubOpen;
+    || showHomePrayerCards || homeHubOpen;
   const rewardDialogBlocked = homeDialogBlocked || !!effectiveUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
@@ -984,7 +940,6 @@ export default function HomePage() {
     setHomeCharacterItemsOwner(null);
     setLoading(true);
     setHomeLoadFailed(false);
-    setPrayerDayCount(null);
     setCompanionAcceptanceNotice(null);
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
@@ -1213,16 +1168,6 @@ export default function HomePage() {
         if (!isCurrentLoad()) return;
         setTodayDone(previous => ({ ...previous, prayer: previous.prayer || !!data }));
         ready("prayer");
-      });
-      background("홈 기도 누적일 조회 실패:", async () => {
-        const { count, error } = await withQtDraftTimeout(
-          supabase.from("daily_prayer_completions").select("id", { count: "exact", head: true })
-            .eq("user_id", user.id).lte("date", today),
-          8_000,
-          "home prayer total",
-        );
-        if (error) throw error;
-        if (isCurrentLoad()) setPrayerDayCount(count ?? 0);
       });
       background("홈 묵상 본문 일정 조회 실패:", async () => {
         let todaySchedule: QTSchedule | null = null;
@@ -1857,175 +1802,20 @@ export default function HomePage() {
     }
   }
 
-  function openPrayerRequest() {
-    setShowHomePrayerCompose(true);
-  }
-
   async function refreshHomePrayerStatus() {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [todayPrayerResponse, prayerCountResponse] = await Promise.all([
-        supabase
-          .from("daily_prayer_completions")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("date", getLocalDateString())
-          .maybeSingle(),
-        supabase
-          .from("daily_prayer_completions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .lte("date", getLocalDateString()),
-      ]);
+      const todayPrayerResponse = await supabase
+        .from("daily_prayer_completions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", getLocalDateString())
+        .maybeSingle();
       if (!todayPrayerResponse.error) setTodayDone(previous => ({ ...previous, prayer: !!todayPrayerResponse.data }));
-      if (!prayerCountResponse.error) setPrayerDayCount(prayerCountResponse.count ?? 0);
     } catch (error) {
       console.warn("홈 기도 상태를 갱신하지 못했어요:", error);
-    }
-  }
-
-  function splitHomePrayerShareTargets(targets: string[]) {
-    const partnerRecipientIds = Array.from(new Set(
-      targets
-        .filter(target => target.startsWith("partner_"))
-        .map(target => target.replace(/^partner_/, ""))
-        .filter(Boolean)
-    ));
-    const visibilityTargets = targets.filter(target => target.startsWith("group_"));
-    const visibility = visibilityTargets.length > 0 ? visibilityTargets.join(",") : "private";
-    return { visibility, partnerRecipientIds };
-  }
-
-  async function loadHomePrayerShareOptions() {
-    const observation = beginObservation("prayer", profile?.id, { mode: "create", source: "home_prayer" });
-    observe(observation, "stage_started", { mode: "create", source: "home_prayer", phase: "share_options" });
-    setLoadingHomePrayerShareOptions(true);
-    try {
-      const options = await loadSharePromptOptions(t("profile_default_name", lang));
-      setHomePrayerShareGroups(options.groups);
-      setHomePrayerSharePartners(options.partners);
-      observe(observation, "stage_succeeded", { mode: "create", source: "home_prayer", phase: "share_options" });
-    } catch (error) {
-      observe(observation, "stage_failed", { mode: "create", source: "home_prayer", phase: "share_options", ...observationError(error) });
-      console.error("home prayer share options load failed", error);
-      setHomePrayerShareGroups([]);
-      setHomePrayerSharePartners([]);
-    } finally {
-      setLoadingHomePrayerShareOptions(false);
-    }
-  }
-
-  function toggleHomePrayerShareTarget(target: string) {
-    if (target === "all") return;
-    setHomePrayerShareTargets(prev =>
-      prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]
-    );
-  }
-
-  function openHomePrayerSharePrompt() {
-    if (!homePrayerInput.trim() || savingHomePrayer) return;
-    setHomePrayerShareTargets([]);
-    setShowHomePrayerSharePrompt(true);
-    void loadHomePrayerShareOptions();
-  }
-
-  function closeHomePrayerSharePrompt() {
-    if (savingHomePrayer) return;
-    setShowHomePrayerSharePrompt(false);
-    setHomePrayerShareTargets([]);
-  }
-
-  async function saveHomePrayerRequest(visibility = "private", partnerRecipientIds: string[] = []) {
-    const content = homePrayerInput.trim();
-    if (!content || savingHomePrayer) return;
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const observation = startHomePrayerObservation("create", user.id);
-    let observationPhase = "body";
-    let persisted = false;
-    setSavingHomePrayer(true);
-    homePrayerSnapshotRef.current = null;
-    try {
-      const today = getLocalDateString();
-      const { data: insertedPrayer, error: insertError } = await supabase.from("prayer_items").insert({
-        user_id: user.id,
-        content,
-        is_anonymous: false,
-        visibility,
-      }).select("id").single();
-      if (insertError) throw insertError;
-      observation.recordId = insertedPrayer?.id ? String(insertedPrayer.id) : undefined;
-      persisted = !!insertedPrayer?.id;
-      homePrayerObservationEvent(observation, "stage_succeeded", "body", { persisted });
-
-      if (insertedPrayer?.id && partnerRecipientIds.length > 0) {
-        observationPhase = "recipients";
-        homePrayerObservationEvent(observation, "stage_started", observationPhase);
-        const { error: recipientError } = await supabase
-          .from("prayer_item_recipients")
-          .insert(partnerRecipientIds.map(recipientId => ({
-            prayer_item_id: insertedPrayer.id,
-            owner_id: user.id,
-            recipient_id: recipientId,
-          })));
-        if (recipientError) {
-          homePrayerObservationEvent(observation, "stage_failed", observationPhase, observationError(recipientError));
-          observationPhase = "rollback";
-          homePrayerObservationEvent(observation, "stage_started", observationPhase, { reason: "recipient_failure" });
-          const rollback = await supabase.from("prayer_items").delete().eq("id", insertedPrayer.id);
-          if (!rollback.error) persisted = false;
-          homePrayerObservationEvent(observation, rollback.error ? "stage_failed" : "stage_succeeded", observationPhase,
-            rollback.error ? { reason: "recipient_failure", ...observationError(rollback.error) } : { reason: "recipient_failure" });
-          observationPhase = "recipients";
-          throw recipientError;
-        }
-        homePrayerObservationEvent(observation, "stage_succeeded", observationPhase);
-      }
-
-      observationPhase = "daily_completion";
-      homePrayerObservationEvent(observation, "stage_started", observationPhase);
-      const { error: completionError } = await supabase.from("daily_prayer_completions").upsert({
-        user_id: user.id,
-        date: today,
-        source: "written",
-      }, { onConflict: "user_id,date" });
-      // This existing path still shows completion when the upsert returns an
-      // error. Record that mismatch without changing the current save flow.
-      homePrayerObservationEvent(observation, completionError ? "stage_failed" : "stage_succeeded", observationPhase,
-        completionError ? { ...observationError(completionError), persisted } : { persisted });
-
-      if (visibility !== "private" || partnerRecipientIds.length > 0) {
-        // Saving the prayer and its local-day completion retain their existing
-        // outcome. Award checking cannot delay or fail that successful save.
-        void checkAndAwardPrayerShareBadges(supabase, user.id).catch(error => {
-          console.warn("home prayer share badge check failed", error);
-        });
-      }
-
-      observationPhase = "completion";
-      setHomePrayerInput("");
-      setShowHomePrayerCompose(false);
-      setShowHomePrayerSharePrompt(false);
-      setHomePrayerShareTargets([]);
-      setTodayDone(p => ({ ...p, prayer: true }));
-      enqueueCelebration({
-        message: t("prayer_saved_message", lang),
-        subMessage: t("prayer_saved_sub", lang),
-      });
-      homePrayerObservationEvent(observation, "action_completed", "completion",
-        completionError ? { persisted, reason: "daily_completion_failure" } : { persisted });
-    } catch (error) {
-      observation.failed = true;
-      homePrayerObservationEvent(observation, "action_failed", observationPhase, { ...observationError(error), persisted });
-      console.error(error);
-      showToast(t("home_prayer_save_error", lang));
-    } finally {
-      setSavingHomePrayer(false);
     }
   }
 
@@ -2117,18 +1907,6 @@ export default function HomePage() {
       setMyDecisions(previous);
       showToast(t("home_decision_save_error", lang));
     }
-  }
-
-  function formatTodaySchedule() {
-    const schedule = homeQTState.todaySchedule;
-    if (!schedule) return null;
-    const translatedBook = translateBookName(schedule.book, lang);
-    const verseRange = schedule.end_chapter && schedule.end_chapter !== schedule.chapter
-      ? `${schedule.chapter}:${schedule.start_verse}-${schedule.end_chapter}:${schedule.end_verse}`
-      : schedule.end_verse !== schedule.start_verse
-      ? `${schedule.chapter}:${schedule.start_verse}-${schedule.end_verse}`
-      : `${schedule.chapter}:${schedule.start_verse}`;
-    return `${translatedBook} ${verseRange}`;
   }
 
   function startHomeQT(mode: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
@@ -2277,18 +2055,6 @@ export default function HomePage() {
     setShowHomeDecisions(true);
   }
 
-  function openPrayerSection() {
-    setShowHomePrayerCards(true);
-  }
-
-  function openTreeSection() {
-    if (treeSectionRef.current) {
-      treeSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   function openTodayQtRecord() {
     if (completedQtRecordId) {
       router.push(`/qt/record?id=${completedQtRecordId}`);
@@ -2322,9 +2088,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    homeHubOpen ||
-    showHomePrayerCompose ||
-    showHomePrayerSharePrompt;
+    homeHubOpen;
   const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
   const visibleMonthlyBadgeAward =
     generalHomePopupsAllowed && !!monthlyBadgeAward &&
@@ -2354,9 +2118,7 @@ export default function HomePage() {
     showHomeSundayQT ||
     showNotificationSettingsModal ||
     showHomePrayerCards ||
-    homeHubOpen ||
-    showHomePrayerCompose ||
-    showHomePrayerSharePrompt;
+    homeHubOpen;
   const visibleChallengeReward =
     !generalHomePopupsAllowed || homePopupBlocked || openingChallengeProfile
       ? null
@@ -2439,17 +2201,6 @@ export default function HomePage() {
     if (showHomeRoutine) { setShowHomeRoutine(false); return true; }
     if (showHomeDecisions) { if (!savingHomeDecision) setShowHomeDecisions(false); return true; }
     if (showHomeChallenge) { setShowHomeChallenge(false); return true; }
-    if (showHomePrayerSharePrompt) {
-      if (!savingHomePrayer) closeHomePrayerSharePrompt();
-      return true;
-    }
-    if (showHomePrayerCompose) {
-      if (!savingHomePrayer) {
-        setShowHomePrayerCompose(false);
-        setHomePrayerInput("");
-      }
-      return true;
-    }
     if (showNotificationSettingsModal) {
       setShowNotificationSettingsModal(false);
       return true;
@@ -2701,53 +2452,6 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="prayer_compose" queued={showHomePrayerCompose}>
-      {showHomePrayerCompose && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 260, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))", overflow: "hidden", overscrollBehavior: "contain" }}>
-          <div style={{ background: "var(--bg2)", width: "100%", maxWidth: 480, borderRadius: 26, padding: "20px 18px 16px", border: "1px solid var(--border)", boxShadow: "0 18px 52px rgba(0,0,0,0.28)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>{t("home_prayer_compose_title", lang)}</h2>
-                <p style={{ fontSize: 13, color: "var(--text3)", lineHeight: 1.6 }}>{t("home_prayer_compose_sub", lang)}</p>
-              </div>
-              <button
-                onClick={() => { if (!savingHomePrayer) { setShowHomePrayerCompose(false); setHomePrayerInput(""); } }}
-                aria-label={t("close", lang)}
-                style={{ border: "none", background: "none", color: "var(--text3)", fontSize: 22, lineHeight: 1, cursor: "pointer", padding: 2 }}
-              >
-                ×
-              </button>
-            </div>
-            <textarea
-              className="textarea-field"
-              rows={4}
-              value={homePrayerInput}
-              onChange={(e) => setHomePrayerInput(e.target.value)}
-              placeholder={t("home_prayer_compose_placeholder", lang)}
-              style={{ marginBottom: 12 }}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                className="btn-outline"
-                onClick={() => { if (!savingHomePrayer) { setShowHomePrayerCompose(false); setHomePrayerInput(""); } }}
-                style={{ flex: 1 }}
-              >
-                {t("cancel", lang)}
-              </button>
-              <button
-                className="btn-sage"
-                onClick={openHomePrayerSharePrompt}
-                disabled={savingHomePrayer || !homePrayerInput.trim()}
-                style={{ flex: 1, opacity: savingHomePrayer || !homePrayerInput.trim() ? 0.55 : 1 }}
-              >
-                {savingHomePrayer ? t("loading", lang) : t("home_prayer_compose_save", lang)}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      </ObservationPopup>
-
       <ObservationPopup userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
@@ -2775,7 +2479,7 @@ export default function HomePage() {
       </ObservationPopup>
 
       <HomeHubDialog open={showHomeRoutine && !visibleRequiredUpdatePrompt}
-        title={dashboardText.routineTitle} closeLabel={dashboardText.close} compact hideTitle
+        title={dashboardText.routineTitle} closeLabel={dashboardText.close} hideTitle
         anchorRef={homeRoutineButtonRef}
         onClose={() => setShowHomeRoutine(false)}>
         <HomeRoutineActions
@@ -2818,7 +2522,7 @@ export default function HomePage() {
         ) : (
           <form onSubmit={event => { event.preventDefault(); void saveHomeDecision(); }}>
             <label htmlFor="home-decision-input" style={{ display: "block", marginBottom: 8, fontWeight: 650, color: "var(--text)" }}>{t("home_my_decision", lang)}</label>
-            <input id="home-decision-input" ref={homeDecisionInputRef} value={homeDecisionInput}
+            <input id="home-decision-input" value={homeDecisionInput}
               onChange={event => setHomeDecisionInput(event.target.value)} disabled={savingHomeDecision}
               placeholder={t("home_next_step_decision_placeholder", lang)} className="input-field"
               style={{ fontSize: 16, marginBottom: 14 }} />
@@ -2853,17 +2557,16 @@ export default function HomePage() {
         badgeImagePath={personalChallenge.status?.badgeImagePath}
         onClose={personalChallenge.acknowledgeAnnouncement}
       />
-      <ObservationPopup userId={profile?.id} kind="challenge_reward" queued={personalChallenge.rewards.length > 0} instanceKey={personalChallenge.rewards[0]?.awardId}>
-        <PersonalReflectionChallengePopup
-          show={!!visiblePersonalChallengeReward}
-          mode="reward"
-          lang={lang}
-          rewardHearts={visiblePersonalChallengeReward?.rewardHearts}
-          badgeImagePath={visiblePersonalChallengeReward?.badgeImagePath}
-          onClose={() => completePersonalChallengeReward()}
-          onViewBadge={() => completePersonalChallengeReward(true)}
-        />
-      </ObservationPopup>
+      <PersonalReflectionChallengePopup
+        show={!!visiblePersonalChallengeReward}
+        mode="reward"
+        lang={lang}
+        rewardObservation={{ userId: profile?.id, queued: personalChallenge.rewards.length > 0, instanceKey: personalChallenge.rewards[0]?.awardId }}
+        rewardHearts={visiblePersonalChallengeReward?.rewardHearts}
+        badgeImagePath={visiblePersonalChallengeReward?.badgeImagePath}
+        onClose={() => completePersonalChallengeReward()}
+        onViewBadge={() => completePersonalChallengeReward(true)}
+      />
 
       {homePopupsReady && (
         <Suspense fallback={null}>
@@ -2977,46 +2680,6 @@ export default function HomePage() {
         <NotificationSettingsModal
           onClose={() => setShowNotificationSettingsModal(false)}
           onSaved={(message) => showToast(message)}
-        />
-      )}
-      </ObservationPopup>
-
-      <ObservationPopup userId={profile?.id} kind="prayer_share" queued={showHomePrayerSharePrompt}>
-      {showHomePrayerSharePrompt && (
-        <SharePromptModal
-          allowPublic={false}
-          title={t("prayer_complete_share_title", lang)}
-          description={t("prayer_complete_share_sub", lang)}
-          helperText={t("prayer_complete_share_helper", lang)}
-          allLabel={t("prayer_intercession_share_all", lang)}
-          allSubLabel={t("prayer_intercession_share_all_sub", lang)}
-          partnersLabel={t("share_prompt_partners", lang)}
-          partnerSubLabel={t("share_prompt_partner_sub", lang)}
-          noPartnersLabel={t("share_prompt_no_partners", lang)}
-          invitePartnersLabel={t("share_prompt_invite_partners", lang)}
-          onInvitePartners={() => router.push("/community")}
-          groupsLabel={t("prayer_intercession_my_groups", lang)}
-          noGroupsLabel={t("prayer_intercession_no_groups", lang)}
-          selectedCountLabel={t("prayer_intercession_selected_count", lang, { count: homePrayerShareTargets.length })}
-          selectAllLabel={bulkSelectionLabels.selectAll}
-          deselectAllLabel={bulkSelectionLabels.deselectAll}
-          showMoreLabel={bulkSelectionLabels.showMore}
-          showLessLabel={bulkSelectionLabels.showLess}
-          loadingLabel={t("loading", lang)}
-          shareActionLabel={t("prayer_intercession_share_action", lang)}
-          privateActionLabel={t("share_prompt_private_action", lang)}
-          closeLabel={t("close", lang)}
-          groups={homePrayerShareGroups}
-          partners={homePrayerSharePartners}
-          selectedTargets={homePrayerShareTargets}
-          saving={savingHomePrayer}
-          loadingGroups={loadingHomePrayerShareOptions}
-          loadingPartners={loadingHomePrayerShareOptions}
-          onToggleTarget={toggleHomePrayerShareTarget}
-          onChangeTargets={targets => setHomePrayerShareTargets(targets.filter(target => target !== "all"))}
-          onClose={closeHomePrayerSharePrompt}
-          onPrivate={() => { void saveHomePrayerRequest("private", []); }}
-          onShare={() => { if (homePrayerShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitHomePrayerShareTargets(homePrayerShareTargets); void saveHomePrayerRequest(visibility, partnerRecipientIds); } }}
         />
       )}
       </ObservationPopup>

@@ -32,7 +32,7 @@ const requiredFiles = [
   "lib/notifications/settingsText.ts",
   "lib/reflectionNudgeText.ts",
   "components/Onboarding.tsx",
-  "components/CompanionChallengeAnnouncementPopup.tsx",
+  "lib/companionChallengeCampaign.ts",
   "lib/companionChallengeText.ts",
   "lib/localNotifications.ts",
   "lib/notifications/templates.ts",
@@ -226,7 +226,7 @@ requireEntry("lib/i18n.ts", "group_challenge_card_body", [
 ]);
 
 for (const [key, fragments] of [
-  ["qt_title", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Meditación bíblica"']],
+  ["qt_title", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Devocional bíblico"']],
   ["qt_start_btn", ["오늘 말씀 묵상 시작하기", "Heutige Stille Zeit beginnen", "Start today's Bible Reflection", "Commencer la méditation biblique du jour", "Comenzar la meditación bíblica de hoy"]],
   ["qt_records", ["지난 말씀 묵상 기록", "Frühere Stille Zeiten", "Past Bible Reflections", "Méditations bibliques précédentes", "Meditaciones bíblicas anteriores"]],
   ["qt_mode_6step", ["6단계 말씀 묵상", "Stille Zeit in 6 Schritten", "6-Step Bible Reflection", "Méditation biblique en 6 étapes"]],
@@ -235,7 +235,7 @@ for (const [key, fragments] of [
   ["welcome_back_btn", ["오늘 말씀 묵상 시작하기", "Heutige Stille Zeit beginnen", "Start today's Bible Reflection", "Commencer la méditation biblique du jour"]],
   ["home_next_step_draft_title", ["작성 중인 말씀 묵상", "begonnene Stille Zeit", "Bible Reflection in progress", "méditation biblique est en cours"]],
   ["home_qt_today_title", ["오늘의 말씀 묵상", "Heutige Stille Zeit", "Today’s Bible Reflection", "Méditation biblique du jour", "Meditación bíblica de hoy"]],
-  ["home_routine_qt", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Meditación bíblica"']],
+  ["home_routine_qt", ['ko: "말씀 묵상"', 'de: "Stille Zeit"', 'en: "Bible Reflection"', 'fr: "Méditation biblique"', 'es: "Devocional bíblico"']],
   ["home_qt_choice_title", ["오늘 말씀 묵상을 어떻게", "heute Ihre Stille Zeit", "Bible Reflection today", "méditation biblique aujourd’hui", "meditación bíblica"]],
   ["qt_today_done", ["오늘 말씀 묵상 완료", "Stille Zeit heute abgeschlossen", "Bible Reflection complete today", "Méditation biblique terminée aujourd’hui", "Meditación bíblica de hoy completada"]],
   ["qt_catchup_title", ["지난 말씀 묵상", "Vergangene Stille Zeit", "past Bible Reflection", "méditation biblique passée", "meditación bíblica anterior"]],
@@ -329,20 +329,23 @@ requireFragments("lib/inviteLandingText.ts", "invite terminology", [
   "méditations bibliques",
 ]);
 requireFragments("app/welcome/page.tsx", "welcome terminology", [
-  "through Bible Reflection",
-  "Stille Zeiten zu teilen",
-  "partager des méditations bibliques",
-  "mediante la meditación bíblica",
-  "compartir meditaciones bíblicas",
+  "Share Bible Reflections with faith partners and groups",
+  "Teilen Sie Ihre Stille Zeit mit Glaubenspartnern und Gruppen",
+  "méditation biblique terminée",
+  "completas una meditación bíblica",
+  "Comparte tus meditaciones con compañeros de fe y grupos",
 ]);
 requireFragments("lib/notifications/settingsText.ts", "notification terminology", [
-  "today’s Bible Reflection",
-  "méditation biblique du jour",
+  "Bible Reflection & prayer",
+  "Stille Zeit & Gebet",
+  "Méditation et prière",
+  "Meditación y oración",
 ]);
-requireFragments("components/CompanionChallengeAnnouncementPopup.tsx", "companion challenge terminology", [
-  "share a Bible Reflection each day",
-  "teilt täglich eure Stille Zeit",
+requireFragments("lib/companionChallengeCampaign.ts", "companion challenge history terminology", [
+  "Share a Bible Reflection with your companions every day",
+  "jeden Tag eure Stille Zeit",
   "votre méditation biblique",
+  "cada día su meditación bíblica",
 ]);
 requireFragments("lib/companionChallengeText.ts", "companion challenge status terminology", [
   "Complete a Bible Reflection together with a companion every day",

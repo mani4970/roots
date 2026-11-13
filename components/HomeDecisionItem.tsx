@@ -117,6 +117,8 @@ export default function HomeDecisionItem({
       </div>
       <span
         style={{
+          minWidth: 0,
+          overflowWrap: "anywhere",
           fontSize: 14,
           color: done ? "var(--text3)" : "var(--text)",
           lineHeight: 1.65,

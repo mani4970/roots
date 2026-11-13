@@ -21,7 +21,7 @@ import { isLang, t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
-import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar, Save } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar } from "lucide-react";
 import {
   ALL_TRANSLATIONS,
   BIBLE_CHAPTERS,
@@ -306,32 +306,6 @@ function QTWriteContent() {
     });
   }
 
-  function BibleTextSizeControl() {
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", whiteSpace: "nowrap" }}>{trQT("본문 글씨", lang)}</span>
-        <button
-          type="button"
-          onClick={() => changeBibleTextSize(-1)}
-          disabled={bibleTextSizeIndex === 0}
-          aria-label={trQT("본문 글씨 작게", lang)}
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === 0 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === 0 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === 0 ? "default" : "pointer", opacity: bibleTextSizeIndex === 0 ? 0.45 : 1 }}
-        >
-          A-
-        </button>
-        <button
-          type="button"
-          onClick={() => changeBibleTextSize(1)}
-          disabled={bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1}
-          aria-label={trQT("본문 글씨 크게", lang)}
-          style={{ minWidth: 32, height: 28, borderRadius: 999, border: "1px solid var(--qt-option-border)", background: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--qt-field-surface)" : "var(--qt-card-surface)", color: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "var(--text3)" : "var(--qt-sage-text)", fontSize: 12, fontWeight: 800, cursor: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? "default" : "pointer", opacity: bibleTextSizeIndex === BIBLE_TEXT_SIZES.length - 1 ? 0.45 : 1 }}
-        >
-          A+
-        </button>
-      </div>
-    );
-  }
-
   function CompactBibleTextSizeButtons() {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
@@ -467,8 +441,6 @@ function QTWriteContent() {
   const [sixStepPassageReselectEnabled, setSixStepPassageReselectEnabled] = useState(!hasSchedule);
   const passageSelectionBaselineRef = useRef("");
 
-  // 주일예배 말씀 선택 step
-  const [sundayBibleStep, setSundayBibleStep] = useState<"select"|"done">("select");
   const [pageReady, setPageReady] = useState(false);
   const [freePassageContinuation, setFreePassageContinuation] = useState<YesterdayFreePassageContinuation | null>(null);
   const [draftProbeDone, setDraftProbeDone] = useState(false);
@@ -479,7 +451,6 @@ function QTWriteContent() {
   const [readingView, setReadingView] = useState<"compact" | "expanded">("expanded");
   const readingPassageRef = useRef<HTMLDivElement | null>(null);
   const [readingCanCollapse, setReadingCanCollapse] = useState(false);
-  const [passageOpen, setPassageOpen] = useState(false);
 
   function resetPassageCoordinates(nextBook: string) {
     setBook(nextBook);
@@ -517,7 +488,6 @@ function QTWriteContent() {
     }
   }, [passageVerses, passages]);
   const [passageExpanded, setPassageExpanded] = useState(false); // 자유형식 더보기
-  const [versePreviewExpanded, setVersePreviewExpanded] = useState(false); // 6단계 말씀 미리보기 더보기
 
   // 큐티 작성
   const [cur, setCur] = useState(0);
@@ -651,7 +621,6 @@ function QTWriteContent() {
 
   // 주일예배 설교 정보
   const [sermonTitle, setSermonTitle] = useState("");
-  const [sermonRef, setSermonRef] = useState("");
   const initialWriterContentRef = useRef<string | null>(null);
   // Step navigation is not an edit. Compare saved content only, after the
   // existing record / scheduled passage has finished loading.
@@ -945,7 +914,6 @@ function QTWriteContent() {
     setPassages(items.length > 1 ? items : []);
     setActivePassageIndex(0);
     setBibleStep("done");
-    setSundayBibleStep("done");
     return true;
   }
 
@@ -980,7 +948,6 @@ function QTWriteContent() {
       setPassages(items);
       setActivePassageIndex(0);
       setBibleStep("done");
-      setSundayBibleStep("done");
     }
     return true;
   }
@@ -1149,11 +1116,9 @@ function QTWriteContent() {
       setEndChapter("1");
       setCrossChapter(false);
       setBibleStep("select");
-      setSundayBibleStep("select");
       setSixStepPassageReselectEnabled(!hasSchedule);
       passageSelectionBaselineRef.current = "";
       setSermonTitle("");
-      setSermonRef("");
     };
 
     const loadDraft = async () => {
@@ -1272,7 +1237,6 @@ function QTWriteContent() {
                 if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
               }
               setBibleStep("done");
-              setSundayBibleStep("done");
             }
           } catch {
             // 본문 재로드 실패해도 저장된 QT 내용은 수정 가능
@@ -1523,7 +1487,6 @@ function QTWriteContent() {
               if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
             }
             setBibleStep("done");
-            setSundayBibleStep("done");
           }
         } catch (e) {
           // 말씀 로드 실패해도 나머지 데이터는 복원됨
@@ -1656,46 +1619,6 @@ function QTWriteContent() {
     setBibleStep("select");
   }
 
-  async function loadPassage() {
-    setLoadingBible(true); setBibleError("");
-    try {
-      let allVerses: PassageVerse[] = [];
-      let refStr = "";
-
-      const effectiveEndChapter = crossChapter ? endChapter : chapter;
-      if (crossChapter && effectiveEndChapter !== chapter) {
-        // 장 넘어가는 경우: 시작장 끝까지 + 끝장 처음부터
-        const koBook = (() => { const all=[...OT_BOOKS,...NT_BOOKS]; const loc=[...OT_BOOKS_LOCAL,...NT_BOOKS_LOCAL]; const i=loc.indexOf(book); return i>=0?all[i]:book; })();
-        const maxV1 = getBibleChapterMaxVerse(koBook, chapter, selectedTranslation);
-        const res1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${maxV1}`);
-        const d1 = await res1.json();
-        const res2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${effectiveEndChapter}&startVerse=1&endVerse=${endV}`);
-        const d2 = await res2.json();
-        const v1 = (d1.verses??[]).map((v:any)=>({...v, num: `${chapter}:${v.num}`}));
-        const v2 = (d2.verses??[]).map((v:any)=>({...v, num: `${effectiveEndChapter}:${v.num}`}));
-        allVerses = [...v1, ...v2];
-        refStr = `${book} ${chapter}:${startV}-${effectiveEndChapter}:${endV}`;
-      } else {
-        if (parseInt(endV) < parseInt(startV)) { setBibleError(trQT("끝 절이 시작 절보다 작아요", lang)); setLoadingBible(false); return; }
-        const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(book)}&chapter=${chapter}&startVerse=${startV}&endVerse=${endV}`);
-        const data = await res.json();
-        if (data.error) { setBibleError(data.error); setLoadingBible(false); return; }
-        allVerses = data.verses ?? [];
-        refStr = data.reference;
-      }
-
-      setPassageVerses(allVerses);
-      setBibleRef(refStr);
-      setBibleStep("done");
-      setSundayBibleStep("done");
-      setSelectedVerseNums([]);
-      setKeyVerse("");
-    } catch { setBibleError(trQT("본문을 불러오지 못했어요.", lang)); }
-    setLoadingBible(false);
-  }
-
-  const loadSundayPassage = loadPassage;
-
   function normalizePassageRef(ref: string) {
     return String(ref ?? "").replace(/\s+/g, " ").trim();
   }
@@ -1779,10 +1702,8 @@ function QTWriteContent() {
         setBibleRef(current.ref);
         if (!options.stayOnSelect) {
           setBibleStep("done");
-          setSundayBibleStep("done");
         }
       }
-      if (mode === "sunday" && !options.stayOnSelect) setSundayBibleStep("done");
     } catch {
       setBibleError(trQT("본문을 불러오지 못했어요.", lang));
     } finally {
@@ -1821,7 +1742,6 @@ function QTWriteContent() {
       setPassageVerses(firstPassage.verses ?? current.verses);
       setBibleRef(firstPassage.ref || current.ref);
       setBibleStep("done");
-      setSundayBibleStep("done");
       setSelectedVerseNums([]);
       setKeyVerse("");
       setCur(c => Math.min(c + 1, STEPS_SUNDAY.length - 1));
@@ -1882,7 +1802,6 @@ function QTWriteContent() {
       passageSelectionBaselineRef.current = "";
       if (mode === "6step") setSixStepPassageReselectEnabled(true);
       setBibleStep("done");
-      setSundayBibleStep("done");
     } catch {
       setBibleError(trQT("본문을 불러오지 못했어요.", lang));
     } finally {
@@ -2299,14 +2218,6 @@ function QTWriteContent() {
     observe(draftObservationRef.current, "retry_clicked", { phase: "draft_load", source: "manual" });
     setDraftLoadError(false);
     setDraftRetryNonce(value => value + 1);
-  }
-
-  // 주일예배 canNext
-  function canNextSunday(): boolean {
-    const step = STEPS_SUNDAY[cur] as any;
-    if (step.isSermonInfo) return sermonTitle.trim().length > 0 || bibleRef.length > 0;
-    if (step.isDecision) return decisions.some(d => d.trim().length > 0);
-    return (answers[step.id] ?? "").trim().length > 0;
   }
 
   // 진행바 상태 (6단계)
@@ -3398,7 +3309,6 @@ function QTWriteContent() {
   // ─── 자유형식 작성 화면 ───
   if (mode === "free") {
     const hasPassage = passageVerses.length > 0;
-    const LONG_THRESHOLD = 3; // 3절 이상이면 접기
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-free roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
@@ -3829,7 +3739,7 @@ function QTWriteContent() {
 
         {/* 진행바 — 6칸, 본문요약+붙잡은말씀 동시 활성 */}
         <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
-          {BAR_LABELS_6.map((label, i) => {
+          {BAR_LABELS_6.map((_label, i) => {
             const state = getBarState(i);
             return (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>

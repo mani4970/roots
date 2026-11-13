@@ -22,7 +22,6 @@ type HomeDashboardText = {
   challengeLoadError: string;
   decisionsEmpty: string;
   decisionsEmptyShort: string;
-  routineStart: string;
 };
 
 const TEXT: Record<Lang, HomeDashboardText> = {
@@ -39,7 +38,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     close: "닫기", loading: "불러오는 중", retry: "다시 시도",
     challengeComplete: "완주했어요!", challengeMissed: "미완료 날짜 있음",
     challengeLoadError: "챌린지를 불러오지 못했어요.",
-    decisionsEmpty: "작은 순종을 시작해요", routineStart: "오늘의 루틴을 시작해요",
+    decisionsEmpty: "작은 순종을 시작해요",
     decisionsEmptyShort: "작은 것부터",
   },
   en: {
@@ -55,7 +54,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     close: "Close", loading: "Loading", retry: "Try again",
     challengeComplete: "Challenge complete!", challengeMissed: "A day was missed",
     challengeLoadError: "Could not load the challenge.",
-    decisionsEmpty: "Take a small step", routineStart: "Begin today’s routine",
+    decisionsEmpty: "Take a small step",
     decisionsEmptyShort: "Start small",
   },
   de: {
@@ -71,7 +70,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     close: "Schließen", loading: "Wird geladen", retry: "Erneut versuchen",
     challengeComplete: "Challenge geschafft!", challengeMissed: "Ein Tag wurde verpasst",
     challengeLoadError: "Die Challenge konnte nicht geladen werden.",
-    decisionsEmpty: "Ein kleiner Schritt", routineStart: "Starte deine heutige Routine",
+    decisionsEmpty: "Ein kleiner Schritt",
     decisionsEmptyShort: "Klein anfangen",
   },
   fr: {
@@ -87,7 +86,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     close: "Fermer", loading: "Chargement", retry: "Réessayer",
     challengeComplete: "Défi réussi !", challengeMissed: "Un jour a été manqué",
     challengeLoadError: "Impossible de charger le défi.",
-    decisionsEmpty: "Fais un petit pas", routineStart: "Commence ta routine du jour",
+    decisionsEmpty: "Fais un petit pas",
     decisionsEmptyShort: "Un petit pas",
   },
   es: {
@@ -103,7 +102,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
     close: "Cerrar", loading: "Cargando", retry: "Reintentar",
     challengeComplete: "¡Reto completado!", challengeMissed: "Hay un día sin completar",
     challengeLoadError: "No se pudo cargar el reto.",
-    decisionsEmpty: "Da un pequeño paso", routineStart: "Empieza tu rutina de hoy",
+    decisionsEmpty: "Da un pequeño paso",
     decisionsEmptyShort: "Paso a paso",
   },
 };

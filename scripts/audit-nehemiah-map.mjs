@@ -27,6 +27,8 @@ const stoneCarryActor = read("components/NehemiahStoneCarryActor.tsx");
 const home = read("app/page.tsx");
 const rootsPopup = read("components/RootsManPopup.tsx");
 const stagePopup = read("components/GardenUpdatePopup.tsx");
+const rewardReceipts = read("lib/rewardPresentationReceipts.ts");
+const rewardReceiptSql = read("supabase/165_reflection_reward_presentations_2_2.sql");
 
 const expectedStages = [
   [1, 1, 7, "pray"],
@@ -94,7 +96,8 @@ check("The third 100-day cycle is nehemiahWall", /"garden",\s*"peaceArk",\s*"neh
 check("Unchosen maps do not wrap back to Garden after day 300", rewardMaps.includes("Math.min(safeIndex, MAP_SEQUENCE.length - 1)") && !rewardMaps.includes("cycleIndex % MAP_SEQUENCE.length"));
 check("Nehemiah background is wired into Reward Map", rewardMaps.includes("getNehemiahWallBackground"));
 check("Nehemiah irregular stage progress is wired into Reward Map", rewardMaps.includes("getNehemiahStageProgress"));
-check("TreeGrowth uses localized Nehemiah labels/descriptions", treeGrowth.includes("getNehemiahWallStageLabel") && treeGrowth.includes("getNehemiahWallStageDescription"));
+check("TreeGrowth uses localized Nehemiah stage labels", treeGrowth.includes("getNehemiahWallStageLabel(lang, stage.stageNumber)"));
+check("Nehemiah stage descriptions remain in the reward popups", rootsPopup.includes("getNehemiahWallStageDescription(lang, rewardStage.stageNumber)") && stagePopup.includes("getNehemiahWallStageDescription"));
 check("TreeGrowth passes the exact Nehemiah action to RewardMapAction", treeGrowth.includes("nehemiahAction={nehemiahAction}"));
 check("RewardMapAction delegates Nehemiah motion to NehemiahWallAction", rewardAction.includes('action === "nehemiah"') && rewardAction.includes("<NehemiahWallAction"));
 check("Future journey card uses a neutral placeholder instead of a Garden image", treeGrowth.includes('cycle.kind === "futureJourney" || cycle.kind === "futureMap"') && treeGrowth.includes("roots-logo-transparent-160.png"));
@@ -132,8 +135,12 @@ check("Day 300 copy says the next Word journey is being prepared", wallText.incl
 
 console.log("\nHome/reward flow protection");
 check("Nehemiah has a dedicated Roots character popup", rootsPopup.includes('currentMap.kind === "nehemiahWall"') && rootsPopup.includes("getNehemiahWallStageDescription"));
-check("Nehemiah stage-change popup uses irregular boundaries", home.includes("nehemiah_stage_shown_") && home.includes("currentRewardMap.progressDay === stage.startDay"));
-check("Unchosen post-300 map does not launch Garden/Ark actions", home.includes('currentMap.kind === "futureJourney" || currentMap.kind === "futureMap"'));
+const receiptStageStarts = (rewardReceipts.match(/const NEHEMIAH_STAGE_STARTS = new Set\(\[([^\]]+)\]\)/)?.[1] ?? "")
+  .split(",").map(value => Number(value.trim()));
+const expectedStageStarts = expectedStages.map(stage => stage[1]).filter(day => day > 1 && day < 100);
+check("Nehemiah stage receipts use the approved irregular boundaries", JSON.stringify(receiptStageStarts) === JSON.stringify(expectedStageStarts) && rewardReceipts.includes("NEHEMIAH_STAGE_STARTS.has(day)") && rewardReceipts.includes('if (isRewardPresentationStageDay(days)) keys.push("stage")'));
+check("Home displays earned stage receipts", home.includes('takeRewardReceipt(candidate => candidate.itemKey === "stage")') && home.includes('kind === "nehemiahWall" ? "nehemiah_stage_shown" : "garden_shown"'));
+check("Post-300 completions do not enqueue Garden/Ark action receipts", /if \(days <= 300\) \{\s*if \(days % 100 === 0\) keys.push\("map_complete"\);\s*else \{\s*keys.push\("action"\)/s.test(rewardReceipts) && /if v_days between 1 and 300 then\s*if v_days % 100 = 0 then[\s\S]*?else\s*v_keys := array_append\(v_keys, 'action'\)/.test(rewardReceiptSql));
 check("Day 300 completion launches the approved final praise on the completed wall", home.includes('notice?.type === "complete" && notice.kind === "nehemiahWall"') && home.includes("setShowRootsMan(true)"));
 check("GardenUpdatePopup renders Nehemiah localized stage copy", stagePopup.includes('currentRewardMap.kind === "nehemiahWall"') && stagePopup.includes("getNehemiahWallStageDescription"));
 

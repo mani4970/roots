@@ -17,7 +17,7 @@ import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { copyText } from "@/lib/nativeShare";
 import { formatQtShareText } from "@/lib/qtShare";
 import QtExternalShareButton from "@/components/QtExternalShareButton";
-import { ChevronLeft, Loader2, Share2, Check, Copy, X, Edit3 } from "lucide-react";
+import { ChevronLeft, Loader2, Share2, Check, Copy, Edit3 } from "lucide-react";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { checkAndAwardQtShareBadges } from "@/lib/activityBadgePresentations";

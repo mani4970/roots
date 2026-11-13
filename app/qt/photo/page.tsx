@@ -20,7 +20,7 @@ import {
   savePreferredTranslationLocally,
   useLang,
 } from "@/lib/useLang";
-import { t, type Lang } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
 import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
 import CursorStableInput from "@/components/CursorStableInput";
@@ -329,12 +329,6 @@ function isPhotoPermissionError(error: unknown) {
   const value = error && typeof error === "object" ? error as { code?: unknown; message?: unknown } : {};
   const text = `${String(value.code ?? "")} ${String(value.message ?? error ?? "")}`.toLowerCase();
   return /permission|denied|not authorized|unauthorized|restricted/.test(text);
-}
-
-function isSupabaseAuthLikeError(error: unknown) {
-  const code = getErrorCode(error).toLowerCase();
-  const message = getErrorMessage(error).toLowerCase();
-  return code === "401" || code === "403" || /jwt|token|not authenticated|auth session missing|refresh_token/.test(`${code} ${message}`);
 }
 
 function getNativePhotoMimeType(format: string | undefined) {

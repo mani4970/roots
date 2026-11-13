@@ -389,7 +389,6 @@ export default function NehemiahWallAction({
       const enterMs = config.enterMs ?? ENTER_MS;
       const exitMs = config.exitMs ?? EXIT_MS;
       const actionLoops = Math.max(1, config.actionLoops ?? 1);
-      const actionLoop = config.actionLoop ?? actionLoops > 1;
       const actionMs = actionSprite.frames * actionSprite.intervalMs * actionLoops + (config.actionHoldMs ?? 0);
 
       setPhase("enter");

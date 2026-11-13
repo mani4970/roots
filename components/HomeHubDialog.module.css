@@ -50,8 +50,6 @@
   scrollbar-width: thin;
 }
 
-.compact { max-width: min(352px, var(--home-dialog-max-width, 352px)); }
-
 .srOnly {
   position: absolute;
   width: 1px;
