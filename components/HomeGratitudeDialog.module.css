@@ -106,8 +106,8 @@
 .danger { color: var(--error, #b45353); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; }
 .actions .button { flex: 1; }
-.tab:disabled, .button:disabled, .rowAction:disabled, .input:disabled { opacity: .55; cursor: default; }
-.tab:focus-visible, .button:focus-visible, .rowAction:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+.tab:disabled, .button:disabled, .rowAction:disabled, .deleteAction:disabled, .input:disabled { opacity: .55; cursor: default; }
+.tab:focus-visible, .button:focus-visible, .rowAction:focus-visible, .deleteAction:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
 
 .notice, .error, .empty { margin: 12px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; color: var(--text2); }
 .error { color: var(--error, #b45353); }
@@ -115,11 +115,24 @@
 .empty { padding: 16px 0; text-align: center; }
 .list { display: grid; gap: 14px; }
 .card { min-width: 0; padding: 15px; border: 1px solid var(--border); border-radius: 17px; background: var(--qt-field-surface); }
-.card .input { background: var(--surface-card); }
-.cardHeader { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
-.cardHeader .date { flex: 1; }
-.draft { margin-bottom: 10px; color: var(--text3); font-size: 11px; font-weight: 650; }
-.items { display: grid; gap: 10px; margin: 0; padding-left: 19px; color: var(--text); }
+.cardHeader { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.cardHeader .date { flex: 1; min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; }
+.draft { color: var(--text3); font-size: 11px; font-weight: 650; overflow-wrap: anywhere; }
+.deleteAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+}
+.items { display: grid; gap: 10px; margin: 0; padding-left: 30px; list-style: decimal outside; color: var(--text); }
 .items li { min-width: 0; padding-left: 2px; font-size: 15px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .confirm { margin-top: 12px; padding-top: 4px; border-top: 1px solid var(--border); }
 .loadMore { width: 100%; margin-top: 14px; }
