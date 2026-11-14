@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString, getShiftedLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import {
-  deleteGratitudeEntry, getGratitudeEntry, listGratitudeEntries, saveGratitudeEntry,
+  deleteGratitudeEntry, getGratitudeEntry, listGratitudeEntries, readGratitudeEntryCache, saveGratitudeEntry,
   MAX_GRATITUDE_ITEMS, MAX_GRATITUDE_ITEM_LENGTH, type GratitudeEntry,
 } from "@/lib/gratitude";
 import {
@@ -20,6 +20,19 @@ import styles from "./HomeGratitudeDialog.module.css";
 
 type Props = { open: boolean; userId: string; lang: Lang; onClose: () => void; onEntriesChange?: () => void };
 const PAGE_SIZE = 20;
+type BackActionRef = MutableRefObject<(() => boolean) | null>;
+
+// The dialog owns the native registration. Inner layers delegate through refs,
+// so their priority never depends on React's parent/child mount order.
+function useGratitudeBackAction(target: BackActionRef, handle: () => boolean) {
+  const latest = useRef(handle);
+  latest.current = handle;
+  useLayoutEffect(() => {
+    const action = () => latest.current();
+    target.current = action;
+    return () => { if (target.current === action) target.current = null; };
+  }, [target]);
+}
 
 function readableDate(date: string, lang: Lang) {
   return new Intl.DateTimeFormat(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" })
@@ -37,6 +50,21 @@ function sameItems(left: string[], right: string[]) {
 
 function sameVersion(left: GratitudeEntry | null, right: GratitudeEntry | null) {
   return left === null ? right === null : right !== null && left.id === right.id && left.revision === right.revision;
+}
+
+function initialEditorState(userId: string, date: string) {
+  const cached = readGratitudeEntryCache(userId, date);
+  const storedDraft = readGratitudeDraft(userId, date);
+  const remote = cached ? cached.entry : storedDraft?.base ?? null;
+  const alreadySaved = !!cached && !!storedDraft && !!remote && sameItems(storedDraft.items, remote.items);
+  const draft = alreadySaved ? null : storedDraft;
+  const conflict = !!cached && !!draft && !sameVersion(draft.base, remote);
+  return {
+    ready: !!cached || !!draft, remote, draft, conflict,
+    base: draft ? draft.base : remote,
+    items: draft?.items.length ? draft.items : remote?.items.length ? remote.items : [""],
+    viewing: !!cached && !!remote && !draft,
+  };
 }
 
 function singleLine(value: string) {
@@ -59,70 +87,109 @@ function GratitudeRecordContent({ date, items, lang, draft = false, action, show
   </>;
 }
 
+type EditorVisit = { view: "read" | "edit"; canBackToSaved: boolean };
+
 type EditorProps = {
   userId: string;
   date: string;
   lang: Lang;
   onBusyChange: (busy: boolean) => void;
   onSaved?: (entry: GratitudeEntry) => void;
+  backAction: BackActionRef;
+  preferredView?: EditorVisit;
+  onViewChange: (view: EditorVisit) => void;
 };
 
-function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorProps) {
+function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved, backAction, preferredView, onViewChange }: EditorProps) {
   const text = getGratitudeText(lang);
-  const [items, setItems] = useState<string[]>([""]);
-  const [base, setBase] = useState<GratitudeEntry | null>(null);
-  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+  const restoredVisit = useRef(preferredView).current;
+  const viewPreferenceRef = useRef<"read" | "edit" | null>(restoredVisit?.view ?? null);
+  const editLayerRef = useRef(restoredVisit?.canBackToSaved ?? false);
+  const [initial] = useState(() => initialEditorState(userId, date));
+  const [items, setItems] = useState<string[]>(initial.items);
+  const [base, setBase] = useState<GratitudeEntry | null>(initial.base);
+  const [savedEntry, setSavedEntry] = useState<GratitudeEntry | null>(initial.remote);
+  const [phase, setPhase] = useState<"loading" | "ready" | "error">(initial.ready ? "ready" : "loading");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<"saved" | "loadError" | "saveError" | "authError" | "conflict" | "">("");
-  const [conflict, setConflict] = useState(false);
+  const [message, setMessage] = useState<"saved" | "loadError" | "saveError" | "authError" | "conflict" | "">(initial.conflict ? "conflict" : "");
+  const [conflict, setConflict] = useState(initial.conflict);
   const [confirmReload, setConfirmReload] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
-  const [viewing, setViewing] = useState(false);
+  const [viewing, setViewing] = useState(restoredVisit?.view === "edit" ? false : restoredVisit?.view === "read" ? !!initial.remote : initial.viewing);
   const busyRef = useRef(false);
   const mountedRef = useRef(false);
   const requestRef = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const focusEditRef = useRef(false);
-  const itemsRef = useRef<string[]>([""]);
-  const rowKeysRef = useRef<number[]>([0]);
-  const nextRowKeyRef = useRef(1);
+  const itemsRef = useRef<string[]>(initial.items);
+  const baseRef = useRef<GratitudeEntry | null>(initial.base);
+  const contentReadyRef = useRef(initial.ready);
+  const editingRef = useRef(false);
+  const rowKeysRef = useRef<number[]>(initial.items.map((_, index) => index));
+  const nextRowKeyRef = useRef(initial.items.length);
   const focusRowRef = useRef<number | null>(null);
-  const draftRef = useRef<GratitudeDraft | null>(null);
+  const draftRef = useRef<GratitudeDraft | null>(initial.draft);
   const editedHereRef = useRef(false);
   const id = useId();
 
-  const load = useCallback(async (discardDraft = false) => {
+  const load = useCallback(async (discardDraft = false, force = false) => {
     const request = ++requestRef.current;
     const discardedSnapshot = discardDraft ? draftRef.current : null;
-    setPhase("loading");
-    setMessage("");
+    if (discardDraft) viewPreferenceRef.current = "read";
+    if (!contentReadyRef.current || discardDraft) setPhase("loading");
+    if (discardDraft || !contentReadyRef.current) setMessage("");
     try {
-      const remote = await getGratitudeEntry(userId, date);
+      const remote = await getGratitudeEntry(userId, date, { force });
       if (!mountedRef.current || request !== requestRef.current) return;
-      const draft = discardDraft ? null : readGratitudeDraft(userId, date);
+      setSavedEntry(remote);
+      const draft = discardDraft ? null : editedHereRef.current ? draftRef.current : readGratitudeDraft(userId, date);
       // A response can be lost after a successful write. Recognize its content
       // on reopen instead of trapping that already-saved draft in a conflict.
       const alreadySaved = !!draft && !!remote && sameItems(draft.items, remote.items);
       if (discardDraft) removeGratitudeDraft(userId, date, discardedSnapshot);
       else if (alreadySaved) removeGratitudeDraft(userId, date, draft);
       const activeDraft = alreadySaved ? null : draft;
+      const editorHasFocus = !!editorRef.current?.contains(document.activeElement);
+      if (!discardDraft && (editedHereRef.current || editingRef.current || editorHasFocus)) {
+        // A warm background check must not replace an active input or its caret.
+        // Reconcile its revision while retaining the current unsaved buffer.
+        if (alreadySaved) {
+          draftRef.current = null;
+          editedHereRef.current = false;
+          baseRef.current = remote;
+          setBase(remote);
+        }
+        const hasConflict = !alreadySaved && !sameVersion(activeDraft ? activeDraft.base : baseRef.current, remote);
+        setConflict(hasConflict);
+        setMessage(hasConflict ? "conflict" : "");
+        contentReadyRef.current = true;
+        setPhase("ready");
+        return;
+      }
       draftRef.current = activeDraft;
       editedHereRef.current = false;
+      editingRef.current = false;
       const hasConflict = !!activeDraft && !sameVersion(activeDraft.base, remote);
-      setBase(activeDraft ? activeDraft.base : remote);
+      baseRef.current = activeDraft ? activeDraft.base : remote;
+      setBase(baseRef.current);
       const nextItems = activeDraft?.items.length ? activeDraft.items : remote?.items.length ? remote.items : [""];
       itemsRef.current = nextItems;
       rowKeysRef.current = nextItems.map(() => nextRowKeyRef.current++);
       setItems(nextItems);
-      setViewing(!!remote && !activeDraft);
+      const preferred = viewPreferenceRef.current;
+      const nextViewing = !!remote && (preferred === "read" || (preferred !== "edit" && !activeDraft));
+      if (nextViewing) editLayerRef.current = false;
+      setViewing(nextViewing);
       setConflict(hasConflict);
       setMessage(hasConflict ? "conflict" : "");
       setConfirmReload(false);
+      contentReadyRef.current = true;
       setPhase("ready");
     } catch (error) {
       if (!mountedRef.current || request !== requestRef.current) return;
-      setPhase("error");
+      if (!contentReadyRef.current) setPhase("error");
+      else setPhase("ready");
       setMessage(errorCode(error) === "auth" ? "authError" : "loadError");
     }
   }, [userId, date]);
@@ -147,6 +214,10 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   }, [saving, onBusyChange]);
 
   useEffect(() => {
+    if (phase === "ready") onViewChange({ view: viewing ? "read" : "edit", canBackToSaved: editLayerRef.current });
+  }, [phase, viewing, onViewChange]);
+
+  useEffect(() => {
     const index = focusRowRef.current;
     if (index === null) return;
     focusRowRef.current = null;
@@ -159,7 +230,24 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
     editButtonRef.current?.focus({ preventScroll: true });
   }, [viewing, saving]);
 
+  useGratitudeBackAction(backAction, () => {
+    if (busyRef.current) return true;
+    if (confirmReload) { setConfirmReload(false); return true; }
+    if (phase === "ready" && !viewing && savedEntry && editLayerRef.current) {
+      // Keep the edit buffer and its draft; this returns to the saved record,
+      // never presents unsaved writing as if it had already been saved.
+      editingRef.current = false;
+      viewPreferenceRef.current = "read";
+      editLayerRef.current = false;
+      focusEditRef.current = true;
+      setViewing(true);
+      return true;
+    }
+    return false;
+  });
+
   const retainItems = (next: string[]) => {
+    editingRef.current = true;
     itemsRef.current = next;
     if (!conflict) setMessage("");
     const isUnchanged = base ? sameItems(next, base.items) : next.every(value => !value.trim());
@@ -212,7 +300,12 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
       draftRef.current = null;
       editedHereRef.current = false;
       if (!mountedRef.current) return;
+      baseRef.current = saved;
       setBase(saved);
+      setSavedEntry(saved);
+      editingRef.current = false;
+      viewPreferenceRef.current = "read";
+      editLayerRef.current = false;
       itemsRef.current = saved.items;
       rowKeysRef.current = saved.items.map(() => nextRowKeyRef.current++);
       setItems(saved.items);
@@ -232,10 +325,26 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
     }
   };
 
-  if (phase === "ready" && viewing && base) return <article className={styles.card} data-gratitude-read={date}>
-    <GratitudeRecordContent date={date} items={base.items} lang={lang} showDate={false} />
+  if (phase === "ready" && viewing && savedEntry) return <article className={styles.card} data-gratitude-read={date}>
+    <GratitudeRecordContent date={date} items={savedEntry.items} lang={lang} showDate={false} />
+    {(message === "loadError" || message === "authError") && <div>
+      <p className={styles.error} role="alert">{text[message]}</p>
+      <button type="button" className={styles.button} onClick={() => void load(false, true)}>{text.retry}</button>
+    </div>}
     <div className={styles.actions}>
       <button ref={editButtonRef} type="button" className={styles.button} disabled={saving} onClick={() => {
+        if (!draftRef.current) {
+          baseRef.current = savedEntry;
+          setBase(savedEntry);
+          itemsRef.current = savedEntry.items;
+          rowKeysRef.current = savedEntry.items.map(() => nextRowKeyRef.current++);
+          setItems(savedEntry.items);
+          setConflict(false);
+          setMessage("");
+        }
+        editingRef.current = true;
+        viewPreferenceRef.current = "edit";
+        editLayerRef.current = true;
         focusRowRef.current = 0;
         setViewing(false);
       }}>{text.edit}</button>
@@ -245,7 +354,7 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   return <div ref={editorRef} className={styles.editor} data-gratitude-editor={date} aria-busy={phase === "loading" || saving}>
     {phase === "loading" ? <p role="status" className={styles.notice}>{text.loading}</p> : phase === "error" ? <>
       <p role="alert" className={styles.error}>{text[message === "authError" ? "authError" : "loadError"]}</p>
-      <button type="button" className={styles.button} onClick={() => void load()}>{text.retry}</button>
+      <button type="button" className={styles.button} onClick={() => void load(false, true)}>{text.retry}</button>
     </> : <form onSubmit={event => event.preventDefault()}>
       <div className={styles.fields}>
         {items.map((value, index) => {
@@ -289,7 +398,7 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
           <p className={styles.notice}>{text.discardConfirm}</p>
           <div className={styles.actions}>
             <button type="button" className={styles.button} onClick={() => setConfirmReload(false)}>{text.cancel}</button>
-            <button type="button" className={styles.button} onClick={() => void load(true)}>{text.reload}</button>
+            <button type="button" className={styles.button} onClick={() => void load(true, true)}>{text.reload}</button>
           </div>
         </> : <button type="button" className={styles.button} onClick={() => setConfirmReload(true)}>{text.reload}</button>}
       </div>}
@@ -299,9 +408,9 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   </div>;
 }
 
-type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void };
+type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void; backAction: BackActionRef };
 
-function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange }: HistoryProps) {
+function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, backAction }: HistoryProps) {
   const text = getGratitudeText(lang);
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
   const [drafts, setDrafts] = useState<GratitudeDraft[]>([]);
@@ -316,6 +425,15 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange }
   const busyRef = useRef(false);
   const cursorRef = useRef<string | null>(null);
   const failedMoreRef = useRef(false);
+  const deleteButtonsRef = useRef(new Map<string, HTMLButtonElement>());
+
+  useGratitudeBackAction(backAction, () => {
+    if (busyRef.current) return true;
+    if (!deleteDate) return false;
+    setDeleteDate(null);
+    deleteButtonsRef.current.get(deleteDate)?.focus({ preventScroll: true });
+    return true;
+  });
 
   const syncDrafts = useCallback(() => setDrafts(listGratitudeDrafts(userId).filter(draft => draft.date <= today)), [userId, today]);
   const load = useCallback(async (more = false) => {
@@ -390,6 +508,7 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange }
       {cards.map(([date, { entry, draft }]) => <article key={date} className={styles.card} data-gratitude-date={date}>
         <GratitudeRecordContent date={date} items={draft?.items ?? entry?.items ?? []} lang={lang} draft={!!draft}
           action={<button type="button" className={styles.deleteAction} data-gratitude-delete={date}
+            ref={node => { if (node) deleteButtonsRef.current.set(date, node); else deleteButtonsRef.current.delete(date); }}
             aria-label={`${entry ? text.delete : text.discardDraft}: ${readableDate(date, lang)}`}
             aria-expanded={deleteDate === date} disabled={busy || loading}
             onClick={() => setDeleteDate(date)}><Trash2 size={18} aria-hidden="true" /></button>} />
@@ -409,18 +528,56 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange }
   </div>;
 }
 
-function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
-  userId: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void;
+type GratitudeRoute = { id: number; tab: "today" | "history"; date: string };
+
+function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction }: {
+  userId: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void; backAction: BackActionRef;
 }) {
   const text = getGratitudeText(lang);
   const currentDate = useChallengeLocalDate() || getLocalDateString();
-  const [editorDate, setEditorDate] = useState(getLocalDateString);
-  const [tab, setTab] = useState<"today" | "history">("today");
+  const [routes, setRoutes] = useState<GratitudeRoute[]>(() => [{ id: 0, tab: "today", date: getLocalDateString() }]);
+  const routesRef = useRef(routes);
+  const nextRouteId = useRef(1);
+  const editorViewsRef = useRef(new Map<number, EditorVisit>());
+  const route = routes[routes.length - 1];
+  const tab = route.tab;
+  const editorDate = route.date;
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const childBackAction = useRef<(() => boolean) | null>(null);
   const id = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const updateBusy = useCallback((value: boolean) => { setBusy(value); onBusyChange(value); }, [onBusyChange]);
+  const focusTabRef = useRef<"today" | "history" | null>(null);
+  const updateBusy = useCallback((value: boolean) => { busyRef.current = value; setBusy(value); onBusyChange(value); }, [onBusyChange]);
   const tabs = [{ value: "today" as const, label: text.todayTab }, { value: "history" as const, label: text.historyTab }];
+
+  const navigate = (nextTab: GratitudeRoute["tab"]) => {
+    if (busyRef.current) return;
+    const previous = routesRef.current[routesRef.current.length - 1];
+    if (previous.tab === nextTab && (nextTab === "history" || previous.date === currentDate)) return;
+    const next = [...routesRef.current, { id: nextRouteId.current++, tab: nextTab, date: currentDate }];
+    routesRef.current = next;
+    setRoutes(next);
+  };
+
+  useGratitudeBackAction(backAction, () => {
+    if (childBackAction.current?.()) return true;
+    if (busyRef.current) return true;
+    const previous = routesRef.current;
+    if (previous.length <= 1) return false;
+    const next = previous.slice(0, -1);
+    editorViewsRef.current.delete(previous[previous.length - 1].id);
+    routesRef.current = next;
+    focusTabRef.current = next[next.length - 1].tab;
+    setRoutes(next);
+    return true;
+  });
+
+  useEffect(() => {
+    if (!focusTabRef.current) return;
+    tabRefs.current[focusTabRef.current === "today" ? 0 : 1]?.focus({ preventScroll: true });
+    focusTabRef.current = null;
+  }, [routes]);
 
   return <div lang={lang}>
     <p className={styles.intro}>{text.description}</p>
@@ -428,13 +585,12 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
       {tabs.map(({ value, label }, index) => <button key={value} ref={node => { tabRefs.current[index] = node; }}
         type="button" role="tab" id={`${id}-tab-${value}`} aria-controls={`${id}-panel-${value}`}
         aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} disabled={busy} className={styles.tab}
-        onClick={() => { if (value === "today") setEditorDate(currentDate); setTab(value); }}
+        onClick={() => navigate(value)}
         onKeyDown={event => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || busy) return;
           event.preventDefault();
           const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : index === 0 ? 1 : 0;
-          if (next === 0) setEditorDate(currentDate);
-          setTab(tabs[next].value);
+          navigate(tabs[next].value);
           tabRefs.current[next]?.focus();
         }}>{label}</button>)}
     </div>
@@ -442,11 +598,12 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
       {tab === "today" ? <>
         {editorDate !== currentDate && <div>
           <p className={styles.notice} role="status">{text.olderDraftNotice}</p>
-          <button type="button" className={styles.button} disabled={busy} onClick={() => setEditorDate(currentDate)}>{text.goToday}</button>
+          <button type="button" className={styles.button} disabled={busy} onClick={() => navigate("today")}>{text.goToday}</button>
         </div>}
         <GratitudeEditor key={editorDate} userId={userId} date={editorDate} lang={lang} onBusyChange={updateBusy}
-          onSaved={onEntriesChange} />
-      </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} />}
+          onSaved={onEntriesChange} backAction={childBackAction} preferredView={editorViewsRef.current.get(route.id)}
+          onViewChange={view => editorViewsRef.current.set(route.id, view)} />
+      </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} backAction={childBackAction} />}
     </div>
   </div>;
 }
@@ -454,8 +611,10 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
 export default function HomeGratitudeDialog({ open, userId, lang, onClose, onEntriesChange }: Props) {
   const text = getGratitudeText(lang);
   const [busy, setBusy] = useState(false);
+  const backAction = useRef<(() => boolean) | null>(null);
   useEffect(() => { setBusy(false); }, [userId, open]);
-  return <HomeHubDialog open={open} title={text.title} closeLabel={text.close} hideTitle busy={busy} onClose={onClose}>
-    <GratitudeBody key={userId} userId={userId} lang={lang} onBusyChange={setBusy} onEntriesChange={onEntriesChange} />
+  return <HomeHubDialog open={open} title={text.title} closeLabel={text.close} hideTitle busy={busy} onClose={onClose}
+    onAndroidBack={() => backAction.current?.() ?? false} backdropVariant="prayer">
+    <GratitudeBody key={userId} userId={userId} lang={lang} onBusyChange={setBusy} onEntriesChange={onEntriesChange} backAction={backAction} />
   </HomeHubDialog>;
 }

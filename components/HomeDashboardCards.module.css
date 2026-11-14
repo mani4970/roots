@@ -157,6 +157,12 @@
   .summary { font-size: 12px; }
   .character { min-height: 128px; }
   .ring { top: 13px; right: 14px; }
+
+  /* Match the native Mac +3px text policy for class-based home labels. */
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .title { font-size: 20px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .summary { font-size: 15px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .gratitudeCount { font-size: 17px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .ringCount { font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

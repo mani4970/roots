@@ -14,6 +14,8 @@ type HomeHubDialogProps = {
   description?: string;
   closeLabel: string;
   onClose: () => void;
+  onAndroidBack?: () => boolean;
+  backdropVariant?: "default" | "prayer";
   children: ReactNode;
   busy?: boolean;
   hideTitle?: boolean;
@@ -25,14 +27,15 @@ const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([typ
 // The body lock is shared with the existing prayer dialogs, including native
 // iPad/Mac zoom and keyboard handling. Home keeps these dialogs mutually exclusive.
 export default function HomeHubDialog({
-  open, title, description, closeLabel, onClose, children, busy = false, hideTitle = false, anchorRef,
+  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, anchorRef,
 }: HomeHubDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const callbacks = useRef({ open, onClose, busy });
-  callbacks.current = { open, onClose, busy };
+  const callbacks = useRef({ open, onClose, onAndroidBack, busy });
+  callbacks.current = { open, onClose, onAndroidBack, busy };
   const id = useId();
   const titleId = `home-hub-title-${id}`;
   const descriptionId = `home-hub-description-${id}`;
@@ -43,12 +46,15 @@ export default function HomeHubDialog({
   useAndroidBackHandler(() => {
     if (!callbacks.current.open) return false;
     // Consume Back while saving too, so it cannot navigate behind this dialog.
-    if (!callbacks.current.busy) callbacks.current.onClose();
+    if (callbacks.current.busy) return true;
+    if (!callbacks.current.onAndroidBack?.()) callbacks.current.onClose();
     return true;
   });
 
   useLayoutEffect(() => {
-    const root = rootRef.current;
+    // Position the dialog within the keyboard's available space. The outer
+    // scene/backdrop keeps its full height independently of this foreground.
+    const root = viewportRef.current;
     const dialog = dialogRef.current;
     const popover = popoverRef.current;
     const anchor = anchorRef?.current;
@@ -278,14 +284,17 @@ export default function HomeHubDialog({
   );
 
   return createPortal(
-    <div ref={rootRef} className={`${styles.overlay}${anchorRef ? ` ${styles.anchoredOverlay}` : ""}`}
+    <div ref={rootRef} className={styles.overlay}
       onPointerDown={event => event.stopPropagation()}
       onPointerMove={event => event.stopPropagation()}
       onPointerUp={event => event.stopPropagation()}
       onClick={event => event.stopPropagation()}
     >
-      <button type="button" tabIndex={-1} aria-hidden="true" className={styles.backdrop} {...backdrop} />
-      {anchorRef ? <div ref={popoverRef} className={styles.popover}>{dialog}</div> : dialog}
+      <button type="button" tabIndex={-1} aria-hidden="true"
+        className={`${styles.backdrop}${backdropVariant === "prayer" ? ` ${styles.prayerBackdrop}` : ""}`} {...backdrop} />
+      <div ref={viewportRef} className={`${styles.viewport}${anchorRef ? ` ${styles.anchoredViewport}` : ""}`}>
+        {anchorRef ? <div ref={popoverRef} className={styles.popover}>{dialog}</div> : dialog}
+      </div>
     </div>, document.body,
   );
 }

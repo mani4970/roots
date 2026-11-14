@@ -28,6 +28,7 @@ import ObservationPopup, { acknowledgeObservedPopup } from "@/components/Observa
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeGratitudeDialog from "@/components/HomeGratitudeDialog";
 import { useGratitudeCount } from "@/lib/useGratitudeCount";
+import { useGratitudeEntryPrefetch } from "@/lib/useGratitudeEntryPrefetch";
 import HomeDashboardCards from "@/components/HomeDashboardCards";
 import HomeHubDialog from "@/components/HomeHubDialog";
 import HomeRoutineActions from "@/components/HomeRoutineActions";
@@ -637,6 +638,7 @@ export default function HomePage() {
     completedQtRecordId: wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
   });
   const gratitudeCount = useGratitudeCount(!loading && !homeLoadFailed ? profile?.id ?? null : null);
+  useGratitudeEntryPrefetch(!loading && !homeLoadFailed ? profile?.id ?? null : null, challengeLocalDate);
   const dashboardText = getHomeDashboardText(lang);
   const currentHomeChallenge = personalChallenge.status
     && challengeLocalDate >= personalChallenge.status.startDate

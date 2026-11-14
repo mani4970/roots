@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase";
+import { beginGratitudeEntryMutation, forgetGratitudeCacheOwner, invalidateGratitudeEntryCache, loadGratitudeEntryCached } from "@/lib/gratitudeEntryCache";
+export { readGratitudeEntryCache, type GratitudeEntrySnapshot } from "@/lib/gratitudeEntryCache";
 
 export const MAX_GRATITUDE_ITEMS = 50;
 export const MAX_GRATITUDE_ITEM_LENGTH = 2000;
@@ -95,7 +97,10 @@ async function withOwner<T>(
       // authenticated request and owner-only database RLS authorize every row.
       const { data, error } = await client.auth.getSession();
       if (controller.signal.aborted) throw new GratitudeError(operation);
-      if (error || data.session?.user.id !== userId) throw new GratitudeError("auth");
+      if (error || data.session?.user.id !== userId) {
+        forgetGratitudeCacheOwner(userId);
+        throw new GratitudeError("auth");
+      }
       return action(client, controller.signal);
     };
     return await Promise.race([work(), deadline]);
@@ -106,16 +111,21 @@ async function withOwner<T>(
   }
 }
 
-export async function getGratitudeEntry(userId: string, entryDate: string): Promise<GratitudeEntry | null> {
+export async function getGratitudeEntry(
+  userId: string, entryDate: string, options?: { force?: boolean },
+): Promise<GratitudeEntry | null> {
   validateKey(userId, entryDate);
-  return withOwner(userId, "load", async (client, signal) => {
-    const { data, error } = await client.from("gratitude_entries").select(COLUMNS)
-      .eq("user_id", userId).eq("entry_date", entryDate).abortSignal(signal).maybeSingle();
-    if (error) throw error;
-    if (!data) return null;
-    const entry = readEntry(data, userId);
-    if (entry.entry_date !== entryDate) throw new GratitudeError("load");
-    return entry;
+  return withOwner(userId, "load", (client, signal) => {
+    if (options?.force) invalidateGratitudeEntryCache(userId, entryDate);
+    return loadGratitudeEntryCached(userId, entryDate, async () => {
+      const { data, error } = await client.from("gratitude_entries").select(COLUMNS)
+        .eq("user_id", userId).eq("entry_date", entryDate).abortSignal(signal).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const entry = readEntry(data, userId);
+      if (entry.entry_date !== entryDate) throw new GratitudeError("load");
+      return entry;
+    });
   });
 }
 
@@ -163,6 +173,7 @@ export async function saveGratitudeEntry(
     throw new GratitudeError("invalid");
   }
   return withOwner(userId, "save", async (client, signal) => {
+    const updateCache = beginGratitudeEntryMutation(userId, entryDate);
     // Do not upsert: stale tabs/devices must never silently replace a newer day.
     const query = previous
       ? client.from("gratitude_entries").update({ items: normalized })
@@ -173,6 +184,7 @@ export async function saveGratitudeEntry(
     if (!data) throw new GratitudeError("conflict");
     const entry = readEntry(data, userId);
     if (entry.entry_date !== entryDate) throw new GratitudeError("save");
+    updateCache(entry);
     return entry;
   });
 }
@@ -182,10 +194,12 @@ export async function deleteGratitudeEntry(userId: string, entry: GratitudeEntry
   if (entry.user_id !== userId || !UUID.test(entry.id)
     || !Number.isSafeInteger(entry.revision) || entry.revision < 1) throw new GratitudeError("invalid");
   return withOwner(userId, "delete", async (client, signal) => {
+    const updateCache = beginGratitudeEntryMutation(userId, entry.entry_date);
     const { data, error } = await client.from("gratitude_entries").delete()
       .eq("user_id", userId).eq("id", entry.id).eq("revision", entry.revision)
       .select("id").abortSignal(signal).maybeSingle();
     if (error) throw error;
     if (!data || data.id !== entry.id) throw new GratitudeError("conflict");
+    updateCache(null);
   });
 }

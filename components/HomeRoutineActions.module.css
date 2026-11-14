@@ -37,3 +37,9 @@
 .reflectionDone .indicator { color: var(--sage-dark); }
 .prayerDone { background: var(--daily-word-terra-surface); border-color: var(--daily-word-terra-border); }
 .prayerDone .indicator { color: var(--daily-word-terra-text); }
+
+@media (min-width: 600px) {
+  /* Other language buttons already inherit the native 19px button rule. */
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .actions:lang(ko) .action { font-size: 17px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .record { font-size: 14px; }
+}

@@ -16,6 +16,8 @@ let sessionDelay;
 let responses = [];
 let requests = [];
 let deadlineMs = 12000;
+let cacheNow;
+let sessionReads = 0;
 const realClient = createClient("https://gratitude.invalid", "test-anon-key", {
   accessToken: async () => "test-access-token",
   global: { fetch: async (input, init) => {
@@ -31,23 +33,37 @@ const realClient = createClient("https://gratitude.invalid", "test-anon-key", {
 });
 const client = {
   auth: { getSession: async () => {
+    sessionReads++;
     if (sessionDelay) await sessionDelay;
     return { data: { session: sessionOwner ? { user: { id: sessionOwner } } : null }, error: null };
   } },
   from: (...args) => realClient.from(...args),
 };
 const moduleObject = { exports: {} };
+const cacheModule = { exports: {} };
+const cacheSource = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../lib/gratitudeEntryCache.ts"), "utf8"), {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+}).outputText;
+vm.runInNewContext(cacheSource, {
+  module: cacheModule, exports: cacheModule.exports, require,
+  Date: class extends Date { static now() { return cacheNow ?? Date.now(); } },
+});
+const cache = cacheModule.exports;
 const source = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../lib/gratitude.ts"), "utf8"), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText;
 vm.runInNewContext(source, {
   module: moduleObject, exports: moduleObject.exports,
-  require: name => name === "@/lib/supabase" ? { createClient: () => client } : require(name),
+  require: name => name === "@/lib/supabase" ? { createClient: () => client }
+    : name === "@/lib/gratitudeEntryCache" ? cache : require(name),
   AbortController,
   setTimeout: (callback, ms) => setTimeout(callback, ms === 12000 ? deadlineMs : ms), clearTimeout,
 });
 const api = moduleObject.exports;
-const reset = () => { responses = []; requests = []; sessionOwner = owner; sessionDelay = undefined; deadlineMs = 12000; };
+const reset = () => {
+  responses = []; requests = []; sessionOwner = owner; sessionDelay = undefined; deadlineMs = 12000;
+  cacheNow = undefined; sessionReads = 0; cache.setGratitudeCacheOwner(null);
+};
 const rejectCode = (promise, code) => assert.rejects(promise, error => error.name === "GratitudeError" && error.code === code);
 let passed = 0;
 async function check(name, run) { reset(); await run(); assert.equal(responses.length, 0); passed++; console.log(`PASS ${name}`); }
@@ -173,6 +189,174 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
     release();
     await new Promise(resolve => setTimeout(resolve, 10));
     assert.equal(requests.length, 0);
+  });
+  const responseFor = body => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  await check("prefetch and two editors share one request; confirmed empty skips transport but not auth", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    let release;
+    responses.push(() => new Promise(resolve => { release = resolve; }));
+    const first = api.getGratitudeEntry(owner, base.entry_date);
+    const second = api.getGratitudeEntry(owner, base.entry_date);
+    await tick();
+    assert.equal(requests.length, 1);
+    release(responseFor([]));
+    assert.deepEqual(await Promise.all([first, second]), [null, null]);
+    assert.equal(cache.readGratitudeEntryCache(owner, base.entry_date).entry, null);
+    assert.equal(await api.getGratitudeEntry(owner, base.entry_date), null);
+    assert.equal(requests.length, 1);
+    assert.equal(sessionReads, 3);
+  });
+  await check("a shared read timeout releases every consumer and a later retry can succeed", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    deadlineMs = 15;
+    let aborted = false;
+    responses.push(request => new Promise((resolve, reject) => request.signal.addEventListener("abort", () => {
+      aborted = true; reject(new Error("aborted"));
+    })));
+    await Promise.all([
+      rejectCode(api.getGratitudeEntry(owner, base.entry_date), "load"),
+      rejectCode(api.getGratitudeEntry(owner, base.entry_date), "load"),
+    ]);
+    assert.equal(aborted, true);
+    assert.equal(requests.length, 1);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    deadlineMs = 12000;
+    responses.push({ body: [] });
+    assert.equal(await api.getGratitudeEntry(owner, base.entry_date), null);
+  });
+  await check("cache TTL, explicit force reload, and copied items cannot expose stale mutable data", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    cacheNow = 1000;
+    responses.push({ body: [base] });
+    const loaded = await api.getGratitudeEntry(owner, base.entry_date);
+    loaded.items[0] = "caller edit";
+    const snapshot = api.readGratitudeEntryCache(owner, base.entry_date);
+    snapshot.entry.items[0] = "snapshot edit";
+    assert.equal((await api.getGratitudeEntry(owner, base.entry_date)).items[0], base.items[0]);
+    responses.push({ body: [{ ...base, revision: 2, items: ["Remote edit"] }] });
+    assert.equal((await api.getGratitudeEntry(owner, base.entry_date, { force: true })).revision, 2);
+    cacheNow += cache.GRATITUDE_ENTRY_CACHE_TTL_MS;
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    responses.push({ body: [] });
+    assert.equal(await api.getGratitudeEntry(owner, base.entry_date), null);
+    assert.equal(requests.length, 3);
+  });
+  await check("cached reads still reject a changed session and clear private snapshots", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    responses.push({ body: [base] });
+    await api.getGratitudeEntry(owner, base.entry_date);
+    sessionOwner = other;
+    await rejectCode(api.getGratitudeEntry(owner, base.entry_date), "auth");
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    assert.equal(requests.length, 1);
+  });
+  await check("failed reads are not cached and another date never reuses today's entry", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    responses.push({ status: 500, body: {} });
+    await rejectCode(api.getGratitudeEntry(owner, base.entry_date), "load");
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    responses.push({ body: [base] });
+    await api.getGratitudeEntry(owner, base.entry_date);
+    assert.equal(api.readGratitudeEntryCache(owner, "2026-11-15"), null);
+    responses.push({ body: [] });
+    assert.equal(await api.getGratitudeEntry(owner, "2026-11-15"), null);
+  });
+  await check("late prefetch cannot replace a successful edit or restore a deleted day", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    let release;
+    responses.push(() => new Promise(resolve => { release = resolve; }));
+    const pending = api.getGratitudeEntry(owner, base.entry_date);
+    await tick();
+    responses.push({ body: [{ ...base, items: ["New edit"], revision: 2 }] });
+    const saved = await api.saveGratitudeEntry(owner, base.entry_date, ["New edit"], base);
+    release(responseFor([base]));
+    assert.equal((await pending).revision, 2);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date).entry.items[0], "New edit");
+    cache.clearGratitudeEntryCache(owner);
+    responses.push(() => new Promise(resolve => { release = resolve; }));
+    const beforeDelete = api.getGratitudeEntry(owner, base.entry_date);
+    await tick();
+    responses.push({ body: [{ id }] });
+    await api.deleteGratitudeEntry(owner, saved);
+    release(responseFor([saved]));
+    assert.equal(await beforeDelete, null);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date).entry, null);
+  });
+  await check("a read started during a write cannot overwrite the completed write", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    let releaseWrite, releaseRead;
+    responses.push(() => new Promise(resolve => { releaseWrite = resolve; }));
+    const saving = api.saveGratitudeEntry(owner, base.entry_date, ["Updated"], base);
+    await tick();
+    responses.push(() => new Promise(resolve => { releaseRead = resolve; }));
+    const reading = api.getGratitudeEntry(owner, base.entry_date);
+    await tick();
+    releaseWrite(responseFor([{ ...base, items: ["Updated"], revision: 2 }]));
+    await saving;
+    releaseRead(responseFor([base]));
+    assert.equal((await reading).revision, 2);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date).entry.revision, 2);
+  });
+  await check("resume invalidation joins the new request, even if the stale request fails", async () => {
+    for (const failOld of [false, true]) {
+      cache.clearGratitudeEntryCache(owner);
+      cache.setGratitudeCacheOwner(owner);
+      let releaseOld, releaseNew;
+      responses.push(() => new Promise(resolve => { releaseOld = resolve; }));
+      const oldRead = api.getGratitudeEntry(owner, base.entry_date);
+      await tick();
+      cache.clearGratitudeEntryCache(owner);
+      responses.push(() => new Promise(resolve => { releaseNew = resolve; }));
+      const newRead = api.getGratitudeEntry(owner, base.entry_date);
+      await tick();
+      releaseOld(failOld ? new Response("{}", { status: 500 }) : responseFor([]));
+      releaseNew(responseFor([{ ...base, revision: 3 }]));
+      assert.equal((await oldRead).revision, 3);
+      assert.equal((await newRead).revision, 3);
+    }
+    assert.equal(requests.length, 4);
+  });
+  await check("a write completing across resume invalidation wins over the resumed prefetch", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    let releaseWrite, releaseRead;
+    responses.push(() => new Promise(resolve => { releaseWrite = resolve; }));
+    const saving = api.saveGratitudeEntry(owner, base.entry_date, ["Updated on resume"], base);
+    await tick();
+    cache.clearGratitudeEntryCache(owner);
+    responses.push(() => new Promise(resolve => { releaseRead = resolve; }));
+    const reading = api.getGratitudeEntry(owner, base.entry_date);
+    await tick();
+    releaseWrite(responseFor([{ ...base, items: ["Updated on resume"], revision: 2 }]));
+    await saving;
+    releaseRead(responseFor([base]));
+    assert.equal((await reading).revision, 2);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date).entry.revision, 2);
+  });
+  await check("logout and A-to-B-to-A switching cannot revive an older account epoch", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    let release;
+    responses.push(() => new Promise(resolve => { release = resolve; }));
+    const pending = api.getGratitudeEntry(owner, base.entry_date);
+    const rejected = rejectCode(pending, "load");
+    await tick();
+    cache.setGratitudeCacheOwner(null);
+    cache.setGratitudeCacheOwner(other);
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    cache.setGratitudeCacheOwner(owner);
+    release(responseFor([base]));
+    await rejected;
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+  });
+  await check("a stale write conflict leaves no cached copy and force reload gets latest revision", async () => {
+    cache.setGratitudeCacheOwner(owner);
+    responses.push({ body: [base] });
+    await api.getGratitudeEntry(owner, base.entry_date);
+    responses.push({ body: [] });
+    await rejectCode(api.saveGratitudeEntry(owner, base.entry_date, ["Changed"], base), "conflict");
+    assert.equal(api.readGratitudeEntryCache(owner, base.entry_date), null);
+    responses.push({ body: [{ ...base, revision: 4 }] });
+    assert.equal((await api.getGratitudeEntry(owner, base.entry_date, { force: true })).revision, 4);
   });
   console.log(`${passed} gratitude storage checks passed; only transport and cached session are mocked. No live database calls.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -143,3 +143,15 @@
   .row { gap: 2px; }
   .rowAction { flex-basis: 30px; }
 }
+
+@media (min-width: 600px) {
+  /* Follow QT's placeholder sizing; leave typed text and its caret unchanged. */
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"]) .input::placeholder { font-size: 15px !important; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .input::placeholder { font-size: 18px !important; }
+
+  /* Class-based text needs the native Mac uplift that inline text already has. */
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .intro { font-size: 18px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) :is(.date, .number, .notice, .error, .empty) { font-size: 16px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .draft { font-size: 14px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .items li { font-size: 18px; }
+}
