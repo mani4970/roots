@@ -42,16 +42,18 @@
 .panel, .editor { min-width: 0; }
 .date { display: block; margin: 0 0 12px; color: var(--text2); font-size: 13px; font-weight: 750; }
 .fields { display: grid; gap: 10px; }
-.row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.number { flex: 0 0 22px; color: var(--text3); font-size: 13px; font-weight: 750; text-align: center; }
 
 .input {
   display: block;
   flex: 1;
   width: 100%;
   min-width: 0;
-  min-height: 76px;
+  height: 44px;
+  min-height: 44px;
   box-sizing: border-box;
-  padding: 12px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 13px;
   background: var(--qt-field-surface);
@@ -59,15 +61,14 @@
   font: inherit;
   font-size: 16px;
   line-height: 1.6;
-  resize: vertical;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   scroll-margin: 18px;
   -webkit-text-size-adjust: 100%;
 }
 
 .input:focus { outline: 2px solid var(--sage); outline-offset: 1px; }
 .input::placeholder { color: var(--text3); opacity: 1; }
-.remove {
+.rowAction {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,7 +82,7 @@
   cursor: pointer;
 }
 
-.button, .add {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,13 +102,12 @@
   overflow-wrap: anywhere;
   cursor: pointer;
 }
-.add { width: 100%; margin-top: 10px; border-style: dashed; color: var(--sage-dark); }
 .primary { width: 100%; margin-top: 14px; border-color: transparent; background: var(--sage); color: #fff; }
 .danger { color: var(--error, #b45353); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; }
 .actions .button { flex: 1; }
-.tab:disabled, .button:disabled, .add:disabled, .remove:disabled, .input:disabled { opacity: .55; cursor: default; }
-.tab:focus-visible, .button:focus-visible, .add:focus-visible, .remove:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+.tab:disabled, .button:disabled, .rowAction:disabled, .input:disabled { opacity: .55; cursor: default; }
+.tab:focus-visible, .button:focus-visible, .rowAction:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
 
 .notice, .error, .empty { margin: 12px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; color: var(--text2); }
 .error { color: var(--error, #b45353); }
@@ -128,5 +128,5 @@
 @media (max-width: 350px) {
   .card { padding: 12px; }
   .row { gap: 2px; }
-  .remove { flex-basis: 30px; }
+  .rowAction { flex-basis: 30px; }
 }

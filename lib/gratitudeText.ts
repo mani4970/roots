@@ -50,7 +50,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     deleteError: "삭제를 확인하지 못했어요. 다시 불러와 확인해주세요.",
     conflict: "다른 곳에서 기록이 변경됐어요. 입력한 내용은 유지돼요. 다시 불러오면 현재 입력은 저장된 내용으로 바뀝니다.",
     reload: "다시 불러오기", discardConfirm: "현재 입력을 버리고 저장된 내용을 불러올까요?",
-    cancel: "취소", edit: "수정", delete: "삭제", deleteConfirm: "이날의 감사 기록을 삭제할까요?",
+    cancel: "취소", edit: "수정하기", delete: "삭제", deleteConfirm: "이날의 감사 기록을 삭제할까요?",
     emptyHistory: "지난 감사 기록이 아직 없어요.", loadMore: "더 보기", draftLabel: "작성 중",
     recoverDraft: "이어서 쓰기", discardDraft: "임시 내용 지우기", discardDraftConfirm: "이날 작성 중인 내용을 지울까요?", maxItems: "감사는 한 번에 50개까지 적을 수 있어요.",
     storageUnavailable: "이 기기에서 임시 저장을 할 수 없어요. 앱을 종료하기 전에 저장해주세요.",
