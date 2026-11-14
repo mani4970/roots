@@ -54,7 +54,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     emptyHistory: "지난 감사 기록이 아직 없어요.", loadMore: "더 보기", draftLabel: "작성 중",
     recoverDraft: "이어서 쓰기", discardDraft: "임시 내용 지우기", discardDraftConfirm: "이날 작성 중인 내용을 지울까요?", maxItems: "감사는 한 번에 50개까지 적을 수 있어요.",
     storageUnavailable: "이 기기에서 임시 저장을 할 수 없어요. 앱을 종료하기 전에 저장해주세요.",
-    olderDraftNotice: "날짜가 바뀌었어요. 작성 중인 감사는 아래 날짜로 저장됩니다.",
+    olderDraftNotice: "날짜가 바뀌었어요. 이 감사는 작성을 시작한 날짜에 기록됩니다.",
     goToday: "오늘로 이동", authError: "로그인을 확인한 뒤 다시 시도해주세요.",
   },
   en: {
@@ -72,7 +72,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     emptyHistory: "No past gratitude entries yet.", loadMore: "Show more", draftLabel: "Draft",
     recoverDraft: "Continue writing", discardDraft: "Discard draft", discardDraftConfirm: "Discard this day’s unsaved writing?", maxItems: "You can add up to 50 gratitude items.",
     storageUnavailable: "Drafts can’t be stored on this device. Save before closing the app.",
-    olderDraftNotice: "It’s a new day. Your writing will be saved under the date below.",
+    olderDraftNotice: "It’s a new day. This entry uses the date you started writing it.",
     goToday: "Go to today", authError: "Please check your sign-in and try again.",
   },
   de: {
@@ -90,7 +90,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     emptyHistory: "Hier stehen bald deine vergangenen Dankbarkeitseinträge.", loadMore: "Mehr anzeigen", draftLabel: "Entwurf",
     recoverDraft: "Weiterschreiben", discardDraft: "Entwurf verwerfen", discardDraftConfirm: "Den ungespeicherten Text dieses Tages verwerfen?", maxItems: "Du kannst bis zu 50 Dankbarkeitspunkte hinzufügen.",
     storageUnavailable: "Entwürfe können auf diesem Gerät nicht gespeichert werden. Speichere vor dem Schließen der App.",
-    olderDraftNotice: "Ein neuer Tag hat begonnen. Dein Text wird unter dem Datum unten gespeichert.",
+    olderDraftNotice: "Ein neuer Tag hat begonnen. Dieser Eintrag gehört zum Tag, an dem du zu schreiben begonnen hast.",
     goToday: "Zu heute", authError: "Bitte prüfe deine Anmeldung und versuche es erneut.",
   },
   fr: {
@@ -108,7 +108,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     emptyHistory: "Aucune note de gratitude passée pour le moment.", loadMore: "Voir plus", draftLabel: "Brouillon",
     recoverDraft: "Continuer", discardDraft: "Effacer le brouillon", discardDraftConfirm: "Effacer le texte non enregistré de ce jour ?", maxItems: "Tu peux ajouter jusqu’à 50 sujets de gratitude.",
     storageUnavailable: "Les brouillons ne peuvent pas être conservés sur cet appareil. Enregistre avant de fermer l’application.",
-    olderDraftNotice: "Une nouvelle journée commence. Ton texte sera enregistré à la date ci-dessous.",
+    olderDraftNotice: "Une nouvelle journée commence. Cette note garde la date à laquelle tu as commencé à l’écrire.",
     goToday: "Revenir à aujourd’hui", authError: "Vérifie ta connexion à ton compte, puis réessaie.",
   },
   es: {
@@ -126,7 +126,7 @@ const TEXT: Record<Lang, GratitudeText> = {
     emptyHistory: "Todavía no hay notas de gratitud anteriores.", loadMore: "Ver más", draftLabel: "Borrador",
     recoverDraft: "Seguir escribiendo", discardDraft: "Descartar borrador", discardDraftConfirm: "¿Descartar el texto sin guardar de este día?", maxItems: "Puedes añadir hasta 50 motivos de gratitud.",
     storageUnavailable: "No se pueden conservar borradores en este dispositivo. Guarda antes de cerrar la aplicación.",
-    olderDraftNotice: "Ha comenzado un nuevo día. Tu texto se guardará con la fecha de abajo.",
+    olderDraftNotice: "Ha comenzado un nuevo día. Esta nota conserva la fecha en que empezaste a escribirla.",
     goToday: "Ir a hoy", authError: "Comprueba tu sesión e inténtalo de nuevo.",
   },
 };

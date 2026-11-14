@@ -45,15 +45,15 @@ function singleLine(value: string) {
   return value.replace(/\r\n|\r|\n/g, " ");
 }
 
-function GratitudeRecordContent({ date, items, lang, draft = false, action }: {
-  date: string; items: string[]; lang: Lang; draft?: boolean; action?: ReactNode;
+function GratitudeRecordContent({ date, items, lang, draft = false, action, showDate = true }: {
+  date: string; items: string[]; lang: Lang; draft?: boolean; action?: ReactNode; showDate?: boolean;
 }) {
   return <>
-    <div className={styles.cardHeader}>
-      <time className={styles.date} dateTime={date}>{readableDate(date, lang)}</time>
+    {(showDate || draft || Boolean(action)) && <div className={styles.cardHeader}>
+      {showDate && <time className={styles.date} dateTime={date}>{readableDate(date, lang)}</time>}
       {draft && <span className={styles.draft}>{getGratitudeText(lang).draftLabel}</span>}
       {action}
-    </div>
+    </div>}
     <ol className={styles.items}>{items.filter(value => value.trim())
       .map((item, index) => <li key={index}>{item}</li>)}</ol>
   </>;
@@ -82,6 +82,8 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   const mountedRef = useRef(false);
   const requestRef = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const focusEditRef = useRef(false);
   const itemsRef = useRef<string[]>([""]);
   const rowKeysRef = useRef<number[]>([0]);
   const nextRowKeyRef = useRef(1);
@@ -151,6 +153,12 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
     editorRef.current?.querySelectorAll<HTMLInputElement>("[data-gratitude-input]")[index]?.focus({ preventScroll: false });
   }, [items.length, viewing]);
 
+  useEffect(() => {
+    if (!focusEditRef.current || !viewing || saving) return;
+    focusEditRef.current = false;
+    editButtonRef.current?.focus({ preventScroll: true });
+  }, [viewing, saving]);
+
   const retainItems = (next: string[]) => {
     itemsRef.current = next;
     if (!conflict) setMessage("");
@@ -208,6 +216,7 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
       itemsRef.current = saved.items;
       rowKeysRef.current = saved.items.map(() => nextRowKeyRef.current++);
       setItems(saved.items);
+      focusEditRef.current = true;
       setViewing(true);
       setMessage("saved");
       setStorageAvailable(true);
@@ -224,9 +233,9 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   };
 
   if (phase === "ready" && viewing && base) return <article className={styles.card} data-gratitude-read={date}>
-    <GratitudeRecordContent date={date} items={base.items} lang={lang} />
+    <GratitudeRecordContent date={date} items={base.items} lang={lang} showDate={false} />
     <div className={styles.actions}>
-      <button type="button" className={styles.button} onClick={() => {
+      <button ref={editButtonRef} type="button" className={styles.button} disabled={saving} onClick={() => {
         focusRowRef.current = 0;
         setViewing(false);
       }}>{text.edit}</button>
@@ -234,7 +243,6 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   </article>;
 
   return <div ref={editorRef} className={styles.editor} data-gratitude-editor={date} aria-busy={phase === "loading" || saving}>
-    <time className={styles.date} dateTime={date}>{readableDate(date, lang)}</time>
     {phase === "loading" ? <p role="status" className={styles.notice}>{text.loading}</p> : phase === "error" ? <>
       <p role="alert" className={styles.error}>{text[message === "authError" ? "authError" : "loadError"]}</p>
       <button type="button" className={styles.button} onClick={() => void load()}>{text.retry}</button>
@@ -411,16 +419,8 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
   const [busy, setBusy] = useState(false);
   const id = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const focusHistoryRef = useRef(false);
   const updateBusy = useCallback((value: boolean) => { setBusy(value); onBusyChange(value); }, [onBusyChange]);
   const tabs = [{ value: "today" as const, label: text.todayTab }, { value: "history" as const, label: text.historyTab }];
-
-  useEffect(() => {
-    if (focusHistoryRef.current && tab === "history" && !busy) {
-      focusHistoryRef.current = false;
-      tabRefs.current[1]?.focus({ preventScroll: true });
-    }
-  }, [tab, busy]);
 
   return <div lang={lang}>
     <p className={styles.intro}>{text.description}</p>
@@ -445,7 +445,7 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
           <button type="button" className={styles.button} disabled={busy} onClick={() => setEditorDate(currentDate)}>{text.goToday}</button>
         </div>}
         <GratitudeEditor key={editorDate} userId={userId} date={editorDate} lang={lang} onBusyChange={updateBusy}
-          onSaved={() => { updateBusy(false); focusHistoryRef.current = true; setTab("history"); onEntriesChange?.(); }} />
+          onSaved={onEntriesChange} />
       </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} />}
     </div>
   </div>;
