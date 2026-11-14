@@ -46,6 +46,7 @@ export function storageRemove(key: string): void {
 const ACCOUNT_SCOPED_STORAGE_PREFIXES = [
   "onboarding_done_",
   "roots_qt_draft_backup_v1_",
+  "roots_gratitude_draft_v1_",
   "qt_pending_awarded_badges_",
   "qt_completion_pending_watering_",
   "roots_reward_presentations_",

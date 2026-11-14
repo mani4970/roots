@@ -26,7 +26,7 @@ import MessengerShareAnnouncementPopup from "@/components/MessengerShareAnnounce
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
-import HomeDecisionItem from "@/components/HomeDecisionItem";
+import HomeGratitudeDialog from "@/components/HomeGratitudeDialog";
 import HomeDashboardCards from "@/components/HomeDashboardCards";
 import HomeHubDialog from "@/components/HomeHubDialog";
 import HomeRoutineActions from "@/components/HomeRoutineActions";
@@ -177,21 +177,6 @@ type RewardMapNoticeState = {
   receipt?: RewardPresentationReceipt;
 };
 
-function parseDecisionDoneList(value: unknown, fallback: boolean[]): boolean[] {
-  if (typeof value !== "string" || !value.trim()) return fallback;
-
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) return fallback;
-
-    return fallback.map((fallbackValue, index) =>
-      typeof parsed[index] === "boolean" ? parsed[index] : fallbackValue
-    );
-  } catch {
-    return fallback;
-  }
-}
-
 function RewardMapNoticePopup({ notice, onClose, avatarType }: { notice: RewardMapNoticeState | null; onClose: () => void; avatarType: RootsAvatarType }) {
   const lang = useLang();
   if (!notice) return null;
@@ -257,7 +242,6 @@ export default function HomePage() {
   const router = useRouter();
   const { hasShownNavigation } = useBottomNavSession();
   const [profile, setProfile] = useState<any>(null);
-  const [myDecisions, setMyDecisions] = useState<{text:string;done:boolean}[]>([]);
   const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
   const [loading, setLoading] = useState(true);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
@@ -265,7 +249,7 @@ export default function HomePage() {
   const homeDataDateRef = useRef<string | null>(null);
   const homeEntryRef = useRef<HomeEntry | null>(null);
   const [homeEntry, setHomeEntry] = useState<HomeEntry | null>(null);
-  const [homeDetailsReady, setHomeDetailsReady] = useState({ prayer: false, schedule: false, decisions: false });
+  const [homeDetailsReady, setHomeDetailsReady] = useState({ prayer: false, schedule: false });
   const [progressRetryToken, setProgressRetryToken] = useState(0);
   const rewardReceiptsRef = useRef<RewardPresentationReceipt[]>([]);
   const claimedRewardReceiptsRef = useRef(new Set<string>());
@@ -326,19 +310,18 @@ export default function HomePage() {
     todaySchedule: null,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
-  const [homeDecisionInput, setHomeDecisionInput] = useState("");
-  const [savingHomeDecision, setSavingHomeDecision] = useState(false);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
   const challengeLocalDate = useChallengeLocalDate();
   const [showHomeRoutine, setShowHomeRoutine] = useState(false);
   const homeRoutineButtonRef = useRef<HTMLButtonElement>(null);
-  const [showHomeDecisions, setShowHomeDecisions] = useState(false);
+  const [showHomeGratitude, setShowHomeGratitude] = useState(false);
   const [showHomeChallenge, setShowHomeChallenge] = useState(false);
   const [openingPersonalChallengeProfile, setOpeningPersonalChallengeProfile] = useState(false);
   useEffect(() => {
-    setShowHomeRoutine(false); setShowHomeDecisions(false); setShowHomeChallenge(false);
-    setHomeDecisionInput(""); setOpeningPersonalChallengeProfile(false);
+    setShowHomeRoutine(false); setShowHomeChallenge(false);
+    setOpeningPersonalChallengeProfile(false);
   }, [profile?.id, challengeLocalDate]);
+  useEffect(() => { setShowHomeGratitude(false); }, [profile?.id]);
   const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
   const homePrayerObservationRef = useRef<Partial<Record<"create" | "quiet", HomePrayerObservationAttempt>>>({});
   useEffect(() => { homePrayerObservationRef.current = {}; }, [profile?.id]);
@@ -658,7 +641,7 @@ export default function HomePage() {
     && challengeLocalDate <= personalChallenge.status.endDate
     ? personalChallenge.status : null;
   const personalChallengeDetails = showHomeChallenge ? currentHomeChallenge : null;
-  const homeHubOpen = showHomeRoutine || showHomeDecisions || showHomeChallenge;
+  const homeHubOpen = showHomeRoutine || showHomeGratitude || showHomeChallenge;
   const challengeDateFormatter = new Intl.DateTimeFormat(
     { ko: "ko-KR", en: "en-US", de: "de-DE", fr: "fr-FR", es: "es-ES" }[lang],
     { year: "numeric", month: "short", day: "numeric" },
@@ -943,7 +926,7 @@ export default function HomePage() {
     setCompanionAcceptanceNotice(null);
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
-    setHomeDetailsReady({ prayer: false, schedule: false, decisions: false });
+    setHomeDetailsReady({ prayer: false, schedule: false });
     setUpdateAnnouncementAccount(null);
     setAnnouncementRewardChecksReadyFor(null);
     try {
@@ -1004,7 +987,7 @@ export default function HomePage() {
       const [p, qtResponse] = await Promise.all([
         loadProfile(),
         withQtDraftTimeout(
-          supabase.from("qt_records").select("id,is_draft,decision").eq("user_id", user.id).eq("date", today),
+          supabase.from("qt_records").select("id,is_draft").eq("user_id", user.id).eq("date", today),
           8_000, "home reflection status",
         ),
       ]);
@@ -1042,7 +1025,6 @@ export default function HomePage() {
       setHomeQTState({ hasDraft, preferredTranslation, todaySchedule: null });
       setCompletedQtRecordId(completedQt?.id ?? null);
       setTodayDone({ qt: !!completedQt, prayer: false });
-      setMyDecisions([]);
 
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       setShowWelcomeBack(false);
@@ -1180,18 +1162,6 @@ export default function HomePage() {
         if (!isCurrentLoad()) return;
         setHomeQTState(previous => ({ ...previous, todaySchedule }));
         ready("schedule");
-      });
-      background("홈 결단 상태 조회 실패:", async () => {
-        if (completedQt?.decision) {
-          const decisions = completedQt.decision.split("\n").filter((value: string) => value.trim());
-          const { data: dc, error } = await withQtDraftTimeout(supabase.from("daily_checkins").select("decisions_done")
-            .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home decision status");
-          if (error) throw error;
-          if (!isCurrentLoad()) return;
-          const doneList = parseDecisionDoneList(dc?.decisions_done, decisions.map(() => false));
-          setMyDecisions(decisions.map((text: string, index: number) => ({ text, done: doneList[index] ?? false })));
-        } else if (isCurrentLoad()) setMyDecisions([]);
-        ready("decisions");
       });
     } catch (error) {
       if (!isCurrentLoad()) return;
@@ -1819,96 +1789,6 @@ export default function HomePage() {
     }
   }
 
-  async function saveHomeDecision() {
-    if (!homeDetailsReady.decisions) return;
-    const decisionText = homeDecisionInput.trim();
-    if (!decisionText || savingHomeDecision) return;
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = getLocalDateString();
-    setSavingHomeDecision(true);
-    try {
-      let targetRecordId = completedQtRecordId;
-
-      if (!targetRecordId) {
-        const { data: completedRow } = await supabase.from("qt_records")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("date", today)
-          .eq("is_draft", false)
-          .order("id", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        targetRecordId = completedRow?.id ?? null;
-      }
-
-      if (!targetRecordId) {
-        router.push("/qt");
-        return;
-      }
-
-      const { error: recordError } = await supabase.from("qt_records")
-        .update({ decision: decisionText })
-        .eq("id", targetRecordId);
-      if (recordError) throw recordError;
-
-      const doneList = [false];
-      const { error: checkinError } = await supabase.from("daily_checkins").upsert({
-        user_id: user.id,
-        date: today,
-        decisions_done: JSON.stringify(doneList),
-      }, { onConflict: "user_id,date" });
-      if (checkinError) throw checkinError;
-
-      setCompletedQtRecordId(targetRecordId);
-      setMyDecisions([{ text: decisionText, done: false }]);
-      setHomeDecisionInput("");
-
-    } catch (error) {
-      console.error(error);
-      showToast(t("home_decision_save_error", lang));
-    } finally {
-      setSavingHomeDecision(false);
-    }
-  }
-
-  async function toggleMyDecision(i: number) {
-    if (!homeDetailsReady.decisions || !myDecisions[i]) return;
-    const today = getLocalDateString();
-    const previous = myDecisions;
-    const updated = myDecisions.map((d, idx) => idx === i ? { ...d, done: !d.done } : d);
-    const decisionsDone = JSON.stringify(updated.map(d => d.done));
-    setMyDecisions(updated);
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    try {
-      const { data: updatedRows, error } = await supabase.from("daily_checkins")
-        .update({ decisions_done: decisionsDone })
-        .eq("user_id", user.id).eq("date", today)
-        .select("date");
-      if (error) throw error;
-
-      if (!updatedRows || updatedRows.length === 0) {
-        const { error: upsertError } = await supabase.from("daily_checkins").upsert({
-          user_id: user.id,
-          date: today,
-          decisions_done: decisionsDone,
-        }, { onConflict: "user_id,date" });
-        if (upsertError) throw upsertError;
-      }
-    } catch (error) {
-      console.error(error);
-      setMyDecisions(previous);
-      showToast(t("home_decision_save_error", lang));
-    }
-  }
-
   function startHomeQT(mode: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
     if (mode === "6step" && passageSource === "scheduled" && !homeDetailsReady.schedule) { void load(); return; }
     router.push(buildQTWriteHref({
@@ -2049,10 +1929,6 @@ export default function HomePage() {
 
   function startHomePhotoFromPassageChoice(passageSource: "scheduled" | "custom") {
     startHomePhotoQT(passageSource);
-  }
-
-  function openDecisionSection() {
-    setShowHomeDecisions(true);
   }
 
   function openTodayQtRecord() {
@@ -2199,7 +2075,8 @@ export default function HomePage() {
       return true;
     }
     if (showHomeRoutine) { setShowHomeRoutine(false); return true; }
-    if (showHomeDecisions) { if (!savingHomeDecision) setShowHomeDecisions(false); return true; }
+    // Let the gratitude dialog consume Back, including while a save is in flight.
+    if (showHomeGratitude) return false;
     if (showHomeChallenge) { setShowHomeChallenge(false); return true; }
     if (showNotificationSettingsModal) {
       setShowNotificationSettingsModal(false);
@@ -2499,40 +2376,11 @@ export default function HomePage() {
         </p>
         {personalChallenge.error && <button type="button" className="btn-sage" onClick={personalChallenge.retry}>{dashboardText.retry}</button>}
       </HomeHubDialog>
-      <HomeHubDialog open={showHomeDecisions && !visibleRequiredUpdatePrompt}
-        title={dashboardText.decisionsTitle} description={dashboardText.decisionsDescription}
-        closeLabel={dashboardText.close} busy={savingHomeDecision}
-        onClose={() => setShowHomeDecisions(false)}>
-        {!homeDetailsReady.decisions ? (
-          <button type="button" className="btn-outline" onClick={() => void load()}>{t("loading", lang)} · {HOME_LOCAL_TEXT[lang].retry}</button>
-        ) : myDecisions.length > 0 ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {myDecisions.map((decision, index) => (
-              <HomeDecisionItem key={index} text={decision.text} done={decision.done} index={index}
-                isLast={index === myDecisions.length - 1} onToggle={() => void toggleMyDecision(index)} />
-            ))}
-          </div>
-        ) : !todayDone.qt ? (
-          <div>
-            <p style={{ color: "var(--text2)", lineHeight: 1.65, margin: "0 0 16px" }}>{dashboardText.decisionsBeforeReflection}</p>
-            <button type="button" className="btn-sage" style={{ width: "100%" }} onClick={() => { setShowHomeDecisions(false); openHomeQT(); }}>
-              {t("home_routine_qt_start", lang)}
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={event => { event.preventDefault(); void saveHomeDecision(); }}>
-            <label htmlFor="home-decision-input" style={{ display: "block", marginBottom: 8, fontWeight: 650, color: "var(--text)" }}>{t("home_my_decision", lang)}</label>
-            <input id="home-decision-input" value={homeDecisionInput}
-              onChange={event => setHomeDecisionInput(event.target.value)} disabled={savingHomeDecision}
-              placeholder={t("home_next_step_decision_placeholder", lang)} className="input-field"
-              style={{ fontSize: 16, marginBottom: 14 }} />
-            <button type="submit" disabled={savingHomeDecision || !homeDecisionInput.trim()} className="btn-sage"
-              style={{ width: "100%", minHeight: 46, opacity: savingHomeDecision || !homeDecisionInput.trim() ? 0.55 : 1 }}>
-              {savingHomeDecision ? t("loading", lang) : t("home_next_step_decision_save", lang)}
-            </button>
-          </form>
-        )}
-      </HomeHubDialog>
+      {profile?.id && (
+        <HomeGratitudeDialog key={profile.id} userId={profile.id} lang={lang}
+          open={showHomeGratitude && !visibleRequiredUpdatePrompt}
+          onClose={() => setShowHomeGratitude(false)} />
+      )}
 
       <PersonalReflectionChallengePopup
         show={!!personalChallengeDetails && !visibleRequiredUpdatePrompt && !showFirstLangPicker && !showOnboarding}
@@ -2774,11 +2622,9 @@ export default function HomePage() {
         challenge={currentHomeChallenge}
         challengeLoading={personalChallenge.loading}
         challengeError={personalChallenge.error}
-        decisionsCompleted={myDecisions.filter(decision => decision.done).length}
-        decisionsTotal={myDecisions.length}
         onOpenRoutine={() => setShowHomeRoutine(true)}
         onOpenChallenge={() => setShowHomeChallenge(true)}
-        onOpenDecisions={openDecisionSection}
+        onOpenGratitude={() => setShowHomeGratitude(true)}
         character={(
           <button
             type="button"

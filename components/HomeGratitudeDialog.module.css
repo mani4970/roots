@@ -1,0 +1,132 @@
+.intro {
+  margin: 3px 30px 20px 0;
+  color: var(--text2);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: var(--qt-field-surface);
+}
+
+.tab {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--surface-card);
+  color: var(--sage-dark);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .08);
+}
+
+.panel, .editor { min-width: 0; }
+.date { display: block; margin: 0 0 12px; color: var(--text2); font-size: 13px; font-weight: 750; }
+.fields { display: grid; gap: 10px; }
+.row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+
+.input {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--qt-field-surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  resize: vertical;
+  overflow-wrap: anywhere;
+  scroll-margin: 18px;
+  -webkit-text-size-adjust: 100%;
+}
+
+.input:focus { outline: 2px solid var(--sage); outline-offset: 1px; }
+.input::placeholder { color: var(--text3); opacity: 1; }
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+}
+
+.button, .add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-card);
+  color: var(--text2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.add { width: 100%; margin-top: 10px; border-style: dashed; color: var(--sage-dark); }
+.primary { width: 100%; margin-top: 14px; border-color: transparent; background: var(--sage); color: #fff; }
+.danger { color: var(--error, #b45353); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; }
+.actions .button { flex: 1; }
+.tab:disabled, .button:disabled, .add:disabled, .remove:disabled, .input:disabled { opacity: .55; cursor: default; }
+.tab:focus-visible, .button:focus-visible, .add:focus-visible, .remove:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+
+.notice, .error, .empty { margin: 12px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; color: var(--text2); }
+.error { color: var(--error, #b45353); }
+.success { color: var(--sage-dark); }
+.empty { padding: 16px 0; text-align: center; }
+.list { display: grid; gap: 14px; }
+.card { min-width: 0; padding: 15px; border: 1px solid var(--border); border-radius: 17px; background: var(--qt-field-surface); }
+.card .input { background: var(--surface-card); }
+.cardHeader { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.cardHeader .date { flex: 1; }
+.draft { margin-bottom: 10px; color: var(--text3); font-size: 11px; font-weight: 650; }
+.items { display: grid; gap: 10px; margin: 0; padding-left: 19px; color: var(--text); }
+.items li { min-width: 0; padding-left: 2px; font-size: 15px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.confirm { margin-top: 12px; padding-top: 4px; border-top: 1px solid var(--border); }
+.loadMore { width: 100%; margin-top: 14px; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+
+@media (max-width: 350px) {
+  .card { padding: 12px; }
+  .row { gap: 2px; }
+  .remove { flex-basis: 30px; }
+}

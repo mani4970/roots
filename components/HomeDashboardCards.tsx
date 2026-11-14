@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode, Ref } from "react";
-import { BookMarked, ClipboardCheck, Trophy } from "lucide-react";
+import { BookMarked, HandHeart, Trophy } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import type { PersonalChallengeStatus } from "@/lib/personalReflectionChallenges";
 import { getHomeDashboardText } from "@/lib/homeDashboardText";
@@ -14,25 +14,21 @@ export type HomeDashboardCardsProps = {
   challenge: PersonalChallengeStatus | null;
   challengeLoading: boolean;
   challengeError: boolean;
-  decisionsCompleted: number;
-  decisionsTotal: number;
   routineButtonRef?: Ref<HTMLButtonElement>;
   routineOpen?: boolean;
   onOpenRoutine: () => void;
   onOpenChallenge: () => void;
-  onOpenDecisions: () => void;
+  onOpenGratitude: () => void;
 };
 
 /** Home entry points only: completion, rewards and record writes remain in Home. */
 export default function HomeDashboardCards({
   lang, character, routineCompleted, challenge, challengeLoading, challengeError,
-  decisionsCompleted, decisionsTotal, routineButtonRef, routineOpen = false,
-  onOpenRoutine, onOpenChallenge, onOpenDecisions,
+  routineButtonRef, routineOpen = false,
+  onOpenRoutine, onOpenChallenge, onOpenGratitude,
 }: HomeDashboardCardsProps) {
   const text = getHomeDashboardText(lang);
   const routineDone = Math.max(0, Math.min(2, routineCompleted));
-  const decisionTotal = Math.max(0, decisionsTotal);
-  const decisionDone = Math.max(0, Math.min(decisionTotal, decisionsCompleted));
   const target = Math.max(1, challenge?.requiredDays ?? 1);
   const completed = Math.max(0, Math.min(target, challenge?.completedDays ?? 0));
   const ratio = challenge && !challengeError ? completed / target : 0;
@@ -77,19 +73,11 @@ export default function HomeDashboardCards({
         </span>
       </button>
 
-      <button type="button" className={`${styles.tile} ${styles.decisions}`} onClick={onOpenDecisions}
-        aria-haspopup="dialog" aria-label={`${text.decisionsTitle}. ${decisionTotal ? text.decisionProgress(decisionDone, decisionTotal) : text.decisionsEmpty}`}>
-        <span className={styles.decisionHeader}>
-          <ClipboardCheck className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
-          <span className={styles.decisionStatus} aria-hidden="true">
-            {decisionTotal ? <>
-              <span className={styles.decisionCount}>{decisionDone}/{decisionTotal}</span>
-              <span>{text.decisionProgressLabel}</span>
-            </> : <span>{text.decisionsEmptyShort}</span>}
-          </span>
-        </span>
+      <button type="button" className={`${styles.tile} ${styles.gratitude}`} onClick={onOpenGratitude}
+        aria-haspopup="dialog" aria-label={text.gratitudeTitle}>
+        <HandHeart className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
         <span className={styles.copy}>
-          <span className={styles.title}>{text.decisionsCardTitle.map(line => <span key={line} className={styles.titleLine}>{line}</span>)}</span>
+          <span className={styles.title}>{text.gratitudeCardTitle.map(line => <span key={line} className={styles.titleLine}>{line}</span>)}</span>
         </span>
       </button>
     </div>

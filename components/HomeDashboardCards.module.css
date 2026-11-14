@@ -31,7 +31,7 @@
 .tile:focus-visible { outline: 3px solid var(--sage-dark); outline-offset: 3px; }
 .routine { background: var(--surface-sage-selected); }
 .challenge { background: var(--surface-gold-subtle); }
-.decisions { background: var(--terra-light); }
+.gratitude { background: var(--terra-light); }
 
 .icon {
   display: block;
@@ -45,13 +45,12 @@
 }
 .routine .icon { color: var(--sage-dark); }
 .challenge .icon { color: var(--text-gold-strong); }
-.decisions .icon { color: var(--terra-dark); }
+.gratitude .icon { color: var(--terra-dark); }
 
-/* Keep this brighter surface local to the home decision card. */
-:global([data-theme="dark"]) .decisions { background: var(--terra-200); }
-:global([data-theme="dark"]) .decisions .title { color: var(--warm-900); }
-:global([data-theme="dark"]) .decisions .icon { color: var(--terra-700); }
-:global([data-theme="dark"]) .decisions .decisionStatus { color: var(--terra-900); }
+/* Keep this brighter surface local to the home gratitude card. */
+:global([data-theme="dark"]) .gratitude { background: var(--terra-200); }
+:global([data-theme="dark"]) .gratitude .title { color: var(--warm-900); }
+:global([data-theme="dark"]) .gratitude .icon { color: var(--terra-700); }
 
 .copy {
   display: flex;
@@ -75,32 +74,6 @@
 .titleLine { display: block; }
 .routine .titleLine { white-space: nowrap; }
 
-.decisionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  width: 100%;
-  min-height: 30px;
-}
-.decisionStatus {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  color: var(--terra-dark);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  text-align: right;
-  white-space: nowrap;
-  pointer-events: none;
-}
-.decisionCount {
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 .summary {
   display: block;
   color: var(--text2);
