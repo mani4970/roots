@@ -6,6 +6,7 @@ type HomeDashboardText = {
   challengeTitle: string;
   gratitudeTitle: string;
   gratitudeCardTitle: readonly string[];
+  gratitudeDays: (days: number) => string;
   noChallenge: string;
   noChallengeShort: string;
   challengeProgress: (current: number, target: number) => string;
@@ -22,6 +23,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
   ko: {
     routineTitle: "묵상과 기도", challengeTitle: "챌린지", gratitudeTitle: "감사 노트",
     routineCardTitle: ["묵상과 기도"], gratitudeCardTitle: ["감사 노트"],
+    gratitudeDays: days => `감사를 기록한 날 ${days}일`,
     noChallenge: "현재 진행 중인 챌린지가 없어요.", noChallengeShort: "진행 중인 챌린지 없음",
     challengeProgress: (current, target) => `${current} / ${target}일`,
     routineProgress: current => `${current} / 2 완료`,
@@ -32,6 +34,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
   en: {
     routineTitle: "Reflection and prayer", challengeTitle: "Challenge", gratitudeTitle: "Gratitude journal",
     routineCardTitle: ["Reflection &", "prayer"], gratitudeCardTitle: ["Gratitude", "journal"],
+    gratitudeDays: days => `Gratitude recorded on ${days} ${days === 1 ? "day" : "days"}`,
     noChallenge: "There is no active challenge right now.", noChallengeShort: "No active challenge",
     challengeProgress: (current, target) => `${current} / ${target} days`,
     routineProgress: current => `${current} / 2 completed`,
@@ -42,6 +45,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
   de: {
     routineTitle: "Stille Zeit und Gebet", challengeTitle: "Challenge", gratitudeTitle: "Dankbarkeitstagebuch",
     routineCardTitle: ["Stille Zeit &", "Gebet"], gratitudeCardTitle: ["Dankbarkeits-", "tagebuch"],
+    gratitudeDays: days => `Dankbarkeit an ${days} ${days === 1 ? "Tag" : "Tagen"} festgehalten`,
     noChallenge: "Zurzeit gibt es keine laufende Challenge.", noChallengeShort: "Keine aktive Challenge",
     challengeProgress: (current, target) => `${current} / ${target} Tage`,
     routineProgress: current => `${current} / 2 abgeschlossen`,
@@ -52,6 +56,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
   fr: {
     routineTitle: "Méditation et prière", challengeTitle: "Défi", gratitudeTitle: "Carnet de gratitude",
     routineCardTitle: ["Méditation &", "prière"], gratitudeCardTitle: ["Carnet de", "gratitude"],
+    gratitudeDays: days => `Gratitude notée sur ${days} ${days === 1 ? "jour" : "jours"}`,
     noChallenge: "Aucun défi n’est en cours pour le moment.", noChallengeShort: "Aucun défi en cours",
     challengeProgress: (current, target) => `${current} / ${target} jours`,
     routineProgress: current => `${current} / 2 terminés`,
@@ -62,6 +67,7 @@ const TEXT: Record<Lang, HomeDashboardText> = {
   es: {
     routineTitle: "Devocional y oración", challengeTitle: "Reto", gratitudeTitle: "Diario de gratitud",
     routineCardTitle: ["Devocional &", "oración"], gratitudeCardTitle: ["Diario de", "gratitud"],
+    gratitudeDays: days => `Gratitud registrada durante ${days} ${days === 1 ? "día" : "días"}`,
     noChallenge: "No hay ningún reto activo en este momento.", noChallengeShort: "No hay retos activos",
     challengeProgress: (current, target) => `${current} / ${target} días`,
     routineProgress: current => `${current} / 2 completados`,

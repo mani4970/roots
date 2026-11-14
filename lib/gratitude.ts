@@ -119,6 +119,22 @@ export async function getGratitudeEntry(userId: string, entryDate: string): Prom
   });
 }
 
+export async function countGratitudeEntries(userId: string): Promise<number> {
+  if (!UUID.test(userId)) throw new GratitudeError("invalid");
+  return withOwner(userId, "load", async (client, signal) => {
+    // The existing unique (user_id, entry_date) constraint makes each saved
+    // row one recorded day. HEAD returns only the count, never private items.
+    const { count, error } = await client.from("gratitude_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId).abortSignal(signal);
+    if (error) throw error;
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) {
+      throw new GratitudeError("load");
+    }
+    return count;
+  });
+}
+
 export async function listGratitudeEntries(
   userId: string, beforeDate: string, pageSize = GRATITUDE_PAGE_SIZE,
 ): Promise<GratitudeEntry[]> {

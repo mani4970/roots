@@ -14,6 +14,7 @@ export type HomeDashboardCardsProps = {
   challenge: PersonalChallengeStatus | null;
   challengeLoading: boolean;
   challengeError: boolean;
+  gratitudeDays?: number | null;
   routineButtonRef?: Ref<HTMLButtonElement>;
   routineOpen?: boolean;
   onOpenRoutine: () => void;
@@ -23,7 +24,7 @@ export type HomeDashboardCardsProps = {
 
 /** Home entry points only: completion, rewards and record writes remain in Home. */
 export default function HomeDashboardCards({
-  lang, character, routineCompleted, challenge, challengeLoading, challengeError,
+  lang, character, routineCompleted, challenge, challengeLoading, challengeError, gratitudeDays,
   routineButtonRef, routineOpen = false,
   onOpenRoutine, onOpenChallenge, onOpenGratitude,
 }: HomeDashboardCardsProps) {
@@ -40,6 +41,11 @@ export default function HomeDashboardCards({
     : challenge?.hasMissedDay ? text.challengeMissed : "";
   const challengeLabel = [text.challengeTitle, challengeError ? text.challengeLoadError : challengeSummary, challengeState]
     .filter(Boolean).join(". ");
+  const recordedDays = typeof gratitudeDays === "number" && Number.isSafeInteger(gratitudeDays) && gratitudeDays > 0
+    ? gratitudeDays : null;
+  const gratitudeCount = recordedDays === null ? "" : `+${recordedDays}`;
+  const gratitudeLabel = recordedDays === null ? text.gratitudeTitle
+    : `${text.gratitudeTitle}. ${text.gratitudeDays(recordedDays)}`;
 
   return (
     <div className={styles.dashboard} lang={lang} data-home-dashboard>
@@ -74,8 +80,14 @@ export default function HomeDashboardCards({
       </button>
 
       <button type="button" className={`${styles.tile} ${styles.gratitude}`} onClick={onOpenGratitude}
-        aria-haspopup="dialog" aria-label={text.gratitudeTitle}>
-        <HandHeart className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
+        aria-haspopup="dialog" aria-label={gratitudeLabel}>
+        <span className={styles.gratitudeHeader}>
+          <HandHeart className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
+          {recordedDays !== null && <span className={styles.gratitudeCount} data-gratitude-days={recordedDays}
+            aria-hidden="true" style={gratitudeCount.length > 7 ? { fontSize: `${Math.max(7, 98 / gratitudeCount.length)}px` } : undefined}>
+            {gratitudeCount}
+          </span>}
+        </span>
         <span className={styles.copy}>
           <span className={styles.title}>{text.gratitudeCardTitle.map(line => <span key={line} className={styles.titleLine}>{line}</span>)}</span>
         </span>

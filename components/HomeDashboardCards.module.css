@@ -47,10 +47,33 @@
 .challenge .icon { color: var(--text-gold-strong); }
 .gratitude .icon { color: var(--terra-dark); }
 
+.gratitudeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+}
+.gratitudeCount {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--terra-dark);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: end;
+}
+
 /* Keep this brighter surface local to the home gratitude card. */
 :global([data-theme="dark"]) .gratitude { background: var(--terra-200); }
 :global([data-theme="dark"]) .gratitude .title { color: var(--warm-900); }
 :global([data-theme="dark"]) .gratitude .icon { color: var(--terra-700); }
+:global([data-theme="dark"]) .gratitudeCount { color: var(--terra-700); }
 
 .copy {
   display: flex;

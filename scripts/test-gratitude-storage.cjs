@@ -24,8 +24,8 @@ const realClient = createClient("https://gratitude.invalid", "test-anon-key", {
     const response = responses.shift();
     assert.ok(response, "unexpected SDK request");
     if (typeof response === "function") return response(request);
-    return new Response(JSON.stringify(response.body), {
-      status: response.status ?? 200, headers: { "content-type": "application/json" },
+    return new Response(request.method === "HEAD" ? null : JSON.stringify(response.body), {
+      status: response.status ?? 200, headers: { "content-type": "application/json", ...response.headers },
     });
   } },
 });
@@ -56,6 +56,7 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
   await check("account switch blocks both reads and writes before transport", async () => {
     sessionOwner = other;
     await rejectCode(api.getGratitudeEntry(owner, base.entry_date), "auth");
+    await rejectCode(api.countGratitudeEntries(owner), "auth");
     await rejectCode(api.saveGratitudeEntry(owner, base.entry_date, ["Note"], null), "auth");
     assert.equal(requests.length, 0);
   });
@@ -66,6 +67,43 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
     assert.equal(requests[0].url.searchParams.get("entry_date"), "eq.2026-11-14");
     responses.push({ status: 500, body: { message: "private server detail" } });
     await rejectCode(api.getGratitudeEntry(owner, base.entry_date), "load");
+  });
+  await check("saved-day count uses owner-scoped exact HEAD and returns no gratitude contents", async () => {
+    responses.push({ headers: { "content-range": "0-2/3" } });
+    assert.equal(await api.countGratitudeEntries(owner), 3);
+    const request = requests[0];
+    assert.equal(request.method, "HEAD");
+    assert.equal(request.url.searchParams.get("user_id"), `eq.${owner}`);
+    assert.equal(request.url.searchParams.get("select"), "id");
+    assert.equal(request.url.searchParams.has("entry_date"), false);
+    assert.equal(request.url.searchParams.has("limit"), false);
+    assert.ok(new Headers(request.headers).get("Prefer").includes("count=exact"));
+    assert.equal(request.body, undefined);
+  });
+  await check("zero saved days is valid while absent, invalid, and failed counts are errors", async () => {
+    responses.push({ headers: { "content-range": "*/0" } });
+    assert.equal(await api.countGratitudeEntries(owner), 0);
+    for (const headers of [{}, { "content-range": "*/invalid" }, { "content-range": "*/-1" },
+      { "content-range": "*/9007199254740992" }]) {
+      responses.push({ headers });
+      await rejectCode(api.countGratitudeEntries(owner), "load");
+    }
+    responses.push({ status: 500 });
+    await rejectCode(api.countGratitudeEntries(owner), "load");
+  });
+  await check("invalid count owner is rejected without a database request", async () => {
+    await rejectCode(api.countGratitudeEntries("not-a-user"), "invalid");
+    assert.equal(requests.length, 0);
+  });
+  await check("count deadline aborts HEAD transport instead of becoming a false zero", async () => {
+    deadlineMs = 15;
+    let aborted = false;
+    responses.push(request => new Promise((resolve, reject) => request.signal.addEventListener("abort", () => {
+      aborted = true; reject(new Error("aborted"));
+    })));
+    await rejectCode(api.countGratitudeEntries(owner), "load");
+    assert.equal(requests[0].method, "HEAD");
+    assert.equal(aborted, true);
   });
   await check("history excludes today and paginates strictly by date newest first", async () => {
     responses.push({ body: [{ ...base, entry_date: "2026-11-13" }, { ...base, entry_date: "2026-11-12" }] });

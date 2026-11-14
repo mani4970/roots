@@ -18,7 +18,7 @@ import HomeHubDialog from "./HomeHubDialog";
 import CursorStableInput from "./CursorStableInput";
 import styles from "./HomeGratitudeDialog.module.css";
 
-type Props = { open: boolean; userId: string; lang: Lang; onClose: () => void };
+type Props = { open: boolean; userId: string; lang: Lang; onClose: () => void; onEntriesChange?: () => void };
 const PAGE_SIZE = 20;
 
 function readableDate(date: string, lang: Lang) {
@@ -291,9 +291,9 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved }: EditorPr
   </div>;
 }
 
-type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (busy: boolean) => void };
+type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void };
 
-function GratitudeHistory({ userId, today, lang, onBusyChange }: HistoryProps) {
+function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange }: HistoryProps) {
   const text = getGratitudeText(lang);
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
   const [drafts, setDrafts] = useState<GratitudeDraft[]>([]);
@@ -355,6 +355,7 @@ function GratitudeHistory({ userId, today, lang, onBusyChange }: HistoryProps) {
       setEntries(previous => previous.filter(item => item.entry_date !== date));
       setDeleteDate(null);
       syncDrafts();
+      if (entry) onEntriesChange?.();
     } catch (reason) {
       if (!mountedRef.current) return;
       const code = errorCode(reason);
@@ -400,7 +401,9 @@ function GratitudeHistory({ userId, today, lang, onBusyChange }: HistoryProps) {
   </div>;
 }
 
-function GratitudeBody({ userId, lang, onBusyChange }: { userId: string; lang: Lang; onBusyChange: (busy: boolean) => void }) {
+function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange }: {
+  userId: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void;
+}) {
   const text = getGratitudeText(lang);
   const currentDate = useChallengeLocalDate() || getLocalDateString();
   const [editorDate, setEditorDate] = useState(getLocalDateString);
@@ -442,17 +445,17 @@ function GratitudeBody({ userId, lang, onBusyChange }: { userId: string; lang: L
           <button type="button" className={styles.button} disabled={busy} onClick={() => setEditorDate(currentDate)}>{text.goToday}</button>
         </div>}
         <GratitudeEditor key={editorDate} userId={userId} date={editorDate} lang={lang} onBusyChange={updateBusy}
-          onSaved={() => { updateBusy(false); focusHistoryRef.current = true; setTab("history"); }} />
-      </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} />}
+          onSaved={() => { updateBusy(false); focusHistoryRef.current = true; setTab("history"); onEntriesChange?.(); }} />
+      </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} />}
     </div>
   </div>;
 }
 
-export default function HomeGratitudeDialog({ open, userId, lang, onClose }: Props) {
+export default function HomeGratitudeDialog({ open, userId, lang, onClose, onEntriesChange }: Props) {
   const text = getGratitudeText(lang);
   const [busy, setBusy] = useState(false);
   useEffect(() => { setBusy(false); }, [userId, open]);
   return <HomeHubDialog open={open} title={text.title} closeLabel={text.close} hideTitle busy={busy} onClose={onClose}>
-    <GratitudeBody key={userId} userId={userId} lang={lang} onBusyChange={setBusy} />
+    <GratitudeBody key={userId} userId={userId} lang={lang} onBusyChange={setBusy} onEntriesChange={onEntriesChange} />
   </HomeHubDialog>;
 }

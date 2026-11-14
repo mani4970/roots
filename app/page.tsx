@@ -27,6 +27,7 @@ import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
 import ObservationPopup, { acknowledgeObservedPopup } from "@/components/ObservationPopup";
 import { beginObservation, observe, observationError } from "@/lib/appObservation";
 import HomeGratitudeDialog from "@/components/HomeGratitudeDialog";
+import { useGratitudeCount } from "@/lib/useGratitudeCount";
 import HomeDashboardCards from "@/components/HomeDashboardCards";
 import HomeHubDialog from "@/components/HomeHubDialog";
 import HomeRoutineActions from "@/components/HomeRoutineActions";
@@ -635,6 +636,7 @@ export default function HomePage() {
     ready: !loading && !homeLoadFailed,
     completedQtRecordId: wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
   });
+  const gratitudeCount = useGratitudeCount(!loading && !homeLoadFailed ? profile?.id ?? null : null);
   const dashboardText = getHomeDashboardText(lang);
   const currentHomeChallenge = personalChallenge.status
     && challengeLocalDate >= personalChallenge.status.startDate
@@ -2379,7 +2381,8 @@ export default function HomePage() {
       {profile?.id && (
         <HomeGratitudeDialog key={profile.id} userId={profile.id} lang={lang}
           open={showHomeGratitude && !visibleRequiredUpdatePrompt}
-          onClose={() => setShowHomeGratitude(false)} />
+          onClose={() => { setShowHomeGratitude(false); gratitudeCount.refresh(); }}
+          onEntriesChange={gratitudeCount.refresh} />
       )}
 
       <PersonalReflectionChallengePopup
@@ -2622,6 +2625,7 @@ export default function HomePage() {
         challenge={currentHomeChallenge}
         challengeLoading={personalChallenge.loading}
         challengeError={personalChallenge.error}
+        gratitudeDays={gratitudeCount.days}
         onOpenRoutine={() => setShowHomeRoutine(true)}
         onOpenChallenge={() => setShowHomeChallenge(true)}
         onOpenGratitude={() => setShowHomeGratitude(true)}
