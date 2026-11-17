@@ -2383,7 +2383,7 @@ export default function HomePage() {
       {profile?.id && (
         <HomeGratitudeDialog key={profile.id} userId={profile.id} lang={lang}
           open={showHomeGratitude && !visibleRequiredUpdatePrompt}
-          onClose={() => { setShowHomeGratitude(false); gratitudeCount.refresh(); }}
+          onClose={() => setShowHomeGratitude(false)}
           onEntriesChange={gratitudeCount.refresh} />
       )}
 

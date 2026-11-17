@@ -18,6 +18,7 @@ let requests = [];
 let deadlineMs = 12000;
 let cacheNow;
 let sessionReads = 0;
+let countInvalidations = [];
 const realClient = createClient("https://gratitude.invalid", "test-anon-key", {
   accessToken: async () => "test-access-token",
   global: { fetch: async (input, init) => {
@@ -55,7 +56,9 @@ const source = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../lib/g
 vm.runInNewContext(source, {
   module: moduleObject, exports: moduleObject.exports,
   require: name => name === "@/lib/supabase" ? { createClient: () => client }
-    : name === "@/lib/gratitudeEntryCache" ? cache : require(name),
+    : name === "@/lib/gratitudeEntryCache" ? cache
+    : name === "@/lib/gratitudeCountCache" ? { invalidateGratitudeCount: userId => countInvalidations.push(userId) }
+    : require(name),
   AbortController,
   setTimeout: (callback, ms) => setTimeout(callback, ms === 12000 ? deadlineMs : ms), clearTimeout,
 });
@@ -63,6 +66,7 @@ const api = moduleObject.exports;
 const reset = () => {
   responses = []; requests = []; sessionOwner = owner; sessionDelay = undefined; deadlineMs = 12000;
   cacheNow = undefined; sessionReads = 0; cache.setGratitudeCacheOwner(null);
+  countInvalidations = [];
 };
 const rejectCode = (promise, code) => assert.rejects(promise, error => error.name === "GratitudeError" && error.code === code);
 let passed = 0;
@@ -132,6 +136,7 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
   await check("new save trims entries, skips empty added fields, and never upserts", async () => {
     responses.push({ status: 201, body: [{ ...base, items: ["First", "Second"] }] });
     await api.saveGratitudeEntry(owner, base.entry_date, [" First ", "  ", "Second"], null);
+    assert.deepEqual(countInvalidations, [owner], "count invalidates even without a mounted dialog");
     assert.equal(requests[0].method, "POST");
     assert.deepEqual(JSON.parse(requests[0].body), { user_id: owner, entry_date: base.entry_date, items: ["First", "Second"] });
     assert.ok(!String(new Headers(requests[0].headers).get("Prefer")).includes("merge-duplicates"));
@@ -139,6 +144,7 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
   await check("updates only write items and require the read row id and revision", async () => {
     responses.push({ body: [{ ...base, items: ["Changed"], revision: 2 }] });
     const entry = await api.saveGratitudeEntry(owner, base.entry_date, ["Changed"], base);
+    assert.deepEqual(countInvalidations, [owner], "edits revalidate the exact count without incrementing it");
     assert.equal(entry.revision, 2);
     assert.equal(requests[0].method, "PATCH");
     assert.deepEqual(JSON.parse(requests[0].body), { items: ["Changed"] });
@@ -150,13 +156,16 @@ async function check(name, run) { reset(); await run(); assert.equal(responses.l
     await rejectCode(api.saveGratitudeEntry(owner, base.entry_date, ["Changed"], base), "conflict");
     responses.push({ status: 409, body: { code: "23505", message: "duplicate" } });
     await rejectCode(api.saveGratitudeEntry(owner, base.entry_date, ["Changed"], null), "conflict");
+    assert.deepEqual(countInvalidations, [], "failed writes must not invalidate a verified count");
   });
   await check("deletion is conditional and an already-changed entry is not silently removed", async () => {
     responses.push({ body: [] });
     await rejectCode(api.deleteGratitudeEntry(owner, base), "conflict");
+    assert.deepEqual(countInvalidations, []);
     assert.equal(requests[0].url.searchParams.get("revision"), "eq.1");
     responses.push({ body: [{ id }] });
     await api.deleteGratitudeEntry(owner, base);
+    assert.deepEqual(countInvalidations, [owner]);
     assert.equal(requests[1].method, "DELETE");
   });
   await check("invalid date, owner, empty content and oversized content never issue writes", async () => {

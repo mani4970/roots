@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase";
+import { invalidateGratitudeCount } from "@/lib/gratitudeCountCache";
 import { beginGratitudeEntryMutation, forgetGratitudeCacheOwner, invalidateGratitudeEntryCache, loadGratitudeEntryCached } from "@/lib/gratitudeEntryCache";
 export { readGratitudeEntryCache, type GratitudeEntrySnapshot } from "@/lib/gratitudeEntryCache";
 
@@ -185,6 +186,8 @@ export async function saveGratitudeEntry(
     const entry = readEntry(data, userId);
     if (entry.entry_date !== entryDate) throw new GratitudeError("save");
     updateCache(entry);
+    // A write can finish after its dialog unmounts, before its UI callback runs.
+    invalidateGratitudeCount(userId);
     return entry;
   });
 }
@@ -201,5 +204,6 @@ export async function deleteGratitudeEntry(userId: string, entry: GratitudeEntry
     if (error) throw error;
     if (!data || data.id !== entry.id) throw new GratitudeError("conflict");
     updateCache(null);
+    invalidateGratitudeCount(userId);
   });
 }
