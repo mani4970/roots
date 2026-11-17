@@ -127,6 +127,9 @@
 
 .content { min-width: 0; }
 
+.fixedHeight { display: flex; flex-direction: column; overflow: hidden; }
+.fixedHeight .content { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+
 @media (max-width: 350px) {
   .viewport { padding-inline: 14px; }
   .dialog { padding-inline: 16px; }

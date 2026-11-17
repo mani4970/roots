@@ -40,6 +40,17 @@
 }
 
 .panel, .editor { min-width: 0; }
+.historyLayout { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.historyLayout .intro, .historyLayout .tabs { flex-shrink: 0; }
+.historyScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.historyScroll:focus-visible { outline: 2px solid var(--sage); outline-offset: -2px; border-radius: 12px; }
 .fields { display: grid; gap: 10px; }
 .row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .number { flex: 0 0 22px; color: var(--text3); font-size: 13px; font-weight: 750; text-align: center; }
@@ -113,6 +124,32 @@
 .success { color: var(--sage-dark); }
 .empty { padding: 16px 0; text-align: center; }
 .list { display: grid; gap: 14px; }
+.historyGroups, .historyMonths { display: grid; gap: 4px; min-width: 0; }
+.historyMonths { padding-inline-start: 8px; }
+.groupButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: start;
+  cursor: pointer;
+}
+.yearButton { justify-content: flex-start; font-size: 14px; }
+.groupButton[aria-expanded="true"] { color: var(--sage-dark); }
+.groupButton[aria-expanded="true"] svg { transform: rotate(180deg); }
+.groupButton svg { width: 14px; height: 14px; flex-shrink: 0; }
+.groupButton:disabled { opacity: .55; cursor: default; }
+.groupButton:focus-visible { outline: 2px solid var(--sage); outline-offset: -2px; }
 .card { min-width: 0; padding: 15px; border: 1px solid var(--border); border-radius: 17px; background: var(--qt-field-surface); }
 .historyCard {
   min-width: 0;
@@ -131,7 +168,7 @@
 .historyDateGroup { display: grid; flex: 1; min-width: 0; gap: 2px; padding-block: 5px; }
 .historyDate {
   color: var(--terra-dark);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 750;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -177,7 +214,7 @@
   /* Class-based text needs the native Mac uplift that inline text already has. */
   :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .intro { font-size: 18px; }
   :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) :is(.number, .notice, .error, .empty) { font-size: 16px; }
-  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .historyDate { font-size: 19px; }
+  :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .historyDate { font-size: 16px; }
   :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .draft { font-size: 14px; }
   :global(html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"]) .items li { font-size: 18px; }
 }

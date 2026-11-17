@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString, getShiftedLocalDateString, parseLocalDateString } from "@/lib/date";
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
@@ -20,6 +20,7 @@ import styles from "./HomeGratitudeDialog.module.css";
 
 type Props = { open: boolean; userId: string; lang: Lang; onClose: () => void; onEntriesChange?: () => void };
 const PAGE_SIZE = 20;
+const HISTORY_DIALOG_HEIGHT = 520;
 type BackActionRef = MutableRefObject<(() => boolean) | null>;
 
 // The dialog owns the native registration. Inner layers delegate through refs,
@@ -395,6 +396,7 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved, backAction
 }
 
 type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void; backAction: BackActionRef };
+type HistoryCard = [date: string, record: { entry?: GratitudeEntry; draft?: GratitudeDraft }];
 
 function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, backAction }: HistoryProps) {
   const text = getGratitudeText(lang);
@@ -404,6 +406,8 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
     return {
       short: new Intl.DateTimeFormat(locale, options),
       full: new Intl.DateTimeFormat(locale, { ...options, year: "numeric" }),
+      year: new Intl.DateTimeFormat(locale, { year: "numeric" }),
+      month: new Intl.DateTimeFormat(locale, { month: "long" }),
     };
   }, [lang]);
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
@@ -412,6 +416,8 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<"loadError" | "deleteError" | "authError" | "conflict" | "">("");
   const [deleteDate, setDeleteDate] = useState<string | null>(null);
+  const [expandedYear, setExpandedYear] = useState<string | null>(() => today.slice(0, 4));
+  const [expandedMonths, setExpandedMonths] = useState(() => new Set([today.slice(0, 7)]));
   const [busy, setBusy] = useState(false);
   const requestRef = useRef(0);
   const mountedRef = useRef(false);
@@ -486,10 +492,67 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
     }
   };
 
-  const byDate = new Map<string, { entry?: GratitudeEntry; draft?: GratitudeDraft }>();
+  const byDate = new Map<string, HistoryCard[1]>();
   entries.forEach(entry => byDate.set(entry.entry_date, { entry }));
   drafts.forEach(draft => byDate.set(draft.date, { ...byDate.get(draft.date), draft }));
   const cards = [...byDate].sort(([left], [right]) => right.localeCompare(left));
+  const years = new Map<string, Map<string, HistoryCard[]>>();
+  for (const card of cards) {
+    const [date] = card;
+    const year = date.slice(0, 4);
+    const month = date.slice(0, 7);
+    let months = years.get(year);
+    if (!months) years.set(year, months = new Map());
+    let monthCards = months.get(month);
+    if (!monthCards) months.set(month, monthCards = []);
+    monthCards.push(card);
+  }
+
+  const toggleYear = (year: string) => {
+    setExpandedYear(expandedYear === year ? null : year);
+    setDeleteDate(null);
+  };
+
+  const toggleMonth = (month: string) => {
+    const next = new Set(expandedMonths);
+    if (next.has(month)) {
+      next.delete(month);
+      if (deleteDate?.slice(0, 7) === month) setDeleteDate(null);
+    } else {
+      next.add(month);
+    }
+    setExpandedMonths(next);
+  };
+
+  const renderCard = ([date, { entry, draft }]: HistoryCard) => {
+    const day = parseLocalDateString(date);
+    const fullDate = dates.full.format(day);
+    const dateLabel = date.slice(0, 4) === today.slice(0, 4) ? dates.short.format(day) : fullDate;
+    return <article key={date} className={styles.historyCard} data-gratitude-date={date}>
+      <header className={styles.historyHeader}>
+        <div className={styles.historyDateGroup}>
+          <time className={styles.historyDate} dateTime={date}>{dateLabel}</time>
+          {draft && <span className={styles.draft}>{text.draftLabel}</span>}
+        </div>
+        <button type="button" className={styles.deleteAction} data-gratitude-delete={date}
+          ref={node => { if (node) deleteButtonsRef.current.set(date, node); else deleteButtonsRef.current.delete(date); }}
+          aria-label={`${entry ? text.delete : text.discardDraft}: ${fullDate}`}
+          aria-expanded={deleteDate === date} disabled={busy || loading}
+          onClick={() => setDeleteDate(date)}><Trash2 size={18} aria-hidden="true" /></button>
+      </header>
+      <div className={styles.historyBody}>
+        <GratitudeItems items={draft?.items ?? entry?.items ?? []} />
+        {deleteDate === date && <div className={styles.confirm}>
+          <p className={styles.notice}>{entry ? text.deleteConfirm : text.discardDraftConfirm}</p>
+          <div className={styles.actions}>
+            <button type="button" className={styles.button} disabled={busy || loading} onClick={() => setDeleteDate(null)}>{text.cancel}</button>
+            <button type="button" className={`${styles.button} ${styles.danger}`} disabled={busy || loading}
+              onClick={() => void remove(date, entry, draft)}>{text.delete}</button>
+          </div>
+        </div>}
+      </div>
+    </article>;
+  };
 
   return <div data-gratitude-history aria-busy={loading || busy}>
     {error && <div>
@@ -498,35 +561,29 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
         onClick={() => { setDeleteDate(null); void load(error === "loadError" && failedMoreRef.current); }}>{text.retry}</button>
     </div>}
     {!loading && !error && cards.length === 0 && <p className={styles.empty}>{text.emptyHistory}</p>}
-    <div className={styles.list}>
-      {cards.map(([date, { entry, draft }]) => {
-        const day = parseLocalDateString(date);
-        const fullDate = dates.full.format(day);
-        const dateLabel = date.slice(0, 4) === today.slice(0, 4) ? dates.short.format(day) : fullDate;
-        return <article key={date} className={styles.historyCard} data-gratitude-date={date}>
-          <header className={styles.historyHeader}>
-            <div className={styles.historyDateGroup}>
-              <time className={styles.historyDate} dateTime={date}>{dateLabel}</time>
-              {draft && <span className={styles.draft}>{text.draftLabel}</span>}
-            </div>
-            <button type="button" className={styles.deleteAction} data-gratitude-delete={date}
-              ref={node => { if (node) deleteButtonsRef.current.set(date, node); else deleteButtonsRef.current.delete(date); }}
-              aria-label={`${entry ? text.delete : text.discardDraft}: ${fullDate}`}
-              aria-expanded={deleteDate === date} disabled={busy || loading}
-              onClick={() => setDeleteDate(date)}><Trash2 size={18} aria-hidden="true" /></button>
-          </header>
-          <div className={styles.historyBody}>
-            <GratitudeItems items={draft?.items ?? entry?.items ?? []} />
-            {deleteDate === date && <div className={styles.confirm}>
-              <p className={styles.notice}>{entry ? text.deleteConfirm : text.discardDraftConfirm}</p>
-              <div className={styles.actions}>
-                <button type="button" className={styles.button} disabled={busy || loading} onClick={() => setDeleteDate(null)}>{text.cancel}</button>
-                <button type="button" className={`${styles.button} ${styles.danger}`} disabled={busy || loading}
-                  onClick={() => void remove(date, entry, draft)}>{text.delete}</button>
-              </div>
-            </div>}
-          </div>
-        </article>;
+    <div className={styles.historyGroups}>
+      {[...years].map(([year, months]) => {
+        const yearOpen = expandedYear === year;
+        const yearLabel = dates.year.format(parseLocalDateString(`${year}-01-01`));
+        return <div key={year} className={styles.historyGroups}>
+          <button type="button" className={`${styles.groupButton} ${styles.yearButton}`}
+            aria-expanded={yearOpen} disabled={busy} onClick={() => toggleYear(year)}>
+            {yearLabel}<ChevronDown size={16} aria-hidden="true" />
+          </button>
+          {yearOpen && <div className={styles.historyMonths}>
+            {[...months].map(([month, records]) => {
+              const monthOpen = expandedMonths.has(month);
+              const monthLabel = dates.month.format(parseLocalDateString(`${month}-01`));
+              return <div key={month} className={styles.historyGroups}>
+                <button type="button" className={styles.groupButton}
+                  aria-expanded={monthOpen} disabled={busy} onClick={() => toggleMonth(month)}>
+                  {monthLabel}<ChevronDown size={16} aria-hidden="true" />
+                </button>
+                {monthOpen && <div className={styles.list}>{records.map(renderCard)}</div>}
+              </div>;
+            })}
+          </div>}
+        </div>;
       })}
     </div>
     {loading && <p className={styles.notice} role="status">{text.loading}</p>}
@@ -537,9 +594,7 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
 
 type GratitudeRoute = { id: number; tab: "today" | "history"; date: string };
 
-function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction }: {
-  userId: string; lang: Lang; onBusyChange: (busy: boolean) => void; onEntriesChange?: () => void; backAction: BackActionRef;
-}) {
+function GratitudeDialog({ userId, lang, onClose, onEntriesChange }: Omit<Props, "open">) {
   const text = getGratitudeText(lang);
   const currentDate = useChallengeLocalDate() || getLocalDateString();
   const [routes, setRoutes] = useState<GratitudeRoute[]>(() => [{ id: 0, tab: "today", date: getLocalDateString() }]);
@@ -555,7 +610,7 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction
   const id = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const focusTabRef = useRef<"today" | "history" | null>(null);
-  const updateBusy = useCallback((value: boolean) => { busyRef.current = value; setBusy(value); onBusyChange(value); }, [onBusyChange]);
+  const updateBusy = useCallback((value: boolean) => { busyRef.current = value; setBusy(value); }, []);
   const tabs = [{ value: "today" as const, label: text.todayTab }, { value: "history" as const, label: text.historyTab }];
 
   const navigate = (nextTab: GratitudeRoute["tab"]) => {
@@ -567,7 +622,7 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction
     setRoutes(next);
   };
 
-  useGratitudeBackAction(backAction, () => {
+  const goBack = () => {
     if (childBackAction.current?.()) return true;
     if (busyRef.current) return true;
     const previous = routesRef.current;
@@ -578,7 +633,7 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction
     focusTabRef.current = next[next.length - 1].tab;
     setRoutes(next);
     return true;
-  });
+  };
 
   useEffect(() => {
     if (!focusTabRef.current) return;
@@ -586,42 +641,40 @@ function GratitudeBody({ userId, lang, onBusyChange, onEntriesChange, backAction
     focusTabRef.current = null;
   }, [routes]);
 
-  return <div lang={lang}>
-    <p className={styles.intro}>{text.description}</p>
-    <div role="tablist" aria-label={text.title} className={styles.tabs}>
-      {tabs.map(({ value, label }, index) => <button key={value} ref={node => { tabRefs.current[index] = node; }}
-        type="button" role="tab" id={`${id}-tab-${value}`} aria-controls={`${id}-panel-${value}`}
-        aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} disabled={busy} className={styles.tab}
-        onClick={() => navigate(value)}
-        onKeyDown={event => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || busy) return;
-          event.preventDefault();
-          const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : index === 0 ? 1 : 0;
-          navigate(tabs[next].value);
-          tabRefs.current[next]?.focus();
-        }}>{label}</button>)}
+  return <HomeHubDialog open title={text.title} closeLabel={text.close} hideTitle busy={busy} onClose={onClose}
+    onAndroidBack={goBack} backdropVariant="prayer" height={tab === "history" ? HISTORY_DIALOG_HEIGHT : undefined}>
+    <div lang={lang} className={tab === "history" ? styles.historyLayout : undefined}>
+      <p className={styles.intro}>{text.description}</p>
+      <div role="tablist" aria-label={text.title} className={styles.tabs}>
+        {tabs.map(({ value, label }, index) => <button key={value} ref={node => { tabRefs.current[index] = node; }}
+          type="button" role="tab" id={`${id}-tab-${value}`} aria-controls={`${id}-panel-${value}`}
+          aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} disabled={busy} className={styles.tab}
+          onClick={() => navigate(value)}
+          onKeyDown={event => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || busy) return;
+            event.preventDefault();
+            const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : index === 0 ? 1 : 0;
+            navigate(tabs[next].value);
+            tabRefs.current[next]?.focus();
+          }}>{label}</button>)}
+      </div>
+      <div role="tabpanel" id={`${id}-panel-${tab}`} aria-labelledby={`${id}-tab-${tab}`}
+        tabIndex={tab === "history" ? 0 : undefined}
+        className={tab === "history" ? `${styles.panel} ${styles.historyScroll}` : styles.panel}>
+        {tab === "today" ? <>
+          {editorDate !== currentDate && <div>
+            <p className={styles.notice} role="status">{text.olderDraftNotice}</p>
+            <button type="button" className={styles.button} disabled={busy} onClick={() => navigate("today")}>{text.goToday}</button>
+          </div>}
+          <GratitudeEditor key={editorDate} userId={userId} date={editorDate} lang={lang} onBusyChange={updateBusy}
+            onSaved={onEntriesChange} backAction={childBackAction} preferredView={editorViewsRef.current.get(route.id)}
+            onViewChange={view => editorViewsRef.current.set(route.id, view)} />
+        </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} backAction={childBackAction} />}
+      </div>
     </div>
-    <div role="tabpanel" id={`${id}-panel-${tab}`} aria-labelledby={`${id}-tab-${tab}`} className={styles.panel}>
-      {tab === "today" ? <>
-        {editorDate !== currentDate && <div>
-          <p className={styles.notice} role="status">{text.olderDraftNotice}</p>
-          <button type="button" className={styles.button} disabled={busy} onClick={() => navigate("today")}>{text.goToday}</button>
-        </div>}
-        <GratitudeEditor key={editorDate} userId={userId} date={editorDate} lang={lang} onBusyChange={updateBusy}
-          onSaved={onEntriesChange} backAction={childBackAction} preferredView={editorViewsRef.current.get(route.id)}
-          onViewChange={view => editorViewsRef.current.set(route.id, view)} />
-      </> : <GratitudeHistory userId={userId} today={currentDate} lang={lang} onBusyChange={updateBusy} onEntriesChange={onEntriesChange} backAction={childBackAction} />}
-    </div>
-  </div>;
+  </HomeHubDialog>;
 }
 
 export default function HomeGratitudeDialog({ open, userId, lang, onClose, onEntriesChange }: Props) {
-  const text = getGratitudeText(lang);
-  const [busy, setBusy] = useState(false);
-  const backAction = useRef<(() => boolean) | null>(null);
-  useEffect(() => { setBusy(false); }, [userId, open]);
-  return <HomeHubDialog open={open} title={text.title} closeLabel={text.close} hideTitle busy={busy} onClose={onClose}
-    onAndroidBack={() => backAction.current?.() ?? false} backdropVariant="prayer">
-    <GratitudeBody key={userId} userId={userId} lang={lang} onBusyChange={setBusy} onEntriesChange={onEntriesChange} backAction={backAction} />
-  </HomeHubDialog>;
+  return open ? <GratitudeDialog key={userId} userId={userId} lang={lang} onClose={onClose} onEntriesChange={onEntriesChange} /> : null;
 }

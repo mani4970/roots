@@ -20,6 +20,7 @@ type HomeHubDialogProps = {
   busy?: boolean;
   hideTitle?: boolean;
   compact?: boolean;
+  height?: number;
 };
 
 const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([type='hidden']), select:not(:disabled), textarea:not(:disabled), [contenteditable='true'], [tabindex]:not([tabindex='-1'])";
@@ -27,7 +28,7 @@ const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([typ
 // The body lock is shared with the existing prayer dialogs, including native
 // iPad/Mac zoom and keyboard handling. Home keeps these dialogs mutually exclusive.
 export default function HomeHubDialog({
-  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, compact = false,
+  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, compact = false, height,
 }: HomeHubDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -232,7 +233,8 @@ export default function HomeHubDialog({
   const dialog = (
     <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined} aria-busy={busy}
-      className={`${styles.dialog}${compact ? ` ${styles.compactDialog}` : ""}`}
+      className={`${styles.dialog}${compact ? ` ${styles.compactDialog}` : ""}${height === undefined ? "" : ` ${styles.fixedHeight}`}`}
+      style={height === undefined ? undefined : { height }}
     >
       <button ref={closeRef} type="button" className={styles.close} aria-label={closeLabel}
         disabled={busy} onClick={dismiss}><X size={21} strokeWidth={1.8} aria-hidden="true" /></button>
