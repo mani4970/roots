@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString, getShiftedLocalDateString, parseLocalDateString } from "@/lib/date";
@@ -32,11 +32,6 @@ function useGratitudeBackAction(target: BackActionRef, handle: () => boolean) {
     target.current = action;
     return () => { if (target.current === action) target.current = null; };
   }, [target]);
-}
-
-function readableDate(date: string, lang: Lang) {
-  return new Intl.DateTimeFormat(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric" })
-    .format(parseLocalDateString(date));
 }
 
 function errorCode(error: unknown): string {
@@ -73,18 +68,9 @@ function singleLine(value: string) {
   return value.replace(/\r\n|\r|\n/g, " ");
 }
 
-function GratitudeRecordContent({ date, items, lang, draft = false, action, showDate = true }: {
-  date: string; items: string[]; lang: Lang; draft?: boolean; action?: ReactNode; showDate?: boolean;
-}) {
-  return <>
-    {(showDate || draft || Boolean(action)) && <div className={styles.cardHeader}>
-      {showDate && <time className={styles.date} dateTime={date}>{readableDate(date, lang)}</time>}
-      {draft && <span className={styles.draft}>{getGratitudeText(lang).draftLabel}</span>}
-      {action}
-    </div>}
-    <ol className={styles.items}>{items.filter(value => value.trim())
-      .map((item, index) => <li key={index}>{item}</li>)}</ol>
-  </>;
+function GratitudeItems({ items }: { items: string[] }) {
+  return <ol className={styles.items}>{items.filter(value => value.trim())
+    .map((item, index) => <li key={index}>{item}</li>)}</ol>;
 }
 
 type EditorVisit = { view: "read" | "edit"; canBackToSaved: boolean };
@@ -326,7 +312,7 @@ function GratitudeEditor({ userId, date, lang, onBusyChange, onSaved, backAction
   };
 
   if (phase === "ready" && viewing && savedEntry) return <article className={styles.card} data-gratitude-read={date}>
-    <GratitudeRecordContent date={date} items={savedEntry.items} lang={lang} showDate={false} />
+    <GratitudeItems items={savedEntry.items} />
     {(message === "loadError" || message === "authError") && <div>
       <p className={styles.error} role="alert">{text[message]}</p>
       <button type="button" className={styles.button} onClick={() => void load(false, true)}>{text.retry}</button>
@@ -412,6 +398,14 @@ type HistoryProps = { userId: string; today: string; lang: Lang; onBusyChange: (
 
 function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, backAction }: HistoryProps) {
   const text = getGratitudeText(lang);
+  const dates = useMemo(() => {
+    const locale = getDateLocale(lang);
+    const options = { weekday: "long", month: "long", day: "numeric" } as const;
+    return {
+      short: new Intl.DateTimeFormat(locale, options),
+      full: new Intl.DateTimeFormat(locale, { ...options, year: "numeric" }),
+    };
+  }, [lang]);
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
   const [drafts, setDrafts] = useState<GratitudeDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -505,22 +499,35 @@ function GratitudeHistory({ userId, today, lang, onBusyChange, onEntriesChange, 
     </div>}
     {!loading && !error && cards.length === 0 && <p className={styles.empty}>{text.emptyHistory}</p>}
     <div className={styles.list}>
-      {cards.map(([date, { entry, draft }]) => <article key={date} className={styles.card} data-gratitude-date={date}>
-        <GratitudeRecordContent date={date} items={draft?.items ?? entry?.items ?? []} lang={lang} draft={!!draft}
-          action={<button type="button" className={styles.deleteAction} data-gratitude-delete={date}
-            ref={node => { if (node) deleteButtonsRef.current.set(date, node); else deleteButtonsRef.current.delete(date); }}
-            aria-label={`${entry ? text.delete : text.discardDraft}: ${readableDate(date, lang)}`}
-            aria-expanded={deleteDate === date} disabled={busy || loading}
-            onClick={() => setDeleteDate(date)}><Trash2 size={18} aria-hidden="true" /></button>} />
-        {deleteDate === date && <div className={styles.confirm}>
-          <p className={styles.notice}>{entry ? text.deleteConfirm : text.discardDraftConfirm}</p>
-          <div className={styles.actions}>
-            <button type="button" className={styles.button} disabled={busy || loading} onClick={() => setDeleteDate(null)}>{text.cancel}</button>
-            <button type="button" className={`${styles.button} ${styles.danger}`} disabled={busy || loading}
-              onClick={() => void remove(date, entry, draft)}>{text.delete}</button>
+      {cards.map(([date, { entry, draft }]) => {
+        const day = parseLocalDateString(date);
+        const fullDate = dates.full.format(day);
+        const dateLabel = date.slice(0, 4) === today.slice(0, 4) ? dates.short.format(day) : fullDate;
+        return <article key={date} className={styles.historyCard} data-gratitude-date={date}>
+          <header className={styles.historyHeader}>
+            <div className={styles.historyDateGroup}>
+              <time className={styles.historyDate} dateTime={date}>{dateLabel}</time>
+              {draft && <span className={styles.draft}>{text.draftLabel}</span>}
+            </div>
+            <button type="button" className={styles.deleteAction} data-gratitude-delete={date}
+              ref={node => { if (node) deleteButtonsRef.current.set(date, node); else deleteButtonsRef.current.delete(date); }}
+              aria-label={`${entry ? text.delete : text.discardDraft}: ${fullDate}`}
+              aria-expanded={deleteDate === date} disabled={busy || loading}
+              onClick={() => setDeleteDate(date)}><Trash2 size={18} aria-hidden="true" /></button>
+          </header>
+          <div className={styles.historyBody}>
+            <GratitudeItems items={draft?.items ?? entry?.items ?? []} />
+            {deleteDate === date && <div className={styles.confirm}>
+              <p className={styles.notice}>{entry ? text.deleteConfirm : text.discardDraftConfirm}</p>
+              <div className={styles.actions}>
+                <button type="button" className={styles.button} disabled={busy || loading} onClick={() => setDeleteDate(null)}>{text.cancel}</button>
+                <button type="button" className={`${styles.button} ${styles.danger}`} disabled={busy || loading}
+                  onClick={() => void remove(date, entry, draft)}>{text.delete}</button>
+              </div>
+            </div>}
           </div>
-        </div>}
-      </article>)}
+        </article>;
+      })}
     </div>
     {loading && <p className={styles.notice} role="status">{text.loading}</p>}
     {hasMore && !error && <button type="button" className={`${styles.button} ${styles.loadMore}`}
