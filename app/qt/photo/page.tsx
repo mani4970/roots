@@ -31,7 +31,7 @@ import QTCompletionScreen from "@/components/QTCompletionScreen";
 import type { QtShareRecord } from "@/lib/qtShare";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
-import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
+import { isQTEntryOrigin, markReturningFromQTWriter, resolveQTEntryDate } from "@/lib/qtEntry";
 import { getSharePromptBulkSelectionLabels } from "@/lib/sharePromptOptions";
 import { useQTShareOptions } from "@/lib/useQTShareOptions";
 import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notifications/create";
@@ -445,11 +445,15 @@ function PhotoReflectionContent() {
   const entryParam = searchParams.get("entry");
   const entryOrigin = isQTEntryOrigin(entryParam) ? entryParam : null;
   const today = getLocalDateString();
-  const requestedDate = searchParams.get("date") || today;
-  const initialTargetDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : today;
+  const [entryDate] = useState(() => isEditMode ? null : resolveQTEntryDate(searchParams, getLocalDateString()));
+  const invalidEntryDate = !isEditMode && entryDate === null;
+  useEffect(() => {
+    if (invalidEntryDate) router.replace("/qt");
+  }, [invalidEntryDate, router]);
+
   const [editTargetDate, setEditTargetDate] = useState<string | null>(null);
-  const targetDate = isEditMode && editTargetDate ? editTargetDate : initialTargetDate;
-  const isCatchup = targetDate !== today && (isEditMode || searchParams.get("catchup") === "true");
+  const targetDate = (isEditMode ? editTargetDate : entryDate?.date) ?? today;
+  const isCatchup = targetDate !== today;
   const baseSundayContext = searchParams.get("sundayContext") === "true" || parseLocalDateString(targetDate).getDay() === 0;
   const [editSundayContext, setEditSundayContext] = useState<boolean | null>(null);
   const sundayContext = editSundayContext ?? baseSundayContext;
@@ -1146,25 +1150,26 @@ function PhotoReflectionContent() {
     qtRecordId?: string | null,
     personalChallengeContext?: PersonalChallengeCompletionContext | null,
   ) {
-    const personalContext = personalChallengeContext ?? capturePersonalChallengeCompletion(userId, today);
+    const personalContext = personalChallengeContext ?? capturePersonalChallengeCompletion(userId, targetDate);
     observe(observationRef.current, "progress_requested", undefined, qtRecordId);
-    const progress = await recordBibleReflectionProgress(supabase, userId, today);
+    const progress = await recordBibleReflectionProgress(supabase, userId, targetDate);
     if (progress.updated) {
-      storageSet(`qt_completion_pending_watering_${userId}_${today}`, "true");
+      storageSet(`qt_completion_pending_watering_${userId}_${targetDate}`, "true");
     }
 
     // Keep the companion challenge as an independent reward layer. Even when
     // streak/progress was already recorded, retry the same-day companion ledger
     // so a prior transient failure cannot leave photo reflections behind.
-    void recordCompanionChallengeReflectionCompletedBestEffort(supabase, today, qtRecordId)
+    void recordCompanionChallengeReflectionCompletedBestEffort(supabase, targetDate, qtRecordId)
       .catch(error => console.warn("photo reflection companion challenge recording failed", error));
-    void recordPersonalChallengeReflectionCompletedBestEffort(supabase, userId, today, qtRecordId, personalContext)
+    void recordPersonalChallengeReflectionCompletedBestEffort(supabase, userId, targetDate, qtRecordId, personalContext)
       .catch(error => console.warn("photo reflection personal challenge recording failed", error));
     return progress.updated;
   }
 
 
   async function savePhotoReflection(options: CompletePhotoOptions = {}) {
+    if (!entryDate || isEditMode) return;
     if (preparingPhoto) {
       showNotice(pc("preparingPhoto", lang));
       return;
@@ -1218,7 +1223,7 @@ function PhotoReflectionContent() {
       const existingRecord = await findCompletedQTRecordForDate(supabase, user.id, targetDate);
       if (existingRecord) {
         observe(observationRef.current, "save_skipped", { reason: "existing_record" }, existingRecord.id);
-        if (targetDate === today) {
+        if (targetDate === getLocalDateString()) {
           try {
             const recoveredProgress = await withPhotoStageTimeout(
               recordTodayPhotoProgress(supabase, user.id, existingRecord.id),
@@ -1228,7 +1233,7 @@ function PhotoReflectionContent() {
             if (recoveredProgress) {
               observe(observationRef.current, "save_ok", { recovery: true, existing_record: true }, existingRecord.id);
               observationRetryRef.current = false;
-              void markBibleReflectionCompletedForNotifications(today, lang)
+              void markBibleReflectionCompletedForNotifications(targetDate, lang)
                 .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
               setShowShareModal(false);
               requestDuplicatePhotoExit("/qt/complete", existingRecord.id);
@@ -1411,7 +1416,7 @@ function PhotoReflectionContent() {
           .catch(error => console.warn("photo reflection share badge check failed", error));
       }
 
-      if (targetDate === today) {
+      if (targetDate === getLocalDateString()) {
         stage = "progress";
         try {
           const updated = await withPhotoStageTimeout(
@@ -1440,7 +1445,7 @@ function PhotoReflectionContent() {
           return;
         }
 
-        void markBibleReflectionCompletedForNotifications(today, lang)
+        void markBibleReflectionCompletedForNotifications(targetDate, lang)
           .catch(notificationError => console.warn("photo reflection notification completion update failed", notificationError));
 
         stage = "notifications";
@@ -1765,6 +1770,8 @@ function PhotoReflectionContent() {
   const chapterOptions = Array.from({ length: maxChapter }, (_, i) => i + 1);
   const displayedPhotoUrl = previewUrl || (!existingPhotoRemoved ? existingPhotoUrl : null);
   const hasUsablePhoto = Boolean(preparedPhoto || ((existingPhotoPath || existingPhotoUrl) && !existingPhotoRemoved));
+
+  if (invalidEntryDate) return null;
 
   if (completionReady) {
     return <QTCompletionScreen lang={lang} observationFlow={observationRef.current} notice={completionNotice} shareRecord={completionShareRecord} shareRecordId={completionShareRecordId} onConfirm={returnHomeAfterCompletion} />;

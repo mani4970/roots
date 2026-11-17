@@ -21,7 +21,7 @@ import { isLang, t, type Lang } from "@/lib/i18n";
 import { translateBibleRef } from "@/lib/bibleBooks";
 import { getLocalDateString, getShiftedLocalDateString } from "@/lib/date";
 import { markBibleReflectionCompletedForNotifications } from "@/lib/localNotifications";
-import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp, Calendar } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Plus, Trash2, ChevronDown, BookOpen, X, ChevronUp } from "lucide-react";
 import {
   ALL_TRANSLATIONS,
   BIBLE_CHAPTERS,
@@ -55,7 +55,7 @@ import CursorStableTextarea from "@/components/CursorStableTextarea";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
 import { qtFlowCopy } from "@/lib/qtFlowCopy";
-import { isQTEntryOrigin, markReturningFromQTWriter } from "@/lib/qtEntry";
+import { isQTEntryOrigin, markReturningFromQTWriter, resolveQTEntryDate } from "@/lib/qtEntry";
 import { compareKeyVerseIds, toggleKeyVerseText, type KeyVerseSource } from "@/lib/qtKeyVerseSelection";
 import {
   loadYesterdayFreePassageContinuation,
@@ -81,7 +81,6 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "본문 글씨 크게": { de: "Bibeltext vergrößern", en: "Increase Bible text size", fr: "Augmenter la taille du texte biblique", es: "Aumentar el tamaño del texto bíblico" },
   "번역본": { de: "Übersetzung", en: "Translation", fr: "Traduction", es: "Traducción" },
   "번역본 선택": { ko: "번역본 선택", de: "Übersetzung auswählen", en: "Select translation", fr: "Choisir une traduction", es: "Seleccionar traducción" },
-  "날짜 선택": { ko: "날짜 선택", de: "Datum auswählen", en: "Select date", fr: "Choisir une date", es: "Seleccionar fecha" },
   "본문 요약 & 붙잡은 말씀": { de: "Zusammenfassung & Schlüsselvers", en: "Summary & Key Verse", fr: "Résumé & verset clé", es: "Resumen del pasaje y versículo clave" },
   "본문을 읽고 마음에 새겨요": { de: "Den Text lesen und ins Herz aufnehmen", en: "Read and engrave the text in your heart", fr: "Lisez le texte et gardez-le dans votre cœur", es: "Lee el pasaje y guárdalo en tu corazón" },
   "느낌과 묵상": { de: "Gedanken & Erkenntnisse", en: "Thoughts & Insights", fr: "Réflexions et enseignements", es: "Pensamientos y aprendizajes" },
@@ -149,9 +148,6 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "본문 내용을 자신의 말로 요약해보세요...": { de: "Fassen Sie den Text in eigenen Worten zusammen...", en: "Summarize the text in your own words...", fr: "Résumez le texte avec vos propres mots...", es: "Resume el pasaje con tus propias palabras..." },
   "마음에 와닿은 구절을 적거나 위에서 선택하세요...": { de: "Schreiben Sie den berührenden Vers oder wählen Sie oben...", en: "Write the verse that touched you or select above...", fr: "Écrivez le verset qui vous touche ou choisissez-le ci-dessus...", es: "Escribe el versículo que tocó tu corazón o selecciónalo arriba..." },
   // 요일 단어
-  "일": { de: "So", en: "Sun", fr: "Dim", es: "Dom" }, "월": { de: "Mo", en: "Mon", fr: "Lun", es: "Lun" }, "화": { de: "Di", en: "Tue", fr: "Mar", es: "Mar" }, "수": { de: "Mi", en: "Wed", fr: "Mer", es: "Mié" },
-  "목": { de: "Do", en: "Thu", fr: "Jeu", es: "Jue" }, "금": { de: "Fr", en: "Fri", fr: "Ven", es: "Vie" }, "토": { de: "Sa", en: "Sat", fr: "Sam", es: "Sáb" },
-  "· 오늘": { de: "· Heute", en: "· Today", fr: "· Aujourd’hui", es: "· Hoy" },
   // 버튼 / 라벨
   "나가기": { de: "Verlassen", en: "Exit", fr: "Quitter", es: "Salir" },
   "이전": { de: "Zurück", en: "Back", fr: "Retour", es: "Atrás" },
@@ -195,6 +191,13 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "신약": { de: "NT", en: "NT", fr: "Nouveau Testament", es: "NT" },
   "임시저장은 오늘 큐티에만 가능해요.": { ko: "임시저장은 오늘 말씀 묵상에만 가능해요.", de: "Entwürfe sind nur für die heutige Stille Zeit möglich.", en: "Drafts are only available for today's Bible Reflection.", fr: "Les brouillons sont disponibles uniquement pour la méditation biblique du jour.", es: "Los borradores solo están disponibles para la meditación bíblica de hoy." },
   "이미 큐티 기록이 있어요": { ko: "{date}에 이미 말씀 묵상 기록이 있어요", de: "Für {date} gibt es bereits eine Stille Zeit", en: "A Bible Reflection already exists for {date}", fr: "Une méditation biblique existe déjà pour le {date}", es: "Ya existe una meditación bíblica para {date}" },
+  "묵상 수정 날짜 충돌": {
+    ko: "같은 날짜의 말씀 묵상 기록과 겹쳐 수정 내용을 저장하지 못했어요. 수정한 내용은 이 화면에 남아 있어요.",
+    de: "Für dieses Datum gibt es bereits einen anderen Eintrag. Deine Änderungen wurden nicht gespeichert und bleiben hier erhalten.",
+    en: "Another Bible Reflection already exists for this date. Your changes weren’t saved and are still here.",
+    fr: "Une autre méditation biblique existe déjà pour cette date. Vos modifications n’ont pas été enregistrées et restent dans cet écran.",
+    es: "Ya existe otra meditación bíblica para esta fecha. Tus cambios no se guardaron y siguen en esta pantalla.",
+  },
   "끝 장": { de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin", es: "Capítulo final" },
   "말씀을 삶에 적용해보세요!": { de: "Wort im Leben anwenden!", en: "Apply the Word to life!", fr: "Appliquez la Parole dans votre vie !", es: "¡Aplica la Palabra a tu vida!" },
   "결단": { de: "Entschluss", en: "Resolution", fr: "Décision", es: "Compromiso" },
@@ -225,6 +228,13 @@ function trQTVars(str: string, lang: Lang, vars: Record<string, string | number>
     out = out.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
   }
   return out;
+}
+
+function isCompletedQtDateConflict(error: { code: string; message?: string; details?: string | null }) {
+  return error.code === "23505" && (
+    error.message?.includes('"uq_qt_records_one_completed_per_user_date"')
+    || /^Key \((?:user_id, date|date, user_id)\)=/.test(error.details ?? "")
+  );
 }
 
 type QTWriteMode = "6step" | "sunday" | "free";
@@ -370,7 +380,6 @@ function QTWriteContent() {
   const editId = params.get("editId");
   const isEditMode = Boolean(editId);
   const isResume = params.get("resume") === "true";
-  const isCatchUp = params.get("catchup") === "true";
   const entryParam = params.get("entry");
   const entryOrigin = isQTEntryOrigin(entryParam) ? entryParam : null;
   // 오늘 스케줄 파라미터
@@ -381,11 +390,12 @@ function QTWriteContent() {
   const schedEndChapter = params.get("schedEndChapter");
   const hasSchedule = !!(schedBook && schedChapter && schedStartV && schedEndV);
   const todayStr = getLocalDateString();
-  const resumeDateParam = params.get("date");
-  const initialDate = resumeDateParam || todayStr;
-
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [entryDate] = useState(() => resolveQTEntryDate(params, todayStr));
+  const initialDate = entryDate?.date ?? todayStr;
+  const isCatchUp = entryDate?.isCatchUp === true;
+  const [loadedEditRecord, setLoadedEditRecord] = useState<{ id: string; date: string } | null>(null);
+  const savedEditDate = loadedEditRecord && loadedEditRecord.id === editId ? loadedEditRecord.date : null;
+  const selectedDate = savedEditDate ?? initialDate;
   const translationParam = params.get("translation");
   const [selectedTranslation, setSelectedTranslation] = useState(() => {
     const activeLang = getStoredLang() ?? lang;
@@ -688,10 +698,6 @@ function QTWriteContent() {
     }
     if (showTranslationPicker) {
       setShowTranslationPicker(false);
-      return true;
-    }
-    if (showDatePicker) {
-      setShowDatePicker(false);
       return true;
     }
     if (mode === "free" && bibleStep === "done") {
@@ -1088,6 +1094,10 @@ function QTWriteContent() {
 
   // 임시저장 데이터 로드
   useEffect(() => {
+    if (!entryDate) {
+      router.replace("/qt");
+      return;
+    }
     // A completed writer now keeps the celebration mounted locally. A late
     // initial-load rerun (for example across midnight) must not replace it.
     if (pendingCompletionRef.current) return;
@@ -1134,7 +1144,7 @@ function QTWriteContent() {
           .eq("user_id", user.id)
           .eq("is_draft", false)
           .maybeSingle();
-        if (error || !record) {
+        if (error || !record || typeof record.date !== "string" || !record.date) {
           showToast(t("qt_record_error_load", lang), "error");
           setDraftProbeDone(true);
           setPageReady(true);
@@ -1142,7 +1152,7 @@ function QTWriteContent() {
         }
 
         resetDraftState();
-        setSelectedDate(record.date ?? todayStr);
+        setLoadedEditRecord({ id: editId, date: record.date });
         setMode(record.qt_mode ?? "6step");
         setCur(0);
         const recordTranslationId = normalizeBibleTranslationId(record.bible_version, selectedTranslation);
@@ -1252,7 +1262,7 @@ function QTWriteContent() {
 
       // Draft autosave applies only to today's QT. Catch-up dates continue
       // through the existing schedule/manual-passage flow.
-      if (initialDate !== todayStr) {
+      if (isCatchUp) {
         if (isResume) resetDraftState();
         applyFreshTranslationPreference();
         setDraftProbeDone(true);
@@ -1504,7 +1514,7 @@ function QTWriteContent() {
       }
     };
     void loadDraft();
-  }, [isResume, isEditMode, editId, initialDate, draftRetryNonce]);
+  }, [isResume, isEditMode, editId, initialDate, draftRetryNonce, entryDate]);
 
   const translationName = ALL_TRANSLATIONS.find(t => t.id === selectedTranslation)?.name ?? "개역개정";
 
@@ -2230,21 +2240,6 @@ function QTWriteContent() {
     return "upcoming";
   }
 
-  function handleDateChange(d: string) {
-    setSelectedDate(d);
-    setShowDatePicker(false);
-  }
-
-  const dateLabel = (d: string) => {
-    const date = new Date(d + "T12:00:00");
-    const day = trQT(["일", "월", "화", "수", "목", "금", "토"][date.getDay()], lang);
-    return `${d} (${day})${d === todayStr ? ` ${trQT("· 오늘", lang)}` : ""}`;
-  };
-  const dateOptions = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    return getLocalDateString(d);
-  });
-
   // Remember only a foreground signal received while a draft is still pending.
   // Input renders keep this intent; changing the writer's identity invalidates it.
   const resumePendingRef = useRef<DeferredResumeGuard | null>(null);
@@ -2911,12 +2906,27 @@ function QTWriteContent() {
       const recordData = buildCompleteRecordData(user.id, options);
 
       if (isEditMode && editId) {
+        if (!savedEditDate) {
+          showToast(t("qt_record_error_load", lang), "error");
+          return;
+        }
+        // Content edits must never move an already completed record to another date.
+        const { date, user_id, ...editedContent } = recordData;
         const { error } = await supabase.from("qt_records")
-          .update({ ...recordData, is_draft: false, current_step: cur })
+          .update({ ...editedContent, is_draft: false, current_step: cur })
           .eq("id", editId)
           .eq("user_id", user.id)
           .eq("is_draft", false);
         if (error) {
+          if (isCompletedQtDateConflict(error)) {
+            completionRetryRef.current = false;
+            retryToastObservationRef.current = null;
+            observe(completionObservationRef.current, "save_error", {
+              phase: "edit_record", reason: "duplicate_completed", ...observationError(error),
+            }, editId);
+            showToast(trQT("묵상 수정 날짜 충돌", lang), "error");
+            return;
+          }
           observeSaveFailure(error, "edit_record");
           showToast(trQT("저장에 실패했어요. 다시 시도해주세요.", lang), "error");
           return;
@@ -3204,12 +3214,7 @@ function QTWriteContent() {
         </div>
 
         <div style={{ flex: 1, padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
-          {/* 날짜 + 번역본 */}
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="qt-field-trigger" onClick={() => setShowDatePicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--qt-card-surface)", border: "1px solid var(--qt-option-border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-              <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}><Calendar size={13} /> {selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
-              <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
-            </button>
             <button className="qt-field-trigger" onClick={() => setShowTranslationPicker(true)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "var(--qt-card-surface)", border: "1px solid var(--qt-option-border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
               <span style={{ fontSize: 12, color: "var(--sage-dark)", fontWeight: 600 }}><BookOpen size={13} /> {translationName}</span>
               <ChevronDown size={12} style={{ color: "var(--text3)", marginLeft: "auto" }} />
@@ -3283,25 +3288,6 @@ function QTWriteContent() {
           </div>
         )}
 
-        {/* 날짜 선택 모달 */}
-        {showDatePicker && (
-          <div style={{ position: "fixed", inset: 0, background: "var(--overlay-sheet)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div className="roots-elevation-sheet" style={{ background: "var(--qt-sheet-surface)", width: "100%", maxWidth: 480, borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", maxHeight: "60vh", overflowY: "auto" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{trQT("날짜 선택", lang)}</h3>
-                <button onClick={() => setShowDatePicker(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {dateOptions.map(d => (
-                  <button className="qt-option-card" key={d} onClick={() => handleDateChange(d)} style={{ padding: "12px 16px", borderRadius: 14, border: `1px solid ${selectedDate === d ? "var(--qt-sage-border)" : "var(--qt-option-border)"}`, background: selectedDate === d ? "var(--qt-sage-surface)" : "var(--qt-option-surface)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, color: selectedDate === d ? "var(--qt-sage-text)" : "var(--text)", fontWeight: selectedDate === d ? 700 : 400 }}>{dateLabel(d)}</span>
-                    {selectedDate === d && <Check size={14} style={{ color: "var(--sage)" }} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }

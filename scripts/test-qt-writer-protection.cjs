@@ -21,10 +21,50 @@ function extract(name, tree = ast) {
   }).outputText;
 }
 
+function checkEntryDates() {
+  const modules = {};
+  for (const name of ["date", "qtEntry"]) {
+    const exports = {};
+    const text = fs.readFileSync(path.join(root, `lib/${name}.ts`), "utf8");
+    const { outputText } = ts.transpileModule(text, {
+      compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+    });
+    vm.runInNewContext(outputText, {
+      exports, URLSearchParams,
+      require(id) {
+        assert.ok(id === "@/lib/date" || id === "./date", `Unexpected dependency: ${id}`);
+        return modules.date;
+      },
+    });
+    modules[name] = exports;
+  }
+  const today = "2026-09-06";
+  const resolve = query => modules.qtEntry.resolveQTEntryDate(new URLSearchParams(query), today);
+  for (const query of ["", "entry=home&date=2026-09-05", "entry=qt&resume=true&date=2026-09-05"]) {
+    assert.deepEqual({ ...resolve(query) }, { date: today, isCatchUp: false }, "New and resumed entries use the device date");
+  }
+  assert.deepEqual({ ...resolve("editId=record-edit&entry=qt&catchup=true&date=2026-09-05") },
+    { date: today, isCatchUp: false }, "The edit URL cannot supply the persisted record date");
+  assert.deepEqual({ ...resolve("entry=qt&catchup=true&date=2026-09-05") },
+    { date: "2026-09-05", isCatchUp: true }, "A selected past date stays fixed in catch-up");
+  assert.deepEqual({ ...resolve("entry=qt&catchup=true&date=2024-02-29") },
+    { date: "2024-02-29", isCatchUp: true }, "A real leap day is accepted");
+  for (const query of [
+    "entry=home&catchup=true&date=2026-09-05",
+    "catchup=true&date=2026-09-05",
+    "entry=qt&catchup=true",
+    "entry=qt&catchup=true&date=2026-9-05",
+    "entry=qt&catchup=true&date=2026-02-29",
+    "entry=qt&catchup=true&date=2026-08-32",
+    "entry=qt&catchup=true&date=2026-09-06",
+    "entry=qt&catchup=true&date=2026-09-07",
+  ]) assert.equal(resolve(query), null, `Invalid catch-up route is rejected: ${query}`);
+}
+
 function createContext(options = {}) {
   const state = {
     rows: options.rows ?? [{ id: "draft-1", is_draft: true, meditation: "draft text" }],
-    routes: [], queries: [], notices: [], recipients: [], progress: [], savedSnapshots: [],
+    routes: [], queries: [], notices: [], recipients: [], progress: [], savedSnapshots: [], observations: [],
     challengeCaptures: [], challengeCompletions: [], shareBadgeChecks: [], homeReturns: [],
     recipientsFailures: options.recipientsFailures ?? 0,
     progressFailures: options.progressFailures ?? 0,
@@ -32,10 +72,11 @@ function createContext(options = {}) {
   };
   const context = {
     console: { warn() {}, error() {} },
-    beginObservation: () => null, observe() {}, observationError: () => ({}), rememberObservationFlow() {},
+    beginObservation: () => null, rememberObservationFlow() {},
+    observe: (_flow, event, details) => state.observations.push({ event, details }),
+    observationError: error => error?.code ? { error_code: error.code } : {},
     getCompletionObservation: () => null, completionObservationRef: { current: null },
     completionRetryRef: { current: false }, retryToastObservationRef: { current: null },
-    observeSaveFailure() {},
     setTimeout, clearTimeout,
     window: { clearTimeout },
     saving: false, completionSavingRef: { current: false },
@@ -44,6 +85,8 @@ function createContext(options = {}) {
     resumePendingRef: { current: null }, resumeGenerationRef: { current: 0 },
     autoSaveTimerRef: { current: null }, draftSaveChainRef: { current: Promise.resolve() },
     selectedDate: options.date ?? "2026-09-06", todayStr: "2026-09-06",
+    savedEditDate: options.edit && !Object.hasOwn(options, "savedEditDate")
+      ? options.date ?? "2026-09-06" : options.savedEditDate ?? null,
     mode: options.mode ?? "free", selectedTranslation: 92, cur: 5,
     freeText: "My saved reflection", decisions: ["My decision"], answers: {},
     bibleRef: "John 1:1", keyVerse: "1 Beginning", passages: [{ ref: "John 1:1" }],
@@ -57,7 +100,7 @@ function createContext(options = {}) {
     getLocalDateString: () => "2026-09-06",
     nextDraftClientUpdatedAt: () => "2026-09-06T12:00:00.000Z",
     getQtDraftSessionUser: async () => ({ id: "user-1" }),
-    trQT: value => value, trQTVars: value => value,
+    t: value => value, trQT: value => value, trQTVars: value => value,
     showToast: value => state.notices.push(value),
     setCompleteShareTargets() {},
     saveQTDraftBackup: snapshot => { state.savedSnapshots.push(snapshot); return true; },
@@ -71,6 +114,8 @@ function createContext(options = {}) {
       state.progress.push({ user, recordId });
       return !(state.progressFailures-- > 0);
     },
+    recordBibleReflectionProgress: async (_client, user, date) => { state.progress.push({ user, date }); },
+    withQtDraftTimeout: promise => promise,
     markBibleReflectionCompletedForNotifications: async () => {},
     createBibleReflectionShareNotificationsBestEffort: async () => {},
     // Imported service boundaries stay offline; retain their inputs so the
@@ -100,7 +145,7 @@ function createContext(options = {}) {
     const filters = {};
     return {
       select() { return this; }, eq(key, value) { filters[key] = value; return this; },
-      order() { return this; }, single() { single = true; return this; },
+      order() { return this; }, single() { single = true; return this; }, maybeSingle() { single = true; return this; },
       update(value) { operation = "update"; payload = value; return this; },
       insert(value) { operation = "insert"; payload = value; return this; },
       then(resolve, reject) {
@@ -108,6 +153,9 @@ function createContext(options = {}) {
         if (operation !== "read" && payload.meditation !== undefined) state.bodyWrites += 1;
         if (operation === "insert") state.rows.push({ ...payload, id: "inserted-1" });
         if (operation === "update") {
+          if (filters.id === "record-edit" && options.editError) {
+            return Promise.resolve({ data: null, error: options.editError }).then(resolve, reject);
+          }
           const row = state.rows.find(row => !filters.id || row.id === filters.id);
           if (row) Object.assign(row, payload);
         }
@@ -124,12 +172,14 @@ function createContext(options = {}) {
   for (const name of [
     "handleChapterChange", "getDraftSnapshot", "getDraftSignature", "hasDraftContent", "persistDraftBackup",
     "buildStandardBibleRef", "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion",
-    "cancelDeferredResume", "returnHomeAfterCompletion", "save",
+    "cancelDeferredResume", "returnHomeAfterCompletion", "isCompletedQtDateConflict", "observeSaveFailure", "save",
   ]) vm.runInContext(extract(name), context);
+  if (options.useRealDateProgress) vm.runInContext(extract("recordProgressBeforeCompletion"), context);
   return { state, context };
 }
 
 async function run() {
+  checkEntryDates();
   {
     const { context, state } = createContext();
     context.handleChapterChange("2");
@@ -193,11 +243,13 @@ async function run() {
     assert.equal(context.completionReady, true, "Existing in-page completion screen is ready");
   }
   {
-    const { context, state } = createContext({ date: "2026-09-05", recipientsFailures: 1 });
+    const { context, state } = createContext({ date: "2026-09-05", recipientsFailures: 1, useRealDateProgress: true });
     assert.equal(context.persistDraftBackup(), false, "No past-date draft mechanism is added");
     await context.save({ visibility: "private", partnerRecipientIds: [] });
     await context.save();
     assert.equal(state.bodyWrites, 1);
+    assert.equal(state.rows[0].date, "2026-09-05", "The saved record uses the selected catch-up date");
+    assert.equal(state.progress.length, 0, "A past date does not write today's progress");
     assert.equal(context.completionReady, true, "Same saved past-date record can finish failed sharing");
     assert.equal(state.savedSnapshots.length, 0);
   }
@@ -220,11 +272,76 @@ async function run() {
     assert.equal(state.bodyWrites, 0);
   }
   {
-    const { context, state } = createContext({ edit: true, rows: [{ id: "record-edit", is_draft: false }] });
+    const completed = { id: "past-existing", date: "2026-09-05", is_draft: false, meditation: "Already completed yesterday" };
+    const { context, state } = createContext({ date: completed.date, rows: [{ ...completed }] });
+    await context.save({ visibility: "private" });
+    assert.equal(state.bodyWrites, 0, "A past entry completed elsewhere after the picker loaded is not overwritten");
+    assert.deepEqual(state.rows, [completed]);
+    assert.equal(state.progress.length, 0);
+    assert.equal(state.recipients.length, 0);
+    assert.equal(state.routes.length, 0);
+    assert.ok(state.notices.includes("이미 큐티 기록이 있어요"), "An existing past record gets a date notice");
+  }
+  for (const mode of ["free", "6step", "sunday"]) {
+    const savedEditDate = "2026-07-01";
+    const other = { id: "record-other", user_id: "user-1", is_draft: false, date: "2026-09-06", meditation: "Today's completed reflection" };
+    const { context, state } = createContext({
+      edit: true, mode, savedEditDate, date: other.date,
+      rows: [{ id: "record-edit", user_id: "user-1", is_draft: false, date: savedEditDate, meditation: "Previous text" }, { ...other }],
+    });
+    context.answers = { meditation: "My saved reflection" };
     await context.save();
     assert.equal(state.bodyWrites, 1);
+    const update = state.queries.find(query => query.operation === "update");
+    assert.equal(update.table, "qt_records");
+    assert.deepEqual(update.filters, { id: "record-edit", user_id: "user-1", is_draft: false });
+    assert.equal(Object.hasOwn(update.payload, "date"), false, "An edit never sends a replacement date");
+    assert.equal(Object.hasOwn(update.payload, "user_id"), false, "An edit never sends a replacement owner");
+    assert.equal(state.rows[0].date, savedEditDate, "The persisted old date survives editing");
+    assert.equal(state.rows[0].meditation, "My saved reflection");
+    assert.deepEqual(state.rows[1], other, "Editing leaves the other day's record intact");
     assert.equal(state.progress.length, 0, "Editing does not award completion again");
+    assert.equal(state.recipients.length, 0, "Editing does not repeat sharing");
     assert.equal(state.routes.at(-1), "/qt/record?id=record-edit");
+  }
+  {
+    const { context, state } = createContext({ edit: true, savedEditDate: null });
+    await context.save();
+    assert.equal(state.queries.length, 0, "An edit needs the saved record before it can write");
+    assert.deepEqual(state.notices, ["qt_record_error_load"]);
+    assert.equal(state.routes.length, 0);
+  }
+  for (const { editError, isDateConflict } of [
+    {
+      editError: { code: "23505", message: 'duplicate key value violates unique constraint "uq_qt_records_one_completed_per_user_date"' },
+      isDateConflict: true,
+    },
+    {
+      editError: { code: "23505", message: "duplicate key", details: "Key (user_id, date)=(user-1, 2026-09-06) already exists." },
+      isDateConflict: true,
+    },
+    {
+      editError: { code: "23505", message: 'duplicate key value violates unique constraint "other_unique_index"', details: "Key (id)=(record-edit) already exists." },
+      isDateConflict: false,
+    },
+    {
+      editError: { code: "57014", message: "canceling statement due to statement timeout" },
+      isDateConflict: false,
+    },
+  ]) {
+    const row = { id: "record-edit", user_id: "user-1", is_draft: false, date: "2026-09-06", meditation: "Saved text" };
+    const { context, state } = createContext({ edit: true, editError, rows: [{ ...row }] });
+    await context.save();
+    assert.deepEqual(state.notices, [isDateConflict ? "묵상 수정 날짜 충돌" : "저장에 실패했어요. 다시 시도해주세요."]);
+    const failure = state.observations.find(item => item.event === "save_error");
+    assert.equal(failure.details.phase, "edit_record");
+    assert.equal(failure.details.reason, isDateConflict ? "duplicate_completed" : undefined);
+    assert.equal(context.completionRetryRef.current, !isDateConflict);
+    assert.equal(Boolean(context.retryToastObservationRef.current), !isDateConflict);
+    assert.equal(context.freeText, "My saved reflection", "The editor keeps the unsaved text");
+    assert.deepEqual(context.decisions, ["My decision"]);
+    assert.deepEqual(state.rows, [row], "A rejected edit leaves the saved entry intact");
+    assert.equal(state.routes.length, 0, "The editor stays open");
   }
   {
     const { context, state } = createContext();
@@ -232,7 +349,7 @@ async function run() {
     assert.equal(state.bodyWrites, 1, "Double clicks are serialized by the immediate completion lock");
   }
   assert(source.indexOf("if (pendingCompletion) {\n    return (") < source.indexOf("// ─── 자유형식 작성 화면"), "Committed recovery renders before editable forms");
-  console.log("PASS writer protection: chapter change + backup, all written modes, recipient/progress retries, past date, duplicate record, edit, double click");
+  console.log("PASS writer protection: fixed entry dates, chapter change + backup, recipient/progress retries, past date + duplicate, fixed edit dates and date-error notice, double click");
 }
 
 run().catch(error => { console.error(error); process.exitCode = 1; });

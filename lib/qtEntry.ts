@@ -1,3 +1,5 @@
+import { getLocalDateString, parseLocalDateString } from "@/lib/date";
+
 export type QTMode = "6step" | "sunday" | "free";
 export type QTPhotoPassageSource = "scheduled" | "custom";
 export type QTEntryOrigin = "home" | "qt";
@@ -7,6 +9,22 @@ const QT_RETURN_FROM_WRITER_MAX_AGE_MS = 15_000;
 
 export function isQTEntryOrigin(value: string | null): value is QTEntryOrigin {
   return value === "home" || value === "qt";
+}
+
+/** Resolve once on entry. An edit subsequently displays the owned record's date. */
+export function resolveQTEntryDate(
+  params: Pick<URLSearchParams, "get">,
+  today: string,
+): { date: string; isCatchUp: boolean } | null {
+  if (params.get("editId") || params.get("catchup") !== "true") {
+    return { date: today, isCatchUp: false };
+  }
+  const date = params.get("date");
+  if (params.get("entry") !== "qt" || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+    || date >= today || getLocalDateString(parseLocalDateString(date)) !== date) {
+    return null;
+  }
+  return { date, isCatchUp: true };
 }
 
 export function markReturningFromQTWriter(): void {
