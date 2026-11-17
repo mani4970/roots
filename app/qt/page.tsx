@@ -257,11 +257,16 @@ export default function QTPage() {
     window.setTimeout(() => setToast(null), 2400);
   }
 
-  useEffect(() => { load(); }, []);
-
   useEffect(() => {
     const initialModal = window.history.state?.rootsQTModal;
-    if (isQTModalHistoryKind(initialModal)) {
+    const entryUrl = new URL(window.location.href);
+    const openCatchUpOnEntry = entryUrl.searchParams.get("open") === "catch-up";
+    if (openCatchUpOnEntry) {
+      // Give the tab its own history entry beneath the date picker.
+      entryUrl.searchParams.delete("open");
+      window.history.replaceState(currentHistoryState(), "", entryUrl);
+      openQTModal("catch-up");
+    } else if (isQTModalHistoryKind(initialModal)) {
       hasQTModalHistoryEntryRef.current = true;
       setVisibleQTModal(initialModal);
     }
@@ -279,6 +284,7 @@ export default function QTPage() {
     }
 
     window.addEventListener("popstate", handleQTPopState);
+    void load(openCatchUpOnEntry || initialModal === "catch-up");
     return () => window.removeEventListener("popstate", handleQTPopState);
   }, [setVisibleQTModal]);
 
@@ -322,7 +328,7 @@ export default function QTPage() {
     }
   }
 
-  async function load() {
+  async function load(suppressDraftForCatchUp: boolean) {
     const supabase = createClient();
     try {
       const user = await getQtDraftSessionUser(supabase);
@@ -350,7 +356,7 @@ export default function QTPage() {
       setTodayDone(completedExists);
       setHasDraft(draftExists);
       setDraftCheckPending(false);
-      if (draftExists && !shouldSuppressDraftPopupAfterWriterReturn()) openQTModal("draft");
+      if (draftExists && !suppressDraftForCatchUp && !shouldSuppressDraftPopupAfterWriterReturn()) openQTModal("draft");
 
       const todayDate = new Date();
       if (todayDate.getDay() !== 0) {
@@ -692,16 +698,16 @@ export default function QTPage() {
 
       {showCatchUpModal && (
         <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="qt-catch-up-title" className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
+              <h2 id="qt-catch-up-title" style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
               <QTModalCloseButton onClick={closeQTModal} label={t("close", lang)} />
             </div>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 16 }}>{t("qt_catchup_sub", lang)}</p>
 
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
+            <label htmlFor="qt-catch-up-date" style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{t("qt_catchup_date_label", lang)}</label>
             {historyNotice ?? (catchUpDateOptions.length > 0 ? (
-              <select value={catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0]} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
+              <select id="qt-catch-up-date" value={catchUpDateOptions.includes(catchUpDate) ? catchUpDate : catchUpDateOptions[0]} onChange={e => setCatchUpDate(e.target.value)} className="input-field" style={{ marginBottom: 14 }}>
                 {catchUpDateOptions.map(d => (
                   <option key={d} value={d}>{parseLocalDateString(d).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</option>
                 ))}

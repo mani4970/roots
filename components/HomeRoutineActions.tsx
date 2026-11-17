@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { t, type Lang } from "@/lib/i18n";
 import styles from "./HomeRoutineActions.module.css";
 
@@ -11,11 +12,12 @@ type HomeRoutineActionsProps = {
   prayerReady: boolean;
   onReflection: () => void;
   onPrayer: () => void;
+  onPastReflection: () => void;
 };
 
 /** Presentation only; Home owns completion state and the existing entry flows. */
 export default function HomeRoutineActions({
-  lang, qtDone, prayerDone, prayerReady, onReflection, onPrayer,
+  lang, qtDone, prayerDone, prayerReady, onReflection, onPrayer, onPastReflection,
 }: HomeRoutineActionsProps) {
   return (
     <div className={styles.actions} lang={lang}>
@@ -36,6 +38,9 @@ export default function HomeRoutineActions({
           ? <CheckCircle2 className={styles.indicator} size={16} aria-hidden="true" />
           : <ChevronRight className={styles.indicator} size={16} aria-hidden="true" />}
       </button>
+      <Link href="/qt?open=catch-up" onNavigate={onPastReflection} className={styles.pastReflection}>
+        {t("qt_catchup_start", lang)}
+      </Link>
     </div>
   );
 }

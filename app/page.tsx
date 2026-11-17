@@ -2370,6 +2370,7 @@ export default function HomePage() {
           prayerReady={homeDetailsReady.prayer}
           onReflection={() => { setShowHomeRoutine(false); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
           onPrayer={() => { setShowHomeRoutine(false); setShowHomePrayerCards(true); }}
+          onPastReflection={() => setShowHomeRoutine(false)}
         />
       </HomeHubDialog>
       <HomeHubDialog open={showHomeChallenge && !personalChallengeDetails && !visibleRequiredUpdatePrompt}
