@@ -5,7 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCcw, X, Check, UploadCloud, Plus } from "lucide-react";
+import { Camera as CameraIcon, ChevronLeft, ImagePlus, Images, Loader2, RotateCcw, X, Check, UploadCloud } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
 import { recordBibleReflectionProgress } from "@/lib/reflectionProgress";
@@ -22,11 +22,11 @@ import {
 } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { translateBibleRef, type BibleDisplayLang } from "@/lib/bibleBooks";
-import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATIONS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
-import CursorStableInput from "@/components/CursorStableInput";
+import { BIBLE_CHAPTERS, NT_BOOKS, OT_BOOKS, TRANSLATION_LANG, getBibleVerseNumbers } from "@/lib/bibleData";
 import CursorStableTextarea from "@/components/CursorStableTextarea";
 import SharePromptModal from "@/components/SharePromptModal";
 import QTConnectionNotice from "@/components/QTConnectionNotice";
+import QTManualPassageForm from "@/components/QTManualPassageForm";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
 import type { QtShareRecord } from "@/lib/qtShare";
 import { useQTLeaveGuard } from "@/components/useQTLeaveGuard";
@@ -172,20 +172,8 @@ const PHOTO_COPY = {
   editLoadError: { ko: "수정할 사진 묵상 기록을 불러오지 못했어요.", de: "Die Stille Zeit mit Foto konnte nicht geladen werden.", en: "Could not load the Photo Bible Reflection to edit.", fr: "Impossible de charger la méditation biblique en photo à modifier.", es: "No pudimos cargar la meditación bíblica con foto para editarla." },
   editSaveError: { ko: "사진 묵상 수정 내용을 저장하지 못했어요. 기존 기록은 그대로 유지됩니다.", de: "Die Änderungen konnten nicht gespeichert werden. Der bisherige Eintrag bleibt erhalten.", en: "Could not save the changes. The existing record remains unchanged.", fr: "Impossible d’enregistrer les modifications. L’entrée existante reste inchangée.", es: "No pudimos guardar los cambios. El registro existente se conservará sin cambios." },
   editSaved: { ko: "사진 묵상 수정 내용을 저장했어요.", de: "Die Änderungen wurden gespeichert.", en: "Photo Bible Reflection changes saved.", fr: "Les modifications ont été enregistrées.", es: "Se guardaron los cambios de la meditación bíblica con foto." },
-  customPassage: { ko: "본문 정하기", de: "Bibelstelle wählen", en: "Choose passage", fr: "Choisir le passage", es: "Elegir pasaje" },
   reselectPassage: { ko: "본문 다시 선택", de: "Bibeltext erneut wählen", en: "Reselect passage", fr: "Rechoisir le passage", es: "Volver a seleccionar el pasaje" },
-  finishPassage: { ko: "본문 선택 완료", de: "Bibeltext-Auswahl abschließen", en: "Finish passage selection", fr: "Terminer la sélection du passage", es: "Finalizar selección del pasaje" },
   exit: { ko: "나가기", de: "Verlassen", en: "Exit", fr: "Quitter", es: "Salir" },
-  translation: { ko: "성경 번역본", de: "Bibelübersetzung", en: "Bible translation", fr: "Traduction biblique", es: "Traducción bíblica" },
-  sermonTitle: { ko: "설교 제목", de: "Predigttitel", en: "Sermon title", fr: "Titre du sermon", es: "Título del sermón" },
-  sermonTitlePlaceholder: { ko: "예: 두려워하지 말라", de: "z. B. Fürchte dich nicht", en: "e.g. Do not be afraid", fr: "ex. N’aie pas peur", es: "Ej.: No temas" },
-  book: { ko: "성경", de: "Buch", en: "Book", fr: "Livre", es: "Libro" },
-  chapter: { ko: "시작 장", de: "Startkapitel", en: "Start chapter", fr: "Chapitre de début", es: "Capítulo inicial" },
-  verse: { ko: "시작 절", de: "Startvers", en: "Start verse", fr: "Verset de début", es: "Versículo inicial" },
-  endChapter: { ko: "끝 장", de: "Endkapitel", en: "End chapter", fr: "Chapitre de fin", es: "Capítulo final" },
-  endVerse: { ko: "끝 절", de: "Endvers", en: "End verse", fr: "Verset de fin", es: "Versículo final" },
-  addPassage: { ko: "선택한 본문 추가", de: "Ausgewählten Bibeltext hinzufügen", en: "Add selected passage", fr: "Ajouter le passage sélectionné", es: "Añadir el pasaje seleccionado" },
-  addPassageHelp: { ko: "여러 본문을 묵상하려면 본문을 바꿔 추가해주세요.", de: "Wenn Sie mehrere Bibeltexte in Ihrer Stillen Zeit betrachten möchten, wählen Sie einen weiteren Text und fügen Sie ihn hinzu.", en: "To reflect on multiple passages, choose another passage and add it.", fr: "Pour inclure plusieurs passages dans votre méditation biblique, choisissez un autre passage puis ajoutez-le.", es: "Para incluir varios pasajes en tu meditación bíblica, selecciona otro y añádelo." },
   saveError: { ko: "사진 묵상 저장에 실패했어요. 다시 시도해주세요.", de: "Die Stille Zeit mit Foto konnte nicht gespeichert werden. Bitte versuche es erneut.", en: "Could not save the Photo Bible Reflection. Please try again.", fr: "Impossible d’enregistrer la méditation biblique en photo. Veuillez réessayer.", es: "No pudimos guardar la meditación bíblica con foto. Inténtalo de nuevo." },
   preparingPhoto: { ko: "저장할 사진을 안전하게 준비하고 있어요…", de: "Das Foto wird sicher vorbereitet…", en: "Preparing the photo safely…", fr: "Préparation sécurisée de la photo…", es: "Preparando la foto de forma segura…" },
   photoReadError: { ko: "이 사진 형식을 읽지 못했어요. 다른 사진이나 원본 사진의 스크린샷을 선택해주세요.", de: "Dieses Fotoformat konnte nicht gelesen werden. Bitte wähle ein anderes Foto oder einen Screenshot des Originals.", en: "This photo format could not be read. Choose another photo or a screenshot of the original.", fr: "Ce format de photo n’a pas pu être lu. Choisissez une autre photo ou une capture d’écran de l’original.", es: "No pudimos leer este formato de foto. Elige otra foto o una captura de pantalla del original." },
@@ -1839,114 +1827,76 @@ function PhotoReflectionContent() {
         </div>
 
         {source === "custom" && passageEditing && (
-          <div className="card">
-            <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>{pc("customPassage", lang)}</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("translation", lang)}</span>
-                <select
-                  className="input-field"
-                  value={selectedTranslation}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    const next = Number(e.target.value);
-                    setTranslationTouched(true);
-                    setSelectedTranslation(next);
-                    savePreferredTranslationLocally(getStoredLang() ?? lang, next);
-                  }}
-                >
-                  {TRANSLATIONS.map(group => (
-                    <optgroup key={group.group} label={group.group}>
-                      {group.items.map((item: { id: number; name: string }) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
-              {sundayContext && (
-                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("sermonTitle", lang)}</span>
-                  <CursorStableInput className="input-field" value={sermonTitle} onValueChange={(value: string) => { markPassageTouched(); setSermonTitle(value); }} placeholder={pc("sermonTitlePlaceholder", lang)} />
-                </label>
-              )}
-              <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("book", lang)}</span>
-                <select className="input-field" value={book} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                  markPassageTouched();
-                  const nextBook = e.target.value;
-                  setBook(nextBook);
-                  setChapter(1);
-                  setStartVerse(1);
-                  setEndChapter(1);
-                  setEndVerse(1);
-                }}>
-                  {BOOKS.map(item => <option key={item} value={item}>{translateBibleRef(item, bibleDisplayLang)}</option>)}
-                </select>
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("chapter", lang)}</span>
-                  <div className="qt-passage-coordinate-control">
-                    <span className="qt-passage-coordinate-value" aria-hidden="true">{chapter}</span>
-                    <select className="input-field qt-passage-coordinate-select" value={chapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                      markPassageTouched();
-                      const next = Number(e.target.value);
-                      setChapter(next);
-                      setStartVerse(1);
-                      setEndChapter(next);
-                      setEndVerse(1);
-                    }}>
-                      {chapterOptions.map(item => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </div>
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("verse", lang)}</span>
-                  <div className="qt-passage-coordinate-control">
-                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeStartVerse}</span>
-                    <select className="input-field qt-passage-coordinate-select" value={safeStartVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setStartVerse(next); if (safeEndChapter === chapter) setEndVerse(next); }}>
-                      {startVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </div>
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endChapter", lang)}</span>
-                  <div className="qt-passage-coordinate-control">
-                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeEndChapter}</span>
-                    <select className="input-field qt-passage-coordinate-select" value={safeEndChapter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); const next = Number(e.target.value); setEndChapter(next); if (next === chapter) setEndVerse(safeStartVerse); }}>
-                      {chapterOptions.filter(item => item >= chapter).map(item => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </div>
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted-readable)" }}>{pc("endVerse", lang)}</span>
-                  <div className="qt-passage-coordinate-control">
-                    <span className="qt-passage-coordinate-value" aria-hidden="true">{safeEndVerse}</span>
-                    <select className="input-field qt-passage-coordinate-select" value={safeEndVerse} onChange={(e: ChangeEvent<HTMLSelectElement>) => { markPassageTouched(); setEndVerse(Number(e.target.value)); }}>
-                      {endVerseNumbers.map(item => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </div>
-                </label>
-              </div>
-              <button type="button" onClick={addCurrentPassage} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Plus size={15} /> {pc("addPassage", lang)}
-              </button>
-              <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.45, marginTop: -4 }}>
-                {pc("addPassageHelp", lang)}
-              </p>
-              {extraRefs.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {extraRefs.map(ref => (
-                    <div key={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--qt-sage-surface)", borderRadius: 10, padding: "8px 10px", border: "1px solid var(--qt-sage-border-soft)" }}>
-                      <span style={{ fontSize: 12, color: "var(--qt-sage-text)", fontWeight: 700 }}>{translateBibleRef(ref, bibleDisplayLang)}</span>
-                      <button type="button" onClick={() => removeExtraRef(ref)} style={{ border: "none", background: "none", color: "var(--text3)", cursor: "pointer" }}><X size={14} /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button type="button" onClick={() => setPassageEditing(false)} className="btn-sage" style={{ width: "100%" }}>
-                {pc("finishPassage", lang)}
-              </button>
-            </div>
-          </div>
+          <QTManualPassageForm
+            lang={lang}
+            translationId={selectedTranslation}
+            onTranslationChange={next => {
+              setTranslationTouched(true);
+              setSelectedTranslation(next);
+              savePreferredTranslationLocally(getStoredLang() ?? lang, next);
+            }}
+            sermonTitle={sundayContext ? {
+              value: sermonTitle,
+              onValueChange: value => {
+                markPassageTouched();
+                setSermonTitle(value);
+              },
+            } : undefined}
+            book={book}
+            books={BOOKS.map(item => ({ value: item, label: translateBibleRef(item, bibleDisplayLang) }))}
+            onBookChange={nextBook => {
+              markPassageTouched();
+              setBook(nextBook);
+              setChapter(1);
+              setStartVerse(1);
+              setEndChapter(1);
+              setEndVerse(1);
+            }}
+            startChapter={{
+              value: chapter,
+              options: chapterOptions,
+              onChange: value => {
+                markPassageTouched();
+                const next = Number(value);
+                setChapter(next);
+                setStartVerse(1);
+                setEndChapter(next);
+                setEndVerse(1);
+              },
+            }}
+            startVerse={{
+              value: safeStartVerse,
+              options: startVerseNumbers,
+              onChange: value => {
+                markPassageTouched();
+                const next = Number(value);
+                setStartVerse(next);
+                if (safeEndChapter === chapter) setEndVerse(next);
+              },
+            }}
+            endChapter={{
+              value: safeEndChapter,
+              options: chapterOptions.filter(item => item >= chapter),
+              onChange: value => {
+                markPassageTouched();
+                const next = Number(value);
+                setEndChapter(next);
+                if (next === chapter) setEndVerse(safeStartVerse);
+              },
+            }}
+            endVerse={{
+              value: safeEndVerse,
+              options: endVerseNumbers,
+              onChange: value => {
+                markPassageTouched();
+                setEndVerse(Number(value));
+              },
+            }}
+            selectedPassages={extraRefs.map(ref => translateBibleRef(ref, bibleDisplayLang))}
+            onRemovePassage={index => removeExtraRef(extraRefs[index])}
+            onAddPassage={addCurrentPassage}
+            onFinishPassage={() => setPassageEditing(false)}
+          />
         )}
 
         {source === "custom" && !passageEditing && (
