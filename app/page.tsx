@@ -315,7 +315,6 @@ export default function HomePage() {
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
   const challengeLocalDate = useChallengeLocalDate();
   const [showHomeRoutine, setShowHomeRoutine] = useState(false);
-  const homeRoutineButtonRef = useRef<HTMLButtonElement>(null);
   const [showHomeGratitude, setShowHomeGratitude] = useState(false);
   const [showHomeChallenge, setShowHomeChallenge] = useState(false);
   const [openingPersonalChallengeProfile, setOpeningPersonalChallengeProfile] = useState(false);
@@ -2360,8 +2359,7 @@ export default function HomePage() {
       </ObservationPopup>
 
       <HomeHubDialog open={showHomeRoutine && !visibleRequiredUpdatePrompt}
-        title={dashboardText.routineTitle} closeLabel={dashboardText.close} hideTitle
-        anchorRef={homeRoutineButtonRef}
+        title={dashboardText.routineTitle} closeLabel={dashboardText.close} hideTitle compact
         onClose={() => setShowHomeRoutine(false)}>
         <HomeRoutineActions
           lang={lang}
@@ -2622,7 +2620,6 @@ export default function HomePage() {
 
       <HomeDashboardCards
         lang={lang}
-        routineButtonRef={homeRoutineButtonRef}
         routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
         routineCompleted={Number(todayDone.qt) + Number(todayDone.prayer)}
         challenge={currentHomeChallenge}

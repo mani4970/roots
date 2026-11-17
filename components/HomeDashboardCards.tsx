@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
+import type { ReactNode } from "react";
 import { BookMarked, HandHeart, Trophy } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import type { PersonalChallengeStatus } from "@/lib/personalReflectionChallenges";
@@ -15,7 +15,6 @@ export type HomeDashboardCardsProps = {
   challengeLoading: boolean;
   challengeError: boolean;
   gratitudeDays?: number | null;
-  routineButtonRef?: Ref<HTMLButtonElement>;
   routineOpen?: boolean;
   onOpenRoutine: () => void;
   onOpenChallenge: () => void;
@@ -25,7 +24,7 @@ export type HomeDashboardCardsProps = {
 /** Home entry points only: completion, rewards and record writes remain in Home. */
 export default function HomeDashboardCards({
   lang, character, routineCompleted, challenge, challengeLoading, challengeError, gratitudeDays,
-  routineButtonRef, routineOpen = false,
+  routineOpen = false,
   onOpenRoutine, onOpenChallenge, onOpenGratitude,
 }: HomeDashboardCardsProps) {
   const text = getHomeDashboardText(lang);
@@ -49,7 +48,7 @@ export default function HomeDashboardCards({
 
   return (
     <div className={styles.dashboard} lang={lang} data-home-dashboard>
-      <button ref={routineButtonRef} type="button" className={`${styles.tile} ${styles.routine}`} onClick={onOpenRoutine}
+      <button type="button" className={`${styles.tile} ${styles.routine}`} onClick={onOpenRoutine}
         aria-haspopup="dialog" aria-expanded={routineOpen} aria-label={`${text.routineTitle}. ${text.routineProgress(routineDone)}`}>
         <BookMarked className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
         <span className={styles.copy}>

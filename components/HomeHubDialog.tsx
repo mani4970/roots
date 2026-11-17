@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -19,7 +19,7 @@ type HomeHubDialogProps = {
   children: ReactNode;
   busy?: boolean;
   hideTitle?: boolean;
-  anchorRef?: RefObject<HTMLElement>;
+  compact?: boolean;
 };
 
 const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([type='hidden']), select:not(:disabled), textarea:not(:disabled), [contenteditable='true'], [tabindex]:not([tabindex='-1'])";
@@ -27,12 +27,11 @@ const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([typ
 // The body lock is shared with the existing prayer dialogs, including native
 // iPad/Mac zoom and keyboard handling. Home keeps these dialogs mutually exclusive.
 export default function HomeHubDialog({
-  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, anchorRef,
+  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, compact = false,
 }: HomeHubDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const callbacks = useRef({ open, onClose, onAndroidBack, busy });
   callbacks.current = { open, onClose, onAndroidBack, busy };
@@ -56,17 +55,11 @@ export default function HomeHubDialog({
     // scene/backdrop keeps its full height independently of this foreground.
     const root = viewportRef.current;
     const dialog = dialogRef.current;
-    const popover = popoverRef.current;
-    const anchor = anchorRef?.current;
     if (!open || !root || !dialog) return;
-    const boundary = anchor?.closest<HTMLElement>("[data-home-dashboard]")
-      ?? document.querySelector<HTMLElement>("[data-home-dashboard]") ?? document.body;
+    const boundary = document.querySelector<HTMLElement>("[data-home-dashboard]") ?? document.body;
 
     let frame = 0;
     const viewport = window.visualViewport;
-    const clamp = (value: number, minimum: number, maximum: number) =>
-      Math.max(minimum, Math.min(value, Math.max(minimum, maximum)));
-
     function position() {
       frame = 0;
       if (!root || !dialog) return;
@@ -77,61 +70,29 @@ export default function HomeHubDialog({
         const bounds = element.getBoundingClientRect();
         return {
           left: bounds.left * rectToViewport, right: bounds.right * rectToViewport,
-          top: bounds.top * rectToViewport, bottom: bounds.bottom * rectToViewport,
-          width: bounds.width * rectToViewport, height: bounds.height * rectToViewport,
+          width: bounds.width * rectToViewport,
         };
       };
       const rootBounds = boundsInViewport(root);
       // Absolute offsets remain local CSS pixels inside the zoomed overlay.
       const scale = root.clientWidth ? rootBounds.width / root.clientWidth : 1;
-      if (!scale || !rootBounds.width || !rootBounds.height) return;
+      if (!scale || !rootBounds.width) return;
       const rootStyle = getComputedStyle(root);
       const left = Math.max(rootBounds.left, viewport?.offsetLeft ?? 0);
       const right = Math.min(rootBounds.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth));
-      const top = Math.max(rootBounds.top, viewport?.offsetTop ?? 0);
-      const bottom = Math.min(rootBounds.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight));
-      const insetTop = Math.max(14, Number.parseFloat(rootStyle.paddingTop) || 0) * scale;
-      const insetBottom = Math.max(14, Number.parseFloat(rootStyle.paddingBottom) || 0) * scale;
       const insetX = (Number.parseFloat(rootStyle.paddingLeft) || 14) * scale;
       // Portals fill the window, but the home cards form a narrower column.
-      // Constrain both centered dialogs and card-side menus to that column.
+      // Constrain centered dialogs to that column.
       const boundaryBounds = boundsInViewport(boundary);
       const boundaryScale = boundary.offsetWidth ? boundaryBounds.width / boundary.offsetWidth : scale;
       const boundaryStyle = getComputedStyle(boundary);
       const contentLeft = boundaryBounds.left + (Number.parseFloat(boundaryStyle.paddingLeft) || 0) * boundaryScale;
       const contentRight = boundaryBounds.right - (Number.parseFloat(boundaryStyle.paddingRight) || 0) * boundaryScale;
-      let minimumX = Math.max(left + insetX, contentLeft);
-      let maximumRight = Math.min(right - insetX, contentRight);
-      const availableHeight = Math.max(0, (bottom - top - insetTop - insetBottom) / scale);
-
-      if (!popover || !anchor) {
-        dialog.style.setProperty("--home-dialog-max-width", `${Math.max(0, (maximumRight - minimumX) / scale)}px`);
-        const center = (minimumX + maximumRight) / 2;
-        dialog.style.setProperty("--home-dialog-offset-x", `${(center - (rootBounds.left + rootBounds.right) / 2) / scale}px`);
-        return;
-      }
-
-      const anchorBounds = boundsInViewport(anchor);
-      const anchorCenterX = (anchorBounds.left + anchorBounds.right) / 2;
-      const opensLeft = anchorCenterX > (minimumX + maximumRight) / 2;
-      // Reserve space for the pointer on whichever side faces the card.
-      if (opensLeft) maximumRight -= 8 * scale;
-      else minimumX += 8 * scale;
-      const availableWidth = Math.max(0, (maximumRight - minimumX) / scale);
-      popover.style.width = `${Math.min(260, availableWidth)}px`;
-      popover.style.setProperty("--popover-max-height", `${availableHeight}px`);
-
-      const bounds = boundsInViewport(popover);
-      const anchorCenterY = (anchorBounds.top + anchorBounds.bottom) / 2;
-      // Open toward the middle of Home from either column, beginning halfway
-      // across the routine card instead of overflowing its outside edge.
-      const x = clamp(opensLeft ? anchorCenterX - bounds.width : anchorCenterX, minimumX, maximumRight - bounds.width);
-      const y = clamp(anchorCenterY - bounds.height / 2, top + insetTop, bottom - insetBottom - bounds.height);
-      popover.style.left = `${(x - rootBounds.left) / scale}px`;
-      popover.style.top = `${(y - rootBounds.top) / scale}px`;
-      popover.style.setProperty("--popover-pointer-top", `${clamp((anchorCenterY - y) / scale, 20, bounds.height / scale - 20)}px`);
-      popover.dataset.side = opensLeft ? "left" : "right";
-      popover.dataset.positioned = "true";
+      const minimumX = Math.max(left + insetX, contentLeft);
+      const maximumRight = Math.min(right - insetX, contentRight);
+      dialog.style.setProperty("--home-dialog-max-width", `${Math.max(0, (maximumRight - minimumX) / scale)}px`);
+      const center = (minimumX + maximumRight) / 2;
+      dialog.style.setProperty("--home-dialog-offset-x", `${(center - (rootBounds.left + rootBounds.right) / 2) / scale}px`);
     }
 
     function schedule() {
@@ -143,8 +104,6 @@ export default function HomeHubDialog({
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
     observer?.observe(root);
     observer?.observe(dialog);
-    if (popover) observer?.observe(popover);
-    if (anchor) observer?.observe(anchor);
     observer?.observe(boundary);
     window.addEventListener("resize", schedule);
     viewport?.addEventListener("resize", schedule);
@@ -156,7 +115,7 @@ export default function HomeHubDialog({
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
     };
-  }, [open, anchorRef]);
+  }, [open]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -273,10 +232,10 @@ export default function HomeHubDialog({
   const dialog = (
     <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined} aria-busy={busy}
-      className={`${styles.dialog}${anchorRef ? ` ${styles.anchoredDialog}` : ""}${hideTitle ? ` ${styles.withoutTitle}` : ""}`}
+      className={`${styles.dialog}${compact ? ` ${styles.compactDialog}` : ""}`}
     >
       <button ref={closeRef} type="button" className={styles.close} aria-label={closeLabel}
-        disabled={busy} onClick={dismiss}><X size={anchorRef ? 17 : 21} strokeWidth={1.8} aria-hidden="true" /></button>
+        disabled={busy} onClick={dismiss}><X size={21} strokeWidth={1.8} aria-hidden="true" /></button>
       <h2 id={titleId} className={hideTitle ? styles.srOnly : styles.title}>{title}</h2>
       {description && <p id={descriptionId} className={styles.description}>{description}</p>}
       <div className={styles.content}>{children}</div>
@@ -292,8 +251,8 @@ export default function HomeHubDialog({
     >
       <button type="button" tabIndex={-1} aria-hidden="true"
         className={`${styles.backdrop}${backdropVariant === "prayer" ? ` ${styles.prayerBackdrop}` : ""}`} {...backdrop} />
-      <div ref={viewportRef} className={`${styles.viewport}${anchorRef ? ` ${styles.anchoredViewport}` : ""}`}>
-        {anchorRef ? <div ref={popoverRef} className={styles.popover}>{dialog}</div> : dialog}
+      <div ref={viewportRef} className={styles.viewport}>
+        {dialog}
       </div>
     </div>, document.body,
   );

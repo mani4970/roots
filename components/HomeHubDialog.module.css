@@ -68,6 +68,12 @@
   pointer-events: auto;
 }
 
+.compactDialog {
+  max-width: min(304px, var(--home-dialog-max-width, 304px));
+  padding: 52px 18px 12px;
+  border-radius: 20px;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -125,69 +131,3 @@
   .viewport { padding-inline: 14px; }
   .dialog { padding-inline: 16px; }
 }
-
-/* A compact card-side menu; the shared overlay still owns dismissal and locking. */
-.anchoredViewport {
-  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-}
-
-.popover {
-  position: absolute;
-  z-index: 1;
-  width: min(260px, calc(100% - 28px));
-  visibility: hidden;
-  pointer-events: auto;
-}
-
-.popover[data-positioned="true"] { visibility: visible; }
-
-.popover::before {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  left: -5px;
-  top: var(--popover-pointer-top, 50%);
-  width: 12px;
-  height: 12px;
-  box-sizing: border-box;
-  background: var(--surface-card);
-  border: 1px solid var(--border);
-  transform: translateY(-50%) rotate(45deg);
-  pointer-events: none;
-}
-
-.popover[data-side="left"]::before {
-  left: auto;
-  right: -5px;
-}
-
-.anchoredDialog {
-  width: 100%;
-  max-width: none;
-  max-height: var(--popover-max-height, calc(100vh - 28px));
-  padding: 13px 12px 12px;
-  border-radius: 18px;
-}
-
-.anchoredDialog .title {
-  margin: 0 27px 12px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.4;
-  min-height: 20px;
-}
-
-.anchoredDialog .close {
-  top: 0;
-  right: 0;
-}
-
-.anchoredDialog .description {
-  margin: 0 0 12px;
-  font-size: 12px;
-  text-align: center;
-}
-
-/* Use a side gutter for Close instead of an empty heading row. */
-.anchoredDialog.withoutTitle { padding: 12px 52px 12px 12px; }
-.anchoredDialog.withoutTitle .close { top: 6px; right: 4px; }
