@@ -194,6 +194,8 @@ export default function HeartShopModal({
   const [notice, setNotice] = useState("");
   const [localBalance, setLocalBalance] = useState(heartBalance);
   const [ownedItems, setOwnedItems] = useState<OwnedHeartShopItem[]>([]);
+  const ownedItemsRef = useRef(ownedItems);
+  const adventInventoryRevision = useRef(0);
   const [ownedReload, setOwnedReload] = useState(0);
   const [loadingOwned, setLoadingOwned] = useState(false);
   const [ownedItemsLoaded, setOwnedItemsLoaded] = useState(false);
@@ -209,6 +211,7 @@ export default function HeartShopModal({
   const [purchasing, setPurchasing] = useState(false);
   const [applyingFreeItemId, setApplyingFreeItemId] = useState<HeartShopCharacterItemId | null>(null);
   const [togglingItemId, setTogglingItemId] = useState<HeartShopItemId | null>(null);
+  const adventToggleRef = useRef<symbol | null>(null);
   const [restoringCharacterState, setRestoringCharacterState] = useState(false);
   const [restoringDefaultHair, setRestoringDefaultHair] = useState(false);
   const restoringDefaultHairRef = useRef(false);
@@ -241,7 +244,10 @@ export default function HeartShopModal({
     return true;
   });
 
-  const ownedById = useMemo(() => new Map(ownedItems.map(item => [item.itemId, item])), [ownedItems]);
+  const ownedById = useMemo(
+    () => new Map(ownedItems.map(item => [item.itemId, item])),
+    [ownedItems],
+  );
   const enabledItemIds = useMemo(
     () => ownedItems.filter(item => item.isEnabled).map(item => item.itemId),
     [ownedItems],
@@ -315,7 +321,8 @@ export default function HeartShopModal({
   const visibleCharacterItems = useMemo(() => {
     return HEART_SHOP_CHARACTER_CATALOG
       .filter(item =>
-        (item.avatarType === "shared" || item.avatarType === avatarType)
+        !item.rewardOnly
+        && (item.avatarType === "shared" || item.avatarType === avatarType)
         && isCharacterItemInCategory(item, activeCharacterCategory),
       )
       .sort((a, b) =>
@@ -463,14 +470,18 @@ export default function HeartShopModal({
   }
 
   function publishOwnedItems(items: OwnedHeartShopItem[]) {
+    ownedItemsRef.current = items;
     setOwnedItems(items);
     onOwnedItemsChange?.(items);
   }
 
   async function reloadOwnedItems(supabase: ReturnType<typeof createClient>) {
+    const revision = adventInventoryRevision.current;
     const items = await loadOwnedHeartShopItems(supabase);
-    setOwnedItemsLoadFailed(false);
-    publishOwnedItems(items);
+    if (revision === adventInventoryRevision.current) {
+      setOwnedItemsLoadFailed(false);
+      publishOwnedItems(items);
+    }
     return items;
   }
 
@@ -588,22 +599,25 @@ export default function HeartShopModal({
     if (activeTab !== "map") setMapScenePreviewItemId(null);
   }, [activeTab]);
 
+  useEffect(() => () => { adventToggleRef.current = null; }, []);
+
   useEffect(() => {
     if (!show) return;
     let cancelled = false;
+    const revision = adventInventoryRevision.current;
     const supabase = createClient();
     setLoadingOwned(true);
     setOwnedItemsLoaded(false);
     void loadOwnedHeartShopItems(supabase)
       .then(items => {
-        if (!cancelled) {
+        if (!cancelled && revision === adventInventoryRevision.current) {
           setOwnedItemsLoadFailed(false);
           publishOwnedItems(items);
         }
       })
       .catch(error => {
         console.warn("사랑 상점 구매 내역 조회 실패:", error);
-        if (!cancelled) {
+        if (!cancelled && revision === adventInventoryRevision.current) {
           setOwnedItemsLoadFailed(true);
           publishOwnedItems([]);
           setNotice(text.shopUnavailable);
@@ -707,7 +721,7 @@ export default function HeartShopModal({
   }
 
   async function toggleOwnedItem(item: OwnedHeartShopItem) {
-    if (togglingItemId || restoringCharacterState || restoringDefaultHairRef.current) return;
+    if (togglingItemId || adventToggleRef.current || restoringCharacterState || restoringDefaultHairRef.current) return;
     const nextEnabled = !item.isEnabled;
     if (
       nextEnabled
@@ -717,26 +731,80 @@ export default function HeartShopModal({
       setNotice(text.arkFloodToggleUnavailable);
       return;
     }
+    const catalogItem = getHeartShopCatalogItem(item.itemId);
+    const characterItem = catalogItem && isHeartShopCharacterCatalogItem(catalogItem) ? catalogItem : null;
+    const adventItem = characterItem?.rewardOnly ? characterItem : null;
+    const operation = adventItem ? Symbol() : null;
+    let ownerChanged = false;
+    let unsubscribe: (() => void) | undefined;
+    const isCurrent = () => !operation || (adventToggleRef.current === operation && !ownerChanged);
+    adventToggleRef.current = operation;
     setTogglingItemId(item.itemId);
     try {
       const supabase = createClient();
-      const result = await setHeartShopItemEnabled(supabase, item.itemId, !item.isEnabled);
-      if (!result.updated) throw new Error(result.reason || "toggle_failed");
-      await reloadOwnedItems(supabase);
-      const catalogItem = getHeartShopCatalogItem(item.itemId);
-      if (catalogItem && isHeartShopCharacterCatalogItem(catalogItem)) {
+      if (adventItem) {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!isCurrent()) return;
+        if (error || !session) throw error ?? new Error("missing_session");
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_, currentSession) => {
+          if (currentSession?.user.id !== session.user.id) ownerChanged = true;
+        });
+        unsubscribe = () => subscription.unsubscribe();
+      }
+
+      const result = await setHeartShopItemEnabled(supabase, item.itemId, nextEnabled);
+      if (!isCurrent()) return;
+      if (!result.updated || (adventItem && result.itemId !== adventItem.id)) {
+        throw new Error(result.reason || "toggle_failed");
+      }
+
+      let confirmedItems: OwnedHeartShopItem[] | null = null;
+      if (adventItem) {
+        // The Advent RPC disables enabled character items in the same avatar type and slot.
+        confirmedItems = ownedItemsRef.current.map(owned => {
+          if (owned.itemId === adventItem.id) return { ...owned, isEnabled: result.isEnabled };
+          if (!result.isEnabled || !owned.isEnabled) return owned;
+          const other = getHeartShopCatalogItem(owned.itemId);
+          return other && isHeartShopCharacterCatalogItem(other)
+            && other.avatarType === adventItem.avatarType && other.slot === adventItem.slot
+            ? { ...owned, isEnabled: false }
+            : owned;
+        });
+        adventInventoryRevision.current += 1;
+        setOwnedItemsLoadFailed(false);
+        publishOwnedItems(confirmedItems);
+      } else {
+        await reloadOwnedItems(supabase);
+      }
+
+      if (characterItem) {
         setOwnedCharacterPreviewItemIds(current => {
-          if (!current[catalogItem.slot]) return current;
+          if (!current[characterItem.slot]) return current;
           const next = { ...current };
-          delete next[catalogItem.slot];
+          delete next[characterItem.slot];
           return next;
         });
       }
+
+      if (confirmedItems) {
+        try {
+          const items = await loadOwnedHeartShopItems(supabase);
+          if (isCurrent() && ownedItemsRef.current === confirmedItems) publishOwnedItems(items);
+        } catch (error) {
+          if (isCurrent()) console.warn("성탄 달력 아이템 설정 후 구매 내역 조회 실패:", error);
+        }
+      }
     } catch (error) {
-      console.warn("사랑 상점 아이템 표시 설정 실패:", error);
-      setNotice(text.toggleFailed);
+      if (isCurrent()) {
+        console.warn("사랑 상점 아이템 표시 설정 실패:", error);
+        setNotice(text.toggleFailed);
+      }
     } finally {
-      setTogglingItemId(null);
+      unsubscribe?.();
+      if (!operation || adventToggleRef.current === operation) {
+        adventToggleRef.current = null;
+        setTogglingItemId(null);
+      }
     }
   }
 
@@ -1679,6 +1747,7 @@ export default function HeartShopModal({
                               item={catalogItem}
                               alt={name}
                               maxWidth={44}
+                              maxHeight={catalogItem.rewardOnly ? 46 : undefined}
                               loading={index < 6 ? "eager" : "lazy"}
                             />
                           </div>

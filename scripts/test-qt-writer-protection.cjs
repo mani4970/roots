@@ -62,10 +62,12 @@ function checkEntryDates() {
 }
 
 function createContext(options = {}) {
+  const today = options.today ?? "2026-09-06";
   const state = {
     rows: options.rows ?? [{ id: "draft-1", is_draft: true, meditation: "draft text" }],
     routes: [], queries: [], notices: [], recipients: [], progress: [], savedSnapshots: [], observations: [],
     challengeCaptures: [], challengeCompletions: [], shareBadgeChecks: [], homeReturns: [],
+    adventCaptures: [], adventCompletions: [],
     recipientsFailures: options.recipientsFailures ?? 0,
     progressFailures: options.progressFailures ?? 0,
     removed: 0, bodyWrites: 0,
@@ -84,7 +86,7 @@ function createContext(options = {}) {
     completionShareRecordRef: { current: null }, completionHomeReturnRef: { current: null },
     resumePendingRef: { current: null }, resumeGenerationRef: { current: 0 },
     autoSaveTimerRef: { current: null }, draftSaveChainRef: { current: Promise.resolve() },
-    selectedDate: options.date ?? "2026-09-06", todayStr: "2026-09-06",
+    selectedDate: options.date ?? today, todayStr: today,
     savedEditDate: options.edit && !Object.hasOwn(options, "savedEditDate")
       ? options.date ?? "2026-09-06" : options.savedEditDate ?? null,
     mode: options.mode ?? "free", selectedTranslation: 92, cur: 5,
@@ -97,7 +99,7 @@ function createContext(options = {}) {
     latestDraftSnapshotRef: { current: null }, lastLocalBackupSignatureRef: { current: "" },
     router: { push: url => state.routes.push(url), replace: url => state.routes.push(url) },
     leaveAfterSave: action => action(),
-    getLocalDateString: () => "2026-09-06",
+    getLocalDateString: () => today,
     nextDraftClientUpdatedAt: () => "2026-09-06T12:00:00.000Z",
     getQtDraftSessionUser: async () => ({ id: "user-1" }),
     t: value => value, trQT: value => value, trQTVars: value => value,
@@ -127,6 +129,15 @@ function createContext(options = {}) {
     },
     recordPersonalChallengeReflectionCompletedBestEffort: async (_client, userId, date, recordId, proof) => {
       state.challengeCompletions.push({ userId, date, recordId, proof });
+    },
+    captureAdventCompletion: (userId, completionDate) => {
+      const proof = completionDate === today ? options.adventCompletion ?? null : null;
+      state.adventCaptures.push({ userId, completionDate, proof });
+      return proof;
+    },
+    recordAdventCompletion: (_client, userId, date, recordId, utcOffsetMinutes) => {
+      state.adventCompletions.push({ userId, date, recordId, utcOffsetMinutes });
+      return options.adventRequest ?? Promise.resolve(true);
     },
     checkAndAwardQtShareBadges: async (_client, userId) => { state.shareBadgeChecks.push(userId); },
     markPostReflectionHomeReturn: completion => { state.homeReturns.push(completion); },
@@ -232,6 +243,31 @@ async function run() {
     assert.equal(state.homeReturns.length, 1, "The same completion handoff is consumed once");
   }
   {
+    const completion = { completionDate: "2026-12-05", utcOffsetMinutes: -60 };
+    const { context, state } = createContext({
+      today: completion.completionDate,
+      recipientsFailures: 1,
+      progressFailures: 1,
+      adventCompletion: completion,
+      adventRequest: new Promise(() => {}),
+    });
+    await context.save({ visibility: "private", partnerRecipientIds: [] });
+    assert.equal(state.adventCompletions.length, 0, "No Advent credit before sharing is committed");
+    await context.save();
+    assert.equal(state.adventCompletions.length, 0, "No Advent credit after failed progress");
+    let timeout;
+    try {
+      const completedBeforeAdvent = await Promise.race([
+        context.save().then(() => true),
+        new Promise(resolve => { timeout = setTimeout(() => resolve(false), 1500); }),
+      ]);
+      assert.equal(completedBeforeAdvent, true, "Advent recording never delays QT completion");
+    } finally { clearTimeout(timeout); }
+    assert.equal(context.completionReady, true);
+    assert.equal(state.adventCaptures.length, 1);
+    assert.deepEqual(state.adventCompletions, [{ userId: "user-1", date: completion.completionDate, recordId: "draft-1", utcOffsetMinutes: -60 }]);
+  }
+  {
     const { context, state } = createContext({ progressFailures: 1 });
     await context.save({ visibility: "private", partnerRecipientIds: [] });
     assert.equal(state.recipients.length, 1);
@@ -250,6 +286,7 @@ async function run() {
     assert.equal(state.bodyWrites, 1);
     assert.equal(state.rows[0].date, "2026-09-05", "The saved record uses the selected catch-up date");
     assert.equal(state.progress.length, 0, "A past date does not write today's progress");
+    assert.equal(state.adventCompletions.length, 0, "A past date does not unlock Advent gifts");
     assert.equal(context.completionReady, true, "Same saved past-date record can finish failed sharing");
     assert.equal(state.savedSnapshots.length, 0);
   }
@@ -301,6 +338,7 @@ async function run() {
     assert.equal(state.rows[0].meditation, "My saved reflection");
     assert.deepEqual(state.rows[1], other, "Editing leaves the other day's record intact");
     assert.equal(state.progress.length, 0, "Editing does not award completion again");
+    assert.equal(state.adventCaptures.length, 0, "Editing does not capture Advent eligibility");
     assert.equal(state.recipients.length, 0, "Editing does not repeat sharing");
     assert.equal(state.routes.at(-1), "/qt/record?id=record-edit");
   }
@@ -349,7 +387,7 @@ async function run() {
     assert.equal(state.bodyWrites, 1, "Double clicks are serialized by the immediate completion lock");
   }
   assert(source.indexOf("if (pendingCompletion) {\n    return (") < source.indexOf("// ─── 자유형식 작성 화면"), "Committed recovery renders before editable forms");
-  console.log("PASS writer protection: fixed entry dates, chapter change + backup, recipient/progress retries, past date + duplicate, fixed edit dates and date-error notice, double click");
+  console.log("PASS writer protection: fixed entry dates, chapter change + backup, recipient/progress retries, Advent completion gate, past date + duplicate, fixed edit dates and date-error notice, double click");
 }
 
 run().catch(error => { console.error(error); process.exitCode = 1; });

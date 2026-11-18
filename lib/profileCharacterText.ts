@@ -1,4 +1,5 @@
 import type { Lang } from "@/lib/i18n";
+import { getAdventHeartShopItemMetadata } from "@/lib/adventHeartShop";
 import {
   getCharacterItemAvatarType,
   getCharacterItemSlot,
@@ -352,13 +353,14 @@ export function getProfileCharacterText(lang: Lang | string): ProfileCharacterTe
 
 export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, lang: Lang | string) {
   const normalizedLang = normalizeLang(lang);
+  const adventName = getAdventHeartShopItemMetadata(itemId)?.names[normalizedLang];
   const avatarType = getCharacterItemAvatarType(itemId);
   const slot = getCharacterItemSlot(itemId);
   const itemIndex = Math.max(0, Number(itemId.slice(-2)) - 1);
 
   if (slot === "background") {
     return {
-      name: BACKGROUND_NAMES[normalizedLang][itemIndex] || `${TEXT[normalizedLang].categories.backgrounds} ${itemIndex + 1}`,
+      name: adventName ?? (BACKGROUND_NAMES[normalizedLang][itemIndex] || `${TEXT[normalizedLang].categories.backgrounds} ${itemIndex + 1}`),
       description: TEXT[normalizedLang].categories.backgrounds,
     };
   }
@@ -382,7 +384,8 @@ export function getProfileCharacterItemText(itemId: HeartShopCharacterItemId, la
     : isHeartShopBibleItemId(itemId) ? "accessories" : categoryBySlot[slot];
   const wearableAvatarType: RootsAvatarType = avatarType === "rootswoman" ? "rootswoman" : "rootsman";
   return {
-    name: ITEM_NAMES[normalizedLang][wearableAvatarType][slot][itemIndex] || `${TEXT[normalizedLang].categories[category]} ${itemIndex + 1}`,
+    name: adventName
+      ?? (ITEM_NAMES[normalizedLang][wearableAvatarType][slot][itemIndex] || `${TEXT[normalizedLang].categories[category]} ${itemIndex + 1}`),
     description: TEXT[normalizedLang].categories[category],
   };
 }

@@ -1,0 +1,191 @@
+.calendarTitle, .giftTitle {
+  margin: 0 31px 17px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.art {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 1296 / 1536;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.art .blurred { filter: blur(3px) brightness(.62); }
+
+.grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+}
+
+.tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid #fff3ca36;
+  border-radius: 0;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.tile:focus-visible {
+  z-index: 2;
+  outline: 2px solid #fff5dc;
+  outline-offset: -3px;
+}
+
+.tile:disabled { cursor: default; }
+
+.number {
+  padding: 2px;
+  color: #fff3de;
+  font-size: clamp(13px, 3.6vw, 16px);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 1px 2px #241209, 0 0 4px #241209;
+  pointer-events: none;
+}
+
+.future .number, .missed .number { opacity: .85; }
+
+.tile[aria-current="date"] .number {
+  color: #ffdb78;
+  font-weight: 850;
+}
+
+.received { border-color: transparent; }
+
+.claimable::before {
+  content: "";
+  position: absolute;
+  /* Extend from the tile's padding box to its 1px grid border. */
+  inset: -1px;
+  border: 3px solid #ffe7a1;
+  box-shadow:
+    inset 0 0 0 1px #ffca64b3,
+    inset 0 0 5px #fff0b9e6,
+    inset 0 0 13px #ffbe57b3;
+  pointer-events: none;
+  animation: waitForGift 1.85s ease-in-out infinite;
+}
+
+.claimable:focus-visible { outline-offset: -6px; }
+
+.claimable .number {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes waitForGift {
+  0%, 100% { opacity: .82; }
+  50% { opacity: 1; }
+}
+
+.opening::after {
+  position: absolute;
+  inset: 0;
+  content: "✦";
+  display: grid;
+  place-items: center;
+  color: #fff5ce;
+  font-size: 36px;
+  pointer-events: none;
+  animation: openGift .28s ease-out both;
+}
+
+@keyframes openGift {
+  from { transform: scale(.55); opacity: 0; }
+  50% { opacity: 1; }
+  to { transform: scale(1.35); opacity: 0; }
+}
+
+.cover {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  inset: 0;
+  padding: 14px;
+  color: var(--gold-200);
+  text-align: center;
+}
+
+.cover p {
+  margin: 0;
+  max-inline-size: 95%;
+  font-size: clamp(18px, 5.4vw, 26px);
+  font-weight: 850;
+  line-height: 1.28;
+  text-shadow: 0 1px 2px #392411, 0 2px 7px #21150e;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  transform: rotate(-7deg);
+}
+
+.noticeArea, .loadError, .gift { display: grid; gap: 10px; }
+
+.notice, .loadError p {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: keep-all;
+  text-align: center;
+}
+
+.notice:empty { display: none; }
+.noticeArea .notice:not(:empty) { margin-top: 8px; }
+
+.gift {
+  text-align: center;
+  color: var(--text);
+}
+
+.gift img {
+  display: block;
+  max-width: 100%;
+  justify-self: center;
+  object-fit: contain;
+}
+
+.verse, .completed { width: 100%; height: auto; border-radius: 12px; }
+.itemFrame {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  min-height: 148px;
+}
+.rewardName { font-size: 19px; font-weight: 800; overflow-wrap: anywhere; }
+.heart { color: #d35b56; font-size: 52px; line-height: 1; }
+.blessing { font-size: 15px; font-weight: 700; line-height: 1.55; text-wrap: pretty; word-break: keep-all; }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .claimable::before, .opening::after { animation: none; }
+}

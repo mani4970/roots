@@ -38,6 +38,7 @@ import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notific
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { capturePersonalChallengeCompletion, recordPersonalChallengeReflectionCompletedBestEffort, type PersonalChallengeCompletionContext } from "@/lib/personalReflectionChallenges";
+import { captureAdventCompletion, recordAdventCompletion, type AdventCompletionContext } from "@/lib/adventCalendar";
 import { prepareQTPhoto, QTPhotoPreparationError, type PreparedQTPhoto } from "@/lib/qtPhotoProcessing";
 import { removeQTPhotoBestEffort, uploadQTPhotoDurably } from "@/lib/qtPhotoStorage";
 import {
@@ -1132,11 +1133,23 @@ function PhotoReflectionContent() {
     setShareTargets(prev => prev.includes(target) ? prev.filter(item => item !== target) : [...prev, target]);
   }
 
+  function recordAdventPhotoCompletion(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    qtRecordId: string | null | undefined,
+    completion: AdventCompletionContext | null,
+  ) {
+    if (!completion || !qtRecordId) return;
+    void recordAdventCompletion(supabase, userId, completion.completionDate, qtRecordId, completion.utcOffsetMinutes)
+      .catch(error => console.warn("Advent Calendar photo completion recording failed:", error));
+  }
+
   async function recordTodayPhotoProgress(
     supabase: ReturnType<typeof createClient>,
     userId: string,
     qtRecordId?: string | null,
     personalChallengeContext?: PersonalChallengeCompletionContext | null,
+    adventCompletion = captureAdventCompletion(userId, targetDate),
   ) {
     const personalContext = personalChallengeContext ?? capturePersonalChallengeCompletion(userId, targetDate);
     observe(observationRef.current, "progress_requested", undefined, qtRecordId);
@@ -1152,6 +1165,7 @@ function PhotoReflectionContent() {
       .catch(error => console.warn("photo reflection companion challenge recording failed", error));
     void recordPersonalChallengeReflectionCompletedBestEffort(supabase, userId, targetDate, qtRecordId, personalContext)
       .catch(error => console.warn("photo reflection personal challenge recording failed", error));
+    recordAdventPhotoCompletion(supabase, userId, qtRecordId, adventCompletion);
     return progress.updated;
   }
 
@@ -1281,6 +1295,7 @@ function PhotoReflectionContent() {
 
       stage = "record";
       const personalChallengeContext = capturePersonalChallengeCompletion(user.id, targetDate);
+      const adventCompletion = captureAdventCompletion(user.id, targetDate);
       const insertedRecord = await insertQTPhotoRecordDurably(supabase, {
         id: attemptId,
         user_id: user.id,
@@ -1408,7 +1423,7 @@ function PhotoReflectionContent() {
         stage = "progress";
         try {
           const updated = await withPhotoStageTimeout(
-            recordTodayPhotoProgress(supabase, user.id, recordId, personalChallengeContext),
+            recordTodayPhotoProgress(supabase, user.id, recordId, personalChallengeContext, adventCompletion),
             "photo progress save",
           );
           observe(observationRef.current, "progress_ok", { updated }, recordId);
@@ -1469,6 +1484,9 @@ function PhotoReflectionContent() {
       }
 
       observe(observationRef.current, "progress_skipped", { reason: "past_date" }, recordId);
+      // A same-day completion can finish sharing after midnight. Preserve its
+      // captured date without changing the existing progress skip.
+      recordAdventPhotoCompletion(supabase, user.id, recordId, adventCompletion);
       stage = "notifications";
       try {
         await withPhotoStageTimeout(

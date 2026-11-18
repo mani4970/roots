@@ -16,6 +16,7 @@ export type HomeDashboardCardsProps = {
   challengeError: boolean;
   gratitudeDays?: number | null;
   routineOpen?: boolean;
+  challengeSlot?: (className: string) => ReactNode;
   onOpenRoutine: () => void;
   onOpenChallenge: () => void;
   onOpenGratitude: () => void;
@@ -24,7 +25,7 @@ export type HomeDashboardCardsProps = {
 /** Home entry points only: completion, rewards and record writes remain in Home. */
 export default function HomeDashboardCards({
   lang, character, routineCompleted, challenge, challengeLoading, challengeError, gratitudeDays,
-  routineOpen = false,
+  routineOpen = false, challengeSlot,
   onOpenRoutine, onOpenChallenge, onOpenGratitude,
 }: HomeDashboardCardsProps) {
   const text = getHomeDashboardText(lang);
@@ -58,6 +59,7 @@ export default function HomeDashboardCards({
 
       <div className={styles.character}>{character}</div>
 
+      {challengeSlot ? challengeSlot(`${styles.tile} ${styles.challenge}`) : (
       <button type="button" className={`${styles.tile} ${styles.challenge}`} onClick={onOpenChallenge}
         aria-haspopup="dialog" aria-label={challengeLabel} aria-busy={challengeLoading && !challenge}>
         <Trophy className={styles.icon} size={30} strokeWidth={2} aria-hidden="true" />
@@ -77,6 +79,7 @@ export default function HomeDashboardCards({
           {(!challenge || challengeError) && <span className={styles.summary}>{challengeSummary}</span>}
         </span>
       </button>
+      )}
 
       <button type="button" className={`${styles.tile} ${styles.gratitude}`} onClick={onOpenGratitude}
         aria-haspopup="dialog" aria-label={gratitudeLabel}>

@@ -1,4 +1,7 @@
 import type { RootsAvatarType } from "@/lib/avatar";
+import { ADVENT_HEART_SHOP_ITEM_IDS, getAdventHeartShopItemMetadata } from "@/lib/adventHeartShop";
+
+export { getAdventHeartShopItemId } from "@/lib/adventHeartShop";
 
 export const HEART_SHOP_PEACE_ARK_STATIC_ITEM_IDS = [
   "ark_supplies",
@@ -263,6 +266,7 @@ export const HEART_SHOP_CHARACTER_ITEM_IDS = [
   "rootswoman_muffler_02",
   "rootswoman_muffler_03",
   "rootswoman_muffler_04",
+  ...ADVENT_HEART_SHOP_ITEM_IDS,
 ] as const;
 
 export type HeartShopCharacterItemId = (typeof HEART_SHOP_CHARACTER_ITEM_IDS)[number];
@@ -317,11 +321,15 @@ export function isHeartShopBibleItemId(itemId: HeartShopCharacterItemId): boolea
 }
 
 export function getCharacterItemAvatarType(itemId: HeartShopCharacterItemId): HeartShopCharacterAvatarType {
+  const advent = getAdventHeartShopItemMetadata(itemId);
+  if (advent) return advent.avatarType;
   if (itemId.startsWith("shared_")) return "shared";
   return itemId.startsWith("rootswoman_") ? "rootswoman" : "rootsman";
 }
 
 export function getCharacterItemSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterSlot {
+  const advent = getAdventHeartShopItemMetadata(itemId);
+  if (advent) return advent.slot;
   if (itemId.includes("_background_")) return "background";
   if (itemId.includes("_pet_")) return "pet";
   if (itemId.includes("_bottom_")) return "bottom";

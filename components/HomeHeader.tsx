@@ -13,11 +13,12 @@ type HomeHeaderProps = {
   userId?: string | null;
   lang: Lang;
   menu: HeaderMenu;
+  languageDecoration?: ReactNode;
   onMenuChange: (menu: HeaderMenu) => void;
   onLanguageChange: (lang: Lang) => void;
 };
 
-export default function HomeHeader({ children, userId, lang, menu, onMenuChange, onLanguageChange }: HomeHeaderProps) {
+export default function HomeHeader({ children, userId, lang, menu, languageDecoration, onMenuChange, onLanguageChange }: HomeHeaderProps) {
   const languageButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const previousMenuRef = useRef<HeaderMenu>(null);
@@ -71,6 +72,7 @@ export default function HomeHeader({ children, userId, lang, menu, onMenuChange,
       <div className={`${styles.title} header-title`}>{children}</div>
       <div className={styles.controls} data-open={menu !== null}>
         {menu && <div className={styles.backdrop} onClick={() => closeMenu()} aria-hidden="true" />}
+        {languageDecoration}
         <div className={styles.control}>
           <button
             ref={languageButtonRef}

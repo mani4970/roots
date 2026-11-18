@@ -1,6 +1,7 @@
 import type { RootsAvatarType } from "@/lib/avatar";
 import type { ProfileCharacterLayer } from "@/lib/profileCharacter";
 import type { RewardMapKind } from "@/lib/rewardMaps";
+import { getAdventHeartShopItemMetadata } from "@/lib/adventHeartShop";
 import {
   HEART_SHOP_CHARACTER_ITEM_IDS,
   getCharacterItemAvatarType,
@@ -41,6 +42,8 @@ export type HeartShopCharacterCatalogItem = HeartShopCatalogBase & {
   layerPath: string;
   // Dedicated small thumbnails avoid loading full wearable images in shop tiles.
   previewPath?: string;
+  previewCrop?: { x: number; y: number; width: number; height: number };
+  rewardOnly?: boolean;
   zIndex: number;
   sortOrder: number;
 };
@@ -275,6 +278,23 @@ function getCharacterSlot(itemId: HeartShopCharacterItemId): HeartShopCharacterS
 }
 
 function createCharacterCatalogItem(itemId: HeartShopCharacterItemId): HeartShopCharacterCatalogItem {
+  const advent = getAdventHeartShopItemMetadata(itemId);
+  if (advent) {
+    const { crop } = advent;
+    return {
+      id: advent.id,
+      category: "character",
+      avatarType: advent.avatarType,
+      slot: advent.slot,
+      price: 0,
+      layerPath: `/images/seasonal/advent-2026/${advent.file}`,
+      previewCrop: crop && { x: crop[0], y: crop[1], width: crop[2], height: crop[3] },
+      rewardOnly: true,
+      zIndex: CHARACTER_SLOT_CONFIG[advent.slot].zIndex,
+      sortOrder: 15000,
+    };
+  }
+
   const avatarType = getCharacterItemAvatarType(itemId);
   const slot = getCharacterSlot(itemId);
   const config = CHARACTER_SLOT_CONFIG[slot];

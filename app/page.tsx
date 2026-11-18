@@ -21,6 +21,10 @@ import HomeCharacterPreview from "@/components/HomeCharacterPreview";
 import HomeHeader from "@/components/HomeHeader";
 import HomeLoadingScreen from "@/components/HomeLoadingScreen";
 import { isChristmasLoadingDate } from "@/lib/christmasLoading";
+import AdventHomeTile from "@/components/AdventHomeTile";
+import { AdventCalendarDialog, AdventGiftDialog } from "@/components/AdventCalendarDialogs";
+import { AdventHomeStar, AdventSnow } from "@/components/AdventWeather";
+import { useAdventCalendar } from "@/lib/useAdventCalendar";
 import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
 import MessengerShareAnnouncementPopup from "@/components/MessengerShareAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
@@ -82,7 +86,7 @@ import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/com
 import { loadOwnedHeartShopItems } from "@/lib/heartShop";
 import { loadProfileCards } from "@/lib/profileCards";
 import { getProfileCharacterLayersForItemIds } from "@/lib/heartShopCatalog";
-import { isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
+import { getAdventHeartShopItemId, isHeartShopCharacterItemId, isHeartShopMapItemId, type HeartShopCharacterItemId, type HeartShopMapItemId } from "@/lib/heartShopItems";
 import { detectOneTimeUpdatePopup, markOptionalUpdateSeen, openRequiredUpdateStore, type NativeUpdatePrompt } from "@/lib/requiredUpdate";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 import {
@@ -630,6 +634,12 @@ export default function HomePage() {
   }
 
   const wordWalkDone = todayDone.qt;
+  const advent = useAdventCalendar(
+    !loading && !homeLoadFailed ? profile?.id ?? null : null,
+    challengeLocalDate,
+    wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
+  );
+  const showChristmasWeather = isChristmasLoadingDate(challengeLocalDate);
   const personalChallenge = usePersonalReflectionChallenge({
     userId: profile?.id ?? null,
     today: challengeLocalDate,
@@ -644,7 +654,7 @@ export default function HomePage() {
     && challengeLocalDate <= personalChallenge.status.endDate
     ? personalChallenge.status : null;
   const personalChallengeDetails = showHomeChallenge ? currentHomeChallenge : null;
-  const homeHubOpen = showHomeRoutine || showHomeGratitude || showHomeChallenge;
+  const homeHubOpen = showHomeRoutine || showHomeGratitude || showHomeChallenge || !!advent.panel;
   const challengeDateFormatter = new Intl.DateTimeFormat(
     { ko: "ko-KR", en: "en-US", de: "de-DE", fr: "fr-FR", es: "es-ES" }[lang],
     { year: "numeric", month: "short", day: "numeric" },
@@ -2134,13 +2144,9 @@ export default function HomePage() {
     return false;
   });
 
-  // Keep the first app load free of navigation. Once a tab has been displayed,
-  // preserve it in the same sibling position during Home returns and retries.
+  // A full-screen loader also hides navigation when returning from another tab.
   if (loading) return (
-    <>
-      <HomeLoadingScreen lang={lang} christmas={isChristmasLoadingDate(challengeLocalDate)} />
-      {hasShownNavigation && <BottomNav lang={lang} />}
-    </>
+    <HomeLoadingScreen lang={lang} christmas={showChristmasWeather} />
   );
 
   if (homeLoadFailed || !profile) return (
@@ -2172,6 +2178,7 @@ export default function HomePage() {
   return (
     <>
     <div className="page roots-home-phase1">
+      {showChristmasWeather && <AdventSnow />}
       {toast && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
@@ -2379,6 +2386,29 @@ export default function HomePage() {
         </p>
         {personalChallenge.error && <button type="button" className="btn-sage" onClick={personalChallenge.retry}>{dashboardText.retry}</button>}
       </HomeHubDialog>
+      {advent.visible && (
+        <AdventCalendarDialog lang={lang}
+          open={advent.panel?.kind === "calendar" && !visibleRequiredUpdatePrompt}
+          teaser={advent.teaser} currentDay={advent.day} studied={advent.studied}
+          claimed={advent.claimed} loading={advent.loading}
+          pendingClaimDay={advent.pendingClaimDay} error={advent.error}
+          onClose={advent.close} onClaim={day => void advent.claim(day)} onRetry={advent.retry} />
+      )}
+      {advent.panel?.kind === "gift" && (
+        <AdventGiftDialog lang={lang} open={!visibleRequiredUpdatePrompt}
+          day={advent.panel.day} reward={advent.panel.reward} avatarType={currentAvatarType}
+          onClose={advent.closeGift}
+          onViewBadge={() => {
+            advent.close();
+            router.push("/profile?openSpecialBadges=1#special-badges");
+          }}
+          onViewItem={item => {
+            const itemId = getAdventHeartShopItemId(item.itemId, currentAvatarType);
+            if (!itemId) return;
+            advent.close();
+            router.push(`/profile?openHeartShop=1&giftItem=${encodeURIComponent(itemId)}`);
+          }} />
+      )}
       {profile?.id && (
         <HomeGratitudeDialog key={profile.id} userId={profile.id} lang={lang}
           open={showHomeGratitude && !visibleRequiredUpdatePrompt}
@@ -2584,6 +2614,7 @@ export default function HomePage() {
       <HomeHeader
         userId={profile?.id}
         lang={lang}
+        languageDecoration={showChristmasWeather ? <AdventHomeStar /> : undefined}
         menu={showLangPicker ? "language" : null}
         onMenuChange={menu => {
           setShowLangPicker(menu === "language");
@@ -2625,6 +2656,10 @@ export default function HomePage() {
         challenge={currentHomeChallenge}
         challengeLoading={personalChallenge.loading}
         challengeError={personalChallenge.error}
+        challengeSlot={advent.visible ? className => (
+          <AdventHomeTile className={className} lang={lang} pending={advent.hasUnopened}
+            open={!!advent.panel && !visibleRequiredUpdatePrompt} onOpen={advent.open} />
+        ) : undefined}
         gratitudeDays={gratitudeCount.days}
         onOpenRoutine={() => setShowHomeRoutine(true)}
         onOpenChallenge={() => setShowHomeChallenge(true)}

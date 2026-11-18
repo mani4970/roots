@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
+import { ADVENT_BADGE_IMAGE, getAdventBadgeName, loadAdventBadge } from "@/lib/adventCalendar";
 import { getCompanionChallengeBadgeImageSrc } from "@/lib/companionChallenges";
 import { getCompanionChallengeDisplayTitle, getCompanionChallengeText } from "@/lib/companionChallengeText";
 import { NOVEMBER_PERSONAL_CHALLENGE_ID, loadPersonalChallengeBadges, type PersonalChallengeReward } from "@/lib/personalReflectionChallenges";
@@ -243,6 +244,15 @@ type SpecialProfileBadge =
       badgeImagePath: string | null;
       badge: PersonalChallengeReward;
       awardedAt: string;
+    }
+  | {
+      kind: "advent";
+      id: string;
+      title: string;
+      subtitle: string;
+      badgeName: string;
+      badgeImagePath: string;
+      awardedAt: string;
     };
 
 function getGroupChallengeBadgeImg(path?: string | null) {
@@ -254,7 +264,7 @@ function getCompanionChallengeBadgeImg(path?: string | null) {
 }
 
 function getSpecialProfileBadgeImg(item: SpecialProfileBadge) {
-  if (item.kind === "personal") return item.badgeImagePath || LOCKED_FAITH_BADGE_IMG;
+  if (item.kind === "personal" || item.kind === "advent") return item.badgeImagePath || LOCKED_FAITH_BADGE_IMG;
   return item.kind === "group"
     ? getGroupChallengeBadgeImg(item.badgeImagePath)
     : getCompanionChallengeBadgeImg(item.badgeImagePath);
@@ -322,12 +332,15 @@ export default function ProfilePage() {
   const [showMonthlyBadgeGallery, setShowMonthlyBadgeGallery] = useState(false);
   const [showBadgeGallery, setShowBadgeGallery] = useState(false);
   const [showGroupChallengeBadgeGallery, setShowGroupChallengeBadgeGallery] = useState(false);
+  const specialBadgeGalleryRef = useRef<HTMLDivElement>(null);
   const [groupChallengeBadges, setGroupChallengeBadges] = useState<GroupChallengeProfileBadge[]>([]);
   const [selectedGroupChallengeBadge, setSelectedGroupChallengeBadge] = useState<GroupChallengeProfileBadge | null>(null);
   const [companionChallengeBadges, setCompanionChallengeBadges] = useState<CompanionChallengeProfileBadge[]>([]);
   const [selectedCompanionChallengeBadge, setSelectedCompanionChallengeBadge] = useState<CompanionChallengeProfileBadge | null>(null);
   const [personalChallengeBadges, setPersonalChallengeBadges] = useState<PersonalChallengeReward[]>([]);
   const [selectedPersonalChallengeBadge, setSelectedPersonalChallengeBadge] = useState<PersonalChallengeReward | null>(null);
+  const [adventBadge, setAdventBadge] = useState<{ userId: string; awardedAt: string | null } | null>(null);
+  const adventBadgeAwardedAt = adventBadge?.userId === profileUserId ? adventBadge.awardedAt : null;
   const calendarTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const calendarWheelLockRef = useRef(0);
   const profileRef = useRef<any>(null);
@@ -434,6 +447,57 @@ export default function ProfilePage() {
   }, [profile]);
 
   useEffect(() => {
+    if (!profileUserId || loading) return;
+    const supabase = createClient();
+    let active = true;
+    const loadBadge = async () => {
+      if (!active) return;
+      try {
+        const awardedAt = await loadAdventBadge(supabase, profileUserId);
+        if (active) setAdventBadge({ userId: profileUserId, awardedAt });
+      } catch (error) {
+        if (active) console.warn("성탄 달력 배지 조회 실패:", error);
+      }
+    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_OUT" || event === "SIGNED_IN") && session?.user.id !== profileUserId) {
+        active = false;
+        setAdventBadge(null);
+        setShowGroupChallengeBadgeGallery(false);
+        setSelectedBadge(selected => selected?.img === ADVENT_BADGE_IMAGE ? null : selected);
+      }
+    });
+    void loadBadge();
+    window.addEventListener("online", loadBadge);
+    return () => {
+      active = false;
+      window.removeEventListener("online", loadBadge);
+      subscription.unsubscribe();
+    };
+  }, [profileUserId, loading]);
+
+  useEffect(() => {
+    if (loading || !profileUserId || profile?.id !== profileUserId || showHeartShop) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("openSpecialBadges") !== "1") return;
+    if (adventBadge?.userId !== profileUserId) return;
+    url.searchParams.delete("openSpecialBadges");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (adventBadge.awardedAt) setShowGroupChallengeBadgeGallery(true);
+  }, [loading, profileUserId, profile?.id, adventBadge, showHeartShop]);
+
+  useEffect(() => {
+    if (!showGroupChallengeBadgeGallery) return;
+    const dialog = specialBadgeGalleryRef.current;
+    if (!dialog) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.querySelector("button")?.focus({ preventScroll: true });
+    return () => {
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [showGroupChallengeBadgeGallery]);
+
+  useEffect(() => {
     if (!selectedPersonalChallengeBadge) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = document.getElementById("personal-profile-badge-title")?.closest("[role='dialog']");
@@ -477,12 +541,12 @@ export default function ProfilePage() {
     if (typeof window === "undefined") return;
     const hash = window.location.hash;
     if (hash !== "#special-badges" && hash !== "#group-challenge-badges" && hash !== "#companion-challenge-badges") return;
-    const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0 || personalChallengeBadges.length > 0;
+    const hasRows = groupChallengeBadges.length > 0 || companionChallengeBadges.length > 0 || personalChallengeBadges.length > 0 || !!adventBadgeAwardedAt;
     const timer = window.setTimeout(() => {
       document.getElementById("special-badges")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, hasRows ? 260 : 700);
     return () => window.clearTimeout(timer);
-  }, [groupChallengeBadges.length, companionChallengeBadges.length, personalChallengeBadges.length]);
+  }, [groupChallengeBadges.length, companionChallengeBadges.length, personalChallengeBadges.length, adventBadgeAwardedAt]);
 
   async function load() {
     const supabase = createClient();
@@ -1477,7 +1541,41 @@ export default function ProfilePage() {
       badge,
       awardedAt: badge.awardedAt,
     })),
-  ].sort((a, b) => Date.parse(b.awardedAt || "") - Date.parse(a.awardedAt || ""));
+  ];
+  if (adventBadgeAwardedAt) {
+    const badgeName = getAdventBadgeName(lang);
+    specialBadges.push({
+      kind: "advent",
+      id: "advent_2026",
+      title: badgeName,
+      subtitle: "",
+      badgeName,
+      badgeImagePath: ADVENT_BADGE_IMAGE,
+      awardedAt: adventBadgeAwardedAt,
+    });
+  }
+  specialBadges.sort((a, b) => Date.parse(b.awardedAt || "") - Date.parse(a.awardedAt || ""));
+
+  function selectSpecialBadge(item: SpecialProfileBadge) {
+    switch (item.kind) {
+      case "group":
+        setSelectedGroupChallengeBadge(item.badge);
+        break;
+      case "personal":
+        setSelectedPersonalChallengeBadge(item.badge);
+        break;
+      case "companion":
+        setSelectedCompanionChallengeBadge(item.badge);
+        break;
+      case "advent":
+        setSelectedBadge({
+          img: item.badgeImagePath,
+          title: item.badgeName,
+          desc: new Date(item.awardedAt).toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { year: "numeric", month: "long", day: "numeric" }),
+          earned: true,
+        });
+    }
+  }
   const previewSpecialBadges = specialBadges.slice(0, 3);
   const shouldShowSpecialBadgeGalleryButton = specialBadges.length > 0;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
@@ -1730,7 +1828,28 @@ export default function ProfilePage() {
           style={{ position: "fixed", inset: 0, zIndex: 250, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
         >
           <div
+            ref={specialBadgeGalleryRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-special-badges-title"
             onClick={e => e.stopPropagation()}
+            onKeyDown={event => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setShowGroupChallengeBadgeGallery(false);
+              } else if (event.key === "Tab") {
+                const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>("button");
+                const first = buttons[0];
+                const last = buttons[buttons.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault();
+                  last?.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault();
+                  first?.focus();
+                }
+              }
+            }}
             style={{ width: "100%", maxWidth: 390, maxHeight: "calc(100vh - 64px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 16px 18px", boxShadow: "var(--shadow-modal)", position: "relative" }}
           >
             <button
@@ -1741,7 +1860,7 @@ export default function ProfilePage() {
               ×
             </button>
             <div style={{ paddingRight: 36, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("profile_special_badges", lang)}</h3>
+              <h3 id="profile-special-badges-title" style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>{t("profile_special_badges", lang)}</h3>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
               {specialBadges.map(item => (
@@ -1750,13 +1869,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => {
                     setShowGroupChallengeBadgeGallery(false);
-                    if (item.kind === "group") {
-                      setSelectedGroupChallengeBadge(item.badge);
-                    } else if (item.kind === "personal") {
-                      setSelectedPersonalChallengeBadge(item.badge);
-                    } else {
-                      setSelectedCompanionChallengeBadge(item.badge);
-                    }
+                    selectSpecialBadge(item);
                   }}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
@@ -1765,7 +1878,7 @@ export default function ProfilePage() {
                       src={getSpecialProfileBadgeImg(item)}
                       alt={item.badgeName || item.title}
                       onError={(event) => {
-                        const fallback = item.kind === "personal" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
+                        const fallback = item.kind === "personal" || item.kind === "advent" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
                         event.currentTarget.src = fallback;
                       }}
@@ -2239,15 +2352,7 @@ export default function ProfilePage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    if (item.kind === "group") {
-                      setSelectedGroupChallengeBadge(item.badge);
-                    } else if (item.kind === "personal") {
-                      setSelectedPersonalChallengeBadge(item.badge);
-                    } else {
-                      setSelectedCompanionChallengeBadge(item.badge);
-                    }
-                  }}
+                  onClick={() => selectSpecialBadge(item)}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 0, background: "transparent", border: "none", padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
                 >
                   <div style={{ width: 78, height: 78, marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -2257,7 +2362,7 @@ export default function ProfilePage() {
                       loading="lazy"
                       decoding="async"
                       onError={(event) => {
-                        const fallback = item.kind === "personal" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
+                        const fallback = item.kind === "personal" || item.kind === "advent" ? LOCKED_FAITH_BADGE_IMG : "/badge_roots_together.webp";
                         if (event.currentTarget.src.endsWith(fallback)) return;
                         event.currentTarget.src = fallback;
                       }}

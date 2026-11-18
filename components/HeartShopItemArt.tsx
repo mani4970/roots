@@ -111,16 +111,22 @@ export default function HeartShopItemArt({
   item,
   alt,
   maxWidth,
+  maxHeight,
   loading = "eager",
 }: {
   item: HeartShopCatalogItem;
   alt: string;
   maxWidth?: number;
+  maxHeight?: number;
   loading?: "eager" | "lazy";
 }) {
+  const widthWithinHeight = (ratio = 1) => maxHeight === undefined
+    ? maxWidth
+    : Math.min(maxWidth ?? Number.POSITIVE_INFINITY, maxHeight * ratio);
+
   if (isHeartShopMapCatalogItem(item)) {
     return <img src={item.previewPath} alt={alt} loading={loading} decoding="async"
-      draggable={false} style={{ width: "100%", maxWidth, aspectRatio: "1", objectFit: "contain", imageRendering: "pixelated" }} />;
+      draggable={false} style={{ width: "100%", maxWidth: widthWithinHeight(), aspectRatio: "1", objectFit: "contain", imageRendering: "pixelated" }} />;
   }
   if (item.slot === "background" || item.slot === "hair"
     || item.slot === "necklace" || isHeartShopBibleItemId(item.id)) {
@@ -129,7 +135,7 @@ export default function HeartShopItemArt({
         style={{
           position: "relative",
           width: "100%",
-          maxWidth,
+          maxWidth: widthWithinHeight(),
           aspectRatio: "1 / 1",
           overflow: "hidden",
           flexShrink: 0,
@@ -154,7 +160,7 @@ export default function HeartShopItemArt({
     );
   }
 
-  const crop = CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES[item.id]
+  const crop = item.previewCrop ?? CHARACTER_ITEM_PREVIEW_CROP_OVERRIDES[item.id]
     ?? (item.avatarType === "shared"
       ? CHARACTER_ITEM_PREVIEW_CROP.rootsman[item.slot]
       : CHARACTER_ITEM_PREVIEW_CROP[item.avatarType][item.slot]);
@@ -163,7 +169,7 @@ export default function HeartShopItemArt({
       style={{
         position: "relative",
         width: "100%",
-        maxWidth,
+        maxWidth: widthWithinHeight(crop.width / crop.height),
         aspectRatio: `${crop.width} / ${crop.height}`,
         overflow: "hidden",
         flexShrink: 0,

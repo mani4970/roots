@@ -1,0 +1,63 @@
+.homeStar {
+  display: block;
+  flex: 0 0 auto;
+  inline-size: clamp(24px, 7.5vw, 32px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+  animation: star-shimmer 3.2s ease-in-out infinite;
+}
+
+.snowfall {
+  position: fixed;
+  z-index: 30;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 100%;
+  max-width: 430px;
+  overflow: hidden;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.snowfall > span {
+  position: absolute;
+  inset-block-start: -10px;
+  inset-inline-start: var(--snow-x);
+  width: var(--snow-size);
+  height: var(--snow-size);
+  background: white;
+  box-shadow: 0 1px 1px #8597a280;
+  opacity: .72;
+  animation: snow-drift var(--snow-speed) var(--snow-offset) linear infinite;
+}
+
+@media (min-width: 600px) {
+  :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]) .snowfall {
+    max-width: min(430px, 66.6667vw);
+  }
+}
+
+@keyframes star-shimmer {
+  0%, 100% {
+    opacity: .72;
+    filter: brightness(.95) drop-shadow(0 0 2px #ffc96255);
+  }
+  46% {
+    opacity: 1;
+    filter: brightness(1.22) drop-shadow(0 0 7px #ffc962b0);
+  }
+}
+
+@keyframes snow-drift {
+  0% { transform: translate(0, 0); }
+  45% { transform: translate(var(--snow-sway), 46vh); }
+  100% { transform: translate(0, calc(100vh + 12px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .homeStar { animation: none; }
+  .snowfall { display: none; }
+}

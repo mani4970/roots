@@ -25,7 +25,7 @@
 
 .star {
   left: 50%;
-  top: max(0px, calc(var(--christmas-half-height) + var(--christmas-center-offset) - 204px));
+  top: max(0px, calc(var(--christmas-half-height) + var(--christmas-center-offset) - 204px - clamp(24px, 5vh, 42px)));
   width: min(80px, 22%, max(0px, calc(var(--christmas-half-height) + var(--christmas-center-offset) - 124px)));
   height: auto;
   transform: translateX(-50%);
@@ -84,8 +84,8 @@
 }
 
 @keyframes starGlow {
-  0%, 100% { opacity: 0.84; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: .72; filter: drop-shadow(0 0 2px #ffcb7259); }
+  50% { opacity: 1; filter: drop-shadow(0 0 9px #ffd87cb3); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -41,6 +41,7 @@ import { createBibleReflectionShareNotificationsBestEffort } from "@/lib/notific
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { recordCompanionChallengeReflectionCompletedBestEffort } from "@/lib/companionChallenges";
 import { capturePersonalChallengeCompletion, recordPersonalChallengeReflectionCompletedBestEffort, type PersonalChallengeCompletionContext } from "@/lib/personalReflectionChallenges";
+import { captureAdventCompletion, recordAdventCompletion, type AdventCompletionContext } from "@/lib/adventCalendar";
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
@@ -268,6 +269,7 @@ type PendingCompletion = {
   progressSaved: boolean;
   failed: boolean;
   personalChallengeContext?: PersonalChallengeCompletionContext | null;
+  adventCompletion?: AdventCompletionContext | null;
 };
 
 const QT_AUTO_SAVE_DEBOUNCE_MS = 2500;
@@ -2765,6 +2767,11 @@ function QTWriteContent() {
       supabase, userId, pending.personalChallengeContext?.completionDate ?? selectedDate,
       recordId, pending.personalChallengeContext,
     ).catch(error => console.warn("개인 묵상 챌린지 완료일 기록 실패:", error));
+    if (pending.adventCompletion) {
+      const { completionDate, utcOffsetMinutes } = pending.adventCompletion;
+      void recordAdventCompletion(supabase, userId, completionDate, recordId, utcOffsetMinutes)
+        .catch(error => console.warn("Advent Calendar completion recording failed:", error));
+    }
 
     if (selectedDate === getLocalDateString()) {
       void markBibleReflectionCompletedForNotifications(selectedDate, lang)
@@ -2886,6 +2893,7 @@ function QTWriteContent() {
         return;
       }
 
+      const adventCompletion = captureAdventCompletion(user.id, selectedDate);
       const { data: rows, error: rowsError } = await supabase.from("qt_records")
         .select("id,is_draft,created_at")
         .eq("user_id", user.id)
@@ -2914,6 +2922,7 @@ function QTWriteContent() {
             progressSaved: false,
             failed: false,
             personalChallengeContext,
+            adventCompletion,
           });
           return;
         }
@@ -2971,6 +2980,7 @@ function QTWriteContent() {
         progressSaved: false,
         failed: false,
         personalChallengeContext,
+        adventCompletion,
       }));
     } catch (error) {
       console.warn("말씀 묵상 저장/완료 재시도 필요:", error);

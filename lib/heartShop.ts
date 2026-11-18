@@ -1,4 +1,5 @@
 import { isHeartShopItemId, type HeartShopItemId } from "@/lib/heartShopItems";
+import { getAdventHeartShopItemMetadata } from "@/lib/adventHeartShop";
 
 export type OwnedHeartShopItem = {
   itemId: HeartShopItemId;
@@ -111,7 +112,10 @@ export async function setHeartShopItemEnabled(
   itemId: HeartShopItemId,
   enabled: boolean,
 ): Promise<HeartShopToggleResult> {
-  const { data, error } = await supabase.rpc("set_heart_shop_item_enabled", {
+  const rpc = getAdventHeartShopItemMetadata(itemId)
+    ? "advent_2026_set_owned_item_enabled"
+    : "set_heart_shop_item_enabled";
+  const { data, error } = await supabase.rpc(rpc, {
     p_item_key: itemId,
     p_enabled: enabled,
   });
