@@ -18,6 +18,7 @@ type PersonalReflectionChallengePopupProps = {
   mode: "details" | "announcement" | "reward";
   lang: Lang;
   earned?: boolean;
+  completed?: boolean;
   busy?: boolean;
   title?: string;
   period?: string;
@@ -36,7 +37,7 @@ type PersonalReflectionChallengePopupProps = {
 };
 
 export default function PersonalReflectionChallengePopup({
-  show, mode, lang, earned = false, busy = false, title, period,
+  show, mode, lang, earned = false, completed = false, busy = false, title, period,
   requiredDays = 11, completedDays, failed = false, rewardHearts = 30, badgeImagePath, rewardObservation, onClose, onViewBadge,
 }: PersonalReflectionChallengePopupProps) {
   const text = getPersonalChallengeText(lang);
@@ -94,7 +95,8 @@ export default function PersonalReflectionChallengePopup({
   const progressTarget = Number.isFinite(requiredDays) ? Math.max(1, Math.trunc(requiredDays)) : 1;
   const progressDays = typeof completedDays === "number" && Number.isFinite(completedDays)
     ? Math.min(progressTarget, Math.max(0, Math.trunc(completedDays))) : 0;
-  const progressStatus = earned ? text.complete : failed ? text.missed : text.active;
+  const progressStatus = completed || earned ? text.complete : failed ? text.missed : text.active;
+  const awaitingReward = completed && !earned;
 
   return createPortal(
     // Keep queued rewards observable before they become visible, and measure
@@ -140,10 +142,14 @@ export default function PersonalReflectionChallengePopup({
             <p style={{ margin: "8px 0 0", fontSize: 12, lineHeight: 1.5, color: "#6E7468" }}>{progressStatus}</p>
           </div>
         )}
-        {mode === "details" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 23 }}>
+        {mode === "details" && (awaitingReward ? (
+          <p style={{ margin: "0 0 23px", fontSize: 13, lineHeight: 1.65, color: "#6E7468", overflowWrap: "anywhere", wordBreak: lang === "ko" ? "keep-all" : "normal" }}>
+            {text.rewardTomorrow}
+          </p>
+        ) : <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 23 }}>
           <div style={{ width: 78, height: 78, flex: "0 0 78px" }}><img src={badge} alt={reveal ? text.badgeName : text.mystery} width={78} height={78} style={{ display: "block", width: 78, height: 78, objectFit: "contain" }} /></div>
           <span aria-hidden="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 78, height: 78, flex: "0 0 78px", fontSize: 34 }}>💛</span>
-        </div>}
+        </div>)}
         <div style={{ display: "flex", gap: 8 }}>
           {mode === "reward" && onViewBadge && <button type="button" className="btn-sage" disabled={busy} onClick={onViewBadge} style={{ flex: 1, minWidth: 0, minHeight: 44, padding: "10px 9px", fontSize: 13, background: "#DEE5D4", color: "#34402F", borderColor: "#CBD3C2" }}>{text.viewBadge}</button>}
           <button ref={confirmRef} type="button" className={mode === "reward" && onViewBadge ? "btn-outline" : "btn-sage"} disabled={busy} onClick={onClose}

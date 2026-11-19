@@ -2430,7 +2430,8 @@ export default function HomePage() {
         show={!!personalChallengeDetails && !visibleRequiredUpdatePrompt && !showFirstLangPicker && !showOnboarding}
         mode="details"
         lang={lang}
-        earned={personalChallengeDetails?.awarded === true || personalChallengeDetails?.isComplete === true}
+        earned={personalChallengeDetails?.awarded === true}
+        completed={personalChallengeDetails?.isComplete === true}
         completedDays={personalChallengeDetails?.completedDays}
         failed={personalChallengeDetails?.hasMissedDay}
         period={challengePeriod}

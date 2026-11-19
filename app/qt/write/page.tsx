@@ -3731,7 +3731,7 @@ function QTWriteContent() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {keyVerse.split("\n").filter(line => line.trim()).map((line, idx) => {
-                  const match = line.trim().match(/^(\S+)\s+(.*)$/);
+                  const match = line.trim().match(/^(\d+(?::\d+)?(?:[-–]\d+)?)\s+(.*)$/);
                   const num = match?.[1] ?? "";
                   const body = match?.[2] ?? line.trim();
                   return (
