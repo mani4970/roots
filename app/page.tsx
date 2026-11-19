@@ -23,8 +23,10 @@ import HomeLoadingScreen from "@/components/HomeLoadingScreen";
 import { isChristmasLoadingDate } from "@/lib/christmasLoading";
 import AdventHomeTile from "@/components/AdventHomeTile";
 import { AdventCalendarDialog, AdventGiftDialog } from "@/components/AdventCalendarDialogs";
+import AdventAnnouncementPopup from "@/components/AdventAnnouncementPopup";
 import { AdventHomeStar, AdventSnow } from "@/components/AdventWeather";
 import { useAdventCalendar } from "@/lib/useAdventCalendar";
+import { useAdventAnnouncement } from "@/lib/useAdventAnnouncement";
 import CompanionAcceptedPopup from "@/components/CompanionAcceptedPopup";
 import MessengerShareAnnouncementPopup from "@/components/MessengerShareAnnouncementPopup";
 import MonthlyBadgeAwardPopup from "@/components/MonthlyBadgeAwardPopup";
@@ -640,6 +642,10 @@ export default function HomePage() {
     wordWalkDone && homeDataDateRef.current === challengeLocalDate ? completedQtRecordId : null,
   );
   const showChristmasWeather = isChristmasLoadingDate(challengeLocalDate);
+  const adventAnnouncement = useAdventAnnouncement(
+    !loading && !homeLoadFailed ? profile?.id ?? null : null,
+    challengeLocalDate,
+  );
   const personalChallenge = usePersonalReflectionChallenge({
     userId: profile?.id ?? null,
     today: challengeLocalDate,
@@ -2048,6 +2054,10 @@ export default function HomePage() {
     !openingChallengeProfile && !challengeRewardActionInFlightRef.current &&
     !progressUpdateInFlightRef.current && !pendingRootsManRef.current && !showRootsMan;
 
+  const visibleAdventAnnouncement = generalHomePopupsAllowed && !personalCampaignPopupBlocked
+    && personalChallenge.ready && personalChallenge.rewards.length === 0 && !personalChallenge.announcementPending
+    && announcementRewardChecksReadyFor === profile?.id && !visibleMessengerShareAnnouncement
+    && adventAnnouncement.pending;
 
   useAndroidBackHandler(() => {
     if (visibleRequiredUpdatePrompt) {
@@ -2459,7 +2469,7 @@ export default function HomePage() {
               : generalHomePopupsAllowed && !personalCampaignPopupBlocked && personalChallenge.ready
               && announcementRewardChecksReadyFor === profile.id
               && !visiblePersonalChallengeReward && !visiblePersonalChallengeAnnouncement
-              && !visibleMessengerShareAnnouncement} />
+              && !visibleMessengerShareAnnouncement && !visibleAdventAnnouncement} />
         </Suspense>
       )}
 
@@ -2470,6 +2480,8 @@ export default function HomePage() {
         onClose={() => completeMessengerShareAnnouncement("close")}
       />
       </ObservationPopup>
+
+      <AdventAnnouncementPopup open={visibleAdventAnnouncement} lang={lang} onClose={adventAnnouncement.dismiss} />
 
       <ObservationPopup userId={profile?.id} kind="monthly_badge" queued={!!monthlyBadgeAward} instanceKey={monthlyBadgeAward}>
       <MonthlyBadgeAwardPopup

@@ -130,7 +130,7 @@ export function getAdventItemName(item: AdventItemReward, lang: Lang): string {
 }
 
 export function getAdventSeason(localDate = getLocalDateString()): AdventSeason {
-  if (localDate === "2026-11-29" || localDate === "2026-11-30") return "teaser";
+  if (DATE.test(localDate) && localDate >= "2026-11-26" && localDate < FIRST_DAY) return "teaser";
   return DATE.test(localDate) && localDate >= FIRST_DAY && localDate <= LAST_DAY ? "open" : "inactive";
 }
 

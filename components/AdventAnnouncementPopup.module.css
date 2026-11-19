@@ -1,0 +1,38 @@
+.notice {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding-bottom: 6px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.body {
+  margin: 0;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.notice:lang(ko) .title,
+.notice:lang(ko) .body {
+  word-break: keep-all;
+}
+
+.calendar {
+  display: block;
+  width: min(168px, 100%);
+  height: auto;
+  margin-inline: auto;
+  border-radius: 12px;
+}
