@@ -1,21 +1,22 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Capacitor dispatches JavaScript methods and activity/permission callbacks by
+# runtime annotations. Keep the annotation types themselves in R8 full mode.
+# The installed Capacitor library supplies the plugin-class/constructor rules.
+-keepattributes RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,AnnotationDefault
+-keepattributes Signature,InnerClasses,EnclosingMethod
+-keep @interface com.getcapacitor.annotation.** { *; }
+-keep @interface com.getcapacitor.PluginMethod { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Callbacks may be declared on a non-public plugin base class. Preserve their
+# names even when that class is not itself annotated as a Capacitor plugin.
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Android WebView calls these methods from JavaScript rather than Java callers.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Retain source locations for the release mapping.txt / crash retracing.
+-keepattributes SourceFile,LineNumberTable
