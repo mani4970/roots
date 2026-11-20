@@ -8,6 +8,11 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "app/qt/write/page.tsx"), "utf8");
 const ast = ts.createSourceFile("page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const flowCopyModule = { exports: {} };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, "lib/qtFlowCopy.ts"), "utf8"), {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+}).outputText, { exports: flowCopyModule.exports });
+const { qtFlowCopy } = flowCopyModule.exports;
 function extract(name, tree = ast) {
   let found;
   function visit(node) {
@@ -67,7 +72,8 @@ function createContext(options = {}) {
     rows: options.rows ?? [{ id: "draft-1", is_draft: true, meditation: "draft text" }],
     routes: [], queries: [], notices: [], recipients: [], progress: [], savedSnapshots: [], observations: [],
     challengeCaptures: [], challengeCompletions: [], shareBadgeChecks: [], homeReturns: [],
-    adventCaptures: [], adventCompletions: [],
+    adventCaptures: [], adventCompletions: [], toastDetails: [], clearedTimers: [], shareOptionLoads: [],
+    clientCreations: 0, userLookups: 0,
     recipientsFailures: options.recipientsFailures ?? 0,
     progressFailures: options.progressFailures ?? 0,
     removed: 0, bodyWrites: 0,
@@ -80,7 +86,7 @@ function createContext(options = {}) {
     getCompletionObservation: () => null, completionObservationRef: { current: null },
     completionRetryRef: { current: false }, retryToastObservationRef: { current: null },
     setTimeout, clearTimeout,
-    window: { clearTimeout },
+    window: { clearTimeout: timer => { state.clearedTimers.push(timer); clearTimeout(timer); } },
     saving: false, completionSavingRef: { current: false },
     pendingCompletionRef: { current: null },
     completionShareRecordRef: { current: null }, completionHomeReturnRef: { current: null },
@@ -93,7 +99,7 @@ function createContext(options = {}) {
     freeText: "My saved reflection", decisions: ["My decision"], answers: {},
     bibleRef: "John 1:1", keyVerse: "1 Beginning", passages: [{ ref: "John 1:1" }],
     passageVerses: [{ num: 1, text: "Beginning" }], selectedVerseNums: ["1"],
-    sermonTitle: "", lang: "ko", isEditMode: options.edit === true,
+    sermonTitle: "", lang: options.lang ?? "ko", isEditMode: options.edit === true,
     editId: options.edit ? "record-edit" : null,
     draftBackupUserId: "user-1", hasSchedule: false,
     latestDraftSnapshotRef: { current: null }, lastLocalBackupSignatureRef: { current: "" },
@@ -101,10 +107,12 @@ function createContext(options = {}) {
     leaveAfterSave: action => action(),
     getLocalDateString: () => today,
     nextDraftClientUpdatedAt: () => "2026-09-06T12:00:00.000Z",
-    getQtDraftSessionUser: async () => ({ id: "user-1" }),
+    getQtDraftSessionUser: async () => { state.userLookups += 1; return { id: "user-1" }; },
     t: value => value, trQT: value => value, trQTVars: value => value,
-    showToast: value => state.notices.push(value),
-    setCompleteShareTargets() {},
+    qtFlowCopy,
+    showToast: (value, kind) => { state.notices.push(value); state.toastDetails.push({ value, kind }); },
+    completeShareTargets: [], showCompleteSharePrompt: false,
+    completeShareOptionsState: { load: async force => { state.shareOptionLoads.push(force); } },
     saveQTDraftBackup: snapshot => { state.savedSnapshots.push(snapshot); return true; },
     loadQTDraftBackup: () => state.savedSnapshots.at(-1),
     removeQTDraftBackup: () => { state.removed += 1; },
@@ -144,6 +152,7 @@ function createContext(options = {}) {
   };
   for (const [setter, name] of Object.entries({
     setChapter: "chapter", setStartV: "startV", setEndV: "endV", setEndChapter: "endChapter", setCrossChapter: "crossChapter",
+    setCompleteShareTargets: "completeShareTargets",
     setCompletionReady: "completionReady", setSaving: "saving", setPendingCompletion: "pendingCompletion", setShowCompleteSharePrompt: "showCompleteSharePrompt",
     setBibleStep: "bibleStep", setPassageVerses: "passageVerses", setBibleRef: "bibleRef",
     setPassages: "passages", setKeyVerse: "keyVerse", setSelectedVerseNums: "selectedVerseNums",
@@ -175,7 +184,7 @@ function createContext(options = {}) {
       },
     };
   }
-  context.createClient = () => ({ from: query });
+  context.createClient = () => { state.clientCreations += 1; return { from: query }; };
   vm.createContext(context);
   const contentSource = fs.readFileSync(path.join(root, "lib/qtDraftContent.ts"), "utf8");
   const contentTree = ts.createSourceFile("content.ts", contentSource, ts.ScriptTarget.Latest, true);
@@ -183,14 +192,182 @@ function createContext(options = {}) {
   for (const name of [
     "handleChapterChange", "getDraftSnapshot", "getDraftSignature", "hasDraftContent", "persistDraftBackup",
     "buildStandardBibleRef", "buildCompleteRecordData", "buildSundayBibleRef", "rememberPendingCompletion", "finishPendingCompletion",
-    "cancelDeferredResume", "returnHomeAfterCompletion", "isCompletedQtDateConflict", "observeSaveFailure", "save",
+    "cancelDeferredResume", "returnHomeAfterCompletion", "isCompletedQtDateConflict", "observeSaveFailure",
+    "validateCompletionContent", "loadCompleteShareOptions", "openCompleteSharePrompt", "save",
   ]) vm.runInContext(extract(name), context);
   if (options.useRealDateProgress) vm.runInContext(extract("recordProgressBeforeCompletion"), context);
   return { state, context };
 }
 
+function clearCompletionFields(context) {
+  Object.assign(context, {
+    answers: {}, decisions: [""], freeText: "", bibleRef: "", keyVerse: "",
+    passages: [], passageVerses: [], selectedVerseNums: [], sermonTitle: "",
+  });
+}
+
+async function checkCompletionContent() {
+  const languages = ["ko", "en", "de", "fr", "es"];
+  for (const key of ["reflectionContentRequired", "sundayContentRequired"]) {
+    assert.equal(new Set(languages.map(lang => qtFlowCopy(key, lang))).size, languages.length, `${key}: all supported languages have localized feedback`);
+  }
+  const handlers = [
+    { name: "completion prompt", run: context => context.openCompleteSharePrompt() },
+    { name: "private save", run: context => context.save({ visibility: "private", partnerRecipientIds: [] }) },
+    { name: "shared save", run: context => context.save({ visibility: "all,group-a", partnerRecipientIds: ["partner-a"] }) },
+  ];
+  const invalidContent = [
+    { name: "blank", fields: {} },
+    { name: "whitespace", fields: { answers: { meditation: " \n\t", application: "\t " }, decisions: [" \n", "\t "] } },
+    { name: "prayers only", fields: { answers: { opening_prayer: "Opening prayer", closing_prayer: "Closing prayer" } } },
+    { name: "summary only", fields: { answers: { summary: "A passage summary" } } },
+    { name: "key verse only", fields: { keyVerse: "A selected verse", selectedVerseNums: ["1"] } },
+    { name: "passage and sermon title only", fields: { bibleRef: "John 1:1", passages: [{ ref: "John 1:1" }], sermonTitle: "Sermon title" } },
+    { name: "free-form field only", fields: { freeText: "Text from another writing mode" } },
+  ];
+
+  async function expectRejected(mode, input, handler, options = {}) {
+    const { context, state } = createContext({ mode, lang: options.lang });
+    clearCompletionFields(context);
+    Object.assign(context, input.fields);
+    context.completionRetryRef.current = options.retry === true;
+    const backup = { retained: "local draft" };
+    const timer = { retained: "autosave timer" };
+    const resume = { retained: "foreground draft" };
+    const latestSnapshot = { retained: "latest draft snapshot" };
+    state.savedSnapshots.push(backup);
+    context.lastLocalBackupSignatureRef.current = "retained backup signature";
+    context.latestDraftSnapshotRef.current = latestSnapshot;
+    context.autoSaveTimerRef.current = timer;
+    context.resumePendingRef.current = resume;
+    context.resumeGenerationRef.current = 7;
+    context.showCompleteSharePrompt = handler.name !== "completion prompt";
+    const promptWasOpen = context.showCompleteSharePrompt;
+    const targets = ["retained-target"];
+    context.completeShareTargets = targets;
+    const formBefore = JSON.stringify(context.getDraftSnapshot());
+    const rowsBefore = JSON.stringify(state.rows);
+    const label = `${mode}, ${input.name}, ${handler.name}${options.retry ? ", retry flag without committed record" : ""}`;
+
+    await handler.run(context);
+
+    const key = mode === "sunday" ? "sundayContentRequired" : "reflectionContentRequired";
+    assert.deepEqual(state.toastDetails, [{ value: qtFlowCopy(key, context.lang), kind: "error" }], `${label}: localized content error`);
+    assert.equal(state.clientCreations, 0, `${label}: no database client or authentication work`);
+    assert.equal(state.userLookups, 0, label);
+    assert.equal(state.queries.length, 0, `${label}: no record lookup or write`);
+    assert.equal(state.bodyWrites, 0, label);
+    assert.equal(JSON.stringify(state.rows), rowsBefore, `${label}: saved records remain intact`);
+    assert.equal(state.recipients.length, 0, `${label}: no sharing changes`);
+    assert.equal(state.shareBadgeChecks.length, 0, label);
+    assert.equal(state.shareOptionLoads.length, 0, `${label}: no sharing options load`);
+    assert.equal(state.progress.length, 0, `${label}: no completion progress`);
+    assert.equal(state.challengeCaptures.length, 0, label);
+    assert.equal(state.challengeCompletions.length, 0, label);
+    assert.equal(state.adventCaptures.length, 0, label);
+    assert.equal(state.adventCompletions.length, 0, label);
+    assert.equal(state.removed, 0, `${label}: draft backup is retained`);
+    assert.equal(state.savedSnapshots.length, 1, label);
+    assert.equal(state.savedSnapshots[0], backup, label);
+    assert.equal(context.latestDraftSnapshotRef.current, latestSnapshot, label);
+    assert.equal(context.lastLocalBackupSignatureRef.current, "retained backup signature", label);
+    assert.equal(state.clearedTimers.length, 0, `${label}: autosave remains scheduled`);
+    assert.equal(context.autoSaveTimerRef.current, timer, label);
+    assert.equal(context.resumePendingRef.current, resume, label);
+    assert.equal(context.resumeGenerationRef.current, 7, label);
+    assert.equal(JSON.stringify(context.getDraftSnapshot()), formBefore, `${label}: all entered fields remain intact`);
+    assert.equal(context.showCompleteSharePrompt, promptWasOpen, `${label}: writing or sharing UI remains open`);
+    assert.equal(context.completeShareTargets, targets, `${label}: sharing choices remain intact`);
+    assert.equal(context.saving, false, label);
+    assert.equal(context.completionSavingRef.current, false, label);
+    assert.equal(context.pendingCompletionRef.current, null, label);
+    assert.equal(context.completionRetryRef.current, options.retry === true, label);
+    assert.notEqual(context.completionReady, true, label);
+    assert.equal(state.routes.length, 0, `${label}: stay in the writer`);
+    assert.equal(state.observations.some(item => item.event === "save_requested" || item.event === "retry_clicked"), false, label);
+  }
+
+  for (const mode of ["6step", "sunday"]) {
+    for (const input of invalidContent) {
+      for (const handler of handlers) await expectRejected(mode, input, handler);
+    }
+    for (const handler of handlers) await expectRejected(mode, invalidContent[0], handler, { retry: true });
+    for (const lang of languages) {
+      await expectRejected(mode, invalidContent[0], handlers[0], { lang });
+    }
+
+    for (const valid of [
+      { name: "meditation only", answers: { meditation: "  My reflection  " }, decisions: [""] },
+      { name: "application only", answers: { application: "  My application  " }, decisions: [""] },
+      { name: "first resolution only", answers: {}, decisions: ["  My resolution  "] },
+      { name: "later resolution only", answers: {}, decisions: ["", " \n\t", "  My later resolution  "] },
+    ]) {
+      for (const sharing of [{ visibility: "private", partnerRecipientIds: [] }, { visibility: "group-a", partnerRecipientIds: ["partner-a"] }]) {
+        const { context, state } = createContext({ mode });
+        clearCompletionFields(context);
+        context.answers = valid.answers;
+        context.decisions = valid.decisions;
+        context.completeShareTargets = ["old-target"];
+        context.openCompleteSharePrompt();
+        const label = `${mode}, ${valid.name}, ${sharing.visibility}`;
+        assert.equal(context.showCompleteSharePrompt, true, `${label}: sharing chooser opens`);
+        assert.equal(context.completeShareTargets.length, 0, `${label}: start a fresh sharing choice`);
+        assert.deepEqual(state.shareOptionLoads, [false], `${label}: sharing choices load once`);
+        assert.equal(state.queries.length, 0, `${label}: opening sharing does not save`);
+        await context.save(sharing);
+        assert.deepEqual(state.notices, [], label);
+        assert.equal(state.bodyWrites, 1, `${label}: exactly one saved body`);
+        assert.equal(state.rows[0].is_draft, false, label);
+        assert.equal(state.rows[0].meditation, valid.answers.meditation ?? "", `${label}: preserve reflection text`);
+        assert.equal(state.rows[0].application, valid.answers.application ?? "", `${label}: preserve application text`);
+        assert.equal(state.rows[0].decision, valid.decisions.find(value => value.trim()) ?? "", `${label}: save the entered resolution`);
+        assert.equal(state.recipients.length, 1, label);
+        assert.deepEqual(state.recipients[0].recipients, sharing.partnerRecipientIds, label);
+        assert.equal(state.progress.length, 1, `${label}: normal completion progress`);
+        assert.equal(context.completionReady, true, label);
+        assert.equal(state.removed, 1, `${label}: cleanup follows successful completion`);
+      }
+    }
+
+    for (const lock of ["saving", "completionSavingRef"]) {
+      const { context, state } = createContext({ mode });
+      clearCompletionFields(context);
+      if (lock === "saving") context.saving = true;
+      else context.completionSavingRef.current = true;
+      await context.save();
+      assert.equal(state.notices.length, 0, `${mode}: an in-flight save is ignored before content validation`);
+      assert.equal(state.clientCreations, 0);
+    }
+
+    const { context, state } = createContext({
+      mode, edit: true,
+      rows: [{ id: "record-edit", user_id: "user-1", is_draft: false, date: "2026-09-06", meditation: "Previous text" }],
+    });
+    clearCompletionFields(context);
+    context.openCompleteSharePrompt();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(state.bodyWrites, 1, `${mode}: existing-record edits retain their prior minimum-content behavior`);
+    assert.equal(state.rows[0].meditation, "");
+    assert.equal(state.shareOptionLoads.length, 0, "Editing saves directly without opening sharing");
+    assert.equal(state.progress.length, 0, "Editing does not award completion");
+    assert.equal(state.routes.at(-1), "/qt/record?id=record-edit");
+    assert.deepEqual(state.notices, []);
+  }
+
+  const { context, state } = createContext({ mode: "free" });
+  clearCompletionFields(context);
+  context.freeText = "A free reflection without guided answers or resolutions";
+  context.openCompleteSharePrompt();
+  assert.equal(context.showCompleteSharePrompt, true, "Free reflections keep their existing completion flow");
+  await context.save({ visibility: "private", partnerRecipientIds: [] });
+  assert.equal(state.rows[0].meditation, context.freeText);
+  assert.equal(context.completionReady, true);
+  assert.deepEqual(state.notices, []);
+}
+
 async function run() {
   checkEntryDates();
+  await checkCompletionContent();
   {
     const { context, state } = createContext();
     context.handleChapterChange("2");
@@ -223,7 +400,7 @@ async function run() {
     assert.equal(context.persistDraftBackup(), false, "Committed writer cannot recreate a draft");
     // A retry must ignore changed invocation arguments and preserve committed data.
     targets.push("partner-mutated");
-    context.freeText = "UNSAVED CHANGE MUST NOT BE CLAIMED AS SAVED";
+    clearCompletionFields(context);
     await context.save({ visibility: "all", partnerRecipientIds: ["different-partner"] });
     assert.equal(state.bodyWrites, 1, "Retry does not rewrite a completed record");
     assert.equal(state.rows[0].meditation, "My saved reflection");
@@ -387,7 +564,7 @@ async function run() {
     assert.equal(state.bodyWrites, 1, "Double clicks are serialized by the immediate completion lock");
   }
   assert(source.indexOf("if (pendingCompletion) {\n    return (") < source.indexOf("// ─── 자유형식 작성 화면"), "Committed recovery renders before editable forms");
-  console.log("PASS writer protection: fixed entry dates, chapter change + backup, recipient/progress retries, Advent completion gate, past date + duplicate, fixed edit dates and date-error notice, double click");
+  console.log("PASS writer protection: guided minimum content + localized feedback, private/shared completion guards, retained drafts + timers, committed retries + edit/free exemptions, fixed entry dates, chapter backup, recipient/progress retries, Advent gate, past date + duplicate, edit dates + notices, double click");
 }
 
 run().catch(error => { console.error(error); process.exitCode = 1; });

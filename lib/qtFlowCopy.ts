@@ -1,6 +1,20 @@
 import type { Lang } from "@/lib/i18n";
 
 const COPY = {
+  reflectionContentRequired: {
+    ko: "느낌과 묵상 또는 결단 중 하나를 작성해주세요.",
+    en: "Please fill in Thoughts & Insights or add a resolution.",
+    de: "Bitte fülle „Gedanken & Erkenntnisse“ aus oder ergänze einen Entschluss.",
+    fr: "Veuillez remplir « Réflexions et enseignements » ou ajouter une décision.",
+    es: "Completa «Pensamientos y aprendizajes» o añade un compromiso.",
+  },
+  sundayContentRequired: {
+    ko: "깨달음 또는 결단 중 하나를 작성해주세요.",
+    en: "Please add an insight or a resolution.",
+    de: "Bitte ergänze eine Erkenntnis oder einen Entschluss.",
+    fr: "Veuillez remplir « Compréhension » ou ajouter une décision.",
+    es: "Añade un aprendizaje o un compromiso.",
+  },
   shareOptionsError: {
     ko: "나눔 대상을 불러오지 못했어요.\n작성한 내용은 이 화면에 그대로 있어요.",
     en: "Could not load your sharing options.\nYour work is still on this screen.",

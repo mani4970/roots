@@ -2550,12 +2550,24 @@ function QTWriteContent() {
     );
   }
 
+  function validateCompletionContent() {
+    // Existing records and committed completion retries retain their saved body.
+    // Free reflections already have their own minimum-content button condition.
+    if (isEditMode || pendingCompletionRef.current || mode === "free") return true;
+    if (answers.meditation?.trim() || answers.application?.trim()
+      || decisions.some(decision => decision.trim())) return true;
+
+    showToast(qtFlowCopy(mode === "sunday" ? "sundayContentRequired" : "reflectionContentRequired", lang), "error");
+    return false;
+  }
+
   function openCompleteSharePrompt() {
     observe(getCompletionObservation(), "complete_clicked", { mode, source: isEditMode ? "edit" : "create" });
     if (isEditMode) {
       void save();
       return;
     }
+    if (!validateCompletionContent()) return;
     setCompleteShareTargets([]);
     setShowCompleteSharePrompt(true);
     void loadCompleteShareOptions();
@@ -2815,6 +2827,7 @@ function QTWriteContent() {
 
   async function save(options: CompleteSaveOptions = {}) {
     if (completionSavingRef.current || saving) return;
+    if (!validateCompletionContent()) return;
     const observationFlow = getCompletionObservation();
     if (completionRetryRef.current || pendingCompletionRef.current) {
       observe(observationFlow, "retry_clicked", { phase: "completion", source: "manual" });
