@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
+import { useDesktopLayout } from "@/lib/desktopLayout";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
@@ -115,15 +116,8 @@ function PrayerExperienceWithLang(props: PrayerExperienceProps) {
 
 function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, initialProfile, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
-  const [wideDesktop, setWideDesktop] = useState(false);
-  useLayoutEffect(() => {
-    if (isPopup || !document.documentElement.hasAttribute("data-roots-desktop-client")) return;
-    const width = window.matchMedia("(min-width: 960px)");
-    const update = () => setWideDesktop(width.matches);
-    update();
-    width.addEventListener("change", update);
-    return () => width.removeEventListener("change", update);
-  }, [isPopup]);
+  const wideLayout = useDesktopLayout();
+  const wideDesktop = wideLayout && !isPopup;
   const rootRef = useRef<HTMLDivElement>(null);
   const handledAnswerId = useRef<string | null>(null);
   const handledLink = useRef<string | null>(null);

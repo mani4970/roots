@@ -2,7 +2,6 @@
 import {
   Suspense,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -10,6 +9,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useDesktopLayout } from "@/lib/desktopLayout";
 import BottomNav from "@/components/BottomNav";
 import "./desktop-community.css";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
@@ -945,15 +945,7 @@ type CommunityMainLoadState = "idle" | "loading" | "ready" | "error";
 function CommunityPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isDesktopSplit, setDesktopSplit] = useState(false);
-  useLayoutEffect(() => {
-    if (!document.documentElement.hasAttribute("data-roots-desktop-client")) return;
-    const width = window.matchMedia("(min-width: 960px)");
-    const update = () => setDesktopSplit(width.matches);
-    update();
-    width.addEventListener("change", update);
-    return () => width.removeEventListener("change", update);
-  }, []);
+  const isDesktopSplit = useDesktopLayout();
   const [tab, setTab] = useState<CommunityMainTab>(() => {
     const initialTab = searchParams.get("tab");
     if (initialTab === "group" || initialTab === "all") return initialTab;

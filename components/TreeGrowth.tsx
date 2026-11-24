@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import Image from "next/image";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import RewardMapAction from "./RewardMapAction";
 import HeartShopMapFriends from "./HeartShopMapFriends";
 import PeaceArkStaticItems from "./PeaceArkStaticItems";
@@ -57,6 +58,7 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const mouseDrag = useRef<{ id: number; x: number; y: number; startLeft: number; scale: number; moved: boolean } | null>(null);
   const owner = ownerName?.trim() || t("profile_default_name", lang);
   const isNight = isNightTime();
   const daysSince = getDaysSinceLastCheckin(lastCheckin);
@@ -91,6 +93,53 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
     if (!node || node.clientWidth <= 0) return;
     const index = Math.round(node.scrollLeft / node.clientWidth);
     setSelectedIndex(Math.max(0, Math.min(index, cycles.length - 1)));
+  }
+
+  function goToMap(index: number, smooth = false) {
+    const node = scrollerRef.current;
+    if (!node || !cycles[index]) return;
+    const animate = smooth && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollTo({ left: index * node.clientWidth, behavior: animate ? "smooth" : "instant" });
+    setSelectedIndex(index);
+  }
+
+  function startMouseDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0 || cycles.length < 2) return;
+    const rail = event.currentTarget;
+    mouseDrag.current = {
+      id: event.pointerId, x: event.clientX, y: event.clientY, startLeft: rail.scrollLeft,
+      scale: rail.getBoundingClientRect().width / rail.clientWidth || 1, moved: false,
+    };
+    rail.setPointerCapture(event.pointerId);
+  }
+
+  function moveMouseDrag(event: PointerEvent<HTMLDivElement>) {
+    const drag = mouseDrag.current;
+    if (!drag || event.pointerId !== drag.id) return;
+    const rail = event.currentTarget;
+    const dx = event.clientX - drag.x;
+    if (!drag.moved) {
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(event.clientY - drag.y)) return;
+      drag.moved = true;
+      rail.classList.add(styles.dragging);
+    }
+    rail.scrollLeft = drag.startLeft - dx / drag.scale;
+  }
+
+  function finishMouseDrag(event: PointerEvent<HTMLDivElement>) {
+    const drag = mouseDrag.current;
+    if (!drag || event.pointerId !== drag.id) return;
+    mouseDrag.current = null;
+    const rail = event.currentTarget;
+    if (rail.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
+    if (!drag.moved) return;
+
+    const distance = (drag.x - event.clientX) / drag.scale;
+    const step = event.type === "pointerup" && Math.abs(distance) >= Math.min(40, rail.clientWidth / 6)
+      ? Math.sign(distance) : 0;
+    const initial = Math.round(drag.startLeft / rail.clientWidth);
+    rail.classList.remove(styles.dragging);
+    goToMap(Math.max(0, Math.min(initial + step, cycles.length - 1)), true);
   }
 
   const selectedCycle = cycles[selectedIndex] ?? cycles[cycles.length - 1] ?? cycles[0];
@@ -132,29 +181,44 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
         </div>
       )}
 
-      <div
-        ref={scrollerRef}
-        onScroll={handleScroll}
-        style={{
-          display: "flex",
-          overflowX: "auto",
-          scrollSnapType: "x mandatory",
-          WebkitOverflowScrolling: "touch",
-          borderRadius: 20,
-        }}
-      >
-        {cycles.map((cycle) => (
-          <RewardMapCard
-            key={cycle.cycleIndex}
-            cycle={cycle}
-            days={days}
-            isNight={isNight}
-            owner={owner}
-            showAction={showRootsMan && cycle.isCurrent}
-            avatarType={normalizedAvatarType}
-            heartShopItemIds={heartShopItemIds}
-          />
-        ))}
+      <div className={styles.carousel}>
+        <div
+          ref={scrollerRef}
+          className={styles.rail}
+          data-paged={cycles.length > 1 || undefined}
+          onScroll={handleScroll}
+          onPointerDown={startMouseDrag}
+          onPointerMove={moveMouseDrag}
+          onPointerUp={finishMouseDrag}
+          onPointerCancel={finishMouseDrag}
+          onLostPointerCapture={finishMouseDrag}
+          onDragStart={event => { if (mouseDrag.current) event.preventDefault(); }}
+        >
+          {cycles.map((cycle) => (
+            <RewardMapCard
+              key={cycle.cycleIndex}
+              cycle={cycle}
+              days={days}
+              isNight={isNight}
+              owner={owner}
+              showAction={showRootsMan && cycle.isCurrent}
+              avatarType={normalizedAvatarType}
+              heartShopItemIds={heartShopItemIds}
+            />
+          ))}
+        </div>
+        {cycles.length > 1 && (
+          <>
+            <button type="button" className={`${styles.arrow} ${styles.previous}`}
+              disabled={selectedIndex <= 0} aria-label={t("reward_map_previous", lang)} onClick={() => goToMap(selectedIndex - 1)}>
+              <ChevronLeft aria-hidden="true" size={22} />
+            </button>
+            <button type="button" className={`${styles.arrow} ${styles.next}`}
+              disabled={selectedIndex >= cycles.length - 1} aria-label={t("reward_map_next", lang)} onClick={() => goToMap(selectedIndex + 1)}>
+              <ChevronRight aria-hidden="true" size={22} />
+            </button>
+          </>
+        )}
       </div>
 
       {cycles.length > 1 && (
@@ -162,11 +226,10 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
           {cycles.map((cycle, index) => (
             <button
               key={cycle.cycleIndex}
-              onClick={() => {
-                setSelectedIndex(index);
-                scrollerRef.current?.scrollTo({ left: (scrollerRef.current?.clientWidth ?? 0) * index, behavior: "smooth" });
-              }}
+              type="button"
+              onClick={() => goToMap(index, true)}
               aria-label={`${index + 1}`}
+              aria-current={index === selectedIndex || undefined}
               style={{
                 width: index === selectedIndex ? 18 : 7,
                 height: 7,

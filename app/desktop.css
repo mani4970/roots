@@ -14,7 +14,7 @@
   }
 
   html[data-roots-desktop="wide"] body,
-  html[data-roots-desktop="wide"][data-native-ios-device="mac"] body {
+  html[data-roots-desktop="wide"][data-native-ios-device] body {
     width: 100%;
     max-width: none;
     min-height: 100vh;
@@ -29,8 +29,8 @@
     padding-bottom: 32px !important;
   }
 
-  html[data-roots-desktop="wide"][data-native-ios-device="mac"] body > .roots-desktop-page,
-  html[data-roots-desktop="wide"][data-native-ios-device="mac"] .roots-native-tablet-viewport {
+  html[data-roots-desktop="wide"][data-native-ios-device] body > .roots-desktop-page,
+  html[data-roots-desktop="wide"][data-native-ios-device] .roots-native-tablet-viewport {
     min-height: 100vh !important;
     min-height: 100dvh !important;
   }
@@ -58,8 +58,8 @@
     border-right: 1px solid var(--border);
   }
 
-  /* Single-column routes in the installed Mac app still zoom their content. */
-  html[data-roots-desktop="compact"][data-native-ios-device="mac"] .bottom-nav {
+  /* Single-column routes in the native iPad and Mac shells still zoom their content. */
+  html[data-roots-desktop="compact"][data-native-ios-device] .bottom-nav {
     zoom: 0.6666667;
   }
 
@@ -102,11 +102,37 @@
 
   /* Covers a direct visit, before the sidebar's layout effect runs. */
   html[data-roots-desktop-client]:has(.roots-qt-shell),
-  html[data-roots-desktop-client]:has(.roots-qt-shell) body {
+  html[data-roots-desktop-client]:has(.roots-qt-shell) body,
+  html[data-roots-desktop-client="tablet"]:has(.roots-native-centered-loader),
+  html[data-roots-desktop-client="tablet"]:has(.roots-native-centered-loader) body {
     width: 100%;
     max-width: none;
     margin: 0;
     zoom: 1;
+  }
+
+  /* Home and profile initially show their loader before the sidebar mounts. */
+  html[data-roots-desktop-client="tablet"][data-native-platform="ios"][data-native-ios-device="ipad"] .roots-native-centered-loader {
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    transform: none;
+  }
+
+  /* The native portrait editor is zoomed by its body. At normal landscape
+     scale, keep text fields at a readable size while the iPad keyboard is up. */
+  html[data-roots-desktop-client="tablet"][data-native-platform="ios"] .roots-qt-desktop-content :is(input, textarea) {
+    font-size: 16px !important;
+  }
+
+  /* On edge-to-edge Galaxy Tabs, reserve the system bars inside each page's
+     viewport height so lists scroll in their panes and their last row is reachable. */
+  html[data-roots-desktop-client="tablet"][data-native-platform="android"]:has(.roots-desktop-page, .roots-qt-shell, .legal-document) {
+    padding-top: 0;
+  }
+
+  html[data-roots-desktop-client="tablet"][data-native-platform="android"] :is(.roots-desktop-page, .roots-qt-desktop-content > :first-child, .legal-document) {
+    border-block-start: var(--safe-area-top) solid transparent;
+    border-block-end: var(--safe-area-bottom) solid transparent;
   }
 
   html[data-roots-desktop-client] .roots-qt-shell {

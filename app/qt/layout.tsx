@@ -4,6 +4,7 @@ import { useLayoutEffect, useState, type ReactNode } from "react";
 import { QTDesktopContext } from "./QTDesktopContext";
 import { usePathname } from "next/navigation";
 import BottomNav, { NavLinks } from "@/components/BottomNav";
+import { isDesktopLayout, subscribeToDesktopLayout } from "@/lib/desktopLayout";
 import { FALLBACK_LANG } from "@/lib/i18n";
 
 export default function QTLayout({ children }: { children: ReactNode }) {
@@ -12,15 +13,9 @@ export default function QTLayout({ children }: { children: ReactNode }) {
   const [wideDesktop, setWideDesktop] = useState<boolean | null>(null);
 
   useLayoutEffect(() => {
-    if (!document.documentElement.hasAttribute("data-roots-desktop-client")) {
-      setWideDesktop(false);
-      return;
-    }
-    const width = window.matchMedia("(min-width: 960px)");
-    const update = () => setWideDesktop(width.matches);
+    const update = () => setWideDesktop(isDesktopLayout());
     update();
-    width.addEventListener("change", update);
-    return () => width.removeEventListener("change", update);
+    return subscribeToDesktopLayout(update);
   }, []);
 
   return (

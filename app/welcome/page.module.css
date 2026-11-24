@@ -525,7 +525,7 @@
    including on the installed Mac app where the authentication body is zoomed. */
 @media (min-width: 960px) {
   :global(html[data-roots-desktop-client]):has(.page),
-  :global(html[data-roots-desktop-client][data-native-ios-device="mac"]):has(.page) :global(body) {
+  :global(html[data-roots-desktop-client][data-native-ios-device]):has(.page) :global(body) {
     width: 100%;
     max-width: none;
     margin: 0;

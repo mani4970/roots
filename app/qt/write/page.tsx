@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useContext, useState, useEffect, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import "./desktop-writer.css";
+import { QTDesktopContext } from "../QTDesktopContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
@@ -293,15 +294,7 @@ function normalizeBibleTranslationId(value: unknown, fallback: unknown = DEFAULT
 function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const [wideDesktop, setWideDesktop] = useState(false);
-  useEffect(() => {
-    if (!document.documentElement.hasAttribute("data-roots-desktop-client")) return;
-    const query = window.matchMedia("(min-width: 960px)");
-    const update = () => setWideDesktop(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
+  const wideDesktop = useContext(QTDesktopContext);
   const lang = useLang();
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" | "info" } | null>(null);
   const toastTimerRef = useRef<number | null>(null);

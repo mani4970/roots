@@ -789,6 +789,8 @@ export const T = {
   reward_map_fallback_peace_ark: { ko: "화평의 방주", de: "Arche des Friedens", en: "Ark of Peace", fr: "Arche de paix", es: "Arca de la Paz" },
   reward_map_fallback_journey: { ko: "말씀 여정", de: "Wortweg", en: "Word journey", fr: "Chemin de la Parole", es: "Camino con la Palabra" },
   reward_map_day_range: { ko: "{start}~{end}일", de: "Tag {start}-{end}", en: "Days {start}-{end}", fr: "Jours {start}-{end}", es: "Días {start}-{end}" },
+  reward_map_previous: { ko: "이전 맵", de: "Vorherige Karte", en: "Previous map", fr: "Carte précédente", es: "Mapa anterior" },
+  reward_map_next: { ko: "다음 맵", de: "Nächste Karte", en: "Next map", fr: "Carte suivante", es: "Mapa siguiente" },
   reward_map_future_stage: { ko: "준비 중", de: "In Vorbereitung", en: "Coming soon", fr: "À venir", es: "Próximamente" },
   reward_map_future_desc: { ko: "다음 말씀 여정을 준비하고 있어요", de: "Die nächste Wortreise wird vorbereitet", en: "The next Word journey is being prepared", fr: "Le prochain chemin avec la Parole se prépare", es: "Estamos preparando el próximo camino con la Palabra" },
   reward_map_completion_title: { ko: "100일 동안 하나님과 동행한 당신을 축복합니다.", de: "Gesegnet seien Ihre 100 Tage mit Gott.", en: "Blessings on your 100 days walking with God.", fr: "Soyez béni(e) pour ces 100 jours avec Dieu.", es: "Bendiciones por tus 100 días caminando con Dios." },

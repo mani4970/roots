@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { subscribeToDesktopLayout } from "@/lib/desktopLayout";
 import { useLang } from "@/lib/useLang";
 import { t, type Lang } from "@/lib/i18n";
 import { useCommentNotifications } from "@/components/notifications/CommentNotificationsProvider";
@@ -20,12 +21,19 @@ function BottomNavContent({ lang, wideDesktop = false }: { lang: Lang; wideDeskt
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    if (!root.hasAttribute("data-roots-desktop-client")) return;
     // Only routes with this navigation take part. The other main tabs keep
     // their reading width while sharing the desktop sidebar.
     const wide = wideDesktop || path === "/" || path === "/prayer" || path === "/community" || path === "/profile" || path === "/qt" || path.startsWith("/qt/");
-    root.dataset.rootsDesktop = wide ? "wide" : "compact";
-    return () => { delete root.dataset.rootsDesktop; };
+    const update = () => {
+      if (root.hasAttribute("data-roots-desktop-client")) root.dataset.rootsDesktop = wide ? "wide" : "compact";
+      else delete root.dataset.rootsDesktop;
+    };
+    update();
+    const unsubscribe = subscribeToDesktopLayout(update);
+    return () => {
+      unsubscribe();
+      delete root.dataset.rootsDesktop;
+    };
   }, [path, wideDesktop]);
 
   return <NavLinks lang={lang} path={path} unread={unread} />;

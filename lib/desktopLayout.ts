@@ -10,12 +10,16 @@ export function isDesktopLayout() {
     && window.matchMedia(desktopWidth).matches;
 }
 
-function subscribeToWidth(update: () => void) {
+export function subscribeToDesktopLayout(update: () => void) {
   const query = window.matchMedia(desktopWidth);
   query.addEventListener("change", update);
-  return () => query.removeEventListener("change", update);
+  window.addEventListener("roots-tablet-layout-change", update);
+  return () => {
+    query.removeEventListener("change", update);
+    window.removeEventListener("roots-tablet-layout-change", update);
+  };
 }
 
 export function useDesktopLayout() {
-  return useSyncExternalStore(subscribeToWidth, isDesktopLayout, () => false);
+  return useSyncExternalStore(subscribeToDesktopLayout, isDesktopLayout, () => false);
 }
