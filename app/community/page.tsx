@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDesktopLayout } from "@/lib/desktopLayout";
 import BottomNav from "@/components/BottomNav";
 import "./desktop-community.css";
+import "./group-challenge.css";
+import HomeHubDialog from "@/components/HomeHubDialog";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
 import PrayerExperience from "@/components/PrayerExperience";
 import PrayerAddedFeedback, { type PrayerAddedEntry } from "@/components/PrayerAddedFeedback";
@@ -145,6 +147,7 @@ import {
   Crown,
   UserMinus,
   Settings,
+  Trophy,
 } from "lucide-react";
 
 const COMPANION_CHALLENGE_MYSTERY_BADGE_SRC = "/images/group-challenges/mystery-badge.webp";
@@ -1057,6 +1060,7 @@ function CommunityPageContent() {
   const [challengeSaving, setChallengeSaving] = useState(false);
   const [challengeError, setChallengeError] = useState("");
   const [challengeSuccess, setChallengeSuccess] = useState(false);
+  const [showGroupChallenge, setShowGroupChallenge] = useState(false);
   const [groupChallenges, setGroupChallenges] = useState<any[]>([]);
   const [groupChallengeProgress, setGroupChallengeProgress] = useState<
     Record<string, { doneDays: number; totalDays: number }>
@@ -1210,7 +1214,7 @@ function CommunityPageContent() {
       || safetyConfirm || actionMenu || manageModal || profileModal || detailQt
       || showDeleteGroupConfirm || memberRemovalTarget || showLeadershipTransfer
       || showGroupEdit || showLeaveConfirm || showGroupMembers || openGroupHeaderMenu
-      || showChallengeRequestForm || showGroupForm,
+      || showGroupChallenge || showChallengeRequestForm || showGroupForm,
     ),
     onSwipe: (direction) => {
       const step = direction === "left" ? 1 : -1;
@@ -2178,22 +2182,6 @@ function CommunityPageContent() {
     return challengeDisplayStatus(challenge) !== "completed";
   }
 
-  function visibleGroupChallengeCards() {
-    return groupChallenges.filter(shouldShowGroupChallengeCard);
-  }
-
-  function groupChallengeSectionTitleKey(challenges: any[]): TKey {
-    if (
-      challenges.length > 0 &&
-      challenges.every(
-        (challenge) => challengeDisplayStatus(challenge) === "completed",
-      )
-    ) {
-      return "group_challenge_recent_completed_section_title";
-    }
-    return "group_challenge_approved_section_title";
-  }
-
   function setGroupChallengeRequest(
     groupId: string,
     request?: GroupChallengeRequestSummary | null,
@@ -2336,6 +2324,7 @@ function CommunityPageContent() {
     setChallengeDescription("");
     setChallengeBadgeIdea("");
     setChallengeExtraQuestions("");
+    setShowGroupChallenge(false);
     setShowChallengeRequestForm(true);
   }
 
@@ -2789,6 +2778,7 @@ function CommunityPageContent() {
   }
 
   function resetGroupDetailState() {
+    setShowGroupChallenge(false);
     communityDetailRequestSeqRef.current += 1;
     setActionMenu(null);
     setOpenGroupHeaderMenu(null);
@@ -5275,6 +5265,7 @@ function CommunityPageContent() {
     if (!isCurrent()) return;
     if (!user) {
       setLoadingGroupChallenges(false);
+      setGroupChallengeLoadError(true);
       setLoadingGroupQts(false);
       setLoadingGroupPrayers(false);
       setNotificationDirectOpenPending(false);
@@ -7984,6 +7975,9 @@ function CommunityPageContent() {
     );
   } else if (selectedGroup) {
     const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
+    const challengeCards = groupChallenges.filter(shouldShowGroupChallengeCard);
+    const preparingRequest = preparingApprovedGroupChallengeRequest(selectedGroup.id);
+    const pendingRequest = hasActiveGroupChallengeRequest(selectedGroup.id);
     const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
     const viewerIsGroupLeader = isGroupLeader(selectedGroup);
     const leadershipTransferTarget = groupMemberProfiles.find(
@@ -8283,111 +8277,177 @@ function CommunityPageContent() {
                 <ChevronRight size={14} />
               </button>
             </div>
-            <div ref={groupInvitePopoverRef} style={{ position: "relative" }}>
-              <button
-                onClick={() =>
-                  setOpenGroupHeaderMenu((current) =>
-                    current === "invite" ? null : "invite",
-                  )
-                }
-                aria-label={c("community_invite")}
-                aria-expanded={openGroupHeaderMenu === "invite"}
-                aria-haspopup="menu"
-                style={{
-                  padding: "7px 12px",
-                  borderRadius: 20,
-                  border: "1px solid var(--community-sage-border)",
-                  background: "var(--sage-light)",
-                  color: "var(--sage-dark)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {copiedId === selectedGroup.id ? (
-                  <Check size={13} />
-                ) : (
-                  <UserPlus size={13} />
-                )}
-                {copiedId === selectedGroup.id
-                  ? c("community_copied")
-                  : c("community_invite")}
-              </button>
-              {openGroupHeaderMenu === "invite" && (
-                <div
-                  role="menu"
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "calc(100% + 6px)",
-                    zIndex: 80,
-                    minWidth: 180,
-                    borderRadius: 18,
-                    border: "1px solid var(--community-card-border)",
-                    background: "var(--community-popover-surface)",
-                    boxShadow: "var(--shadow-popover)",
-                    padding: 8,
+            <div className="community-group-header-actions">
+              {selectedGroup.isMember && (
+                <button
+                  type="button"
+                  className="community-group-action-button community-group-challenge-button"
+                  aria-haspopup="dialog"
+                  aria-expanded={showGroupChallenge}
+                  onClick={() => {
+                    setOpenGroupHeaderMenu(null);
+                    setShowGroupChallenge(true);
                   }}
                 >
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setOpenGroupHeaderMenu(null);
-                      shareInvite(selectedGroup);
-                    }}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      padding: "11px 10px",
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--sage-dark)",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <Share2 size={15} />
-                    {c("community_invite")}
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setOpenGroupHeaderMenu(null);
-                      copyInviteLink(selectedGroup.id);
-                    }}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      padding: "11px 10px",
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--text2)",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <Copy size={15} />
-                    {c("community_copy_link")}
-                  </button>
-                </div>
+                  <Trophy size={13} aria-hidden="true" />
+                  {c("group_challenge_button")}
+                </button>
               )}
+              <div ref={groupInvitePopoverRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() =>
+                    setOpenGroupHeaderMenu((current) =>
+                      current === "invite" ? null : "invite",
+                    )
+                  }
+                  aria-label={c("community_invite")}
+                  aria-expanded={openGroupHeaderMenu === "invite"}
+                  aria-haspopup="menu"
+                  className="community-group-action-button"
+                >
+                  {copiedId === selectedGroup.id ? (
+                    <Check size={13} />
+                  ) : (
+                    <UserPlus size={13} />
+                  )}
+                  {copiedId === selectedGroup.id
+                    ? c("community_copied")
+                    : c("community_invite")}
+                </button>
+                {openGroupHeaderMenu === "invite" && (
+                  <div
+                    role="menu"
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 6px)",
+                      zIndex: 80,
+                      minWidth: 180,
+                      borderRadius: 18,
+                      border: "1px solid var(--community-card-border)",
+                      background: "var(--community-popover-surface)",
+                      boxShadow: "var(--shadow-popover)",
+                      padding: 8,
+                    }}
+                  >
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setOpenGroupHeaderMenu(null);
+                        shareInvite(selectedGroup);
+                      }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "11px 10px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--sage-dark)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Share2 size={15} />
+                      {c("community_invite")}
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setOpenGroupHeaderMenu(null);
+                        copyInviteLink(selectedGroup.id);
+                      }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        padding: "11px 10px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text2)",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <Copy size={15} />
+                      {c("community_copy_link")}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
+        {selectedGroup.isMember && showGroupChallenge && (
+          <HomeHubDialog
+            open
+            boundarySelector="html"
+            title={c("group_challenge_card_title")}
+            closeLabel={c("group_challenge_close")}
+            onClose={() => setShowGroupChallenge(false)}
+          >
+            <div className="community-group-challenge-summary">
+              {loadingGroupChallenges ? (
+                <p role="status" className="community-group-challenge-loading">
+                  <Loader2 size={16} aria-hidden="true" className="spin" /> {c("loading")}
+                </p>
+              ) : (
+                <>
+                  {challengeCards.map((challenge) => {
+                    const progress = groupChallengeProgress[challenge.id];
+                    return (
+                      <article key={challenge.id}>
+                        <div className="community-group-challenge-heading">
+                          <img src="/images/group-challenges/mystery-badge.webp" alt="" width={52} height={52} />
+                          <div>
+                            <h3>{challenge.title}</h3>
+                            <p>{challengeDateRange(challenge)}</p>
+                          </div>
+                          <span className="community-group-challenge-status" data-active={challengeDisplayStatus(challenge) === "active"}>
+                            {challengeStatusLabel(challenge)}
+                          </span>
+                        </div>
+                        {progress && (
+                          <div className="community-group-challenge-progress">
+                            <div><strong>{c("group_challenge_my_progress")}</strong><span>{c("group_challenge_day_count", { done: progress.doneDays, total: progress.totalDays })}</span></div>
+                            <progress aria-label={c("group_challenge_my_progress")} value={challengeProgressPercent(progress)} max={100} />
+                          </div>
+                        )}
+                        <p className="community-group-challenge-reward">{c("group_challenge_special_badge_teaser")}</p>
+                      </article>
+                    );
+                  })}
+                  {challengeCards.length === 0 && preparingRequest && (
+                    <section>
+                      <h3>{c("group_challenge_preparing_title")}</h3>
+                      {preparingRequest.title && <p>{preparingRequest.title}</p>}
+                      <p>{challengeRequestScheduleText(preparingRequest)}</p>
+                    </section>
+                  )}
+                  {groupChallengeLoadError && <p role="alert">{c("common_load_error")}</p>}
+                  {challengeCards.length === 0 && !preparingRequest && !groupChallengeLoadError && (
+                    <section>
+                      <h3>{c("group_challenge_empty")}</h3>
+                      <p>{groupChallengeRequestText.leaderOnlyNotice}</p>
+                      {(viewerIsGroupLeader || pendingRequest) && (
+                        <button className="btn-sage" type="button" disabled={pendingRequest} onClick={openChallengeRequestForm}>
+                          {c(pendingRequest ? "group_challenge_requested_btn" : "group_challenge_apply_btn")}
+                        </button>
+                      )}
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
+          </HomeHubDialog>
+        )}
         {isDesktopSplit && detailTabs}
         <div
           key={isDesktopSplit ? groupDetailTab : undefined}
@@ -8410,387 +8470,6 @@ function CommunityPageContent() {
             >
               {c("community_join")}
             </button>
-          )}
-
-          {selectedGroup.isMember && (
-            <CommunityChallengeBoundary viewKey={`group-${selectedGroup.id}`} present={loadingGroupChallenges || visibleGroupChallengeCards().length > 0 || !!preparingApprovedGroupChallengeRequest(selectedGroup.id) || !groupChallengeLoadError}>
-              {(loadingGroupChallenges ||
-                visibleGroupChallengeCards().length > 0) && (
-                <div
-                  style={{
-                    borderRadius: 20,
-                    border: "1px solid var(--challenge-border)",
-                    background: "var(--challenge-section-surface)",
-                    padding: "15px 15px 14px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 11,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 10,
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 850,
-                        color: "var(--text)",
-                        margin: 0,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {c(
-                        groupChallengeSectionTitleKey(
-                          visibleGroupChallengeCards(),
-                        ),
-                      )}
-                      {groupChallengeSectionTitleKey(
-                        visibleGroupChallengeCards(),
-                      ) === "group_challenge_approved_section_title" && (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: "var(--challenge-muted-text)",
-                            lineHeight: 1.45,
-                          }}
-                        >
-                          {` (${c("group_challenge_auto_participation_note")})`}
-                        </span>
-                      )}
-                    </p>
-                    {loadingGroupChallenges && (
-                      <Loader2
-                        size={15}
-                        className="spin"
-                        style={{ color: "var(--sage)" }}
-                      />
-                    )}
-                  </div>
-                  {!loadingGroupChallenges &&
-                    visibleGroupChallengeCards().map((challenge) => (
-                      <div
-                        key={challenge.id}
-                        style={{
-                          borderRadius: 17,
-                          border: "1px solid var(--challenge-item-border)",
-                          background: "var(--challenge-item-surface)",
-                          padding: "12px 13px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 13,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 62,
-                              height: 62,
-                              borderRadius: 18,
-                              background: "var(--challenge-group-badge-surface)",
-                              border: "1px solid var(--challenge-group-badge-border)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              overflow: "hidden",
-                              flexShrink: 0,
-                            }}
-                          >
-                            <img
-                              src="/images/group-challenges/mystery-badge.webp"
-                              alt=""
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                justifyContent: "space-between",
-                                gap: 8,
-                              }}
-                            >
-                              <div style={{ minWidth: 0 }}>
-                                <p
-                                  style={{
-                                    fontSize: 14,
-                                    fontWeight: 850,
-                                    color: "var(--text)",
-                                    margin: "0 0 4px",
-                                    lineHeight: 1.35,
-                                  }}
-                                >
-                                  {challenge.title}
-                                </p>
-                                <p
-                                  style={{
-                                    fontSize: 11,
-                                    color: "var(--challenge-muted-text)",
-                                    margin: 0,
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  {challengeDateRange(challenge)}
-                                </p>
-                              </div>
-                              <span
-                                style={{
-                                  flexShrink: 0,
-                                  borderRadius: 999,
-                                  padding: "4px 8px",
-                                  background:
-                                    challengeDisplayStatus(challenge) ===
-                                    "active"
-                                      ? "var(--challenge-status-active-surface)"
-                                      : "var(--challenge-status-neutral-surface)",
-                                  color:
-                                    challengeDisplayStatus(challenge) ===
-                                    "active"
-                                      ? "var(--challenge-status-active-text)"
-                                      : "var(--challenge-status-neutral-text)",
-                                  fontSize: 10,
-                                  fontWeight: 850,
-                                }}
-                              >
-                                {challengeStatusLabel(challenge)}
-                              </span>
-                            </div>
-                            <p
-                              style={{
-                                fontSize: 11,
-                                color: "var(--challenge-reward-text)",
-                                fontWeight: 800,
-                                margin: "8px 0 0",
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {c("group_challenge_special_badge_teaser")}
-                            </p>
-                          </div>
-                        </div>
-                        {groupChallengeProgress[challenge.id] && (
-                          <div style={{ marginTop: 10 }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: 8,
-                                marginBottom: 6,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 850,
-                                  color: "var(--challenge-sage-text)",
-                                }}
-                              >
-                                {c("group_challenge_progress_day", {
-                                  day: groupChallengeProgress[challenge.id]
-                                    .doneDays,
-                                })}
-                              </span>
-                            </div>
-                            <div
-                              aria-hidden="true"
-                              style={{
-                                height: 8,
-                                borderRadius: 999,
-                                background: "var(--challenge-progress-track)",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  height: "100%",
-                                  width: `${challengeProgressPercent(groupChallengeProgress[challenge.id])}%`,
-                                  borderRadius: 999,
-                                  background: "var(--challenge-progress-fill)",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              {!loadingGroupChallenges &&
-                visibleGroupChallengeCards().length === 0 &&
-                preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
-                  <div
-                    style={{
-                      borderRadius: 20,
-                      border: "1px solid var(--challenge-border)",
-                      background: "var(--challenge-invite-surface)",
-                      padding: "16px 15px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 850,
-                        color: "var(--text)",
-                        margin: 0,
-                      }}
-                    >
-                      {c("group_challenge_preparing_title")}
-                    </p>
-                    {preparingApprovedGroupChallengeRequest(selectedGroup.id)
-                      ?.title && (
-                      <p
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: "var(--challenge-sage-text)",
-                          margin: 0,
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {
-                          preparingApprovedGroupChallengeRequest(
-                            selectedGroup.id,
-                          )?.title
-                        }
-                      </p>
-                    )}
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "var(--challenge-secondary-text)",
-                        lineHeight: 1.55,
-                        margin: 0,
-                      }}
-                    >
-                      {challengeRequestScheduleText(
-                        preparingApprovedGroupChallengeRequest(
-                          selectedGroup.id,
-                        )!,
-                      )}
-                    </p>
-                  </div>
-                )}
-
-              {!loadingGroupChallenges &&
-                !groupChallengeLoadError &&
-                visibleGroupChallengeCards().length === 0 &&
-                !preparingApprovedGroupChallengeRequest(selectedGroup.id) && (
-                  <div
-                    style={{
-                      borderRadius: 20,
-                      border: "1px solid var(--challenge-border)",
-                      background: "var(--challenge-invite-surface)",
-                      padding: "16px 15px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 13,
-                    }}
-                  >
-                    <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 850,
-                          color: "var(--text)",
-                          margin: "0 0 7px",
-                          minWidth: 0,
-                        }}
-                      >
-                        {c("group_challenge_card_title")}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: "var(--challenge-secondary-text)",
-                          lineHeight: 1.55,
-                          whiteSpace: "pre-line",
-                          margin: 0,
-                        }}
-                      >
-                        {c("group_challenge_card_body")}
-                      </p>
-                      {!viewerIsGroupLeader &&
-                        !hasActiveGroupChallengeRequest(selectedGroup.id) && (
-                          <p
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 5,
-                              fontSize: 11,
-                              fontWeight: 800,
-                              color: "var(--challenge-sage-text)",
-                              lineHeight: 1.45,
-                              margin: "9px 0 0",
-                            }}
-                          >
-                            <Crown size={13} aria-hidden="true" />
-                            {groupChallengeRequestText.leaderOnlyNotice}
-                          </p>
-                        )}
-                    </div>
-                    {(viewerIsGroupLeader ||
-                      hasActiveGroupChallengeRequest(selectedGroup.id)) && (
-                      <button
-                        onClick={openChallengeRequestForm}
-                        disabled={hasActiveGroupChallengeRequest(
-                          selectedGroup.id,
-                        )}
-                        style={{
-                          flex: "0 0 auto",
-                          border: "none",
-                          borderRadius: 16,
-                          background: hasActiveGroupChallengeRequest(
-                            selectedGroup.id,
-                          )
-                            ? "var(--challenge-disabled-surface)"
-                            : "var(--challenge-action)",
-                          color: hasActiveGroupChallengeRequest(selectedGroup.id)
-                            ? "var(--challenge-disabled-text)"
-                            : "var(--challenge-on-action)",
-                          padding: "11px 16px",
-                          minWidth: 82,
-                          fontSize: 12,
-                          fontWeight: 850,
-                          cursor: hasActiveGroupChallengeRequest(
-                            selectedGroup.id,
-                          )
-                            ? "default"
-                            : "pointer",
-                          whiteSpace: "nowrap",
-                          opacity: hasActiveGroupChallengeRequest(
-                            selectedGroup.id,
-                          )
-                            ? 0.92
-                            : 1,
-                        }}
-                      >
-                        {hasActiveGroupChallengeRequest(selectedGroup.id)
-                          ? c("group_challenge_requested_btn")
-                          : c("group_challenge_apply_btn")}
-                      </button>
-                    )}
-                  </div>
-                )}
-            </CommunityChallengeBoundary>
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>
