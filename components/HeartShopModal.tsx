@@ -61,7 +61,7 @@ import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 type HeartShopModalProps = {
   show: boolean;
   lang: Lang | string;
-  heartBalance: number;
+  heartBalance: number | null;
   giftItemKey?: string | null;
   avatarType: RootsAvatarType;
   totalDays?: number;
@@ -1228,8 +1228,8 @@ export default function HeartShopModal({
             <X className={styles.closeIcon} size={19} aria-hidden="true" />
           </button>
           <h2 className={styles.title} style={{ margin: 0, fontSize: 19, fontWeight: 950, color: "var(--text)", textAlign: "center" }}>{text.title}</h2>
-          <div className={styles.balance} aria-label={`${text.balanceLabel} ${localBalance}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "var(--heart-shop-balance-surface)", color: "var(--heart-shop-balance-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
-            <span aria-hidden="true">💛</span><span>{localBalance}</span>
+          <div className={styles.balance} aria-label={`${text.balanceLabel} ${localBalance ?? "—"}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "var(--heart-shop-balance-surface)", color: "var(--heart-shop-balance-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
+            <span aria-hidden="true">💛</span><span>{localBalance ?? "—"}</span>
           </div>
         </header>
 

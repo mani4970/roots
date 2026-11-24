@@ -175,7 +175,6 @@ const HOME_LOCAL_TEXT = {
 type HomeQTState = {
   hasDraft: boolean;
   preferredTranslation: number;
-  todaySchedule: QTSchedule | null;
 };
 
 type RewardMapNoticeState = {
@@ -257,7 +256,10 @@ export default function HomePage() {
   const homeDataDateRef = useRef<string | null>(null);
   const homeEntryRef = useRef<HomeEntry | null>(null);
   const [homeEntry, setHomeEntry] = useState<HomeEntry | null>(null);
-  const [homeDetailsReady, setHomeDetailsReady] = useState({ prayer: false, schedule: false });
+  const [homePrayerReady, setHomePrayerReady] = useState(false);
+  const homeScheduleRequest = useRef<{ date: string; result: Promise<QTSchedule | null> } | null>(null);
+  const homePassageChoiceVersion = useRef(0);
+  const [homePassageStatus, setHomePassageStatus] = useState<"idle" | "loading" | "error">("idle");
   const [progressRetryToken, setProgressRetryToken] = useState(0);
   const rewardReceiptsRef = useRef<RewardPresentationReceipt[]>([]);
   const claimedRewardReceiptsRef = useRef(new Set<string>());
@@ -315,7 +317,6 @@ export default function HomePage() {
   const [homeQTState, setHomeQTState] = useState<HomeQTState>({
     hasDraft: false,
     preferredTranslation: 92,
-    todaySchedule: null,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
@@ -945,7 +946,9 @@ export default function HomePage() {
     setCompanionAcceptanceNotice(null);
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
-    setHomeDetailsReady({ prayer: false, schedule: false });
+    setHomePrayerReady(false);
+    homeScheduleRequest.current = null;
+    cancelHomePassageChoice();
     setUpdateAnnouncementAccount(null);
     setAnnouncementRewardChecksReadyFor(null);
     try {
@@ -1041,7 +1044,7 @@ export default function HomePage() {
       const activeLang = getStoredLang() ?? profileLang ?? lang;
       const preferredTranslation = getPreferredTranslationForLang(activeLang, p.preferred_translation, profileLang);
       savePreferredTranslationLocally(activeLang, preferredTranslation);
-      setHomeQTState({ hasDraft, preferredTranslation, todaySchedule: null });
+      setHomeQTState({ hasDraft, preferredTranslation });
       setCompletedQtRecordId(completedQt?.id ?? null);
       setTodayDone({ qt: !!completedQt, prayer: false });
 
@@ -1084,9 +1087,6 @@ export default function HomePage() {
 
       const background = (label: string, task: () => Promise<void>) => {
         void task().catch(error => { if (isCurrentLoad()) console.warn(label, error); });
-      };
-      const ready = (key: keyof typeof homeDetailsReady) => {
-        if (isCurrentLoad()) setHomeDetailsReady(previous => ({ ...previous, [key]: true }));
       };
       background("홈 사랑 상점 아이템 조회 실패:", async () => {
         const items = await loadOwnedHeartShopItems(supabase);
@@ -1168,20 +1168,9 @@ export default function HomePage() {
         if (error) throw error;
         if (!isCurrentLoad()) return;
         setTodayDone(previous => ({ ...previous, prayer: previous.prayer || !!data }));
-        ready("prayer");
+        setHomePrayerReady(true);
       });
-      background("홈 묵상 본문 일정 조회 실패:", async () => {
-        let todaySchedule: QTSchedule | null = null;
-        if (!isSunday()) {
-          const { data, error } = await withQtDraftTimeout(supabase.from("qt_schedule")
-            .select("book,chapter,start_verse,end_verse,end_chapter,title").eq("date", today).maybeSingle(), 8_000, "home reflection schedule");
-          if (error) throw error;
-          todaySchedule = data ?? null;
-        }
-        if (!isCurrentLoad()) return;
-        setHomeQTState(previous => ({ ...previous, todaySchedule }));
-        ready("schedule");
-      });
+      background("홈 묵상 본문 일정 조회 실패:", async () => { await getHomeSchedule(today); });
     } catch (error) {
       if (!isCurrentLoad()) return;
       console.error("홈 정보 조회 실패:", error);
@@ -1447,6 +1436,8 @@ export default function HomePage() {
     document.addEventListener("visibilitychange", refresh);
     const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
       if (cancelled || (event !== "SIGNED_OUT" && (!session?.user?.id || session.user.id === userId))) return;
+      homeScheduleRequest.current = null;
+      closeHomeQTChoicePopup();
       // Revoke this queue immediately even if the old profile is still on
       // screen while the route's ordinary account refresh is completing.
       activityBadgeUserRef.current = null;
@@ -1754,7 +1745,7 @@ export default function HomePage() {
   }
 
   async function markQuietPrayer() {
-    if (!homeDetailsReady.prayer) { void load(); return; }
+    if (!homePrayerReady) { void load(); return; }
     if (todayDone.prayer) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -1808,35 +1799,67 @@ export default function HomePage() {
     }
   }
 
-  function startHomeQT(mode: QTMode, passageSource: "scheduled" | "custom" = "scheduled") {
-    if (mode === "6step" && passageSource === "scheduled" && !homeDetailsReady.schedule) { void load(); return; }
-    router.push(buildQTWriteHref({
-      mode,
-      preferredTranslation: homeQTState.preferredTranslation,
-      todaySchedule: homeQTState.todaySchedule,
-      useTodaySchedule: passageSource === "scheduled",
-      sundayContext: mode === "free" && isSunday(),
-      entry: "home",
-    }));
+  function getHomeSchedule(date: string): Promise<QTSchedule | null> {
+    if (isSunday()) return Promise.resolve(null);
+    const cached = homeScheduleRequest.current;
+    if (cached?.date === date) return cached.result;
+
+    const controller = new AbortController();
+    const result: Promise<QTSchedule | null> = withQtDraftTimeout(
+      createClient().from("qt_schedule")
+        .select("book,chapter,start_verse,end_verse,end_chapter,title")
+        .eq("date", date).abortSignal(controller.signal).maybeSingle(),
+      8_000, "home reflection schedule", () => controller.abort(),
+    ).then(({ data, error }) => {
+      if (error) throw error;
+      return data;
+    }).catch(error => {
+      if (homeScheduleRequest.current?.result === result) homeScheduleRequest.current = null;
+      throw error;
+    });
+    homeScheduleRequest.current = { date, result };
+    return result;
   }
 
-  function startHomePhotoQT(passageSource: "scheduled" | "custom" = "scheduled") {
-    if (passageSource === "scheduled" && !homeDetailsReady.schedule) { void load(); return; }
-    setShowHomeQTChoice(false);
-    setShowHomeQTPassageChoice(false);
-    setShowHomeQTPhotoPassageChoice(false);
-    setShowHomeSundayQT(false);
-    setShowHomeQTGuide(false);
-    router.push(buildQTPhotoHref({
+  function cancelHomePassageChoice() {
+    homePassageChoiceVersion.current += 1;
+    setHomePassageStatus("idle");
+  }
+
+  async function startHomeQT(mode: QTMode | "photo", source: "scheduled" | "custom" = "custom") {
+    const choice = ++homePassageChoiceVersion.current;
+    const generation = homeLoadGenerationRef.current;
+    const isCurrent = () => choice === homePassageChoiceVersion.current && generation === homeLoadGenerationRef.current;
+    let schedule: QTSchedule | null = null;
+    if (source === "scheduled") {
+      const date = getLocalDateString();
+      setHomePassageStatus("loading");
+      try {
+        schedule = await getHomeSchedule(date);
+      } catch {
+        if (isCurrent()) setHomePassageStatus("error");
+        return;
+      }
+      if (!isCurrent()) return;
+      if (date !== getLocalDateString()) {
+        setHomePassageStatus("error");
+        return;
+      }
+    }
+    const options = {
       preferredTranslation: homeQTState.preferredTranslation,
-      todaySchedule: homeQTState.todaySchedule,
-      useTodaySchedule: passageSource === "scheduled",
-      sundayContext: isSunday(),
-      entry: "home",
-    }));
+      todaySchedule: schedule,
+      useTodaySchedule: source === "scheduled",
+      entry: "home" as const,
+    };
+    closeHomeQTChoicePopup();
+    router.push(mode === "photo"
+      ? buildQTPhotoHref({ ...options, sundayContext: isSunday() })
+      : buildQTWriteHref({ ...options, mode, sundayContext: mode === "free" && isSunday() }));
   }
 
   function closeHomeQTChoicePopup() {
+    cancelHomePassageChoice();
     setShowHomeQTChoice(false);
     setShowHomeSundayQT(false);
     setShowHomeQTPassageChoice(false);
@@ -1932,6 +1955,7 @@ export default function HomePage() {
   }
 
   function returnToHomeQTModeChoice() {
+    cancelHomePassageChoice();
     setShowHomeQTPassageChoice(false);
     setShowHomeQTPhotoPassageChoice(false);
     if (isSunday()) {
@@ -1939,15 +1963,6 @@ export default function HomePage() {
     } else {
       setShowHomeQTChoice(true);
     }
-  }
-
-  function startHomeSixStepFromPassageChoice(passageSource: "scheduled" | "custom") {
-    setShowHomeQTPassageChoice(false);
-    startHomeQT("6step", passageSource);
-  }
-
-  function startHomePhotoFromPassageChoice(passageSource: "scheduled" | "custom") {
-    startHomePhotoQT(passageSource);
   }
 
   function openTodayQtRecord() {
@@ -2273,18 +2288,18 @@ export default function HomePage() {
               </div>
             ) : (showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                {homePassageStatus === "error" && (
+                  <p role="alert" style={{ fontSize: 14, color: "var(--text2)" }}>{t("common_load_error", lang)}</p>
+                )}
                 <button
-                  disabled={showHomeQTPhotoPassageChoice && isSunday()}
-                  onClick={() => {
-                    if (showHomeQTPhotoPassageChoice && isSunday()) return;
-                    showHomeQTPhotoPassageChoice ? startHomePhotoFromPassageChoice("scheduled") : startHomeSixStepFromPassageChoice("scheduled");
-                  }}
+                  disabled={homePassageStatus === "loading" || (showHomeQTPhotoPassageChoice && isSunday())}
+                  onClick={() => void startHomeQT(showHomeQTPhotoPassageChoice ? "photo" : "6step", "scheduled")}
                   className={showHomeQTPhotoPassageChoice && isSunday() ? "btn-outline" : "btn-sage"}
-                  style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center", opacity: showHomeQTPhotoPassageChoice && isSunday() ? 0.55 : 1, cursor: showHomeQTPhotoPassageChoice && isSunday() ? "not-allowed" : "pointer" }}
+                  style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center", opacity: showHomeQTPhotoPassageChoice && isSunday() ? 0.55 : 1 }}
                 >
-                  {t("qt_passage_choice_today", lang)}
+                  {t(homePassageStatus === "loading" ? "loading" : homePassageStatus === "error" ? "common_retry" : "qt_passage_choice_today", lang)}
                 </button>
-                <button onClick={() => showHomeQTPhotoPassageChoice ? startHomePhotoFromPassageChoice("custom") : startHomeSixStepFromPassageChoice("custom")} className="btn-outline" style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center" }}>
+                <button onClick={() => void startHomeQT(showHomeQTPhotoPassageChoice ? "photo" : "6step", "custom")} className="btn-outline" style={{ width: "100%", minHeight: 48, justifyContent: "center", textAlign: "center" }}>
                   {t("qt_passage_choice_custom", lang)}
                 </button>
                 <button onClick={returnToHomeQTModeChoice} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, padding: "6px 0", cursor: "pointer", textAlign: "center" }}>
@@ -2383,7 +2398,7 @@ export default function HomePage() {
           lang={lang}
           qtDone={todayDone.qt}
           prayerDone={todayDone.prayer}
-          prayerReady={homeDetailsReady.prayer}
+          prayerReady={homePrayerReady}
           onReflection={() => { setShowHomeRoutine(false); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
           onPrayer={() => { setShowHomeRoutine(false); setShowHomePrayerCards(true); }}
           onPastReflection={() => setShowHomeRoutine(false)}

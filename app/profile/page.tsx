@@ -8,8 +8,9 @@ import HomeHubDialog from "@/components/HomeHubDialog";
 import { isDesktopLayout, useDesktopLayout } from "@/lib/desktopLayout";
 import { rememberProfileDocumentNavigation } from "@/lib/profileDocumentNavigation";
 import { createClient } from "@/lib/supabase";
+import { isSignedOutAuthError } from "@/lib/authErrorCopy";
 import { useLang } from "@/lib/useLang";
-import { t, type TKey } from "@/lib/i18n";
+import { t, type Lang, type TKey } from "@/lib/i18n";
 import { getGroupChallengeBadgeImageSrc } from "@/lib/groupChallengeBadges";
 import { ADVENT_BADGE_IMAGE, getAdventBadgeName, loadAdventBadge } from "@/lib/adventCalendar";
 import { getCompanionChallengeBadgeImageSrc } from "@/lib/companionChallenges";
@@ -143,6 +144,33 @@ const PROFILE_LOCAL_TEXT = {
 } as const;
 
 type QtRecord = { date: string };
+type ProfileAccount = { id: string; email?: string };
+type ProfileReadCache = {
+  userId: string;
+  header?: { name: string | null; streakDays: number };
+  balance: number | null;
+  months: Record<string, QtRecord[]>;
+};
+let lastRead: ProfileReadCache | null = null;
+
+function ProfileLoadNotice({ lang, onRetry, message = "common_load_error" }: {
+  lang: Lang; onRetry: () => void; message?: TKey;
+}) {
+  return (
+    <div role="status" style={{ padding: 10 }}>
+      <p style={{ marginBottom: 6 }}>{t(message, lang)}</p>
+      <button type="button" className="btn-outline" onClick={onRetry}>{t("common_retry", lang)}</button>
+    </div>
+  );
+}
+
+function ProfileLoader() {
+  return (
+    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+    </div>
+  );
+}
 
 function getMonthStart(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -280,11 +308,76 @@ function getSpiritFruitBadgeImg(name: string) {
 export default function ProfilePage() {
   const router = useRouter();
   const lang = useLang();
+  const [account, setAccount] = useState<ProfileAccount | null>(null);
+  const [readFailed, setReadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    let observedOwner: string | undefined;
+    function signedOut() {
+      lastRead = null;
+      setAccount(null);
+      router.replace("/welcome");
+    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === "SIGNED_OUT") {
+        active = false;
+        signedOut();
+      } else if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+        if (observedOwner && observedOwner !== session.user.id) {
+          active = false;
+          lastRead = null;
+          setAccount(null);
+          setAttempt(value => value + 1);
+        }
+        observedOwner = session.user.id;
+      }
+    });
+    void (async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (!active) return;
+        if (error) throw error;
+        if (!user) { signedOut(); return; }
+        if (observedOwner && user.id !== observedOwner) {
+          setAttempt(value => value + 1);
+          return;
+        }
+        observedOwner = user.id;
+        if (lastRead?.userId !== user.id) lastRead = { userId: user.id, balance: null, months: {} };
+        setAccount(user);
+        setReadFailed(false);
+      } catch (error) {
+        if (!active) return;
+        if (isSignedOutAuthError(error)) signedOut();
+        else setReadFailed(true);
+      }
+    })();
+    return () => { active = false; subscription.unsubscribe(); };
+  }, [router, attempt]);
+
+  if (!account && readFailed) return (
+    <div className="page roots-desktop-page">
+      <ProfileLoadNotice lang={lang} onRetry={() => { setReadFailed(false); setAttempt(value => value + 1); }} />
+      <BottomNav />
+    </div>
+  );
+  if (!account || !lastRead || lastRead.userId !== account.id) return <ProfileLoader />;
+  return <ProfileContent key={account.id} user={account} lang={lang} cache={lastRead} />;
+}
+
+function ProfileContent({ user, lang, cache }: { user: ProfileAccount; lang: Lang; cache: ProfileReadCache }) {
+  const router = useRouter();
   const desktop = useDesktopLayout();
   // Whole-pixel desktop sizes also use the existing native Mac font adjustments.
   const profileTextSize = (base: number) => desktop ? Math.floor(base) + 2 : base;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [profileAttempt, setProfileAttempt] = useState(0);
+  const [profileReadFailed, setProfileReadFailed] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -293,9 +386,12 @@ export default function ProfilePage() {
   const [savingProfileAvatar, setSavingProfileAvatar] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
-  const [qtRecords, setQtRecords] = useState<QtRecord[]>([]);
+  const [monthAttempt, setMonthAttempt] = useState(0);
+  const [monthRead, setMonthRead] = useState<{ key: string; status: "loading" | "ready" | "error" } | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => getMonthStart(new Date()));
-  const [profileUserId, setProfileUserId] = useState("");
+  const profileUserId = user.id;
+  const monthKey = toDateKey(calendarMonth);
+  const qtRecords = cache.months[monthKey];
   const [unreadCommentNotices, setUnreadCommentNotices] = useState(0);
   // This optional count never gates the profile, calendar or reward UI.
   useEffect(() => {
@@ -311,10 +407,13 @@ export default function ProfilePage() {
     })();
     return () => controller.abort();
   }, [profileUserId]);
-  const [loadingQtCalendar, setLoadingQtCalendar] = useState(true);
+  const loadingQtCalendar = monthRead?.key !== monthKey || monthRead.status === "loading";
+  const monthReadFailed = monthRead?.key === monthKey && monthRead.status === "error";
   const [loadingMonthlyBadges, setLoadingMonthlyBadges] = useState(true);
   const [monthlyBadgeRecords, setMonthlyBadgeRecords] = useState<MonthlyBadgeCompletionRecord[] | null>(null);
-  const [loveHeartBalance, setLoveHeartBalance] = useState(0);
+  const [loveHeartBalance, setLoveHeartBalance] = useState<number | null>(cache.balance);
+  const [walletFailed, setWalletFailed] = useState(false);
+  const [walletAttempt, setWalletAttempt] = useState(0);
   const [ownedHeartShopItems, setOwnedHeartShopItems] = useState<OwnedHeartShopItem[]>([]);
   const [ownedHeartShopItemsReady, setOwnedHeartShopItemsReady] = useState(false);
   const [showAvatarChoiceModal, setShowAvatarChoiceModal] = useState(false);
@@ -323,7 +422,7 @@ export default function ProfilePage() {
   const [showProfileCharacterViewer, setShowProfileCharacterViewer] = useState(false);
   const [savingAvatarChoice, setSavingAvatarChoice] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [userEmail, setUserEmail] = useState("");
+  const userEmail = user.email ?? "";
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
@@ -352,6 +451,8 @@ export default function ProfilePage() {
   const profileRef = useRef<any>(null);
   const profileAvatarQueueRef = useRef<Promise<void>>(Promise.resolve());
   const ownedHeartShopItemsRef = useRef<OwnedHeartShopItem[]>([]);
+  const walletRevision = useRef(0);
+  const wardrobeRevision = useRef(0);
   const profileAvatarActionPendingRef = useRef(false);
 
   useAndroidBackHandler(() => {
@@ -435,6 +536,7 @@ export default function ProfilePage() {
   }
 
   function updateOwnedHeartShopItems(items: OwnedHeartShopItem[]) {
+    wardrobeRevision.current++;
     ownedHeartShopItemsRef.current = items;
     setOwnedHeartShopItems(items);
     setOwnedHeartShopItemsReady(true);
@@ -446,11 +548,31 @@ export default function ProfilePage() {
     return queued;
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    void load(() => active);
+    return () => { active = false; };
+  }, [profileUserId, profileAttempt]);
+
+  useEffect(() => {
+    let active = true;
+    const revision = ++walletRevision.current;
+    setWalletFailed(false);
+    void getLoveHeartBalance(createClient(), profileUserId).then(balance => {
+      if (active && revision === walletRevision.current) {
+        cache.balance = balance;
+        setLoveHeartBalance(balance);
+      }
+    }).catch(() => {
+      if (active && revision === walletRevision.current) setWalletFailed(true);
+    });
+    return () => { active = false; };
+  }, [profileUserId, walletAttempt, cache]);
 
   useEffect(() => {
     profileRef.current = profile;
-  }, [profile]);
+    if (profile?.id === profileUserId) cache.header = { name: profile.name, streakDays: profile.streak_days ?? 0 };
+  }, [profile, profileUserId, cache]);
 
   useEffect(() => {
     if (!profileUserId || loading) return;
@@ -595,85 +717,49 @@ export default function ProfilePage() {
     return () => window.clearTimeout(timer);
   }, [groupChallengeBadges.length, companionChallengeBadges.length, personalChallengeBadges.length, adventBadgeAwardedAt]);
 
-  async function load() {
+  async function load(isCurrent: () => boolean) {
+    setProfileReadFailed(false);
+    setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/welcome"); return; }
-    setUserEmail(user.email ?? "");
-    setProfileUserId(user.id);
+    const revision = ++wardrobeRevision.current;
+    void loadOwnedHeartShopItems(supabase).then(items => {
+      if (isCurrent() && revision === wardrobeRevision.current) updateOwnedHeartShopItems(items);
+    }).catch(error => console.warn("프로필 캐릭터 아이템 조회 실패:", error));
 
-    // The visible profile shell needs only these four independent reads. Run them
-    // together instead of serially; calendar/badge/history repair stays out of this gate.
-    const profilePromise = supabase.from("profiles").select("*").eq("id", user.id).single();
-    const avatarPreferencePromise = supabase
-      .from("profile_avatar_preferences")
-      .select("mode,photo_url,character_signature")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const heartBalancePromise = getLoveHeartBalance(supabase, user.id)
-      .then(balance => setLoveHeartBalance(balance))
-      .catch(error => {
-        console.warn("사랑 하트 조회 실패:", error);
-        setLoveHeartBalance(0);
-      });
-    const ownedItemsPromise = loadOwnedHeartShopItems(supabase)
-      .then(items => updateOwnedHeartShopItems(items))
-      .catch(error => {
-        console.warn("프로필 캐릭터 아이템 조회 실패:", error);
-        // A failed read is not an empty wardrobe. Keep the last known items and
-        // do not mark them ready, so character-avatar sync cannot export [].
-      });
-
-    const [profileResult, avatarPreferenceResult] = await Promise.all([
-      profilePromise,
-      avatarPreferencePromise,
-      heartBalancePromise,
-      ownedItemsPromise,
-    ]);
-
-    const p = profileResult.data;
-    if (profileResult.error) {
-      console.warn("프로필 조회 실패:", profileResult.error);
-    }
-    const avatarPreference = avatarPreferenceResult.data;
-    if (avatarPreferenceResult.error) {
-      console.warn("프로필 표시 설정 조회 실패:", avatarPreferenceResult.error);
-    }
-
-    if (p) {
+    try {
+      const [profileResult, avatarPreferenceResult] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("profile_avatar_preferences")
+          .select("mode,photo_url,character_signature").eq("user_id", user.id).maybeSingle(),
+      ]);
+      if (!isCurrent()) return;
+      if (profileResult.error || !profileResult.data) throw profileResult.error ?? new Error("Missing profile");
+      const p = profileResult.data;
+      const avatarPreference = avatarPreferenceResult.data;
+      if (avatarPreferenceResult.error) console.warn("프로필 표시 설정 조회 실패:", avatarPreferenceResult.error);
       p.profile_avatar_mode = avatarPreference?.mode ?? "photo";
-      // 캐릭터 프로필 사용 중에는 이전 사진을 복원 대상으로 보관하지 않습니다.
-      // 다시 사진을 사용하려면 상단 카메라 버튼에서 새 사진을 선택합니다.
       p.profile_photo_url = p.profile_avatar_mode === "photo"
         ? (avatarPreference?.photo_url ?? p.avatar_url)
         : null;
       p.profile_character_signature = avatarPreference?.character_signature ?? null;
-      // New uploads already persist a cache-busted URL. Keep a stable stored URL
-      // on ordinary profile visits so the WebView/browser can reuse its cache.
       profileRef.current = p;
       setProfile(p);
       setNewName(p.name ?? "");
-    }
 
-    // Name/photo/hearts/current outfit are enough to show the useful profile.
-    // Calendar, challenge badges and historical badge repair continue after paint.
-    setLoading(false);
-
-    const startSupplementalLoad = () => {
-      void loadProfileSupplementalData(user.id, p);
-    };
-
-    // Yield once so React can paint before lower-priority requests start competing
-    // for network/CPU in the installed WebView.
-    if (typeof window !== "undefined") {
-      window.setTimeout(startSupplementalLoad, 0);
-    } else {
-      startSupplementalLoad();
+      window.setTimeout(() => {
+        if (isCurrent()) void loadProfileSupplementalData(user.id, p);
+      }, 0);
+    } catch (error) {
+      if (isCurrent()) {
+        console.warn("프로필 조회 실패:", error);
+        setProfileReadFailed(true);
+      }
+    } finally {
+      if (isCurrent()) setLoading(false);
     }
   }
 
   async function loadProfileSupplementalData(userId: string, baseProfile: any) {
-    setLoadingQtCalendar(true);
     setLoadingMonthlyBadges(true);
 
     // Personal awards are independent of the existing badge-repair gate.
@@ -683,7 +769,6 @@ export default function ProfilePage() {
     // visible profile shell is ready, then repair historical badges afterwards so
     // repair traffic cannot compete with the first useful paint.
     await Promise.allSettled([
-      loadQtRecordsForMonth(userId, calendarMonth, { showSpinner: true }),
       loadMonthlyBadgeRecords(userId).finally(() => setLoadingMonthlyBadges(false)),
       loadGroupChallengeBadgesForProfile(userId),
       loadCompanionChallengeBadgesForProfile(userId),
@@ -991,40 +1076,33 @@ export default function ProfilePage() {
     setMonthlyBadgeRecords((data ?? []) as MonthlyBadgeCompletionRecord[]);
   }
 
-  async function loadQtRecordsForMonth(userId: string, monthDate: Date, options: { showSpinner?: boolean } = {}) {
-    const monthStart = getMonthStart(monthDate);
-    const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
-    if (options.showSpinner) {
-      setLoadingQtCalendar(true);
-      setQtRecords([]);
-    }
-
-    try {
-      const supabase = createClient();
-      const { data: qt, error } = await supabase.from("qt_records")
-        .select("date")
-        .eq("user_id", userId)
-        .eq("is_draft", false)
-        .gte("date", toDateKey(monthStart))
-        .lt("date", toDateKey(nextMonthStart));
-
-      if (error) {
-        console.error("말씀 묵상 월별 기록 조회 실패:", error);
-        setQtRecords([]);
-        return;
+  useEffect(() => {
+    const controller = new AbortController();
+    const nextMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+    setMonthRead({ key: monthKey, status: "loading" });
+    void (async () => {
+      try {
+        const { data, error } = await createClient().from("qt_records").select("date")
+          .eq("user_id", profileUserId).eq("is_draft", false)
+          .gte("date", monthKey).lt("date", toDateKey(nextMonth)).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (error || !data) throw error ?? new Error("Missing calendar response");
+        cache.months[monthKey] = data;
+        setMonthRead({ key: monthKey, status: "ready" });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.warn("말씀 묵상 월별 기록 조회 실패:", error);
+        setMonthRead({ key: monthKey, status: "error" });
       }
-      setQtRecords((qt ?? []) as QtRecord[]);
-    } finally {
-      if (options.showSpinner) setLoadingQtCalendar(false);
-    }
-  }
+    })();
+    return () => controller.abort();
+  }, [calendarMonth, monthKey, profileUserId, monthAttempt, cache]);
 
   function changeCalendarMonth(monthOffset: number) {
-    const targetMonth = getMonthStart(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + monthOffset, 1));
-    const currentMonth = getMonthStart(new Date());
-    if (targetMonth > currentMonth) return;
-    setCalendarMonth(targetMonth);
-    if (profileUserId) void loadQtRecordsForMonth(profileUserId, targetMonth, { showSpinner: true });
+    setCalendarMonth(month => {
+      const target = getMonthStart(new Date(month.getFullYear(), month.getMonth() + monthOffset, 1));
+      return target > getMonthStart(new Date()) ? month : target;
+    });
   }
 
   function handleCalendarTouchStart(e: TouchEvent<HTMLDivElement>) {
@@ -1487,7 +1565,7 @@ export default function ProfilePage() {
     const month = calendarMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDow = new Date(year, month, 1).getDay();
-    const doneDates = new Set(qtRecords.map(r => r.date));
+    const doneDates = new Set(qtRecords?.map(r => r.date));
     const cells = [];
     for (let i = 0; i < firstDow; i++) cells.push(<div key={`e${i}`} />);
     for (let d = 1; d <= daysInMonth; d++) {
@@ -1504,7 +1582,7 @@ export default function ProfilePage() {
   }
 
   const calendarMonthLabel = calendarMonth.toLocaleDateString(PROFILE_MONTH_LOCALE[lang], { year: "numeric", month: "long" });
-  const qtCompletedDayCount = new Set(qtRecords.map(record => record.date)).size;
+  const qtCompletedDayCount = qtRecords ? new Set(qtRecords.map(record => record.date)).size : null;
   const isViewingCurrentMonth = isSameCalendarMonth(calendarMonth, new Date());
   const monthlyBadgeText = getMonthlyBadgeText(lang);
   const monthlyBadgeNow = new Date();
@@ -1712,9 +1790,15 @@ export default function ProfilePage() {
     ? getRewardMapStage(currentRewardMapCycle).stageNumber
     : null;
 
-  if (loading) return (
-    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
+  if (loading) return <ProfileLoader />;
+  if (profileReadFailed) return (
+    <div className="page roots-desktop-page">
+      {cache.header && <div className="card">
+        <h1>{cache.header.name ?? t("profile_default_name", lang)}</h1>
+        <p>{t("profile_streak", lang, { n: cache.header.streakDays })}</p>
+      </div>}
+      <ProfileLoadNotice lang={lang} onRetry={() => setProfileAttempt(value => value + 1)} />
+      <BottomNav />
     </div>
   );
 
@@ -1793,7 +1877,12 @@ export default function ProfilePage() {
         avatarType={currentAvatarType}
         totalDays={Number(profile?.total_days ?? 0)}
         peaceArkStageNumber={currentPeaceArkStageNumber}
-        onHeartBalanceChange={setLoveHeartBalance}
+        onHeartBalanceChange={balance => {
+          walletRevision.current++;
+          cache.balance = balance;
+          setLoveHeartBalance(balance);
+          setWalletFailed(false);
+        }}
         onOwnedItemsChange={updateOwnedHeartShopItems}
         onClose={() => { setShowHeartShop(false); setGiftItemKey(null); }}
       />
@@ -2240,9 +2329,10 @@ export default function ProfilePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
               <span style={{ fontSize: profileTextSize(11), color: "var(--profile-muted-text)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
               <span aria-label={PROFILE_LOCAL_TEXT[lang].loveHearts} style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: profileTextSize(11), fontWeight: 850, lineHeight: 1 }}>
-                💛 +{loveHeartBalance}
+                💛 {loveHeartBalance === null ? "—" : `+${loveHeartBalance}`}
               </span>
             </div>
+            {walletFailed && <ProfileLoadNotice lang={lang} onRetry={() => setWalletAttempt(value => value + 1)} />}
             {photoError && (
               <div style={{ marginTop: 4 }}>
                 <p role="status" style={{ fontSize: profileTextSize(11), color: "var(--profile-danger-text)", margin: 0 }}>{photoError}</p>
@@ -2540,7 +2630,7 @@ export default function ProfilePage() {
               {t("profile_qt_month_label", lang, { month: calendarMonthLabel })}
             </span>
             <span style={{ display: "block", marginTop: 3, fontSize: profileTextSize(11), color: "var(--sage-dark)", fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>
-              {qtCompletedDayCount}{t("profile_qt_days_suffix", lang)}
+              {qtCompletedDayCount === null ? "—" : `${qtCompletedDayCount}${t("profile_qt_days_suffix", lang)}`}
             </span>
           </div>
           <button
@@ -2564,6 +2654,8 @@ export default function ProfilePage() {
               <Loader2 size={13} style={{ color: "var(--sage)" }} className="spin" />
             </div>
           )}
+          {monthReadFailed && <ProfileLoadNotice lang={lang} message="qt_error_load" onRetry={() => setMonthAttempt(value => value + 1)} />}
+          {qtRecords && <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
             {PROFILE_WEEKDAY_KEYS.map(key => {
               const d = t(key, lang);
@@ -2575,6 +2667,7 @@ export default function ProfilePage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
             {renderCalendar()}
           </div>
+          </>}
         </div>
       </div>
 

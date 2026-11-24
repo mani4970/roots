@@ -7,13 +7,19 @@ import {
   normalizeSelectableTranslationId,
   resolveFreshBibleTranslationId,
 } from "@/lib/translationDefaults";
-import { storageGet, storageSet } from "@/lib/clientStorage";
+import { storageGet, storageRemove, storageSet } from "@/lib/clientStorage";
 import { saveProfilePreferences } from "@/lib/profilePreferences";
 
 const STORAGE_KEY = "roots_lang";
 const SELECTED_FLAG = "roots_lang_selected";
 const TRANSLATION_STORAGE_KEY = "roots_default_translation";
 const TRANSLATION_LANGUAGE_STORAGE_KEY = "roots_default_translation_lang";
+const SYNCED_PREFERENCE_KEY = "roots_synced_language_v1";
+
+type LanguageChoice = { lang: Lang; translationId: number };
+let pendingSync: Promise<void> | null = null;
+let syncRequested = false;
+let explicitChoice: LanguageChoice | undefined;
 
 function applyDocumentLanguage(lang: Lang): void {
   if (typeof document !== "undefined") {
@@ -58,6 +64,11 @@ export function saveLangLocally(lang: Lang): number {
     ? getPreferredTranslationForLang(lang)
     : getDefaultTranslationId(lang);
 
+  publishLanguage(lang, translationId);
+  return translationId;
+}
+
+function publishLanguage(lang: Lang, translationId: number) {
   storageSet(STORAGE_KEY, lang);
   storageSet(SELECTED_FLAG, "true");
   savePreferredTranslationLocally(lang, translationId);
@@ -68,8 +79,84 @@ export function saveLangLocally(lang: Lang): number {
       detail: { lang, translationId },
     }));
   }
+}
 
-  return translationId;
+async function syncCurrentChoice(fallback?: LanguageChoice) {
+  const supabase = createClient();
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!session) {
+    storageRemove(SYNCED_PREFERENCE_KEY);
+    return;
+  }
+
+  const owner = session.user.id;
+  const signedInAt = session.user.last_sign_in_at ?? "";
+  // Read the choice after waiting for auth/other tabs. A mount-time snapshot
+  // could otherwise overwrite a language or translation just selected elsewhere.
+  const stored = getStoredLang();
+  let choice = stored ? { lang: stored, translationId: getPreferredTranslationForLang(stored) } : fallback;
+  if (!choice) {
+    const profile = await supabase.from("profiles").select("preferred_language,preferred_translation")
+      .eq("id", owner).single();
+    if (profile.error) throw profile.error;
+    const lang = profile.data?.preferred_language;
+    if (!isLang(lang)) return;
+    const current = await supabase.auth.getSession();
+    if (current.error || current.data.session?.user.id !== owner || getStoredLang() || explicitChoice) return;
+    const translationId = getPreferredTranslationForLang(lang, profile.data.preferred_translation, lang);
+    publishLanguage(lang, translationId);
+    choice = { lang, translationId };
+    if (profile.data.preferred_translation === translationId) {
+      storageSet(SYNCED_PREFERENCE_KEY, JSON.stringify([owner, signedInAt, lang, translationId]));
+      return;
+    }
+  }
+
+  const signature = JSON.stringify([owner, signedInAt, choice.lang, choice.translationId]);
+  // Explicit user choices take precedence even if another device changed its
+  // preferences since this browser last synced. Passive mounts share a receipt.
+  if (!fallback && storageGet(SYNCED_PREFERENCE_KEY) === signature) return;
+  storageRemove(SYNCED_PREFERENCE_KEY);
+  await saveProfilePreferences(supabase, {
+    preferredLanguage: choice.lang,
+    preferredTranslation: choice.translationId,
+  }, session.access_token);
+  storageSet(SYNCED_PREFERENCE_KEY, signature);
+  const latest = getStoredLang();
+  if (latest && (latest !== choice.lang || getPreferredTranslationForLang(latest) !== choice.translationId)) {
+    syncRequested = true;
+  }
+}
+
+// Share one sync among consumers and serialize genuine changes. Web Locks
+// also preserve write order between browser tabs sharing these device settings.
+function syncLanguagePreferences(choice?: LanguageChoice): Promise<void> {
+  if (choice) explicitChoice = choice;
+  syncRequested = true;
+  if (!pendingSync) {
+    pendingSync = (async () => {
+      try {
+        while (syncRequested) {
+          syncRequested = false;
+          const fallback = explicitChoice;
+          explicitChoice = undefined;
+          try {
+            if (typeof navigator !== "undefined" && navigator.locks) {
+              await navigator.locks.request("roots-language-preferences", () => syncCurrentChoice(fallback));
+            } else {
+              await syncCurrentChoice(fallback);
+            }
+          } catch (error) {
+            console.error("profile language preference sync failed", error);
+          }
+        }
+      } finally {
+        pendingSync = null;
+      }
+    })();
+  }
+  return pendingSync;
 }
 
 /**
@@ -97,7 +184,17 @@ export function useLang(): Lang {
       }
     }
 
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY) return;
+      const currentLang = getStoredLang();
+      if (currentLang) {
+        setLang(currentLang);
+        applyDocumentLanguage(currentLang);
+      }
+    }
+
     window.addEventListener("roots_lang_changed", handleLangChanged as EventListener);
+    window.addEventListener("storage", handleStorage);
 
     const storedLang = getStoredLang();
 
@@ -109,46 +206,11 @@ export function useLang(): Lang {
       savePreferredTranslationLocally(storedLang, translationId);
     }
 
-    // 2. 로그인 상태일 때 DB와 동기화
-    // - client storage에 선택 언어가 있으면: local 언어/번역본을 DB에 저장
-    // - client storage가 없으면: DB 언어/번역본을 읽어와 localStorage에 저장
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-
-      if (storedLang) {
-        const translationId = getPreferredTranslationForLang(storedLang);
-        savePreferredTranslationLocally(storedLang, translationId);
-        saveProfilePreferences(supabase, {
-          preferredLanguage: storedLang,
-          preferredTranslation: translationId,
-        }).catch(error => {
-          console.error("profile language preference sync failed", error);
-        });
-        return;
-      }
-
-      supabase.from("profiles")
-        .select("preferred_language,preferred_translation")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (isLang(data?.preferred_language)) {
-            const profileLang = data.preferred_language;
-            const translationId = getPreferredTranslationForLang(
-              profileLang,
-              data.preferred_translation,
-              profileLang,
-            );
-            setLang(profileLang);
-            applyDocumentLanguage(profileLang);
-            storageSet(STORAGE_KEY, profileLang);
-            storageSet(SELECTED_FLAG, "true");
-            savePreferredTranslationLocally(profileLang, translationId);
-          }
-        });
-    });
-    return () => window.removeEventListener("roots_lang_changed", handleLangChanged as EventListener);
+    void syncLanguagePreferences();
+    return () => {
+      window.removeEventListener("roots_lang_changed", handleLangChanged as EventListener);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   return lang;
@@ -160,18 +222,7 @@ export function useLang(): Lang {
  */
 export async function setPreferredLang(lang: Lang): Promise<void> {
   const translationId = saveLangLocally(lang);
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    try {
-      await saveProfilePreferences(supabase, {
-        preferredLanguage: lang,
-        preferredTranslation: translationId,
-      });
-    } catch (error) {
-      console.error("profile language preference save failed", error);
-    }
-  }
+  await syncLanguagePreferences({ lang, translationId });
 }
 
 /** 첫 실행인지 확인 (LanguagePicker 표시 여부) */

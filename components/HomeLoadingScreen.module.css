@@ -86,13 +86,7 @@
 
 @media (min-width: 600px) {
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]:not([data-roots-desktop-client="tablet"])) .frame {
-    --christmas-half-height: 33.33335vh;
-  }
-  /* Custom properties accept unknown units, so guard dvh explicitly for iOS 15. */
-  @supports (height: 100dvh) {
-    :global(html[data-native-platform="ios"][data-native-form-factor="tablet"]:not([data-roots-desktop-client="tablet"])) .frame {
-      --christmas-half-height: 33.33335dvh;
-    }
+    --christmas-half-height: calc(var(--roots-tablet-height) / 2);
   }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"]:not([data-roots-desktop-client="tablet"])) .frame {
     --christmas-center-offset: 48px;

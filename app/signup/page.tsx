@@ -15,7 +15,6 @@ import { signInWithOAuthProvider } from "@/lib/nativeOAuth";
 import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuthButtons";
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
-import { saveProfilePreferences } from "@/lib/profilePreferences";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 
 function getSafeRedirectFromLocation() {
@@ -111,14 +110,6 @@ export default function SignupPage() {
     if (error) { const notice = authErrorNotice(error, lang); noticeKey.current = notice.key; setError(notice.text); return; }
     if (data.user) {
       await setPreferredLang(lang);
-      try {
-        await saveProfilePreferences(supabase, {
-          preferredLanguage: lang,
-          preferredTranslation: defaultTranslationId,
-        });
-      } catch (error) {
-        console.error("signup language preference save failed", error);
-      }
     }
     router.push(getSafeRedirectFromLocation()); router.refresh();
     } catch (failure) {

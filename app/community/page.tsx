@@ -35,6 +35,7 @@ import qtDetailReadingStyles from "@/components/community/QtDetailReading.module
 import { loadQtCommentCounts, qtCommentContextKey, type QtCommentContext } from "@/lib/qtComments";
 import GroupChallengeScheduleFields from "@/components/community/GroupChallengeScheduleFields";
 import { createClient } from "@/lib/supabase";
+import { isSignedOutAuthError } from "@/lib/authErrorCopy";
 import { createCommunityProfileCardCache } from "@/lib/communityProfileCards";
 import { createCommunityChallengeAvailabilityCache } from "@/lib/communityChallengeAvailability";
 import { useLang } from "@/lib/useLang";
@@ -4232,6 +4233,10 @@ function CommunityPageContent() {
   }
 
   useEffect(() => {
+    if (loadError) {
+      setNotificationDirectOpenPending(false);
+      return;
+    }
     if (loading) return;
 
     const directTarget = parseCommunityNotificationDirectTarget(searchParams);
@@ -4307,7 +4312,7 @@ function CommunityPageContent() {
     }
 
     setNotificationDirectOpenPending(false);
-  }, [loading, searchParams, groups, partners]);
+  }, [loading, loadError, searchParams, groups, partners]);
 
   useEffect(() => {
     if (!notificationDirectOpenPending) return;
@@ -4918,9 +4923,11 @@ function CommunityPageContent() {
       const supabase = createClient();
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+        error: authError,
+      } = await supabase.auth.getUser().catch((error: unknown) => ({ data: { user: null }, error }));
       if (!isCurrentMainTabRequest(targetTab, requestId)) return;
       if (!user) {
+        if (authError && !isSignedOutAuthError(authError)) throw authError;
         router.push("/login");
         return;
       }

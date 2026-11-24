@@ -1,4 +1,16 @@
 import type { Lang } from "./i18n";
+
+const signedOutCodes = new Set([
+  "session_not_found", "session_expired", "refresh_token_not_found",
+  "refresh_token_already_used", "user_not_found", "user_banned", "bad_jwt",
+]);
+
+/** Only an explicitly missing or invalid session should send the viewer to sign-in. */
+export function isSignedOutAuthError(error: unknown): boolean {
+  const failure = error as { name?: string; code?: string } | null;
+  return failure?.name === "AuthSessionMissingError" || signedOutCodes.has(failure?.code ?? "");
+}
+
 export type AuthNoticeKey = "auth_credentials" | "auth_duplicate" | "auth_email_pending" | "auth_rate" | "auth_network" | "auth_unavailable" | "auth_password" | "auth_generic";
 const copy: Record<AuthNoticeKey, Record<Lang, string>> = {
   auth_credentials: {

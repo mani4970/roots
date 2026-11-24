@@ -115,6 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               root.setAttribute('data-roots-tablet-client', '');
 
               var tabletWindow = matchMedia('(min-width: 960px) and (orientation: landscape)');
+              var portraitWindow = matchMedia('(orientation: portrait)');
               function updateTabletLayout() {
                 // Some Android WebViews shrink the layout viewport for the keyboard.
                 // Keep a physically upright tablet compact while editing text.
@@ -124,6 +125,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   ? Math.abs(window.orientation) !== 90 : screen.height > screen.width;
                 var portraitKeyboard = screenPortrait && input &&
                   (input.matches('input, textarea') || input.isContentEditable);
+                if (ipad) {
+                  // Keep the portrait scale while the keyboard shortens an upright iPad window.
+                  root.toggleAttribute('data-roots-ipad-portrait', portraitWindow.matches || !!portraitKeyboard);
+                }
                 var wide = tabletWindow.matches && !portraitKeyboard;
                 if (wide === root.hasAttribute('data-roots-desktop-client')) return;
                 if (wide) root.setAttribute('data-roots-desktop-client', 'tablet');
@@ -134,6 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               // Physical rotation with the keyboard open can change the screen
               // shape while the layout viewport remains wider than it is tall.
               window.addEventListener('resize', updateTabletLayout);
+              if (ipad) window.addEventListener('orientationchange', updateTabletLayout);
               tabletWindow.addEventListener('change', updateTabletLayout);
             })();
             // The install manifest belongs to the device, even in a narrow window.

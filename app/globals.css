@@ -696,17 +696,28 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] { --roots-pag
 body { background: var(--bg); color: var(--text); font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width: 100%; max-width: 430px; margin: 0 auto; background: var(--bg); }
 @media (min-width: 600px) {
-  /* Enlarge the native iPad/Mac canvas while keeping viewport-height screens inside the WKWebView. */
+  /* Keep the existing 645px reading column (430px at 1.5x) at either scale. */
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] {
+    --roots-tablet-zoom: 1.5;
+    --roots-tablet-width: calc(min(645px, 100vw) / var(--roots-tablet-zoom));
+    --roots-tablet-height: calc(100vh / var(--roots-tablet-zoom));
+  }
+  @supports (height: 100dvh) {
+    html[data-native-platform="ios"][data-native-form-factor="tablet"] {
+      --roots-tablet-height: calc(100dvh / var(--roots-tablet-zoom));
+    }
+  }
+  html[data-native-platform="ios"][data-native-ios-device="ipad"][data-roots-ipad-portrait] {
+    --roots-tablet-zoom: 1.25;
+  }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body {
-    zoom: 1.5;
-    max-width: min(430px, 66.6667vw);
-    min-height: 66.6667vh;
-    min-height: 66.6667dvh;
+    zoom: var(--roots-tablet-zoom);
+    max-width: var(--roots-tablet-width);
+    min-height: var(--roots-tablet-height);
     font-size: 19px;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-native-tablet-viewport {
-    min-height: 66.6667vh !important;
-    min-height: 66.6667dvh !important;
+    min-height: var(--roots-tablet-height) !important;
   }
   html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"] .roots-native-centered-loader {
     transform: translateY(48px);
@@ -730,12 +741,11 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100vh"],
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100dvh"],
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-desktop-content > :is(.page, [style*="min-height:100vh"], [style*="min-height:100dvh"]) {
-    min-height: 66.6667vh !important;
-    min-height: 66.6667dvh !important;
+    min-height: var(--roots-tablet-height) !important;
   }
 
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .bottom-nav {
-    max-width: min(430px, 66.6667vw);
+    max-width: var(--roots-tablet-width);
   }
 
   /* Keep the prayer FAB inside the same tablet frame as the bottom navigation. */
@@ -745,7 +755,7 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
     bottom: calc(82px + var(--bottom-nav-safe-extra));
     transform: translateX(-50%);
     width: 100%;
-    max-width: min(430px, 66.6667vw);
+    max-width: var(--roots-tablet-width);
     height: 52px;
     z-index: 30;
     pointer-events: none;
@@ -798,7 +808,7 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   /* Shared class-based text is not covered by the inline-size mapping. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] button { font-size: 19px; }
   html[data-native-platform="ios"][data-native-form-factor="tablet"] select { font-size: 19px !important; }
-  /* Keep typed text in proportion with the surrounding UI after the 1.5x tablet zoom. */
+  /* Keep typed text in proportion with the surrounding UI at the native tablet scale. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] :is(input, textarea, .input-field, .textarea-field) { font-size: 14px !important; }
   /* Keep QT writing guidance readable without enlarging the user's typed text. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-phase2h :is(.input-field, .textarea-field)::placeholder { font-size: 15px !important; }
