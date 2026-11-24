@@ -27,6 +27,7 @@ export default function HomeQTDraftChoice({
   return (
     <div
       ref={rootRef}
+      className="home-qt-choice-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="home-qt-draft-choice-title"

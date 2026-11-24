@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { t, type Lang } from "@/lib/i18n";
@@ -11,7 +11,7 @@ import type { QtShareRecord } from "@/lib/qtShare";
 
 type QTCompletionScreenProps = {
   lang: Lang;
-  onConfirm: () => void;
+  onConfirm: (destination: string) => void;
   notice?: string | null;
   observationFlow?: ObservationFlow | null;
   shareRecord?: QtShareRecord | null;
@@ -85,14 +85,29 @@ export default function QTCompletionScreen({ lang, onConfirm, notice, observatio
     } catch { /* Observation setup must never prevent completion display. */ }
   }, []);
 
-  function confirmCompletion() {
+  const confirmCompletion = useCallback((destination: string) => {
     if (!confirmedRef.current) {
       confirmedRef.current = true;
       confirmationRecordedRef.current = Boolean(observationRef.current);
       observe(observationRef.current, "completion_confirmed", { source: "completion_screen" });
     }
-    onConfirm();
-  }
+    onConfirm(destination);
+  }, [onConfirm]);
+
+  useEffect(() => {
+    // The completed writer still owns the Home reward handoff. Use the same
+    // confirmed exit for desktop tabs and for the button on this screen.
+    const onSidebarClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      const link = (event.target as Element | null)?.closest?.<HTMLAnchorElement>(".roots-qt-shell .bottom-nav a[href]");
+      if (!link || link.origin !== window.location.origin || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      confirmCompletion(link.pathname + link.search + link.hash);
+    };
+    window.addEventListener("click", onSidebarClick, true);
+    return () => window.removeEventListener("click", onSidebarClick, true);
+  }, [confirmCompletion]);
 
   useEffect(() => {
     // Completion is already visible while Home's route is prepared. Neither
@@ -115,7 +130,7 @@ export default function QTCompletionScreen({ lang, onConfirm, notice, observatio
         </p>
         {notice && <p role="status" style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.65, marginBottom: 18 }}>{notice}</p>}
         {savedShareRecord && <div style={{ marginBottom: 10 }}><QtExternalShareButton record={savedShareRecord} lang={lang} /></div>}
-        <button type="button" className="btn-sage" onClick={confirmCompletion} style={{ width: "100%" }}>
+        <button type="button" className="btn-sage" onClick={() => confirmCompletion("/")} style={{ width: "100%" }}>
           {t("qt_complete_go_home", lang)}
         </button>
       </div>

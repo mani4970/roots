@@ -172,8 +172,8 @@ export function AdventCalendarDialog({
   }
 
   return (
-    <HomeHubDialog open={open} title={CALENDAR_TITLE} closeLabel={t("close", lang)} hideTitle onClose={onClose} busy={pendingClaimDay != null}>
-      <div lang={lang} data-advent-calendar-dialog>
+    <HomeHubDialog open={open} title={CALENDAR_TITLE} dialogClassName={styles.calendarDialog} closeLabel={t("close", lang)} hideTitle onClose={onClose} busy={pendingClaimDay != null}>
+      <div className={styles.calendarLayout} lang={lang} data-advent-calendar-dialog>
         <p aria-hidden="true" className={styles.calendarTitle}>{CALENDAR_TITLE}</p>
         {loading && !teaser ? (
           <p className={styles.notice} role="status">{t("loading", lang)}</p>

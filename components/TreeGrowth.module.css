@@ -1,0 +1,13 @@
+.scene {
+  position: absolute;
+  inset: 0;
+}
+
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop="wide"]) .scene {
+    width: calc(100% / var(--roots-map-scene-scale, 1));
+    height: calc(100% / var(--roots-map-scene-scale, 1));
+    transform: scale(var(--roots-map-scene-scale, 1));
+    transform-origin: top left;
+  }
+}

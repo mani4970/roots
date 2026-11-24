@@ -7,6 +7,7 @@ import type { Lang } from "@/lib/i18n";
 import { usePrayerModalViewport } from "@/lib/usePrayerModalViewport";
 import { usePrayerPopupBackdrop } from "@/lib/usePrayerPopupBackdrop";
 import ObservationPopup from "./ObservationPopup";
+import desktopDialog from "./HomeShortcutDialog.module.css";
 import {
   getPersonalChallengeText,
   PERSONAL_REFLECTION_CHALLENGE_BADGE,
@@ -112,7 +113,8 @@ export default function PersonalReflectionChallengePopup({
       <button type="button" tabIndex={-1} aria-hidden="true" {...backdrop}
         style={{ position: "absolute", inset: 0, zIndex: -1, border: 0, padding: 0, background: "#162015B8", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
-        ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} aria-busy={busy}
+        ref={dialogRef} className={desktopDialog.challenge}
+        role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} aria-busy={busy}
         style={{ position: "relative", width: "100%", maxWidth: 340, maxHeight: "100%", overflowY: "auto", boxSizing: "border-box",
           borderRadius: 25, border: "1px solid #E6E2D9", padding: "26px 23px 22px", background: "#FFFDF8", color: "#30372F", colorScheme: "light",
           boxShadow: "0 10px 28px #00000020", textAlign: "center", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}

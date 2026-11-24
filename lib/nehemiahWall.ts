@@ -35,6 +35,9 @@ export const NEHEMIAH_WALL_STAGES: readonly NehemiahWallStage[] = [
   { stageNumber: 14, startDay: 100, endDay: 100, label: "성벽 봉헌 찬양", action: "tambourineLong" },
 ] as const;
 
+// Bump when replacing the artwork under the same public filenames.
+const NEHEMIAH_BACKGROUND_ASSET_VERSION = "20261124_v1";
+
 export function normalizeNehemiahDay(day: number) {
   const safeDay = Number.isFinite(day) ? Math.floor(day) : 1;
   return Math.max(1, Math.min(100, safeDay));
@@ -48,7 +51,7 @@ export function getNehemiahWallStage(day: number): NehemiahWallStage {
 export function getNehemiahWallBackground(day: number, isNight: boolean) {
   const stage = getNehemiahWallStage(day);
   const time = isNight ? "evening" : "morning";
-  return `/images/reward-maps/nehemiah-wall/backgrounds/nehemiah_stage${String(stage.stageNumber).padStart(2, "0")}_${time}.webp`;
+  return `/images/reward-maps/nehemiah-wall/backgrounds/nehemiah_stage${String(stage.stageNumber).padStart(2, "0")}_${time}.webp?v=${NEHEMIAH_BACKGROUND_ASSET_VERSION}`;
 }
 
 export function getNehemiahStageProgress(day: number) {

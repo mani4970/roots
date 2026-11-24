@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import LegalDocumentPage from "@/components/LegalDocumentPage";
 import { useLang } from "@/lib/useLang";
 
@@ -96,6 +95,7 @@ export default function SupportPage() {
 
   return (
     <LegalDocumentPage
+      lang={lang}
       backLabel={copy.back}
       title={copy.title}
       subtitle={copy.subtitle}
@@ -105,12 +105,10 @@ export default function SupportPage() {
           {copy.mail}
         </a>
       )}
-      bottomAction={(
-        <nav aria-label={copy.title} style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 8 }}>
-          <Link href="/privacy" style={{ display: "flex", minHeight: 44, alignItems: "center", justifyContent: "center", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 14, color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textAlign: "center", textDecoration: "none" }}>{copy.privacy}</Link>
-          <Link href="/account-deletion" style={{ display: "flex", minHeight: 44, alignItems: "center", justifyContent: "center", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 14, color: "var(--sage-dark)", fontSize: 12, fontWeight: 800, textAlign: "center", textDecoration: "none" }}>{copy.deletion}</Link>
-        </nav>
-      )}
+      relatedLinks={[
+        { href: "/privacy", label: copy.privacy },
+        { href: "/account-deletion", label: copy.deletion },
+      ]}
     />
   );
 }

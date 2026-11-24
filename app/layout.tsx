@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import "./desktop.css";
+import "./desktop-home.css";
+import "./desktop-profile.css";
 import CapacitorAuthBridge from "@/components/CapacitorAuthBridge";
 import NativeStatusBar from "@/components/NativeStatusBar";
 import IPhoneRequiredUpdateGate from "@/components/IPhoneRequiredUpdateGate";
@@ -75,6 +78,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               } catch (e) {}
             })();
             var isCapacitorApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+            // The Home loader renders before BottomNav mounts and marks the active desktop route.
+            (function(){
+              var iosBridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge;
+              var isDesktop;
+              if (isCapacitorApp || iosBridge || window.androidBridge) {
+                var isIOS = isCapacitorApp ? window.Capacitor.getPlatform() === 'ios' : !!iosBridge && !window.androidBridge;
+                var shortSide = Math.min(screen.width || innerWidth, screen.height || innerHeight);
+                isDesktop = isIOS && shortSide >= 768 && navigator.maxTouchPoints <= 1;
+              } else {
+                isDesktop = !/Android|iPad|iPhone|iPod|Mobile/i.test(navigator.userAgent) &&
+                  (/^Win/i.test(navigator.platform) || (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints <= 1));
+              }
+              if (isDesktop) document.documentElement.setAttribute('data-roots-desktop-client', '');
+            })();
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 if (isCapacitorApp) {

@@ -4,6 +4,7 @@ import Image from "next/image";
 import RewardMapAction from "./RewardMapAction";
 import HeartShopMapFriends from "./HeartShopMapFriends";
 import PeaceArkStaticItems from "./PeaceArkStaticItems";
+import styles from "./TreeGrowth.module.css";
 import { useLang } from "@/lib/useLang";
 import { t } from "@/lib/i18n";
 import { parseLocalDateString } from "@/lib/date";
@@ -34,6 +35,8 @@ interface TreeGrowthProps {
 
 const NIGHT_START_HOUR = 19;
 const NIGHT_END_HOUR = 6;
+// The 430px phone layout gives the scene 398px after its two 16px margins.
+const MAP_REFERENCE_WIDTH = 398;
 
 function isNightTime() {
   const h = new Date().getHours();
@@ -59,6 +62,21 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const daysSince = getDaysSinceLastCheckin(lastCheckin);
   const isAway = daysSince >= 3;
   const normalizedAvatarType = normalizeRootsAvatarType(avatarType);
+
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return;
+
+    // Every slide occupies the full scrollport. Measure it once for all maps;
+    // only the wide desktop artwork uses this scale.
+    const updateScale = (width: number) => {
+      if (width > 0) scroller.style.setProperty("--roots-map-scene-scale", String(width / MAP_REFERENCE_WIDTH));
+    };
+    updateScale(scroller.clientWidth);
+    const observer = new ResizeObserver(([entry]) => updateScale(entry.contentRect.width));
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
 
   useLayoutEffect(() => {
     const nextIndex = Math.max(cycles.length - 1, 0);
@@ -195,28 +213,33 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
   return (
     <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
       <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: "var(--bg2)" }}>
-        {imgSrc ? (
-          <Image src={imgSrc} alt={title || fallbackTitle} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
-        ) : (
-          <div
-            aria-label={title || fallbackTitle}
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(145deg, var(--bg2), var(--sage-light))",
-            }}
-          >
-            <img src="/roots-logo-transparent-160.png" alt="Roots" width={72} height={72} style={{ objectFit: "contain", imageRendering: "pixelated", opacity: 0.72 }} />
-          </div>
-        )}
+        <div className={styles.scene}>
+          {imgSrc ? (
+            <Image src={imgSrc} alt={title || fallbackTitle} fill style={{ objectFit: "cover" }} priority={cycle.isCurrent} />
+          ) : (
+            <div
+              aria-label={title || fallbackTitle}
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "linear-gradient(145deg, var(--bg2), var(--sage-light))",
+              }}
+            >
+              <img src="/roots-logo-transparent-160.png" alt="Roots" width={72} height={72} style={{ objectFit: "contain", imageRendering: "pixelated", opacity: 0.72 }} />
+            </div>
+          )}
 
-        {cycle.kind === "peaceArk" && (
-          <PeaceArkStaticItems stageNumber={stage.stageNumber} enabledItemIds={heartShopItemIds} />
-        )}
-        <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} stageNumber={stage.stageNumber} />
+          {cycle.kind === "peaceArk" && (
+            <PeaceArkStaticItems stageNumber={stage.stageNumber} enabledItemIds={heartShopItemIds} />
+          )}
+          <HeartShopMapFriends itemIds={heartShopItemIds} mapKind={cycle.kind} stageNumber={stage.stageNumber} />
+          <div style={{ position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none" }}>
+            <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} nehemiahAction={nehemiahAction} />
+          </div>
+        </div>
 
         <div style={{ position: "absolute", top: 10, left: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, zIndex: 6 }}>
           <div style={{ background: "rgba(26,28,30,0.68)", color: "#F8F5EA", fontSize: 9, fontWeight: 750, padding: "3px 10px", borderRadius: 20, backdropFilter: "blur(4px)" }}>
@@ -228,9 +251,6 @@ function RewardMapCard({ cycle, days, isNight, owner, showAction, avatarType, he
           {rangeLabel}
         </div>
 
-        <div style={{ position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none" }}>
-          <RewardMapAction trigger={showAction} action={stage.action} avatarType={avatarType} nehemiahAction={nehemiahAction} />
-        </div>
       </div>
     </div>
   );

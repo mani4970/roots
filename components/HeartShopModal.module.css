@@ -1,0 +1,36 @@
+.header {
+  grid-template-columns: 44px 1fr auto;
+}
+
+.closeIcon {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop-client]) .header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "balance title close";
+  }
+
+  :global(html[data-roots-desktop-client]) .balance {
+    grid-area: balance;
+    justify-self: start;
+  }
+
+  :global(html[data-roots-desktop-client]) .title {
+    grid-area: title;
+  }
+
+  :global(html[data-roots-desktop-client]) .close {
+    grid-area: close;
+    justify-self: end;
+  }
+
+  :global(html[data-roots-desktop-client]) .backIcon {
+    display: none;
+  }
+
+  :global(html[data-roots-desktop-client]) .closeIcon {
+    display: block;
+  }
+}

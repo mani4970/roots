@@ -1,0 +1,186 @@
+/* Keep the existing writer's flex children in the same flow on small screens. */
+.qt-writer-workspace {
+  display: contents;
+}
+
+@media (min-width: 960px) {
+  html[data-roots-desktop-client] :is(.roots-qt-six-step, .roots-qt-free, .roots-qt-sunday) {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace {
+    --panel-padding: clamp(12px, 1.6vw, 24px);
+    display: grid;
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    grid-template-rows: auto auto auto minmax(12rem, 1fr) auto;
+    grid-template-areas:
+      "top top"
+      "tabs tabs"
+      "passage heading"
+      "passage editor"
+      "passage footer";
+    column-gap: clamp(12px, 1.6vw, 24px);
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding: max(16px, var(--safe-area-top)) clamp(14px, 2.4vw, 36px) max(12px, var(--safe-area-bottom));
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace[data-has-passage="false"] {
+    max-width: 760px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "top" "tabs" "heading" "editor" "footer";
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace[data-has-tabs="false"] {
+    grid-template-rows: auto 12px auto minmax(12rem, 1fr) auto;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-free-passage {
+    grid-area: passage;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    gap: 8px;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-free-passage .qt-six-passage-card {
+    flex: 1 1 0;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-free-passage > button {
+    flex-shrink: 0;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-selection-heading,
+  html[data-roots-desktop-client] .qt-writer-selection-form {
+    width: min(100%, 720px);
+    margin-inline: auto;
+    padding: 20px clamp(16px, 2vw, 28px) !important;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-selection-heading {
+    background: transparent !important;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-header {
+    display: contents;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-topbar {
+    grid-area: top;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-tabs {
+    grid-area: tabs;
+    flex-wrap: wrap;
+    padding: 0 4px;
+    margin-bottom: 20px;
+    border: 1px solid var(--qt-card-border);
+    border-radius: 12px;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-tabs button {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-tab-label {
+    font-size: 14px !important;
+  }
+
+  html[data-roots-desktop-client] .qt-six-passage-card {
+    grid-area: passage;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  html[data-roots-desktop-client] #qt-six-reading-passage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    padding: var(--panel-padding) !important;
+    overflow-wrap: anywhere;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-heading,
+  html[data-roots-desktop-client] .qt-writer-editor,
+  html[data-roots-desktop-client] .qt-writer-footer {
+    min-width: 0;
+    background: var(--qt-card-surface);
+    border-inline: 1px solid var(--qt-card-border);
+  }
+
+  html[data-roots-desktop-client] .qt-writer-heading {
+    grid-area: heading;
+    padding: var(--panel-padding) var(--panel-padding) 0;
+    border-top: 1px solid var(--qt-card-border);
+    border-radius: 14px 14px 0 0;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace .qt-writer-editor {
+    grid-area: editor;
+    min-height: 0;
+    padding: 16px var(--panel-padding) 0 !important;
+    overflow-y: auto !important;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-editor > * {
+    flex-shrink: 0;
+  }
+
+  /* The writing surface consumes the spare height. Short windows and long
+     decision lists can still scroll inside the editor with the actions visible. */
+  html[data-roots-desktop-client] .qt-writer-workspace .qt-writer-field-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    min-height: 0;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace .qt-writer-summary {
+    flex-grow: 2;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-editor > textarea.textarea-field,
+  html[data-roots-desktop-client] .qt-writer-field-group > textarea.textarea-field {
+    flex: 1 0 5rem;
+    min-height: 5rem;
+    display: block;
+  }
+
+  html[data-roots-desktop-client] .qt-writer-editor :is(input, textarea) {
+    min-width: 0;
+  }
+
+  html[data-roots-desktop-client] :is(#qt-six-reading-passage, .qt-writer-editor) {
+    scrollbar-width: thin;
+  }
+
+  html[data-roots-desktop-client] :is(#qt-six-reading-passage, .qt-writer-editor)::-webkit-scrollbar {
+    display: block;
+    width: 7px;
+  }
+
+  html[data-roots-desktop-client] :is(#qt-six-reading-passage, .qt-writer-editor)::-webkit-scrollbar-thumb {
+    border-radius: 7px;
+    background: var(--qt-card-border);
+  }
+
+  html[data-roots-desktop-client] .qt-writer-workspace .qt-writer-footer {
+    grid-area: footer;
+    background: var(--qt-card-surface) !important;
+    border-bottom: 1px solid var(--qt-card-border);
+    border-radius: 0 0 14px 14px;
+    padding: 12px var(--panel-padding) 16px !important;
+  }
+}

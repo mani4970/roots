@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useRef, useState, Suspense, type MouseEvent } from "react";
+import { useContext, useEffect, useRef, useState, Suspense, type MouseEvent } from "react";
+import "./desktop-record.css";
+import { QTDesktopContext } from "../QTDesktopContext";
+import RecordSections from "./RecordSections";
 import { useRouter, useSearchParams } from "next/navigation";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import PhotoViewerModal from "@/components/PhotoViewerModal";
-import BottomNav from "@/components/BottomNav";
 import SharePromptModal, { type ShareTargetGroup, type ShareTargetPartner } from "@/components/SharePromptModal";
 import { createClient } from "@/lib/supabase";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
@@ -26,12 +28,12 @@ import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
 
 type QTRecordCopyLang = Lang | "es";
 
-const QT_RECORD_LOCAL_TEXT: Record<QTRecordCopyLang, { photoAlt: string; photoLoading: string }> = {
-  ko: { photoAlt: "말씀 묵상 사진", photoLoading: "사진을 불러오는 중이에요." },
-  en: { photoAlt: "Bible Reflection photo", photoLoading: "Loading photo..." },
-  de: { photoAlt: "Foto zur Stillen Zeit", photoLoading: "Foto wird geladen..." },
-  fr: { photoAlt: "Photo de méditation biblique", photoLoading: "Chargement de la photo..." },
-  es: { photoAlt: "Foto de meditación bíblica", photoLoading: "Cargando la foto..." },
+const QT_RECORD_LOCAL_TEXT: Record<QTRecordCopyLang, { photoAlt: string; photoLoading: string; backToList: string }> = {
+  ko: { photoAlt: "말씀 묵상 사진", photoLoading: "사진을 불러오는 중이에요.", backToList: "묵상 목록" },
+  en: { photoAlt: "Bible Reflection photo", photoLoading: "Loading photo...", backToList: "Reflection list" },
+  de: { photoAlt: "Foto zur Stillen Zeit", photoLoading: "Foto wird geladen...", backToList: "Liste der Stillen Zeiten" },
+  fr: { photoAlt: "Photo de méditation biblique", photoLoading: "Chargement de la photo...", backToList: "Liste des méditations" },
+  es: { photoAlt: "Foto de meditación bíblica", photoLoading: "Cargando la foto...", backToList: "Lista de meditaciones" },
 };
 
 // QT Record 전용 라벨 매핑
@@ -80,6 +82,7 @@ function sectionLabel(key: string, qtMode?: string, lang?: Lang): string {
 
 function RecordContent() {
   const router = useRouter();
+  const wideDesktop = useContext(QTDesktopContext);
   const params = useSearchParams();
   const id = params.get("id");
   const activeRecordIdRef = useRef(id);
@@ -348,8 +351,8 @@ function RecordContent() {
     return labels.length > 0 ? t("qt_record_shared_label", lang, { labels: labels.join(", ") }) : null;
   }
 
-  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>;
-  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text-muted-readable)" }}>{t("qt_record_not_found", lang)}</p><BottomNav /></div>;
+  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>;
+  if (!record) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><p style={{ color: "var(--text-muted-readable)" }}>{t("qt_record_not_found", lang)}</p></div>;
 
   const isShared = sharedTargets.length > 0;
   const isPhotoRecord = record?.reflection_type === "photo" || record?.qt_mode === "photo" || !!record?.photo_path;
@@ -366,15 +369,75 @@ function RecordContent() {
     { key: "closing_prayer", label: sectionLabel("closing_prayer", record?.qt_mode, lang) },
   ];
 
+  const orderedSections = (record?.qt_mode === "sunday"
+    ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
+    : SECTIONS
+  );
+  const sections = isPhotoRecord ? [] : orderedSections.filter(({ key }) => {
+    const value = record[key];
+    return wideDesktop && typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+  });
+  const sectionNodes = sections.map(({ key, label, italic, isDecision }) => {
+    const value = record[key];
+    return (
+      <div key={key} data-record-section={key} className={key === "key_verse" ? "card-sage roots-elevation-card-sage" : "card roots-elevation-card"}>
+        <p id={`qt-section-${key}`} style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
+        {isDecision ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
+              <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}.</span> {d}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>
+              {value}{key === "key_verse" && isEsvRecord ? " (ESV)" : ""}
+            </p>
+            {key === "key_verse" && isEsvRecord && (
+              <a
+                href={ESV_ATTRIBUTION_URL}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={{ display: "inline-block", marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", textDecoration: "underline", textUnderlineOffset: 2 }}
+              >
+                ESV.org
+              </a>
+            )}
+          </>
+        )}
+      </div>
+    );
+  });
+  const spread = wideDesktop && sections.length > 1;
+  const preferredSplit = sundaySermon ? 0 : sections.findIndex(section => section.key === "meditation") + 1;
+  const emptyTitle = isPhotoRecord ? QT_RECORD_LOCAL_TEXT[lang].photoAlt
+    : t(record.qt_mode === "free" ? "profile_free_qt" : "qt_title", lang);
+  const backButton = (
+    <button className="qt-record-back" onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
+      <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{wideDesktop ? QT_RECORD_LOCAL_TEXT[lang].backToList : trR("돌아가기", lang)}</span>
+    </button>
+  );
+  const dateLine = (
+    <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginBottom: 4 }}>
+      {parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+    </p>
+  );
+  const shareLabel = getShareLabel();
+  const shareLine = isShared && shareLabel && (
+    <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {shareLabel}</p>
+  );
+
   return (
-    <div className="roots-qt-phase2a" style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
+    <div className="roots-qt-phase2a qt-record-page" data-spread={spread} style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: "calc(104px + var(--bottom-nav-bottom-padding))" }}>
       {notice && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 220, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
       {badgePopup && (
-        <div onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+        <div className="qt-content-backdrop" onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--overlay-modal)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
           <div onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="roots-elevation-modal" style={{ background: "var(--surface-card)", borderRadius: 28, border: "1px solid var(--border-gold-soft)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center" }}>
             <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
@@ -390,50 +453,75 @@ function RecordContent() {
           </div>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={() => router.push("/qt")} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}>
-          <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trR("돌아가기", lang)}</span>
-        </button>
-        <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginBottom: 4 }}>
-          {parseLocalDateString(record.date).toLocaleDateString(getDateLocale(lang), { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
-        </p>
-        {sundaySermon ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {sundaySermon.title && (
-              <p style={{ fontSize: 16, fontWeight: 500, color: "var(--terra-dark)", lineHeight: 1.45 }}>
-                <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("설교 제목", lang)}: </span>
-                {sundaySermon.title}
-              </p>
+      {wideDesktop && backButton}
+      <article className="qt-record-note">
+        <header className="qt-record-head">
+          <div className="qt-record-heading" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
+            {!wideDesktop && backButton}
+            {!wideDesktop && dateLine}
+            {sundaySermon && wideDesktop ? (
+              <>
+                <h1>{sundaySermon.title || translateBibleRef(sundaySermon.referenceText, lang) || t("qt_mode_sunday_title", lang)}</h1>
+                {sundaySermon.title && sundaySermon.referenceText && <p className="qt-record-passage">{translateBibleRef(sundaySermon.referenceText, lang)}</p>}
+              </>
+            ) : sundaySermon ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {sundaySermon.title && (
+                  <p style={{ fontSize: 16, fontWeight: 500, color: "var(--terra-dark)", lineHeight: 1.45 }}>
+                    <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("설교 제목", lang)}: </span>
+                    {sundaySermon.title}
+                  </p>
+                )}
+                {sundaySermon.referenceText && (
+                  <p style={{ fontSize: 16, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
+                    <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("본문", lang)}: </span>
+                    {translateBibleRef(sundaySermon.referenceText, lang)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>
+                {translateBibleRef(record.bible_ref, lang) || (wideDesktop ? emptyTitle : "")}
+              </h1>
             )}
-            {sundaySermon.referenceText && (
-              <p style={{ fontSize: 16, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
-                <span style={{ color: "inherit", fontSize: "inherit", fontWeight: 800 }}>{trR("본문", lang)}: </span>
-                {translateBibleRef(sundaySermon.referenceText, lang)}
-              </p>
+            {wideDesktop ? (
+              <div className="qt-record-meta">{dateLine}{shareLine}</div>
+            ) : shareLine}
+          </div>
+
+          {/* 액션 버튼 */}
+          <div className="qt-record-actions" style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: canEdit ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+            <button onClick={copyAll} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: copied ? "1px solid var(--sage)" : "1px solid var(--border)", background: copied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
+              <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
+            </button>
+            <button onClick={openShareModal} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: isShared ? "1px solid var(--sage)" : "1px solid var(--border)", background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
+              {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
+            </button>
+            {canEdit && (
+              <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
+                <Edit3 size={14} /> {trR("큐티 수정", lang)}
+              </button>
             )}
           </div>
-        ) : (
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--terra-dark)" }}>{translateBibleRef(record.bible_ref, lang)}</h1>
+        </header>
+        {isPhotoRecord && (
+          <div className="qt-record-photo" tabIndex={wideDesktop ? 0 : undefined} role={wideDesktop ? "region" : undefined} aria-label={wideDesktop ? QT_RECORD_LOCAL_TEXT[lang].photoAlt : undefined} style={{ padding: "16px 16px 0" }}>
+            <div className="card roots-elevation-card">
+              {photoUrl ? (
+                <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
+                  <img src={photoUrl} alt={QT_RECORD_LOCAL_TEXT[lang].photoAlt} loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
+                </button>
+              ) : (
+                <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>{QT_RECORD_LOCAL_TEXT[lang].photoLoading}</div>
+              )}
+              {(record.photo_caption || record.meditation) && (
+                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{record.photo_caption || record.meditation}</p>
+              )}
+            </div>
+          </div>
         )}
-        {isShared && getShareLabel() && (
-          <p style={{ fontSize: 11, color: "var(--sage-dark)", marginTop: 4 }}>📢 {getShareLabel()}</p>
-        )}
-      </div>
-
-      {/* 액션 버튼 */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: canEdit ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-        <button onClick={copyAll} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: copied ? "1px solid var(--sage)" : "1px solid var(--border)", background: copied ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: copied ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
-          <Copy size={14} /> {copied ? trR("복사됨! ✓", lang) : trR("전체 복사", lang)}
-        </button>
-        <button onClick={openShareModal} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: isShared ? "1px solid var(--sage)" : "1px solid var(--border)", background: isShared ? "var(--sage-light)" : "var(--bg2)", cursor: "pointer", fontSize: 12, color: isShared ? "var(--sage-dark)" : "var(--text2)", whiteSpace: "nowrap" }}>
-          {isShared ? <Check size={14} /> : <Share2 size={14} />} {trR("나누기", lang)}
-        </button>
-        {canEdit && (
-          <button onClick={goEdit} style={{ minWidth: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg2)", cursor: "pointer", fontSize: 12, color: "var(--text2)", whiteSpace: "nowrap" }}>
-            <Edit3 size={14} /> {trR("큐티 수정", lang)}
-          </button>
-        )}
-      </div>
+        <RecordSections key={record.id} sections={sectionNodes} wideDesktop={wideDesktop} preferredSplit={preferredSplit} />
+      </article>
 
       {/* 나누기 모달 */}
       {showShareModal && (
@@ -471,71 +559,14 @@ function RecordContent() {
 
       {photoUrl && photoViewerOpen && <PhotoViewerModal src={photoUrl} alt={QT_RECORD_LOCAL_TEXT[lang].photoAlt} lang={lang} onClose={() => setPhotoViewerOpen(false)} />}
 
-      {isPhotoRecord && (
-        <div style={{ padding: "16px 16px 0" }}>
-          <div className="card roots-elevation-card">
-            {photoUrl ? (
-              <button type="button" onClick={() => setPhotoViewerOpen(true)} style={{ width: "100%", display: "block", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", marginBottom: record.photo_caption || record.meditation ? 12 : 0 }}>
-                <img src={photoUrl} alt={QT_RECORD_LOCAL_TEXT[lang].photoAlt} loading="lazy" decoding="async" style={{ width: "100%", maxHeight: 520, objectFit: "contain", borderRadius: 18, border: "1px solid var(--border)", background: "var(--bg3)" }} />
-              </button>
-            ) : (
-              <div style={{ padding: 28, textAlign: "center", color: "var(--text-muted-readable)", fontSize: 13 }}>{QT_RECORD_LOCAL_TEXT[lang].photoLoading}</div>
-            )}
-            {(record.photo_caption || record.meditation) && (
-              <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-line" }}>{record.photo_caption || record.meditation}</p>
-            )}
-          </div>
-        </div>
-      )}
 
-      <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-        {(record?.qt_mode === "sunday"
-          ? [...SECTIONS].sort((a, b) => { const order = ["opening_prayer","meditation","application","decision","closing_prayer","summary"]; return order.indexOf(a.key) - order.indexOf(b.key); })
-          : SECTIONS
-        ).map(({ key, label, italic, isDecision }) => {
-          if (isPhotoRecord) return null;
-          const value = record[key];
-          if (!value) return null;
-          return (
-            <div key={key} className={key === "key_verse" ? "card-sage roots-elevation-card-sage" : "card roots-elevation-card"}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted-readable)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{trR(label, lang)}</p>
-              {isDecision ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {value.split("\n").filter((d: string) => d.trim()).map((d: string, i: number) => (
-                    <p key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}.</span> {d}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, fontStyle: italic ? "italic" : "normal", whiteSpace: "pre-line" }}>
-                    {value}{key === "key_verse" && isEsvRecord ? " (ESV)" : ""}
-                  </p>
-                  {key === "key_verse" && isEsvRecord && (
-                    <a
-                      href={ESV_ATTRIBUTION_URL}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      style={{ display: "inline-block", marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", textDecoration: "underline", textUnderlineOffset: 2 }}
-                    >
-                      ESV.org
-                    </a>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <BottomNav />
     </div>
   );
 }
 
 export default function RecordPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /><BottomNav /></div>}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: "calc(82px + var(--bottom-nav-bottom-padding))" }}><Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" /></div>}>
       <RecordContent />
     </Suspense>
   );

@@ -105,7 +105,7 @@ export default function HeartShopGiftDialog({ lang, itemKey, itemName, price, vi
   }
 
   return (
-    <div className={styles.sheetOverlay}
+    <div className={styles.sheetOverlay} data-shop-backdrop="gift"
       onClick={event => { if (event.target === event.currentTarget && !senderBusy.current) onClose(); }}>
       <div ref={panel} role="dialog" aria-modal="true" aria-labelledby="shop-gift-heading" tabIndex={-1} className={styles.sheet}
         onKeyDown={event => {

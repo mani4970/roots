@@ -1,5 +1,6 @@
 "use client";
 
+import "./desktop-photo.css";
 import { Suspense, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -663,12 +664,12 @@ function PhotoReflectionContent() {
     leaveGuard.leaveAfterSave(() => router.push(href));
   }
 
-  function returnHomeAfterCompletion() {
+  function returnHomeAfterCompletion(destination = "/") {
     leaveGuard.leaveAfterSave(() => {
       const completion = completionHomeReturnRef.current;
       completionHomeReturnRef.current = null;
       if (completion) markPostReflectionHomeReturn(completion);
-      router.replace("/");
+      router.replace(destination);
     });
   }
 
@@ -1808,14 +1809,14 @@ function PhotoReflectionContent() {
   }
 
   return (
-    <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport qt-photo-page" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", paddingBottom: 40 }}>
       {notice && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 240, background: "var(--qt-toast-surface)", color: "var(--text)", border: "1px solid var(--qt-toast-border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, maxWidth: 340, width: "calc(100% - 40px)", textAlign: "center" }}>
           {notice}
         </div>
       )}
 
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
+      <div className="qt-photo-header" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 18px", borderBottom: "1px solid var(--border)" }}>
         <button
           onClick={requestPhotoPageLeave}
           style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text3)", marginBottom: 14, cursor: "pointer" }}
@@ -1833,186 +1834,191 @@ function PhotoReflectionContent() {
         </div>
       </div>
 
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="qt-photo-form" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
         <QTConnectionNotice lang={lang} />
-        <div className="card-sage">
-          <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
-          <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
-          {isCatchup && (
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString(getDateLocale(lang))}</p>
-          )}
-          <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
-        </div>
+        <div className="qt-photo-media-column">
+          <div className="card-sage">
+            <p style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", letterSpacing: "0.7px", marginBottom: 6 }}>{pc("passage", lang)}</p>
+            <p style={{ fontSize: 16, fontWeight: 850, color: "var(--text)", marginBottom: 4 }}>{translateBibleRef(effectiveBibleRef, bibleDisplayLang)}</p>
+            {isCatchup && (
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{parseLocalDateString(targetDate).toLocaleDateString(getDateLocale(lang))}</p>
+            )}
+            <p style={{ fontSize: 11, color: "var(--text-muted-readable)", lineHeight: 1.55 }}>{isCatchup ? pc("catchupOnly", lang) : pc("todayOnly", lang)}</p>
+          </div>
 
-        {source === "custom" && passageEditing && (
-          <QTManualPassageForm
-            lang={lang}
-            translationId={selectedTranslation}
-            onTranslationChange={next => {
-              setTranslationTouched(true);
-              setSelectedTranslation(next);
-              savePreferredTranslationLocally(getStoredLang() ?? lang, next);
-            }}
-            sermonTitle={sundayContext ? {
-              value: sermonTitle,
-              onValueChange: value => {
+          {source === "custom" && passageEditing && (
+            <QTManualPassageForm
+              lang={lang}
+              translationId={selectedTranslation}
+              onTranslationChange={next => {
+                setTranslationTouched(true);
+                setSelectedTranslation(next);
+                savePreferredTranslationLocally(getStoredLang() ?? lang, next);
+              }}
+              sermonTitle={sundayContext ? {
+                value: sermonTitle,
+                onValueChange: value => {
+                  markPassageTouched();
+                  setSermonTitle(value);
+                },
+              } : undefined}
+              book={book}
+              books={BOOKS.map(item => ({ value: item, label: translateBibleRef(item, bibleDisplayLang) }))}
+              onBookChange={nextBook => {
                 markPassageTouched();
-                setSermonTitle(value);
-              },
-            } : undefined}
-            book={book}
-            books={BOOKS.map(item => ({ value: item, label: translateBibleRef(item, bibleDisplayLang) }))}
-            onBookChange={nextBook => {
-              markPassageTouched();
-              setBook(nextBook);
-              setChapter(1);
-              setStartVerse(1);
-              setEndChapter(1);
-              setEndVerse(1);
-            }}
-            startChapter={{
-              value: chapter,
-              options: chapterOptions,
-              onChange: value => {
-                markPassageTouched();
-                const next = Number(value);
-                setChapter(next);
+                setBook(nextBook);
+                setChapter(1);
                 setStartVerse(1);
-                setEndChapter(next);
+                setEndChapter(1);
                 setEndVerse(1);
-              },
-            }}
-            startVerse={{
-              value: safeStartVerse,
-              options: startVerseNumbers,
-              onChange: value => {
-                markPassageTouched();
-                const next = Number(value);
-                setStartVerse(next);
-                if (safeEndChapter === chapter) setEndVerse(next);
-              },
-            }}
-            endChapter={{
-              value: safeEndChapter,
-              options: chapterOptions.filter(item => item >= chapter),
-              onChange: value => {
-                markPassageTouched();
-                const next = Number(value);
-                setEndChapter(next);
-                if (next === chapter) setEndVerse(safeStartVerse);
-              },
-            }}
-            endVerse={{
-              value: safeEndVerse,
-              options: endVerseNumbers,
-              onChange: value => {
-                markPassageTouched();
-                setEndVerse(Number(value));
-              },
-            }}
-            selectedPassages={extraRefs.map(ref => translateBibleRef(ref, bibleDisplayLang))}
-            onRemovePassage={index => removeExtraRef(extraRefs[index])}
-            onAddPassage={addCurrentPassage}
-            onFinishPassage={() => setPassageEditing(false)}
-          />
-        )}
+              }}
+              startChapter={{
+                value: chapter,
+                options: chapterOptions,
+                onChange: value => {
+                  markPassageTouched();
+                  const next = Number(value);
+                  setChapter(next);
+                  setStartVerse(1);
+                  setEndChapter(next);
+                  setEndVerse(1);
+                },
+              }}
+              startVerse={{
+                value: safeStartVerse,
+                options: startVerseNumbers,
+                onChange: value => {
+                  markPassageTouched();
+                  const next = Number(value);
+                  setStartVerse(next);
+                  if (safeEndChapter === chapter) setEndVerse(next);
+                },
+              }}
+              endChapter={{
+                value: safeEndChapter,
+                options: chapterOptions.filter(item => item >= chapter),
+                onChange: value => {
+                  markPassageTouched();
+                  const next = Number(value);
+                  setEndChapter(next);
+                  if (next === chapter) setEndVerse(safeStartVerse);
+                },
+              }}
+              endVerse={{
+                value: safeEndVerse,
+                options: endVerseNumbers,
+                onChange: value => {
+                  markPassageTouched();
+                  setEndVerse(Number(value));
+                },
+              }}
+              selectedPassages={extraRefs.map(ref => translateBibleRef(ref, bibleDisplayLang))}
+              onRemovePassage={index => removeExtraRef(extraRefs[index])}
+              onAddPassage={addCurrentPassage}
+              onFinishPassage={() => setPassageEditing(false)}
+            />
+          )}
 
-        {source === "custom" && !passageEditing && (
-          <button type="button" onClick={() => setPassageEditing(true)} className="btn-outline" style={{ width: "100%" }}>
-            {pc("reselectPassage", lang)}
-          </button>
-        )}
+          {source === "custom" && !passageEditing && (
+            <button type="button" onClick={() => setPassageEditing(true)} className="btn-outline" style={{ width: "100%" }}>
+              {pc("reselectPassage", lang)}
+            </button>
+          )}
 
-        <div className="card" style={{ textAlign: "center" }}>
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "gallery")}
-            style={{ display: "none" }}
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "camera")}
-            style={{ display: "none" }}
-          />
+          <div className="card qt-photo-media" style={{ textAlign: "center" }}>
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "gallery")}
+              style={{ display: "none" }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event: ChangeEvent<HTMLInputElement>) => handleFileChange(event, "camera")}
+              style={{ display: "none" }}
+            />
 
-          {preparingPhoto ? (
-            <div style={{ minHeight: 170, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--qt-sage-text)" }}>
-              <Loader2 size={30} className="spin" />
-              <span style={{ fontSize: 13, fontWeight: 800 }}>{pc("preparingPhoto", lang)}</span>
-            </div>
-          ) : displayedPhotoUrl ? (
-            <div>
-              <div style={{ position: "relative", marginBottom: 12 }}>
-                <img
-                  src={displayedPhotoUrl}
-                  alt={pc("photoAlt", lang)}
-                  style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", display: "block" }}
-                />
+            {preparingPhoto ? (
+              <div className="qt-photo-preparing" style={{ minHeight: 170, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--qt-sage-text)" }}>
+                <Loader2 size={30} className="spin" />
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{pc("preparingPhoto", lang)}</span>
+              </div>
+            ) : displayedPhotoUrl ? (
+              <div className="qt-photo-preview">
+                <div className="qt-photo-frame" style={{ position: "relative", marginBottom: 12 }}>
+                  <img
+                    src={displayedPhotoUrl}
+                    alt={pc("photoAlt", lang)}
+                    style={{ width: "100%", maxHeight: 420, objectFit: "contain", borderRadius: 18, border: "1px solid var(--qt-card-border)", background: "var(--qt-field-surface)", display: "block" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={removeDisplayedPhoto}
+                    disabled={saving}
+                    aria-label={pc("removePhoto", lang)}
+                    title={pc("removePhoto", lang)}
+                    style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.45)", background: "rgba(20,24,28,0.78)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.22)" }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="qt-photo-picker" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <button
                   type="button"
-                  onClick={removeDisplayedPhoto}
+                  className="qt-photo-upload"
+                  onClick={choosePhoto}
                   disabled={saving}
-                  aria-label={pc("removePhoto", lang)}
-                  title={pc("removePhoto", lang)}
-                  style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: 999, border: "1px solid rgba(255,255,255,0.45)", background: "rgba(20,24,28,0.78)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.22)" }}
+                  style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}
                 >
-                  <X size={20} />
+                  <UploadCloud size={34} />
+                  {pc(isEditMode ? "uploadNewPhoto" : "choosePhoto", lang)}
                 </button>
+                {androidWebPhotoUnsupported && (
+                  <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-muted-readable)", textAlign: "left", padding: "0 2px" }}>
+                    {pc("androidWebAppOnly", lang)}
+                  </div>
+                )}
+                {isEditMode && existingPhotoRemoved && (existingPhotoPath || existingPhotoUrl) && (
+                  <button type="button" onClick={restoreExistingPhoto} disabled={saving} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+                    <RotateCcw size={15} /> {pc("restorePhoto", lang)}
+                  </button>
+                )}
               </div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button
-                type="button"
-                className="qt-photo-upload"
-                onClick={choosePhoto}
-                disabled={saving}
-                style={{ width: "100%", minHeight: 170, borderRadius: 20, border: "1.5px dashed var(--qt-sage-border)", background: "var(--qt-sage-surface)", color: "var(--qt-sage-text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontWeight: 800 }}
-              >
-                <UploadCloud size={34} />
-                {pc(isEditMode ? "uploadNewPhoto" : "choosePhoto", lang)}
-              </button>
-              {androidWebPhotoUnsupported && (
-                <div style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-muted-readable)", textAlign: "left", padding: "0 2px" }}>
-                  {pc("androidWebAppOnly", lang)}
-                </div>
-              )}
-              {isEditMode && existingPhotoRemoved && (existingPhotoPath || existingPhotoUrl) && (
-                <button type="button" onClick={restoreExistingPhoto} disabled={saving} className="btn-outline" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-                  <RotateCcw size={15} /> {pc("restorePhoto", lang)}
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <label className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted-readable)" }}>{pc("memoLabel", lang)}</span>
-          <CursorStableTextarea value={caption} onValueChange={setCaption} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
-        </label>
+        <div className="qt-photo-notes-column">
+          <label className="card qt-photo-memo" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted-readable)" }}>{pc("memoLabel", lang)}</span>
+            <CursorStableTextarea value={caption} onValueChange={setCaption} placeholder={pc("memoPlaceholder", lang)} rows={4} className="input-field" style={{ resize: "vertical", lineHeight: 1.6 }} />
+          </label>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isEditMode) void savePhotoEdit();
-            else openSharePrompt();
-          }}
-          disabled={saving || preparingPhoto || (isEditMode ? !hasUsablePhoto : !preparedPhoto)}
-          className="btn-primary"
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-        >
-          {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
-          {pc(isEditMode ? "editSave" : "shareAndSave", lang)}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isEditMode) void savePhotoEdit();
+              else openSharePrompt();
+            }}
+            disabled={saving || preparingPhoto || (isEditMode ? !hasUsablePhoto : !preparedPhoto)}
+            className="btn-primary"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            {saving ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+            {pc(isEditMode ? "editSave" : "shareAndSave", lang)}
+          </button>
+        </div>
       </div>
 
       {showPhotoSourceModal && (
         <div
+          className="qt-photo-source-backdrop"
           onClick={() => !preparingPhoto && setShowPhotoSourceModal(false)}
           style={{ position: "fixed", inset: 0, zIndex: 260, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px calc(18px + env(safe-area-inset-bottom))" }}
         >

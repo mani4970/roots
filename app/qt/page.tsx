@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import "./desktop-overview.css";
+import { QTDesktopContext } from "./QTDesktopContext";
 import { useRouter } from "next/navigation";
-import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/lib/supabase";
 import { storageSet } from "@/lib/clientStorage";
 import {
@@ -136,13 +137,15 @@ function getMonthGroups(recordsForYear: QTRecord[], year: number): QTMonthGroup[
 export default function QTPage() {
   const router = useRouter();
   const lang = useLang();
+  const wideDesktop = useContext(QTDesktopContext);
   const [records, setRecords] = useState<QTRecord[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [historyStatus, setHistoryStatus] = useState<"loading" | "ready" | "error">("loading");
   const historyRequest = useRef(0);
   const [draftCheckPending, setDraftCheckPending] = useState(true);
-  const [expandedYear, setExpandedYear] = useState<number | null>(() => parseLocalDateString(getLocalDateString()).getFullYear());
-  const [expandedMonthKeys, setExpandedMonthKeys] = useState<Set<string>>(() => new Set([getYearMonthKey()]));
+  const [selectedYear, setExpandedYear] = useState<number | null>();
+  const [monthChoices, setMonthChoices] = useState<Record<string, boolean>>({});
+  const pressedBackdrop = useRef<HTMLDivElement | null>(null);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showPassageChoiceModal, setShowPassageChoiceModal] = useState(false);
   const [showPhotoPassageChoiceModal, setShowPhotoPassageChoiceModal] = useState(false);
@@ -233,6 +236,20 @@ export default function QTPage() {
     hasQTModalHistoryEntryRef.current = false;
     setVisibleQTModal(null);
   }
+
+  const desktopBackdropEvents = wideDesktop ? {
+    onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+      pressedBackdrop.current = event.target === event.currentTarget ? event.currentTarget : null;
+    },
+    onPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+      if (event.target !== event.currentTarget) pressedBackdrop.current = null;
+    },
+    onClick(event: React.MouseEvent<HTMLDivElement>) {
+      const startedOutside = pressedBackdrop.current === event.currentTarget;
+      pressedBackdrop.current = null;
+      if (event.target === event.currentTarget && (startedOutside || event.detail === 0)) closeQTModal();
+    },
+  } : undefined;
 
   function navigateFromQTModal(href: string) {
     const canReplaceModalEntry = isQTModalHistoryKind(
@@ -387,26 +404,21 @@ export default function QTPage() {
     }
   }
 
-  const byYear = records.reduce((acc, r) => {
-    const year = parseLocalDateString(r.date).getFullYear();
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(r);
-    return acc;
-  }, {} as Record<number, any[]>);
-  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
-  const currentGuide = QT_GUIDE_KEYS[guidePage];
-
-  function toggleMonth(monthKey: string) {
-    setExpandedMonthKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(monthKey)) {
-        next.delete(monthKey);
-      } else {
-        next.add(monthKey);
-      }
-      return next;
-    });
+  const currentMonth = getYearMonthKey();
+  const currentMonthRecords: QTRecord[] = [];
+  const byYear: Record<number, QTRecord[]> = {};
+  for (const record of records) {
+    if (wideDesktop && getYearMonthKey(record.date) === currentMonth) {
+      currentMonthRecords.push(record);
+    } else {
+      const year = parseLocalDateString(record.date).getFullYear();
+      (byYear[year] ??= []).push(record);
+    }
   }
+  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+  const defaultYear = wideDesktop ? years[0] : new Date().getFullYear();
+  const expandedYear = selectedYear === undefined ? defaultYear : selectedYear;
+  const currentGuide = QT_GUIDE_KEYS[guidePage];
 
   function startQT(mode: "6step" | "sunday" | "free", passageSource: "scheduled" | "custom" = "scheduled") {
     navigateFromQTModal(buildQTWriteHref({
@@ -505,15 +517,104 @@ export default function QTPage() {
   const dateLocale = getDateLocale(lang);
   const isSundayToday = new Date().getDay() === 0;
 
+  function renderRecord(r: QTRecord) {
+    return (
+      <button type="button" key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
+            {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
+          </p>
+          {r.qt_mode === "sunday" && r.bible_ref ? (() => {
+            const sermon = parseSundaySermonRef(r.bible_ref);
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: r.key_verse ? 4 : 0 }}>
+                {sermon.title && (
+                  <p style={{ fontSize: 12, fontWeight: 500, color: "var(--terra)", lineHeight: 1.45 }}>
+                    <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_sermon_title_label", lang)}: </span>
+                    {sermon.title}
+                  </p>
+                )}
+                {sermon.referenceText && (
+                  <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
+                    <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_passage_label", lang)}: </span>
+                    {translateBibleRef(sermon.referenceText, lang)}
+                  </p>
+                )}
+              </div>
+            );
+          })() : (
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
+              {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
+            </p>
+          )}
+          {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"{Number(r.bible_version) === ESV_TRANSLATION_ID ? " (ESV)" : ""}</p>}
+          {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
+        </div>
+        <ChevronRight aria-hidden="true" size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
+      </button>
+    );
+  }
+
+  function renderMonthGroup({ key, records: entries }: Pick<QTMonthGroup, "key" | "records">) {
+    const monthOpen = monthChoices[key] ?? key === currentMonth;
+    const titleId = `qt-month-title-${key}`;
+    const listId = `qt-month-records-${key}`;
+    const currentMonthPane = wideDesktop && key === currentMonth && entries.length > 0;
+    const monthLabel = parseLocalDateString(`${key}-01`).toLocaleDateString(dateLocale, { month: "long" });
+    return (
+      <div key={key} className="qt-month-group">
+        <button
+          type="button"
+          className="qt-archive-month"
+          id={titleId}
+          aria-expanded={monthOpen}
+          aria-controls={monthOpen ? listId : undefined}
+          onClick={() => setMonthChoices(prev => ({ ...prev, [key]: !(prev[key] ?? key === currentMonth) }))}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            background: monthOpen ? "var(--bg2)" : "transparent",
+            border: monthOpen ? "1px solid var(--border)" : "1px solid transparent",
+            borderRadius: 12,
+            cursor: "pointer",
+            padding: "9px 10px",
+            textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 750, color: monthOpen ? "var(--terra)" : "var(--text2)" }}>
+            {t("qt_month_records", lang, { month: monthLabel, count: entries.length })}
+          </span>
+          <ChevronDown aria-hidden="true" size={14} style={{ color: "var(--text3)", transform: monthOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+        </button>
+
+        {monthOpen && (
+          <div
+            id={listId}
+            className="qt-month-list"
+            tabIndex={currentMonthPane ? 0 : undefined}
+            role={currentMonthPane ? "region" : undefined}
+            aria-labelledby={currentMonthPane ? titleId : undefined}
+          >
+            {entries.length ? entries.map(renderRecord) : (
+              <p className="qt-current-empty">{t("qt_current_month_empty", lang)}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="page roots-qt-phase2a roots-qt-phase2h">
+    <div className="page roots-qt-phase2a roots-qt-phase2h qt-overview">
       {toast && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--qt-toast-surface)", color: "var(--text)", border: "1px solid var(--qt-toast-border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>
           {toast}
         </div>
       )}
       {showDraftPopup && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", borderRadius: 28, border: "1px solid var(--qt-card-border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
             <BookOpen size={38} style={{ color: "var(--sage)", marginBottom: 12 }} />
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
@@ -527,177 +628,123 @@ export default function QTPage() {
         </div>
       )}
 
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div className="qt-overview-header">
         <div style={{ marginBottom: 4 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{t("qt_title", lang)}</h1>
         </div>
         <p style={{ color: "var(--text-muted-readable)", fontSize: 12 }}>{t("qt_sub", lang)}</p>
       </div>
 
-      <div style={{ padding: "16px 16px 0" }}>
-        {todayDone ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="card-sage" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <CheckCircle2 size={24} />
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
-                <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
+      <div className="qt-overview-columns">
+        <div className="qt-overview-left">
+          <div className="qt-overview-actions">
+            {todayDone ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="card-sage" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <CheckCircle2 size={24} />
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--sage-dark)" }}>{t("qt_today_done", lang)}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-muted-readable)", marginTop: 2 }}>{t("qt_today_done_sub", lang)}</p>
+                  </div>
+                </div>
+                {catchUpButton}
               </div>
-            </div>
-            {catchUpButton}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {new Date().getDay() !== 0 && todaySchedule && (
-              <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 16px", border: "1px solid var(--qt-sage-border-soft)" }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>{t("qt_today_bible_ref", lang)}</p>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
-                  {translateBookName(todaySchedule.book, lang)} {todaySchedule.chapter}:{todaySchedule.start_verse}
-                  {todaySchedule.end_chapter && todaySchedule.end_chapter !== todaySchedule.chapter
-                    ? `~${todaySchedule.end_chapter}:${todaySchedule.end_verse}`
-                    : todaySchedule.end_verse !== todaySchedule.start_verse
-                    ? `-${todaySchedule.end_verse}`
-                    : ""}
-                </p>
-                {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text-muted-readable)" }}>{todaySchedule.title}</p>}
-              </div>
-            )}
-            {new Date().getDay() === 0 && (
-              <div className="card-sage">
-                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{t("qt_sunday_title", lang)}</p>
-                <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{t("qt_sunday_desc", lang)}</p>
-              </div>
-            )}
-            <button
-              onClick={() => {
-                if (draftCheckPending) return;
-                if (hasDraft) openQTModal("draft");
-                else openQTModal("start");
-              }}
-              disabled={draftCheckPending}
-              className="btn-primary"
-              style={{ display: "flex", alignItems: "center", gap: 8, opacity: draftCheckPending ? 0.65 : 1, cursor: draftCheckPending ? "default" : "pointer" }}
-            >
-              {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
-              {t("qt_today_start", lang)}
-            </button>
-            {catchUpButton}
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: "20px 16px 0" }}>
-        <div className="sec-label">{t("qt_past_records", lang)}</div>
-        {historyNotice}
-        {records.length === 0 ? historyStatus === "ready" && (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <BookOpen size={32} style={{ color: "var(--text3)", marginBottom: 10 }} />
-            <p style={{ color: "var(--text3)", fontSize: 14 }}>{t("qt_no_records_simple", lang)}</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {years.map(year => (
-              <div key={year}>
-                <button onClick={() => setExpandedYear(expandedYear === year ? null : year)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "0 2px", marginBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: expandedYear === year ? "var(--sage-dark)" : "var(--text2)" }}>
-                    {t("qt_year_records", lang, { year, count: byYear[year].length })}
-                  </span>
-                  <ChevronDown size={14} style={{ color: "var(--text3)", transform: expandedYear === year ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                </button>
-                {expandedYear === year && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingLeft: 2 }}>
-                    {getMonthGroups(byYear[year], year).map(monthGroup => {
-                      const monthOpen = expandedMonthKeys.has(monthGroup.key);
-                      const monthLabel = new Date(year, monthGroup.month - 1, 1).toLocaleDateString(dateLocale, { month: "long" });
-
-                      return (
-                        <div key={monthGroup.key} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <button
-                            onClick={() => toggleMonth(monthGroup.key)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              width: "100%",
-                              background: monthOpen ? "var(--bg2)" : "transparent",
-                              border: monthOpen ? "1px solid var(--border)" : "1px solid transparent",
-                              borderRadius: 12,
-                              cursor: "pointer",
-                              padding: "9px 10px",
-                              textAlign: "left",
-                            }}
-                          >
-                            <span style={{ fontSize: 13, fontWeight: 750, color: monthOpen ? "var(--terra)" : "var(--text2)" }}>
-                              {t("qt_month_records", lang, { month: monthLabel, count: monthGroup.records.length })}
-                            </span>
-                            <ChevronDown size={14} style={{ color: "var(--text3)", transform: monthOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
-                          </button>
-
-                          {monthOpen && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                              {monthGroup.records.map((r: QTRecord) => (
-                                <button key={r.id} onClick={() => router.push(`/qt/record?id=${r.id}`)} className="qt-record-item">
-                                  <div style={{ flex: 1 }}>
-                                    <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
-                                      {parseLocalDateString(r.date).toLocaleDateString(dateLocale, { month: "long", day: "numeric", weekday: "short" })}
-                                    </p>
-                                    {r.qt_mode === "sunday" && r.bible_ref ? (() => {
-                                      const sermon = parseSundaySermonRef(r.bible_ref);
-                                      return (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: r.key_verse ? 4 : 0 }}>
-                                          {sermon.title && (
-                                            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--terra)", lineHeight: 1.45 }}>
-                                              <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_sermon_title_label", lang)}: </span>
-                                              {sermon.title}
-                                            </p>
-                                          )}
-                                          {sermon.referenceText && (
-                                            <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text2)", lineHeight: 1.45 }}>
-                                              <span style={{ fontSize: "inherit", color: "inherit", fontWeight: 800 }}>{t("qt_record_passage_label", lang)}: </span>
-                                              {translateBibleRef(sermon.referenceText, lang)}
-                                            </p>
-                                          )}
-                                        </div>
-                                      );
-                                    })() : (
-                                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--terra)", marginBottom: r.key_verse ? 4 : 0 }}>
-                                        {r.bible_ref ? translateBibleRef(r.bible_ref, lang) : (r.qt_mode === "free" ? t("profile_free_qt", lang) : t("profile_sunday_qt", lang))}
-                                      </p>
-                                    )}
-                                    {r.key_verse && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>"{r.key_verse.slice(0, 45)}{r.key_verse.length > 45 ? "..." : ""}"{Number(r.bible_version) === ESV_TRANSLATION_ID ? " (ESV)" : ""}</p>}
-                                    {r.qt_mode === "free" && r.meditation && <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{r.meditation.slice(0, 45)}{r.meditation.length > 45 ? "..." : ""}</p>}
-                                  </div>
-                                  <ChevronRight size={16} style={{ color: "var(--text3)", flexShrink: 0 }} />
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {new Date().getDay() !== 0 && todaySchedule && (
+                  <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 16px", border: "1px solid var(--qt-sage-border-soft)" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: "var(--sage-dark)", letterSpacing: "0.5px", marginBottom: 4 }}>{t("qt_today_bible_ref", lang)}</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: todaySchedule.title ? 2 : 0 }}>
+                      {translateBookName(todaySchedule.book, lang)} {todaySchedule.chapter}:{todaySchedule.start_verse}
+                      {todaySchedule.end_chapter && todaySchedule.end_chapter !== todaySchedule.chapter
+                        ? `~${todaySchedule.end_chapter}:${todaySchedule.end_verse}`
+                        : todaySchedule.end_verse !== todaySchedule.start_verse
+                        ? `-${todaySchedule.end_verse}`
+                        : ""}
+                    </p>
+                    {todaySchedule.title && <p style={{ fontSize: 12, color: "var(--text-muted-readable)" }}>{todaySchedule.title}</p>}
                   </div>
                 )}
+                {new Date().getDay() === 0 && (
+                  <div className="card-sage">
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--sage-dark)", marginBottom: 4 }}>{t("qt_sunday_title", lang)}</p>
+                    <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{t("qt_sunday_desc", lang)}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    if (draftCheckPending) return;
+                    if (hasDraft) openQTModal("draft");
+                    else openQTModal("start");
+                  }}
+                  disabled={draftCheckPending}
+                  className="btn-primary"
+                  style={{ display: "flex", alignItems: "center", gap: 8, opacity: draftCheckPending ? 0.65 : 1, cursor: draftCheckPending ? "default" : "pointer" }}
+                >
+                  {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
+                  {t("qt_today_start", lang)}
+                </button>
+                {catchUpButton}
               </div>
-            ))}
+            )}
           </div>
-        )}
-        {records.some((record) => record.key_verse && Number(record.bible_version) === ESV_TRANSLATION_ID) && (
-          <p style={{ marginTop: 10, fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
-            ESV Scripture: {" "}
-            <a
-              href={ESV_ATTRIBUTION_URL}
-              target="_blank"
-              rel="noreferrer noopener"
-              style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+          {wideDesktop && historyStatus === "ready" && (
+            <section className="qt-overview-current" aria-labelledby={`qt-month-title-${currentMonth}`}>
+              {renderMonthGroup({ key: currentMonth, records: currentMonthRecords })}
+            </section>
+          )}
+        </div>
+        <section className="qt-overview-archive" aria-labelledby="qt-archive-title">
+          <h2 id="qt-archive-title" className="sec-label">{t(wideDesktop ? "qt_previous_months_records" : "qt_past_records", lang)}</h2>
+          {historyNotice}
+          {years.length === 0 ? historyStatus === "ready" && (
+            <div className="qt-archive-empty" style={{ textAlign: "center", padding: "40px 0" }}>
+              <BookOpen size={32} style={{ color: "var(--text3)", marginBottom: 10 }} />
+              <p style={{ color: "var(--text3)", fontSize: 14 }}>{t(wideDesktop ? "qt_previous_months_empty" : "qt_no_records_simple", lang)}</p>
+            </div>
+          ) : (
+            <div
+              className="qt-archive-years"
+              tabIndex={wideDesktop ? 0 : undefined}
+              role={wideDesktop ? "region" : undefined}
+              aria-labelledby={wideDesktop ? "qt-archive-title" : undefined}
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
-              ESV.org
-            </a>
-          </p>
-        )}
+              {years.map(year => (
+                <div key={year}>
+                  <button type="button" className="qt-archive-year" aria-expanded={expandedYear === year} onClick={() => setExpandedYear(expandedYear === year ? null : year)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "0 2px", marginBottom: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: expandedYear === year ? "var(--sage-dark)" : "var(--text2)" }}>
+                      {t("qt_year_records", lang, { year, count: byYear[year].length })}
+                    </span>
+                    <ChevronDown size={14} style={{ color: "var(--text3)", transform: expandedYear === year ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                  </button>
+                  {expandedYear === year && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingLeft: 2 }}>
+                      {getMonthGroups(byYear[year], year).map(renderMonthGroup)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+      {records.some((record) => record.key_verse && Number(record.bible_version) === ESV_TRANSLATION_ID) && (
+        <p className="qt-overview-attribution" style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
+          ESV Scripture: {" "}
+          <a
+            href={ESV_ATTRIBUTION_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            ESV.org
+          </a>
+        </p>
+      )}
 
       {showCatchUpModal && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div role="dialog" aria-modal="true" aria-labelledby="qt-catch-up-title" className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 id="qt-catch-up-title" style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_catchup_title", lang)}</h2>
@@ -753,7 +800,7 @@ export default function QTPage() {
       )}
 
       {showPhotoPassageChoiceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_mode_photo_title", lang)}</h2>
@@ -781,7 +828,7 @@ export default function QTPage() {
       )}
 
       {showPassageChoiceModal && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_passage_choice_title", lang)}</h2>
@@ -803,7 +850,7 @@ export default function QTPage() {
       )}
 
       {showStartModal && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{t("qt_how_title", lang)}</h2>
@@ -867,7 +914,7 @@ export default function QTPage() {
       )}
 
       {showGuideModal && (
-        <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+        <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, border: "1px solid var(--qt-card-border)", overflow: "hidden" }}>
             <div style={{ background: "var(--qt-sage-surface)", padding: "18px 20px 14px", borderBottom: "1px solid var(--qt-sage-border-soft)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -912,7 +959,6 @@ export default function QTPage() {
         </div>
       )}
 
-      <BottomNav />
     </div>
   );
 }

@@ -36,6 +36,8 @@ type PrayerCardText = {
   emptyAnsweredIntercessionSub: string;
   bodyLabel: string;
   carouselLabel: string;
+  previousCard: string;
+  nextCard: string;
   cardLabel: (index: number, total: number) => string;
 };
 
@@ -76,6 +78,8 @@ const TEXT: Record<Lang, PrayerCardText> = {
     emptyAnsweredIntercessionSub: "중보하던 기도에 응답이 기록되면 여기에 표시돼요.",
     bodyLabel: "기도 내용",
     carouselLabel: "기도 카드",
+    previousCard: "이전 기도 카드",
+    nextCard: "다음 기도 카드",
     cardLabel: (index, total) => `${total}개의 기도 중 ${index}번째`,
   },
   de: {
@@ -114,6 +118,8 @@ const TEXT: Record<Lang, PrayerCardText> = {
     emptyAnsweredIntercessionSub: "Sobald ein Gebet aus deinen Fürbitten als erhört markiert wird, erscheint es hier.",
     bodyLabel: "Gebetsanliegen",
     carouselLabel: "Gebetskarten",
+    previousCard: "Vorherige Gebetskarte",
+    nextCard: "Nächste Gebetskarte",
     cardLabel: (index, total) => `Gebet ${index} von ${total}`,
   },
   en: {
@@ -152,6 +158,8 @@ const TEXT: Record<Lang, PrayerCardText> = {
     emptyAnsweredIntercessionSub: "Prayers from your intercessions will appear here when they are marked as answered.",
     bodyLabel: "Prayer request",
     carouselLabel: "Prayer cards",
+    previousCard: "Previous prayer card",
+    nextCard: "Next prayer card",
     cardLabel: (index, total) => `Prayer ${index} of ${total}`,
   },
   fr: {
@@ -190,6 +198,8 @@ const TEXT: Record<Lang, PrayerCardText> = {
     emptyAnsweredIntercessionSub: "Les prières de vos intercessions apparaîtront ici lorsqu’elles seront marquées comme exaucées.",
     bodyLabel: "Sujet de prière",
     carouselLabel: "Cartes de prière",
+    previousCard: "Carte de prière précédente",
+    nextCard: "Carte de prière suivante",
     cardLabel: (index, total) => `Prière ${index} sur ${total}`,
   },
   es: {
@@ -228,6 +238,8 @@ const TEXT: Record<Lang, PrayerCardText> = {
     emptyAnsweredIntercessionSub: "Las oraciones de tus intercesiones aparecerán aquí cuando se marquen como respondidas.",
     bodyLabel: "Petición de oración",
     carouselLabel: "Tarjetas de oración",
+    previousCard: "Tarjeta de oración anterior",
+    nextCard: "Tarjeta de oración siguiente",
     cardLabel: (index, total) => `Oración ${index} de ${total}`,
   },
 };

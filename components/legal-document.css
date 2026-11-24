@@ -1,0 +1,46 @@
+@media (min-width: 960px) {
+  html[data-roots-desktop-client]:has(.legal-document),
+  html[data-roots-desktop-client]:has(.legal-document) body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    background: var(--bg);
+    zoom: 1;
+  }
+
+  html[data-roots-desktop-client] .legal-document {
+    box-sizing: border-box;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    padding: clamp(20px, 5vh, 52px) clamp(24px, 4vw, 60px) 20px !important;
+  }
+
+  html[data-roots-desktop-client] .legal-document[data-profile-sidebar] {
+    margin-left: var(--desktop-nav-width);
+  }
+
+  html[data-roots-desktop-client] .legal-document-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  html[data-roots-desktop-client] .legal-document-column > button {
+    flex: none;
+    align-self: flex-start;
+  }
+
+  html[data-roots-desktop-client] .legal-document-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    overflow-wrap: anywhere;
+    padding: 2px 8px 24px 2px;
+  }
+
+  html[data-roots-desktop-client]:has(.legal-document) .nav-item.active {
+    background: var(--surface-sage-selected);
+  }
+}

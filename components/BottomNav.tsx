@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/useLang";
@@ -9,7 +9,7 @@ import { useCommentNotifications } from "@/components/notifications/CommentNotif
 import { getCommentNotificationText } from "@/lib/notifications/commentNotificationText";
 import { useBottomNavSession } from "@/components/BottomNavSessionProvider";
 
-function BottomNavContent({ lang }: { lang: Lang }) {
+function BottomNavContent({ lang, wideDesktop = false }: { lang: Lang; wideDesktop?: boolean }) {
   const path = usePathname();
   const { unread } = useCommentNotifications();
   const { markNavigationShown } = useBottomNavSession();
@@ -18,6 +18,25 @@ function BottomNavContent({ lang }: { lang: Lang }) {
     markNavigationShown();
   }, [markNavigationShown]);
 
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (!root.hasAttribute("data-roots-desktop-client")) return;
+    // Only routes with this navigation take part. The other main tabs keep
+    // their reading width while sharing the desktop sidebar.
+    const wide = wideDesktop || path === "/" || path === "/prayer" || path === "/community" || path === "/profile" || path === "/qt" || path.startsWith("/qt/");
+    root.dataset.rootsDesktop = wide ? "wide" : "compact";
+    return () => { delete root.dataset.rootsDesktop; };
+  }, [path, wideDesktop]);
+
+  return <NavLinks lang={lang} path={path} unread={unread} />;
+}
+
+export function NavLinks({ lang, path, unread = 0, desktopPlaceholder = false }: {
+  lang: Lang;
+  path: string;
+  unread?: number;
+  desktopPlaceholder?: boolean;
+}) {
   const NAV = [
     {
       href: "/", label: t("nav_home", lang),
@@ -42,7 +61,7 @@ function BottomNavContent({ lang }: { lang: Lang }) {
   ];
 
   return (
-    <nav className="bottom-nav">
+    <nav className={desktopPlaceholder ? "bottom-nav qt-desktop-nav-placeholder" : "bottom-nav"}>
       {NAV.map(({ href, icon, label }) => {
         const active = path === href || (href !== "/" && path.startsWith(href));
         return (
@@ -59,12 +78,12 @@ function BottomNavContent({ lang }: { lang: Lang }) {
   );
 }
 
-function LocalizedBottomNav() {
+function LocalizedBottomNav({ wideDesktop }: { wideDesktop?: boolean }) {
   const lang = useLang();
-  return <BottomNavContent lang={lang} />;
+  return <BottomNavContent lang={lang} wideDesktop={wideDesktop} />;
 }
 
 /** Reuse the page language when it is already loaded, including its auth sync. */
-export default function BottomNav({ lang }: { lang?: Lang }) {
-  return lang ? <BottomNavContent lang={lang} /> : <LocalizedBottomNav />;
+export default function BottomNav({ lang, wideDesktop }: { lang?: Lang; wideDesktop?: boolean }) {
+  return lang ? <BottomNavContent lang={lang} wideDesktop={wideDesktop} /> : <LocalizedBottomNav wideDesktop={wideDesktop} />;
 }

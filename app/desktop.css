@@ -1,0 +1,132 @@
+.bottom-nav.qt-desktop-nav-placeholder { display: none; }
+
+@media (min-width: 960px) {
+  html[data-roots-desktop],
+  html[data-roots-desktop-client] {
+    --desktop-nav-width: clamp(148px, 14vw, 196px);
+    --desktop-content-max: 1280px;
+  }
+
+  html[data-roots-desktop="wide"] {
+    width: 100%;
+    max-width: none;
+    background: var(--bg);
+  }
+
+  html[data-roots-desktop="wide"] body,
+  html[data-roots-desktop="wide"][data-native-ios-device="mac"] body {
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    margin: 0;
+    zoom: 1;
+  }
+
+  html[data-roots-desktop="wide"] .roots-desktop-page {
+    width: calc(100% - var(--desktop-nav-width));
+    max-width: var(--desktop-content-max);
+    margin-left: max(var(--desktop-nav-width), calc((100% + var(--desktop-nav-width) - var(--desktop-content-max)) / 2));
+    padding-bottom: 32px !important;
+  }
+
+  html[data-roots-desktop="wide"][data-native-ios-device="mac"] body > .roots-desktop-page,
+  html[data-roots-desktop="wide"][data-native-ios-device="mac"] .roots-native-tablet-viewport {
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+  }
+
+  html[data-roots-desktop="wide"][data-native-platform="ios"][data-native-ios-device="mac"] .roots-native-heart-shop-frame {
+    min-height: 100vh !important;
+    height: 100vh !important;
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+  }
+
+  html[data-roots-desktop-client] .bottom-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    left: 0;
+    top: 0 !important;
+    bottom: 0 !important;
+    transform: none;
+    width: var(--desktop-nav-width);
+    padding: max(24px, var(--safe-area-top)) 12px 20px;
+    overflow-y: auto;
+    border: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  /* Single-column routes in the installed Mac app still zoom their content. */
+  html[data-roots-desktop="compact"][data-native-ios-device="mac"] .bottom-nav {
+    zoom: 0.6666667;
+  }
+
+  html[data-roots-desktop-client] .bottom-nav .nav-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 12px;
+    min-height: 46px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  html[data-roots-desktop-client] .bottom-nav .nav-item svg { flex-shrink: 0; }
+  html[data-roots-desktop] .nav-item:hover { background: var(--bg3); }
+  html[data-roots-desktop] .nav-item.active { background: var(--surface-sage-selected); }
+  html[data-roots-desktop] .nav-item:focus-visible { outline: 2px solid var(--sage-dark); }
+}
+
+.roots-qt-shell,
+.roots-qt-desktop-content {
+  display: contents;
+}
+
+@media (min-width: 960px) {
+  /* Route changes can unmount a tab's navigation before its successor mounts. */
+  html[data-roots-desktop-client] {
+    background: var(--bg);
+  }
+
+  /* Covers a direct visit, before the sidebar's layout effect runs. */
+  html[data-roots-desktop-client]:has(.roots-qt-shell),
+  html[data-roots-desktop-client]:has(.roots-qt-shell) body {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    zoom: 1;
+  }
+
+  html[data-roots-desktop-client] .roots-qt-shell {
+    display: block;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg);
+  }
+
+  html[data-roots-desktop-client] .roots-qt-desktop-content {
+    display: block;
+    margin-left: var(--desktop-nav-width);
+    min-width: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    --qt-page-surface: var(--bg);
+  }
+
+  html[data-roots-desktop-client] .roots-qt-desktop-content[data-reading-page="true"] > * {
+    max-width: 800px;
+    margin-inline: auto;
+  }
+
+  html[data-roots-desktop-client] .roots-qt-desktop-content :is(.share-prompt-modal, .qt-content-backdrop) {
+    left: var(--desktop-nav-width) !important;
+  }
+
+  html[data-roots-desktop-client] .roots-qt-desktop-content .roots-elevation-toast {
+    left: calc(50% + var(--desktop-nav-width) / 2) !important;
+  }
+}

@@ -1,0 +1,64 @@
+@media (min-width: 960px) {
+  html[data-roots-desktop="wide"] .roots-desktop-home {
+    --desktop-content-max: 1010px;
+    --home-character-preview-width: clamp(101px, calc((100vw - var(--desktop-nav-width)) / 8), 127px);
+    --roots-page-top-padding: 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100dvh;
+    /* Match the desktop page's bottom padding. A short window can still scroll. */
+    padding-top: 32px;
+  }
+
+  html[data-roots-desktop="wide"] .roots-desktop-home .roots-home-columns {
+    display: grid;
+    /* At full width the 532px garden column has 16px on either side of the map. */
+    grid-template-columns: minmax(0, 532fr) minmax(0, 478fr);
+    align-items: start;
+  }
+
+  html[data-roots-desktop="wide"] .home-qt-choice-backdrop {
+    align-items: center !important;
+    padding-left: calc(var(--desktop-nav-width) + 16px) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  /* The backdrop still covers the window. Its padding centers the card between
+     the sidebar and the right edge, including on very wide displays. */
+  html[data-roots-desktop="wide"] .roots-desktop-home :is(.home-entry-popup > *, .home-received-gift-backdrop) {
+    box-sizing: border-box;
+    padding: 16px 20px 16px calc(var(--desktop-nav-width) + 20px) !important;
+  }
+
+  html[data-roots-desktop="wide"] .roots-desktop-home .home-entry-popup > * {
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Decorative layers (e.g. confetti) precede the foreground card. */
+  html[data-roots-desktop="wide"] .roots-desktop-home .home-entry-popup > :not(.roots-auth-phase2g) > :last-child {
+    max-height: 100%;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  /* Language selection has a standalone logo followed by the choices. Center
+     both as a group; auto margins shrink to zero when the window is short. */
+  html[data-roots-desktop="wide"] .roots-desktop-home .home-entry-popup > .roots-auth-phase2g {
+    justify-content: flex-start !important;
+  }
+
+  html[data-roots-desktop="wide"] .home-entry-popup > .roots-auth-phase2g > * {
+    flex-shrink: 0;
+  }
+
+  html[data-roots-desktop="wide"] .home-entry-popup > .roots-auth-phase2g > :first-child {
+    margin-top: auto;
+  }
+
+  html[data-roots-desktop="wide"] .home-entry-popup > .roots-auth-phase2g > :last-child {
+    margin-bottom: auto;
+  }
+}

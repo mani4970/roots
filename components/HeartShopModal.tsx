@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, PackageOpen, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, LockKeyhole, PackageOpen, RotateCcw, X } from "lucide-react";
 import HeartShopFriendSprite from "@/components/HeartShopFriendSprite";
 import HeartShopMapPreview from "@/components/HeartShopMapPreview";
 import HeartShopGiftDialog from "@/components/HeartShopGiftDialog";
 import HeartShopItemArt from "@/components/HeartShopItemArt";
 import { getGiftText } from "@/lib/heartShopGifts";
 import giftStyles from "./HeartShopGift.module.css";
+import styles from "./HeartShopModal.module.css";
+import { isDesktopLayout } from "@/lib/desktopLayout";
 import HeartShopToggleSwitch from "@/components/HeartShopToggleSwitch";
 import ProfileCharacterPreview from "@/components/ProfileCharacterPreview";
 import type { Lang } from "@/lib/i18n";
@@ -223,6 +225,7 @@ export default function HeartShopModal({
   const mapPreviewRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   const purchasingRef = useRef(false);
+  const backdropPress = useRef<HTMLElement | null>(null);
 
   useAndroidBackHandler(() => {
     if (!show) return false;
@@ -404,6 +407,31 @@ export default function HeartShopModal({
     }
     onCloseRef.current();
   }
+
+  // All shop dialogs share the history stack. Consume a backdrop click once,
+  // before it bubbles to the mobile handlers or the shop beneath the dialog.
+  function handleBackdropClick(event: React.MouseEvent<HTMLDivElement>) {
+    const pressed = backdropPress.current;
+    backdropPress.current = null;
+    if (!isDesktopLayout() || !(event.target instanceof HTMLElement)) return;
+    const layer = event.target.dataset.shopBackdrop;
+    if (!layer) return;
+    event.stopPropagation();
+    if (event.button !== 0 || (pressed !== event.target && event.detail !== 0)) return;
+    const stack = historyStackRef.current;
+    if (stack[stack.length - 1] === layer && !purchasingRef.current) closeTopLayer();
+  }
+
+  useEffect(() => {
+    if (!show) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented || event.repeat || event.isComposing || !isDesktopLayout()) return;
+      event.preventDefault();
+      if (!purchasingRef.current) closeTopLayer();
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [show]);
 
   function openPreview(itemId: HeartShopItemId) {
     pushHistory("preview");
@@ -1175,6 +1203,16 @@ export default function HeartShopModal({
       role="dialog"
       aria-modal="true"
       aria-label={text.title}
+      data-shop-backdrop="shop"
+      onPointerDownCapture={event => {
+        backdropPress.current = event.isPrimary && event.button === 0 && event.target instanceof HTMLElement && event.target.hasAttribute("data-shop-backdrop")
+          ? event.target : null;
+      }}
+      onPointerUpCapture={event => {
+        if (backdropPress.current !== event.target) backdropPress.current = null;
+      }}
+      onPointerCancelCapture={() => { backdropPress.current = null; }}
+      onClickCapture={handleBackdropClick}
       style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", justifyContent: "center", background: "rgba(24,25,27,.28)", overflow: "hidden", overscrollBehavior: "contain" }}
     >
       {notice && (
@@ -1184,12 +1222,13 @@ export default function HeartShopModal({
       )}
 
       <div className="roots-native-heart-shop-frame" style={{ minHeight: "100dvh", height: "100dvh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", overscrollBehavior: "contain", background: "radial-gradient(circle at 90% 4%, rgba(232,197,71,.14), transparent 25%), linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)" }}>
-        <header style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", gridTemplateColumns: "44px 1fr auto", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "var(--heart-shop-header-surface)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
-          <button type="button" onClick={closeTopLayer} aria-label={text.closeLabel} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            <ArrowLeft size={19} />
+        <header className={styles.header} style={{ position: "relative", zIndex: 10, flexShrink: 0, display: "grid", alignItems: "center", gap: 8, padding: "calc(10px + env(safe-area-inset-top)) 16px 11px", background: "var(--heart-shop-header-surface)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(122,157,122,.15)" }}>
+          <button className={styles.close} type="button" onClick={closeTopLayer} aria-label={text.closeLabel} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--bg2)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <ArrowLeft className={styles.backIcon} size={19} aria-hidden="true" />
+            <X className={styles.closeIcon} size={19} aria-hidden="true" />
           </button>
-          <h2 style={{ margin: 0, fontSize: 19, fontWeight: 950, color: "var(--text)", textAlign: "center" }}>{text.title}</h2>
-          <div aria-label={`${text.balanceLabel} ${localBalance}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "var(--heart-shop-balance-surface)", color: "var(--heart-shop-balance-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
+          <h2 className={styles.title} style={{ margin: 0, fontSize: 19, fontWeight: 950, color: "var(--text)", textAlign: "center" }}>{text.title}</h2>
+          <div className={styles.balance} aria-label={`${text.balanceLabel} ${localBalance}`} style={{ minWidth: 72, height: 38, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(232,197,71,.36)", background: "var(--heart-shop-balance-surface)", color: "var(--heart-shop-balance-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 13, fontWeight: 950, whiteSpace: "nowrap" }}>
             <span aria-hidden="true">💛</span><span>{localBalance}</span>
           </div>
         </header>
@@ -1860,7 +1899,7 @@ export default function HeartShopModal({
       </div>
 
       {previewItem && (
-        <div role="presentation" onClick={closeTopLayer} style={{ position: "fixed", inset: 0, zIndex: 538, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
+        <div role="presentation" data-shop-backdrop="preview" onClick={closeTopLayer} style={{ position: "fixed", inset: 0, zIndex: 538, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
           <div role="dialog" aria-modal="true" aria-label={`${isHeartShopMapCatalogItem(previewItem) ? getMapPreviewTitle(previewItem.id) : text.characterPreviewTitle}: ${getItemName(previewItem)}`} onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "calc(100dvh - 44px)", overflowY: "auto", borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(122,157,122,.28)", boxShadow: "0 24px 70px rgba(0,0,0,.3)", padding: "20px 18px 18px", textAlign: "center" }}>
             <div style={{ display: "inline-flex", borderRadius: 999, background: "rgba(122,157,122,.12)", color: "var(--sage-dark)", padding: "5px 9px", fontSize: 10, fontWeight: 900, marginBottom: 8 }}>{isHeartShopMapCatalogItem(previewItem) ? getMapPreviewTitle(previewItem.id) : text.characterPreviewTitle}</div>
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(previewItem) ? 248 : 180, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>{renderDialogVisual(previewItem)}</div>
@@ -1886,7 +1925,7 @@ export default function HeartShopModal({
       )}
 
       {selectedItem && (
-        <div role="presentation" onClick={() => { if (!purchasing) closeTopLayer(); }} style={{ position: "fixed", inset: 0, zIndex: 540, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
+        <div role="presentation" data-shop-backdrop="purchase" onClick={() => { if (!purchasing) closeTopLayer(); }} style={{ position: "fixed", inset: 0, zIndex: 540, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
           <div role="dialog" aria-modal="true" aria-label={isHeartShopMapCatalogItem(selectedItem) ? text.items[selectedItem.id].purchaseTitle : text.characterPurchaseTitle} onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "calc(100dvh - 44px)", overflowY: "auto", borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(232,197,71,.3)", boxShadow: "0 24px 70px rgba(0,0,0,.3)", padding: "22px 18px 18px", textAlign: "center" }}>
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(selectedItem) ? 210 : 170, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>{renderPurchaseDialogVisual(selectedItem)}</div>
             <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: 20, lineHeight: 1.45, fontWeight: 950 }}>{isHeartShopMapCatalogItem(selectedItem) ? text.items[selectedItem.id].purchaseTitle : text.characterPurchaseTitle}</h3>
@@ -1903,7 +1942,7 @@ export default function HeartShopModal({
       )}
 
       {completedItem && (
-        <div role="presentation" style={{ position: "fixed", inset: 0, zIndex: 545, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
+        <div role="presentation" data-shop-backdrop="complete" style={{ position: "fixed", inset: 0, zIndex: 545, display: "flex", alignItems: "center", justifyContent: "center", padding: 22, background: "rgba(28,29,30,.58)", backdropFilter: "blur(5px)" }}>
           <div role="dialog" aria-modal="true" aria-label={isHeartShopMapCatalogItem(completedItem) ? text.items[completedItem.id].completeTitle : text.characterCompleteTitle} style={{ width: "100%", maxWidth: 360, maxHeight: "calc(100dvh - 44px)", overflowY: "auto", borderRadius: 28, background: "var(--bg2)", border: "1px solid rgba(232,197,71,.34)", boxShadow: "0 24px 70px rgba(0,0,0,.3)", padding: "22px 18px 18px", textAlign: "center" }}>
             <div style={{ width: 58, height: 58, borderRadius: "50%", margin: "0 auto 6px", background: "rgba(122,157,122,.14)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--sage-dark)" }}><CheckCircle2 size={31} /></div>
             <div style={{ minHeight: isHeartShopCharacterCatalogItem(completedItem) ? 248 : 165, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>{renderDialogVisual(completedItem)}</div>

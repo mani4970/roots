@@ -184,6 +184,7 @@ export default function PrivacyPage() {
 
   return (
     <LegalDocumentPage
+      lang={lang}
       backLabel={copy.back}
       title={copy.title}
       subtitle={copy.subtitle}

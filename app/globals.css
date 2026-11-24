@@ -728,7 +728,8 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   /* Most routes use either the shared page class or an inline 100vh root. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > .page,
   html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100vh"],
-  html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100dvh"] {
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] body > [style*="min-height:100dvh"],
+  html[data-native-platform="ios"][data-native-form-factor="tablet"] .roots-qt-desktop-content > :is(.page, [style*="min-height:100vh"], [style*="min-height:100dvh"]) {
     min-height: 66.6667vh !important;
     min-height: 66.6667dvh !important;
   }

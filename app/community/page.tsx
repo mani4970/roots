@@ -2,6 +2,7 @@
 import {
   Suspense,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -10,6 +11,7 @@ import {
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import "./desktop-community.css";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
 import PrayerExperience from "@/components/PrayerExperience";
 import PrayerAddedFeedback, { type PrayerAddedEntry } from "@/components/PrayerAddedFeedback";
@@ -936,13 +938,22 @@ const SECTIONS: {
   { key: "closing_prayer", labelKey: "community_qt_section_closing_prayer" },
 ];
 
-type CommunityModalHistoryKind = "qt-detail" | "photo-viewer" | "prayer-added" | "prayer-answer";
+type CommunityModalHistoryKind = "qt-detail" | "qt-over-feed" | "photo-viewer" | "prayer-added" | "prayer-answer";
 type CommunityMainTab = "partner" | "group" | "all";
 type CommunityMainLoadState = "idle" | "loading" | "ready" | "error";
 
 function CommunityPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isDesktopSplit, setDesktopSplit] = useState(false);
+  useLayoutEffect(() => {
+    if (!document.documentElement.hasAttribute("data-roots-desktop-client")) return;
+    const width = window.matchMedia("(min-width: 960px)");
+    const update = () => setDesktopSplit(width.matches);
+    update();
+    width.addEventListener("change", update);
+    return () => width.removeEventListener("change", update);
+  }, []);
   const [tab, setTab] = useState<CommunityMainTab>(() => {
     const initialTab = searchParams.get("tab");
     if (initialTab === "group" || initialTab === "all") return initialTab;
@@ -1117,6 +1128,9 @@ function CommunityPageContent() {
     string[]
   >([]);
   const [detailQt, setDetailQt] = useState<any | null>(null);
+  const [qtFromAllList, setQtFromAllList] = useState(false);
+  const priorFeedQtId = useRef<string | null>(null);
+  const isInlineQt = isDesktopSplit && tab === "all" && qtFromAllList && !!detailQt;
   const [qtDetailTextSizeIndex, setQtDetailTextSizeIndex] = useState(0);
   const [qtDetailContext, setQtDetailContext] = useState<QtCommentContext>({ scope: "all", scopeId: null });
   const [commentInboxOpen, setCommentInboxOpen] = useState(false);
@@ -1198,7 +1212,7 @@ function CommunityPageContent() {
   const communitySwipeRef = useCommunitySwipeNavigation({
     viewKey: swipeViewKey,
     blocked: Boolean(
-      notificationDirectOpenPending || commentInboxOpen || commentNotificationStatus
+      isDesktopSplit || notificationDirectOpenPending || commentInboxOpen || commentNotificationStatus
       || photoViewer || badgePopup || prayerAdded || prayerJoinError || answerPrayerId
       || safetyConfirm || actionMenu || manageModal || profileModal || detailQt
       || showDeleteGroupConfirm || memberRemovalTarget || showLeadershipTransfer
@@ -1732,6 +1746,13 @@ function CommunityPageContent() {
 
   function selectCommunityMainTab(nextTab: CommunityMainTab) {
     if (nextTab === tab) return;
+    const leavingDetail = isDesktopSplit && !!(selectedGroup || selectedPartner || isInlineQt);
+    if (leavingDetail) {
+      clearCommunityDetailHistory();
+      if (selectedGroup) resetGroupDetailState();
+      else if (selectedPartner) resetPartnerDetailState();
+      else resetQtDetailState();
+    }
     // Mark an unseen/failed destination as loading before React paints it.
     // Each main tab owns its loading state, so a late partner request can never
     // turn off the group loader (or vice versa).
@@ -1747,11 +1768,15 @@ function CommunityPageContent() {
           window.history.state && typeof window.history.state === "object"
             ? window.history.state
             : {};
-        window.history.pushState(
-          { ...currentState, rootsCommunityTab: nextTab },
-          "",
-          window.location.href,
-        );
+        const state = { ...currentState, rootsCommunityTab: nextTab };
+        if (leavingDetail) {
+          // Reuse the open detail entry. Back returns directly to its original list.
+          delete state.rootsCommunityDetail;
+          delete state.rootsCommunityModal;
+          window.history.replaceState(state, "", window.location.href);
+        } else {
+          window.history.pushState(state, "", window.location.href);
+        }
       } catch {
         // The visual tab still changes if a browser refuses history mutation.
       }
@@ -1888,14 +1913,28 @@ function CommunityPageContent() {
     );
   }
 
-  function openQtDetail(record: any, context: QtCommentContext) {
+  function openAllFeedQt(record: any) {
+    if (isInlineQt && detailQt.id === record.id) return;
+    setCommentNotificationFocus(null);
+    openQtDetail(record, { scope: "all", scopeId: null }, true);
+  }
+
+  function openQtDetail(record: any, context: QtCommentContext, fromAllList = false) {
+    setQtFromAllList(fromAllList);
     setActionMenu(null);
     setQtDetailContext(context);
-    pushCommunityModalHistory("qt-detail");
+    if (!fromAllList && isInlineQt) {
+      priorFeedQtId.current = detailQt.id;
+      pushCommunityModalHistory("qt-over-feed");
+    } else {
+      pushCommunityModalHistory("qt-detail");
+    }
     setDetailQt(record);
   }
 
   function resetQtDetailState() {
+    priorFeedQtId.current = null;
+    clearCommunityModalHistory("qt-over-feed");
     setCommentNotificationFocus(null);
     clearCommunityModalHistory("qt-detail");
     setDetailQt(null);
@@ -1904,7 +1943,7 @@ function CommunityPageContent() {
   function closeQtDetail() {
     const stack = communityModalHistoryStackRef.current;
     if (
-      stack[stack.length - 1] === "qt-detail" &&
+      (stack[stack.length - 1] === "qt-detail" || stack[stack.length - 1] === "qt-over-feed") &&
       typeof window !== "undefined"
     ) {
       window.history.back();
@@ -1954,6 +1993,15 @@ function CommunityPageContent() {
         setPhotoViewer(null);
         return;
       }
+      if (activeModal === "qt-over-feed") {
+        const previous = qtShares.find(row => row.id === priorFeedQtId.current);
+        priorFeedQtId.current = null;
+        setCommentNotificationFocus(null);
+        setQtDetailContext({ scope: "all", scopeId: null });
+        setQtFromAllList(true);
+        setDetailQt(previous ?? null);
+        return;
+      }
       if (activeModal === "qt-detail") {
         setCommentNotificationFocus(null);
         setDetailQt(null);
@@ -1981,7 +2029,7 @@ function CommunityPageContent() {
     window.addEventListener("popstate", handleCommunityPopState);
     return () =>
       window.removeEventListener("popstate", handleCommunityPopState);
-  }, []);
+  }, [qtShares]);
 
   function contentKey(kind: "qt" | "prayer", id: string) {
     return `${kind}:${id}`;
@@ -2940,7 +2988,7 @@ function CommunityPageContent() {
           );
           if (
             detailQt?.id === manageModal.item.id &&
-            nextVisibility === "private"
+            (nextVisibility === "private" || (isInlineQt && target === "all"))
           )
             resetQtDetailState();
         } else {
@@ -4150,7 +4198,7 @@ function CommunityPageContent() {
       }
       if (focus.record.photo_path) void loadQtPhotoUrls(supabase, [focus.record]);
       setCommentNotificationFocus(focus);
-      if (detailQt?.id === focus.record.id) {
+      if (!isInlineQt && detailQt?.id === focus.record.id) {
         setQtDetailContext(focus.context ?? { scope: "all", scopeId: null });
         setDetailQt(focus.record);
       } else openQtDetail(focus.record, focus.context ?? { scope: "all", scopeId: null });
@@ -4321,6 +4369,10 @@ function CommunityPageContent() {
     directTarget?: CommunityNotificationDirectTarget,
     options?: { skipHistory?: boolean },
   ) {
+    if (isDesktopSplit && selectedPartner) {
+      if (selectedPartner.partner_id !== partner.partner_id) resetPartnerDetailState();
+      else if (!preferredSection && !directTarget && !options?.skipHistory) return;
+    }
     const requestId = ++communityDetailRequestSeqRef.current;
     const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
     if (!options?.skipHistory) pushCommunityDetailHistory("partner");
@@ -4649,6 +4701,8 @@ function CommunityPageContent() {
   }
 
   async function loadGroupMemberProfiles(group: any) {
+    const requestId = communityDetailRequestSeqRef.current;
+    const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
     setLoadingGroupMembers(true);
     setGroupMembersLoadError(false);
     const supabase = createClient();
@@ -4659,6 +4713,7 @@ function CommunityPageContent() {
         .eq("group_id", group.id);
 
       if (error) throw error;
+      if (!isCurrent()) return [];
       const memberIds = Array.from(
         new Set((rows ?? []).map((row: any) => row.user_id).filter(Boolean)),
       );
@@ -4670,6 +4725,7 @@ function CommunityPageContent() {
       const profileMap = mapProfileCards(
         await loadProfileCards(supabase, memberIds),
       );
+      if (!isCurrent()) return [];
       const profiles = memberIds
         .map((id: string): GroupMemberProfile => {
           const profile = profileMap[id] ?? {
@@ -4707,10 +4763,10 @@ function CommunityPageContent() {
       return profiles;
     } catch (error) {
       console.warn("그룹 참여자 조회 실패:", error);
-      setGroupMembersLoadError(true);
+      if (isCurrent()) setGroupMembersLoadError(true);
       return [] as GroupMemberProfile[];
     } finally {
-      setLoadingGroupMembers(false);
+      if (isCurrent()) setLoadingGroupMembers(false);
     }
   }
 
@@ -5172,6 +5228,10 @@ function CommunityPageContent() {
     directTarget?: CommunityNotificationDirectTarget,
     options?: { skipHistory?: boolean },
   ) {
+    if (isDesktopSplit && selectedGroup) {
+      if (selectedGroup.id !== group.id) resetGroupDetailState();
+      else if (!preferredSection && !directTarget && !options?.skipHistory) return;
+    }
     const requestId = ++communityDetailRequestSeqRef.current;
     const isCurrent = () => communityDetailRequestSeqRef.current === requestId;
     if (!options?.skipHistory) pushCommunityDetailHistory("group");
@@ -5814,9 +5874,7 @@ function CommunityPageContent() {
         ),
       ),
     );
-    if (joinedSelectedGroup) setSelectedGroup(joinedSelectedGroup);
-
-    if (joinedSelectedGroup) {
+    if (joinedSelectedGroup && communityPrayerContextRef.current.groupId === groupId) {
       try {
         await loadGroupDetail(
           joinedSelectedGroup,
@@ -5869,8 +5927,9 @@ function CommunityPageContent() {
           ),
         ),
       );
-      if (selectedGroup?.id === group.id)
-        setSelectedGroup((g: any) => ({ ...g, isFavorite: value }));
+      setSelectedGroup((current: any) =>
+        current?.id === group.id ? { ...current, isFavorite: value } : current,
+      );
     };
 
     setFavoriteSavingIds((prev) =>
@@ -5936,11 +5995,9 @@ function CommunityPageContent() {
           ),
         ),
       );
-      if (selectedPartner?.partner_id === partnerId)
-        setSelectedPartner((current: any) => ({
-          ...current,
-          isFavorite: value,
-        }));
+      setSelectedPartner((current: any) =>
+        current?.partner_id === partnerId ? { ...current, isFavorite: value } : current,
+      );
     };
 
     setPartnerFavoriteSavingIds((prev) =>
@@ -6338,8 +6395,8 @@ function CommunityPageContent() {
     );
   }
 
-  // Keep a stable modal DOM while reactions and comments update below the text.
-  function renderQTDetailModal(r: any, onClose: () => void) {
+  // Reuse the same reader and comment thread in the desktop pane and the dialog.
+  function renderQTDetailModal(r: any, onClose: () => void, inline = false) {
     // Sunday reading ends with the sermon summary, matching My Reflections and copy-all.
     const sectionOrder = r.qt_mode === "sunday"
       ? [...SECTIONS.filter(({ key }) => key !== "summary"), ...SECTIONS.filter(({ key }) => key === "summary")]
@@ -6365,21 +6422,23 @@ function CommunityPageContent() {
         ref={qtDetailScrollRef}
         data-qt-detail={r.id}
         data-qt-dismiss-blocked={Boolean(profileModal || photoViewer || actionMenu || safetyConfirm || manageModal) || undefined}
-        role="dialog"
-        aria-modal="true"
+        role={inline ? "article" : "dialog"}
+        aria-modal={inline ? undefined : true}
         aria-label={c("qt_title")}
         style={{
-          position: "fixed", top: "var(--qt-modal-viewport-top, 0px)", left: 0, right: 0,
-          bottom: "var(--qt-modal-viewport-bottom, calc(-1 * var(--native-bottom-system-bar)))",
-          height: "var(--qt-modal-viewport-height, auto)",
-          background: "var(--qt-modal-viewport-background, var(--community-detail-overlay))", zIndex: 100,
-          overflowY: "auto", overscrollBehavior: "contain",
+          ...(inline ? {} : {
+            position: "fixed", top: "var(--qt-modal-viewport-top, 0px)", left: 0, right: 0,
+            bottom: "var(--qt-modal-viewport-bottom, calc(-1 * var(--native-bottom-system-bar)))",
+            height: "var(--qt-modal-viewport-height, auto)",
+            background: "var(--qt-modal-viewport-background, var(--community-detail-overlay))", zIndex: 100,
+            overflowY: "auto", overscrollBehavior: "contain",
+          }),
           "--qt-reading-size": `${QT_DETAIL_TEXT_SIZES[qtDetailTextSizeIndex]}px`,
         } as CSSProperties}
-        {...qtDetailOutsideDismiss}
+        {...(inline ? {} : qtDetailOutsideDismiss)}
       >
-        <QtDetailViewport rootRef={qtDetailScrollRef} />
-        <div data-qt-detail-outside style={{
+        {!inline && <QtDetailViewport rootRef={qtDetailScrollRef} />}
+        <div data-qt-detail-outside={!inline || undefined} style={inline ? undefined : {
           minHeight: "var(--qt-modal-viewport-height, calc(100dvh + var(--native-bottom-system-bar)))",
           display: "flex", alignItems: "flex-start", justifyContent: "center",
           padding: "calc(20px + var(--safe-area-top)) 16px calc(40px + var(--native-bottom-system-bar))",
@@ -6387,7 +6446,8 @@ function CommunityPageContent() {
           <div style={{
             background: "var(--community-modal-surface)", borderRadius: 24,
             border: "1px solid var(--community-card-border)", width: "100%",
-            maxWidth: 520, padding: "16px 20px 24px", boxShadow: "var(--shadow-modal)",
+            maxWidth: inline ? undefined : 520, padding: "16px 20px 24px",
+            boxShadow: inline ? undefined : "var(--shadow-modal)",
           }}>
             <div style={{
               position: "sticky", top: 0, zIndex: 2,
@@ -7068,6 +7128,7 @@ function CommunityPageContent() {
     return (
       <div>
         <PrayerCardDeck key={`${scope}-${scopeId}`} items={items} lang={lang} activeId={directPrayerTargetId}
+          className={isDesktopSplit ? "community-prayer-deck" : undefined} showNavigation={isDesktopSplit}
           ariaLabel={c("community_prayer_tab_praying")} communitySwipeEdges={hasMore ? "start" : "both"} />
       </div>
     );
@@ -7198,10 +7259,10 @@ function CommunityPageContent() {
     );
   }
 
-  const TABS: { id: typeof tab; label: string }[] = [
-    { id: "partner", label: c("community_tab_partner") },
-    { id: "group", label: c("community_tab_group") },
-    { id: "all", label: c("community_tab_all") },
+  const TABS: { id: CommunityMainTab; label: string; prompt: TKey }[] = [
+    { id: "partner", label: c("community_tab_partner"), prompt: "community_select_partner" },
+    { id: "group", label: c("community_tab_group"), prompt: "community_select_group" },
+    { id: "all", label: c("community_tab_all"), prompt: "community_select_shared_qt" },
   ];
   const groupPrayingPrayers = groupPrayers.filter((p: any) => !p.is_answered);
   const groupAnsweredPrayers = groupPrayers.filter((p: any) => !!p.is_answered);
@@ -7209,6 +7270,73 @@ function CommunityPageContent() {
     groupDetailTab === "answered" ? groupAnsweredPrayers : groupPrayingPrayers;
   const allQtFeedKey = "all-qt";
   const visibleAllQts = visibleFeedItems(allQtFeedKey, qtShares);
+
+  function renderDetailTabs(scope: "partner" | "group") {
+    const group = scope === "group";
+    const currentTab = group ? groupDetailTab : partnerDetailTab;
+    const selectSection = group ? selectGroupSection : selectPartnerSection;
+    const hasUnread = group ? hasUnreadGroupSection : hasUnreadPartnerSection;
+    return (
+      <div
+        className={isDesktopSplit ? "community-split-detail-tabs" : undefined}
+        style={group && !isDesktopSplit ? { display: "flex", marginBottom: 12 } : { display: "flex" }}
+      >
+        {[
+          { key: "qt" as const, label: c("community_group_tab_qt") },
+          {
+            key: "praying" as const,
+            label: c("community_prayer_tab_praying"),
+          },
+          {
+            key: "answered" as const,
+            label: c("community_prayer_tab_answered"),
+          },
+        ].map(({ key, label }) => {
+          const active = currentTab === key;
+          return (
+            <button
+              key={key}
+              data-community-swipe-tab
+              id={isDesktopSplit ? `community-detail-tab-${key}` : undefined}
+              aria-pressed={isDesktopSplit ? active : undefined}
+              onClick={() => selectSection(key)}
+              style={{
+                flex: 1,
+                padding: "8px 0 10px",
+                background: "none",
+                border: "none",
+                borderBottom: active
+                  ? "2px solid var(--sage)"
+                  : "2px solid transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 400,
+                  color: active ? "var(--sage-dark)" : "var(--text3)",
+                  whiteSpace: key === "qt" ? "nowrap" : undefined,
+                }}
+              >
+                {label}
+              </span>
+              <SectionUnreadDot
+                show={!active && hasUnread(key)}
+              />
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  let detailPage: ReactNode = null;
+  let groupDialogs: ReactNode = null;
 
   if (selectedPartner) {
     const partnerProfile = selectedPartner.profile ?? {};
@@ -7255,13 +7383,11 @@ function CommunityPageContent() {
               path: "/prayer",
             };
 
-    return (
-      <div ref={communitySwipeRef} className="page roots-community-phase2d">
-        {renderLoveHeartToast()}
-        {renderReflectionNudgeToast()}
-      {renderCommentNotificationUi()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
+    const detailTabs = renderDetailTabs("partner");
+    detailPage = (
+      <>
         <div
+          className={isDesktopSplit ? "community-split-detail-heading" : undefined}
           style={{
             background: "var(--bg)",
             padding: "var(--roots-page-top-padding) 20px 8px",
@@ -7355,7 +7481,13 @@ function CommunityPageContent() {
           </div>
         </div>
 
+        {isDesktopSplit && detailTabs}
         <div
+          key={isDesktopSplit ? partnerDetailTab : undefined}
+          className={isDesktopSplit ? "community-split-detail-content" : undefined}
+          role={isDesktopSplit ? "region" : undefined}
+          aria-labelledby={isDesktopSplit ? `community-detail-tab-${partnerDetailTab}` : undefined}
+          tabIndex={isDesktopSplit ? 0 : undefined}
           style={{
             padding: "4px 16px 96px",
             display: "flex",
@@ -7363,56 +7495,7 @@ function CommunityPageContent() {
             gap: 12,
           }}
         >
-          <div style={{ display: "flex" }}>
-            {[
-              { key: "qt" as const, label: c("community_group_tab_qt") },
-              {
-                key: "praying" as const,
-                label: c("community_prayer_tab_praying"),
-              },
-              {
-                key: "answered" as const,
-                label: c("community_prayer_tab_answered"),
-              },
-            ].map(({ key, label }) => {
-              const active = partnerDetailTab === key;
-              return (
-                <button
-                  key={key}
-                  data-community-swipe-tab
-                  onClick={() => selectPartnerSection(key)}
-                  style={{
-                    flex: 1,
-                    padding: "8px 0 10px",
-                    background: "none",
-                    border: "none",
-                    borderBottom: active
-                      ? "2px solid var(--sage)"
-                      : "2px solid transparent",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: active ? 700 : 400,
-                      color: active ? "var(--sage-dark)" : "var(--text3)",
-                      whiteSpace: key === "qt" ? "nowrap" : undefined,
-                    }}
-                  >
-                    {label}
-                  </span>
-                  <SectionUnreadDot
-                    show={!active && hasUnreadPartnerSection(key)}
-                  />
-                </button>
-              );
-            })}
-          </div>
+          {!isDesktopSplit && detailTabs}
 
           <CommunityChallengeBoundary viewKey={`partner-${selectedPartner.partner_id}`} present={loadingCompanionChallenge || !!companionChallengeStatus}>
             {renderCompanionChallengeCard()}
@@ -7898,14 +7981,9 @@ function CommunityPageContent() {
           )}
         </div>
 
-        {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
-        {renderSharedOverlayModals()}
-        <BottomNav lang={lang} />
-      </div>
+      </>
     );
-  }
-
-  if (selectedGroup) {
+  } else if (selectedGroup) {
     const groupQtFeedKey = `group-${selectedGroup.id}-qt`;
     const groupPrayerFeedKey = `group-${selectedGroup.id}-${groupDetailTab}`;
     const viewerIsGroupLeader = isGroupLeader(selectedGroup);
@@ -7920,13 +7998,11 @@ function CommunityPageContent() {
       groupPrayerFeedKey,
       groupPrayersForCurrentTab,
     );
-    return (
-      <div ref={communitySwipeRef} className="page roots-community-phase2d">
-        {renderLoveHeartToast()}
-        {renderReflectionNudgeToast()}
-      {renderCommentNotificationUi()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
+    const detailTabs = renderDetailTabs("group");
+    detailPage = (
+      <>
         <div
+          className={isDesktopSplit ? "community-split-detail-heading" : undefined}
           style={{
             background: "var(--bg)",
             padding: "var(--roots-page-top-padding) 20px 8px",
@@ -7958,6 +8034,7 @@ function CommunityPageContent() {
             }}
           >
             <h1
+              className={isDesktopSplit ? "community-split-group-title" : undefined}
               style={{
                 fontSize: 22,
                 fontWeight: 700,
@@ -8175,7 +8252,8 @@ function CommunityPageContent() {
           >
             <div style={{ minWidth: 0 }}>
               {selectedGroup.description && (
-                <p style={{ fontSize: 13, color: "var(--text3)" }}>
+                <p className={isDesktopSplit ? "community-split-group-description" : undefined}
+                  style={{ fontSize: 13, color: "var(--text3)" }}>
                   {selectedGroup.description}
                 </p>
               )}
@@ -8311,7 +8389,13 @@ function CommunityPageContent() {
           </div>
         </div>
 
+        {isDesktopSplit && detailTabs}
         <div
+          key={isDesktopSplit ? groupDetailTab : undefined}
+          className={isDesktopSplit ? "community-split-detail-content" : undefined}
+          role={isDesktopSplit ? "region" : undefined}
+          aria-labelledby={isDesktopSplit ? `community-detail-tab-${groupDetailTab}` : undefined}
+          tabIndex={isDesktopSplit ? 0 : undefined}
           style={{
             padding: "4px 16px 0",
             display: "flex",
@@ -8711,56 +8795,7 @@ function CommunityPageContent() {
           )}
 
           <div style={{ marginTop: selectedGroup.isMember ? 2 : 0 }}>
-            <div style={{ display: "flex", marginBottom: 12 }}>
-              {[
-                { key: "qt" as const, label: c("community_group_tab_qt") },
-                {
-                  key: "praying" as const,
-                  label: c("community_prayer_tab_praying"),
-                },
-                {
-                  key: "answered" as const,
-                  label: c("community_prayer_tab_answered"),
-                },
-              ].map(({ key, label }) => {
-                const active = groupDetailTab === key;
-                return (
-                  <button
-                    key={key}
-                    data-community-swipe-tab
-                    onClick={() => selectGroupSection(key)}
-                    style={{
-                      flex: 1,
-                      padding: "8px 0 10px",
-                      background: "none",
-                      border: "none",
-                      borderBottom: active
-                        ? "2px solid var(--sage)"
-                        : "2px solid transparent",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: active ? 700 : 400,
-                        color: active ? "var(--sage-dark)" : "var(--text3)",
-                        whiteSpace: key === "qt" ? "nowrap" : undefined,
-                      }}
-                    >
-                      {label}
-                    </span>
-                    <SectionUnreadDot
-                      show={!active && hasUnreadGroupSection(key)}
-                    />
-                  </button>
-                );
-              })}
-            </div>
+            {!isDesktopSplit && detailTabs}
 
             {!selectedGroup.isMember ? (
               <div
@@ -9187,7 +9222,10 @@ function CommunityPageContent() {
             )}
           </div>
         </div>
-        {renderSharedOverlayModals()}
+      </>
+    );
+    groupDialogs = (
+      <>
         {showGroupMembers && selectedGroup && (
           <div
             onClick={() => setShowGroupMembers(false)}
@@ -10103,78 +10141,67 @@ function CommunityPageContent() {
             </div>
           </GroupManagementModal>
         )}
-        {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
-        <BottomNav lang={lang} />
-      </div>
+      </>
     );
   }
 
-  return (
-    <div ref={communitySwipeRef} className="page roots-community-phase2d">
-      {renderLoveHeartToast()}
-      {renderReflectionNudgeToast()}
-      {renderCommentNotificationUi()}
-      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
-      <div
-        style={{
-          background: "var(--bg)",
-          padding: "var(--roots-page-top-padding) 20px 0",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: 4,
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>
-              {c("community_title")}
-            </h1>
-            <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>
-              {c("community_subtitle")}
-            </p>
-          </div>
-          <CommentNotificationBell lang={lang} onClick={() => setCommentInboxOpen(true)} />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid var(--border)",
-            marginTop: 12,
-          }}
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              data-community-swipe-tab
-              onClick={() => selectCommunityMainTab(t.id)}
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                background: "none",
-                border: "none",
-                borderBottom:
-                  tab === t.id
-                    ? "2px solid var(--sage)"
-                    : "2px solid transparent",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: tab === t.id ? 700 : 400,
-                color: tab === t.id ? "var(--sage-dark)" : "var(--text3)",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+  const listHeading = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 4,
+      }}
+    >
+      <div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>
+          {c("community_title")}
+        </h1>
+        <p style={{ color: "var(--text3)", fontSize: 12, marginTop: 2 }}>
+          {c("community_subtitle")}
+        </p>
       </div>
+      <CommentNotificationBell lang={lang} onClick={() => setCommentInboxOpen(true)} />
+    </div>
+  );
+  const listTabs = (
+    <div
+      className={isDesktopSplit ? "community-split-tabs" : undefined}
+      style={isDesktopSplit ? undefined : {
+        display: "flex",
+        borderBottom: "1px solid var(--border)",
+        marginTop: 12,
+      }}
+    >
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          data-community-swipe-tab
+          onClick={() => selectCommunityMainTab(t.id)}
+          style={{
+            flex: 1,
+            padding: "10px 0",
+            background: "none",
+            border: "none",
+            borderBottom:
+              tab === t.id
+                ? "2px solid var(--sage)"
+                : "2px solid transparent",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: tab === t.id ? 700 : 400,
+            color: tab === t.id ? "var(--sage-dark)" : "var(--text3)",
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
 
-      <div style={{ padding: "16px 16px 0" }}>
-        {loading ? (
+  function renderList() {
+    return loading ? (
           <div
             style={{ display: "flex", justifyContent: "center", padding: 40 }}
           >
@@ -10286,6 +10313,8 @@ function CommunityPageContent() {
                   return (
                     <div
                       key={partner.id}
+                      data-community-selected={isDesktopSplit ? selectedPartner?.partner_id === partner.partner_id : undefined}
+                      aria-current={isDesktopSplit && selectedPartner?.partner_id === partner.partner_id ? "true" : undefined}
                       onClick={(event) => {
                         if (
                           (event.target as HTMLElement).closest(
@@ -10479,6 +10508,8 @@ function CommunityPageContent() {
                     {visibleAllQts.map((r) => (
                       <div
                         key={r.id}
+                        data-community-selected={isDesktopSplit ? isInlineQt && detailQt?.id === r.id : undefined}
+                        aria-current={isDesktopSplit && (isInlineQt && detailQt?.id === r.id) ? "true" : undefined}
                         className="card"
                         style={{ cursor: "pointer", position: "relative" }}
                         data-qt-card={r.id}
@@ -10486,10 +10517,10 @@ function CommunityPageContent() {
                     onKeyDown={(event) => {
                       if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                         event.preventDefault();
-                        openQtDetail(r, { scope: "all", scopeId: null });
+                        openAllFeedQt(r);
                       }
                     }}
-                    onClick={() => openQtDetail(r, { scope: "all", scopeId: null })}
+                    onClick={() => openAllFeedQt(r)}
                       >
                         <div
                           style={{
@@ -10544,7 +10575,7 @@ function CommunityPageContent() {
                       selectedReaction={myQtReactions[r.id]}
                       commentCount={qtCommentCounts[qtCommentContextKey(r.id, { scope: "all", scopeId: null })]}
                       lang={lang}
-                      onOpen={() => openQtDetail(r, { scope: "all", scopeId: null })}
+                      onOpen={() => openAllFeedQt(r)}
                     />
                       </div>
                     ))}
@@ -10603,6 +10634,8 @@ function CommunityPageContent() {
               groups.map((g) => (
                 <div
                   key={g.id}
+                  data-community-selected={isDesktopSplit ? selectedGroup?.id === g.id : undefined}
+                  aria-current={isDesktopSplit && selectedGroup?.id === g.id ? "true" : undefined}
                   onClick={(event) => {
                     if (
                       (event.target as HTMLElement).closest(
@@ -10729,11 +10762,55 @@ function CommunityPageContent() {
               ))
             )}
           </div>
-        )}
-      </div>
+        );
+  }
 
+  const activeTab = TABS.find((item) => item.id === tab)!;
+  // A new selection starts at the top of the reader without remounting the list.
+  const detailId = selectedPartner?.partner_id ?? selectedGroup?.id ?? (isInlineQt ? detailQt.id : "");
+  const detailKey = `${tab}-${detailId}`;
+  return (
+    <div ref={communitySwipeRef} className={`page roots-community-phase2d${isDesktopSplit ? " roots-desktop-page community-split" : ""}`}>
+      {renderLoveHeartToast()}
+      {renderReflectionNudgeToast()}
+      {renderCommentNotificationUi()}
+      {notificationDirectOpenPending && <NotificationDirectOpenOverlay lang={lang} />}
+      {isDesktopSplit ? (
+        <>
+          <div className="community-split-heading">{listHeading}</div>
+          <div className="community-split-body">
+            <div className="community-split-list">
+              {listTabs}
+              <section key={tab} className="community-split-list-scroll" aria-label={activeTab.label} tabIndex={0}>
+                {renderList()}
+              </section>
+            </div>
+            <section key={detailKey} className="community-split-detail" aria-label={c("community_selection_detail")} tabIndex={detailPage ? undefined : 0}>
+              {detailPage ? (
+                <div className="community-split-detail-page">{detailPage}</div>
+              ) : isInlineQt ? (
+                renderQTDetailModal(detailQt, closeQtDetail, true)
+              ) : (
+                <div className="community-split-placeholder">
+                  <p>{c(activeTab.prompt)}</p>
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      ) : detailPage ?? (
+        <>
+          <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 0", borderBottom: "1px solid var(--border)" }}>
+            {listHeading}
+            {listTabs}
+          </div>
+          <div style={{ padding: "16px 16px 0" }}>{renderList()}</div>
+        </>
+      )}
+
+      {selectedPartner && detailQt && !isInlineQt && renderQTDetailModal(detailQt, closeQtDetail)}
       {renderSharedOverlayModals()}
-
+      {groupDialogs}
       {showGroupForm && (
         <div
           style={{
@@ -10856,7 +10933,7 @@ function CommunityPageContent() {
           </div>
         </div>
       )}
-      {detailQt && renderQTDetailModal(detailQt, closeQtDetail)}
+      {!selectedPartner && detailQt && !isInlineQt && renderQTDetailModal(detailQt, closeQtDetail)}
       <BottomNav lang={lang} />
     </div>
   );

@@ -74,6 +74,7 @@ export default function QTFreePassageChoice({
 
   return (
     <div
+      className="qt-content-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="qt-free-passage-choice-title"

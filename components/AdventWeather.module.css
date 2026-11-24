@@ -40,6 +40,15 @@
   }
 }
 
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop-client][data-roots-desktop="wide"]) .snowfall {
+    inset-inline: var(--desktop-nav-width) 0;
+    width: auto;
+    max-width: none;
+    transform: none;
+  }
+}
+
 @keyframes star-shimmer {
   0%, 100% {
     opacity: .72;

@@ -38,7 +38,7 @@ export default function HeartShopGiftPopup({ received = false, title, itemName, 
   useAndroidBackHandler(() => { act(dismiss); return true; });
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 560, display: "grid", placeItems: "center", padding: "calc(16px + env(safe-area-inset-top)) 18px calc(16px + env(safe-area-inset-bottom))", background: "var(--overlay-modal)", backdropFilter: "blur(6px)" }}>
+    <div data-shop-backdrop={received ? undefined : "gift"} className={received ? "home-received-gift-backdrop" : undefined} style={{ position: "fixed", inset: 0, zIndex: 560, display: "grid", placeItems: "center", padding: "calc(16px + env(safe-area-inset-top)) 18px calc(16px + env(safe-area-inset-bottom))", background: "var(--overlay-modal)", backdropFilter: "blur(6px)" }}>
       <section role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={itemId}
         onKeyDown={event => {
           if (event.key === "Escape") {

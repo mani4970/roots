@@ -47,7 +47,11 @@ export function useQTLeaveGuard({ dirty, busy, lang }: { dirty: boolean; busy: b
       if (!/^https?:$/.test(target.protocol) || target.href === window.location.href) return;
       const current = new URL(window.location.href);
       if (target.origin === current.origin && target.pathname === current.pathname && target.search === current.search) return;
-      if (!stateRef.current.dirty && !stateRef.current.busy) return;
+      // Sidebar links sit outside the writer's pointer handlers. Even when
+      // React still sees a clean field, the Apple editor can hold its first
+      // composing character. requestLeave flushes it and rechecks the state.
+      const writerTab = anchor.closest(".roots-qt-shell .bottom-nav");
+      if (!writerTab && !stateRef.current.dirty && !stateRef.current.busy) return;
       event.preventDefault();
       event.stopPropagation();
       guard.requestLeave(() => {

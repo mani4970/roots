@@ -1,0 +1,191 @@
+@media (min-width: 960px) {
+  html[data-roots-desktop-client] .community-split {
+    --community-gutter: clamp(18px, 2.25vw, 32px);
+    --community-card-width: 28rem;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    padding-inline: var(--community-gutter);
+  }
+
+  .community-split .community-split-heading {
+    flex: none;
+    padding: var(--roots-page-top-padding) 0 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .community-split .community-split-body {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+    column-gap: calc(var(--community-gutter) * 2);
+    margin-top: 16px;
+  }
+
+  .community-split .community-split-body::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none;
+  }
+
+  .community-split .community-split-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .community-split .community-split-tabs {
+    display: flex;
+    flex: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .community-split .community-split-list-scroll,
+  .community-split .community-split-detail {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    overflow-wrap: anywhere;
+  }
+
+  .community-split .community-split-list-scroll {
+    flex: 1;
+    overflow-anchor: none;
+    padding: 12px 4px 8px;
+  }
+
+  .community-split .community-split-detail {
+    padding-inline: 4px;
+  }
+
+  .community-split .community-split-detail-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .community-split .community-split-detail-heading {
+    position: relative;
+    z-index: 1;
+    flex: none;
+    padding: 6px 0 12px !important;
+  }
+
+  .community-split .community-split-group-title,
+  .community-split .community-split-group-description {
+    max-height: min(4em, 8dvh);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .community-split-detail-heading [role="menu"] {
+    max-height: clamp(64px, calc(100dvh - 280px), 24rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .community-split-detail-tabs {
+    flex: none;
+    margin-bottom: 8px;
+  }
+
+  .community-split .community-split-detail-content {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: 4px 0 12px !important;
+  }
+
+  .community-split-detail-content > * {
+    flex-shrink: 0;
+  }
+
+  .community-split-detail-content:focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: -2px;
+  }
+
+  .community-split-detail [data-community-challenge-boundary],
+  .community-split-detail .card[id^="community-prayer-"] {
+    width: min(100%, var(--community-card-width));
+    margin-inline: auto;
+  }
+
+  .community-split-detail .community-prayer-deck {
+    --community-card-peek: 18px;
+    --prayer-card-height: clamp(18rem, 57vh, 29rem);
+    max-width: calc(var(--community-card-width) + var(--community-card-peek) * 2);
+    margin-inline: auto;
+  }
+
+  @supports (height: 1cqh) {
+    .community-split-detail-content:has(.community-prayer-deck) {
+      container-type: size;
+    }
+
+    .community-split-detail .community-prayer-deck {
+      /* Reserve space for the carousel controls in the records pane. */
+      --prayer-card-height: clamp(18rem, min(57vh, calc(100cqh - 4rem)), 29rem);
+    }
+  }
+
+  .community-prayer-deck [data-community-swipe-rail] {
+    scroll-padding-inline: var(--community-card-peek);
+    gap: 8px;
+  }
+
+  .community-prayer-deck [data-community-swipe-rail]::before,
+  .community-prayer-deck [data-community-swipe-rail]::after {
+    flex-basis: calc(var(--community-card-peek) - 8px);
+  }
+
+  .community-prayer-deck [data-prayer-card-id] {
+    flex-basis: calc(100% - var(--community-card-peek) * 2);
+  }
+
+  .community-split .community-split-placeholder {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 12px;
+    min-height: 100%;
+    padding: 20px;
+    color: var(--text-muted-readable);
+    text-align: center;
+  }
+
+  .community-split .community-split-list-scroll [data-community-selected="true"] {
+    border-color: var(--sage-dark) !important;
+    background: var(--community-sage-surface) !important;
+    box-shadow: inset 3px 0 var(--sage-dark);
+  }
+
+  .community-split :is(button, a, [tabindex="0"]):focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: 2px;
+  }
+}
+
+@media (min-width: 960px) and (max-height: 520px) {
+  .community-split .community-split-heading {
+    padding-block: 12px 8px;
+  }
+
+  .community-split .community-split-body {
+    margin-top: 8px;
+  }
+}

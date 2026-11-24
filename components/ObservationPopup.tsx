@@ -117,7 +117,7 @@ export function acknowledgeObservedPopup(
 }
 
 export default function ObservationPopup({
-  userId, kind, queued, instanceKey = kind, progressDays, children,
+  userId, kind, queued, instanceKey = kind, progressDays, children, className,
 }: {
   userId: string | null | undefined;
   kind: ObservedPopupKind;
@@ -126,6 +126,7 @@ export default function ObservationPopup({
   instanceKey?: string | object | null;
   progressDays?: number;
   children: ReactNode;
+  className?: string;
 }) {
   const markerRef = useRef<HTMLDivElement>(null);
   const entryRef = useRef<PopupEntry | null>(null);
@@ -185,5 +186,5 @@ export default function ObservationPopup({
     };
   }, [userId, kind, queued, instanceKey]);
 
-  return <div ref={markerRef} style={{ display: "contents" }}>{children}</div>;
+  return <div ref={markerRef} className={className} style={{ display: "contents" }}>{children}</div>;
 }

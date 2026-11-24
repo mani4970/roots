@@ -7,7 +7,7 @@ type Props = { lang: Lang; christmas?: boolean };
 // Presentation only: the caller still owns loading, authentication and rewards.
 export default function HomeLoadingScreen({ lang, christmas = false }: Props) {
   const loader = (
-    <div className="roots-native-tablet-viewport roots-native-centered-loader" style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div className={`${styles.loader} roots-native-tablet-viewport roots-native-centered-loader`} style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <img
           src="/roots-logo-transparent-160.png"

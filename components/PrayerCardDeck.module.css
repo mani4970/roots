@@ -168,6 +168,45 @@
   line-height: 1.5;
 }
 
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.navigation .position {
+  margin: 0;
+  min-width: 4ch;
+}
+
+.navigation button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--prayer-line);
+  border-radius: 50%;
+  background: var(--prayer-paper);
+  color: var(--prayer-ink);
+  cursor: pointer;
+}
+
+.navigation button:hover:not([aria-disabled="true"]) {
+  background: var(--prayer-sage);
+}
+
+.navigation button:focus-visible {
+  outline: 2px solid var(--sage, #617d59);
+  outline-offset: 2px;
+}
+
+.navigation button[aria-disabled="true"] {
+  opacity: .42;
+  cursor: default;
+}
+
 @media (max-width: 359px) {
   .card {
     padding: 18px 14px 16px;

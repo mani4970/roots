@@ -1,9 +1,12 @@
 "use client";
-import { useEffect, useState, useRef, type TouchEvent, type WheelEvent } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, type TouchEvent, type WheelEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { Camera as NativeCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import BottomNav from "@/components/BottomNav";
+import HomeHubDialog from "@/components/HomeHubDialog";
+import { isDesktopLayout, useDesktopLayout } from "@/lib/desktopLayout";
+import { rememberProfileDocumentNavigation } from "@/lib/profileDocumentNavigation";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
 import { t, type TKey } from "@/lib/i18n";
@@ -277,6 +280,7 @@ function getSpiritFruitBadgeImg(name: string) {
 export default function ProfilePage() {
   const router = useRouter();
   const lang = useLang();
+  const desktop = useDesktopLayout();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState(false);
@@ -536,6 +540,47 @@ export default function ProfilePage() {
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
   }, []);
+
+  function openFooterDocument(href: string, button: HTMLButtonElement) {
+    if (!isDesktopLayout()) {
+      router.push(href);
+      return;
+    }
+    // Tag this history entry too, so browser Back restores the same link.
+    const profileUrl = new URL(window.location.href);
+    profileUrl.hash = "profile-legal-links";
+    window.history.replaceState(window.history.state, "", profileUrl);
+    try {
+      sessionStorage.setItem("roots_profile_document_return", JSON.stringify({
+        buttonId: button.id, viewportTop: button.getBoundingClientRect().top,
+      }));
+    } catch { /* The footer anchor also works when storage is unavailable. */ }
+    rememberProfileDocumentNavigation(href);
+    router.push(`${href}?from=profile`);
+  }
+
+  useLayoutEffect(() => {
+    if (loading || !isDesktopLayout() || window.location.hash !== "#profile-legal-links") return;
+    const links = document.getElementById("profile-legal-links");
+    if (!links) return;
+    let target = links.querySelector("button");
+    let viewportTop: number | undefined;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("roots_profile_document_return") || "null");
+      const button = typeof saved?.buttonId === "string" ? document.getElementById(saved.buttonId) : null;
+      if (button instanceof HTMLButtonElement && links.contains(button) && Number.isFinite(saved.viewportTop)) {
+        target = button;
+        viewportTop = saved.viewportTop;
+      }
+    } catch { /* Use the first link for a direct visit to the footer anchor. */ }
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    if (viewportTop === undefined || viewportTop < 0 || viewportTop > window.innerHeight - target.offsetHeight) {
+      target.scrollIntoView({ block: "nearest" });
+    } else {
+      window.scrollBy(0, target.getBoundingClientRect().top - viewportTop);
+    }
+  }, [loading]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1448,7 +1493,7 @@ export default function ProfilePage() {
       const done = doneDates.has(dateStr);
       const isToday = isSameCalendarMonth(calendarMonth, now) && d === now.getDate();
       cells.push(
-        <div key={d} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: done ? "var(--sage)" : isToday ? "var(--bg3)" : "transparent", border: isToday && !done ? "1px solid var(--sage)" : "none" }}>
+        <div key={d} className="profile-calendar-day" style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: done ? "var(--sage)" : isToday ? "var(--bg3)" : "transparent", border: isToday && !done ? "1px solid var(--sage)" : "none" }}>
           <span style={{ fontSize: 10, fontWeight: done ? 700 : 400, color: done ? "var(--bg)" : isToday ? "var(--sage)" : "var(--text3)" }}>{d}</span>
         </div>
       );
@@ -1671,8 +1716,57 @@ export default function ProfilePage() {
     </div>
   );
 
+  const photoMenuBusy = uploadingPhoto || resettingPhoto || savingProfileAvatar;
+  const photoMenuActions = showPhotoMenu && (
+    <>
+      <button
+        onClick={async () => {
+          setShowPhotoMenu(false);
+          await chooseProfilePhoto();
+        }}
+        disabled={photoMenuBusy}
+        style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--profile-sage-notice-surface)", border: "1px solid var(--profile-sage-notice-border)", color: "var(--profile-sage-notice-text)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+      >
+        {uploadingPhoto ? <Loader2 size={14} className="spin" /> : <Camera size={15} />}
+        {t("profile_photo_select", lang)}
+      </button>
+      <button
+        onClick={resetProfilePhoto}
+        disabled={photoMenuBusy || !canResetProfilePhoto}
+        style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: canResetProfilePhoto ? "var(--text)" : "var(--text3)", fontSize: 14, fontWeight: 700, cursor: canResetProfilePhoto ? "pointer" : "not-allowed", opacity: canResetProfilePhoto ? 1 : 0.56, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+      >
+        {resettingPhoto ? <Loader2 size={14} className="spin" /> : null}
+        {t("profile_photo_reset", lang)}
+      </button>
+      <button
+        onClick={() => setShowPhotoMenu(false)}
+        disabled={desktop && photoMenuBusy}
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 14, background: "transparent", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+      >
+        {t("profile_photo_cancel", lang)}
+      </button>
+    </>
+  );
+
+  const feedbackFields = showFeedbackModal && (
+    <>
+      <textarea
+        value={feedbackText}
+        aria-label={desktop ? t("profile_feedback_title", lang) : undefined}
+        readOnly={desktop && sendingFeedback}
+        onChange={e => setFeedbackText(e.target.value)}
+        placeholder={t("profile_feedback_placeholder", lang)}
+        rows={desktop ? 6 : 4}
+        style={{ width: "100%", padding: "12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 13, resize: "none", outline: desktop ? undefined : "none", boxSizing: "border-box" }}
+      />
+      <button onClick={sendFeedback} disabled={!feedbackText.trim() || sendingFeedback} style={{ width: "100%", padding: "12px", background: "var(--sage-action)", color: "var(--on-sage-action)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
+        {sendingFeedback ? t("profile_feedback_sending", lang) : t("profile_feedback_send", lang)}
+      </button>
+    </>
+  );
+
   return (
-    <div className="page roots-profile-phase2b2" style={{ paddingBottom: 80 }}>
+    <div className="page roots-profile-phase2b2 roots-desktop-profile roots-desktop-page" style={{ paddingBottom: 80 }}>
       {toast && (
         <div style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--profile-modal-surface)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, boxShadow: "var(--shadow-toast)", whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
           {toast}
@@ -2083,7 +2177,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
+      <div className="profile-identity" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 20px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           className="roots-native-profile-settings-button"
           onClick={() => { setShowSettingsModal(true); setShowDeleteConfirm(false); }}
@@ -2168,7 +2262,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 월별 배지 */}
-      <div id="monthly-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 16 }}>
+      <div className="profile-panel" id="monthly-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 16 }}>
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {monthlyBadgeText.title}
@@ -2222,7 +2316,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 내 캐릭터 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div className="profile-panel profile-character" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">{getRootsAvatarChoiceText("profileTitle", lang)}</div>
         <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", columnGap: 12, rowGap: 9, alignItems: "center", padding: "13px 14px 16px", minHeight: 150 }}>
           <p style={{ gridColumn: "1 / -1", margin: 0, color: "var(--profile-muted-text)", fontSize: 10.5, fontWeight: 650, lineHeight: 1.45, textAlign: "center" }}>
@@ -2235,7 +2329,7 @@ export default function ProfilePage() {
               aria-label={profileCharacterText.openFullViewLabel}
               style={{
                 width: "100%",
-                maxWidth: 118,
+                maxWidth: "var(--profile-preview-width, 118px)",
                 padding: 0,
                 border: "none",
                 background: "transparent",
@@ -2296,7 +2390,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 신앙의 결실 배지 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div className="profile-panel" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {t("profile_faith_fruits", lang)}
@@ -2333,7 +2427,7 @@ export default function ProfilePage() {
       </div>
 
       {specialBadges.length > 0 && (
-        <div id="special-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
+        <div className="profile-panel" id="special-badges" style={{ padding: "14px 16px 0", scrollMarginTop: 18 }}>
           <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <span>{t("profile_special_badges", lang)}</span>
             {shouldShowSpecialBadgeGalleryButton && (
@@ -2385,7 +2479,7 @@ export default function ProfilePage() {
       )}
 
       {/* 성령의 열매 배지 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div className="profile-panel" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
           {t("profile_spirit_fruits", lang)}
           <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
@@ -2431,7 +2525,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 말씀 묵상 현황 달력 */}
-      <div style={{ padding: "14px 16px 0" }}>
+      <div className="profile-panel profile-calendar" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
           <button
             type="button"
@@ -2482,56 +2576,65 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 로그아웃 */}
-      <div style={{ padding: "4px 16px 0" }}>
-        <button onClick={logout} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 14, background: "none", border: "1px solid var(--border)", cursor: "pointer" }}>
-          <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>{t("profile_logout", lang)}</span>
-        </button>
-      </div>
+      <footer className="profile-account-links">
+        {/* 로그아웃 */}
+        <div style={{ padding: "4px 16px 0" }}>
+          <button onClick={logout} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 14, background: "none", border: "1px solid var(--border)", cursor: "pointer" }}>
+            <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>{t("profile_logout", lang)}</span>
+          </button>
+        </div>
 
-      {/* 친구 초대 */}
-      <div style={{ padding: "14px 16px 0" }}>
-        <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
-          <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{t("profile_invite", lang)}</span>
-        </button>
-      </div>
+        {/* 친구 초대 */}
+        <div style={{ padding: "14px 16px 0" }}>
+          <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
+            <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{t("profile_invite", lang)}</span>
+          </button>
+        </div>
 
-      {/* 피드백 버튼 */}
-      <div style={{ padding: "10px 16px 0" }}>
-        <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("profile_feedback", lang)}</span>
-        </button>
-      </div>
+        {/* 피드백 버튼 */}
+        <div style={{ padding: "10px 16px 0" }}>
+          <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("profile_feedback", lang)}</span>
+          </button>
+        </div>
 
-      {/* 법적/지원 링크 */}
-      <div style={{ padding: "16px 18px 4px", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px 0", flexWrap: "wrap" }}>
-        {[
-          { href: "/impressum", label: t("profile_impressum", lang) },
-          { href: "/privacy", label: t("profile_privacy", lang) },
-          { href: "/terms", label: t("profile_terms", lang) },
-          { href: "/support", label: t("profile_support", lang) },
-          { href: "/account-deletion", label: t("profile_account_deletion", lang) },
-        ].map((link, index) => (
-          <span key={link.href} style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>
-            <button
-              type="button"
-              onClick={() => router.push(link.href)}
-              style={{ padding: "6px 0", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
-            >
-              {link.label}
-            </button>
-            {index < 4 && <span aria-hidden="true" style={{ margin: "0 10px", fontSize: 11, color: "var(--border)", userSelect: "none" }}>|</span>}
-          </span>
-        ))}
-      </div>
+        {/* 법적/지원 링크 */}
+        <div id="profile-legal-links" style={{ padding: "16px 18px 4px", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px 0", flexWrap: "wrap" }}>
+          {[
+            { href: "/impressum", label: t("profile_impressum", lang) },
+            { href: "/privacy", label: t("profile_privacy", lang) },
+            { href: "/terms", label: t("profile_terms", lang) },
+            { href: "/support", label: t("profile_support", lang) },
+            { href: "/account-deletion", label: t("profile_account_deletion", lang) },
+          ].map((link, index) => (
+            <span key={link.href} style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>
+              <button
+                type="button"
+                id={`profile-document-${link.href.slice(1)}`}
+                onClick={(event) => openFooterDocument(link.href, event.currentTarget)}
+                style={{ padding: "6px 0", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
+              >
+                {link.label}
+              </button>
+              {index < 4 && <span aria-hidden="true" style={{ margin: "0 10px", fontSize: 11, color: "var(--border)", userSelect: "none" }}>|</span>}
+            </span>
+          ))}
+        </div>
+      </footer>
 
-      <div style={{ height: 80 }} />
+      <div className="profile-nav-spacer" style={{ height: 80 }} />
       <BottomNav />
 
 
       {/* 프로필 사진 관리 메뉴 */}
-      {showPhotoMenu && (
+      {showPhotoMenu && (desktop ? (
+        <HomeHubDialog open title={t("profile_photo_menu_title", lang)} closeLabel={t("close", lang)}
+          onClose={() => setShowPhotoMenu(false)} busy={photoMenuBusy}
+          boundarySelector=".roots-desktop-profile" dialogClassName="profile-desktop-photo-dialog">
+          {photoMenuActions}
+        </HomeHubDialog>
+      ) : (
         <div onClick={() => setShowPhotoMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 92px" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 390, background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 24, padding: "18px 16px 14px", boxShadow: "var(--shadow-sheet)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -2540,34 +2643,10 @@ export default function ProfilePage() {
                 <X size={15} />
               </button>
             </div>
-            <button
-              onClick={async () => {
-                setShowPhotoMenu(false);
-                await chooseProfilePhoto();
-              }}
-              disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar}
-              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--profile-sage-notice-surface)", border: "1px solid var(--profile-sage-notice-border)", color: "var(--profile-sage-notice-text)", fontSize: 14, fontWeight: 800, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              {uploadingPhoto ? <Loader2 size={14} className="spin" /> : <Camera size={15} />}
-              {t("profile_photo_select", lang)}
-            </button>
-            <button
-              onClick={resetProfilePhoto}
-              disabled={uploadingPhoto || resettingPhoto || savingProfileAvatar || !canResetProfilePhoto}
-              style={{ width: "100%", padding: "14px 14px", borderRadius: 14, background: "var(--bg3)", border: "1px solid var(--border)", color: canResetProfilePhoto ? "var(--text)" : "var(--text3)", fontSize: 14, fontWeight: 700, cursor: canResetProfilePhoto ? "pointer" : "not-allowed", opacity: canResetProfilePhoto ? 1 : 0.56, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              {resettingPhoto ? <Loader2 size={14} className="spin" /> : null}
-              {t("profile_photo_reset", lang)}
-            </button>
-            <button
-              onClick={() => setShowPhotoMenu(false)}
-              style={{ width: "100%", padding: "12px 14px", borderRadius: 14, background: "transparent", border: "none", color: "var(--text3)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
-            >
-              {t("profile_photo_cancel", lang)}
-            </button>
+            {photoMenuActions}
           </div>
         </div>
-      )}
+      ))}
 
       {/* 계정 설정 모달 */}
       {showSettingsModal && (
@@ -2699,30 +2778,32 @@ export default function ProfilePage() {
 
       <FeedbackSuccessPopup
         show={showFeedbackSuccessPopup}
+        desktop={desktop}
         onClose={() => setShowFeedbackSuccessPopup(false)}
       />
 
       {/* 피드백 모달 */}
-      {showFeedbackModal && (
+      {showFeedbackModal && (desktop ? (
+        <HomeHubDialog open
+          title={t("profile_feedback_title", lang)}
+          description={t("profile_feedback_sub", lang)}
+          closeLabel={t("close", lang)}
+          onClose={() => setShowFeedbackModal(false)}
+          busy={sendingFeedback}
+          boundarySelector=".roots-desktop-profile"
+          dialogClassName="profile-desktop-feedback-dialog"
+        >
+          {feedbackFields}
+        </HomeHubDialog>
+      ) : (
         <div onClick={() => setShowFeedbackModal(false)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "var(--profile-modal-surface)", borderRadius: 24, border: "1px solid var(--border)", padding: "24px 20px 20px", margin: "0 16px", width: "100%", maxWidth: 400, boxShadow: "var(--shadow-sheet)" }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t("profile_feedback_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--profile-muted-text)", marginBottom: 14, lineHeight: 1.6 }}>{t("profile_feedback_sub", lang)}</p>
-            <textarea
-              value={feedbackText}
-              onChange={e => setFeedbackText(e.target.value)}
-              placeholder={t("profile_feedback_placeholder", lang)}
-              rows={4}
-              style={{ width: "100%", padding: "12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 13, resize: "none", outline: "none", boxSizing: "border-box" }}
-            />
-            <button onClick={sendFeedback} disabled={!feedbackText.trim() || sendingFeedback} style={{ width: "100%", padding: "12px", background: "var(--sage-action)", color: "var(--on-sage-action)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 10 }}>
-              {sendingFeedback ? t("profile_feedback_sending", lang) : t("profile_feedback_send", lang)}
-            </button>
-
-
+            {feedbackFields}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

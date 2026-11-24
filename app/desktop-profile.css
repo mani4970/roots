@@ -1,0 +1,120 @@
+@media (min-width: 960px) {
+  html[data-roots-desktop] .roots-desktop-profile {
+    --profile-preview-width: 176px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px clamp(18px, 2.2vw, 32px);
+    align-content: start;
+    padding-inline: clamp(18px, 2.3vw, 34px);
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile > .profile-identity {
+    grid-area: 1 / 1 / 2 / -1;
+    padding: 28px 56px 20px 0 !important;
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile .profile-identity .roots-native-profile-settings-button {
+    top: 50% !important;
+    right: 0 !important;
+    transform: translateY(-50%);
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile > .profile-panel {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile > .profile-character {
+    grid-area: 2 / 1;
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile > .profile-calendar {
+    grid-area: 2 / 2;
+  }
+
+  html[data-roots-desktop] .profile-panel > .sec-label {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  html[data-roots-desktop] .profile-panel > .card {
+    flex: 1;
+    min-width: 0;
+  }
+
+  html[data-roots-desktop] .profile-calendar > .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  html[data-roots-desktop] .profile-calendar-day {
+    justify-self: center;
+    width: min(100%, 36px);
+  }
+
+  html[data-roots-desktop] .roots-desktop-profile .profile-calendar-day > span {
+    font-size: 13px !important;
+  }
+
+  html[data-roots-desktop] .profile-account-links {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  html[data-roots-desktop] .profile-account-links > div {
+    padding: 0 !important;
+  }
+
+  html[data-roots-desktop] .profile-account-links > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  html[data-roots-desktop] .profile-nav-spacer {
+    display: none;
+  }
+
+  html[data-roots-desktop-client] .profile-desktop-feedback-dialog {
+    max-width: min(480px, var(--home-dialog-max-width, 480px));
+  }
+
+  html[data-roots-desktop-client] .profile-desktop-feedback-success {
+    max-width: min(360px, var(--home-dialog-max-width, 360px));
+    padding-top: 32px;
+  }
+
+  html[data-roots-desktop-client] :is(.profile-desktop-photo-dialog, .profile-desktop-feedback-dialog, .profile-desktop-feedback-success) :is(textarea, button):focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: -2px;
+  }
+
+  html[data-roots-desktop-client] .profile-desktop-feedback-dialog button:disabled {
+    opacity: .6;
+    cursor: default !important;
+  }
+}
+
+/* Keep the heading and close button visible while scrolling the actions.
+   For exceptionally short viewports allow the whole card to scroll. */
+@media (min-width: 960px) and (min-height: 240px) {
+  html[data-roots-desktop-client] :is(.profile-desktop-photo-dialog, .profile-desktop-feedback-dialog) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  html[data-roots-desktop-client] :is(.profile-desktop-photo-dialog, .profile-desktop-feedback-dialog) > div {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

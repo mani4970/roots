@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import "./desktop-writer.css";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { beginObservation, observe, observationError, rememberObservationFlow, type ObservationFlow } from "@/lib/appObservation";
@@ -162,6 +163,8 @@ const QT_WRITE_TRANSLATIONS: Record<string, Partial<Record<QTWriteTranslationLan
   "절을 탭하면 붙잡은 말씀에 추가돼요": { de: "Tippen Sie auf einen Vers, um ihn als Schlüsselvers zu speichern", en: "Tap a verse to add it as key verse", fr: "Touchez un verset pour l’ajouter au verset clé", es: "Toca un versículo para añadirlo como versículo clave" },
   "2단계 · 본문 요약": { de: "Schritt 2 · Zusammenfassung", en: "Step 2 · Summary", fr: "Étape 2 · Résumé du passage", es: "Paso 2 · Resumen del pasaje" },
   "3단계 · 붙잡은 말씀": { de: "Schritt 3 · Schlüsselvers", en: "Step 3 · Key Verse", fr: "Étape 3 · Verset clé", es: "Paso 3 · Versículo clave" },
+  "(본문에서 절을 선택하면 추가돼요)": { de: "(Vers im Bibeltext auswählen)", en: "(Select a verse in the passage to add it)", fr: "(Sélectionnez un verset du passage pour l’ajouter)", es: "(Selecciona un versículo del pasaje para añadirlo)" },
+  "마음에 와닿은 구절을 적거나 본문에서 선택하세요...": { de: "Schreiben Sie den Vers auf, der Sie berührt hat, oder wählen Sie ihn im Bibeltext aus...", en: "Write the verse that touched you or select it in the passage...", fr: "Écrivez le verset qui vous touche ou sélectionnez-le dans le passage...", es: "Escribe el versículo que tocó tu corazón o selecciónalo en el pasaje..." },
   "(위 절 탭하면 자동 추가)": { de: "(Vers oben antippen)", en: "(Tap verse above)", fr: "(Touchez un verset ci-dessus pour l’ajouter)", es: "(Toca un versículo arriba para añadirlo)" },
   "행동 1": { de: "Handlung 1", en: "Action 1", fr: "Action 1", es: "Acción 1" },
   "단계": { de: "Schritt", en: "Step", fr: "Étape", es: "Paso" },
@@ -290,6 +293,15 @@ function normalizeBibleTranslationId(value: unknown, fallback: unknown = DEFAULT
 function QTWriteContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const [wideDesktop, setWideDesktop] = useState(false);
+  useEffect(() => {
+    if (!document.documentElement.hasAttribute("data-roots-desktop-client")) return;
+    const query = window.matchMedia("(min-width: 960px)");
+    const update = () => setWideDesktop(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const lang = useLang();
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" | "info" } | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -711,6 +723,7 @@ function QTWriteContent() {
   }, [activePassageIndex, passages.length]);
 
   useEffect(() => {
+    if (wideDesktop) return;
     const el = readingPassageRef.current;
     if (!el) {
       setReadingCanCollapse(false);
@@ -735,7 +748,7 @@ function QTWriteContent() {
       observer?.disconnect();
       window.removeEventListener("resize", updateReadingOverflow);
     };
-  }, [activePassageIndex, bibleTextFontSize, currentLang, cur, passageVerses, passages, selectedTranslation, selectedVerseNums]);
+  }, [activePassageIndex, bibleTextFontSize, currentLang, cur, passageVerses, passages, selectedTranslation, selectedVerseNums, wideDesktop]);
 
   function buildSundayBibleRef(title: string, refs: string[]) {
     const cleanTitle = title.trim();
@@ -1943,6 +1956,129 @@ function QTWriteContent() {
     );
   }
 
+  function renderWriterPassage(allowVerseSelection: boolean) {
+    const displayPassages = getDisplayPassages();
+    if (displayPassages.length === 0) return null;
+    const safeIndex = Math.min(activePassageIndex, displayPassages.length - 1);
+    const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
+    const verses = activePassage.verses ?? [];
+    const hasMultiplePassages = displayPassages.length > 1;
+    const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
+    const compact = !wideDesktop && readingView === "compact" && readingCanCollapse;
+    const VerseRow = allowVerseSelection ? "button" : "div";
+    return (
+      <div className="qt-six-passage-card roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, border: "1px solid var(--qt-sage-border-soft)", overflow: "hidden" }}>
+        <div
+          ref={readingPassageRef}
+          id="qt-six-reading-passage"
+          role="region"
+          aria-label={translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
+          tabIndex={0}
+          onClickCapture={handleReadingPassageClickCapture}
+          style={{
+            maxHeight: compact ? QT_READING_COMPACT_MAX_HEIGHT : undefined,
+            overflowY: compact ? "auto" : "visible",
+            overflowX: "hidden",
+            padding: "12px 14px",
+            position: "relative",
+            zIndex: 0,
+            background: "var(--qt-sage-subtle-surface)",
+            // iOS/WKWebView can paint composited descendants outside a
+            // nested momentum scroller. In compact mode, make this box a
+            // real paint boundary so scrolled verse buttons/copyright never
+            // bleed behind the expand control or the editors below.
+            contain: compact ? "paint" : undefined,
+            clipPath: compact ? "inset(0)" : undefined,
+            overscrollBehavior: compact ? "contain" : undefined,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}</p>
+            <BibleTranslationSelect />
+            {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
+            <CompactBibleTextSizeButtons />
+          </div>
+          {hasMultiplePassages && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 8 }}>
+              {displayPassages.map((p, i) => {
+                const selected = i === safeIndex;
+                return (
+                  <button className="qt-option-card" key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--qt-sage-border)" : "var(--qt-card-border)"}`, background: selected ? "var(--qt-sage-surface)" : "var(--qt-card-surface)", color: selected ? "var(--qt-sage-text)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                    {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {verses.map(v => {
+              const verseId = normalizeVerseNum(v.num);
+              const isSelected = allowVerseSelection && selectedVerseNums.includes(verseId);
+              return (
+                <VerseRow
+                  key={`${activePassage.ref}-${verseId}`}
+                  onClick={allowVerseSelection ? () => selectVerse(String(v.text), v.num) : undefined}
+                  aria-pressed={allowVerseSelection ? isSelected : undefined}
+                  style={{ textAlign: "left", background: isSelected ? "var(--qt-sage-surface)" : "var(--qt-sage-subtle-surface)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--qt-sage-border)" : "var(--qt-sage-border-soft)"}`, cursor: allowVerseSelection ? "pointer" : undefined, display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: verseId.includes(":") ? 32 : 16 }}>{verseId}</span>
+                  <span style={{ fontSize: bibleTextFontSize, color: isSelected ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: isSelected ? 600 : 400 }}>{v.text}</span>
+                  {isSelected && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
+                </VerseRow>
+              );
+            })}
+          </div>
+          {copyrightInfo && (
+            <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
+              {copyrightInfo.notice}
+              {copyrightInfo.url && (
+                <>
+                  {" "}
+                  <a
+                    href={copyrightInfo.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                  >
+                    {copyrightInfo.linkLabel ?? copyrightInfo.url}
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+          {allowVerseSelection && <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>}
+        </div>
+        {!wideDesktop && readingCanCollapse && (
+          <button
+            type="button"
+            aria-controls="qt-six-reading-passage"
+            aria-expanded={readingView === "expanded"}
+            onClick={() => setReadingView(view => view === "expanded" ? "compact" : "expanded")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 5,
+              width: "100%",
+              padding: "10px 12px",
+              border: 0,
+              borderTop: "1px solid var(--qt-sage-border-soft)",
+              background: "var(--qt-sage-subtle-surface)",
+              color: "var(--sage-dark)",
+              fontSize: 12,
+              fontWeight: 600,
+              position: "relative",
+              zIndex: 2,
+            }}
+          >
+            {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+            {trQT(readingView === "expanded" ? "접어서 보기" : "전체 보기", lang)}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   function normalizeVerseNum(num: VerseNum) {
     return String(num).trim();
   }
@@ -2816,12 +2952,12 @@ function QTWriteContent() {
     setCompletionReady(true);
   }
 
-  function returnHomeAfterCompletion() {
+  function returnHomeAfterCompletion(destination = "/") {
     leaveAfterSave(() => {
       const completion = completionHomeReturnRef.current;
       completionHomeReturnRef.current = null;
       if (completion) markPostReflectionHomeReturn(completion);
-      router.replace("/");
+      router.replace(destination);
     });
   }
 
@@ -3121,7 +3257,7 @@ function QTWriteContent() {
       : "";
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-native-tablet-viewport qt-writer-selection" style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {mode === "free" && freePassageContinuation && (
         <QTFreePassageChoice
@@ -3169,7 +3305,7 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div className="qt-writer-selection-heading" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
               <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
@@ -3182,7 +3318,7 @@ function QTWriteContent() {
           <p style={{ fontSize: 12, color: "var(--text-muted-readable)" }}>{trQT("큐티할 말씀을 먼저 선택해요", lang)}</p>
         </div>
 
-        <div style={{ flex: 1, padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+        <div className="qt-writer-selection-form" style={{ flex: 1, padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
           {renderPassageSelectionCard()}
 
           {mode === "free" && (
@@ -3198,7 +3334,12 @@ function QTWriteContent() {
 
   // ─── 자유형식 작성 화면 ───
   if (mode === "free") {
-    const hasPassage = passageVerses.length > 0;
+    const hasPassage = wideDesktop ? getDisplayPassages().length > 0 : passageVerses.length > 0;
+    const reselectPassage = (
+      <button type="button" onClick={beginFreePassageReselect} className="btn-outline" style={{ width: "100%" }}>
+        {trQT("본문 다시 선택", lang)}
+      </button>
+    );
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-free roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
@@ -3241,63 +3382,72 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
-            </button>
-            <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+        <div className="qt-writer-workspace" data-has-passage={hasPassage} data-has-tabs="false">
+          <div className="qt-writer-header" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+            <div className="qt-writer-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+                <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
+              </button>
+              <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+            </div>
+            <div className="qt-writer-heading">
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT("자유 큐티", lang)}</h1>
+            </div>
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT("자유 큐티", lang)}</h1>
-        </div>
 
-        <div className="qt-free-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
-          {/* 본문 표시 (선택사항) */}
-          {hasPassage && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {renderSelectedPassageViewer({ showTextSizeButtons: true })}
-              <button type="button" onClick={beginFreePassageReselect} className="btn-outline" style={{ width: "100%" }}>
-                {trQT("본문 다시 선택", lang)}
+          {wideDesktop && hasPassage && (
+            <div className="qt-writer-free-passage">
+              {renderWriterPassage(false)}
+              {reselectPassage}
+            </div>
+          )}
+
+          <div className="qt-free-editor qt-writer-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+            {/* 본문 표시 (선택사항) */}
+            {!wideDesktop && hasPassage && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {renderSelectedPassageViewer({ showTextSizeButtons: true })}
+                {reselectPassage}
+              </div>
+            )}
+
+            <div className="qt-free-reflection-section qt-writer-field-group">
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
+              <CursorStableTextarea key="free-reflection" className="textarea-field qt-free-reflection-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>
+                <>{trQT("결단", lang)} <span style={{ color: "var(--sage-dark)" }}>— {trQT("말씀을 삶에 적용해보세요!", lang)}</span></>
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {decisions.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
+                    </div>
+                    <CursorStableInput key={`free-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                    {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
+                  </div>
+                ))}
+              </div>
+              <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
+                <Plus size={14} /> {t("qt_record_add_decision", lang)}
               </button>
             </div>
-          )}
-
-          <div className="qt-free-reflection-section">
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("오늘의 묵상", lang)}</label>
-            <CursorStableTextarea key="free-reflection" className="textarea-field qt-free-reflection-field" rows={10} placeholder={trQT("오늘 읽은 말씀, 느낀 점, 깨달음을 자유롭게 적어보세요...", lang)} value={freeText} onValueChange={updateFreeText} />
           </div>
 
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>
-              <>{trQT("결단", lang)} <span style={{ color: "var(--sage-dark)" }}>— {trQT("말씀을 삶에 적용해보세요!", lang)}</span></>
-            </label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {decisions.map((d, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
-                  </div>
-                  <CursorStableInput key={`free-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("결단 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
-                  {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
-                </div>
-              ))}
-            </div>
-            <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
-              <Plus size={14} /> {t("qt_record_add_decision", lang)}
+          <div className="qt-free-footer qt-writer-footer" style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <button onClick={openCompleteSharePrompt} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
+              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
             </button>
+            {!isEditMode && (
+              <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+                {trQT("임시저장하고 나중에 이어쓰기", lang)}
+              </button>
+            )}
+            {renderAutoSaveStatus()}
           </div>
-        </div>
-
-        <div className="qt-free-footer" style={{ padding: "12px 16px 32px", flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button onClick={openCompleteSharePrompt} disabled={(!freeText.trim() && !decisions.some(d => d.trim())) || saving} className="btn-sage">
-            {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
-          </button>
-          {!isEditMode && (
-            <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
-              {trQT("임시저장하고 나중에 이어쓰기", lang)}
-            </button>
-          )}
-          {renderAutoSaveStatus()}
         </div>
       </div>
     );
@@ -3306,6 +3456,7 @@ function QTWriteContent() {
   // ─── 주일예배 작성 화면 ───
   if (mode === "sunday") {
     const step = STEPS_SUNDAY[cur] as any;
+    const hasPassage = getDisplayPassages().length > 0;
 
     return (
       <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-sunday roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
@@ -3348,119 +3499,125 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-        <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
-              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
-            </button>
-            <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
-          </div>
-          <div className="step-bar" style={{ marginBottom: 8 }}>
-            {STEPS_SUNDAY.map((_, i) => <div key={i} className={`step-bar-item ${i < cur ? "done" : i === cur ? "curr" : ""}`} />)}
-          </div>
-          <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>{cur + 1} / {STEPS_SUNDAY.length} {trQT("단계", lang)}</p>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step.title, lang)}</h1>
-          <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step.subtitle, lang)}</p>
-        </div>
-
-        {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
-        {!step.isSermonInfo && getDisplayPassages().length > 0 && (
-          <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
-            {renderSelectedPassageViewer({ showTextSizeButtons: true })}
-          </div>
-        )}
-
-        {/* 단계 탭 - 자유 클릭 */}
-        <div style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-          {STEPS_SUNDAY.map((s, i) => {
-            const done = i < cur; const isCurr = i === cur;
-            return (
-              <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)" }}>{i + 1}.</span>
-                <span style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
-                {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
+        <div className="qt-writer-workspace" data-has-passage={hasPassage}>
+          <div className="qt-writer-header" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+            <div className="qt-writer-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+                <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
               </button>
-            );
-          })}
-        </div>
-
-        <div className={`qt-sunday-editor ${!step.isSermonInfo && !step.isDecision ? "qt-sunday-simple-editor" : ""}`} style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {step.isSermonInfo && renderPassageSelectionCard()}
-
-          {/* 깨달음과 결단 단계 */}
-          {step.isDecision && (
-            <>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
-                <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
-                <CursorStableTextarea key="sunday-meditation" className="textarea-field qt-sunday-insight-field" rows={8} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
+              <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+            </div>
+            <div className="qt-writer-heading">
+              <div className="step-bar" style={{ marginBottom: 8 }}>
+                {STEPS_SUNDAY.map((_, i) => <div key={i} className={`step-bar-item ${i < cur ? "done" : i === cur ? "curr" : ""}`} />)}
               </div>
-              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--qt-card-border)", marginBottom: 10 }}>
-                  <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-                    <>
-                      <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{trQT("성품", lang)}</span>{trQT("은 마음을 정하는 것,", lang)}{" "}
-                      <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{trQT("행동", lang)}</span>{trQT("은 손과 발로 드러나는 것이에요.", lang)}
-                    </>
-                  </p>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-                  <CursorStableTextarea key="sunday-application" className="textarea-field qt-sunday-decision-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {decisions.map((d, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
-                        </div>
-                        <CursorStableInput key={`sunday-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
-                        {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
-                    <Plus size={14} /> {t("qt_record_add_decision", lang)}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+              <p style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>{cur + 1} / {STEPS_SUNDAY.length} {trQT("단계", lang)}</p>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step.title, lang)}</h1>
+              <p style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step.subtitle, lang)}</p>
+            </div>
+          </div>
 
-          {/* 일반 텍스트 단계 (들어가는기도, 말씀요약, 올려드리는기도) */}
-          {!step.isSermonInfo && !step.isDecision && (
-            <>
-              <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
-              <CursorStableTextarea key={`sunday-${step.id}`} className="textarea-field qt-sunday-simple-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
-            </>
-          )}
-        </div>
-
-        <div className="qt-sunday-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-          {!step.isSermonInfo && (
-            <div style={{ display: "flex", gap: 8 }}>
-              {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
-              {step.isLast ? (
-                <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
-                  {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
-                </button>
-              ) : (
-                <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>
-                  {trQT("다음 단계 →", lang)}
-                </button>
-              )}
+          {/* 본문 표시 (0단계 아닐 때, 본문이 있으면) */}
+          {!wideDesktop && !step.isSermonInfo && hasPassage && (
+            <div style={{ padding: "0 16px", marginTop: 0, flexShrink: 0 }}>
+              {renderSelectedPassageViewer({ showTextSizeButtons: true })}
             </div>
           )}
-          {/* 임시저장 버튼 */}
-          {!isEditMode && (
-            <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
-              {trQT("임시저장하고 나중에 이어쓰기", lang)}
-            </button>
-          )}
-          {renderAutoSaveStatus()}
+
+          {wideDesktop && hasPassage && renderWriterPassage(false)}
+
+          {/* 단계 탭 - 자유 클릭 */}
+          <div className="qt-writer-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+            {STEPS_SUNDAY.map((s, i) => {
+              const done = i < cur; const isCurr = i === cur;
+              return (
+                <button key={i} aria-current={isCurr ? "step" : undefined} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)" }}>{i + 1}.</span>
+                  <span className="qt-writer-tab-label" style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
+                  {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={`qt-sunday-editor qt-writer-editor ${!step.isSermonInfo && !step.isDecision ? "qt-sunday-simple-editor" : ""}`} style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {step.isSermonInfo && renderPassageSelectionCard()}
+
+            {/* 깨달음과 결단 단계 */}
+            {step.isDecision && (
+              <>
+                <div className="qt-writer-field-group">
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("깨달음 (말씀이 내게 주는 것)", lang)}</label>
+                  <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 8 }}>{trQT("오늘 설교를 통해 하나님이 내게 하신 말씀은 무엇인가요?", lang)}</p>
+                  <CursorStableTextarea key="sunday-meditation" className="textarea-field qt-sunday-insight-field" rows={8} placeholder={trQT("개인적이고 솔직하게 써보세요...", lang)} value={answers.meditation ?? ""} onValueChange={value => set("meditation", value)} />
+                </div>
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                  <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--qt-card-border)", marginBottom: 10 }}>
+                    <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
+                      <>
+                        <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{trQT("성품", lang)}</span>{trQT("은 마음을 정하는 것,", lang)}{" "}
+                        <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{trQT("행동", lang)}</span>{trQT("은 손과 발로 드러나는 것이에요.", lang)}
+                      </>
+                    </p>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
+                    <CursorStableTextarea key="sunday-application" className="textarea-field qt-sunday-decision-field" rows={2} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {decisions.map((d, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
+                          </div>
+                          <CursorStableInput key={`sunday-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                          {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
+                      <Plus size={14} /> {t("qt_record_add_decision", lang)}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* 일반 텍스트 단계 (들어가는기도, 말씀요약, 올려드리는기도) */}
+            {!step.isSermonInfo && !step.isDecision && (
+              <>
+                <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step.hint, lang)}</p>
+                <CursorStableTextarea key={`sunday-${step.id}`} className="textarea-field qt-sunday-simple-field" rows={9} placeholder={trQT(step.placeholder, lang)} value={answers[step.id] ?? ""} onValueChange={value => set(step.id, value)} />
+              </>
+            )}
+          </div>
+
+          <div className="qt-sunday-footer qt-writer-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+            {!step.isSermonInfo && (
+              <div style={{ display: "flex", gap: 8 }}>
+                {cur > 0 && <button onClick={() => setCur(c => c - 1)} className="btn-outline" style={{ flex: 1 }}>{trQT("← 이전", lang)}</button>}
+                {step.isLast ? (
+                  <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: cur > 0 ? 2 : 1 }}>
+                    {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
+                  </button>
+                ) : (
+                  <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: cur > 0 ? 2 : 1 }}>
+                    {trQT("다음 단계 →", lang)}
+                  </button>
+                )}
+              </div>
+            )}
+            {/* 임시저장 버튼 */}
+            {!isEditMode && (
+              <button onClick={() => saveDraft()} disabled={saving || selectedDate !== todayStr} style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}>
+                {trQT("임시저장하고 나중에 이어쓰기", lang)}
+              </button>
+            )}
+            {renderAutoSaveStatus()}
+          </div>
         </div>
       </div>
     );
@@ -3468,6 +3625,9 @@ function QTWriteContent() {
 
   // ─── 6단계 작성 화면 ───
   const step6 = STEPS_6[cur];
+  const displayPassages = getDisplayPassages();
+
+
   return (
     <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
@@ -3509,306 +3669,198 @@ function QTWriteContent() {
           <span style={{ lineHeight: 1.35 }}>{toast.message}</span>
         </div>
       )}
-      <div style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
-            <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
-          </button>
-          <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+      <div className="qt-six-workspace qt-writer-workspace" data-has-passage={displayPassages.length > 0}>
+        <div className="qt-six-step-header qt-writer-header" style={{ background: "var(--bg)", padding: "var(--roots-page-top-padding) 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <div className="qt-six-step-topbar qt-writer-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <button onClick={leaveWriter} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "var(--text-muted-readable)", cursor: "pointer" }}>
+              <ChevronLeft size={18} /><span style={{ fontSize: 13 }}>{trQT("나가기", lang)}</span>
+            </button>
+            <span style={{ fontSize: 11, color: "var(--text-muted-readable)" }}>{selectedDate === todayStr ? trQT("오늘", lang) : selectedDate}</span>
+          </div>
+
+          {/* 말씀 미리보기 */}
+          {!wideDesktop && !step6.isPassageStep && displayPassages.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              {renderSelectedPassageViewer({ showTextSizeButtons: true })}
+            </div>
+          )}
+
+          <div className="qt-six-step-heading qt-writer-heading">
+            {/* 진행바 — 6칸, 본문요약+붙잡은말씀 동시 활성 */}
+            <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
+              {BAR_LABELS_6.map((_label, i) => {
+                const state = getBarState(i);
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: "100%", height: 4, borderRadius: 2, background: state === "done" ? "var(--sage)" : state === "curr" ? "var(--sage)" : "var(--qt-progress-track)", opacity: state === "curr" ? 1 : state === "done" ? 0.82 : 1, transition: "all 0.3s" }} />
+                  </div>
+                );
+              })}
+            </div>
+            <p className="qt-six-step-kicker" style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
+              {step6.barIdx.map(i => trQT(BAR_LABELS_6[i], lang)).join(" & ")}
+            </p>
+            <h1 className="qt-six-step-title" style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
+            <p className="qt-six-step-subtitle" style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
+          </div>
         </div>
 
-        {/* 말씀 미리보기 */}
-        {!step6.isPassageStep && getDisplayPassages().length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            {renderSelectedPassageViewer({ showTextSizeButtons: true })}
-          </div>
-        )}
-
-        {/* 진행바 — 6칸, 본문요약+붙잡은말씀 동시 활성 */}
-        <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
-          {BAR_LABELS_6.map((_label, i) => {
-            const state = getBarState(i);
+        {/* 단계 탭 */}
+        <div className="qt-six-step-tabs qt-writer-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          {STEPS_6.map((s, i) => {
+            const done = i < cur;
+            const isCurr = i === cur;
             return (
-              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <div style={{ width: "100%", height: 4, borderRadius: 2, background: state === "done" ? "var(--sage)" : state === "curr" ? "var(--sage)" : "var(--qt-progress-track)", opacity: state === "curr" ? 1 : state === "done" ? 0.82 : 1, transition: "all 0.3s" }} />
-              </div>
+              <button key={i} aria-current={isCurr ? "step" : undefined} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                <span className="qt-six-step-tab-label qt-writer-tab-label" style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
+                {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
+              </button>
             );
           })}
         </div>
-        <p className="qt-six-step-kicker" style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
-          {step6.barIdx.map(i => trQT(BAR_LABELS_6[i], lang)).join(" & ")}
-        </p>
-        <h1 className="qt-six-step-title" style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
-        <p className="qt-six-step-subtitle" style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
-      </div>
 
-      {/* 단계 탭 */}
-      <div className="qt-six-step-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        {STEPS_6.map((s, i) => {
-          const done = i < cur;
-          const isCurr = i === cur;
-          return (
-            <button key={i} onClick={() => setCur(i)} style={{ flexShrink: 0, padding: "10px 12px", background: "none", border: "none", borderBottom: isCurr ? "2px solid var(--sage)" : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <span className="qt-six-step-tab-label" style={{ fontSize: 11, fontWeight: isCurr ? 700 : 400, color: done ? "var(--sage-dark)" : isCurr ? "var(--text)" : "var(--text3)", whiteSpace: "nowrap" }}>{trQT(s.title, lang)}</span>
-              {done && <span style={{ fontSize: 10, color: "var(--sage)" }}>✓</span>}
-            </button>
-          );
-        })}
-      </div>
+        {wideDesktop && renderWriterPassage(Boolean(step6.isPassageStep))}
 
-      {/* 본문 요약 & 붙잡은 말씀 단계 */}
-      {step6.isPassageStep && (
-        <div className="qt-six-step-editor" style={{ flex: "0 0 auto", padding: "16px 16px 0", overflowY: "visible", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* 본문 요약 & 붙잡은 말씀 단계 */}
+        {step6.isPassageStep && (
+          <div className="qt-six-step-editor qt-writer-editor" style={{ flex: "0 0 auto", padding: "16px 16px 0", overflowY: "visible", display: "flex", flexDirection: "column", gap: 12 }}>
 
-          {/* 본문 전체 보기 */}
-          {getDisplayPassages().length > 0 && (() => {
-            const displayPassages = getDisplayPassages();
-            const safeIndex = Math.min(activePassageIndex, displayPassages.length - 1);
-            const activePassage = displayPassages[safeIndex] ?? displayPassages[0];
-            const verses = activePassage.verses ?? [];
-            const hasMultiplePassages = displayPassages.length > 1;
-            const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
-            return (
-              <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, border: "1px solid var(--qt-sage-border-soft)", overflow: "hidden" }}>
-                <div
-                  ref={readingPassageRef}
-                  id="qt-six-reading-passage"
-                  role="region"
-                  aria-label={translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}
-                  tabIndex={0}
-                  onClickCapture={handleReadingPassageClickCapture}
-                  style={{
-                    maxHeight: readingView === "compact" && readingCanCollapse ? QT_READING_COMPACT_MAX_HEIGHT : undefined,
-                    overflowY: readingView === "compact" && readingCanCollapse ? "auto" : "visible",
-                    overflowX: "hidden",
-                    padding: "12px 14px",
-                    position: "relative",
-                    zIndex: 0,
-                    background: "var(--qt-sage-subtle-surface)",
-                    // iOS/WKWebView can paint composited descendants outside a
-                    // nested momentum scroller. In compact mode, make this box a
-                    // real paint boundary so scrolled verse buttons/copyright never
-                    // bleed behind the expand control or the editors below.
-                    contain: readingView === "compact" && readingCanCollapse ? "paint" : undefined,
-                    clipPath: readingView === "compact" && readingCanCollapse ? "inset(0)" : undefined,
-                    overscrollBehavior: readingView === "compact" && readingCanCollapse ? "contain" : undefined,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasMultiplePassages ? 10 : 8, gap: 6 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)", flex: 1, minWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><BookOpen size={13} style={{ verticalAlign: "text-bottom", marginRight: 4 }} /> {translateBibleRef(activePassage.ref, (currentLang.toLowerCase() as Lang) || lang)}</p>
-                    <BibleTranslationSelect />
-                    {loadingBible && <Loader2 size={11} className="spin" style={{ color: "var(--sage-dark)", flexShrink: 0 }} />}
-                    <CompactBibleTextSizeButtons />
-                  </div>
-                  {hasMultiplePassages && (
-                    <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 8 }}>
-                      {displayPassages.map((p, i) => {
-                        const selected = i === safeIndex;
-                        return (
-                          <button className="qt-option-card" key={`${p.ref}-${i}`} onClick={() => { setActivePassageIndex(i); setPassageExpanded(false); }} style={{ flexShrink: 0, border: `1px solid ${selected ? "var(--qt-sage-border)" : "var(--qt-card-border)"}`, background: selected ? "var(--qt-sage-surface)" : "var(--qt-card-surface)", color: selected ? "var(--qt-sage-text)" : "var(--text2)", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
-                            {translateBibleRef(p.ref, (currentLang.toLowerCase() as Lang) || lang)}
-                          </button>
-                        );
-                      })}
+            {!wideDesktop && renderWriterPassage(Boolean(step6.isPassageStep))}
+
+            {/* 2단계: 본문 요약 */}
+            <div className="qt-writer-field-group qt-writer-summary">
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
+                {trQT("2단계 · 본문 요약", lang)}
+              </label>
+              <CursorStableTextarea key="six-step-summary" className="textarea-field" rows={7} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
+            </div>
+
+            {/* 3단계: 붙잡은 말씀 */}
+            <div className="qt-writer-field-group">
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
+                {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT(wideDesktop ? "(본문에서 절을 선택하면 추가돼요)" : "(위 절 탭하면 자동 추가)", lang)}</span>
+              </label>
+              <CursorStableTextarea key="six-step-key-verse" className="textarea-field" rows={3} placeholder={trQT(wideDesktop ? "마음에 와닿은 구절을 적거나 본문에서 선택하세요..." : "마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
+            </div>
+          </div>
+        )}
+
+        {/* 결단 단계 */}
+        {step6.isDecision && (
+          <div className="qt-six-step-editor qt-writer-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--qt-card-border)" }}>
+              <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
+                {t("qtw_decision_hint_prefix", lang)}
+                <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{t("qtw_decision_hint_character", lang)}</span>
+                {t("qtw_decision_hint_middle", lang)}
+                {t("qtw_decision_hint_action_article", lang)}
+                <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{t("qtw_decision_hint_action", lang)}</span>
+                {t("qtw_decision_hint_suffix", lang)}
+              </p>
+            </div>
+            <div className="qt-writer-field-group">
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
+              <CursorStableTextarea key="six-step-application" className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {decisions.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
                     </div>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {verses.map(v => {
-                      const verseId = normalizeVerseNum(v.num);
-                      const isSelected = selectedVerseNums.includes(verseId);
-                      return (
-                        <button key={`${activePassage.ref}-${verseId}`} onClick={() => selectVerse(String(v.text), v.num)} style={{ textAlign: "left", background: isSelected ? "var(--qt-sage-surface)" : "var(--qt-sage-subtle-surface)", borderRadius: 8, padding: "8px 10px", border: `1px solid ${isSelected ? "var(--qt-sage-border)" : "var(--qt-sage-border-soft)"}`, cursor: "pointer", display: "flex", gap: 8, alignItems: "flex-start", transition: "all 0.15s" }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? "var(--sage-dark)" : "var(--sage)", flexShrink: 0, minWidth: verseId.includes(":") ? 32 : 16 }}>{verseId}</span>
-                          <span style={{ fontSize: bibleTextFontSize, color: isSelected ? "var(--sage-dark)" : "var(--text)", lineHeight: 1.7, fontWeight: isSelected ? 600 : 400 }}>{v.text}</span>
-                          {isSelected && <Check size={13} style={{ color: "var(--sage)", marginLeft: "auto", flexShrink: 0 }} />}
-                        </button>
-                      );
-                    })}
+                    <CursorStableInput key={`six-step-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
+                    {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
                   </div>
-                  {copyrightInfo && (
-                    <p style={{ fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5, marginTop: 8 }}>
-                      {copyrightInfo.notice}
-                      {copyrightInfo.url && (
-                        <>
-                          {" "}
-                          <a
-                            href={copyrightInfo.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
-                          >
-                            {copyrightInfo.linkLabel ?? copyrightInfo.url}
-                          </a>
-                        </>
-                      )}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 10, color: "var(--sage-dark)", marginTop: 8, fontWeight: 600 }}>{trQT("절을 탭하면 붙잡은 말씀에 추가돼요", lang)}</p>
+                ))}
+              </div>
+              <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
+                <Plus size={14} /> {t("qt_record_add_decision", lang)}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 일반 텍스트 단계 (들어가는기도, 느낌과묵상, 올려드리는기도) */}
+        {!step6.isPassageStep && !step6.isDecision && (
+          <div className="qt-six-step-editor qt-writer-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+
+            <p className="qt-six-step-hint" style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
+
+            {step6.id === "meditation" && keyVerse.trim() && (
+              <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
+                <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 6 }}>
+                  {trQT("붙잡은 말씀으로 묵상해요", lang)}
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {keyVerse.split("\n").filter(line => line.trim()).map((line, idx) => {
+                    const match = line.trim().match(/^(\d+(?::\d+)?(?:[-–]\d+)?)\s+(.*)$/);
+                    const num = match?.[1] ?? "";
+                    const body = match?.[2] ?? line.trim();
+                    return (
+                      <p key={`${idx}-${line}`} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7 }}>
+                        {num && <span style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", marginRight: 6 }}>{num}</span>}
+                        {body}
+                      </p>
+                    );
+                  })}
                 </div>
-                {readingCanCollapse && (
-                  <button
-                    type="button"
-                    aria-controls="qt-six-reading-passage"
-                    aria-expanded={readingView === "expanded"}
-                    onClick={() => setReadingView(view => view === "expanded" ? "compact" : "expanded")}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 5,
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: 0,
-                      borderTop: "1px solid var(--qt-sage-border-soft)",
-                      background: "var(--qt-sage-subtle-surface)",
-                      color: "var(--sage-dark)",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      position: "relative",
-                      zIndex: 2,
-                    }}
-                  >
-                    {readingView === "expanded" ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-                    {trQT(readingView === "expanded" ? "접어서 보기" : "전체 보기", lang)}
-                  </button>
+                {selectedTranslation === ESV_TRANSLATION_ID && (
+                  <p style={{ marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
+                    ESV ·{" "}
+                    <a
+                      href={ESV_ATTRIBUTION_URL}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
+                    >
+                      ESV.org
+                    </a>
+                  </p>
                 )}
               </div>
-            );
-          })()}
+            )}
 
-          {/* 2단계: 본문 요약 */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
-              {trQT("2단계 · 본문 요약", lang)}
-            </label>
-            <CursorStableTextarea key="six-step-summary" className="textarea-field" rows={7} placeholder={trQT("본문 내용을 자신의 말로 요약해보세요...", lang)} value={answers.summary ?? ""} onValueChange={value => set("summary", value)} />
+            <CursorStableTextarea key={`six-step-${step6.id}`} className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onValueChange={value => set(step6.id, value)} />
           </div>
-
-          {/* 3단계: 붙잡은 말씀 */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>
-              {trQT("3단계 · 붙잡은 말씀", lang)} <span style={{ fontWeight: 400 }}>{trQT("(위 절 탭하면 자동 추가)", lang)}</span>
-            </label>
-            <CursorStableTextarea key="six-step-key-verse" className="textarea-field" rows={3} placeholder={trQT("마음에 와닿은 구절을 적거나 위에서 선택하세요...", lang)} value={keyVerse} onValueChange={updateKeyVerseText} />
-          </div>
-        </div>
-      )}
-
-      {/* 결단 단계 */}
-      {step6.isDecision && (
-        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="roots-elevation-card" style={{ background: "var(--qt-card-muted-surface)", borderRadius: 12, padding: "12px 14px", border: "1px solid var(--qt-card-border)" }}>
-            <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7 }}>
-              {t("qtw_decision_hint_prefix", lang)}
-              <span style={{ fontWeight: 700, color: "var(--sage-dark)" }}>{t("qtw_decision_hint_character", lang)}</span>
-              {t("qtw_decision_hint_middle", lang)}
-              {t("qtw_decision_hint_action_article", lang)}
-              <span style={{ fontWeight: 700, color: "var(--qt-terra-text)" }}>{t("qtw_decision_hint_action", lang)}</span>
-              {t("qtw_decision_hint_suffix", lang)}
-            </p>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 6 }}>{trQT("성품 (마음의 결심)", lang)}</label>
-            <CursorStableTextarea key="six-step-application" className="textarea-field" rows={3} placeholder={trQT("이 말씀 앞에서 어떤 마음을 품기로 결심했나요?", lang)} value={answers.application ?? ""} onValueChange={value => set("application", value)} />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted-readable)", display: "block", marginBottom: 8 }}>{trQT("행동 (구체적인 결단)", lang)}</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {decisions.map((d, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--qt-sage-surface)", border: "1px solid var(--qt-sage-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--sage-dark)" }}>{i + 1}</span>
-                  </div>
-                  <CursorStableInput key={`six-step-decision-${i}`} type="text" className="input-field" placeholder={`${trQT("행동 1", lang).replace("1", String(i + 1))}`} value={d} onValueChange={value => updateDecision(i, value)} style={{ flex: 1 }} />
-                  {decisions.length > 1 && <button onClick={() => removeDecision(i)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><Trash2 size={16} /></button>}
-                </div>
-              ))}
-            </div>
-            <button onClick={addDecision} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "1px dashed var(--border)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", marginTop: 8, width: "100%", color: "var(--text-muted-readable)", fontSize: 12 }}>
-              <Plus size={14} /> {t("qt_record_add_decision", lang)}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 일반 텍스트 단계 (들어가는기도, 느낌과묵상, 올려드리는기도) */}
-      {!step6.isPassageStep && !step6.isDecision && (
-        <div className="qt-six-step-editor" style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
-
-          <p className="qt-six-step-hint" style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
-
-          {step6.id === "meditation" && keyVerse.trim() && (
-            <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
-              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 6 }}>
-                {trQT("붙잡은 말씀으로 묵상해요", lang)}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {keyVerse.split("\n").filter(line => line.trim()).map((line, idx) => {
-                  const match = line.trim().match(/^(\d+(?::\d+)?(?:[-–]\d+)?)\s+(.*)$/);
-                  const num = match?.[1] ?? "";
-                  const body = match?.[2] ?? line.trim();
-                  return (
-                    <p key={`${idx}-${line}`} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7 }}>
-                      {num && <span style={{ fontSize: 10, fontWeight: 800, color: "var(--sage-dark)", marginRight: 6 }}>{num}</span>}
-                      {body}
-                    </p>
-                  );
-                })}
-              </div>
-              {selectedTranslation === ESV_TRANSLATION_ID && (
-                <p style={{ marginTop: 7, fontSize: 9, color: "var(--text-muted-readable)", lineHeight: 1.5 }}>
-                  ESV ·{" "}
-                  <a
-                    href={ESV_ATTRIBUTION_URL}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}
-                  >
-                    ESV.org
-                  </a>
-                </p>
-              )}
-            </div>
-          )}
-
-          <CursorStableTextarea key={`six-step-${step6.id}`} className="textarea-field" rows={9} placeholder={trQT(step6.placeholder, lang)} value={answers[step6.id] ?? ""} onValueChange={value => set(step6.id, value)} />
-        </div>
-      )}
-
-      {/* 하단 버튼 */}
-      <div className="qt-six-step-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) && (
-            <button
-              onClick={() => {
-                if (cur > 0) setCur(c => c - 1);
-                else beginSixStepPassageReselect();
-              }}
-              className="btn-outline"
-              style={{ flex: 1 }}
-            >
-              {cur === 0 ? trQT("본문 다시 선택", lang) : trQT("← 이전", lang)}
-            </button>
-          )}
-          {step6.isLast ? (
-            <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>
-              {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
-            </button>
-          ) : (
-            <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
-          )}
-        </div>
-        {/* 임시저장 버튼 */}
-        {!isEditMode && (
-          <button
-            onClick={() => saveDraft()}
-            disabled={saving || selectedDate !== todayStr}
-            style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}
-          >
-            {trQT("임시저장하고 나중에 이어쓰기", lang)}
-          </button>
         )}
-        {renderAutoSaveStatus()}
+
+        {/* 하단 버튼 */}
+        <div className="qt-six-step-footer qt-writer-footer" style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            {(cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) && (
+              <button
+                onClick={() => {
+                  if (cur > 0) setCur(c => c - 1);
+                  else beginSixStepPassageReselect();
+                }}
+                className="btn-outline"
+                style={{ flex: 1 }}
+              >
+                {cur === 0 ? trQT("본문 다시 선택", lang) : trQT("← 이전", lang)}
+              </button>
+            )}
+            {step6.isLast ? (
+              <button onClick={openCompleteSharePrompt} disabled={saving} className="btn-sage" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>
+                {saving ? <><Loader2 size={18} className="spin" />{trQT("저장 중...", lang)}</> : <><Check size={18} />{isEditMode ? t("qt_record_edit_save", lang) : trQT("큐티 완료", lang)}</>}
+              </button>
+            ) : (
+              <button onClick={() => setCur(c => c + 1)} className="btn-primary" style={{ flex: (cur > 0 || (cur === 0 && sixStepPassageReselectEnabled)) ? 2 : 1 }}>{trQT("다음 단계 →", lang)}</button>
+            )}
+          </div>
+          {/* 임시저장 버튼 */}
+          {!isEditMode && (
+            <button
+              onClick={() => saveDraft()}
+              disabled={saving || selectedDate !== todayStr}
+              style={{ width: "100%", padding: "10px", background: "none", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted-readable)", fontSize: 12, cursor: saving || selectedDate !== todayStr ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saving || selectedDate !== todayStr ? 0.55 : 1 }}
+            >
+              {trQT("임시저장하고 나중에 이어쓰기", lang)}
+            </button>
+          )}
+          {renderAutoSaveStatus()}
+        </div>
       </div>
     </div>
   );

@@ -8,5 +8,5 @@ export default function QTCompletePage() {
   const router = useRouter();
   const lang = useLang();
 
-  return <QTCompletionScreen lang={lang} onConfirm={() => router.replace("/")} />;
+  return <QTCompletionScreen lang={lang} onConfirm={destination => router.replace(destination)} />;
 }

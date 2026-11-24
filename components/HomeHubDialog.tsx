@@ -20,7 +20,9 @@ type HomeHubDialogProps = {
   busy?: boolean;
   hideTitle?: boolean;
   compact?: boolean;
+  dialogClassName?: string;
   height?: number;
+  boundarySelector?: string;
 };
 
 const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([type='hidden']), select:not(:disabled), textarea:not(:disabled), [contenteditable='true'], [tabindex]:not([tabindex='-1'])";
@@ -28,7 +30,7 @@ const FOCUSABLE = "button:not(:disabled), a[href], input:not(:disabled):not([typ
 // The body lock is shared with the existing prayer dialogs, including native
 // iPad/Mac zoom and keyboard handling. Home keeps these dialogs mutually exclusive.
 export default function HomeHubDialog({
-  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, compact = false, height,
+  open, title, description, closeLabel, onClose, onAndroidBack, backdropVariant = "default", children, busy = false, hideTitle = false, compact = false, dialogClassName, height, boundarySelector = "[data-home-dashboard]",
 }: HomeHubDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,9 @@ export default function HomeHubDialog({
     const root = viewportRef.current;
     const dialog = dialogRef.current;
     if (!open || !root || !dialog) return;
-    const boundary = document.querySelector<HTMLElement>("[data-home-dashboard]") ?? document.body;
+    const dashboard = document.querySelector<HTMLElement>(boundarySelector) ?? document.body;
+    const home = dashboard.closest<HTMLElement>(".roots-desktop-home");
+    const wideWindow = window.matchMedia("(min-width: 960px)");
 
     let frame = 0;
     const viewport = window.visualViewport;
@@ -82,15 +86,18 @@ export default function HomeHubDialog({
       const left = Math.max(rootBounds.left, viewport?.offsetLeft ?? 0);
       const right = Math.min(rootBounds.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth));
       const insetX = (Number.parseFloat(rootStyle.paddingLeft) || 14) * scale;
-      // Portals fill the window, but the home cards form a narrower column.
-      // Constrain centered dialogs to that column.
+      // The wide Home page is centered in the space beside its sidebar.
+      // On smaller screens the card column remains the visible dialog boundary.
+      const boundary = home && wideWindow.matches && document.documentElement.dataset.rootsDesktop === "wide"
+        ? home : dashboard;
       const boundaryBounds = boundsInViewport(boundary);
       const boundaryScale = boundary.offsetWidth ? boundaryBounds.width / boundary.offsetWidth : scale;
       const boundaryStyle = getComputedStyle(boundary);
       const contentLeft = boundaryBounds.left + (Number.parseFloat(boundaryStyle.paddingLeft) || 0) * boundaryScale;
       const contentRight = boundaryBounds.right - (Number.parseFloat(boundaryStyle.paddingRight) || 0) * boundaryScale;
-      const minimumX = Math.max(left + insetX, contentLeft);
-      const maximumRight = Math.min(right - insetX, contentRight);
+      const boundaryInset = boundary === home ? insetX : 0;
+      const minimumX = Math.max(left + insetX, contentLeft + boundaryInset);
+      const maximumRight = Math.min(right - insetX, contentRight - boundaryInset);
       dialog.style.setProperty("--home-dialog-max-width", `${Math.max(0, (maximumRight - minimumX) / scale)}px`);
       const center = (minimumX + maximumRight) / 2;
       dialog.style.setProperty("--home-dialog-offset-x", `${(center - (rootBounds.left + rootBounds.right) / 2) / scale}px`);
@@ -105,7 +112,8 @@ export default function HomeHubDialog({
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
     observer?.observe(root);
     observer?.observe(dialog);
-    observer?.observe(boundary);
+    observer?.observe(dashboard);
+    if (home) observer?.observe(home);
     window.addEventListener("resize", schedule);
     viewport?.addEventListener("resize", schedule);
     viewport?.addEventListener("scroll", schedule);
@@ -116,7 +124,7 @@ export default function HomeHubDialog({
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
     };
-  }, [open]);
+  }, [open, boundarySelector]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -233,7 +241,7 @@ export default function HomeHubDialog({
   const dialog = (
     <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined} aria-busy={busy}
-      className={`${styles.dialog}${compact ? ` ${styles.compactDialog}` : ""}${height === undefined ? "" : ` ${styles.fixedHeight}`}`}
+      className={`${styles.dialog}${dialogClassName ? ` ${dialogClassName}` : ""}${compact ? ` ${styles.compactDialog}` : ""}${height === undefined ? "" : ` ${styles.fixedHeight}`}`}
       style={height === undefined ? undefined : { height }}
     >
       <button ref={closeRef} type="button" className={styles.close} aria-label={closeLabel}

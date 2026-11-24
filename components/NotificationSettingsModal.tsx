@@ -20,6 +20,7 @@ import {
   type RootsPushNotificationPreferences,
 } from "@/lib/notifications/preferences";
 import { getNotificationSettingsText } from "@/lib/notifications/settingsText";
+import desktopDialog from "./HomeShortcutDialog.module.css";
 import {
   disableCurrentUserPushTokens,
   registerCurrentDeviceForPushNotifications,
@@ -183,7 +184,7 @@ export default function NotificationSettingsModal({ onClose, onSaved }: Props) {
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 180, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 18px" }}>
-      <div onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 410, maxHeight: "calc(100vh - 72px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 18px 18px", boxShadow: "var(--shadow-modal)" }}>
+      <div className={desktopDialog.notifications} onClick={event => event.stopPropagation()} style={{ width: "100%", maxWidth: 410, maxHeight: "calc(100vh - 72px)", overflowY: "auto", background: "var(--profile-modal-surface)", border: "1px solid var(--border)", borderRadius: 26, padding: "22px 18px 18px", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div style={{ width: 38, height: 38, borderRadius: 14, background: "var(--profile-selected-surface)", color: "var(--profile-sage-notice-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

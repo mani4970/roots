@@ -828,7 +828,7 @@ const forbiddenDirectUiLiterals = [
     "app/page.tsx",
     "app/qt/record/page.tsx",
     "app/community/page.tsx",
-    "app/companions/page.tsx",
+    "components/CompanionWorkspacePanel.tsx",
   ].map((relativePath) => ({
     relativePath,
     label: "generic badge image alt",

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 import { getPrayerCardText } from "@/lib/prayerCardText";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import styles from "./PrayerCardDeck.module.css";
 
 export type PrayerCardEntry = {
@@ -24,6 +24,7 @@ type PrayerCardDeckProps = {
   activeId?: string | null;
   onActiveChange?: (id: string) => void;
   countByKind?: boolean;
+  showNavigation?: boolean;
   ariaLabel?: string;
   className?: string;
   beforePosition?: ReactNode;
@@ -100,6 +101,7 @@ export default function PrayerCardDeck({
   activeId,
   onActiveChange,
   countByKind = false,
+  showNavigation = false,
   ariaLabel,
   className,
   beforePosition,
@@ -284,6 +286,13 @@ export default function PrayerCardDeck({
     }
   };
 
+  const goToIndex = (index: number, smooth = false) => {
+    const item = itemsRef.current[index];
+    if (!item) return;
+    notifyCurrent(item.id);
+    scrollToId(item.id, smooth);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (isInteractive(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
     let index = currentIndexRef.current;
@@ -293,11 +302,7 @@ export default function PrayerCardDeck({
     else if (event.key === "End" && event.target === event.currentTarget) index = itemsRef.current.length - 1;
     else return;
     event.preventDefault();
-    const item = itemsRef.current[Math.max(0, Math.min(index, itemsRef.current.length - 1))];
-    if (item) {
-      notifyCurrent(item.id);
-      scrollToId(item.id, true);
-    }
+    goToIndex(Math.max(0, Math.min(index, itemsRef.current.length - 1)), true);
   };
 
   const activeIndex = Math.max(0, items.findIndex(item => item.id === currentId));
@@ -311,6 +316,11 @@ export default function PrayerCardDeck({
       : { current: index + 1, total: items.length };
   });
   const activePosition = positions[activeIndex];
+  const counter = activePosition && (
+    <p className={styles.position} role="status" aria-live="polite" aria-atomic="true" aria-label={text.cardLabel(activePosition.current, activePosition.total)}>
+      {activePosition.current} / {activePosition.total}
+    </p>
+  );
 
   return (
     <section className={`${styles.deck}${className ? ` ${className}` : ""}`} aria-label={ariaLabel ?? text.carouselLabel}>
@@ -400,11 +410,17 @@ export default function PrayerCardDeck({
           {beforePosition}
         </div>
       )}
-      {activePosition && (
-        <p className={styles.position} role="status" aria-live="polite" aria-atomic="true" aria-label={text.cardLabel(activePosition.current, activePosition.total)}>
-          {activePosition.current} / {activePosition.total}
-        </p>
-      )}
+      {showNavigation && items.length > 1 ? (
+        <div className={styles.navigation}>
+          <button type="button" aria-label={text.previousCard} title={text.previousCard} aria-disabled={activeIndex === 0} onClick={() => goToIndex(currentIndexRef.current - 1)}>
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          {counter}
+          <button type="button" aria-label={text.nextCard} title={text.nextCard} aria-disabled={activeIndex === items.length - 1} onClick={() => goToIndex(currentIndexRef.current + 1)}>
+            <ChevronRight size={19} aria-hidden="true" />
+          </button>
+        </div>
+      ) : counter}
     </section>
   );
 }

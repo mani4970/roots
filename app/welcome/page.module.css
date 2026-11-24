@@ -520,3 +520,187 @@
   from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* The desktop welcome has no sidebar. Give this route the width of the window,
+   including on the installed Mac app where the authentication body is zoomed. */
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop-client]):has(.page),
+  :global(html[data-roots-desktop-client][data-native-ios-device="mac"]):has(.page) :global(body) {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    zoom: 1;
+    background: var(--auth-page-surface);
+  }
+
+  :global(html[data-roots-desktop-client]) .phone {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) clamp(12px, 2vw, 28px) minmax(0, 2.2fr);
+    grid-template-areas:
+      "hero     hero     .        growth"
+      "start    login    .        growth"
+      "featuresTitle featuresTitle featuresTitle featuresTitle"
+      "features features features features"
+      "badgeTitle badgeTitle .    badges"
+      "badgeSub badgeSub .        badges"
+      "verse    verse    verse    verse"
+      "stores   stores   stores   stores"
+      "note     note     note     note";
+    align-content: start;
+    gap: 0 12px;
+    box-sizing: border-box;
+    max-width: 1160px;
+    padding: clamp(78px, 9vh, 100px) clamp(32px, 4vw, 60px) 24px;
+    reading-flow: grid-rows;
+  }
+
+  :global(html[data-roots-desktop-client]) .langBar {
+    top: 20px;
+    right: clamp(32px, 4vw, 60px);
+    /* This control is positioned outside the rows, above the introduction. */
+    reading-order: -1;
+  }
+
+  :global(html[data-roots-desktop-client]) .hero {
+    grid-area: hero;
+    align-self: end;
+    padding: 0;
+    overflow: visible;
+  }
+  :global(html[data-roots-desktop-client]) .heroBg,
+  :global(html[data-roots-desktop-client]) .ring { display: none; }
+  :global(html[data-roots-desktop-client]) .hero .heroTitle {
+    font-size: clamp(54px, 5vw, 68px);
+    margin-bottom: 14px;
+  }
+  :global(html[data-roots-desktop-client]) .hero .heroTitleSub {
+    max-width: none;
+    font-size: clamp(23px, 2.1vw, 29px);
+    line-height: 1.38;
+  }
+  :global(html[data-roots-desktop-client]) .hero .heroDesc {
+    max-width: 44ch;
+    font-size: 15px;
+    line-height: 1.7;
+    white-space: normal;
+  }
+
+  :global(html[data-roots-desktop-client]) .footerCta,
+  :global(html[data-roots-desktop-client]) .featRow { display: contents; }
+  :global(html[data-roots-desktop-client]) .btnPrimary { grid-area: start; }
+  :global(html[data-roots-desktop-client]) .btnOutline { grid-area: login; }
+  :global(html[data-roots-desktop-client]) .footerCta > button {
+    align-self: start;
+    height: auto;
+    min-height: 48px;
+    margin-top: 22px;
+    padding: 10px 12px;
+    line-height: 1.4;
+  }
+
+  :global(html[data-roots-desktop-client]) .growthSection {
+    grid-area: growth;
+    align-self: center;
+    margin: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  :global(html[data-roots-desktop-client]) .growthHeader { padding: 0 0 16px; }
+  :global(html[data-roots-desktop-client]) .growthEyebrow,
+  :global(html[data-roots-desktop-client]) .growthTreeLabel { color: var(--auth-sage-text); }
+  :global(html[data-roots-desktop-client]) .growthTitle {
+    color: var(--text);
+    font-size: 22px;
+    line-height: 1.35;
+  }
+  :global(html[data-roots-desktop-client]) .growthSub {
+    color: var(--text2);
+    font-size: 14px;
+  }
+  :global(html[data-roots-desktop-client]) .growthCompare { padding: 0; }
+  :global(html[data-roots-desktop-client]) .growthTreeImage {
+    aspect-ratio: 1.7;
+    border-color: var(--auth-card-border);
+    box-shadow: var(--shadow-card);
+  }
+  :global(html[data-roots-desktop-client]) .growthArrow {
+    color: var(--auth-sage-text);
+    background: var(--auth-sage-surface);
+    border-color: var(--auth-card-border);
+  }
+
+  :global(html[data-roots-desktop-client]) .sectionLabel {
+    grid-area: badgeTitle;
+    align-self: end;
+    margin: 40px 0 8px;
+    font-size: 18px;
+  }
+  :global(html[data-roots-desktop-client]) .sectionLabel::after { display: none; }
+  :global(html[data-roots-desktop-client]) .sectionSub {
+    grid-area: badgeSub;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    text-align: left;
+    white-space: normal;
+  }
+  :global(html[data-roots-desktop-client]) .badgesSection {
+    grid-area: badges;
+    align-self: center;
+    margin-top: 38px;
+    padding: 0;
+  }
+  :global(html[data-roots-desktop-client]) .badgesGroup {
+    flex-flow: row wrap;
+    justify-content: center;
+  }
+  :global(html[data-roots-desktop-client]) .badgesRow { flex-wrap: wrap; }
+  :global(html[data-roots-desktop-client]) .badgesRow,
+  :global(html[data-roots-desktop-client]) .badgesGroup { gap: 4px; }
+  :global(html[data-roots-desktop-client]) .featuresSectionLabel {
+    grid-area: featuresTitle;
+    margin: clamp(40px, 6vh, 64px) 0 14px;
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  :global(html[data-roots-desktop-client]) .features {
+    grid-area: features;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 0;
+  }
+  :global(html[data-roots-desktop-client]) .featBig,
+  :global(html[data-roots-desktop-client]) .featSm { padding: 22px; }
+  :global(html[data-roots-desktop-client]) .featSmTitle,
+  :global(html[data-roots-desktop-client]) .featTitle { margin-bottom: 6px; font-size: 17px; }
+  :global(html[data-roots-desktop-client]) .featSub,
+  :global(html[data-roots-desktop-client]) .featSmSub { font-size: 14px; line-height: 1.65; }
+
+  :global(html[data-roots-desktop-client]) .verseBlock {
+    grid-area: verse;
+    margin: 32px 0 0;
+  }
+  :global(html[data-roots-desktop-client]) .verseText {
+    max-width: 62ch;
+    margin-inline: auto;
+    font-size: 16px;
+    white-space: normal;
+    text-wrap: balance;
+    word-break: keep-all;
+  }
+  :global(html[data-roots-desktop-client]) .storeBlock {
+    grid-area: stores;
+    justify-self: center;
+    width: min(100%, 390px);
+    margin-top: 24px;
+  }
+  :global(html[data-roots-desktop-client]) .footerNote {
+    grid-area: note;
+    padding: 12px 0;
+  }
+}

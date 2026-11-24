@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
@@ -115,6 +115,15 @@ function PrayerExperienceWithLang(props: PrayerExperienceProps) {
 
 function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, initialProfile, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
+  const [wideDesktop, setWideDesktop] = useState(false);
+  useLayoutEffect(() => {
+    if (isPopup || !document.documentElement.hasAttribute("data-roots-desktop-client")) return;
+    const width = window.matchMedia("(min-width: 960px)");
+    const update = () => setWideDesktop(width.matches);
+    update();
+    width.addEventListener("change", update);
+    return () => width.removeEventListener("change", update);
+  }, [isPopup]);
   const rootRef = useRef<HTMLDivElement>(null);
   const handledAnswerId = useRef<string | null>(null);
   const handledLink = useRef<string | null>(null);
@@ -145,11 +154,23 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [view, setView] = useState<PrayerView>({ status: "ongoing", category: "mine" });
-  const status = isPopup ? "ongoing" : view.status;
-  const category = view.category;
-  const loading = categoryLoad[category] === "loading";
-  const loadError = categoryLoad[category] === "error";
+  const [panels, setPanels] = useState<{ status: PrayerStatus; ongoing: PrayerCategory; answered: PrayerCategory }>({
+    status: "ongoing", ongoing: "mine", answered: "mine",
+  });
+  const status = isPopup ? "ongoing" : panels.status;
+  const category = panels[status];
+  function setView(next: PrayerView) {
+    setPanels(previous => ({ ...previous, status: next.status, [next.status]: next.category }));
+  }
+  function restoreView(next: PrayerView, state: any) {
+    const saved = state?.rootsPrayerCategories;
+    setPanels({
+      ongoing: isPrayerCategory(saved?.ongoing) ? saved.ongoing : "mine",
+      answered: isPrayerCategory(saved?.answered) ? saved.answered : "mine",
+      status: next.status,
+      [next.status]: next.category,
+    });
+  }
   const currentCardSelectionRef = useRef({ status, category, activeCardIds });
   currentCardSelectionRef.current = { status, category, activeCardIds };
   const [notice, setNotice] = useState<string | null>(null);
@@ -375,7 +396,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       try {
         const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
         window.history.pushState(
-          { ...currentState, rootsPrayerView: normalized, rootsPrayerTab: normalized.status === "answered" ? "answered" : normalized.category, rootsPrayerCardIds: activeCardIds },
+          { ...currentState, rootsPrayerView: normalized, rootsPrayerCategories: { ...panels, [normalized.status]: normalized.category }, rootsPrayerTab: normalized.status === "answered" ? "answered" : normalized.category, rootsPrayerCardIds: activeCardIds },
           "",
           window.location.href,
         );
@@ -391,7 +412,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     const restored = prayerViewFromHistory(window.history.state);
     if (restored) {
       selectionTouched.current = true;
-      setView(restored);
+      restoreView(restored, window.history.state);
       handledLink.current = searchParams.toString();
       const cards = window.history.state?.rootsPrayerCardIds;
       if (cards && typeof cards === "object") setActiveCardIds({
@@ -407,14 +428,14 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     try {
       const currentState = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
       window.history.replaceState(
-        { ...currentState, rootsPrayerView: view, rootsPrayerTab: status === "answered" ? "answered" : category, rootsPrayerCardIds: activeCardIds },
+        { ...currentState, rootsPrayerView: { status, category }, rootsPrayerCategories: { ongoing: panels.ongoing, answered: panels.answered }, rootsPrayerTab: status === "answered" ? "answered" : category, rootsPrayerCardIds: activeCardIds },
         "",
         window.location.href,
       );
     } catch {
       // Keep the prayer page usable without mutable history state.
     }
-  }, [view, activeCardIds, status, category, isPopup, historyReady]);
+  }, [panels, activeCardIds, status, category, isPopup, historyReady]);
 
   useEffect(() => {
     if (isPopup) return;
@@ -422,7 +443,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       const restored = prayerViewFromHistory(event.state);
       if (!restored) return;
       selectionTouched.current = true;
-      setView(restored);
+      restoreView(restored, event.state);
       setActionMenuPrayerId(null);
       const cards = event.state?.rootsPrayerCardIds;
       if (cards && typeof cards === "object") setActiveCardIds(previous => ({
@@ -732,7 +753,11 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     }));
   }
 
-  async function loadPrayers(allowInitialSnapshot = false, observation?: PrayerObservationAttempt) {
+  async function loadPrayers(
+    allowInitialSnapshot = false,
+    observation?: PrayerObservationAttempt,
+    createdPrayerToSelect?: { userId: string; id: string },
+  ) {
     if (!mountedRef.current) return;
     if (observation) prayerObservationEvent(observation, "stage_started", "refresh");
     const request = ++prayerLoadRequest.current;
@@ -869,6 +894,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           ownRows = withKnownAuthors(ownResult.data ?? [], user.id);
           sharedPrayerIds = Array.from(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
           setPrayers(ownRows);
+          if (createdPrayerToSelect?.userId === user.id &&
+              ownRows.some(row => String(row.id) === createdPrayerToSelect.id && !row.is_answered)) {
+            selectionTouched.current = true;
+            setActiveCardFor("mine", createdPrayerToSelect.id);
+            setView({ status: "ongoing", category: "mine" });
+          }
           setPartnerSharedPrayerIds(new Set(sharedPrayerIds));
           setCategoryLoad(previous => ({ ...previous, mine: "ready" }));
           setFreshCategories(previous => ({ ...previous, mine: true }));
@@ -1017,7 +1048,10 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       setCreateShareTargets([]);
       setCelebration(true);
       observationPhase = "refresh";
-      await loadPrayers(false, observation);
+      const createdPrayerToSelect = wideDesktop && insertedPrayer?.id
+        ? { userId: awardUserId, id: String(insertedPrayer.id) }
+        : undefined;
+      await loadPrayers(false, observation, createdPrayerToSelect);
       onDataChanged?.();
       prayerObservationEvent(observation, "action_completed", "daily_completion", { persisted });
     } catch (error) {
@@ -1352,23 +1386,14 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const intercessionAnsweredList = sortAnsweredPrayerRows(
     intercessionPrayers.filter((prayer) => prayer.is_answered),
   );
-  const ongoingList = category === "mine" ? myPrayingList : intercessionPrayingList;
+  const ongoingCategory = panels.ongoing;
+  const ongoingList = ongoingCategory === "mine" ? myPrayingList : intercessionPrayingList;
   // Keep the underlying IDs for history/actions, but distinguish the two roles
   // in the rail if a legacy intercession also references an owned prayer.
-  const activePrayerId = ongoingList.find(prayer => String(prayer.id) === activeCardIds[category])?.id
-    ?? ongoingList[Math.min(cardIndexes.current[category], Math.max(0, ongoingList.length - 1))]?.id;
-  const activeCardId = activePrayerId ? `${category}:${activePrayerId}` : null;
-  const currentList = status === "ongoing"
-    ? ongoingList
-    : category === "mine" ? answeredList : intercessionAnsweredList;
-  const showDeck = status === "ongoing" && currentList.length > 0;
-  const emptyIconSrc = status === "answered" ? "/icon-prayer-answered.webp" : category === "mine" ? "/icon-prayer-request.webp" : "/icon-pray.webp";
-  const emptyTitle = status === "answered"
-    ? category === "intercession" ? cardText.emptyAnsweredIntercessionTitle : c("prayer_empty_answered_title")
-    : category === "mine" ? c("prayer_empty_mine_title") : c("prayer_empty_intercession_title");
-  const emptySub = status === "answered"
-    ? category === "intercession" ? cardText.emptyAnsweredIntercessionSub : c("prayer_empty_answered_sub")
-    : category === "mine" ? c("prayer_empty_mine_sub") : c("prayer_empty_intercession_sub");
+  const activePrayerId = ongoingList.find(prayer => String(prayer.id) === activeCardIds[ongoingCategory])?.id
+    ?? ongoingList[Math.min(cardIndexes.current[ongoingCategory], Math.max(0, ongoingList.length - 1))]?.id;
+  const activeCardId = activePrayerId ? `${ongoingCategory}:${activePrayerId}` : null;
+  const showDeck = (wideDesktop || status === "ongoing") && ongoingList.length > 0;
 
   useEffect(() => {
     // Each ready category keeps its surviving card (or nearest index), even
@@ -1434,9 +1459,12 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       handledLink.current = query;
       const rows = requestedCategory === "intercession" ? intercessionPrayers : prayers;
       const selected = requestedId ? rows.find(prayer => String(prayer.id) === requestedId) : null;
-      if (selected) setView(previous => previous.category === requestedCategory
-        ? { ...previous, status: selected.is_answered ? "answered" : "ongoing" }
-        : previous);
+      if (selected) {
+        const targetStatus: PrayerStatus = selected.is_answered ? "answered" : "ongoing";
+        setPanels(previous => previous[previous.status] === requestedCategory
+          ? { ...previous, status: targetStatus, [targetStatus]: requestedCategory }
+          : previous);
+      }
       if (selected && !selected.is_answered) setActiveCardFor(requestedCategory, String(selected.id));
       if (requestedId && !selected) setNotice(c("network_error_retry"));
     }
@@ -1444,7 +1472,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   const initialDeckSelected = useRef(false);
   const waitingForInitialIntercession = !initialDeckSelected.current && !selectionTouched.current && !initialAnswerId
-    && status === "ongoing" && category === "mine" && categoryLoad.mine === "ready"
+    && (wideDesktop || status === "ongoing") && ongoingCategory === "mine" && categoryLoad.mine === "ready"
     && myPrayingList.length === 0
     && (categoryLoad.intercession === "loading"
       || (categoryLoad.intercession === "ready" && intercessionPrayingList.length > 0));
@@ -1476,7 +1504,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     selectionTouched.current = true;
     cardIndexes.current[nextCategory] = index;
     setActiveCardFor(nextCategory, prayerId);
-    setView(previous => previous.category === nextCategory ? previous : { ...previous, category: nextCategory });
+    setPanels(previous => previous.ongoing === nextCategory ? previous
+      : { ...previous, status: "ongoing", ongoing: nextCategory });
     setActionMenuPrayerId(null);
   }
 
@@ -1608,101 +1637,9 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     }
   }
 
-  return (
-    <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page ${styles.page}`}`} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
-      {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
-      {badgePopup && (
-        <div onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
-          <ConfettiBurst variant="fixed" zIndex={201} />
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--prayer-modal-surface)", borderRadius: 28, border: "1px solid var(--prayer-gold-border)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
-            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
-              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--prayer-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
-            <div style={{ padding: "14px 16px", background: "var(--prayer-gold-surface)", borderRadius: 14, border: "1px solid var(--prayer-gold-border)", marginBottom: 20 }}>
-              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
-            </div>
-            <button onClick={closeBadgePopup} style={{ width: "100%", padding: "13px", background: "var(--prayer-gold-action)", color: "var(--prayer-on-gold-action)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              {t("badge_thanks", lang)}
-            </button>
-          </div>
-        </div>
-      )}
-      {notice && (
-        <div style={{ position: "fixed", top: 84, left: "50%", transform: "translateX(-50%)", zIndex: 210, background: "var(--prayer-toast-surface)", color: "var(--prayer-toast-text)", padding: "12px 16px", borderRadius: 14, border: "1px solid var(--prayer-toast-border)", fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-toast)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
-          {notice}
-        </div>
-      )}
-      {celebration && <Celebration
-        show={celebration}
-        message={c("prayer_saved_message")}
-        subMessage={c("prayer_saved_sub")}
-        iconSrc="/icon-pray.webp"
-        iconAlt={c("nav_prayer")}
-        zIndex={isPopup ? 220 : undefined}
-        onClose={() => setCelebration(false)}
-      />}
-
-      {showCreateSharePrompt && (
-        <SharePromptModal
-          allowPublic={false}
-          title={c("prayer_complete_share_title")}
-          description={c("prayer_complete_share_sub")}
-          helperText={c("prayer_complete_share_helper")}
-          allLabel={c("prayer_intercession_share_all")}
-          allSubLabel={c("prayer_intercession_share_all_sub")}
-          partnersLabel={c("share_prompt_partners")}
-          partnerSubLabel={c("share_prompt_partner_sub")}
-          noPartnersLabel={c("share_prompt_no_partners")}
-          invitePartnersLabel={c("share_prompt_invite_partners")}
-          onInvitePartners={() => router.push("/community")}
-          groupsLabel={c("prayer_intercession_my_groups")}
-          noGroupsLabel={c("prayer_intercession_no_groups")}
-          selectedCountLabel={c("prayer_intercession_selected_count", { count: createShareTargets.length })}
-          selectAllLabel={bulkSelectionLabels.selectAll}
-          deselectAllLabel={bulkSelectionLabels.deselectAll}
-          showMoreLabel={bulkSelectionLabels.showMore}
-          showLessLabel={bulkSelectionLabels.showLess}
-          loadingLabel={c("loading")}
-          shareActionLabel={c("prayer_intercession_share_action")}
-          privateActionLabel={c("share_prompt_private_action")}
-          closeLabel={c("close")}
-          groups={normalizedGroups()}
-          partners={myPartners}
-          selectedTargets={createShareTargets}
-          saving={saving}
-          actionsDisabled={loadingShareOptions}
-          loadingGroups={loadingShareOptions}
-          loadingPartners={loadingShareOptions}
-          onToggleTarget={toggleCreateShareTarget}
-          onChangeTargets={targets => { if (shareOptionsReady.current) setCreateShareTargets(targets.filter(target => target !== "all")); }}
-          onClose={closeCreateSharePrompt}
-          onPrivate={() => { void submit("private", []); }}
-          onShare={() => { if (createShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitShareTargets(createShareTargets); void submit(visibility, partnerRecipientIds); } }}
-        />
-      )}
-
-      <div className={isPopup ? styles.popupShell : styles.pageShell}>
-      <header className={styles.header}>
-        <div className={styles.headingRow}>
-          {isPopup ? <h1>{cardText.heading}</h1> : <div className={styles.pageHeadingCopy}>
-            <h1 style={{ fontSize: 24, fontWeight: 700 }}>{c("prayer_title")}</h1>
-            <p className={styles.pageIntro} style={{ fontSize: 12 }}>
-              <span>{c("prayer_sub_line1")}</span>
-              <span>{c("prayer_sub_line2")}</span>
-            </p>
-          </div>}
-          {isPopup && <button type="button" className={styles.iconButton} onClick={closeTopLayer} disabled={saving || savingTestimony || sharingIntercession || deletingPrayer || savingEdit || removingIntercession} aria-label={c("close")}><X size={22} /></button>}
-        </div>
-
-        {!isPopup && <div className={styles.statusTabs} role="group" aria-label={cardText.statusLabel}>
-          {(["ongoing", "answered"] as const).map(nextStatus => (
-            <button key={nextStatus} type="button" aria-pressed={status === nextStatus} onClick={() => selectPrayerView({ status: nextStatus, category: nextStatus === "answered" ? "mine" : category })}>
-              {nextStatus === "ongoing" ? cardText.ongoing : cardText.answered}
-            </button>
-          ))}
-        </div>}
-        <div className={styles.categoryTabs} role="group" aria-label={cardText.categoryLabel}>
+  function renderCategoryTabs(status: PrayerStatus, category: PrayerCategory) {
+    return (
+      <div className={styles.categoryTabs} role="group" aria-label={cardText.categoryLabel}>
           {([
             { key: "mine", label: cardText.mine, count: status === "ongoing" ? myPrayingList.length : answeredList.length },
             { key: "intercession", label: cardText.intercession, count: status === "ongoing" ? intercessionPrayingList.length : intercessionAnsweredList.length },
@@ -1716,20 +1653,35 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             </button>
           ))}
         </div>
-      </header>
+    );
+  }
 
-      {/* Active prayers use cards; answered prayers keep the existing list and testimony markup. */}
-      <div className={styles.content}>
-        {!isPopup && status === "ongoing" && <div className={styles.pageAddPrayerRow}>
+  function renderContent(status: PrayerStatus, category: PrayerCategory) {
+    const currentList = status === "ongoing" ? ongoingList : category === "mine" ? answeredList : intercessionAnsweredList;
+    const emptyIconSrc = status === "answered" ? "/icon-prayer-answered.webp" : category === "mine" ? "/icon-prayer-request.webp" : "/icon-pray.webp";
+    const emptyTitle = status === "answered"
+      ? category === "intercession" ? cardText.emptyAnsweredIntercessionTitle : c("prayer_empty_answered_title")
+      : category === "mine" ? c("prayer_empty_mine_title") : c("prayer_empty_intercession_title");
+    const emptySub = status === "answered"
+      ? category === "intercession" ? cardText.emptyAnsweredIntercessionSub : c("prayer_empty_answered_sub")
+      : category === "mine" ? c("prayer_empty_mine_sub") : c("prayer_empty_intercession_sub");
+
+    const scrollableAnswers = wideDesktop && status === "answered";
+    return (
+      <div className={styles.content} key={scrollableAnswers ? category : undefined}
+        role={scrollableAnswers ? "region" : undefined}
+        aria-label={scrollableAnswers ? cardText[category] : undefined}
+        tabIndex={scrollableAnswers ? 0 : undefined}>
+        {!isPopup && !wideDesktop && status === "ongoing" && <div className={styles.pageAddPrayerRow}>
           {category === "mine" && <button type="button" className={styles.addPrayer} onClick={() => setShowForm(true)}>
             <Plus size={16} aria-hidden="true" />{cardText.addPrayerRequest}
           </button>}
         </div>}
-        {loading || waitingForInitialIntercession || waitingForInitialCard ? (
+        {categoryLoad[category] === "loading" || (status === "ongoing" && (waitingForInitialIntercession || waitingForInitialCard)) ? (
           <div className={styles.loading}>
             <Loader2 size={24} style={{ color: "var(--sage)" }} className="spin" />
           </div>
-        ) : loadError ? (
+        ) : categoryLoad[category] === "error" ? (
           <div className={styles.loadError} role="alert">
             <p>{c("network_error_retry")}</p>
             <button type="button" className="btn-outline" onClick={() => { void loadPrayers(); }}>{cardText.retry}</button>
@@ -1748,7 +1700,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           </div>
         ) : (
           <>
-          {showDeck && <PrayerCardDeck
+          {status === "ongoing" && <PrayerCardDeck
+            showNavigation={wideDesktop}
             countByKind
             className={styles.cardDeck}
             items={cardEntries}
@@ -1916,6 +1869,124 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           </>
         )}
       </div>
+    );
+  }
+
+  return (
+    <div ref={rootRef} className={`roots-prayer-phase2c ${isPopup ? styles.popup : `page roots-desktop-page ${styles.page}`}`} role={isPopup ? "dialog" : undefined} aria-modal={isPopup ? true : undefined} aria-label={isPopup ? cardText.heading : undefined} tabIndex={isPopup ? -1 : undefined}>
+      {isPopup && <button type="button" className={styles.popupBackdrop} tabIndex={-1} aria-hidden="true" {...backdropHandlers} />}
+      {badgePopup && (
+        <div onClick={closeBadgePopup} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--prayer-reward-overlay)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <ConfettiBurst variant="fixed" zIndex={201} />
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--prayer-modal-surface)", borderRadius: 28, border: "1px solid var(--prayer-gold-border)", width: "100%", maxWidth: 340, padding: "32px 24px 28px", textAlign: "center", boxShadow: "var(--shadow-modal)" }}>
+            <div style={{ width: 120, height: 120, margin: "0 auto 16px" }}>
+              <img src={badgePopup.img} alt={badgePopup.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--prayer-gold-text)", marginBottom: 10, lineHeight: 1.3 }}>{badgePopup.title}</h2>
+            <div style={{ padding: "14px 16px", background: "var(--prayer-gold-surface)", borderRadius: 14, border: "1px solid var(--prayer-gold-border)", marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{badgePopup.msg}</p>
+            </div>
+            <button onClick={closeBadgePopup} style={{ width: "100%", padding: "13px", background: "var(--prayer-gold-action)", color: "var(--prayer-on-gold-action)", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              {t("badge_thanks", lang)}
+            </button>
+          </div>
+        </div>
+      )}
+      {notice && (
+        <div style={{ position: "fixed", top: 84, left: "50%", transform: "translateX(-50%)", zIndex: 210, background: "var(--prayer-toast-surface)", color: "var(--prayer-toast-text)", padding: "12px 16px", borderRadius: 14, border: "1px solid var(--prayer-toast-border)", fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-toast)", maxWidth: 320, width: "calc(100% - 40px)", textAlign: "center" }}>
+          {notice}
+        </div>
+      )}
+      {celebration && <Celebration
+        show={celebration}
+        message={c("prayer_saved_message")}
+        subMessage={c("prayer_saved_sub")}
+        iconSrc="/icon-pray.webp"
+        iconAlt={c("nav_prayer")}
+        zIndex={isPopup ? 220 : undefined}
+        onClose={() => setCelebration(false)}
+      />}
+
+      {showCreateSharePrompt && (
+        <SharePromptModal
+          allowPublic={false}
+          title={c("prayer_complete_share_title")}
+          description={c("prayer_complete_share_sub")}
+          helperText={c("prayer_complete_share_helper")}
+          allLabel={c("prayer_intercession_share_all")}
+          allSubLabel={c("prayer_intercession_share_all_sub")}
+          partnersLabel={c("share_prompt_partners")}
+          partnerSubLabel={c("share_prompt_partner_sub")}
+          noPartnersLabel={c("share_prompt_no_partners")}
+          invitePartnersLabel={c("share_prompt_invite_partners")}
+          onInvitePartners={() => router.push("/community")}
+          groupsLabel={c("prayer_intercession_my_groups")}
+          noGroupsLabel={c("prayer_intercession_no_groups")}
+          selectedCountLabel={c("prayer_intercession_selected_count", { count: createShareTargets.length })}
+          selectAllLabel={bulkSelectionLabels.selectAll}
+          deselectAllLabel={bulkSelectionLabels.deselectAll}
+          showMoreLabel={bulkSelectionLabels.showMore}
+          showLessLabel={bulkSelectionLabels.showLess}
+          loadingLabel={c("loading")}
+          shareActionLabel={c("prayer_intercession_share_action")}
+          privateActionLabel={c("share_prompt_private_action")}
+          closeLabel={c("close")}
+          groups={normalizedGroups()}
+          partners={myPartners}
+          selectedTargets={createShareTargets}
+          saving={saving}
+          actionsDisabled={loadingShareOptions}
+          loadingGroups={loadingShareOptions}
+          loadingPartners={loadingShareOptions}
+          onToggleTarget={toggleCreateShareTarget}
+          onChangeTargets={targets => { if (shareOptionsReady.current) setCreateShareTargets(targets.filter(target => target !== "all")); }}
+          onClose={closeCreateSharePrompt}
+          onPrivate={() => { void submit("private", []); }}
+          onShare={() => { if (createShareTargets.length > 0) { const { visibility, partnerRecipientIds } = splitShareTargets(createShareTargets); void submit(visibility, partnerRecipientIds); } }}
+        />
+      )}
+
+      <div className={isPopup ? styles.popupShell : styles.pageShell}>
+      <header className={styles.header}>
+        <div className={styles.headingRow}>
+          {isPopup ? <h1>{cardText.heading}</h1> : <div className={styles.pageHeadingCopy}>
+            <h1 style={{ fontSize: 24, fontWeight: 700 }}>{c("prayer_title")}</h1>
+            <p className={styles.pageIntro} style={{ fontSize: 12 }}>
+              <span>{c("prayer_sub_line1")}</span>{" "}
+              <span>{c("prayer_sub_line2")}</span>
+            </p>
+          </div>}
+          {isPopup && <button type="button" className={styles.iconButton} onClick={closeTopLayer} disabled={saving || savingTestimony || sharingIntercession || deletingPrayer || savingEdit || removingIntercession} aria-label={c("close")}><X size={22} /></button>}
+        </div>
+
+        {!isPopup && !wideDesktop && <div className={styles.statusTabs} role="group" aria-label={cardText.statusLabel}>
+          {(["ongoing", "answered"] as const).map(nextStatus => (
+            <button key={nextStatus} type="button" aria-pressed={status === nextStatus} onClick={() => selectPrayerView({ status: nextStatus, category: nextStatus === "answered" ? "mine" : category })}>
+              {nextStatus === "ongoing" ? cardText.ongoing : cardText.answered}
+            </button>
+          ))}
+        </div>}
+        {!wideDesktop && renderCategoryTabs(status, category)}
+      </header>
+
+      {wideDesktop ? (
+        <div className={styles.desktopColumns}>
+          {(["ongoing", "answered"] as const).map(panel => (
+            <section key={panel} className={styles.desktopPanel} aria-label={cardText[panel]}>
+              <div className={styles.panelHeading}>
+                <h2>{cardText[panel]}</h2>
+                {panel === "ongoing" && (
+                  <button type="button" className={styles.addPrayer} onClick={() => setShowForm(true)}>
+                    <Plus size={16} aria-hidden="true" />{cardText.addPrayerRequest}
+                  </button>
+                )}
+              </div>
+              {renderCategoryTabs(panel, panels[panel])}
+              {renderContent(panel, panels[panel])}
+            </section>
+          ))}
+        </div>
+      ) : renderContent(status, category)}
       {isPopup && <div className={`${styles.popupFooter} ${onCompleteDailyPrayer ? styles.popupFooterDaily : ""}`}>
         {onCompleteDailyPrayer && (
           <button
@@ -1956,7 +2027,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
       {pendingDeletePrayerId && (
         <div style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 255, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 370, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
+          <div className={styles.deleteDialog} style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 370, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{c("prayer_delete_title")}</h2>
             <p style={{ fontSize: 13, color: "var(--prayer-muted-text)", lineHeight: 1.7, marginBottom: 18 }}>{c("prayer_delete_msg")}</p>
             <div style={{ display: "flex", gap: 8 }}>

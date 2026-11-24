@@ -1,0 +1,89 @@
+.qt-photo-media-column,
+.qt-photo-notes-column {
+  display: contents;
+}
+
+@media (min-width: 960px) {
+  html[data-roots-desktop-client] .qt-photo-page {
+    --photo-gutter: clamp(20px, 3vw, 46px);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1240px;
+    height: max(30rem, 100vh);
+    height: max(30rem, 100dvh);
+    margin-inline: auto;
+    padding-bottom: max(20px, var(--safe-area-bottom)) !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-header {
+    padding: max(20px, var(--safe-area-top)) var(--photo-gutter) 20px !important;
+    background: transparent !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-form {
+    flex: 1;
+    min-height: 0;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: clamp(14px, 2vw, 28px) !important;
+    row-gap: 0 !important;
+    padding: 16px var(--photo-gutter) 0 !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-form > [role="status"] {
+    grid-column: 1 / -1;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-photo-media-column, .qt-photo-notes-column) {
+    grid-row: 2;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-media-column {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-media-column > * {
+    flex-shrink: 0;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-photo-media, .qt-photo-preview) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-photo-media, .qt-photo-picker, .qt-photo-upload, .qt-photo-preview, .qt-photo-preparing, .qt-photo-memo) {
+    flex: 1 0 auto;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-frame {
+    flex: 1;
+    min-height: 190px;
+    margin-bottom: 0 !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-frame img {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    max-height: none !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-memo textarea {
+    flex: 1;
+    min-height: 150px;
+    resize: none !important;
+  }
+
+  html[data-roots-desktop-client] .qt-photo-source-backdrop {
+    left: var(--desktop-nav-width, 0px) !important;
+    align-items: center !important;
+    padding: 20px !important;
+  }
+}

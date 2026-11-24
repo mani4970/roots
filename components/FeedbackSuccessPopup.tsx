@@ -1,7 +1,8 @@
 "use client";
 
+import HomeHubDialog from "@/components/HomeHubDialog";
 import { useLang } from "@/lib/useLang";
-import type { Lang } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 
 type FeedbackSuccessLang = Lang | "es";
 
@@ -30,15 +31,78 @@ const FEEDBACK_SUCCESS_COPY: Record<FeedbackSuccessLang, { message: string; clos
 
 interface FeedbackSuccessPopupProps {
   show: boolean;
+  desktop: boolean;
   onClose: () => void;
 }
 
-export default function FeedbackSuccessPopup({ show, onClose }: FeedbackSuccessPopupProps) {
+export default function FeedbackSuccessPopup({ show, desktop, onClose }: FeedbackSuccessPopupProps) {
   const lang = useLang();
 
   if (!show) return null;
 
   const copy = FEEDBACK_SUCCESS_COPY[lang];
+
+  const content = (
+    <>
+      <div
+        aria-hidden="true"
+        style={{
+          width: 58,
+          height: 58,
+          margin: "0 auto 16px",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--sage-light)",
+          color: "var(--sage-dark)",
+          fontSize: 28,
+          fontWeight: 800,
+        }}
+      >
+        ✓
+      </div>
+      <h3
+        id="feedback-success-title"
+        aria-hidden={desktop || undefined}
+        style={{
+          margin: "0 0 20px",
+          color: "var(--text)",
+          fontSize: 18,
+          fontWeight: 800,
+          lineHeight: 1.5,
+        }}
+      >
+        {copy.message}
+      </h3>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{
+          width: "100%",
+          padding: "13px",
+          background: "var(--sage-action)",
+          color: "var(--on-sage-action)",
+          border: "none",
+          borderRadius: 14,
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      >
+        {copy.close}
+      </button>
+    </>
+  );
+
+  if (desktop) {
+    return (
+      <HomeHubDialog open title={copy.message} hideTitle closeLabel={t("close", lang)}
+        onClose={onClose} boundarySelector=".roots-desktop-profile" dialogClassName="profile-desktop-feedback-success">
+        <div style={{ textAlign: "center" }}>{content}</div>
+      </HomeHubDialog>
+    );
+  }
 
   return (
     <div
@@ -71,53 +135,7 @@ export default function FeedbackSuccessPopup({ show, onClose }: FeedbackSuccessP
           textAlign: "center",
         }}
       >
-        <div
-          aria-hidden="true"
-          style={{
-            width: 58,
-            height: 58,
-            margin: "0 auto 16px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "var(--sage-light)",
-            color: "var(--sage-dark)",
-            fontSize: 28,
-            fontWeight: 800,
-          }}
-        >
-          ✓
-        </div>
-        <h3
-          id="feedback-success-title"
-          style={{
-            margin: "0 0 20px",
-            color: "var(--text)",
-            fontSize: 18,
-            fontWeight: 800,
-            lineHeight: 1.5,
-          }}
-        >
-          {copy.message}
-        </h3>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            width: "100%",
-            padding: "13px",
-            background: "var(--sage-action)",
-            color: "var(--on-sage-action)",
-            border: "none",
-            borderRadius: 14,
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          {copy.close}
-        </button>
+        {content}
       </div>
     </div>
   );

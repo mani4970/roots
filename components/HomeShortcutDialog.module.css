@@ -1,0 +1,7 @@
+@media (min-width: 960px) {
+  /* Keep the whole window clickable behind the dialog. Only the panel moves. */
+  :global(html[data-roots-desktop="wide"] .roots-desktop-home) .notifications,
+  :global(html[data-roots-desktop="wide"]) .challenge {
+    margin-left: var(--desktop-nav-width);
+  }
+}

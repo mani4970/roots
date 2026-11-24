@@ -1,0 +1,72 @@
+@media (min-width: 960px) {
+  .desktopPage {
+    --companions-gutter: clamp(20px, 2.25vw, 32px);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    box-sizing: border-box;
+    padding: var(--roots-page-top-padding) var(--companions-gutter) 24px;
+  }
+
+  .desktopHeader {
+    flex: none;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Keep the title centered while the back button sits next to the sidebar. */
+  .desktopHeader::before {
+    content: "";
+    width: 38px;
+  }
+
+  .desktopHeader > button {
+    position: absolute;
+    left: calc(var(--desktop-nav-width) + 20px);
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: var(--companions-gutter);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .column {
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: 4px 4px 12px;
+  }
+
+  .column + .column {
+    border-inline-start: 1px solid var(--border);
+    padding-inline-start: var(--companions-gutter);
+  }
+
+  .column > :global(.sec-label):first-child {
+    margin-top: 0 !important;
+  }
+
+  .column:focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: -2px;
+  }
+
+  .inviteLink {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    background: var(--companions-card-muted-surface);
+    font: inherit;
+    font-size: 13px;
+  }
+}

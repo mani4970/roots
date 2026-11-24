@@ -1,0 +1,181 @@
+@media (min-width: 960px) {
+  html[data-roots-desktop-client] .roots-qt-desktop-content[data-reading-page="true"] > .qt-record-page {
+    --record-gutter: clamp(20px, 2.5vw, 32px);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    width: 100%;
+    max-width: 790px;
+    padding: clamp(20px, 4vh, 42px) var(--record-gutter) 28px !important;
+  }
+
+  html[data-roots-desktop-client] .roots-qt-desktop-content[data-reading-page="true"] > .qt-record-page[data-spread="true"] {
+    max-width: 1120px;
+  }
+
+  html[data-roots-desktop-client] .qt-record-page .qt-record-back {
+    align-self: flex-start;
+    flex: none;
+    min-height: 32px;
+    margin-bottom: 10px !important;
+    color: var(--text-muted-readable) !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--qt-card-border);
+    border-radius: 18px;
+    background: var(--bg2);
+    box-shadow: var(--shadow-card);
+    overflow-wrap: anywhere;
+  }
+
+  html[data-roots-desktop-client] .qt-record-head {
+    flex: none;
+    max-height: 40vh;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    margin-inline: var(--record-gutter);
+    padding-block: 22px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  html[data-roots-desktop-client] .qt-record-heading {
+    flex: 1 1 230px;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-heading h1 {
+    font-size: 23px !important;
+    line-height: 1.35;
+    font-weight: 750;
+    color: var(--terra-dark);
+  }
+
+  html[data-roots-desktop-client] .qt-record-passage {
+    margin-top: 5px;
+    font-size: 15px;
+    color: var(--text2);
+  }
+
+  html[data-roots-desktop-client] .qt-record-meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 6px;
+  }
+
+  html[data-roots-desktop-client] .qt-record-meta > p {
+    margin: 0 !important;
+    font-size: 12px !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-actions {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px !important;
+    max-width: 100%;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-actions > button {
+    width: auto !important;
+    max-width: 100%;
+    min-height: 34px;
+    padding: 6px 10px !important;
+    white-space: normal !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note .qt-record-sections,
+  html[data-roots-desktop-client] .qt-record-photo {
+    min-height: 0;
+    padding: 18px var(--record-gutter) 22px !important;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-record-sections:not(.qt-record-columns), .qt-record-column, .qt-record-photo) {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note .qt-record-sections:empty {
+    display: none !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: var(--record-gutter);
+    align-items: stretch;
+  }
+
+  html[data-roots-desktop-client] .qt-record-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note [data-record-section],
+  html[data-roots-desktop-client] .qt-record-photo .card {
+    min-width: 0;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note [data-record-section] {
+    flex: none;
+    border-top: 1px solid transparent;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note [data-record-section] + [data-record-section] {
+    border-top-color: var(--border);
+  }
+
+  html[data-roots-desktop-client] .qt-record-note [data-record-section] p,
+  html[data-roots-desktop-client] .qt-record-photo .card > p {
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-note [data-record-section] > p:first-child {
+    margin-bottom: 6px !important;
+    color: var(--sage-dark) !important;
+    font-size: 12px !important;
+    font-weight: 700;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  html[data-roots-desktop-client] .qt-record-photo img {
+    display: block;
+    margin-inline: auto;
+    width: auto !important;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  html[data-roots-desktop-client] .qt-record-page :is(button, a, [tabindex="0"]):focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: 2px;
+  }
+}

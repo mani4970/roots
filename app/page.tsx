@@ -2187,7 +2187,7 @@ export default function HomePage() {
 
   return (
     <>
-    <div className="page roots-home-phase1">
+    <div className="page roots-home-phase1 roots-desktop-page roots-desktop-home">
       {showChristmasWeather && <AdventSnow />}
       {toast && (
         <div className="roots-elevation-toast" style={{ position: "fixed", top: "calc(18px + var(--safe-area-top))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "var(--surface-card)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 999, padding: "10px 16px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -2211,6 +2211,7 @@ export default function HomePage() {
       {(showHomeQTChoice || showHomeSundayQT || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice) && (
         <div
           ref={homeQTDialogRef}
+          className="home-qt-choice-backdrop"
           onTouchMove={event => event.stopPropagation()}
           onPointerDown={(event) => {
             homeQTBackdropTapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
@@ -2349,7 +2350,7 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
           await setPreferredLang(l);
@@ -2359,11 +2360,11 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="onboarding" queued={showOnboarding}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="onboarding" queued={showOnboarding}>
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="required_update" queued={!!requiredUpdatePrompt}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="required_update" queued={!!requiredUpdatePrompt}>
       {visibleRequiredUpdatePrompt && (
         <RequiredUpdatePopup
           platform={visibleRequiredUpdatePrompt.platform}
@@ -2474,7 +2475,7 @@ export default function HomePage() {
         </Suspense>
       )}
 
-      <ObservationPopup userId={profile?.id} kind="messenger_share_announcement" queued={showMessengerShareAnnouncement}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="messenger_share_announcement" queued={showMessengerShareAnnouncement}>
       <MessengerShareAnnouncementPopup
         show={visibleMessengerShareAnnouncement}
         onConfirm={() => completeMessengerShareAnnouncement("confirm")}
@@ -2484,7 +2485,7 @@ export default function HomePage() {
 
       <AdventAnnouncementPopup open={visibleAdventAnnouncement} lang={lang} onClose={adventAnnouncement.dismiss} />
 
-      <ObservationPopup userId={profile?.id} kind="monthly_badge" queued={!!monthlyBadgeAward} instanceKey={monthlyBadgeAward}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="monthly_badge" queued={!!monthlyBadgeAward} instanceKey={monthlyBadgeAward}>
       <MonthlyBadgeAwardPopup
         badge={monthlyBadgeAward}
         show={visibleMonthlyBadgeAward}
@@ -2497,7 +2498,7 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="challenge_reward" queued={challengeRewardQueue.length > 0} instanceKey={challengeRewardQueue[0]?.awardId}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="challenge_reward" queued={challengeRewardQueue.length > 0} instanceKey={challengeRewardQueue[0]?.awardId}>
       <ChallengeRewardPopup
         reward={visibleChallengeReward}
         onDismiss={() => {
@@ -2509,7 +2510,7 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="welcome_back" queued={showWelcomeBack}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="welcome_back" queued={showWelcomeBack}>
       <WelcomeBackPopup
         show={visibleWelcomeBack}
         daysSince={welcomeBackDays}
@@ -2517,7 +2518,7 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup
+      <ObservationPopup className="home-entry-popup"
         userId={profile?.id}
         kind="companion_accepted"
         queued={!!companionAcceptanceNotice}
@@ -2537,7 +2538,7 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={badgePopup?.receipt?.days ?? profile?.streak_days}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="progress_badge" queued={!!badgePopup} instanceKey={badgePopup} progressDays={badgePopup?.receipt?.days ?? profile?.streak_days}>
       {visibleBadgePopup && (
         <div onClick={() => closeProgressBadge()} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,28,30,0.92)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
           <ConfettiBurst variant="fixed" zIndex={201} />
@@ -2557,7 +2558,7 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="celebration" queued={celebration.show} instanceKey={celebration} progressDays={profile?.streak_days}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="celebration" queued={celebration.show} instanceKey={celebration} progressDays={profile?.streak_days}>
       <Celebration
         show={visibleCelebration}
         message={celebration.message}
@@ -2579,7 +2580,7 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="avatar_choice" queued={showAvatarChoiceModal}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="avatar_choice" queued={showAvatarChoiceModal}>
       <AvatarChoiceModal
         show={visibleAvatarChoiceModal}
         selectedAvatar={currentAvatarType}
@@ -2589,11 +2590,11 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind={rewardMapNotice?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice} instanceKey={rewardMapNotice} progressDays={rewardMapNotice?.days}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind={rewardMapNotice?.type === "complete" ? "map_complete" : "map_start"} queued={!!rewardMapNotice} instanceKey={rewardMapNotice} progressDays={rewardMapNotice?.days}>
       <RewardMapNoticePopup notice={visibleRewardMapNotice} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardActionDisplayDays}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardActionDisplayDays}>
       <RootsManPopup
         show={visibleRootsManPopup}
         streakDays={rewardActionDisplayDays}
@@ -2614,7 +2615,7 @@ export default function HomePage() {
       />
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind={gardenPopup.type === "badge" ? "garden_badge" : "garden_stage"} queued={gardenPopup.show} instanceKey={gardenPopup} progressDays={gardenPopup.receipt?.days ?? rewardMapDisplayDays}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind={gardenPopup.type === "badge" ? "garden_badge" : "garden_stage"} queued={gardenPopup.show} instanceKey={gardenPopup} progressDays={gardenPopup.receipt?.days ?? rewardMapDisplayDays}>
       <GardenUpdatePopup
         show={showGardenUpdatePopup}
         type={gardenPopup.type}
@@ -2650,194 +2651,198 @@ export default function HomePage() {
             })()}
       </HomeHeader>
 
-      <div ref={treeSectionRef}>
-        <TreeGrowth
-          days={showRootsMan ? rewardActionDisplayDays : rewardMapDisplayDays}
-          lastCheckin={profile?.last_checkin ?? null}
-          showRootsMan={showRootsMan}
-          ownerName={profile?.name ?? t("profile_default_name", lang)}
-          onActiveCycleChange={(cycle: RewardMapCycle) => setActiveRewardMapKind(cycle.kind)}
-          avatarType={currentAvatarType}
-          heartShopItemIds={enabledHeartShopItemIds}
-        />
-      </div>
+      <div className="roots-home-columns">
+        <div ref={treeSectionRef}>
+          <TreeGrowth
+            days={showRootsMan ? rewardActionDisplayDays : rewardMapDisplayDays}
+            lastCheckin={profile?.last_checkin ?? null}
+            showRootsMan={showRootsMan}
+            ownerName={profile?.name ?? t("profile_default_name", lang)}
+            onActiveCycleChange={(cycle: RewardMapCycle) => setActiveRewardMapKind(cycle.kind)}
+            avatarType={currentAvatarType}
+            heartShopItemIds={enabledHeartShopItemIds}
+          />
+        </div>
 
-      <HomeDashboardCards
-        lang={lang}
-        routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
-        routineCompleted={Number(todayDone.qt) + Number(todayDone.prayer)}
-        challenge={currentHomeChallenge}
-        challengeLoading={personalChallenge.loading}
-        challengeError={personalChallenge.error}
-        challengeSlot={advent.visible ? className => (
-          <AdventHomeTile className={className} lang={lang} pending={advent.hasUnopened}
-            open={!!advent.panel && !visibleRequiredUpdatePrompt} onOpen={advent.open} />
-        ) : undefined}
-        gratitudeDays={gratitudeCount.days}
-        onOpenRoutine={() => setShowHomeRoutine(true)}
-        onOpenChallenge={() => setShowHomeChallenge(true)}
-        onOpenGratitude={() => setShowHomeGratitude(true)}
-        character={(
-          <button
-            type="button"
-            onClick={() => router.push("/profile")}
-            aria-label={t("home_character_customize", lang)}
-            style={{
-              minWidth: 0,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <HomeCharacterPreview
-              ownerId={profile.id}
-              avatarType={currentAvatarType}
-              alt={getRootsAvatarLabel(currentAvatarType, lang)}
-              layers={homeProfileCharacterLayers}
-              itemsReady={homeCharacterItemsOwner === profile.id}
-              lang={lang}
-            />
-            <span
-              style={{
-                marginTop: 3,
-                color: "var(--text3)",
-                fontSize: 9,
-                fontWeight: 800,
-                lineHeight: 1.2,
-                textAlign: "center",
-                wordBreak: "keep-all",
-              }}
-            >
-              {t("home_character_customize", lang)} ›
-            </span>
-          </button>
-        )}
-      />
-      <div style={{ padding: "0 16px 14px" }}>
-        {pendingCompanionRequestCount > 0 && (
-          <div
-            className="roots-elevation-card-gold"
-            style={{
-              position: "relative",
-              borderRadius: 20,
-              padding: "18px 18px",
-              marginTop: 10,
-              minHeight: 104,
-              border: "1px solid var(--border-gold-soft)",
-              background: "var(--surface-gold-subtle)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <img
-              src="/badge_roots_together.webp"
-              alt=""
-              width={62}
-              height={62}
-              style={{
-                position: "absolute",
-                left: 22,
-                top: "50%",
-                transform: "translateY(-50%)",
-                objectFit: "contain",
-              }}
-            />
-            <div
-              style={{
-                width: "100%",
-                padding: "0 74px",
-                textAlign: "center",
-                fontSize: 17,
-                fontWeight: 900,
-                color: "var(--text)",
-                lineHeight: 1.35,
-                wordBreak: "keep-all",
-              }}
-            >
-              {t("home_partner_request_notice", lang)}
-            </div>
-            <button
-              onClick={() => router.push("/companions")}
-              style={{
-                position: "absolute",
-                right: 18,
-                bottom: 14,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 2,
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                color: "var(--text-gold-strong)",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {t("home_partner_request_cta", lang)}
-              <ChevronRight size={12} strokeWidth={2.4} />
-            </button>
+        <div>
+          <HomeDashboardCards
+            lang={lang}
+            routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
+            routineCompleted={Number(todayDone.qt) + Number(todayDone.prayer)}
+            challenge={currentHomeChallenge}
+            challengeLoading={personalChallenge.loading}
+            challengeError={personalChallenge.error}
+            challengeSlot={advent.visible ? className => (
+              <AdventHomeTile className={className} lang={lang} pending={advent.hasUnopened}
+                open={!!advent.panel && !visibleRequiredUpdatePrompt} onOpen={advent.open} />
+            ) : undefined}
+            gratitudeDays={gratitudeCount.days}
+            onOpenRoutine={() => setShowHomeRoutine(true)}
+            onOpenChallenge={() => setShowHomeChallenge(true)}
+            onOpenGratitude={() => setShowHomeGratitude(true)}
+            character={(
+              <button
+                type="button"
+                onClick={() => router.push("/profile")}
+                aria-label={t("home_character_customize", lang)}
+                style={{
+                  minWidth: 0,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <HomeCharacterPreview
+                  ownerId={profile.id}
+                  avatarType={currentAvatarType}
+                  alt={getRootsAvatarLabel(currentAvatarType, lang)}
+                  layers={homeProfileCharacterLayers}
+                  itemsReady={homeCharacterItemsOwner === profile.id}
+                  lang={lang}
+                />
+                <span
+                  style={{
+                    marginTop: 3,
+                    color: "var(--text3)",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                    textAlign: "center",
+                    wordBreak: "keep-all",
+                  }}
+                >
+                  {t("home_character_customize", lang)} ›
+                </span>
+              </button>
+            )}
+          />
+          <div style={{ padding: "0 16px 14px" }}>
+            {pendingCompanionRequestCount > 0 && (
+              <div
+                className="roots-elevation-card-gold"
+                style={{
+                  position: "relative",
+                  borderRadius: 20,
+                  padding: "18px 18px",
+                  marginTop: 10,
+                  minHeight: 104,
+                  border: "1px solid var(--border-gold-soft)",
+                  background: "var(--surface-gold-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src="/badge_roots_together.webp"
+                  alt=""
+                  width={62}
+                  height={62}
+                  style={{
+                    position: "absolute",
+                    left: 22,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    objectFit: "contain",
+                  }}
+                />
+                <div
+                  style={{
+                    width: "100%",
+                    padding: "0 74px",
+                    textAlign: "center",
+                    fontSize: 17,
+                    fontWeight: 900,
+                    color: "var(--text)",
+                    lineHeight: 1.35,
+                    wordBreak: "keep-all",
+                  }}
+                >
+                  {t("home_partner_request_notice", lang)}
+                </div>
+                <button
+                  onClick={() => router.push("/companions")}
+                  style={{
+                    position: "absolute",
+                    right: 18,
+                    bottom: 14,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 2,
+                    padding: 0,
+                    border: 0,
+                    background: "transparent",
+                    color: "var(--text-gold-strong)",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("home_partner_request_cta", lang)}
+                  <ChevronRight size={12} strokeWidth={2.4} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div style={{ padding: "0 16px 14px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setShowNotificationSettingsModal(true)}
-            className="roots-elevation-card-gold"
-            style={{
-              minHeight: 42,
-              borderRadius: 14,
-              padding: "9px 10px",
-              background: "var(--surface-gold-subtle)",
-              border: "1px solid var(--border-gold-soft)",
-              color: "var(--text-gold-strong)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              fontSize: 12,
-              fontWeight: 850,
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <Bell size={14} strokeWidth={2.4} />
-            <span>{t("home_shortcut_notifications", lang)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/companions")}
-            className="roots-elevation-card-gold"
-            style={{
-              minHeight: 42,
-              borderRadius: 14,
-              padding: "9px 10px",
-              background: "var(--surface-gold-subtle)",
-              border: "1px solid var(--border-gold-soft)",
-              color: "var(--text-gold-strong)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              fontSize: 12,
-              fontWeight: 850,
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <Users size={14} strokeWidth={2.4} />
-            <span>{t("home_shortcut_companions", lang)}</span>
-          </button>
+          <div style={{ padding: "0 16px 14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setShowNotificationSettingsModal(true)}
+                className="roots-elevation-card-gold"
+                style={{
+                  minHeight: 42,
+                  borderRadius: 14,
+                  padding: "9px 10px",
+                  background: "var(--surface-gold-subtle)",
+                  border: "1px solid var(--border-gold-soft)",
+                  color: "var(--text-gold-strong)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  fontSize: 12,
+                  fontWeight: 850,
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <Bell size={14} strokeWidth={2.4} />
+                <span>{t("home_shortcut_notifications", lang)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/companions")}
+                className="roots-elevation-card-gold"
+                style={{
+                  minHeight: 42,
+                  borderRadius: 14,
+                  padding: "9px 10px",
+                  background: "var(--surface-gold-subtle)",
+                  border: "1px solid var(--border-gold-soft)",
+                  color: "var(--text-gold-strong)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  fontSize: 12,
+                  fontWeight: 850,
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <Users size={14} strokeWidth={2.4} />
+                <span>{t("home_shortcut_companions", lang)}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,156 @@
+.qt-overview-header {
+  background: var(--bg);
+  padding: var(--roots-page-top-padding) 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.qt-overview-actions { padding: 16px 16px 0; }
+.qt-overview-archive { padding: 20px 16px 0; }
+.qt-overview-attribution { margin: 10px 16px 0; }
+
+.qt-month-group,
+.qt-month-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 960px) {
+  html[data-roots-desktop-client] .roots-qt-desktop-content[data-reading-page="true"] > .qt-overview {
+    --qt-overview-inset: clamp(20px, 3vw, 40px);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    max-width: 1120px;
+    padding: 0 var(--qt-overview-inset) 32px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-header {
+    padding-inline: 0;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-columns {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: clamp(20px, 2.5vw, 36px);
+    margin-top: 20px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-left {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-actions {
+    flex: none;
+    padding: 0;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-current {
+    margin-top: 24px;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-overview-current, .qt-overview-archive) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 18px;
+    border: 1px solid var(--qt-card-border);
+    border-radius: 16px;
+    background: var(--qt-card-surface);
+  }
+
+  html[data-roots-desktop-client] .qt-overview-archive {
+    align-self: start;
+    max-height: 100%;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-current:has(.qt-record-item) {
+    /* Keep a row reachable if a long passage title takes most of the column. */
+    min-height: 132px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-current .qt-month-group {
+    min-height: 0;
+  }
+
+  html[data-roots-desktop-client] :is(.qt-overview-current .qt-month-list, .qt-archive-years) {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: 4px;
+    margin: -4px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-current .qt-archive-month,
+  html[data-roots-desktop-client] .qt-overview-current .qt-record-item {
+    flex: none;
+  }
+
+  html[data-roots-desktop-client] .qt-overview .sec-label {
+    margin-bottom: 12px;
+    color: var(--text2);
+    font-size: 15px;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  html[data-roots-desktop-client] .qt-overview .qt-record-item {
+    width: 100%;
+    margin: 0;
+    padding: 9px 14px;
+    min-height: 48px;
+    text-align: start;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+
+  html[data-roots-desktop-client] .qt-overview .qt-archive-year {
+    width: 100%;
+    min-height: 32px;
+    justify-content: space-between;
+    text-align: start;
+  }
+
+  html[data-roots-desktop-client] .qt-overview .qt-archive-month {
+    min-height: 36px;
+  }
+
+  html[data-roots-desktop-client] .qt-current-empty {
+    color: var(--text-muted-readable);
+    font-size: 14px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview :is(.qt-archive-year, .qt-archive-month, .qt-record-item, [role="region"]):focus-visible {
+    outline: 2px solid var(--sage-dark);
+    outline-offset: 2px;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-attribution {
+    margin-inline: 0;
+  }
+}
+
+@media (min-width: 960px) and (max-height: 520px) {
+  /* The left column can scroll as a unit when the action buttons need its space. */
+  html[data-roots-desktop-client] .qt-overview-current {
+    flex: none;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-current .qt-month-list {
+    overflow: visible;
+  }
+
+  html[data-roots-desktop-client] .qt-overview-header {
+    padding-top: 16px;
+  }
+}

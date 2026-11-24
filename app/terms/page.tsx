@@ -108,6 +108,7 @@ export default function TermsPage() {
 
   return (
     <LegalDocumentPage
+      lang={lang}
       backLabel={copy.back}
       title={copy.title}
       subtitle={copy.subtitle}

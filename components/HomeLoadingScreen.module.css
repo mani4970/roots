@@ -1,3 +1,19 @@
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop-client]) .loader {
+    isolation: isolate;
+  }
+
+  /* Paint past the centered logo and seasonal artwork without resizing either. */
+  :global(html[data-roots-desktop-client]) .loader::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--bg);
+    pointer-events: none;
+  }
+}
+
 .frame {
   position: relative;
   isolation: isolate;
@@ -80,6 +96,37 @@
   }
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"]) .frame {
     --christmas-center-offset: 48px;
+  }
+}
+
+@media (min-width: 960px) {
+  :global(html[data-roots-desktop-client]) .frame {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  :global(html[data-roots-desktop-client]) .snowScene {
+    height: min(240px, 27vh, max(0px, calc(var(--christmas-half-height) - 124px)));
+  }
+
+  :global(html[data-roots-desktop-client]) .hills {
+    height: 100%;
+    object-fit: cover;
+    /* Keep the ridge visible when the window is wider than the artwork. */
+    object-position: center 58%;
+  }
+
+  :global(html[data-roots-desktop-client]) .trees {
+    left: 5%;
+    width: clamp(112px, 14vw, 208px);
+    object-position: left bottom;
+  }
+
+  :global(html[data-roots-desktop-client]) .snowmen {
+    right: 5%;
+    width: clamp(104px, 13vw, 192px);
+    object-position: right bottom;
   }
 }
 
