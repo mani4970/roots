@@ -58,6 +58,9 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
   const cycles = useMemo(() => getVisibleRewardMapCycles(days), [days]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(cycles.length - 1, 0));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const activeMap = useRef(selectedIndex);
+  const userScrolling = useRef(false);
+  const railWidth = useRef(0);
   const mouseDrag = useRef<{ id: number; x: number; y: number; startLeft: number; scale: number; moved: boolean } | null>(null);
   const owner = ownerName?.trim() || t("profile_default_name", lang);
   const isNight = isNightTime();
@@ -67,43 +70,56 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
-    if (!scroller || typeof ResizeObserver === "undefined") return;
+    if (!scroller) return;
+    activeMap.current = Math.max(cycles.length - 1, 0);
+    userScrolling.current = false;
+    setSelectedIndex(activeMap.current);
 
-    // Every slide occupies the full scrollport. Measure it once for all maps;
-    // only the wide desktop artwork uses this scale.
-    const updateScale = (width: number) => {
-      if (width > 0) scroller.style.setProperty("--roots-map-scene-scale", String(width / MAP_REFERENCE_WIDTH));
+    // The native app can switch from its initial layout to the wide layout
+    // after mount. Keep the same map when WebKit recalculates its snap points.
+    let previousExtent = -1;
+    railWidth.current = 0;
+    const alignMap = () => {
+      const width = scroller.clientWidth;
+      const extent = scroller.scrollWidth;
+      if (!width || (width === railWidth.current && extent === previousExtent)) return;
+      railWidth.current = width;
+      previousExtent = extent;
+      userScrolling.current = false;
+      scroller.style.setProperty("--roots-map-scene-scale", String(width / MAP_REFERENCE_WIDTH));
+      scroller.scrollTo({ left: width * activeMap.current, behavior: "instant" });
     };
-    updateScale(scroller.clientWidth);
-    const observer = new ResizeObserver(([entry]) => updateScale(entry.contentRect.width));
+    alignMap();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", alignMap);
+      return () => window.removeEventListener("resize", alignMap);
+    }
+    const observer = new ResizeObserver(alignMap);
     observer.observe(scroller);
+    for (const card of Array.from(scroller.children)) observer.observe(card);
     return () => observer.disconnect();
-  }, []);
-
-  useLayoutEffect(() => {
-    const nextIndex = Math.max(cycles.length - 1, 0);
-    setSelectedIndex(nextIndex);
-    const node = scrollerRef.current;
-    if (!node) return;
-    node.scrollTo({ left: node.clientWidth * nextIndex, behavior: "instant" });
   }, [cycles.length, days]);
 
   function handleScroll() {
     const node = scrollerRef.current;
-    if (!node || node.clientWidth <= 0) return;
+    if (!node || !userScrolling.current || !node.clientWidth || node.clientWidth !== railWidth.current) return;
     const index = Math.round(node.scrollLeft / node.clientWidth);
-    setSelectedIndex(Math.max(0, Math.min(index, cycles.length - 1)));
+    activeMap.current = Math.max(0, Math.min(index, cycles.length - 1));
+    setSelectedIndex(activeMap.current);
   }
 
   function goToMap(index: number, smooth = false) {
     const node = scrollerRef.current;
     if (!node || !cycles[index]) return;
+    userScrolling.current = false;
+    activeMap.current = index;
     const animate = smooth && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     node.scrollTo({ left: index * node.clientWidth, behavior: animate ? "smooth" : "instant" });
     setSelectedIndex(index);
   }
 
   function startMouseDrag(event: PointerEvent<HTMLDivElement>) {
+    userScrolling.current = true;
     if (event.pointerType !== "mouse" || event.button !== 0 || cycles.length < 2) return;
     const rail = event.currentTarget;
     mouseDrag.current = {
@@ -187,6 +203,8 @@ export default function TreeGrowth({ days, lastCheckin, showRootsMan = false, ow
           className={styles.rail}
           data-paged={cycles.length > 1 || undefined}
           onScroll={handleScroll}
+          onWheel={() => { userScrolling.current = true; }}
+          onKeyDown={() => { userScrolling.current = true; }}
           onPointerDown={startMouseDrag}
           onPointerMove={moveMouseDrag}
           onPointerUp={finishMouseDrag}
