@@ -281,6 +281,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const lang = useLang();
   const desktop = useDesktopLayout();
+  // Whole-pixel desktop sizes also use the existing native Mac font adjustments.
+  const profileTextSize = (base: number) => desktop ? Math.floor(base) + 2 : base;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState(false);
@@ -2236,21 +2238,21 @@ export default function ProfilePage() {
               </h1>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "var(--profile-muted-text)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
-              <span aria-label={PROFILE_LOCAL_TEXT[lang].loveHearts} style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: 11, fontWeight: 850, lineHeight: 1 }}>
+              <span style={{ fontSize: profileTextSize(11), color: "var(--profile-muted-text)" }}>{t("profile_streak", lang, { n: profile?.streak_days ?? 0 })}</span>
+              <span aria-label={PROFILE_LOCAL_TEXT[lang].loveHearts} style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "3px 8px", background: "var(--profile-gold-surface)", border: "1px solid var(--profile-gold-border)", color: "var(--profile-gold-text)", fontSize: profileTextSize(11), fontWeight: 850, lineHeight: 1 }}>
                 💛 +{loveHeartBalance}
               </span>
             </div>
             {photoError && (
               <div style={{ marginTop: 4 }}>
-                <p role="status" style={{ fontSize: 11, color: "var(--profile-danger-text)", margin: 0 }}>{photoError}</p>
+                <p role="status" style={{ fontSize: profileTextSize(11), color: "var(--profile-danger-text)", margin: 0 }}>{photoError}</p>
                 {isCharacterProfileAvatar
                   && (photoError === profileAvatarText.autoUpdateFailed || photoError === profileAvatarText.saveFailed) && (
                   <button
                     type="button"
                     onClick={() => void activateCharacterProfileAvatar()}
                     disabled={!ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice}
-                    style={{ marginTop: 4, padding: "6px 0", border: "none", background: "transparent", color: "var(--profile-sage-notice-text)", fontSize: 11, fontWeight: 800, textDecoration: "underline", cursor: "pointer" }}
+                    style={{ marginTop: 4, padding: "6px 0", border: "none", background: "transparent", color: "var(--profile-sage-notice-text)", fontSize: profileTextSize(11), fontWeight: 800, textDecoration: "underline", cursor: "pointer" }}
                   >
                     {savingProfileAvatar ? profileAvatarText.savingLabel : profileAvatarText.retryButton}
                   </button>
@@ -2266,12 +2268,12 @@ export default function ProfilePage() {
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {monthlyBadgeText.title}
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{loadingMonthlyBadges ? "…" : earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
+            <span style={{ marginLeft: 8, fontSize: profileTextSize(11), color: "var(--sage-dark)", fontWeight: 600 }}>{loadingMonthlyBadges ? "…" : earnedMonthlyBadgeCount} / {MONTHLY_BADGES_2026.length}</span>
           </span>
           <button
             type="button"
             onClick={() => setShowMonthlyBadgeGallery(true)}
-            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: profileTextSize(11), fontWeight: 800, cursor: "pointer", padding: 0 }}
           >
             {t("profile_badges_view_all", lang)}
           </button>
@@ -2300,11 +2302,11 @@ export default function ProfilePage() {
                       }}
                     />
                   </div>
-                  <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ width: "100%", fontSize: profileTextSize(10), fontWeight: 850, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {monthLabel}
                   </div>
                   {badge.status !== "mystery" && (
-                    <div style={{ fontSize: 8.5, color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
+                    <div style={{ fontSize: profileTextSize(8.5), color: badge.status === "earned" ? "var(--profile-gold-text)" : "var(--profile-muted-text)", marginTop: 2, lineHeight: 1.2 }}>
                       {getMonthlyBadgeStatusLabel(badge.status)}
                     </div>
                   )}
@@ -2319,7 +2321,7 @@ export default function ProfilePage() {
       <div className="profile-panel profile-character" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">{getRootsAvatarChoiceText("profileTitle", lang)}</div>
         <div className="card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", columnGap: 12, rowGap: 9, alignItems: "center", padding: "13px 14px 16px", minHeight: 150 }}>
-          <p style={{ gridColumn: "1 / -1", margin: 0, color: "var(--profile-muted-text)", fontSize: 10.5, fontWeight: 650, lineHeight: 1.45, textAlign: "center" }}>
+          <p style={{ gridColumn: "1 / -1", margin: 0, color: "var(--profile-muted-text)", fontSize: profileTextSize(10.5), fontWeight: 650, lineHeight: 1.45, textAlign: "center" }}>
             {PROFILE_HEART_GUIDE_TEXT[lang]}
           </p>
           <div style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
@@ -2347,10 +2349,10 @@ export default function ProfilePage() {
             </button>
           </div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: 9 }}>
-            <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage-action)", color: "var(--on-sage-action)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+            <button type="button" onClick={() => setShowAvatarChoiceModal(true)} style={{ width: "100%", border: "none", borderRadius: 999, background: "var(--sage-action)", color: "var(--on-sage-action)", padding: "10px 12px", fontSize: profileTextSize(12.5), fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {getRootsAvatarChoiceText("change", lang)}
             </button>
-            <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid var(--profile-gold-button-border)", borderRadius: 999, background: "var(--profile-gold-button-surface)", color: "var(--profile-gold-button-text)", padding: "10px 12px", fontSize: 12.5, fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
+            <button type="button" onClick={() => setShowHeartShop(true)} style={{ width: "100%", border: "1px solid var(--profile-gold-button-border)", borderRadius: 999, background: "var(--profile-gold-button-surface)", color: "var(--profile-gold-button-text)", padding: "10px 12px", fontSize: profileTextSize(12.5), fontWeight: 900, cursor: "pointer", lineHeight: 1.25 }}>
               {heartShopText.openButton}
             </button>
             <button
@@ -2366,7 +2368,7 @@ export default function ProfilePage() {
                 background: isCharacterProfileAvatar ? "var(--profile-card-muted-surface)" : "var(--profile-sage-notice-surface)",
                 color: "var(--profile-sage-notice-text)",
                 padding: "10px 12px",
-                fontSize: 12,
+                fontSize: profileTextSize(12),
                 fontWeight: 900,
                 cursor: !ownedHeartShopItemsReady || savingProfileAvatar || uploadingPhoto || resettingPhoto || savingAvatarChoice ? "default" : "pointer",
                 lineHeight: 1.25,
@@ -2394,12 +2396,12 @@ export default function ProfilePage() {
         <div className="sec-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>
             {t("profile_faith_fruits", lang)}
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {visibleFaithBadges.length}</span>
+            <span style={{ marginLeft: 8, fontSize: profileTextSize(11), color: "var(--sage-dark)", fontWeight: 600 }}>{earnedFaithBadgeCount} / {visibleFaithBadges.length}</span>
           </span>
           <button
             type="button"
             onClick={() => setShowBadgeGallery(true)}
-            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+            style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: profileTextSize(11), fontWeight: 800, cursor: "pointer", padding: 0 }}
           >
             {t("profile_badges_view_all", lang)}
           </button>
@@ -2417,8 +2419,8 @@ export default function ProfilePage() {
                   <div style={{ width: 72, height: 72, marginBottom: 5, transition: "transform 160ms ease, opacity 160ms ease" }}>
                     <img src={earned ? b.img : LOCKED_FAITH_BADGE_IMG} alt={t(b.titleKey, lang)} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", transform: earned && b.key === "badge_rootsman" ? "scale(1.15)" : "none", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
-                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
+                  <div style={{ fontSize: profileTextSize(10), fontWeight: 800, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.25 }}>{t(b.titleKey, lang)}</div>
+                  <div style={{ fontSize: profileTextSize(9), color: "var(--text2)", marginTop: 2, lineHeight: 1.25 }}>{t(b.descKey, lang)}</div>
                 </button>
               );
             })}
@@ -2434,7 +2436,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => setShowGroupChallengeBadgeGallery(true)}
-                style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}
+                style={{ border: "none", background: "transparent", color: "var(--sage-dark)", fontSize: profileTextSize(11), fontWeight: 800, cursor: "pointer", padding: 0 }}
               >
                 {t("profile_badges_view_all", lang)}
               </button>
@@ -2463,11 +2465,11 @@ export default function ProfilePage() {
                       style={{ width: "100%", height: "100%", objectFit: "contain" }}
                     />
                   </div>
-                  <div style={{ width: "100%", fontSize: 10, fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  <div style={{ width: "100%", fontSize: profileTextSize(10), fontWeight: 850, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                     {item.title}
                   </div>
                   {item.subtitle && (
-                    <div style={{ width: "100%", fontSize: 9, color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ width: "100%", fontSize: profileTextSize(9), color: "var(--text2)", marginTop: 3, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.subtitle}
                     </div>
                   )}
@@ -2482,7 +2484,7 @@ export default function ProfilePage() {
       <div className="profile-panel" style={{ padding: "14px 16px 0" }}>
         <div className="sec-label">
           {t("profile_spirit_fruits", lang)}
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
+          <span style={{ marginLeft: 8, fontSize: profileTextSize(11), color: "var(--sage-dark)", fontWeight: 600 }}>{earnedSpiritFruitCount} / {SPIRIT_FRUIT_BADGES.length}</span>
         </div>
         <div className="card" style={{ padding: "16px 12px", position: "relative" }}>
           <button
@@ -2509,15 +2511,15 @@ export default function ProfilePage() {
                   <div style={{ width: 68, height: 68, marginBottom: 6, transition: "transform 160ms ease, opacity 160ms ease" }}>
                     <img src={earned ? getSpiritFruitBadgeImg(b.name) : LOCKED_SPIRIT_FRUIT_BADGE_IMG} alt={fruitName} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: earned ? "auto" : "pixelated", opacity: earned ? 1 : LOCKED_BADGE_IMAGE_OPACITY, transform: earned ? "none" : `scale(${LOCKED_SPIRIT_FRUIT_IMAGE_SCALE})` }} />
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
-                  <div style={{ fontSize: 9, color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>
-                  {earned && <div style={{ fontSize: 8, color: "var(--profile-gold-text)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
+                  <div style={{ fontSize: profileTextSize(10), fontWeight: 700, color: earned ? "var(--profile-gold-text)" : "var(--text)", lineHeight: 1.3 }}>{b.name}</div>
+                  <div style={{ fontSize: profileTextSize(9), color: "var(--text2)", marginTop: 2 }}>{fruitName}</div>
+                  {earned && <div style={{ fontSize: profileTextSize(8), color: "var(--profile-gold-text)", marginTop: 2 }}>{t("profile_badge_earned", lang)}</div>}
                 </button>
               );
             })}
           </div>
           {earnedSpiritFruitCount === 0 && (
-            <p style={{ fontSize: 12, color: "var(--profile-muted-text)", textAlign: "center", marginTop: 14 }}>
+            <p style={{ fontSize: profileTextSize(12), color: "var(--profile-muted-text)", textAlign: "center", marginTop: 14 }}>
               {t("profile_spirit_fruit_first_hint", lang)}
             </p>
           )}
@@ -2537,7 +2539,7 @@ export default function ProfilePage() {
             <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {t("profile_qt_month_label", lang, { month: calendarMonthLabel })}
             </span>
-            <span style={{ display: "block", marginTop: 3, fontSize: 11, color: "var(--sage-dark)", fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>
+            <span style={{ display: "block", marginTop: 3, fontSize: profileTextSize(11), color: "var(--sage-dark)", fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>
               {qtCompletedDayCount}{t("profile_qt_days_suffix", lang)}
             </span>
           </div>
@@ -2566,7 +2568,7 @@ export default function ProfilePage() {
             {PROFILE_WEEKDAY_KEYS.map(key => {
               const d = t(key, lang);
               return (
-              <div key={key} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: "var(--text3)" }}>{d}</div>
+              <div key={key} style={{ textAlign: "center", fontSize: profileTextSize(9), fontWeight: 600, color: "var(--text3)" }}>{d}</div>
               );
             })}
           </div>
@@ -2580,7 +2582,7 @@ export default function ProfilePage() {
         {/* 로그아웃 */}
         <div style={{ padding: "4px 16px 0" }}>
           <button onClick={logout} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 14, background: "none", border: "1px solid var(--border)", cursor: "pointer" }}>
-            <span style={{ fontSize: 13, color: "var(--text3)", fontWeight: 600 }}>{t("profile_logout", lang)}</span>
+            <span style={{ fontSize: profileTextSize(13), color: "var(--text3)", fontWeight: 600 }}>{t("profile_logout", lang)}</span>
           </button>
         </div>
 
@@ -2588,14 +2590,14 @@ export default function ProfilePage() {
         <div style={{ padding: "14px 16px 0" }}>
           <button onClick={shareApp} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", borderRadius: 16, background: "var(--sage-light)", border: "1px solid rgba(122,157,122,0.3)", cursor: "pointer" }}>
             <Share2 size={16} style={{ color: "var(--sage-dark)" }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--sage-dark)" }}>{t("profile_invite", lang)}</span>
+            <span style={{ fontSize: profileTextSize(14), fontWeight: 700, color: "var(--sage-dark)" }}>{t("profile_invite", lang)}</span>
           </button>
         </div>
 
         {/* 피드백 버튼 */}
         <div style={{ padding: "10px 16px 0" }}>
           <button onClick={() => setShowFeedbackModal(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 16, background: "var(--bg2)", border: "1px solid var(--border)", cursor: "pointer" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text2)" }}>{t("profile_feedback", lang)}</span>
+            <span style={{ fontSize: profileTextSize(13), fontWeight: 600, color: "var(--text2)" }}>{t("profile_feedback", lang)}</span>
           </button>
         </div>
 
@@ -2613,7 +2615,7 @@ export default function ProfilePage() {
                 type="button"
                 id={`profile-document-${link.href.slice(1)}`}
                 onClick={(event) => openFooterDocument(link.href, event.currentTarget)}
-                style={{ padding: "6px 0", background: "transparent", border: "none", fontSize: 11, lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
+                style={{ padding: "6px 0", background: "transparent", border: "none", fontSize: profileTextSize(11), lineHeight: 1.4, color: "var(--text3)", textDecoration: "none", cursor: "pointer" }}
               >
                 {link.label}
               </button>

@@ -1,21 +1,11 @@
 @media (min-width: 960px) {
   html[data-roots-desktop="wide"] .roots-desktop-home {
-    --desktop-content-max: 1010px;
+    /* The map and shortcut cards each have a 16px inset on both sides. */
+    --desktop-content-max: clamp(632px, 58vw, 712px);
     --home-character-preview-width: clamp(101px, calc((100vw - var(--desktop-nav-width)) / 8), 127px);
     --roots-page-top-padding: 0px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
     min-height: 100dvh;
-    /* Match the desktop page's bottom padding. A short window can still scroll. */
     padding-top: 32px;
-  }
-
-  html[data-roots-desktop="wide"] .roots-desktop-home .roots-home-columns {
-    display: grid;
-    /* At full width the 532px garden column has 16px on either side of the map. */
-    grid-template-columns: minmax(0, 532fr) minmax(0, 478fr);
-    align-items: start;
   }
 
   html[data-roots-desktop="wide"] .home-qt-choice-backdrop {

@@ -52,7 +52,7 @@
     bottom: 0 !important;
     transform: none;
     width: var(--desktop-nav-width);
-    padding: max(24px, var(--safe-area-top)) 12px 20px;
+    padding: max(24px, var(--safe-area-top)) 8px 20px;
     overflow-y: auto;
     border: 0;
     border-right: 1px solid var(--border);
@@ -66,16 +66,24 @@
   html[data-roots-desktop-client] .bottom-nav .nav-item {
     flex: 0 0 auto;
     flex-direction: row;
-    gap: 12px;
-    min-height: 46px;
-    padding: 10px 12px;
+    gap: 8px;
+    min-height: 56px;
+    padding: 10px 5px;
     border-radius: 12px;
-    font-size: 14px;
     line-height: 1.35;
     overflow-wrap: anywhere;
   }
 
-  html[data-roots-desktop-client] .bottom-nav .nav-item svg { flex-shrink: 0; }
+  /* Set the visible label directly so the native bottom-tab font cannot shrink it. */
+  html[data-roots-desktop-client] .bottom-nav .nav-item > span:last-child {
+    font-size: 18px;
+  }
+
+  html[data-roots-desktop-client] .bottom-nav .nav-item svg {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+  }
   html[data-roots-desktop] .nav-item:hover { background: var(--bg3); }
   html[data-roots-desktop] .nav-item.active { background: var(--surface-sage-selected); }
   html[data-roots-desktop] .nav-item:focus-visible { outline: 2px solid var(--sage-dark); }

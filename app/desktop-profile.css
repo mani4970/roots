@@ -38,7 +38,11 @@
     display: flex;
     align-items: center;
     min-height: 34px;
-    font-size: 12px;
+    font-size: 14px;
+  }
+
+  html[data-roots-desktop][data-native-ios-device="mac"] .profile-panel > .sec-label {
+    font-size: 16px !important;
   }
 
   html[data-roots-desktop] .profile-panel > .card {
@@ -58,7 +62,11 @@
   }
 
   html[data-roots-desktop] .roots-desktop-profile .profile-calendar-day > span {
-    font-size: 13px !important;
+    font-size: 15px !important;
+  }
+
+  html[data-roots-desktop] #spirit-fruit-scroll > button {
+    overflow-wrap: anywhere;
   }
 
   html[data-roots-desktop] .profile-account-links {
