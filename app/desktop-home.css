@@ -8,6 +8,10 @@
     padding-top: 32px;
   }
 
+  html[data-roots-desktop="wide"] .roots-desktop-home [data-home-dashboard] {
+    grid-auto-rows: 1fr;
+  }
+
   html[data-roots-desktop="wide"] .home-qt-choice-backdrop {
     align-items: center !important;
     padding-left: calc(var(--desktop-nav-width) + 16px) !important;
