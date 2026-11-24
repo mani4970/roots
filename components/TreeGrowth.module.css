@@ -11,7 +11,29 @@
 }
 
 .arrow {
-  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(26, 28, 30, 0.72);
+  color: white;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.previous { left: 8px; }
+.next { right: 8px; }
+.arrow:disabled { display: none; }
+.arrow:focus-visible {
+  opacity: 1;
+  outline: 3px solid white;
+  outline-offset: 2px;
 }
 
 @media (any-pointer: fine) {
@@ -20,26 +42,14 @@
     user-select: none;
     -webkit-user-select: none;
   }
+}
 
-  .arrow:not(:disabled) {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: rgba(26, 28, 30, 0.72);
-    color: white;
+@media (any-hover: hover) and (any-pointer: fine) {
+  .arrow {
+    pointer-events: auto;
     cursor: pointer;
   }
-
-  .previous { left: 8px; }
-  .next { right: 8px; }
-  .arrow:focus-visible { outline: 3px solid white; outline-offset: 2px; }
+  .arrow:hover { opacity: 1; }
 }
 
 .rail.dragging {
