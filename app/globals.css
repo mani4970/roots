@@ -934,6 +934,12 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
 .qt-passage-coordinate-control { display: contents; }
 .qt-passage-coordinate-value { display: none; }
 
+/* Give the closed iOS picker a usable height even when WebKit adjusts its padding. */
+html[data-roots-ios-touch-client] .roots-qt-manual-passage select.input-field {
+  height: max(44px, 3em);
+  padding-block: 0;
+}
+
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 button { cursor: pointer; font-family: 'Pretendard', sans-serif; }

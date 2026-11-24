@@ -96,7 +96,7 @@ export default function QTManualPassageForm({
   const loadingLabel = loading && <><Loader2 size={16} className="spin" aria-hidden="true" />{text("loading")}</>;
 
   return (
-    <div className="card" aria-busy={loading || undefined}>
+    <div className="card roots-qt-manual-passage" aria-busy={loading || undefined}>
       <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>{text("title")}</p>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10 }}>
         <label style={fieldStyle}>

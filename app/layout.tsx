@@ -101,6 +101,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               // tablet WebViews may include Mobile even when the browser doesn't.
               var ipad = /iPad/i.test(ua) ||
                 (/Mac/i.test(platform) && touchPoints > 1 && !/iPhone|iPod/i.test(ua));
+              var iosTouchDevice = native
+                ? isIOS && touchPoints > 1
+                : ipad || /iPhone|iPod/i.test(ua) || /iPhone|iPod/i.test(platform);
+              if (iosTouchDevice) root.setAttribute('data-roots-ios-touch-client', '');
+
               var android = /Android/i.test(ua) || (isCapacitorApp && window.Capacitor.getPlatform() === 'android') ||
                 (navigator.userAgentData && navigator.userAgentData.platform === 'Android');
               var androidTablet = android && shortSide >= 600 && !/SM-F[0-9]|Pixel[^;)]*Fold/i.test(ua) &&
