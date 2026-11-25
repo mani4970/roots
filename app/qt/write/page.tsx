@@ -3711,9 +3711,6 @@ function QTWriteContent() {
                 );
               })}
             </div>
-            <p className="qt-six-step-kicker" style={{ fontSize: 10, color: "var(--text-muted-readable)", marginBottom: 4 }}>
-              {step6.barIdx.map(i => trQT(BAR_LABELS_6[i], lang)).join(" & ")}
-            </p>
             <h1 className="qt-six-step-title" style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{trQT(step6.title, lang)}</h1>
             <p className="qt-six-step-subtitle" style={{ fontSize: 12, color: "var(--text-muted-readable)", marginTop: 3 }}>{trQT(step6.subtitle, lang)}</p>
           </div>

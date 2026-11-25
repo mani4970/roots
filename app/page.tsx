@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useBottomNavSession } from "@/components/BottomNavSessionProvider";
 import TreeGrowth from "@/components/TreeGrowth";
-import Celebration from "@/components/Celebration";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import Onboarding from "@/components/Onboarding";
 import RootsManPopup from "@/components/RootsManPopup";
@@ -118,10 +117,7 @@ import {
 import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import { consumeGiftHomeIntent, GIFT_HOME_INTENT_EVENT, type GiftHomeIntent } from "@/lib/giftHomeEntry";
 import { acknowledgeMessengerShareAnnouncement, isMessengerShareAnnouncementEligible, readMessengerShareAnnouncementSeen } from "@/lib/messengerShareAnnouncement";
-import PrayerCardsLoading from "@/components/PrayerCardsLoading";
-import type { PrayerCardSnapshot } from "@/components/PrayerExperience";
 
-const PrayerExperience = lazy(() => import("@/components/PrayerExperience"));
 const HomeHeartShopGift = lazy(() => import("@/components/HomeHeartShopGift"));
 
 const QT_COMPLETION_WATERING_KEY_PREFIX = "qt_completion_pending_watering_";
@@ -238,25 +234,22 @@ type HomeEntry = {
 
 type HomePrayerObservationAttempt = {
   flow: ReturnType<typeof beginObservation>;
-  mode: "create" | "quiet";
   attempt: number;
   failed: boolean;
   day: string;
-  recordId?: string;
 };
 
 export default function HomePage() {
   const router = useRouter();
   const { hasShownNavigation } = useBottomNavSession();
   const [profile, setProfile] = useState<any>(null);
-  const [todayDone, setTodayDone] = useState({ qt: false, prayer: false });
+  const [todayDone, setTodayDone] = useState({ qt: false, prayerDate: "" });
   const [loading, setLoading] = useState(true);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
   const homeLoadGenerationRef = useRef(0);
   const homeDataDateRef = useRef<string | null>(null);
   const homeEntryRef = useRef<HomeEntry | null>(null);
   const [homeEntry, setHomeEntry] = useState<HomeEntry | null>(null);
-  const [homePrayerReady, setHomePrayerReady] = useState(false);
   const homeScheduleRequest = useRef<{ date: string; result: Promise<QTSchedule | null> } | null>(null);
   const homePassageChoiceVersion = useRef(0);
   const [homePassageStatus, setHomePassageStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -283,7 +276,6 @@ export default function HomePage() {
   const [activityBadgeOwner, setActivityBadgeOwner] = useState<string | null>(null);
   const [pendingActivityBadgeCount, setPendingActivityBadgeCount] = useState(0);
   const [activeActionReceipt, setActiveActionReceipt] = useState<RewardPresentationReceipt | null>(null);
-  const [celebration, setCelebration] = useState({ show: false, message: "", subMessage: "", launchRootsMan: false });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRootsMan, setShowRootsMan] = useState(false);
   const [showRootsManPopup, setShowRootsManPopup] = useState(false);
@@ -309,8 +301,6 @@ export default function HomePage() {
   const celebrationShownRef = useRef(false);
   const progressUpdateInFlightRef = useRef(false);
   const progressRetryRequestedRef = useRef(false);
-  const celebrationQueueRef = useRef<Array<{ message: string; subMessage?: string; launchRootsMan?: boolean }>>([]);
-  const pendingRootsManRef = useRef(false);
   const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
   const homeQTDialogRef = useRef<HTMLDivElement>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
@@ -319,20 +309,20 @@ export default function HomePage() {
     preferredTranslation: 92,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
-  const [showHomePrayerCards, setShowHomePrayerCards] = useState(false);
   const challengeLocalDate = useChallengeLocalDate();
+  const prayerDoneToday = todayDone.prayerDate === challengeLocalDate;
+  const [prayerEntryStatus, setPrayerEntryStatus] = useState<"idle" | "saving" | "error">("idle");
+  const prayerEntryRequest = useRef<AbortController | null>(null);
   const [showHomeRoutine, setShowHomeRoutine] = useState(false);
   const [showHomeGratitude, setShowHomeGratitude] = useState(false);
   const [showHomeChallenge, setShowHomeChallenge] = useState(false);
   const [openingPersonalChallengeProfile, setOpeningPersonalChallengeProfile] = useState(false);
   useEffect(() => {
-    setShowHomeRoutine(false); setShowHomeChallenge(false);
+    closeHomeRoutine(); setShowHomeChallenge(false);
     setOpeningPersonalChallengeProfile(false);
   }, [profile?.id, challengeLocalDate]);
   useEffect(() => { setShowHomeGratitude(false); }, [profile?.id]);
-  const homePrayerSnapshotRef = useRef<PrayerCardSnapshot | null>(null);
-  const homePrayerObservationRef = useRef<Partial<Record<"create" | "quiet", HomePrayerObservationAttempt>>>({});
-  useEffect(() => { homePrayerObservationRef.current = {}; }, [profile?.id]);
+  const homePrayerObservationRef = useRef<HomePrayerObservationAttempt | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [requiredUpdatePrompt, setRequiredUpdatePrompt] = useState<NativeUpdatePrompt | null>(null);
@@ -683,7 +673,6 @@ export default function HomePage() {
   const currentRewardMapKind = activeRewardMapKind ?? getCurrentRewardMapCycle(rewardMapDisplayDays).kind;
   const isPostReflectionHome = homeEntry?.userId === profile?.id && homeEntry?.postReflection === true;
   const isGiftNotificationHome = homeEntry?.userId === profile?.id && !!homeEntry?.giftIntent;
-  const visibleCelebration = !isGiftNotificationHome && celebration.show;
   const generalHomePopupsAllowed = !!homeEntry && homeEntry.userId === profile?.id && !isPostReflectionHome && !isGiftNotificationHome;
   // A deferred check is distinct from a completed check: no acceptance receipt
   // is read or acknowledged during the post-reflection visit.
@@ -693,7 +682,7 @@ export default function HomePage() {
   const homeDialogBlocked = showFirstLangPicker || showOnboarding || showLangPicker
     || showHomeQTDraftChoice || showHomeQTChoice || showHomeQTPassageChoice || showHomeQTPhotoPassageChoice
     || showHomeQTGuide || showHomeSundayQT || showNotificationSettingsModal
-    || showHomePrayerCards || homeHubOpen;
+    || homeHubOpen;
   const rewardDialogBlocked = homeDialogBlocked || !!effectiveUpdatePrompt;
   const homePopupsReady = !loading && !homeLoadFailed && !!profile?.id;
   // Keep queued state until its own popup is shown and dismissed. A mandatory
@@ -701,9 +690,9 @@ export default function HomePage() {
   // General Home notices retain their existing sequence. A completed reflection
   // gets its own visit: ordinary notices stay unseen until the next Home entry.
   const visibleWelcomeBack = generalHomePopupsAllowed && homePopupsReady && showWelcomeBack
-    && !effectiveUpdatePrompt?.mandatory && !homeDialogBlocked && !celebration.show;
+    && !effectiveUpdatePrompt?.mandatory && !homeDialogBlocked;
   const visibleRequiredUpdatePrompt = homePopupsReady && effectiveUpdatePrompt
-    && (effectiveUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked && !celebration.show))
+    && (effectiveUpdatePrompt.mandatory || (!showWelcomeBack && !homeDialogBlocked))
     ? effectiveUpdatePrompt : null;
   const visibleCompanionAcceptanceNotice = generalHomePopupsAllowed && homePopupsReady
     && companionAcceptanceCheckReady
@@ -711,8 +700,7 @@ export default function HomePage() {
     && !handlingCompanionAcceptanceNotice
     && !requiredUpdatePrompt
     && !showWelcomeBack
-    && !homeDialogBlocked
-    && !celebration.show;
+    && !homeDialogBlocked;
   const canShowProgressPopups = homePopupsReady
     && !isGiftNotificationHome
     && rewardPresentationsReady
@@ -721,14 +709,14 @@ export default function HomePage() {
     && !handlingCompanionAcceptanceNotice
     && !rewardDialogBlocked
     && !showWelcomeBack;
-  const visibleBadgePopup = canShowProgressPopups && !celebration.show ? badgePopup : null;
+  const visibleBadgePopup = canShowProgressPopups ? badgePopup : null;
   const showGardenUpdatePopup = canShowProgressPopups && gardenPopup.show
-    && !celebration.show && !badgePopup && !rewardMapNotice && !showRootsManPopup;
+    && !badgePopup && !rewardMapNotice && !showRootsManPopup;
   const visibleRewardMapNotice = canShowProgressPopups
-    && !celebration.show && !badgePopup && !gardenPopup.show && !showRootsManPopup
+    && !badgePopup && !gardenPopup.show && !showRootsManPopup
     ? rewardMapNotice : null;
   const visibleRootsManPopup = canShowProgressPopups && showRootsManPopup
-    && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice;
+    && !badgePopup && !gardenPopup.show && !rewardMapNotice;
   const currentAvatarType = normalizeRootsAvatarType(profile?.avatar_type);
   const homeProfileCharacterLayers = getProfileCharacterLayersForItemIds(
     enabledProfileCharacterItemIds,
@@ -737,7 +725,11 @@ export default function HomePage() {
 
   useEffect(() => {
     void load();
-    return () => { homeLoadGenerationRef.current += 1; };
+    return () => {
+      homeLoadGenerationRef.current += 1;
+      prayerEntryRequest.current?.abort();
+      prayerEntryRequest.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -940,13 +932,13 @@ export default function HomePage() {
     const generation = ++homeLoadGenerationRef.current;
     const isCurrentLoad = () => homeLoadGenerationRef.current === generation;
     initialActivityBadgeReadRef.current = null;
+    closeHomeRoutine();
     setHomeCharacterItemsOwner(null);
     setLoading(true);
     setHomeLoadFailed(false);
     setCompanionAcceptanceNotice(null);
     setCompanionAcceptanceCheckReady(false);
     setHandlingCompanionAcceptanceNotice(false);
-    setHomePrayerReady(false);
     homeScheduleRequest.current = null;
     cancelHomePassageChoice();
     setUpdateAnnouncementAccount(null);
@@ -1046,7 +1038,7 @@ export default function HomePage() {
       savePreferredTranslationLocally(activeLang, preferredTranslation);
       setHomeQTState({ hasDraft, preferredTranslation });
       setCompletedQtRecordId(completedQt?.id ?? null);
-      setTodayDone({ qt: !!completedQt, prayer: false });
+      setTodayDone({ qt: !!completedQt, prayerDate: "" });
 
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       setShowWelcomeBack(false);
@@ -1167,8 +1159,7 @@ export default function HomePage() {
           .eq("user_id", user.id).eq("date", today).maybeSingle(), 8_000, "home prayer status");
         if (error) throw error;
         if (!isCurrentLoad()) return;
-        setTodayDone(previous => ({ ...previous, prayer: previous.prayer || !!data }));
-        setHomePrayerReady(true);
+        if (data && getLocalDateString() === today) setTodayDone(previous => ({ ...previous, prayerDate: today }));
       });
       background("홈 묵상 본문 일정 조회 실패:", async () => { await getHomeSchedule(today); });
     } catch (error) {
@@ -1559,7 +1550,7 @@ export default function HomePage() {
   useEffect(() => {
     // A gift push is an explicit one-visit destination. Keep earned receipts
     // unclaimed until the next ordinary Home; progress/reward writes still run.
-    if (isGiftNotificationHome || !rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || celebration.show || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
+    if (isGiftNotificationHome || !rewardPresentationsReady || loading || homeLoadFailed || rewardDialogBlocked || showWelcomeBack || !profile || showRootsManPopup || rewardMapNotice || progressUpdateInFlightRef.current) return;
     if (showNextProgressPopup() || badgePopup || gardenPopup.show) return;
     if (!activityPresentationsReady || (activityBadgeRetryRef.current?.userId === profile.id && activityBadgeRetryRef.current?.blocking === true)) return;
     if (showRootsMan && pendingActivityBadgeCount > 0) return;
@@ -1579,35 +1570,11 @@ export default function HomePage() {
       openRootsManExperience();
       return;
     }
-    if (pendingRootsManRef.current) {
-      pendingRootsManRef.current = false;
-      openRootsManExperience();
-    }
-  }, [isGiftNotificationHome, rewardPresentationsReady, activityPresentationsReady, activityBadgeRecoveryPending, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, celebration.show, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, showRootsMan, pendingActivityBadgeCount, rootsManRequestToken]);
-
-  function enqueueCelebration(item: { message: string; subMessage?: string; launchRootsMan?: boolean }) {
-    setCelebration((current) => {
-      if (!current.show) {
-        return {
-          show: true,
-          message: item.message,
-          subMessage: item.subMessage ?? "",
-          launchRootsMan: !!item.launchRootsMan,
-        };
-      }
-      celebrationQueueRef.current.push(item);
-      return current;
-    });
-  }
+  }, [isGiftNotificationHome, rewardPresentationsReady, activityPresentationsReady, activityBadgeRecoveryPending, loading, homeLoadFailed, rewardDialogBlocked, showWelcomeBack, profile, badgePopup, gardenPopup.show, rewardMapNotice, showRootsManPopup, showRootsMan, pendingActivityBadgeCount, rootsManRequestToken]);
 
   function openRootsManExperience() {
     setShowRootsMan(false);
     setShowRootsManPopup(true);
-  }
-
-  function requestRootsManExperience() {
-    pendingRootsManRef.current = true;
-    setRootsManRequestToken(token => token + 1);
   }
 
   function closeRewardMapNotice() {
@@ -1694,108 +1661,65 @@ export default function HomePage() {
     setShowOnboarding(false);
   }
 
-  function closeCelebration() {
-    acknowledgeObservedPopup(profile?.id, "celebration");
-    const launchRootsMan = celebration.launchRootsMan;
-    const next = celebrationQueueRef.current.shift();
+  function closeHomeRoutine() {
+    prayerEntryRequest.current?.abort();
+    prayerEntryRequest.current = null;
+    setPrayerEntryStatus("idle");
+    setShowHomeRoutine(false);
+  }
 
-    if (next) {
-      if (launchRootsMan) pendingRootsManRef.current = true;
-      setCelebration({
-        show: true,
-        message: next.message,
-        subMessage: next.subMessage ?? "",
-        launchRootsMan: !!next.launchRootsMan,
-      });
+  async function openHomePrayer() {
+    if (prayerEntryRequest.current) return;
+    const day = getLocalDateString();
+    if (todayDone.prayerDate === day) {
+      closeHomeRoutine();
+      router.push("/prayer");
       return;
     }
 
-    setCelebration({ show: false, message: "", subMessage: "", launchRootsMan: false });
-    if (launchRootsMan || pendingRootsManRef.current) {
-      requestRootsManExperience();
+    const userId = profile?.id;
+    if (!userId) {
+      setPrayerEntryStatus("error");
+      return;
     }
-  }
-
-  function homePrayerObservationEvent(observation: HomePrayerObservationAttempt, event: string, phase: string, details: Record<string, string | number | boolean | null> = {}) {
-    observe(observation.flow, event, {
-      mode: observation.mode,
-      source: "home_prayer",
-      attempt: observation.attempt,
-      phase,
-      ...details,
-    }, observation.recordId);
-  }
-
-  function startHomePrayerObservation(mode: "create" | "quiet", userId: string) {
-    const day = getLocalDateString();
-    const previous = homePrayerObservationRef.current[mode];
-    const retry = previous?.failed === true && previous.flow?.userId === userId && previous.day === day;
-    const observation: HomePrayerObservationAttempt = {
-      flow: retry ? previous.flow : beginObservation("prayer", userId, { mode, source: "home_prayer" }),
-      mode,
+    const request = new AbortController();
+    prayerEntryRequest.current = request;
+    setPrayerEntryStatus("saving");
+    const previous = homePrayerObservationRef.current;
+    const retry = previous?.failed && previous.flow?.userId === userId && previous.day === day;
+    const observation = {
+      flow: retry ? previous.flow : beginObservation("prayer", userId, { mode: "quiet", source: "home_prayer" }),
       attempt: retry ? previous.attempt + 1 : 1,
       failed: false,
       day,
     };
-    homePrayerObservationRef.current[mode] = observation;
-    const phase = mode === "quiet" ? "daily_completion" : "body";
-    if (retry) homePrayerObservationEvent(observation, "retry_clicked", phase);
-    homePrayerObservationEvent(observation, "action_started", phase);
-    return observation;
-  }
-
-  async function markQuietPrayer() {
-    if (!homePrayerReady) { void load(); return; }
-    if (todayDone.prayer) return;
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const today = getLocalDateString();
-    const observation = startHomePrayerObservation("quiet", user.id);
-    let persisted = false;
+    homePrayerObservationRef.current = observation;
+    const details = { mode: "quiet", source: "home_prayer", attempt: observation.attempt, phase: "daily_completion" };
+    if (retry) observe(observation.flow, "retry_clicked", details);
+    observe(observation.flow, "action_started", details);
     try {
-      const { error } = await supabase.from("daily_prayer_completions").upsert({
-        user_id: user.id,
-        date: today,
+      // A title saved on another device or a retried request already counts for this day.
+      const write = createClient().from("daily_prayer_completions").upsert({
+        user_id: userId,
+        date: day,
         source: "quiet",
-      }, { onConflict: "user_id,date" });
-      if (error) {
-        observation.failed = true;
-        homePrayerObservationEvent(observation, "action_failed", "daily_completion", { ...observationError(error), persisted });
-        showToast(t("home_prayer_save_error", lang));
-        return;
-      }
-      persisted = true;
-      homePrayerObservationEvent(observation, "stage_succeeded", "daily_completion", { persisted });
-      setTodayDone(p => ({ ...p, prayer: true }));
-      void refreshHomePrayerStatus();
-      enqueueCelebration({
-        message: t("home_prayer_quiet_celeb", lang),
-        subMessage: t("home_prayer_quiet_celeb_sub", lang),
-      });
-      homePrayerObservationEvent(observation, "action_completed", "completion", { persisted });
-    } catch (error) {
-      observation.failed = true;
-      homePrayerObservationEvent(observation, "action_failed", "daily_completion", { ...observationError(error), persisted });
-      // Preserve the existing rejected promise; monitoring does not change UI handling.
-      throw error;
-    }
-  }
+      }, { onConflict: "user_id,date", ignoreDuplicates: true }).abortSignal(request.signal);
+      const { error } = await withQtDraftTimeout(write, 8_000, "home daily prayer", () => request.abort());
+      if (error) throw error;
 
-  async function refreshHomePrayerStatus() {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const todayPrayerResponse = await supabase
-        .from("daily_prayer_completions")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("date", getLocalDateString())
-        .maybeSingle();
-      if (!todayPrayerResponse.error) setTodayDone(previous => ({ ...previous, prayer: !!todayPrayerResponse.data }));
+      observe(observation.flow, "stage_succeeded", { ...details, persisted: true });
+      observe(observation.flow, "action_completed", { ...details, phase: "completion", persisted: true });
+      if (prayerEntryRequest.current !== request || homeEntryRef.current?.userId !== userId) return;
+      if (getLocalDateString() === day) setTodayDone(previous => ({ ...previous, prayerDate: day }));
+      closeHomeRoutine();
+      router.push("/prayer");
     } catch (error) {
-      console.warn("홈 기도 상태를 갱신하지 못했어요:", error);
+      if (prayerEntryRequest.current !== request) return;
+      observation.failed = true;
+      observe(observation.flow, "action_failed", { ...details, ...observationError(error) });
+      setPrayerEntryStatus("error");
+    } finally {
+      if (prayerEntryRequest.current === request) prayerEntryRequest.current = null;
     }
   }
 
@@ -1984,7 +1908,6 @@ export default function HomePage() {
     !!effectiveUpdatePrompt ||
     showWelcomeBack ||
     !!badgePopup ||
-    celebration.show ||
     gardenPopup.show ||
     !!rewardMapNotice ||
     showRootsManPopup ||
@@ -1997,7 +1920,6 @@ export default function HomePage() {
     showHomeQTGuide ||
     showHomeSundayQT ||
     showNotificationSettingsModal ||
-    showHomePrayerCards ||
     homeHubOpen;
   const monthlyBadgeAwardPopupBlocked = rewardCampaignPopupBlocked;
   const visibleMonthlyBadgeAward =
@@ -2014,7 +1936,6 @@ export default function HomePage() {
     !!effectiveUpdatePrompt ||
     showWelcomeBack ||
     !!badgePopup ||
-    celebration.show ||
     gardenPopup.show ||
     !!rewardMapNotice ||
     showRootsManPopup ||
@@ -2027,20 +1948,19 @@ export default function HomePage() {
     showHomeQTPhotoPassageChoice ||
     showHomeSundayQT ||
     showNotificationSettingsModal ||
-    showHomePrayerCards ||
     homeHubOpen;
   const visibleChallengeReward =
     !generalHomePopupsAllowed || homePopupBlocked || openingChallengeProfile
       ? null
       : challengeRewardQueue[0] ?? null;
   const visibleAvatarChoiceModal = generalHomePopupsAllowed && canShowProgressPopups && showAvatarChoiceModal
-    && !celebration.show && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
+    && !badgePopup && !gardenPopup.show && !rewardMapNotice && !showRootsManPopup
     && !visibleMonthlyBadgeAward;
   const personalCampaignPopupBlocked = homePopupBlocked || homeLoadFailed
     || (generalHomePopupsAllowed && (!!monthlyBadgeAward || challengeRewardQueue.length > 0))
     || openingChallengeProfile || openingPersonalChallengeProfile
     || challengeRewardActionInFlightRef.current || progressUpdateInFlightRef.current
-    || pendingRootsManRef.current || showRootsMan;
+    || showRootsMan;
   const visiblePersonalChallengeReward = !generalHomePopupsAllowed || personalCampaignPopupBlocked
     ? null : personalChallenge.rewards[0] ?? null;
   const visiblePersonalChallengeAnnouncement = generalHomePopupsAllowed && !personalCampaignPopupBlocked
@@ -2067,7 +1987,7 @@ export default function HomePage() {
     !monthlyBadgeAward && challengeRewardQueue.length === 0 &&
     personalChallenge.rewards.length === 0 && !personalChallenge.announcementPending &&
     !openingChallengeProfile && !challengeRewardActionInFlightRef.current &&
-    !progressUpdateInFlightRef.current && !pendingRootsManRef.current && !showRootsMan;
+    !progressUpdateInFlightRef.current && !showRootsMan;
 
   const visibleAdventAnnouncement = generalHomePopupsAllowed && !personalCampaignPopupBlocked
     && personalChallenge.ready && personalChallenge.rewards.length === 0 && !personalChallenge.announcementPending
@@ -2112,7 +2032,7 @@ export default function HomePage() {
       personalChallenge.acknowledgeAnnouncement();
       return true;
     }
-    if (showHomeRoutine) { setShowHomeRoutine(false); return true; }
+    if (showHomeRoutine) { closeHomeRoutine(); return true; }
     // Let the gratitude dialog consume Back, including while a save is in flight.
     if (showHomeGratitude) return false;
     if (showHomeChallenge) { setShowHomeChallenge(false); return true; }
@@ -2149,10 +2069,6 @@ export default function HomePage() {
       // Onboarding owns Android back navigation: previous slide, or stay on
       // the first slide. It must only be completed via its final action.
       return false;
-    }
-    if (visibleCelebration) {
-      closeCelebration();
-      return true;
     }
     if (visibleBadgePopup) {
       closeProgressBadge("back");
@@ -2348,23 +2264,6 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup userId={profile?.id} kind="prayer_cards" queued={showHomePrayerCards}>
-      {showHomePrayerCards && (
-        <Suspense fallback={<PrayerCardsLoading lang={lang} onClose={() => setShowHomePrayerCards(false)} />}>
-          <PrayerExperience
-            variant="popup"
-            lang={lang}
-            snapshotRef={homePrayerSnapshotRef}
-            initialProfile={profile ? { id: profile.id, name: profile.name ?? null, avatar_url: profile.avatar_url ?? null } : null}
-            onClose={() => setShowHomePrayerCards(false)}
-            dailyPrayerDone={todayDone.prayer}
-            onCompleteDailyPrayer={markQuietPrayer}
-            onDataChanged={() => { void refreshHomePrayerStatus(); }}
-          />
-        </Suspense>
-      )}
-      </ObservationPopup>
-
       <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="language_picker" queued={showFirstLangPicker}>
       {showFirstLangPicker && (
         <LanguagePicker onSelect={async (l) => {
@@ -2393,15 +2292,15 @@ export default function HomePage() {
 
       <HomeHubDialog open={showHomeRoutine && !visibleRequiredUpdatePrompt}
         title={dashboardText.routineTitle} closeLabel={dashboardText.close} hideTitle compact
-        onClose={() => setShowHomeRoutine(false)}>
+        onClose={closeHomeRoutine}>
         <HomeRoutineActions
           lang={lang}
           qtDone={todayDone.qt}
-          prayerDone={todayDone.prayer}
-          prayerReady={homePrayerReady}
-          onReflection={() => { setShowHomeRoutine(false); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
-          onPrayer={() => { setShowHomeRoutine(false); setShowHomePrayerCards(true); }}
-          onPastReflection={() => setShowHomeRoutine(false)}
+          prayerDone={prayerDoneToday}
+          prayerStatus={prayerEntryStatus}
+          onReflection={() => { closeHomeRoutine(); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
+          onPrayer={openHomePrayer}
+          onPastReflection={closeHomeRoutine}
         />
       </HomeHubDialog>
       <HomeHubDialog open={showHomeChallenge && !personalChallengeDetails && !visibleRequiredUpdatePrompt}
@@ -2573,19 +2472,6 @@ export default function HomePage() {
       )}
       </ObservationPopup>
 
-      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="celebration" queued={celebration.show} instanceKey={celebration} progressDays={profile?.streak_days}>
-      <Celebration
-        show={visibleCelebration}
-        message={celebration.message}
-        subMessage={celebration.subMessage}
-        iconSrc="/icon-qt.webp"
-        iconAlt={t("qt_complete_title", lang)}
-        zIndex={showHomePrayerCards ? 220 : undefined}
-        onClose={closeCelebration}
-      />
-      </ObservationPopup>
-
-
       <ObservationPopup userId={profile?.id} kind="notification_settings" queued={showNotificationSettingsModal}>
       {showNotificationSettingsModal && (
         <NotificationSettingsModal
@@ -2609,7 +2495,7 @@ export default function HomePage() {
       <RewardMapNoticePopup notice={visibleRewardMapNotice} onClose={closeRewardMapNotice} avatarType={currentAvatarType} />
       </ObservationPopup>
 
-      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="character_reward" queued={showRootsManPopup || pendingRootsManRef.current} progressDays={rewardActionDisplayDays}>
+      <ObservationPopup className="home-entry-popup" userId={profile?.id} kind="character_reward" queued={showRootsManPopup} progressDays={rewardActionDisplayDays}>
       <RootsManPopup
         show={visibleRootsManPopup}
         streakDays={rewardActionDisplayDays}
@@ -2683,7 +2569,7 @@ export default function HomePage() {
           <HomeDashboardCards
             lang={lang}
             routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
-            routineCompleted={Number(todayDone.qt) + Number(todayDone.prayer)}
+            routineCompleted={Number(todayDone.qt) + Number(prayerDoneToday)}
             challenge={currentHomeChallenge}
             challengeLoading={personalChallenge.loading}
             challengeError={personalChallenge.error}

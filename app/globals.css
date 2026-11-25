@@ -836,9 +836,6 @@ html[data-native-platform="ios"][data-native-form-factor="tablet"] body { width:
   html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .roots-qt-six-step .qt-six-step-tab-label {
     font-size: 16px !important;
   }
-  html[data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] .roots-qt-six-step .qt-six-step-kicker {
-    font-size: 15px !important;
-  }
 
   /* Keep the approved six-step alignment and safe-area fixes at the shared tablet scale. */
   html[data-native-platform="ios"][data-native-form-factor="tablet"] .qt-six-step-tabs { padding-inline: 8px; }

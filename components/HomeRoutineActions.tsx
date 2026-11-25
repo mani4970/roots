@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { t, type Lang } from "@/lib/i18n";
 import styles from "./HomeRoutineActions.module.css";
@@ -9,7 +9,7 @@ type HomeRoutineActionsProps = {
   lang: Lang;
   qtDone: boolean;
   prayerDone: boolean;
-  prayerReady: boolean;
+  prayerStatus: "idle" | "saving" | "error";
   onReflection: () => void;
   onPrayer: () => void;
   onPastReflection: () => void;
@@ -17,7 +17,7 @@ type HomeRoutineActionsProps = {
 
 /** Presentation only; Home owns completion state and the existing entry flows. */
 export default function HomeRoutineActions({
-  lang, qtDone, prayerDone, prayerReady, onReflection, onPrayer, onPastReflection,
+  lang, qtDone, prayerDone, prayerStatus, onReflection, onPrayer, onPastReflection,
 }: HomeRoutineActionsProps) {
   return (
     <div className={styles.actions} lang={lang}>
@@ -31,13 +31,15 @@ export default function HomeRoutineActions({
           ? <CheckCircle2 className={styles.indicator} size={16} aria-hidden="true" />
           : <ChevronRight className={styles.indicator} size={16} aria-hidden="true" />}
       </button>
-      <button type="button" onClick={onPrayer}
+      <button type="button" onClick={onPrayer} disabled={prayerStatus === "saving"} aria-busy={prayerStatus === "saving"}
         className={`${styles.action}${prayerDone ? ` ${styles.prayerDone}` : ""}`}>
-        <span className={styles.copy}>{t(prayerDone ? "home_routine_prayer_done" : prayerReady ? "home_routine_prayer_start" : "home_routine_prayer", lang)}</span>
-        {prayerDone
-          ? <CheckCircle2 className={styles.indicator} size={16} aria-hidden="true" />
+        <span className={styles.copy}>{t(prayerDone ? "home_routine_prayer_done" : "home_routine_prayer_start", lang)}</span>
+        {prayerStatus === "saving"
+          ? <Loader2 className={`${styles.indicator} spin`} size={16} aria-hidden="true" />
+          : prayerDone ? <CheckCircle2 className={styles.indicator} size={16} aria-hidden="true" />
           : <ChevronRight className={styles.indicator} size={16} aria-hidden="true" />}
       </button>
+      {prayerStatus === "error" && <p role="alert">{t("home_prayer_save_error", lang)}</p>}
       <Link href="/qt?open=catch-up" onNavigate={onPastReflection} className={styles.pastReflection}>
         {t("qt_catchup_start", lang)}
       </Link>
