@@ -124,6 +124,11 @@
     font-size: 16px !important;
   }
 
+  /* The installed Mac app drops its tablet zoom in the wide writer. */
+  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] :is(.qt-writer-editor, .qt-photo-memo) :is(input.input-field, textarea) {
+    font-size: 1.25rem !important;
+  }
+
   /* On edge-to-edge Galaxy Tabs, reserve the system bars inside each page's
      viewport height so lists scroll in their panes and their last row is reachable. */
   html[data-roots-desktop-client="tablet"][data-native-platform="android"]:has(.roots-desktop-page, .roots-qt-shell, .legal-document) {

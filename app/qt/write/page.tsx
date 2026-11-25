@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useState, useEffect, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useContext, useState, useEffect, useMemo, useRef, Suspense, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import "./desktop-writer.css";
 import { QTDesktopContext } from "../QTDesktopContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -3141,6 +3141,26 @@ function QTWriteContent() {
   }
 
   // ─── 말씀 선택 화면 (6step & free) ───
+  const nativeMacWriter = wideDesktop && typeof document !== "undefined"
+    && document.documentElement.dataset.nativeIosDevice === "mac"
+    && document.documentElement.dataset.nativeApp === "true";
+  const passageAllowsSelection = mode === "6step" && Boolean(STEPS_6[cur]?.isPassageStep);
+  const showMacPassage = nativeMacWriter && pageReady && !draftLoadError && !pendingCompletion
+    && !completionReady && (mode === "sunday" || bibleStep === "done");
+  // On the installed Mac app, keep the reading pane mounted while the editor
+  // publishes text. Include the coordinates used by the translation handler,
+  // even when only the current passage title is visible.
+  const macPassage = useMemo(
+    () => showMacPassage ? renderWriterPassage(passageAllowsSelection) : null,
+    [showMacPassage, passageAllowsSelection, lang, selectedTranslation, bibleTextSizeIndex,
+      passages, passageVerses, bibleRef, book, chapter, startV, endV, endChapter,
+      crossChapter, activePassageIndex, selectedVerseNums, loadingBible],
+  );
+
+  function renderWidePassage() {
+    return nativeMacWriter ? macPassage : renderWriterPassage(passageAllowsSelection);
+  }
+
   if (completionReady) {
     return <QTCompletionScreen lang={lang} observationFlow={completionObservationRef.current} shareRecord={completionShareRecordRef.current} onConfirm={returnHomeAfterCompletion} />;
   }
@@ -3390,7 +3410,7 @@ function QTWriteContent() {
 
           {wideDesktop && hasPassage && (
             <div className="qt-writer-free-passage">
-              {renderWriterPassage(false)}
+              {renderWidePassage()}
               {reselectPassage}
             </div>
           )}
@@ -3517,7 +3537,7 @@ function QTWriteContent() {
             </div>
           )}
 
-          {wideDesktop && hasPassage && renderWriterPassage(false)}
+          {wideDesktop && hasPassage && renderWidePassage()}
 
           {/* 단계 탭 - 자유 클릭 */}
           <div className="qt-writer-tabs" style={{ display: "flex", overflowX: "auto", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
@@ -3712,7 +3732,7 @@ function QTWriteContent() {
           })}
         </div>
 
-        {wideDesktop && renderWriterPassage(Boolean(step6.isPassageStep))}
+        {wideDesktop && renderWidePassage()}
 
         {/* 본문 요약 & 붙잡은 말씀 단계 */}
         {step6.isPassageStep && (
