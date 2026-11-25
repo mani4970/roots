@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { authErrorNotice } from "@/lib/authErrorCopy";
 import { startAuthObservation, observeAuthRequest, observeOAuthRequest } from "@/lib/authObservation";
 import type { ObservationFlow } from "@/lib/appObservation";
@@ -18,6 +18,7 @@ import AuthOAuthButtons, { type AuthOAuthProvider } from "@/components/AuthOAuth
 import { isCapacitorApp } from "@/lib/authRedirect";
 import { copyCurrentPageUrl, inAppBrowserText, isInAppBrowser, openCurrentPageInNewWindow } from "@/lib/inAppBrowser";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
+import { startMacInputCheck } from "@/lib/macInputCheck";
 
 const ROOTS_WEB_ORIGIN = "https://www.christian-roots.com";
 
@@ -42,6 +43,27 @@ export default function LoginPage() {
   const lang = selectedLang ?? detectedLang;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const emailField = useRef<HTMLInputElement>(null);
+  const passwordField = useRef<HTMLInputElement>(null);
+  // The layout bootstrap marks the installed Mac app before React hydrates.
+  const [useMacFields] = useState(() => isCapacitorApp()
+    && document.documentElement.getAttribute("data-roots-desktop-client") === "");
+  const [macFieldsReady, setMacFieldsReady] = useState(false);
+  const lastMacFieldsReady = useRef(false);
+  const syncMacFieldsReady = useCallback(() => {
+    const ready = Boolean(emailField.current?.value && passwordField.current?.value);
+    if (ready === lastMacFieldsReady.current) return;
+    lastMacFieldsReady.current = ready;
+    setMacFieldsReady(ready);
+  }, []);
+  const macInputProps = useMacFields ? {
+    defaultValue: "",
+    onInput: syncMacFieldsReady,
+    onChange: syncMacFieldsReady,
+    onFocus: syncMacFieldsReady,
+    onBlur: syncMacFieldsReady,
+  } : null;
+  const fieldsReady = useMacFields ? macFieldsReady : Boolean(email && password);
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<AuthOAuthProvider | null>(null);
@@ -78,14 +100,28 @@ export default function LoginPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!useMacFields || showLangPicker) return;
+    // Recheck values restored by WebKit when a login page becomes active.
+    syncMacFieldsReady();
+    window.addEventListener("pageshow", syncMacFieldsReady);
+    window.addEventListener("focus", syncMacFieldsReady);
+    return () => {
+      window.removeEventListener("pageshow", syncMacFieldsReady);
+      window.removeEventListener("focus", syncMacFieldsReady);
+    };
+  }, [useMacFields, showLangPicker, syncMacFieldsReady]);
+
   async function handleLogin() {
-    if (!email || !password || passwordRequestBusy.current || resetLoading || oauthLoading !== null) return;
+    const loginEmail = useMacFields ? emailField.current?.value : email;
+    const loginPassword = useMacFields ? passwordField.current?.value : password;
+    if (!loginEmail || !loginPassword || passwordRequestBusy.current || resetLoading || oauthLoading !== null) return;
     const observation = startObservation("login", "login_error");
     passwordRequestBusy.current = true;
     setLoading(true); setError(""); setResetMessage("");
     try {
     const supabase = createClient();
-    const { error } = await observeAuthRequest(observation, () => supabase.auth.signInWithPassword({ email, password }));
+    const { error } = await observeAuthRequest(observation, () => supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword }));
     if (error) { const notice = authErrorNotice(error, lang); noticeKey.current = notice.key; setError(notice.text); return; }
     await setPreferredLang(lang);
     if (
@@ -132,7 +168,7 @@ export default function LoginPage() {
 
   async function handlePasswordReset() {
     const observation = startObservation("password_reset", "login_reset_fail");
-    const resetEmail = email.trim();
+    const resetEmail = (useMacFields ? emailField.current?.value ?? "" : email).trim();
     setError("");
     setResetMessage("");
 
@@ -228,11 +264,21 @@ export default function LoginPage() {
 
         <div style={{ marginBottom: 10 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_email_label", lang)}</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("auth_email_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} />
+          <input
+            ref={emailField} type="email"
+            {...(macInputProps ?? { value: email, onChange: (e: ChangeEvent<HTMLInputElement>) => setEmail(e.currentTarget.value) })}
+            onClick={startMacInputCheck}
+            placeholder={t("auth_email_placeholder", lang)} className="input-field" style={{ fontSize: 16 }}
+          />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ color: "var(--text3)", fontSize: 12, display: "block", marginBottom: 6 }}>{t("login_password_label", lang)}</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <input
+            ref={passwordField} type="password"
+            {...(macInputProps ?? { value: password, onChange: (e: ChangeEvent<HTMLInputElement>) => setPassword(e.currentTarget.value) })}
+            placeholder={t("auth_password_placeholder", lang)} className="input-field" style={{ fontSize: 16 }}
+            onKeyDown={e => e.key === "Enter" && handleLogin()}
+          />
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
             <button
               type="button"
@@ -263,7 +309,7 @@ export default function LoginPage() {
         {error && <ObservedAuthMessage flow={noticeFlow.current} messageKey={noticeKey.current} role="alert" style={{ color: "var(--auth-danger-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{error}</ObservedAuthMessage>}
         {resetMessage && <ObservedAuthMessage flow={noticeFlow.current} messageKey={noticeKey.current} role="status" aria-live="polite" style={{ color: "var(--auth-success-text)", fontSize: 12, textAlign: "center", lineHeight: 1.55, marginBottom: 12 }}>{resetMessage}</ObservedAuthMessage>}
 
-        <button onClick={handleLogin} disabled={loading || resetLoading || !email || !password} className="btn-primary">
+        <button onClick={handleLogin} disabled={loading || resetLoading || !fieldsReady} className="btn-primary">
           {loading ? <><Loader2 size={18} className="spin" />{t("login_loading", lang)}</> : t("login_btn", lang)}
         </button>
 

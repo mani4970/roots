@@ -47,6 +47,7 @@ import { captureAdventCompletion, recordAdventCompletion, type AdventCompletionC
 import { getBibleCopyrightInfo } from "@/lib/bibleCopyright";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { hasMeaningfulQTWriteDraftContent } from "@/lib/qtDraftContent";
+import { startMacInputCheck } from "@/lib/macInputCheck";
 import QTAutoSaveStatus, { type QTAutoSaveStatusHandle, type QTAutoSaveStatusValue } from "@/components/QTAutoSaveStatus";
 import QTWriteLoadingState from "@/components/QTWriteLoadingState";
 import QTCompletionScreen from "@/components/QTCompletionScreen";
@@ -3355,7 +3356,7 @@ function QTWriteContent() {
     );
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-free roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-free roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} onClickCapture={startMacInputCheck} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3472,7 +3473,7 @@ function QTWriteContent() {
     const hasPassage = getDisplayPassages().length > 0;
 
     return (
-      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-sunday roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+      <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-sunday roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} onClickCapture={startMacInputCheck} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
@@ -3642,7 +3643,7 @@ function QTWriteContent() {
 
 
   return (
-    <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
+    <div className="roots-qt-phase2a roots-qt-phase2h roots-qt-six-step roots-native-tablet-viewport" onPointerDownCapture={handleWriterPointerDownCapture} onClickCapture={startMacInputCheck} style={{ minHeight: "100vh", background: "var(--qt-page-surface)", display: "flex", flexDirection: "column" }}>
       <QTConnectionNotice lang={lang} />
       {renderCompleteSharePrompt()}
       {toast && (
