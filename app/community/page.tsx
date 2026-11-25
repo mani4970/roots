@@ -15,7 +15,8 @@ import "./desktop-community.css";
 import "./group-challenge.css";
 import HomeHubDialog from "@/components/HomeHubDialog";
 import PrayerCardDeck, { type PrayerCardEntry } from "@/components/PrayerCardDeck";
-import PrayerExperience from "@/components/PrayerExperience";
+import CommunityPrayerTestimonyDialog from "@/components/CommunityPrayerTestimonyDialog";
+import type { PrayerTestimonyTarget } from "@/lib/savePrayerTestimony";
 import PrayerAddedFeedback, { type PrayerAddedEntry } from "@/components/PrayerAddedFeedback";
 import prayerFeedbackStyles from "@/components/PrayerAddedFeedback.module.css";
 import { getPrayerCardText } from "@/lib/prayerCardText";
@@ -1018,14 +1019,14 @@ function CommunityPageContent() {
   const [partnerQtLoadError, setPartnerQtLoadError] = useState(false);
   const [partnerPrayerLoadError, setPartnerPrayerLoadError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const { badgePopup, enqueueAwardedBadges, closeBadgePopup } = useActivityBadgePopupQueue({ userId, lang });
+  const [answerPrayer, setAnswerPrayer] = useState<PrayerTestimonyTarget | null>(null);
+  const { badgePopup, enqueueAwardedBadges, closeBadgePopup } = useActivityBadgePopupQueue({ userId, lang, enabled: !answerPrayer });
 
   // 중보기도
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
   const [prayerAdded, setPrayerAdded] = useState<PrayerAddedEntry | null>(null);
   const [prayerJoinError, setPrayerJoinError] = useState<string | null>(null);
   const [prayerJoiningIds, setPrayerJoiningIds] = useState<string[]>([]);
-  const [answerPrayerId, setAnswerPrayerId] = useState<string | null>(null);
   const prayerCardText = getPrayerCardText(lang);
 
   // 기도 응답 좋아요: user_id + prayer_id 기준으로 1회만 허용
@@ -1199,7 +1200,7 @@ function CommunityPageContent() {
   const [directPrayerTargetId, setDirectPrayerTargetId] = useState<
     string | null
   >(null);
-  const prayerAnswerBackRef = useRef<(() => boolean) | null>(null);
+  const prayerAnswerSaving = useRef(false);
   const communityPrayerContextRef = useRef({ userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id });
   communityPrayerContextRef.current = { userId, tab, partnerId: selectedPartner?.partner_id, groupId: selectedGroup?.id };
 
@@ -1210,7 +1211,7 @@ function CommunityPageContent() {
     viewKey: swipeViewKey,
     blocked: Boolean(
       isDesktopSplit || notificationDirectOpenPending || commentInboxOpen || commentNotificationStatus
-      || photoViewer || badgePopup || prayerAdded || prayerJoinError || answerPrayerId
+      || photoViewer || badgePopup || prayerAdded || prayerJoinError || answerPrayer
       || safetyConfirm || actionMenu || manageModal || profileModal || detailQt
       || showDeleteGroupConfirm || memberRemovalTarget || showLeadershipTransfer
       || showGroupEdit || showLeaveConfirm || showGroupMembers || openGroupHeaderMenu
@@ -1884,10 +1885,11 @@ function CommunityPageContent() {
 
   function closePrayerAnswer() {
     const stack = communityModalHistoryStackRef.current;
-    if (stack[stack.length - 1] === "prayer-answer") {
+    if (stack[stack.length - 1] === "prayer-answer" && window.history.state?.rootsCommunityModal === "prayer-answer") {
       window.history.back();
     } else {
-      setAnswerPrayerId(null);
+      clearCommunityModalHistory("prayer-answer");
+      setAnswerPrayer(null);
     }
   }
 
@@ -1979,11 +1981,11 @@ function CommunityPageContent() {
         return;
       }
       if (activeModal === "prayer-answer") {
-        if (prayerAnswerBackRef.current?.()) {
+        if (prayerAnswerSaving.current) {
           pushCommunityModalHistory("prayer-answer");
           return;
         }
-        setAnswerPrayerId(null);
+        setAnswerPrayer(null);
         return;
       }
       if (activeModal === "photo-viewer") {
@@ -7102,7 +7104,10 @@ function CommunityPageContent() {
         actions: mine ? (
           <button type="button" className="btn-sage" style={{ width: "100%", minHeight: 44 }} onClick={() => {
             pushCommunityModalHistory("prayer-answer");
-            setAnswerPrayerId(String(prayer.id));
+            setAnswerPrayer({
+              id: String(prayer.id), user_id: prayer.user_id,
+              is_answered: prayer.is_answered,
+            });
           }}>
             {t("prayer_answered_cta", lang)}
           </button>
@@ -7227,11 +7232,13 @@ function CommunityPageContent() {
             <button type="button" onClick={() => setPrayerJoinError(null)} aria-label={prayerCardText.close}><X size={18} /></button>
           </div>
         )}
-        {answerPrayerId && (
-          <Suspense fallback={null}>
-            <PrayerExperience variant="popup" initialAnswerId={answerPrayerId}
-              onClose={closePrayerAnswer} nestedBackRef={prayerAnswerBackRef} onDataChanged={() => void refreshCommunityPrayerRows()} />
-          </Suspense>
+        {answerPrayer && userId && answerPrayer.user_id === userId && (
+          <CommunityPrayerTestimonyDialog key={answerPrayer.id} prayer={answerPrayer} userId={userId} lang={lang}
+            savingRef={prayerAnswerSaving} onClose={closePrayerAnswer} onAwarded={enqueueAwardedBadges}
+            onSaved={() => {
+              closePrayerAnswer();
+              void refreshCommunityPrayerRows();
+            }} />
         )}
         {photoViewer && (
           <PhotoViewerModal

@@ -15,10 +15,11 @@ import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2, UserRound } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
-import { checkAndAwardAnsweredPrayerBadge } from "@/lib/rewardBadges";
-import { checkAndAwardPrayerShareBadges, recordActivityBadgeAwards } from "@/lib/activityBadgePresentations";
+import PrayerTestimonyForm from "@/components/PrayerTestimonyForm";
+import { savePrayerTestimony, type PrayerTestimonyAttempt } from "@/lib/savePrayerTestimony";
+import { checkAndAwardPrayerShareBadges } from "@/lib/activityBadgePresentations";
 import { useActivityBadgePopupQueue } from "@/lib/useActivityBadgePopupQueue";
-import { createAnsweredPrayerNotificationsBestEffort, createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
+import { createPrayerShareNotificationsBestEffort } from "@/lib/notifications/create";
 import { loadProfileCards, mapProfileCards, type ProfileCard } from "@/lib/profileCards";
 import { getSharePromptBulkSelectionLabels, loadSharePromptOptions } from "@/lib/sharePromptOptions";
 import {
@@ -147,6 +148,8 @@ export default function PrayerExperience({
   const [testimonyPrayerId, setTestimonyPrayerId] = useState<string | null>(null);
   const [testimonyText, setTestimonyText] = useState("");
   const [savingTestimony, setSavingTestimony] = useState(false);
+  const testimonySavingRef = useRef(false);
+  const testimonyAttemptRef = useRef<PrayerTestimonyAttempt | null>(null);
   const [myGroups, setMyGroups] = useState<any[]>([]);
   const [myPartners, setMyPartners] = useState<ShareTargetPartner[]>([]);
   const [loadingShareOptions, setLoadingShareOptions] = useState(false);
@@ -190,8 +193,8 @@ export default function PrayerExperience({
     delete observationAttempts.current.edit;
   }, [editId]);
   useEffect(() => {
-    delete observationAttempts.current.answer;
-  }, [testimonyPrayerId]);
+    testimonyAttemptRef.current = null;
+  }, [testimonyPrayerId, userId]);
   useEffect(() => {
     delete observationAttempts.current.share;
   }, [sharePrayerId]);
@@ -1200,95 +1203,41 @@ export default function PrayerExperience({
   }
 
   async function saveAnsweredPrayer() {
-    if (!testimonyPrayerId || !testimonyText.trim() || savingTestimony) return;
-    const observation = startPrayerObservation("answer", String(testimonyPrayerId));
-    const awardRoute = window.location.pathname + window.location.search;
-    let observationPhase = "auth";
-    let persisted = false;
-    invalidatePrayerLoad();
-    setSavingTestimony(true);
-    const supabase = createClient();
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const currentPrayer = prayers.find((prayer: any) => String(prayer.id) === String(testimonyPrayerId));
-      if (!user || !currentPrayer || String(currentPrayer.user_id) !== user.id || currentPrayer.is_answered) {
-        failPrayerObservation(observation, observationPhase, null, false, "validation_failed");
-        setNotice(c("prayer_error_answered"));
-        return;
-      }
-      observationPhase = "body";
-      prayerObservationEvent(observation, "stage_started", observationPhase);
-      const { data: savedAnswer, error } = await supabase.from("prayer_items").update({
-        is_answered: true,
-        testimony: testimonyText.trim(),
-        answered_at: new Date().toISOString(),
-      }).eq("id", testimonyPrayerId).eq("user_id", user.id).or("is_answered.eq.false,is_answered.is.null").select("id").single();
-      if (error || !savedAnswer) {
-        failPrayerObservation(observation, observationPhase, error, false, error ? undefined : "missing_saved_row");
-        setNotice(c("prayer_error_answered"));
-        return;
-      }
-      persisted = true;
-      prayerObservationEvent(observation, "stage_succeeded", observationPhase, { persisted });
-
-      observationPhase = "notifications";
-      if (user) {
-        try {
-          const { data: recipientRows } = await supabase
-            .from("prayer_item_recipients")
-            .select("recipient_id")
-            .eq("prayer_item_id", testimonyPrayerId)
-            .eq("owner_id", user.id);
-          await createAnsweredPrayerNotificationsBestEffort({
-            prayerItemId: testimonyPrayerId,
-            visibility: currentPrayer?.visibility ?? null,
-            partnerRecipientIds: (recipientRows ?? []).map((row: any) => String(row.recipient_id)).filter(Boolean),
-          });
-        } catch (notificationError) {
-          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(notificationError));
-          console.warn("기도 응답 알림 생성 실패:", notificationError);
-        }
-      }
-      // 노아 뱃지는 기도 응답 저장이 성공한 뒤에만 지급합니다.
-      observationPhase = "badge";
-      if (user) {
-        const { data: noahAward, error: noahAwardError } = await supabase.rpc("award_own_noah_badge", {
-          p_user_id: user.id,
-          p_prayer_item_id: testimonyPrayerId,
-        });
-        if (noahAwardError) {
-          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(noahAwardError));
-          console.warn("노아 배지를 저장하지 못했어요:", noahAwardError.message);
-        } else if (noahAward?.awarded === true) {
-          recordActivityBadgeAwards(supabase, user.id, ["badge_noah"]);
-          if (canPresentPrayerBadge(user.id, awardRoute)) {
-            enqueueAwardedBadges(["badge_noah"], user.id);
-          }
-        }
-
-        try {
-          const awarded = await checkAndAwardAnsweredPrayerBadge(supabase, user.id);
-          if (awarded && canPresentPrayerBadge(user.id, awardRoute)) {
-            enqueueAwardedBadges([awarded], user.id);
-          }
-        } catch (badgeError) {
-          prayerObservationEvent(observation, "stage_failed", observationPhase, observationError(badgeError));
-          console.warn("기도 응답 보상 배지 확인 실패:", badgeError);
-        }
-      }
-      setTestimonyPrayerId(null);
-      setTestimonyText("");
-      observationPhase = "refresh";
-      await loadPrayers(observation);
-      onDataChanged?.();
-      setView({ status: isPopup ? "ongoing" : "answered", category: "mine" });
-      prayerObservationEvent(observation, "action_completed", "body", { persisted });
-    } catch (error) {
-      failPrayerObservation(observation, observationPhase, error, persisted);
-      console.error("answered prayer save failed", error);
+    if (!testimonyPrayerId || !testimonyText.trim() || testimonySavingRef.current) return;
+    const prayer = prayers.find((row) => String(row.id) === String(testimonyPrayerId));
+    if (!prayer || !userId) {
       setNotice(c("prayer_error_answered"));
+      return;
+    }
+    const awardRoute = window.location.pathname + window.location.search;
+    testimonySavingRef.current = true;
+    setSavingTestimony(true);
+    invalidatePrayerLoad();
+    try {
+      const result = await savePrayerTestimony({
+        prayer, testimony: testimonyText, userId,
+        source: isPopup ? "prayer_popup" : "prayer_page",
+        previousAttempt: testimonyAttemptRef.current,
+        onRefresh: async (attempt) => {
+          if (!canPresentPrayerBadge(userId, awardRoute)) return;
+          setTestimonyPrayerId(null);
+          setTestimonyText("");
+          await loadPrayers(attempt);
+          if (!canPresentPrayerBadge(userId, awardRoute)) return;
+          onDataChanged?.();
+          setView({ status: isPopup ? "ongoing" : "answered", category: "mine" });
+        },
+      });
+      if (!canPresentPrayerBadge(userId, awardRoute)) return;
+      if (result.ok) {
+        if (result.awardedBadges.length) enqueueAwardedBadges(result.awardedBadges, userId);
+      } else {
+        testimonyAttemptRef.current = result.attempt;
+        setNotice(c("prayer_error_answered"));
+      }
     } finally {
-      setSavingTestimony(false);
+      testimonySavingRef.current = false;
+      if (mountedRef.current) setSavingTestimony(false);
     }
   }
 
@@ -1973,31 +1922,11 @@ export default function PrayerExperience({
       )}
 
       {testimonyPrayerId && (
-        <div className={styles.formOverlay} data-prayer-dialog role="dialog" aria-modal="true" aria-label={c("prayer_share_answered_title")} tabIndex={-1}>
-          <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
-              {c("prayer_share_answered_title")}
-            </h2>
-            <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>
-              {c("prayer_share_answered_desc")}
-            </p>
-            <textarea
-              className="textarea-field"
-              rows={4}
-              placeholder={c("prayer_share_answered_placeholder")}
-              value={testimonyText}
-              onChange={e => setTestimonyText(e.target.value)}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <button className="btn-outline" disabled={savingTestimony} onClick={() => { setTestimonyPrayerId(null); setTestimonyText(""); }} style={{ flex: 1 }}>
-                {c("prayer_cancel")}
-              </button>
-              <button className="btn-sage roots-prayer-action" onClick={saveAnsweredPrayer} disabled={savingTestimony || !testimonyText.trim()} style={{ flex: 1 }}>
-                {savingTestimony ? <Loader2 size={16} className="spin" /> : c("prayer_save_action")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PrayerTestimonyForm
+          lang={lang} text={testimonyText} onTextChange={setTestimonyText}
+          saving={savingTestimony} onSave={saveAnsweredPrayer}
+          onCancel={() => { setTestimonyPrayerId(null); setTestimonyText(""); }}
+        />
       )}
 
       {editId && (
