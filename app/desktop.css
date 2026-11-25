@@ -139,10 +139,6 @@
     min-height: calc(1.6em + 12px);
   }
 
-  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] textarea[data-prayer-title-input]::placeholder {
-    font-size: 14px;
-  }
-
   /* On edge-to-edge Galaxy Tabs, reserve the system bars inside each page's
      viewport height so lists scroll in their panes and their last row is reachable. */
   html[data-roots-desktop-client="tablet"][data-native-platform="android"]:has(.roots-desktop-page, .roots-qt-shell, .legal-document) {

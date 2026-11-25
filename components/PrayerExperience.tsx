@@ -337,6 +337,9 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   useAndroidBackHandler(closeTopLayer);
   const backdropHandlers = usePrayerPopupBackdrop(closeTopLayer);
+  const createFormBackdropHandlers = usePrayerPopupBackdrop(() => {
+    if (!saving && !showCreateSharePrompt) setShowForm(false);
+  });
 
   const closeRef = useRef(closeTopLayer);
   closeRef.current = closeTopLayer;
@@ -2116,7 +2119,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
       {/* 기도 작성 폼 */}
       {showForm && (
-        <div className={styles.formOverlay} data-prayer-dialog role="dialog" aria-modal="true" aria-label={c("prayer_write_title")} tabIndex={-1}>
+        <div className={styles.formOverlay} data-prayer-dialog role="dialog" aria-modal="true" aria-label={c("prayer_write_title")} tabIndex={-1} {...createFormBackdropHandlers}>
           <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{c("prayer_write_title")}</h2>
             <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>

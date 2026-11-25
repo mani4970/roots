@@ -8,7 +8,7 @@ export function usePrayerPopupBackdrop(onDismiss: () => void) {
   const tapStart = useRef<{ x: number; y: number } | null>(null);
 
   return {
-    onPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    onPointerDown(event: PointerEvent<HTMLElement>) {
       tapStart.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
         ? { x: event.clientX, y: event.clientY }
         : null;
@@ -16,7 +16,7 @@ export function usePrayerPopupBackdrop(onDismiss: () => void) {
     onPointerCancel() {
       tapStart.current = null;
     },
-    onClick(event: MouseEvent<HTMLButtonElement>) {
+    onClick(event: MouseEvent<HTMLElement>) {
       const start = tapStart.current;
       tapStart.current = null;
       if (
