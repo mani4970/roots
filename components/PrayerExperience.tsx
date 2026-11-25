@@ -1811,7 +1811,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
                 {/* 수정 모드 */}
                 {editId === p.id && category !== "intercession" ? (
                   <div>
-                    <textarea className="textarea-field" rows={3} value={editText}
+                    <textarea className="textarea-field" data-prayer-title-input rows={3} value={editText}
                       onChange={e => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={saveEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px", borderRadius: 10, background: "var(--prayer-sage-action)", color: "var(--prayer-on-sage-action)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
@@ -2105,7 +2105,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         <div className={styles.formOverlay} data-prayer-dialog role="dialog" aria-modal="true" aria-label={c("prayer_edit")} tabIndex={-1}>
           <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>{c("prayer_edit")}</h2>
-            <textarea className="textarea-field" rows={4} value={editText} aria-label={c("prayer_edit")} onChange={event => setEditText(event.target.value)} />
+            <textarea className="textarea-field" data-prayer-title-input rows={4} value={editText} aria-label={c("prayer_edit")} onChange={event => setEditText(event.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button type="button" className="btn-outline" disabled={savingEdit} onClick={() => { setEditId(null); setEditText(""); }} style={{ flex: 1 }}>{c("prayer_cancel")}</button>
               <button type="button" className="btn-sage roots-prayer-action" disabled={savingEdit || !editText.trim()} onClick={saveEdit} style={{ flex: 1 }}>{savingEdit ? <Loader2 size={16} className="spin" /> : c("prayer_save")}</button>
@@ -2120,7 +2120,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           <div style={{ background: "var(--prayer-modal-surface)", width: "100%", maxWidth: 390, borderRadius: 24, padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow-modal)" }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{c("prayer_write_title")}</h2>
             <p style={{ fontSize: 12, color: "var(--prayer-muted-text)", marginBottom: 14 }}>{c("prayer_write_desc")}</p>
-            <textarea className="textarea-field" rows={4}
+            <textarea className="textarea-field" data-prayer-title-input rows={4}
               placeholder={c("prayer_write_placeholder")}
               value={newPrayer} onChange={e => setNewPrayer(e.target.value)} />
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>

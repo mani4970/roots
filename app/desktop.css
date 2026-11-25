@@ -124,9 +124,23 @@
     font-size: 16px !important;
   }
 
-  /* The installed Mac app drops its tablet zoom in the wide writer. */
-  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] :is(.qt-writer-editor, .qt-photo-memo) :is(input.input-field, textarea) {
+  /* These fields share the reflection writer's text size at normal Mac app scale. */
+  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] :is(
+    :is(.qt-writer-editor, .qt-photo-memo) :is(input.input-field, textarea),
+    input[data-gratitude-input],
+    textarea[data-prayer-title-input]
+  ) {
     font-size: 1.25rem !important;
+  }
+
+  /* Fit the full line inside a 44px gratitude row, including marked Korean text. */
+  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] input[data-gratitude-input] {
+    padding-block: 5px;
+    min-height: calc(1.6em + 12px);
+  }
+
+  html[data-roots-desktop-client][data-native-app="true"][data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="mac"] textarea[data-prayer-title-input]::placeholder {
+    font-size: 14px;
   }
 
   /* On edge-to-edge Galaxy Tabs, reserve the system bars inside each page's

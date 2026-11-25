@@ -3580,6 +3580,7 @@ function CommunityPageContent() {
           {manageModal.kind === "prayer-edit" && (
             <textarea
               className="textarea-field"
+              data-prayer-title-input
               rows={5}
               value={manageText}
               onChange={(e) => setManageText(e.target.value)}
