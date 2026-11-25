@@ -11,7 +11,7 @@ import Celebration from "@/components/Celebration";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import { createClient } from "@/lib/supabase";
 import { useLang } from "@/lib/useLang";
-import { t, type TKey, type Lang } from "@/lib/i18n";
+import { t, type TKey } from "@/lib/i18n";
 import { getDateLocale, getLocalDateString } from "@/lib/date";
 import { Plus, CheckCircle, Loader2, Send, Pencil, X, Check, MoreHorizontal, Trash2, UserRound } from "lucide-react";
 import SharePromptModal, { type ShareTargetPartner } from "@/components/SharePromptModal";
@@ -59,17 +59,7 @@ function prayerViewFromHistory(state: any): PrayerView | null {
   return null;
 }
 
-export type PrayerCardSnapshot = {
-  userId: string;
-  scope: "ongoing";
-  prayers: any[];
-  intercessionPrayers: any[];
-  partnerSharedPrayerIds: string[];
-  loadedAt: number;
-};
-
 type PrayerLoadState = "loading" | "ready" | "error";
-const PRAYER_SNAPSHOT_MAX_AGE = 30_000;
 const PRAYER_PROFILE_WAIT_MS = 6_000;
 const PRAYER_AVATAR_WAIT_MS = 3_000;
 type PrayerAuthorProfile = Pick<ProfileCard, "id" | "name" | "avatar_url">;
@@ -92,29 +82,16 @@ function PrayerCardAvatar({ url, anonymous, nearActive, prepared }: { url?: stri
 
 export type PrayerExperienceProps = {
   variant?: "page" | "popup";
-  lang?: Lang;
-  initialProfile?: PrayerAuthorProfile | null;
-  snapshotRef?: MutableRefObject<PrayerCardSnapshot | null>;
   onClose?: () => void;
   initialAnswerId?: string | null;
   onDataChanged?: () => void;
-  dailyPrayerDone?: boolean;
-  onCompleteDailyPrayer?: () => Promise<void>;
   nestedBackRef?: MutableRefObject<(() => boolean) | null>;
 };
 
-export default function PrayerExperience(props: PrayerExperienceProps) {
-  return props.lang !== undefined
-    ? <PrayerExperienceContent {...props} lang={props.lang} />
-    : <PrayerExperienceWithLang {...props} />;
-}
-
-function PrayerExperienceWithLang(props: PrayerExperienceProps) {
+export default function PrayerExperience({
+  variant = "page", onClose, initialAnswerId, onDataChanged, nestedBackRef,
+}: PrayerExperienceProps) {
   const lang = useLang();
-  return <PrayerExperienceContent {...props} lang={lang} />;
-}
-
-function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, onDataChanged, dailyPrayerDone = false, onCompleteDailyPrayer, nestedBackRef, snapshotRef, initialProfile, lang }: PrayerExperienceProps & { lang: Lang }) {
   const isPopup = variant === "popup";
   const wideLayout = useDesktopLayout();
   const wideDesktop = wideLayout && !isPopup;
@@ -129,7 +106,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const [categoryLoad, setCategoryLoad] = useState<Record<PrayerCategory, PrayerLoadState>>({ mine: "loading", intercession: "loading" });
   const [freshCategories, setFreshCategories] = useState<Record<PrayerCategory, boolean>>({ mine: false, intercession: false });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [completingDailyPrayer, setCompletingDailyPrayer] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const cardText = getPrayerCardText(lang);
@@ -178,7 +154,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   const prayerLoadRequest = useRef(0);
   const authUserRef = useRef<string | null>(null);
   const authResolvedRef = useRef(false);
-  const initialSnapshotChecked = useRef(false);
   const authorProfilesRef = useRef<Record<string, PrayerAuthorProfile>>({});
   const profileRequestsRef = useRef(new Set<AbortController>());
   const avatarRequestsRef = useRef(new Map<string, () => void>());
@@ -472,7 +447,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         else router.push("/login");
       }, 0);
     });
-    void loadPrayers(true);
+    void loadPrayers();
     return () => {
       mountedRef.current = false;
       prayerLoadRequest.current += 1;
@@ -684,10 +659,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     avatarRequestsRef.current.clear();
   }
 
-  function withKnownAuthors(rows: any[], currentUserId: string) {
-    if (initialProfile?.id === currentUserId && !authorProfilesRef.current[currentUserId]) {
-      authorProfilesRef.current[currentUserId] = initialProfile;
-    }
+  function withKnownAuthors(rows: any[]) {
     return rows.map(row => {
       const profile = authorProfilesRef.current[row.user_id] ?? row.profiles;
       if (profile) authorProfilesRef.current[row.user_id] = profile;
@@ -703,7 +675,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     setAvatarStates({});
     shareOptionsRequest.current += 1;
     shareOptionsReady.current = false;
-    if (snapshotRef) snapshotRef.current = null;
     setUserId(null);
     setPrayers([]);
     setIntercessionPrayers([]);
@@ -738,8 +709,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     setNotice(null);
   }
 
-  function invalidatePrayerSnapshot() {
-    if (snapshotRef) snapshotRef.current = null;
+  function invalidatePrayerLoad() {
     prayerLoadRequest.current += 1;
     setFreshCategories({ mine: false, intercession: false });
     // An in-flight read discarded before a failed mutation must remain
@@ -751,7 +721,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
   }
 
   async function loadPrayers(
-    allowInitialSnapshot = false,
     observation?: PrayerObservationAttempt,
     createdPrayerToSelect?: { userId: string; id: string },
   ) {
@@ -793,40 +762,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       authResolvedRef.current = true;
       setUserId(user.id);
 
-      const snapshot = snapshotRef?.current;
-      const age = snapshot ? Date.now() - snapshot.loadedAt : Infinity;
-      const canUseSnapshot = isPopup && allowInitialSnapshot && !initialSnapshotChecked.current
-        && snapshot?.scope === "ongoing" && snapshot.userId === user.id
-        && age >= 0 && age <= PRAYER_SNAPSHOT_MAX_AGE;
-      initialSnapshotChecked.current = true;
-      if (canUseSnapshot && snapshot) {
-        setPrayers(withKnownAuthors(snapshot.prayers, user.id));
-        setIntercessionPrayers(withKnownAuthors(snapshot.intercessionPrayers, user.id));
-        setPartnerSharedPrayerIds(new Set(snapshot.partnerSharedPrayerIds));
-        setCategoryLoad({ mine: "ready", intercession: "ready" });
-        if (!selectionTouched.current && !initialAnswerId
-          && !snapshot.prayers.some(prayer => !prayer.is_answered)
-          && snapshot.intercessionPrayers.some(prayer => !prayer.is_answered)) {
-          setView({ status: "ongoing", category: "intercession" });
-        }
-      } else {
-        if (snapshotRef) snapshotRef.current = null;
-      }
-
-      let ownRows: any[] = [];
-      let intercessionRows: any[] = [];
-      let sharedPrayerIds: string[] = [];
-      let publishedSnapshot: PrayerCardSnapshot | null = null;
-      const freshAuthorProfiles: Record<string, ProfileCard> = {};
-      const snapshotRows = (rows: any[]) => rows.map(row => freshAuthorProfiles[row.user_id]
-        ? { ...row, profiles: freshAuthorProfiles[row.user_id] } : row);
-      const updatePublishedSnapshot = () => {
-        if (!isCurrentRequest() || !publishedSnapshot || snapshotRef?.current !== publishedSnapshot) return;
-        // Keep this visit's prepared header stable, but let the next opening
-        // use freshly fetched names/photos instead of extending stale metadata.
-        publishedSnapshot = { ...publishedSnapshot, prayers: snapshotRows(ownRows), intercessionPrayers: snapshotRows(intercessionRows) };
-        snapshotRef.current = publishedSnapshot;
-      };
       const enrichProfiles = (rows: any[], kind: PrayerCategory) => {
         const selection = currentCardSelectionRef.current;
         const ordered = selection.status === "answered" && selection.category === kind
@@ -840,7 +775,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         const resolvedAuthorIds = new Set<string>();
         const publish = (profileMap: Record<string, ProfileCard>, resolvedIds: string[]) => {
           if (!isCurrentRequest()) return;
-          Object.assign(freshAuthorProfiles, profileMap);
           for (const [id, profile] of Object.entries(profileMap)) {
             // A card already being read keeps its prepared identity for this
             // visit, including when a background lookup returns a new photo.
@@ -854,9 +788,8 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             profiles: authorProfilesRef.current[row.user_id] ?? row.profiles
               ?? (row.is_anonymous || resolvedAuthorIds.has(row.user_id) ? null : undefined),
           }));
-          if (kind === "mine") { ownRows = enriched; setPrayers(enriched); }
-          else { intercessionRows = enriched; setIntercessionPrayers(enriched); }
-          updatePublishedSnapshot();
+          if (kind === "mine") setPrayers(enriched);
+          else setIntercessionPrayers(enriched);
         };
         void fetchProfiles(supabase, rows, controller.signal, priorityPrayer?.user_id, publish).catch(error => {
           publish({}, rows.map(row => String(row.user_id)));
@@ -870,7 +803,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
         if (!isCurrentRequest()) return;
         if (observation) prayerObservationEvent(observation, "stage_failed", "refresh", observationError(error));
         console.error(`prayer ${kind} load failed`, error);
-        if (snapshotRef) snapshotRef.current = null;
         if (kind === "mine") { setPrayers([]); setPartnerSharedPrayerIds(new Set()); }
         else setIntercessionPrayers([]);
         setCategoryLoad(previous => ({ ...previous, [kind]: "error" }));
@@ -888,8 +820,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           if (!isCurrentRequest()) return false;
           if (ownResult.error) throw ownResult.error;
           if (recipientResult.error) throw recipientResult.error;
-          ownRows = withKnownAuthors(ownResult.data ?? [], user.id);
-          sharedPrayerIds = Array.from(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
+          const ownRows = withKnownAuthors(ownResult.data ?? []);
           setPrayers(ownRows);
           if (createdPrayerToSelect?.userId === user.id &&
               ownRows.some(row => String(row.id) === createdPrayerToSelect.id && !row.is_answered)) {
@@ -897,7 +828,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             setActiveCardFor("mine", createdPrayerToSelect.id);
             setView({ status: "ongoing", category: "mine" });
           }
-          setPartnerSharedPrayerIds(new Set(sharedPrayerIds));
+          setPartnerSharedPrayerIds(new Set((recipientResult.data ?? []).map((row: any) => String(row.prayer_item_id))));
           setCategoryLoad(previous => ({ ...previous, mine: "ready" }));
           setFreshCategories(previous => ({ ...previous, mine: true }));
           enrichProfiles(ownRows, "mine");
@@ -911,6 +842,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           if (logError) throw logError;
           if (!isCurrentRequest()) return false;
           const ids = Array.from(new Set((logs ?? []).map((log: any) => log.prayer_id).filter(Boolean)));
+          let intercessionRows: any[] = [];
           if (ids.length > 0) {
             let query = supabase.from("prayer_items").select("*").in("id", ids)
               .order("is_answered", { ascending: true }).order("created_at", { ascending: false });
@@ -918,7 +850,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
             const { data, error } = await query;
             if (error) throw error;
             if (!isCurrentRequest()) return false;
-            intercessionRows = withKnownAuthors(data ?? [], user.id);
+            intercessionRows = withKnownAuthors(data ?? []);
           }
           setIntercessionPrayers(intercessionRows);
           setCategoryLoad(previous => ({ ...previous, intercession: "ready" }));
@@ -932,15 +864,10 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       if (isCurrentRequest() && ownLoaded && intercessionLoaded && observation) {
         prayerObservationEvent(observation, "stage_succeeded", "refresh");
       }
-      if (isCurrentRequest() && ownLoaded && intercessionLoaded && isPopup && snapshotRef) {
-        publishedSnapshot = { userId: user.id, scope: "ongoing", prayers: snapshotRows(ownRows), intercessionPrayers: snapshotRows(intercessionRows), partnerSharedPrayerIds: sharedPrayerIds, loadedAt: Date.now() };
-        snapshotRef.current = publishedSnapshot;
-      }
     } catch (error) {
       if (!isCurrentRequest()) return;
       if (observation) prayerObservationEvent(observation, "stage_failed", "refresh", observationError(error));
       console.error("prayer session load failed", error);
-      if (snapshotRef) snapshotRef.current = null;
       setPrayers([]);
       setIntercessionPrayers([]);
       setPartnerSharedPrayerIds(new Set());
@@ -960,7 +887,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "body";
     let persisted = false;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     setSaving(true);
     const supabase = createClient();
     try {
@@ -1048,7 +975,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       const createdPrayerToSelect = wideDesktop && insertedPrayer?.id
         ? { userId: awardUserId, id: String(insertedPrayer.id) }
         : undefined;
-      await loadPrayers(false, observation, createdPrayerToSelect);
+      await loadPrayers(observation, createdPrayerToSelect);
       onDataChanged?.();
       prayerObservationEvent(observation, "action_completed", "daily_completion", { persisted });
     } catch (error) {
@@ -1065,7 +992,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     const observation = startPrayerObservation("edit", String(editId));
     let observationPhase = "body";
     let persisted = false;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     setSavingEdit(true);
     const supabase = createClient();
     try {
@@ -1079,7 +1006,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       prayerObservationEvent(observation, "stage_succeeded", "body", { persisted });
       setEditId(null); setEditText("");
       observationPhase = "refresh";
-      await loadPrayers(false, observation);
+      await loadPrayers(observation);
       onDataChanged?.();
       prayerObservationEvent(observation, "action_completed", "body", { persisted });
     } catch (error) {
@@ -1103,7 +1030,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function deletePrayer() {
     if (!pendingDeletePrayerId || deletingPrayer) return;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     setDeletingPrayer(true);
     const supabase = createClient();
     try {
@@ -1151,7 +1078,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
 
   async function removeIntercession() {
     if (!pendingRemovalId || !userId || removalInFlight.current) return;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     const prayerId = pendingRemovalId;
     removalInFlight.current = true;
     setRemovingIntercession(true);
@@ -1179,7 +1106,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "auth";
     let persisted = false;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     setSharingIntercession(true);
     const supabase = createClient();
     try {
@@ -1260,7 +1187,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       setSharePrayerId(null);
       setSelectedTargets([]);
       observationPhase = "refresh";
-      await loadPrayers(false, observation);
+      await loadPrayers(observation);
       onDataChanged?.();
       prayerObservationEvent(observation, "action_completed", "recipients", { persisted });
     } catch (error) {
@@ -1278,7 +1205,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
     const awardRoute = window.location.pathname + window.location.search;
     let observationPhase = "auth";
     let persisted = false;
-    invalidatePrayerSnapshot();
+    invalidatePrayerLoad();
     setSavingTestimony(true);
     const supabase = createClient();
     try {
@@ -1352,7 +1279,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       setTestimonyPrayerId(null);
       setTestimonyText("");
       observationPhase = "refresh";
-      await loadPrayers(false, observation);
+      await loadPrayers(observation);
       onDataChanged?.();
       setView({ status: isPopup ? "ongoing" : "answered", category: "mine" });
       prayerObservationEvent(observation, "action_completed", "body", { persisted });
@@ -1621,18 +1548,6 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
       actions: <div className={`${styles.answerButton} ${styles.intercedingStatus}`}><CheckCircle size={17} />{cardText.interceding}</div>,
     })),
   ];
-
-  async function completeDailyPrayer() {
-    if (!onCompleteDailyPrayer || dailyPrayerDone || completingDailyPrayer) return;
-    setCompletingDailyPrayer(true);
-    try {
-      await onCompleteDailyPrayer();
-    } catch (error) {
-      console.warn("오늘 기도 완료를 저장하지 못했어요:", error);
-    } finally {
-      setCompletingDailyPrayer(false);
-    }
-  }
 
   function renderCategoryTabs(status: PrayerStatus, category: PrayerCategory) {
     return (
@@ -1984,26 +1899,7 @@ function PrayerExperienceContent({ variant = "page", onClose, initialAnswerId, o
           ))}
         </div>
       ) : renderContent(status, category)}
-      {isPopup && <div className={`${styles.popupFooter} ${onCompleteDailyPrayer ? styles.popupFooterDaily : ""}`}>
-        {onCompleteDailyPrayer && (
-          <button
-            type="button"
-            className={`${styles.dailyPrayerButton} ${dailyPrayerDone ? styles.dailyPrayerButtonDone : ""}`}
-            onClick={() => { void completeDailyPrayer(); }}
-            disabled={dailyPrayerDone || completingDailyPrayer}
-            aria-pressed={dailyPrayerDone}
-          >
-            {completingDailyPrayer ? (
-              <Loader2 size={17} className="spin" aria-hidden="true" />
-            ) : dailyPrayerDone ? (
-              <CheckCircle size={17} aria-hidden="true" />
-            ) : (
-              <img src="/icon-pray.webp" alt="" width={20} height={20} />
-            )}
-            {t("home_prayer_daily_confirm", lang)}
-          </button>
-        )}
-      </div>}
+      {isPopup && <div className={styles.popupFooter} aria-hidden="true" />}
       </div>
 
       {pendingRemovalId && (

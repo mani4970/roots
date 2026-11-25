@@ -803,17 +803,12 @@ const forbiddenDirectUiLiterals = [
     pattern: /item\.isBest\s*\?\s*["']Best["']\s*:\s*["']New["']/g,
   },
   {
-    relativePath: "app/qt/complete/page.tsx",
-    label: "legacy QT image alt",
+    relativePath: "components/QTCompletionScreen.tsx",
+    label: "hardcoded reflection completion image alt",
     pattern: /alt=["']QT["']/g,
   },
   {
-    relativePath: "app/page.tsx",
-    label: "legacy QT celebration icon alt",
-    pattern: /iconAlt=["']QT["']/g,
-  },
-  {
-    relativePath: "app/prayer/page.tsx",
+    relativePath: "components/PrayerExperience.tsx",
     label: "hardcoded prayer celebration icon alt",
     pattern: /iconAlt=["']Prayer["']/g,
   },
@@ -1138,9 +1133,9 @@ const criticalSpanishCopyChecks = [
     fragments: ["Christian Roots 2.0.1", "Actualizar ahora"],
   },
   {
-    label: "Localized celebration accessibility labels",
-    relativePath: "app/page.tsx",
-    fragments: ['iconAlt={t("qt_complete_title", lang)}'],
+    label: "Localized reflection completion image alt",
+    relativePath: "components/QTCompletionScreen.tsx",
+    fragments: ['alt={t("qt_complete_title", lang)}'],
   },
   {
     label: "Localized prayer accessibility label",
