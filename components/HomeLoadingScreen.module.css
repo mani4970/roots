@@ -91,6 +91,10 @@
   :global(html[data-native-platform="ios"][data-native-form-factor="tablet"][data-native-ios-device="ipad"]:not([data-roots-desktop-client="tablet"])) .frame {
     --christmas-center-offset: 48px;
   }
+  :global(html[data-native-platform="ios"][data-native-ios-device="ipad"][data-roots-ipad-portrait]) .frame {
+    /* Keep the shifted loader from extending the page below the snow. */
+    overflow: hidden;
+  }
 }
 
 @media (min-width: 960px) {
