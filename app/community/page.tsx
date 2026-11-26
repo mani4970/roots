@@ -9910,87 +9910,56 @@ function CommunityPageContent() {
             </button>
 
             {partners.length === 0 ? (
-              <>
+              <div
+                className="card"
+                style={{
+                  padding: 18,
+                  border: "1px solid var(--community-sage-border)",
+                  background: "var(--community-intro-surface)",
+                }}
+              >
                 <div
-                  className="card"
                   style={{
-                    padding: 18,
-                    border: "1px solid var(--community-sage-border)",
-                    background: "var(--community-intro-surface)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
                   }}
                 >
                   <div
                     style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 16,
+                      background: "var(--sage-light)",
+                      color: "var(--sage-dark)",
                       display: "flex",
-                      alignItems: "flex-start",
-                      gap: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    <div
+                    <Users size={20} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2
                       style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 16,
-                        background: "var(--sage-light)",
-                        color: "var(--sage-dark)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
+                        fontSize: 16,
+                        fontWeight: 800,
+                        color: "var(--text)",
+                        marginBottom: 6,
                       }}
                     >
-                      <Users size={20} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h2
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 800,
-                          color: "var(--text)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        {c("community_partner_cta_title")}
-                      </h2>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          color: "var(--text3)",
-                          lineHeight: 1.6,
-                          marginBottom: 14,
-                        }}
-                      >
-                        {c("community_partner_cta_body")}
-                      </p>
-                      <button
-                        onClick={() => router.push("/companions")}
-                        className="btn-outline"
-                      >
-                        {c("community_partner_manage_button")}
-                      </button>
-                    </div>
+                      {c("community_partner_cta_title")}
+                    </h2>
+                    <button
+                      onClick={() => router.push("/companions")}
+                      className="btn-outline"
+                    >
+                      {c("community_partner_manage_button")}
+                    </button>
                   </div>
                 </div>
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "28px 16px",
-                    background: "var(--bg2)",
-                    borderRadius: 18,
-                    border: "1px dashed var(--border)",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: "var(--text3)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {c("community_partner_feed_coming")}
-                  </p>
-                </div>
-              </>
+              </div>
             ) : (
               <>
                 {partners.map((partner) => {
