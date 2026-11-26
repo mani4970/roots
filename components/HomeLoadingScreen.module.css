@@ -92,7 +92,11 @@
     --christmas-center-offset: 48px;
   }
   :global(html[data-native-platform="ios"][data-native-ios-device="ipad"][data-roots-ipad-portrait]) .frame {
-    /* Keep the shifted loader from extending the page below the snow. */
+    /* Anchor the snow to the viewport while keeping the centered iPad column. */
+    position: fixed;
+    inset: 0;
+    max-width: var(--roots-tablet-width);
+    margin-inline: auto;
     overflow: hidden;
   }
 }
