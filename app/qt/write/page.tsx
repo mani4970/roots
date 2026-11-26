@@ -449,6 +449,7 @@ function QTWriteContent() {
   const [draftRetryNonce, setDraftRetryNonce] = useState(0);
   const draftRestoredRef = useRef(false);
   const scheduleLoadStartedRef = useRef(false);
+  const writerLoadSignalRef = useRef<AbortSignal | null>(null);
   const [readingView, setReadingView] = useState<"compact" | "expanded">("expanded");
   const readingPassageRef = useRef<HTMLDivElement | null>(null);
   const [readingCanCollapse, setReadingCanCollapse] = useState(false);
@@ -822,7 +823,7 @@ function QTWriteContent() {
       .join("\u001f");
   }
 
-  async function loadPassageItemFromRef(ref: string, translationId = selectedTranslation): Promise<PassageItem | null> {
+  async function loadPassageItemFromRef(ref: string, translationId: number, signal: AbortSignal): Promise<PassageItem | null> {
     const parts = parseBibleRefParts(ref);
     if (!parts) return null;
     const { bookName, chap, sv, finalEndChapter, finalEndVerse, cross } = parts;
@@ -830,14 +831,14 @@ function QTWriteContent() {
       const koBook = toKoreanBookName(bookName);
       const maxV1 = getBibleChapterMaxVerse(koBook, chap, translationId);
       const r1 = await withQtDraftTimeout(
-        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`),
+        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`, { signal }),
         8_000,
         "restore first passage chapter",
       );
       const d1 = await r1.json();
       if (!r1.ok || d1.error) throw new Error(d1.error || "Could not restore the first passage chapter");
       const r2 = await withQtDraftTimeout(
-        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`),
+        fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`, { signal }),
         8_000,
         "restore final passage chapter",
       );
@@ -851,7 +852,7 @@ function QTWriteContent() {
       return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: true, verses, ref };
     }
     const res = await withQtDraftTimeout(
-      fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`),
+      fetch(`/api/bible?translation=${translationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`, { signal }),
       8_000,
       "restore passage",
     );
@@ -862,18 +863,18 @@ function QTWriteContent() {
     return { book: bookName, chapter: chap, startV: sv, endV: finalEndVerse, endChapter: finalEndChapter, cross: false, verses: data.verses ?? [], ref: data.reference || ref };
   }
 
-  async function restoreStandardPassages(rawRef?: string | null, translationId = selectedTranslation) {
+  async function restoreStandardPassages(rawRef: string | null, translationId: number, signal: AbortSignal) {
     const refs = splitStandardBibleRefs(rawRef);
     if (refs.length === 0) return false;
 
     const loaded = await Promise.all(refs.map(async ref => {
       try {
-        return await loadPassageItemFromRef(ref, translationId);
+        return await loadPassageItemFromRef(ref, translationId, signal);
       } catch {
         return null;
       }
     }));
-    if (loaded.every(item => item == null)) return false;
+    if (signal.aborted || loaded.every(item => item == null)) return false;
     if (loaded.some(item => item == null)) {
       setBibleError(trQT("본문을 불러오지 못했어요.", lang));
     }
@@ -906,7 +907,7 @@ function QTWriteContent() {
     return true;
   }
 
-  async function restoreSermonPassages(rawRef?: string | null, options: { restoreTitle?: boolean; translationId?: number } = {}) {
+  async function restoreSermonPassages(rawRef: string | null, options: { restoreTitle: boolean; translationId: number }, signal: AbortSignal) {
     const parsed = parseSundayBibleRef(rawRef);
     if (parsed.title && options.restoreTitle !== false) setSermonTitle(parsed.title);
     const refs = parsed.refs.filter(Boolean);
@@ -915,11 +916,12 @@ function QTWriteContent() {
 
     const loaded = await Promise.all(refs.map(async ref => {
       try {
-        return await loadPassageItemFromRef(ref, translationId);
+        return await loadPassageItemFromRef(ref, translationId, signal);
       } catch {
         return null;
       }
     }));
+    if (signal.aborted) return false;
     if (loaded.some(item => item == null)) {
       setBibleError(trQT("본문을 불러오지 못했어요.", lang));
     }
@@ -947,7 +949,8 @@ function QTWriteContent() {
   // - 지난 큐티 6단계: 선택한 날짜의 qt_schedule을 다시 조회해서 기록 보완용으로 로드
   // - 자유형식 지난 큐티: qt_schedule 자동 로드 없이 일반 자유형식처럼 수동 본문 선택으로 시작
   useEffect(() => {
-    if (!draftProbeDone || scheduleLoadStartedRef.current || draftRestoredRef.current || isEditMode) return;
+    const signal = writerLoadSignalRef.current;
+    if (!draftProbeDone || !signal || signal.aborted || scheduleLoadStartedRef.current || draftRestoredRef.current || isEditMode) return;
     scheduleLoadStartedRef.current = true;
 
     const loadSchedulePassage = async () => {
@@ -965,8 +968,10 @@ function QTWriteContent() {
               5_000,
               "load yesterday free passage",
             );
+            if (signal.aborted) return;
             setFreePassageContinuation(continuation);
           } catch {
+            if (signal.aborted) return;
             setFreePassageContinuation(null);
           }
         }
@@ -1017,6 +1022,7 @@ function QTWriteContent() {
         }
       }
 
+      if (signal.aborted) return;
       if (!schedule) {
         setSixStepPassageReselectEnabled(true);
         setPageReady(true);
@@ -1048,20 +1054,20 @@ function QTWriteContent() {
           const allLoc = [...OT_BOOKS_LOCAL, ...NT_BOOKS_LOCAL];
           const koBook = (() => { const i=allLoc.indexOf(bookName); return i>=0?allKo[i]:bookName; })();
           const maxV1 = getBibleChapterMaxVerse(koBook, chap, selectedTranslation);
-          const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+          const r1 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`, { signal });
           const d1 = await r1.json();
-          const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`);
+          const r2 = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${evChap}&startVerse=1&endVerse=${ev}`, { signal });
           const d2 = await r2.json();
           allVerses = [...(d1.verses??[]).map((v:any)=>({...v,num:`${chap}:${v.num}`})), ...(d2.verses??[]).map((v:any)=>({...v,num:`${evChap}:${v.num}`}))];
           refStr = `${bookName} ${chap}:${sv}-${evChap}:${ev}`;
         } else {
-          const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`);
+          const res = await fetch(`/api/bible?translation=${selectedTranslation}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${ev}`, { signal });
           const data = await res.json();
           allVerses = data.verses ?? [];
           refStr = data.reference ?? `${bookName} ${chap}:${sv}-${ev}`;
         }
 
-        if (allVerses.length > 0) {
+        if (!signal.aborted && allVerses.length > 0) {
           setPassageVerses(allVerses);
           setBibleRef(refStr);
           setBibleStep("done");
@@ -1069,7 +1075,7 @@ function QTWriteContent() {
       } catch (e) {
         // 스케줄 로드 실패해도 수동 선택 가능
       } finally {
-        setPageReady(true);
+        if (!signal.aborted) setPageReady(true);
       }
     };
     void loadSchedulePassage();
@@ -1084,6 +1090,9 @@ function QTWriteContent() {
     // A completed writer now keeps the celebration mounted locally. A late
     // initial-load rerun (for example across midnight) must not replace it.
     if (pendingCompletionRef.current) return;
+    const controller = new AbortController();
+    const { signal } = controller;
+    writerLoadSignalRef.current = signal;
     setDraftLoadError(false);
     setDraftProbeDone(false);
     setPageReady(false);
@@ -1119,6 +1128,7 @@ function QTWriteContent() {
         if (isEditMode && editId) {
         const supabase = createClient();
         const user = await getQtDraftSessionUser(supabase);
+        if (signal.aborted) return;
         if (!user) { router.push("/login"); return; }
         const { data: record, error } = await supabase
           .from("qt_records")
@@ -1127,6 +1137,7 @@ function QTWriteContent() {
           .eq("user_id", user.id)
           .eq("is_draft", false)
           .maybeSingle();
+        if (signal.aborted) return;
         if (error || !record || typeof record.date !== "string" || !record.date) {
           showToast(t("qt_record_error_load", lang), "error");
           setDraftProbeDone(true);
@@ -1144,11 +1155,12 @@ function QTWriteContent() {
         const isSermonRef = String(record.bible_ref ?? "").trim().startsWith("설교:");
         const isLegacyFreeSermonRef = record.qt_mode === "free" && isSermonRef;
         const restoredSermonPassages = (record.qt_mode === "sunday" || isLegacyFreeSermonRef)
-          ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday", translationId: recordTranslationId })
+          ? await restoreSermonPassages(record.bible_ref, { restoreTitle: record.qt_mode === "sunday", translationId: recordTranslationId }, signal)
           : false;
         const restoredStandardPassages = record.qt_mode === "6step" && record.bible_ref && !isSermonRef
-          ? await restoreStandardPassages(record.bible_ref, recordTranslationId)
+          ? await restoreStandardPassages(record.bible_ref, recordTranslationId, signal)
           : false;
+        if (signal.aborted) return;
         if (record.qt_mode === "6step") setSixStepPassageReselectEnabled(true);
         if (!restoredSermonPassages && !restoredStandardPassages && record.bible_ref && !isLegacyFreeSermonRef) {
           setBibleRef(record.bible_ref);
@@ -1218,15 +1230,17 @@ function QTWriteContent() {
                 const idx = allLocalBooks.indexOf(bookName);
                 const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
                 const maxV1 = getBibleChapterMaxVerse(koBook, chap, recordTranslationId);
-                const r1 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`);
+                const r1 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`, { signal });
                 const d1 = await r1.json();
-                const r2 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`);
+                const r2 = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`, { signal });
                 const d2 = await r2.json();
                 const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
+                if (signal.aborted) return;
                 if (verses.length > 0) setPassageVerses(verses);
               } else {
-                const res = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`);
+                const res = await fetch(`/api/bible?translation=${recordTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`, { signal });
                 const data = await res.json();
+                if (signal.aborted) return;
                 if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
               }
               setBibleStep("done");
@@ -1235,6 +1249,7 @@ function QTWriteContent() {
             // 본문 재로드 실패해도 저장된 QT 내용은 수정 가능
           }
         }
+        if (signal.aborted) return;
         setDraftProbeDone(true);
         setPageReady(true);
         return;
@@ -1254,6 +1269,7 @@ function QTWriteContent() {
 
       const supabase = createClient();
       const user = await getQtDraftSessionUser(supabase);
+      if (signal.aborted) return;
       if (!user) {
         setDraftLoadError(true);
         return;
@@ -1270,7 +1286,7 @@ function QTWriteContent() {
       const attempts = isOffline ? 0 : (localBackup ? 1 : 2);
       if (isOffline) draftQueryError = new Error("offline");
 
-      for (let attempt = 0; attempt < attempts; attempt += 1) {
+      for (let attempt = 0; attempt < attempts && !signal.aborted; attempt += 1) {
         try {
           const result = await withQtDraftTimeout(
             supabase.from("qt_records")
@@ -1288,12 +1304,13 @@ function QTWriteContent() {
           break;
         } catch (error) {
           draftQueryError = error;
-          if (attempt + 1 < attempts) {
+          if (attempt + 1 < attempts && !signal.aborted) {
             await new Promise(resolve => window.setTimeout(resolve, 500));
           }
         }
       }
 
+      if (signal.aborted) return;
       if (draftQueryError && !localBackup) {
         console.error("qt draft initial load failed", draftQueryError);
         setDraftLoadError(true);
@@ -1365,6 +1382,7 @@ function QTWriteContent() {
           // The draft text is still recoverable with the current translation.
         }
       }
+      if (signal.aborted) return;
       restoreTranslationId = normalizeBibleTranslationId(restoreTranslationId, selectedTranslation);
       setSelectedTranslation(restoreTranslationId);
 
@@ -1375,11 +1393,12 @@ function QTWriteContent() {
       const isDraftSermonRef = String(draft.bible_ref ?? "").trim().startsWith("설교:");
       const isLegacyFreeDraftSermonRef = draft.qt_mode === "free" && isDraftSermonRef;
       const restoredDraftSermonPassages = (draft.qt_mode === "sunday" || isLegacyFreeDraftSermonRef)
-        ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday", translationId: restoreTranslationId })
+        ? await restoreSermonPassages(draft.bible_ref, { restoreTitle: draft.qt_mode === "sunday", translationId: restoreTranslationId }, signal)
         : false;
       const restoredDraftStandardPassages = draft.qt_mode === "6step" && draft.bible_ref && !isDraftSermonRef
-        ? await restoreStandardPassages(draft.bible_ref, restoreTranslationId)
+        ? await restoreStandardPassages(draft.bible_ref, restoreTranslationId, signal)
         : false;
+      if (signal.aborted) return;
       if (draft.qt_mode === "6step") setSixStepPassageReselectEnabled(true);
       if (!restoredDraftSermonPassages && !restoredDraftStandardPassages && draft.bible_ref && !isLegacyFreeDraftSermonRef) {
         setBibleRef(draft.bible_ref);
@@ -1457,26 +1476,28 @@ function QTWriteContent() {
               const koBook = idx >= 0 ? allKoBooks[idx] : bookName;
               const maxV1 = getBibleChapterMaxVerse(koBook, chap, restoreTranslationId);
               const r1 = await withQtDraftTimeout(
-                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`),
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${maxV1}`, { signal }),
                 8_000,
                 "reload draft first passage chapter",
               );
               const d1 = await r1.json();
               const r2 = await withQtDraftTimeout(
-                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`),
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${finalEndChapter}&startVerse=1&endVerse=${finalEndVerse}`, { signal }),
                 8_000,
                 "reload draft final passage chapter",
               );
               const d2 = await r2.json();
               const verses = [...(d1.verses ?? []).map((v:any) => ({...v, num:`${chap}:${v.num}`})), ...(d2.verses ?? []).map((v:any) => ({...v, num:`${finalEndChapter}:${v.num}`}))];
+              if (signal.aborted) return;
               if (verses.length > 0) setPassageVerses(verses);
             } else {
               const res = await withQtDraftTimeout(
-                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`),
+                fetch(`/api/bible?translation=${restoreTranslationId}&book=${encodeURIComponent(bookName)}&chapter=${chap}&startVerse=${sv}&endVerse=${finalEndVerse}`, { signal }),
                 8_000,
                 "reload draft passage",
               );
               const data = await res.json();
+              if (signal.aborted) return;
               if (data.verses && data.verses.length > 0) setPassageVerses(data.verses);
             }
             setBibleStep("done");
@@ -1486,17 +1507,23 @@ function QTWriteContent() {
         }
       }
 
+      if (signal.aborted) return;
       // 저장된 단계로 이동
       const savedStep = draft.current_step ?? 0;
       if (savedStep > 0) setCur(savedStep);
       setDraftProbeDone(true);
       setPageReady(true);
       } catch (error) {
+        if (signal.aborted) return;
         console.error("qt draft initialization failed", error);
         setDraftLoadError(true);
       }
     };
-    void loadDraft();
+    // Strict Mode replays this effect before the first microtask. Only start the live entry.
+    queueMicrotask(() => {
+      if (!signal.aborted) void loadDraft();
+    });
+    return () => controller.abort();
   }, [isResume, isEditMode, editId, initialDate, draftRetryNonce, entryDate]);
 
 

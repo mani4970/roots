@@ -13,10 +13,11 @@ import {
 } from "@/lib/useLang";
 import { isLang, t, type TKey } from "@/lib/i18n";
 import { translateBookName, translateBibleRef } from "@/lib/bibleBooks";
-import { buildQTPhotoHref, buildQTWriteHref, consumeReturningFromQTWriter } from "@/lib/qtEntry";
+import { buildQTPhotoHref, buildQTWriteHref, consumeReturningFromQTWriter, type QTSchedule } from "@/lib/qtEntry";
 import { loadQTDraftBackup, removeQTDraftBackup } from "@/lib/qtDraftBackup";
 import { getQtDraftSessionUser, withQtDraftTimeout } from "@/lib/qtDraftSync";
 import { getDateLocale, getLocalDateString, parseLocalDateString } from "@/lib/date";
+import { useChallengeLocalDate } from "@/lib/useChallengeLocalDate";
 import { ESV_ATTRIBUTION_URL, ESV_TRANSLATION_ID } from "@/lib/esvBible";
 import { parseSundaySermonRef } from "@/lib/sundaySermonRef";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
@@ -110,6 +111,18 @@ function isQTModalHistoryKind(value: unknown): value is QTModalHistoryKind {
     || value === "guide";
 }
 
+function isDailyQTModal(kind: QTModalHistoryKind | null) {
+  return kind === "draft" || kind === "start" || kind === "passage" || kind === "photo-passage";
+}
+
+type TodayQT = {
+  date: string;
+  userId: string;
+  done: boolean;
+  hasDraft: boolean;
+  schedule: QTSchedule | null;
+};
+
 function getYearMonthKey(dateValue = getLocalDateString()) {
   const date = parseLocalDateString(dateValue);
   const year = date.getFullYear();
@@ -139,10 +152,20 @@ export default function QTPage() {
   const lang = useLang();
   const wideDesktop = useContext(QTDesktopContext);
   const [records, setRecords] = useState<QTRecord[]>([]);
-  const [todayDone, setTodayDone] = useState(false);
+  const localDate = useChallengeLocalDate();
+  const [todayData, setTodayData] = useState<TodayQT | null>(null);
+  const [failedDate, setFailedDate] = useState("");
+  const [retryDayRead, setRetryDayRead] = useState(0);
+  const overviewOwner = useRef<string | null>(null);
+  const lastRequestedDate = useRef("");
+  const currentDay = todayData?.date === localDate ? todayData : null;
+  const todayDone = currentDay?.done ?? false;
+  const hasDraft = currentDay?.hasDraft ?? false;
+  const todaySchedule = currentDay?.schedule ?? null;
+  const dayReadFailed = !!localDate && failedDate === localDate;
+  const draftCheckPending = !currentDay && !dayReadFailed;
   const [historyStatus, setHistoryStatus] = useState<"loading" | "ready" | "error">("loading");
   const historyRequest = useRef(0);
-  const [draftCheckPending, setDraftCheckPending] = useState(true);
   const [selectedYear, setExpandedYear] = useState<number | null>();
   const [monthChoices, setMonthChoices] = useState<Record<string, boolean>>({});
   const pressedBackdrop = useRef<HTMLDivElement | null>(null);
@@ -151,12 +174,10 @@ export default function QTPage() {
   const [showPhotoPassageChoiceModal, setShowPhotoPassageChoiceModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
-  const [hasDraft, setHasDraft] = useState(false);
   const [showDraftPopup, setShowDraftPopup] = useState(false);
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return getLocalDateString(d); })();
   const [showCatchUpModal, setShowCatchUpModal] = useState(false);
   const [catchUpDate, setCatchUpDate] = useState(yesterday);
-  const [todaySchedule, setTodaySchedule] = useState<{book:string;chapter:number;start_verse:number;end_verse:number;end_chapter:number|null;title:string|null}|null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState(() => {
     const activeLang = getStoredLang() ?? lang;
     return getPreferredTranslationForLang(activeLang);
@@ -200,18 +221,19 @@ export default function QTPage() {
 
     try {
       const historyState = currentHistoryState();
+      const modalState = { ...historyState, rootsQTModal: kind, rootsQTDate: isDailyQTModal(kind) ? getLocalDateString() : null };
       if (
         hasQTModalHistoryEntryRef.current
         || isQTModalHistoryKind(historyState.rootsQTModal)
       ) {
         window.history.replaceState(
-          { ...historyState, rootsQTModal: kind },
+          modalState,
           "",
           window.location.href,
         );
       } else {
         window.history.pushState(
-          { ...historyState, rootsQTModal: kind },
+          modalState,
           "",
           window.location.href,
         );
@@ -262,6 +284,7 @@ export default function QTPage() {
       const historyState = currentHistoryState();
       const nextHistoryState = { ...historyState };
       delete nextHistoryState.rootsQTModal;
+      delete nextHistoryState.rootsQTDate;
       window.history.replaceState(nextHistoryState, "", window.location.href);
       router.replace(href);
       return;
@@ -275,7 +298,13 @@ export default function QTPage() {
   }
 
   useEffect(() => {
-    const initialModal = window.history.state?.rootsQTModal;
+    function restoreQTModal(state: typeof window.history.state) {
+      const kind = state?.rootsQTModal;
+      const expired = state?.rootsQTDate && state.rootsQTDate !== getLocalDateString();
+      const visible = isQTModalHistoryKind(kind) && !expired ? kind : null;
+      hasQTModalHistoryEntryRef.current = isQTModalHistoryKind(kind);
+      setVisibleQTModal(visible);
+    }
     const entryUrl = new URL(window.location.href);
     const openCatchUpOnEntry = entryUrl.searchParams.get("open") === "catch-up";
     if (openCatchUpOnEntry) {
@@ -283,26 +312,16 @@ export default function QTPage() {
       entryUrl.searchParams.delete("open");
       window.history.replaceState(currentHistoryState(), "", entryUrl);
       openQTModal("catch-up");
-    } else if (isQTModalHistoryKind(initialModal)) {
-      hasQTModalHistoryEntryRef.current = true;
-      setVisibleQTModal(initialModal);
+    } else {
+      restoreQTModal(window.history.state);
     }
 
-    function handleQTPopState(event: PopStateEvent) {
-      const nextModal = event.state?.rootsQTModal;
-      if (isQTModalHistoryKind(nextModal)) {
-        hasQTModalHistoryEntryRef.current = true;
-        setVisibleQTModal(nextModal);
-        return;
-      }
-
-      hasQTModalHistoryEntryRef.current = false;
-      setVisibleQTModal(null);
-    }
-
+    const handleQTPopState = (event: PopStateEvent) => restoreQTModal(event.state);
     window.addEventListener("popstate", handleQTPopState);
-    void load(openCatchUpOnEntry || initialModal === "catch-up");
-    return () => window.removeEventListener("popstate", handleQTPopState);
+    return () => {
+      overviewOwner.current = null;
+      window.removeEventListener("popstate", handleQTPopState);
+    };
   }, [setVisibleQTModal]);
 
   // New reflections follow the current app language. A detected draft is
@@ -345,63 +364,95 @@ export default function QTPage() {
     }
   }
 
-  async function load(suppressDraftForCatchUp: boolean) {
-    const supabase = createClient();
-    try {
-      const user = await getQtDraftSessionUser(supabase);
-      if (!user) { router.push("/login"); return; }
-      void loadHistory(supabase, user.id);
-      const today = getLocalDateString();
-      const localDraftExists = !!loadQTDraftBackup(user.id, today);
-      if (localDraftExists) setHasDraft(true);
+  async function loadProfileTranslation(supabase: ReturnType<typeof createClient>, userId: string) {
+    const { data: prof } = await supabase.from("profiles")
+      .select("preferred_language,preferred_translation").eq("id", userId).single();
+    if (overviewOwner.current !== userId) return;
+    const profileLang = isLang(prof?.preferred_language) ? prof.preferred_language : null;
+    const activeLang = getStoredLang() ?? profileLang ?? lang;
+    const safeTranslation = getPreferredTranslationForLang(activeLang, prof?.preferred_translation, profileLang);
+    savePreferredTranslationLocally(activeLang, safeTranslation);
+    setPreferredTranslation(safeTranslation);
+  }
 
-      const { data: todayRows, error: todayRowsError } = await withQtDraftTimeout(
-        supabase.from("qt_records")
-          .select("id,is_draft")
-          .eq("user_id", user.id)
-          .eq("date", today)
-          .order("created_at", { ascending: false }),
-        8_000,
-        "qt overview draft check",
-      );
-      if (todayRowsError) throw todayRowsError;
-
-      const completedExists = !!todayRows?.some((row: any) => row.is_draft === false);
-      const remoteDraftExists = !!todayRows?.some((row: any) => row.is_draft === true);
-      const draftExists = !completedExists && (remoteDraftExists || localDraftExists);
-      if (completedExists && localDraftExists) removeQTDraftBackup(user.id, today);
-      setTodayDone(completedExists);
-      setHasDraft(draftExists);
-      setDraftCheckPending(false);
-      if (draftExists && !suppressDraftForCatchUp && !shouldSuppressDraftPopupAfterWriterReturn()) openQTModal("draft");
-
-      const todayDate = new Date();
-      if (todayDate.getDay() !== 0) {
-        const { data: sched } = await supabase
-          .from("qt_schedule")
-          .select("book,chapter,start_verse,end_verse,end_chapter,title")
-          .eq("date", today)
-          .maybeSingle();
-        if (sched) setTodaySchedule(sched);
-      }
-
-      const { data: prof } = await supabase.from("profiles")
-        .select("preferred_language,preferred_translation").eq("id", user.id).single();
-      const profileLang = isLang(prof?.preferred_language) ? prof.preferred_language : null;
-      const activeLang = getStoredLang() ?? profileLang ?? lang;
-      const safeTranslation = getPreferredTranslationForLang(
-        activeLang,
-        prof?.preferred_translation,
-        profileLang,
-      );
-      savePreferredTranslationLocally(activeLang, safeTranslation);
-      setPreferredTranslation(safeTranslation);
-    } catch (error) {
-      console.error("qt load failed", error);
-      showToast(t("qt_error_load", lang));
-    } finally {
-      setDraftCheckPending(false);
+  useEffect(() => {
+    if (!localDate) return;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && localDate === getLocalDateString();
+    const firstRead = !lastRequestedDate.current;
+    const suppressDraftPopup = activeQTModalRef.current === "catch-up";
+    if (!firstRead && lastRequestedDate.current !== localDate && isDailyQTModal(activeQTModalRef.current)) {
+      closeQTModal();
+      setVisibleQTModal(null);
     }
+    lastRequestedDate.current = localDate;
+    setTodayData(null);
+    setFailedDate("");
+
+    async function readToday() {
+      const supabase = createClient();
+      let initialFallback: TodayQT | null = null;
+      try {
+        const user = await getQtDraftSessionUser(supabase);
+        if (!isCurrent()) return;
+        if (!user) { router.push("/login"); return; }
+        if (overviewOwner.current !== user.id) {
+          overviewOwner.current = user.id;
+          void loadHistory(supabase, user.id);
+          void loadProfileTranslation(supabase, user.id).catch(error => console.warn("qt profile load failed", error));
+        }
+
+        const localDraft = !!loadQTDraftBackup(user.id, localDate);
+        const day = { date: localDate, userId: user.id, done: false, hasDraft: localDraft, schedule: null };
+        if (firstRead) initialFallback = day;
+        const { data: rows, error } = await withQtDraftTimeout(
+          supabase.from("qt_records").select("id,is_draft")
+            .eq("user_id", user.id).eq("date", localDate).order("created_at", { ascending: false }),
+          8_000, "qt overview draft check",
+        );
+        if (!isCurrent() || overviewOwner.current !== user.id) return;
+        if (error) throw error;
+        const done = !!rows?.some(row => row.is_draft === false);
+        const draftExists = !done && (localDraft || !!rows?.some(row => row.is_draft === true));
+        if (done && localDraft) removeQTDraftBackup(user.id, localDate);
+        const confirmedDay = { ...day, done, hasDraft: draftExists };
+        if (firstRead || done || draftExists) {
+          setTodayData(confirmedDay);
+        }
+        if (firstRead && draftExists && !suppressDraftPopup && activeQTModalRef.current !== "catch-up" && !shouldSuppressDraftPopupAfterWriterReturn()) {
+          openQTModal("draft");
+        }
+        if (done) return;
+        const schedule = parseLocalDateString(localDate).getDay() === 0 ? null : await withQtDraftTimeout(
+          supabase.from("qt_schedule").select("book,chapter,start_verse,end_verse,end_chapter,title")
+            .eq("date", localDate).maybeSingle(),
+          8_000, "qt overview schedule",
+        ).catch(error => ({ data: null, error }));
+        if (!isCurrent() || overviewOwner.current !== user.id) return;
+        if (schedule?.error && !firstRead && !draftExists) throw schedule.error;
+        // A user may have already acted on a confirmed draft while the optional passage loaded.
+        setTodayData(previous => ({
+          ...(previous?.date === localDate && previous.userId === user.id ? previous : confirmedDay),
+          schedule: schedule?.data ?? null,
+        }));
+      } catch (error) {
+        if (!isCurrent()) return;
+        console.error("qt load failed", error);
+        if (firstRead && initialFallback) {
+          // Preserve the original cold-start fallback, including an owner's on-device draft.
+          setTodayData(previous => previous ?? initialFallback);
+          showToast(t("qt_error_load", lang));
+        } else {
+          setFailedDate(localDate);
+        }
+      }
+    }
+    void readToday();
+    return () => { cancelled = true; };
+  }, [localDate, retryDayRead]);
+
+  function canStartToday() {
+    return !!currentDay && currentDay.date === getLocalDateString() && !currentDay.done;
   }
 
   const currentMonth = getYearMonthKey();
@@ -421,6 +472,7 @@ export default function QTPage() {
   const currentGuide = QT_GUIDE_KEYS[guidePage];
 
   function startQT(mode: "6step" | "sunday" | "free", passageSource: "scheduled" | "custom" = "scheduled") {
+    if (!canStartToday()) return;
     navigateFromQTModal(buildQTWriteHref({
       mode,
       preferredTranslation,
@@ -432,6 +484,7 @@ export default function QTPage() {
   }
 
   function startPhotoReflection(passageSource: "scheduled" | "custom" = "scheduled") {
+    if (!canStartToday()) return;
     navigateFromQTModal(buildQTPhotoHref({
       preferredTranslation,
       todaySchedule,
@@ -442,16 +495,18 @@ export default function QTPage() {
   }
 
   async function deleteDraftAndStart() {
+    if (!canStartToday() || !currentDay?.hasDraft) return;
+    const { date, userId } = currentDay;
     const supabase = createClient();
     try {
       const user = await getQtDraftSessionUser(supabase);
-      if (!user) return;
-      const today = getLocalDateString();
-      const { error } = await supabase.from("qt_records").delete().eq("user_id", user.id).eq("date", today).eq("is_draft", true);
+      if (user?.id !== userId || overviewOwner.current !== userId || date !== getLocalDateString()) return;
+      const { error } = await supabase.from("qt_records").delete().eq("user_id", userId).eq("date", date).eq("is_draft", true);
       if (error) throw error;
-      const localDraftRemoved = removeQTDraftBackup(user.id, today);
+      const localDraftRemoved = removeQTDraftBackup(userId, date);
       if (!localDraftRemoved) throw new Error("Could not remove the device draft backup");
-      setHasDraft(false);
+      if (overviewOwner.current !== userId || date !== getLocalDateString()) return;
+      setTodayData(previous => previous?.date === date && previous.userId === userId ? { ...previous, hasDraft: false } : previous);
       openQTModal("start");
     } catch (error) {
       console.error("qt draft delete failed", error);
@@ -613,14 +668,14 @@ export default function QTPage() {
           {toast}
         </div>
       )}
-      {showDraftPopup && (
+      {showDraftPopup && hasDraft && (
         <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, zIndex: 100, background: "var(--overlay-modal)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", borderRadius: 28, border: "1px solid var(--qt-card-border)", width: "100%", maxWidth: 340, padding: "32px 24px 24px", textAlign: "center" }}>
             <BookOpen size={38} style={{ color: "var(--sage)", marginBottom: 12 }} />
             <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>{t("qt_draft_title", lang)}</h3>
             <p style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6, marginBottom: 20, whiteSpace: "pre-line" }}>{t("qt_draft_sub", lang)}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button onClick={() => navigateFromQTModal("/qt/write?resume=true&entry=qt")} className="btn-primary">{t("qt_draft_continue", lang)}</button>
+              <button onClick={() => { if (canStartToday()) navigateFromQTModal("/qt/write?resume=true&entry=qt"); }} className="btn-primary">{t("qt_draft_continue", lang)}</button>
               <button onClick={deleteDraftAndStart} className="btn-outline">{t("qt_draft_new", lang)}</button>
               <button onClick={closeQTModal} style={{ background: "none", border: "none", color: "var(--text-muted-readable)", fontSize: 12, padding: 8, cursor: "pointer" }}>{t("qt_draft_later", lang)}</button>
             </div>
@@ -671,9 +726,11 @@ export default function QTPage() {
                     <p style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>{t("qt_sunday_desc", lang)}</p>
                   </div>
                 )}
+                {dayReadFailed && <p role="status">{t("qt_error_load", lang)}</p>}
                 <button
                   onClick={() => {
-                    if (draftCheckPending) return;
+                    if (dayReadFailed) { setRetryDayRead(attempt => attempt + 1); return; }
+                    if (!canStartToday()) return;
                     if (hasDraft) openQTModal("draft");
                     else openQTModal("start");
                   }}
@@ -682,7 +739,7 @@ export default function QTPage() {
                   style={{ display: "flex", alignItems: "center", gap: 8, opacity: draftCheckPending ? 0.65 : 1, cursor: draftCheckPending ? "default" : "pointer" }}
                 >
                   {draftCheckPending ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}
-                  {t("qt_today_start", lang)}
+                  {t(dayReadFailed ? "common_retry" : "qt_today_start", lang)}
                 </button>
                 {catchUpButton}
               </div>
@@ -799,7 +856,7 @@ export default function QTPage() {
         </div>
       )}
 
-      {showPhotoPassageChoiceModal && (
+      {showPhotoPassageChoiceModal && currentDay && !todayDone && (
         <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -827,7 +884,7 @@ export default function QTPage() {
         </div>
       )}
 
-      {showPassageChoiceModal && (
+      {showPassageChoiceModal && currentDay && !todayDone && (
         <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -849,7 +906,7 @@ export default function QTPage() {
         </div>
       )}
 
-      {showStartModal && (
+      {showStartModal && currentDay && !todayDone && (
         <div className="qt-content-backdrop" {...desktopBackdropEvents} style={{ position: "fixed", inset: 0, background: "var(--overlay-modal)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
           <div className="roots-elevation-modal" style={{ background: "var(--qt-modal-surface)", width: "100%", maxWidth: 400, borderRadius: 24, padding: "24px 20px 28px", border: "1px solid var(--qt-card-border)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>

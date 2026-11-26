@@ -168,10 +168,16 @@ const HOME_LOCAL_TEXT = {
   es: { characterSaveFailed: "No pudimos guardar tu personaje.", profileLoadFailed: "No pudimos cargar tu perfil.", retry: "Intentar de nuevo" },
 } as const;
 
-type HomeQTState = {
-  hasDraft: boolean;
-  preferredTranslation: number;
-};
+async function readHomeQTDay(supabase: ReturnType<typeof createClient>, userId: string, date: string) {
+  const { data, error } = await withQtDraftTimeout(
+    supabase.from("qt_records").select("id,is_draft").eq("user_id", userId).eq("date", date),
+    8_000, "home reflection status",
+  );
+  if (error) throw error;
+  const completedRecordId: string | null = data?.find(row => !row.is_draft)?.id ?? null;
+  const hasDraft = !completedRecordId && (!!data?.some(row => row.is_draft) || !!loadQTDraftBackup(userId, date));
+  return { date, completedRecordId, hasDraft };
+}
 
 type RewardMapNoticeState = {
   type: "complete" | "start";
@@ -304,12 +310,17 @@ export default function HomePage() {
   const [rootsManRequestToken, setRootsManRequestToken] = useState(0);
   const homeQTDialogRef = useRef<HTMLDivElement>(null);
   const treeSectionRef = useRef<HTMLDivElement | null>(null);
-  const [homeQTState, setHomeQTState] = useState<HomeQTState>({
+  const qtDayRequest = useRef<{ date: string; userId: string; generation: number } | null>(null);
+  const [qtDayError, setQtDayError] = useState(false);
+  const [homeQTState, setHomeQTState] = useState({
+    date: "",
+    completedRecordId: null as string | null,
     hasDraft: false,
     preferredTranslation: 92,
   });
   const [completedQtRecordId, setCompletedQtRecordId] = useState<string | null>(null);
   const challengeLocalDate = useChallengeLocalDate();
+  const qtDoneToday = homeQTState.date === challengeLocalDate && !!homeQTState.completedRecordId;
   const prayerDoneToday = todayDone.prayerDate === challengeLocalDate;
   const [prayerEntryStatus, setPrayerEntryStatus] = useState<"idle" | "saving" | "error">("idle");
   const prayerEntryRequest = useRef<AbortController | null>(null);
@@ -928,6 +939,47 @@ export default function HomePage() {
     };
   }, [loading, profile?.id, completedQtRecordId]);
 
+  // Only the QT entry controls need a fresh day. A full Home load also handles rewards and announcements.
+  async function refreshHomeQTDay() {
+    const date = getLocalDateString();
+    const userId = profile?.id;
+    if (!userId || loading || homeLoadFailed || homeQTState.date === date) return;
+    const generation = homeLoadGenerationRef.current;
+    const pending = qtDayRequest.current;
+    if (pending?.date === date && pending.userId === userId && pending.generation === generation) return;
+
+    const request = { date, userId, generation };
+    qtDayRequest.current = request;
+    const isCurrent = () => qtDayRequest.current === request && generation === homeLoadGenerationRef.current
+      && homeEntryRef.current?.userId === userId && date === getLocalDateString();
+    closeHomeQTChoicePopup();
+    setShowHomeQTDraftChoice(false);
+    setQtDayError(false);
+    try {
+      const day = await readHomeQTDay(createClient(), userId, date);
+      if (!isCurrent()) return;
+      setHomeQTState(previous => ({ ...previous, ...day }));
+      void getHomeSchedule(date).catch(() => { /* The passage picker retries on demand. */ });
+    } catch {
+      if (isCurrent()) setQtDayError(true);
+    } finally {
+      if (qtDayRequest.current === request) qtDayRequest.current = null;
+    }
+  }
+
+  useEffect(() => {
+    if (!challengeLocalDate || homeQTState.date === challengeLocalDate) return;
+    void refreshHomeQTDay();
+    window.addEventListener("online", refreshHomeQTDay);
+    return () => window.removeEventListener("online", refreshHomeQTDay);
+  }, [challengeLocalDate, homeQTState.date, profile?.id, loading, homeLoadFailed]);
+
+  function isHomeQTDayCurrent() {
+    if (homeQTState.date === getLocalDateString()) return true;
+    void refreshHomeQTDay();
+    return false;
+  }
+
   async function load() {
     const generation = ++homeLoadGenerationRef.current;
     const isCurrentLoad = () => homeLoadGenerationRef.current === generation;
@@ -998,20 +1050,10 @@ export default function HomePage() {
         if (!response.data) throw response.error ?? new Error("Home profile unavailable");
         return response.data;
       };
-      const [p, qtResponse] = await Promise.all([
-        loadProfile(),
-        withQtDraftTimeout(
-          supabase.from("qt_records").select("id,is_draft").eq("user_id", user.id).eq("date", today),
-          8_000, "home reflection status",
-        ),
-      ]);
-      if (qtResponse.error) throw qtResponse.error;
+      const [p, qtDay] = await Promise.all([loadProfile(), readHomeQTDay(supabase, user.id, today)]);
       if (!isCurrentLoad()) return;
       if (getLocalDateString() !== today) { void load(); return; }
-      const qtRecords = qtResponse.data ?? [];
-      const completedQt = qtRecords.find((record: any) => !record.is_draft) ?? null;
-      const remoteDraftExists = qtRecords.some((record: any) => record.is_draft);
-      const confirmedQtRecordId = completedQt?.id ?? null;
+      const confirmedQtRecordId = qtDay.completedRecordId;
       const previousEntry = homeEntryRef.current;
       const giftIntent = consumeGiftHomeIntent(user.id);
       const entry = !giftIntent && previousEntry?.userId === user.id && previousEntry.date === today
@@ -1024,7 +1066,6 @@ export default function HomePage() {
         };
       homeEntryRef.current = entry;
       setHomeEntry(entry);
-      const hasDraft = !completedQt && (remoteDraftExists || !!loadQTDraftBackup(user.id, today));
       homeDataDateRef.current = today;
       companionChallengeAnnouncementUserIdRef.current = user.id;
       monthlyBadgeAwardUserIdRef.current = user.id;
@@ -1036,9 +1077,9 @@ export default function HomePage() {
       const activeLang = getStoredLang() ?? profileLang ?? lang;
       const preferredTranslation = getPreferredTranslationForLang(activeLang, p.preferred_translation, profileLang);
       savePreferredTranslationLocally(activeLang, preferredTranslation);
-      setHomeQTState({ hasDraft, preferredTranslation });
-      setCompletedQtRecordId(completedQt?.id ?? null);
-      setTodayDone({ qt: !!completedQt, prayerDate: "" });
+      setHomeQTState({ ...qtDay, preferredTranslation });
+      setCompletedQtRecordId(confirmedQtRecordId);
+      setTodayDone({ qt: !!confirmedQtRecordId, prayerDate: "" });
 
       const lastCheckin = p.last_checkin ? String(p.last_checkin).slice(0, 10) : null;
       setShowWelcomeBack(false);
@@ -1428,6 +1469,7 @@ export default function HomePage() {
     const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
       if (cancelled || (event !== "SIGNED_OUT" && (!session?.user?.id || session.user.id === userId))) return;
       homeScheduleRequest.current = null;
+      qtDayRequest.current = null;
       closeHomeQTChoicePopup();
       // Revoke this queue immediately even if the old profile is still on
       // screen while the route's ordinary account refresh is completing.
@@ -1751,6 +1793,7 @@ export default function HomePage() {
   }
 
   async function startHomeQT(mode: QTMode | "photo", source: "scheduled" | "custom" = "custom") {
+    if (!isHomeQTDayCurrent()) return;
     const choice = ++homePassageChoiceVersion.current;
     const generation = homeLoadGenerationRef.current;
     const isCurrent = () => choice === homePassageChoiceVersion.current && generation === homeLoadGenerationRef.current;
@@ -1792,12 +1835,14 @@ export default function HomePage() {
   }
 
   function openHomeQT() {
-    if (homeQTState.hasDraft) {
-      setShowHomeQTDraftChoice(true);
+    if (!isHomeQTDayCurrent()) return;
+    closeHomeRoutine();
+    if (homeQTState.completedRecordId) {
+      router.push(`/qt/record?id=${homeQTState.completedRecordId}`);
       return;
     }
-    if (todayDone.qt) {
-      router.push("/qt");
+    if (homeQTState.hasDraft) {
+      setShowHomeQTDraftChoice(true);
       return;
     }
     if (isSunday()) {
@@ -1810,13 +1855,14 @@ export default function HomePage() {
   }
 
   function continueHomeQTDraft() {
-    if (deletingHomeQTDraftRef.current) return;
+    if (deletingHomeQTDraftRef.current || !isHomeQTDayCurrent()) return;
     setShowHomeQTDraftChoice(false);
     router.push("/qt/write?resume=true&entry=home");
   }
 
   async function deleteHomeQTDraftAndStartNew() {
-    if (deletingHomeQTDraftRef.current) return;
+    if (deletingHomeQTDraftRef.current || !isHomeQTDayCurrent()) return;
+    const today = homeQTState.date;
     deletingHomeQTDraftRef.current = true;
     setDeletingHomeQTDraft(true);
 
@@ -1825,7 +1871,7 @@ export default function HomePage() {
       const user = await getQtDraftSessionUser(supabase);
       if (!user) throw new Error("No authenticated user for QT draft deletion");
 
-      const today = getLocalDateString();
+      if (user.id !== profile?.id || today !== getLocalDateString()) return;
       const { error } = await withQtDraftTimeout(
         supabase
           .from("qt_records")
@@ -1841,7 +1887,8 @@ export default function HomePage() {
         throw new Error("Could not remove the device QT draft backup");
       }
 
-      setHomeQTState(previous => ({ ...previous, hasDraft: false }));
+      if (today !== getLocalDateString() || homeEntryRef.current?.userId !== user.id) return;
+      setHomeQTState(previous => previous.date === today ? { ...previous, hasDraft: false } : previous);
       setShowHomeQTDraftChoice(false);
       setShowHomeQTPassageChoice(false);
       setShowHomeQTPhotoPassageChoice(false);
@@ -1887,14 +1934,6 @@ export default function HomePage() {
     } else {
       setShowHomeQTChoice(true);
     }
-  }
-
-  function openTodayQtRecord() {
-    if (completedQtRecordId) {
-      router.push(`/qt/record?id=${completedQtRecordId}`);
-      return;
-    }
-    router.push("/qt");
   }
 
   const rewardCampaignPopupBlocked =
@@ -2295,13 +2334,22 @@ export default function HomePage() {
         onClose={closeHomeRoutine}>
         <HomeRoutineActions
           lang={lang}
-          qtDone={todayDone.qt}
+          qtDone={qtDoneToday}
           prayerDone={prayerDoneToday}
           prayerStatus={prayerEntryStatus}
-          onReflection={() => { closeHomeRoutine(); todayDone.qt ? openTodayQtRecord() : openHomeQT(); }}
+          onReflection={openHomeQT}
           onPrayer={openHomePrayer}
           onPastReflection={closeHomeRoutine}
         />
+        {homeQTState.date !== challengeLocalDate && (
+          <div role="status">
+            {qtDayError ? (
+              <button type="button" className="btn-outline" onClick={() => void refreshHomeQTDay()}>
+                {dashboardText.retry}
+              </button>
+            ) : dashboardText.loading}
+          </div>
+        )}
       </HomeHubDialog>
       <HomeHubDialog open={showHomeChallenge && !personalChallengeDetails && !visibleRequiredUpdatePrompt}
         title={dashboardText.challengeTitle} closeLabel={dashboardText.close}
@@ -2569,7 +2617,7 @@ export default function HomePage() {
           <HomeDashboardCards
             lang={lang}
             routineOpen={showHomeRoutine && !visibleRequiredUpdatePrompt}
-            routineCompleted={Number(todayDone.qt) + Number(prayerDoneToday)}
+            routineCompleted={Number(qtDoneToday) + Number(prayerDoneToday)}
             challenge={currentHomeChallenge}
             challengeLoading={personalChallenge.loading}
             challengeError={personalChallenge.error}
