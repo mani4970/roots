@@ -1959,6 +1959,7 @@ function QTWriteContent() {
     const hasMultiplePassages = displayPassages.length > 1;
     const copyrightInfo = getBibleCopyrightInfo(selectedTranslation);
     const compact = !wideDesktop && readingView === "compact" && readingCanCollapse;
+    const showSelectedVerses = allowVerseSelection || (wideDesktop && mode === "6step");
     const VerseRow = allowVerseSelection ? "button" : "div";
     return (
       <div className="qt-six-passage-card roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, border: "1px solid var(--qt-sage-border-soft)", overflow: "hidden" }}>
@@ -2007,7 +2008,7 @@ function QTWriteContent() {
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {verses.map(v => {
               const verseId = normalizeVerseNum(v.num);
-              const isSelected = allowVerseSelection && selectedVerseNums.includes(verseId);
+              const isSelected = showSelectedVerses && selectedVerseNums.includes(verseId);
               return (
                 <VerseRow
                   key={`${activePassage.ref}-${verseId}`}
@@ -3153,7 +3154,7 @@ function QTWriteContent() {
   // even when only the current passage title is visible.
   const macPassage = useMemo(
     () => showMacPassage ? renderWriterPassage(passageAllowsSelection) : null,
-    [showMacPassage, passageAllowsSelection, lang, selectedTranslation, bibleTextSizeIndex,
+    [showMacPassage, passageAllowsSelection, mode, lang, selectedTranslation, bibleTextSizeIndex,
       passages, passageVerses, bibleRef, book, chapter, startV, endV, endChapter,
       crossChapter, activePassageIndex, selectedVerseNums, loadingBible],
   );
@@ -3800,7 +3801,7 @@ function QTWriteContent() {
             <p className="qt-six-step-hint" style={{ fontSize: 12, color: "var(--text-muted-readable)", lineHeight: 1.6 }}>{trQT(step6.hint, lang)}</p>
 
             {step6.id === "meditation" && keyVerse.trim() && (
-              <div className="roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
+              <div className="qt-key-verse-reminder roots-elevation-card-sage" style={{ background: "var(--qt-sage-subtle-surface)", borderRadius: 14, padding: "12px 14px", border: "1px solid var(--qt-sage-border-soft)" }}>
                 <p style={{ fontSize: 11, fontWeight: 800, color: "var(--sage-dark)", marginBottom: 6 }}>
                   {trQT("붙잡은 말씀으로 묵상해요", lang)}
                 </p>
