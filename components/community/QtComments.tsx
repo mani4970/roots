@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { ChevronDown, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { getDateLocale } from "@/lib/date";
 import { useAndroidBackHandler } from "@/lib/androidBackNavigation";
 import { createClient } from "@/lib/supabase";
+import { isCapacitorApp } from "@/lib/authRedirect";
 import { loadProfileCards, type ProfileCard } from "@/lib/profileCards";
 import { getQtCommentText } from "@/lib/qtCommentText";
 import { getQtCommentSafetyText } from "@/lib/qtCommentSafetyText";
@@ -38,6 +39,58 @@ function mergeComments(first: QtComment[], second: QtComment[]) {
   const byId = new Map(first.map(row => [row.id, row]));
   second.forEach(row => byId.set(row.id, { ...byId.get(row.id), ...row }));
   return [...byId.values()].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id));
+}
+
+type CommentTextareaProps = {
+  inputRef: RefObject<HTMLTextAreaElement>;
+  value: string;
+  onValueChange: (value: string) => void;
+  label: string;
+  placeholder?: string;
+  maximum?: number;
+  disabled: boolean;
+};
+
+function CommentTextarea({ inputRef, value, onValueChange, label, placeholder, maximum = QT_COMMENT_MAX_LENGTH, disabled }: CommentTextareaProps) {
+  const [macEditor] = useState(() => {
+    if (typeof document === "undefined") return false;
+    const root = document.documentElement;
+    return root.dataset.nativeIosDevice === "mac" ||
+      (root.getAttribute("data-roots-desktop-client") === "" && (/Mac/i.test(navigator.platform) || isCapacitorApp()));
+  });
+  const lastReported = useRef<string>();
+  const composing = useRef(false);
+
+  // Seed a reopened draft or clear an acknowledged post. Never echo the user's own edit back into the Mac editor.
+  useLayoutEffect(() => {
+    const field = inputRef.current;
+    if (!macEditor || !field || value === lastReported.current) return;
+    if (field.value !== value) field.value = value;
+    lastReported.current = value;
+  }, [macEditor, inputRef, value]);
+
+  function readMacInput(field: HTMLTextAreaElement, stillComposing: boolean) {
+    const current = field.value;
+    const limited = limitQtCommentInput(current, maximum);
+    if (!stillComposing && limited !== current) {
+      field.setRangeText("", limited.length, current.length, "preserve");
+    }
+    if (lastReported.current !== limited) {
+      lastReported.current = limited;
+      onValueChange(limited);
+    }
+  }
+
+  const common = { ref: inputRef, className: styles.composerInput, "aria-label": label, placeholder, maxLength: maximum * 2, disabled, rows: 2 };
+  if (!macEditor) {
+    return <textarea {...common} value={value} onChange={event => onValueChange(limitQtCommentInput(event.currentTarget.value, maximum))} />;
+  }
+
+  return <textarea {...common} autoCorrect="off" spellCheck={false}
+    onInput={event => readMacInput(event.currentTarget, composing.current || (event.nativeEvent as InputEvent).isComposing)}
+    onCompositionStart={() => { composing.current = true; }}
+    onCompositionEnd={event => { composing.current = false; readMacInput(event.currentTarget, false); }}
+    onBlur={event => { composing.current = false; readMacInput(event.currentTarget, false); }} />;
 }
 
 /** Kept outside the community page so reacting never remounts the draft or thread. */
@@ -85,6 +138,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   const likeRequests = useRef(new Set<string>());
   const removedIds = useRef(new Set<string>());
   const oldestRoot = useRef<QtComment | null>(null);
+  const newInput = useRef<HTMLTextAreaElement>(null);
+  const editInput = useRef<HTMLTextAreaElement>(null);
   const replyInput = useRef<HTMLTextAreaElement | null>(null);
   const callbackRef = useRef(onCountChange);
   const deleteAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -383,7 +438,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   async function submitReply(event: FormEvent, rootId: string) {
     event.preventDefault();
-    const body = (replyDrafts[rootId] ?? "").trim();
+    const body = limitQtCommentInput(replyInput.current?.value ?? replyDrafts[rootId] ?? "").trim();
     if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || !userId || !postingAllowed) return;
     pendingRef.current = true;
     setPending(`reply:${rootId}`);
@@ -433,7 +488,7 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const body = draft.trim();
+    const body = limitQtCommentInput(newInput.current?.value ?? draft).trim();
     if (!body || qtCommentLength(body) > QT_COMMENT_MAX_LENGTH || pendingRef.current || loading || loadError || !userId || !postingAllowed) return;
     pendingRef.current = true;
     setPending("new");
@@ -468,9 +523,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
   }
 
   async function saveEdit(id: string) {
-    const body = editBody.trim();
     const original = rows.find(row => row.id === id) ?? Object.values(replies).flatMap(page => page.rows).find(row => row.id === id);
     const maximum = Math.max(QT_COMMENT_MAX_LENGTH, qtCommentLength(original?.body ?? ""));
+    const body = limitQtCommentInput(editInput.current?.value ?? editBody, maximum).trim();
     if (!body || qtCommentLength(body) > maximum || pendingRef.current) return;
     pendingRef.current = true;
     setPending(id);
@@ -635,7 +690,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       </div>}
       {comment.deleted_at ? <p className={styles.deleted}>{text.deleted}</p> : editing === comment.id ? (
         <div className={styles.composer} data-qt-comment-composer>
-          <textarea className={styles.composerInput} aria-label={text.edit} maxLength={editMaximum * 2} value={editBody} onChange={event => setEditBody(limitQtCommentInput(event.target.value, editMaximum))} disabled={!!pending} rows={2} />
+          <CommentTextarea inputRef={editInput} label={text.edit} maximum={editMaximum}
+            value={editBody} onValueChange={setEditBody} disabled={!!pending} />
           <div className={`${styles.composerFooter} ${styles.editFooter}`}>
             <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(editBody)}/{editMaximum}</span>
             <button type="button" className={`${styles.button} ${styles.primary}`} disabled={!!pending || !editBody.trim()}
@@ -706,10 +762,9 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
             {replying === comment.id && !comment.deleted_at && (
               <form id={`qt-comment-reply-form-${comment.id}`} className={`${styles.composer} ${styles.replyComposer}`} data-qt-comment-composer
                 onSubmit={event => void submitReply(event, comment.id)}>
-                <textarea ref={replyInput} className={styles.composerInput} rows={2}
-                  aria-label={text.replyTo.replace("{name}", comment.profile?.name || text.unknown)}
-                  value={replyDrafts[comment.id] ?? ""} maxLength={QT_COMMENT_MAX_LENGTH * 2} disabled={!!pending || !postingAllowed}
-                  onChange={event => { const value = limitQtCommentInput(event.target.value); setReplyDrafts(current => ({ ...current, [comment.id]: value })); }} />
+                <CommentTextarea inputRef={replyInput} label={text.replyTo.replace("{name}", comment.profile?.name || text.unknown)}
+                  value={replyDrafts[comment.id] ?? ""} disabled={!!pending || !postingAllowed}
+                  onValueChange={value => setReplyDrafts(current => ({ ...current, [comment.id]: value }))} />
                 {actionError === "reply" && <p role="alert" className={styles.error}>{text.saveError}</p>}
                 <div className={`${styles.composerFooter} ${styles.editFooter}`}>
                   <span className={styles.meta} style={{ marginRight: "auto" }}>{qtCommentLength(replyDrafts[comment.id] ?? "")}/{QT_COMMENT_MAX_LENGTH}</span>
@@ -742,9 +797,8 @@ export default function QtComments({ qtId, userId, context, lang, onCountChange,
       {!loading && !canPost && <p className={styles.meta}>{safetyText.postingBlocked}</p>}
       {userId && !(notificationFocus && !notificationFocus.context) ? (
         <form className={styles.composer} data-qt-comment-composer onSubmit={event => void submit(event)}>
-          <textarea className={styles.composerInput} aria-label={text.placeholder} placeholder={text.placeholder}
-            value={draft} onChange={event => setDraft(limitQtCommentInput(event.target.value))} maxLength={QT_COMMENT_MAX_LENGTH * 2}
-            disabled={!!pending || loading || !postingAllowed || (loadError && !rows.length)} rows={2} />
+          <CommentTextarea inputRef={newInput} label={text.placeholder} placeholder={text.placeholder}
+            value={draft} onValueChange={setDraft} disabled={!!pending || loading || !postingAllowed || (loadError && !rows.length)} />
           <div className={styles.composerFooter}>
             <span className={styles.meta}>{qtCommentLength(draft)}/{QT_COMMENT_MAX_LENGTH}</span>
             <button type="submit" className={`${styles.button} ${styles.primary}`} disabled={!!pending || loading || loadError || !postingAllowed || !draft.trim()}>{pending === "new" ? text.sending : text.send}</button>
